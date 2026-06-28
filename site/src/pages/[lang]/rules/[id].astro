@@ -97,8 +97,8 @@ const PROVES: Record<string, { running: string; disk: string; reboot: string }> 
 const pvBase = data.evidence_type ? PROVES[data.evidence_type] : null;
 const pv = pvBase ? { ...pvBase } : null;
 if (pv && data.reboot_survivable === 'yes') { pv.disk = 'yes'; pv.reboot = 'yes'; }
-// Domains the coverage page flags as thin — surface the honest caveat on those fiches only.
-const domainThin = coverageLevel(data.domain) === 'shallow';
+// Domains the coverage page flags as not-deep — surface the honest caveat on those fiches only.
+const cov = coverageLevel(data.domain);
 const provesLabels = {
   head: { en: 'A pass proves', fr: 'Un PASS prouve' },
   running: { en: 'running now', fr: 'actif maintenant' },
@@ -256,11 +256,11 @@ const srcT = {
         <a class="pv-more" href={`/${lang}/handbook/qualified-verdict/`}>{lang === 'fr' ? 'le verdict qualifié →' : 'the qualified verdict →'}</a>
       </div>
     )}
-    {domainThin && (
+    {cov !== 'deep' && (
       <p class="covnote">
         {lang === 'fr'
-          ? 'Domaine peu couvert par Pavois aujourd’hui — '
-          : 'This domain is thinly covered by Pavois today — '}
+          ? (cov === 'shallow' ? 'Domaine peu couvert par Pavois aujourd’hui — ' : 'Domaine partiellement couvert par Pavois aujourd’hui — ')
+          : (cov === 'shallow' ? 'This domain is thinly covered by Pavois today — ' : 'This domain is partially covered by Pavois today — ')}
         <a href={`/${lang}/handbook/coverage/`}>{lang === 'fr' ? 'voir la couverture' : 'see coverage'}</a>.
       </p>
     )}

@@ -3,7 +3,7 @@ import { getCollection } from 'astro:content';
 import Base from '../../../layouts/Base.astro';
 import { ui, languages, type Lang } from '../../../i18n/ui';
 import socleRefs from '../../../data/socle-refs.json';
-import { coverageLevel } from '../../../data/coverage';
+import { coverageLevel, coverageLabel } from '../../../data/coverage';
 
 export function getStaticPaths() {
   return Object.keys(languages).map((lang) => ({ params: { lang } }));
@@ -102,8 +102,10 @@ const intro = {
                 >
                   <td><a class="ref" href={`/${lang}/rules/${r.data.id}/`}>{socleOf(r.data.id)}</a></td>
                   <td><a class="rule-name" href={`/${lang}/rules/${r.data.id}/`}>{r.data.title[lang]}</a></td>
-                  <td class="dom">{r.data.domain}{coverageLevel(r.data.domain) === 'shallow' && (
-                    <a class="covb" href={`/${lang}/handbook/coverage/`} title={lang === 'fr' ? 'Domaine peu couvert aujourd’hui — voir la page Couverture' : 'Shallow domain today — see the Coverage page'}>{lang === 'fr' ? 'superficiel' : 'shallow'}</a>
+                  <td class="dom">{r.data.domain}{coverageLevel(r.data.domain) !== 'deep' && (
+                    <a class={`covb covb-${coverageLevel(r.data.domain)}`} href={`/${lang}/handbook/coverage/`} title={lang === 'fr'
+                      ? (coverageLevel(r.data.domain) === 'shallow' ? 'Domaine peu couvert aujourd’hui — voir la page Couverture' : 'Domaine partiellement couvert — voir la page Couverture')
+                      : (coverageLevel(r.data.domain) === 'shallow' ? 'Shallow domain today — see the Coverage page' : 'Partially covered today — see the Coverage page')}>{coverageLabel[coverageLevel(r.data.domain)][lang]}</a>
                   )}</td>
                   <td><span class={`sev ${sevClass(r.data.severity)}`}>{sevLabel(r.data.severity)}</span></td>
                   <td class="os">{r.data.supported_os.length}</td>
@@ -184,16 +186,26 @@ const intro = {
     font-size: 0.62rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #b45309;
-    background: rgba(180, 83, 9, 0.1);
-    border: 1px solid rgba(180, 83, 9, 0.3);
     border-radius: 20px;
     padding: 1px 6px;
     text-decoration: none;
     vertical-align: middle;
   }
-  .covb:hover {
+  .covb-shallow {
+    color: #b45309;
+    background: rgba(180, 83, 9, 0.1);
+    border: 1px solid rgba(180, 83, 9, 0.3);
+  }
+  .covb-shallow:hover {
     border-color: #b45309;
+  }
+  .covb-partial {
+    color: #0369a1;
+    background: rgba(3, 105, 161, 0.1);
+    border: 1px solid rgba(3, 105, 161, 0.3);
+  }
+  .covb-partial:hover {
+    border-color: #0369a1;
   }
   .page-head {
     padding: 54px 28px 8px; /* keep the .wrap side padding so the head aligns with the table below */
