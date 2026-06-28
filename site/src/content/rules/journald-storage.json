@@ -1,0 +1,72 @@
+{
+  "id": "journald-storage",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Logging (journald)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.2.2.4",
+      "6.1.2.4",
+      "6.2.1.1.5"
+    ]
+  },
+  "check": [
+    "describe command('grep -rqiE \\'^[[:space:]]*Storage[[:space:]]*=[[:space:]]*persistent\\b\\' /etc/systemd/journald.conf /etc/systemd/journald.conf.d/ 2>/dev/null && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Ensure journald is configured to write log files to persistent disk",
+    "fr": "S'assurer que journald est configuré pour écrire les journaux sur un disque persistant"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "With the default `auto`/`volatile` behavior journals can live only in `/run` and **vanish on reboot**. Logs hold valuable forensic data: if they are not persistent, a crash, power loss or an attacker-triggered reboot wipes the evidence needed to investigate an incident.",
+    "fr": "Avec le comportement par défaut `auto`/`volatile`, les journaux peuvent ne résider que dans `/run` et **disparaître au redémarrage**. Les logs contiennent des données forensiques précieuses : s'ils ne sont pas persistants, un plantage, une coupure de courant ou un redémarrage provoqué par un attaquant efface les preuves nécessaires à l'investigation."
+  },
+  "summary": {
+    "en": "Sets `Storage=persistent` so journald writes logs to `/var/log/journal` and they **survive reboots** instead of living only in volatile memory.",
+    "fr": "Définit `Storage=persistent` afin que journald écrive les journaux dans `/var/log/journal` et qu'ils **survivent aux redémarrages** au lieu de ne résider qu'en mémoire volatile."
+  },
+  "check_note": {
+    "en": "Pavois greps `/etc/systemd/journald.conf` **and the `journald.conf.d/` drop-ins** for an active `Storage=persistent`. journald merges drop-ins over the base file, so scanning both gives the **effective storage mode** — a drop-in setting `persistent` correctly overrides a base `auto`/`volatile`.",
+    "fr": "Pavois recherche dans `/etc/systemd/journald.conf` **et les drop-ins `journald.conf.d/`** un `Storage=persistent` actif. journald fusionnant les drop-ins par-dessus le fichier de base, scanner les deux donne le **mode de stockage effectif** — un drop-in à `persistent` surcharge correctement un `auto`/`volatile` de base."
+  },
+  "verify": {
+    "en": "Run `grep -riE '^\\s*Storage\\s*=\\s*persistent' /etc/systemd/journald.conf /etc/systemd/journald.conf.d/` and confirm `/var/log/journal/` exists and holds data (`journalctl --disk-usage`). Expected: a matching `Storage=persistent` line and a populated `/var/log/journal`.",
+    "fr": "Exécutez `grep -riE '^\\s*Storage\\s*=\\s*persistent' /etc/systemd/journald.conf /etc/systemd/journald.conf.d/` et confirmez que `/var/log/journal/` existe et contient des données (`journalctl --disk-usage`). Attendu : une ligne `Storage=persistent` correspondante et un `/var/log/journal` peuplé."
+  },
+  "logs": {
+    "en": "Confirm persistence with `journalctl --disk-usage` and list boots with `journalctl --list-boots` — multiple past boots prove logs survive reboots. The journal directory is `/var/log/journal/`; config lives in `/etc/systemd/journald.conf` and `/etc/systemd/journald.conf.d/*.conf`. Restart events show via `systemctl status systemd-journald`.",
+    "fr": "Confirmez la persistance avec `journalctl --disk-usage` et listez les démarrages avec `journalctl --list-boots` — plusieurs démarrages passés prouvent que les logs survivent aux redémarrages. Le répertoire des journaux est `/var/log/journal/` ; la config réside dans `/etc/systemd/journald.conf` et `/etc/systemd/journald.conf.d/*.conf`. Les redémarrages apparaissent via `systemctl status systemd-journald`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped for this slug (`remediation` is empty): **apply manually**. Add `Storage=persistent` under `[Journal]` in `/etc/systemd/journald.conf.d/99-Pavois.conf`, then `mkdir -p /var/log/journal` and `systemctl restart systemd-journald`. (The `journald-forwardtosyslog` rule writes that same drop-in — including `Storage=persistent` — via `pavois harden apply`.)",
+    "fr": "Aucune remédiation automatique n'est fournie pour ce slug (`remediation` est vide) : **appliquez manuellement**. Ajoutez `Storage=persistent` sous `[Journal]` dans `/etc/systemd/journald.conf.d/99-Pavois.conf`, puis `mkdir -p /var/log/journal` et `systemctl restart systemd-journald`. (La règle `journald-forwardtosyslog` écrit ce même drop-in — incluant `Storage=persistent` — via `pavois harden apply`.)"
+  },
+  "impact": {
+    "en": "Volatile-only logs mean lost forensic evidence after any reboot. Enabling persistence is low-risk but **consumes disk under `/var/log/journal`**. Precautions before applying: ensure `/var` (or its own partition) has headroom and cap growth with `SystemMaxUse=`/`SystemKeepFree=` to avoid filling the partition; create `/var/log/journal` before restarting so journald migrates immediately. Restarting journald briefly pauses journal writes.",
+    "fr": "Des logs uniquement volatils signifient une perte de preuves forensiques après chaque redémarrage. Activer la persistance est peu risqué mais **consomme du disque sous `/var/log/journal`**. Précautions avant application : assurez-vous que `/var` (ou sa partition dédiée) dispose de marge et limitez la croissance avec `SystemMaxUse=`/`SystemKeepFree=` pour ne pas remplir la partition ; créez `/var/log/journal` avant le redémarrage afin que journald migre immédiatement. Redémarrer journald suspend brièvement les écritures de journaux."
+  }
+}

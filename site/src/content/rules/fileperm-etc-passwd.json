@@ -1,0 +1,89 @@
+{
+  "id": "fileperm-etc-passwd",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R50",
+    "cis": [
+      "7.1.1",
+      "2.2.6"
+    ],
+    "nist": [
+      "AC-6(1)",
+      "CM-6(a)"
+    ],
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "only_if { file('/etc/passwd').exist? }",
+    "describe file('/etc/passwd') do",
+    "  it { should_not be_executable.by('owner') }",
+    "  it { should_not be_setuid }",
+    "  it { should_not be_executable.by('group') }",
+    "  it { should_not be_writable.by('group') }",
+    "  it { should_not be_setgid }",
+    "  it { should_not be_executable.by('other') }",
+    "  it { should_not be_writable.by('other') }",
+    "  it { should_not be_sticky }",
+    "end"
+  ],
+  "remediation": {
+    "mode": "0644",
+    "path": "/etc/passwd",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Permissions on passwd File",
+    "fr": "Vérifier les permissions du fichier passwd"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/etc/passwd` holds every account on the system (login name, UID, GID, home directory and shell) and is **world-readable by design** so programs can resolve user names. The danger is **write** access: if the file is writable by its group or by other, an unprivileged user could add an account, change another user's UID to `0`, or alter a login shell — a direct path to **privilege escalation**. `setuid/setgid/executable` bits are meaningless on this text file and only enlarge the attack surface. Only **root** must be able to write it.",
+    "fr": "`/etc/passwd` contient chaque compte du système (nom de connexion, UID, GID, répertoire personnel et shell) et est **lisible par tous par conception** pour que les programmes résolvent les noms d'utilisateur. Le danger est l'accès en **écriture** : si le fichier est modifiable par son groupe ou par les autres, un utilisateur non privilégié pourrait ajouter un compte, changer l'UID d'un autre utilisateur en `0`, ou modifier un shell de connexion — un chemin direct vers l'**élévation de privilèges**. Les bits `setuid/setgid/exécutable` n'ont aucun sens sur ce fichier texte et ne font qu'élargir la surface d'attaque. Seul **root** doit pouvoir l'écrire."
+  },
+  "summary": {
+    "en": "Ensures `/etc/passwd` is not writable, executable, setuid/setgid or sticky for group or other, so only **root** can modify the account database.",
+    "fr": "Garantit que `/etc/passwd` n'est ni modifiable, ni exécutable, ni setuid/setgid ni sticky pour le groupe ou les autres, afin que seul **root** puisse modifier la base de comptes."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live mode bits** of `/etc/passwd` on the target — the effective permissions stored in the inode — rather than a documented baseline. There is no include or drop-in to subvert; the audit sees exactly what the kernel enforces. The `only_if` guard skips the control if the file is somehow absent.",
+    "fr": "Pavois lit les **bits de mode réels** de `/etc/passwd` sur la cible — les permissions effectives stockées dans l'inode — plutôt qu'une base documentée. Aucun include ni drop-in ne peut le contourner ; l'audit voit exactement ce que le noyau applique. La garde `only_if` ignore le contrôle si le fichier est absent."
+  },
+  "verify": {
+    "en": "Run `stat -c '%A %U %G' /etc/passwd`. Expected: mode `-rw-r--r--` (0644) owned by `root root`, with **no** write bit for group/other and no `s`/`t` bits. Quick check: `find /etc/passwd -perm /0133` must return nothing.",
+    "fr": "Exécutez `stat -c '%A %U %G' /etc/passwd`. Attendu : mode `-rw-r--r--` (0644) appartenant à `root root`, **sans** bit d'écriture pour le groupe/les autres ni bits `s`/`t`. Vérification rapide : `find /etc/passwd -perm /0133` ne doit rien renvoyer."
+  },
+  "logs": {
+    "en": "Permission changes are not logged by default. Because `/etc/passwd` is security-sensitive, watch it with auditd: `auditctl -w /etc/passwd -p wa -k identity`, then review with `grep 'key=\"identity\"' /var/log/audit/audit.log`. Current mode and ownership: `stat /etc/passwd`.",
+    "fr": "Les changements de permissions ne sont pas journalisés par défaut. `/etc/passwd` étant sensible, surveillez-le avec auditd : `auditctl -w /etc/passwd -p wa -k identity`, puis consultez avec `grep 'key=\"identity\"' /var/log/audit/audit.log`. Mode et propriété actuels : `stat /etc/passwd`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule yet, so it must be applied **manually**: `chown root:root /etc/passwd && chmod 0644 /etc/passwd`. This removes any group/other write and any setuid/setgid/sticky bits while keeping the file world-readable, as required for name resolution.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle, elle doit donc être appliquée **manuellement** : `chown root:root /etc/passwd && chmod 0644 /etc/passwd`. Cela supprime toute écriture groupe/autres et tout bit setuid/setgid/sticky tout en gardant le fichier lisible par tous, comme requis pour la résolution des noms."
+  },
+  "impact": {
+    "en": "Risk if left mis-set: writable `/etc/passwd` allows an attacker to inject a UID 0 account or change shells, a textbook **privilege escalation**. Applying the fix is safe: `0644 root:root` is the standard mode shipped by every distribution. Precaution: **do not** drop the read bit for group/other — countless programs (`ls -l`, `id`, login) need to read it, and removing world-read breaks name resolution and most logins.",
+    "fr": "Risque si mal réglé : un `/etc/passwd` modifiable permet à un attaquant d'injecter un compte UID 0 ou de changer des shells, une **élévation de privilèges** classique. Appliquer le correctif est sûr : `0644 root:root` est le mode standard livré par toutes les distributions. Précaution : ne **retirez pas** le bit de lecture pour le groupe/les autres — de nombreux programmes (`ls -l`, `id`, login) en ont besoin, et supprimer la lecture par tous casse la résolution des noms et la plupart des connexions."
+  }
+}

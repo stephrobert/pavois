@@ -1,0 +1,88 @@
+{
+  "id": "sysctl-net-ipv4-conf-default-accept_redirects",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R12",
+    "cis": [
+      "3.3.5",
+      "1.4.3",
+      "3.3.1.9"
+    ],
+    "nist": [
+      "3.1.20",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)",
+      "SC-7(a)"
+    ],
+    "pci-dss": [
+      "1.4.3",
+      "Req-1.4.3"
+    ]
+  },
+  "check": [
+    "describe kernel_parameter('net.ipv4.conf.default.accept_redirects') do",
+    "  its('value') { should cmp 0 }",
+    "end"
+  ],
+  "remediation": {
+    "key": "net.ipv4.conf.default.accept_redirects",
+    "resource": "sysctl",
+    "value": "0"
+  },
+  "title": {
+    "en": "Disable Kernel Parameter for Accepting ICMP Redirects by Default on IPv4 Interfaces",
+    "fr": "Desactiver le parametre noyau d'acceptation des redirections ICMP par defaut sur les interfaces IPv4"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "ICMP redirect messages let a router tell a host that a more direct route exists; the host then rewrites its routing table. These messages are unauthenticated, so a forged redirect can silently reroute traffic through an attacker, enabling a man-in-the-middle. The `default` setting is the template applied to every interface created after it is set, so disabling it (**0**) ensures new and dynamically added interfaces are protected, not just those present at boot. This feature has few legitimate uses and should be off unless absolutely required.",
+    "fr": "Les messages de redirection ICMP permettent a un routeur d'indiquer a un hote qu'une route plus directe existe ; l'hote reecrit alors sa table de routage. Ces messages ne sont pas authentifies, donc une redirection falsifiee peut rerouter silencieusement le trafic via un attaquant, permettant un homme du milieu. Le reglage `default` est le modele applique a chaque interface creee apres sa definition ; le desactiver (**0**) garantit que les interfaces nouvelles ou ajoutees dynamiquement sont protegees, pas seulement celles presentes au demarrage. Cette fonctionnalite a peu d'usages legitimes et doit etre desactivee sauf necessite absolue."
+  },
+  "summary": {
+    "en": "Forces `net.ipv4.conf.default.accept_redirects` to **0** so every newly created IPv4 interface refuses incoming ICMP redirect messages by default.",
+    "fr": "Force `net.ipv4.conf.default.accept_redirects` a **0** afin que chaque interface IPv4 nouvellement creee refuse par defaut les messages de redirection ICMP entrants."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.default.accept_redirects` from the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not a `/etc/sysctl.d/` file. The `default` key governs interfaces created later, so the running value determines the security posture of future interfaces. A config file might declare `0` while a later drop-in or `sysctl -w` overrode it; only the effective parameter tells the truth.",
+    "fr": "Pavois lit la **valeur d'execution en direct** de `net.ipv4.conf.default.accept_redirects` depuis le noyau (ressource InSpec `kernel_parameter`, equivalente a `sysctl`), et non un fichier `/etc/sysctl.d/`. La cle `default` regit les interfaces creees ulterieurement, donc la valeur en cours determine la posture de securite des futures interfaces. Un fichier de configuration pourrait declarer `0` alors qu'un drop-in ulterieur ou un `sysctl -w` l'a surcharge ; seul le parametre effectif dit la verite."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.conf.default.accept_redirects`. Expected output:\n\n- `net.ipv4.conf.default.accept_redirects = 0`",
+    "fr": "Executez `sysctl net.ipv4.conf.default.accept_redirects`. Sortie attendue :\n\n- `net.ipv4.conf.default.accept_redirects = 0`"
+  },
+  "logs": {
+    "en": "No dedicated log exists. With `log_martians` enabled, redirect anomalies surface via `dmesg | grep -i martian` and `journalctl -k`. Inspect the state with `sysctl net.ipv4.conf.default.accept_redirects` and all related values with `sysctl -a | grep accept_redirects`.",
+    "fr": "Aucun journal dedie n'existe. Avec `log_martians` active, les anomalies de redirection apparaissent via `dmesg | grep -i martian` et `journalctl -k`. Inspectez l'etat avec `sysctl net.ipv4.conf.default.accept_redirects` et toutes les valeurs associees avec `sysctl -a | grep accept_redirects`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv4.conf.default.accept_redirects` to **0**, applying it to the running kernel and persisting it in a Pavois-managed drop-in under `/etc/sysctl.d/` so it survives reboot. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour definir `net.ipv4.conf.default.accept_redirects` a **0**, en l'appliquant au noyau en cours d'execution et en le persistant dans un drop-in gere par Pavois sous `/etc/sysctl.d/` afin qu'il survive au redemarrage. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Safe for end hosts and ordinary servers, which should never accept ICMP redirects. Note this is the `default` template and does not retroactively change the `all` or per-interface values already set; pair it with the matching `all.accept_redirects` rule for full coverage. The only systems that might rely on accepting redirects are hosts whose gateway uses them to optimise paths — uncommon. No risk of losing remote access from setting this to **0**.",
+    "fr": "Sur pour les hotes terminaux et les serveurs ordinaires, qui ne devraient jamais accepter de redirections ICMP. A noter que c'est le modele `default` et qu'il ne modifie pas retroactivement les valeurs `all` ou par interface deja definies ; associez-le a la regle `all.accept_redirects` correspondante pour une couverture complete. Les seuls systemes susceptibles de dependre de l'acceptation des redirections sont des hotes dont la passerelle les utilise pour optimiser les chemins — peu courant. Definir cette valeur a **0** ne presente aucun risque de perte d'acces distant."
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "id": "fileowner-var-log-lastlog",
+  "supported_os": [
+    "debian12",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.1.4.1",
+      "6.2.2.1"
+    ]
+  },
+  "check": [
+    "only_if { file('/var/log/lastlog').exist? }",
+    "describe file('/var/log/lastlog') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/var/log/lastlog",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify User Who Owns /var/log/lastlog File",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier /var/log/lastlog"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/var/log/lastlog` records the **most recent login of every user**, the data shown by the `lastlog` command. If it is not owned by **root (UID 0)**, an attacker could rewrite it to hide the time and origin of a login, erasing evidence of unauthorized access and breaking accountability for who used the system and when.",
+    "fr": "`/var/log/lastlog` enregistre la **dernière connexion de chaque utilisateur**, les données affichées par la commande `lastlog`. S'il n'appartient pas à **root (UID 0)**, un attaquant pourrait le réécrire pour masquer l'heure et l'origine d'une connexion, effaçant les preuves d'un accès non autorisé et rompant la traçabilité de qui a utilisé le système et quand."
+  },
+  "summary": {
+    "en": "Ensures `/var/log/lastlog`, the per-user last-login record, is **owned by `root` (UID 0)**.",
+    "fr": "Garantit que `/var/log/lastlog`, l'enregistrement de dernière connexion par utilisateur, est **détenu par `root` (UID 0)**."
+  },
+  "check_note": {
+    "en": "Pavois checks that the **owner UID of `/var/log/lastlog` is `0` (root)** when the file exists (`only_if`). It reads the **live filesystem owner** (`stat`) on the target rather than a default, so any `chown` by a misconfigured PAM/login stack or a deployment script is caught at scan time.",
+    "fr": "Pavois vérifie que l'**UID propriétaire de `/var/log/lastlog` est `0` (root)** lorsque le fichier existe (`only_if`). Il lit le **propriétaire réel du système de fichiers** (`stat`) sur la cible plutôt qu'une valeur par défaut, de sorte que tout `chown` par une pile PAM/login mal configurée ou un script de déploiement est détecté au moment du scan."
+  },
+  "verify": {
+    "en": "Confirm the owner with:\n\n```bash\nstat -c '%U %u' /var/log/lastlog\n```\n\nExpected output is `root 0`.",
+    "fr": "Confirmez le propriétaire avec :\n\n```bash\nstat -c '%U %u' /var/log/lastlog\n```\n\nLa sortie attendue est `root 0`."
+  },
+  "logs": {
+    "en": "This file holds the last-login data. Inspect ownership and the records:\n\n```bash\nstat /var/log/lastlog\nlastlog\n```\n\nLogin events are also written to `/var/log/auth.log`. Ownership changes can be tracked with `grep 'lastlog' /var/log/audit/audit.log` if auditd watches are configured.",
+    "fr": "Ce fichier contient les données de dernière connexion. Inspectez la propriété et les enregistrements :\n\n```bash\nstat /var/log/lastlog\nlastlog\n```\n\nLes événements de connexion sont aussi écrits dans `/var/log/auth.log`. Les changements de propriété peuvent être suivis avec `grep 'lastlog' /var/log/audit/audit.log` si des surveillances auditd sont configurées."
+  },
+  "remediation_note": {
+    "en": "No automated remediation plan is defined, so this rule must be **applied manually**. Restore root ownership with:\n\n```bash\nchown root /var/log/lastlog\n```\n\n(`pavois harden apply` will not change this file until a remediation resource is added.)",
+    "fr": "Aucun plan de remédiation automatisé n'est défini ; cette règle doit donc être **appliquée manuellement**. Restaurez la propriété root avec :\n\n```bash\nchown root /var/log/lastlog\n```\n\n(`pavois harden apply` ne modifiera pas ce fichier tant qu'une ressource de remédiation n'aura pas été ajoutée.)"
+  },
+  "impact": {
+    "en": "**Consequences if misconfigured:** a non-root owner can tamper with the last-login record to conceal when and from where an account was used.\n\n**Precautions before applying:** re-owning to root is safe — the login stack writes `lastlog` as root via PAM. The `only_if` guard skips hosts that lack the file, so applying the fix is harmless on systems that do not maintain `lastlog`.",
+    "fr": "**Conséquences en cas de mauvaise configuration :** un propriétaire non-root peut altérer l'enregistrement de dernière connexion pour dissimuler quand et d'où un compte a été utilisé.\n\n**Précautions avant application :** réattribuer à root est sûr — la pile de connexion écrit `lastlog` en root via PAM. La garde `only_if` ignore les hôtes dépourvus du fichier, donc appliquer le correctif est inoffensif sur les systèmes qui ne maintiennent pas `lastlog`."
+  }
+}

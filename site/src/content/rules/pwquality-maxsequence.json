@@ -1,0 +1,71 @@
+{
+  "id": "pwquality-maxsequence",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Passwords (pwquality)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.3.3.2.5"
+  },
+  "check": [
+    "describe command('v=$(grep -rh \\'^[[:space:]]*maxsequence[[:space:]]*=\\' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ 2>/dev/null | tail -1 | grep -oE \\'[-]?[0-9]+\\'); { [ -n \"$v\" ] && [ \"$v\" -le 3 ] && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "file": "/etc/security/pwquality.conf.d/99-pavois.conf",
+    "key": "maxsequence",
+    "resource": "keyval",
+    "value": "3"
+  },
+  "title": {
+    "en": "Limit the maximum number of sequential characters in passwords",
+    "fr": "Limiter le nombre maximal de caracteres sequentiels dans les mots de passe"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "A strong password increases the time and resources needed to compromise it. The `maxsequence` parameter rejects passwords containing long monotonic runs such as `abcd`, `4321` or `qwerty`-style sequences. These ordered patterns are tested early by password-cracking tools and drastically reduce effective entropy. Capping sequences at **3** forces less predictable passwords and broadens the search space attackers must cover.",
+    "fr": "Un mot de passe robuste augmente le temps et les ressources necessaires pour le compromettre. Le parametre `maxsequence` rejette les mots de passe contenant de longues suites monotones comme `abcd`, `4321` ou des sequences de type `qwerty`. Ces motifs ordonnes sont testes en priorite par les outils de cassage et reduisent fortement l'entropie effective. Plafonner les suites a **3** impose des mots de passe moins previsibles et elargit l'espace de recherche que les attaquants doivent couvrir."
+  },
+  "summary": {
+    "en": "Limits how long a **monotonic sequence** (e.g. `abcd`, `1234`) may run in a password by setting `maxsequence = 3`.",
+    "fr": "Limite la longueur d'une **suite monotone** (ex. `abcd`, `1234`) autorisee dans un mot de passe en posant `maxsequence = 3`."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** `maxsequence` value across `/etc/security/pwquality.conf` **and** all drop-ins under `/etc/security/pwquality.conf.d/`, keeping the **last** definition that wins at runtime. A file-based scanner reading only the main config would miss a value set in a drop-in. The control passes only when the resolved value is `<= 3` (and non-zero, since `0` disables the check).",
+    "fr": "Pavois lit la valeur **effective** de `maxsequence` a travers `/etc/security/pwquality.conf` **et** tous les drop-ins sous `/etc/security/pwquality.conf.d/`, en conservant la **derniere** definition qui l'emporte a l'execution. Un scanner base sur les fichiers lisant uniquement la config principale manquerait une valeur posee dans un drop-in. Le controle passe uniquement quand la valeur resolue est `<= 3` (et non nulle, car `0` desactive le controle)."
+  },
+  "verify": {
+    "en": "Run `grep -rh '^[[:space:]]*maxsequence' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. The effective line must read `maxsequence = 3` (or any value `1`..`3`).",
+    "fr": "Executez `grep -rh '^[[:space:]]*maxsequence' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. La ligne effective doit indiquer `maxsequence = 3` (ou toute valeur `1`..`3`)."
+  },
+  "logs": {
+    "en": "Password changes rejected for monotonic sequences are logged via PAM in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL family) with `pam_pwquality` messages like **\"Too long monotonic character sequence\"**. Inspect the live setting with `grep -r maxsequence /etc/security/pwquality.conf.d/`.",
+    "fr": "Les changements de mot de passe rejetes pour suites monotones sont journalises via PAM dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL) avec des messages `pam_pwquality` comme **\"Too long monotonic character sequence\"**. Inspectez le reglage actif avec `grep -r maxsequence /etc/security/pwquality.conf.d/`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` writes `maxsequence = 3` to the drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via the idempotent `keyval` resource. The `99-` prefix ensures it overrides any earlier value. No service restart is needed; it applies at the next password change.",
+    "fr": "`pavois harden apply` ecrit `maxsequence = 3` dans le drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via la ressource idempotente `keyval`. Le prefixe `99-` garantit qu'il surcharge toute valeur anterieure. Aucun redemarrage n'est requis ; cela s'applique au prochain changement de mot de passe."
+  },
+  "impact": {
+    "en": "Existing passwords stay valid; only **new** passwords are constrained. Users picking passwords with sequences longer than 3 (e.g. `abcde`, `12345`) will be rejected. Lockout risk is minimal. Note this parameter is unavailable on AlmaLinux 9 (hence not in `supported_os`); setting `maxsequence = 0` would disable the check, so confirm the value is `1`..`3`.",
+    "fr": "Les mots de passe existants restent valides ; seuls les **nouveaux** mots de passe sont contraints. Les utilisateurs choisissant des mots de passe avec des suites superieures a 3 (ex. `abcde`, `12345`) seront rejetes. Le risque de blocage est minime. Notez que ce parametre est indisponible sur AlmaLinux 9 (d'ou son absence de `supported_os`) ; mettre `maxsequence = 0` desactiverait le controle, confirmez donc que la valeur est `1`..`3`."
+  }
+}

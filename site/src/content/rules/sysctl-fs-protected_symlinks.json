@@ -1,0 +1,77 @@
+{
+  "id": "sysctl-fs-protected_symlinks",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R14",
+    "nist": [
+      "AC-6(1)",
+      "CM-6(a)"
+    ],
+    "cis": "1.5.3"
+  },
+  "check": [
+    "describe kernel_parameter('fs.protected_symlinks') do",
+    "  its('value') { should cmp 1 }",
+    "end"
+  ],
+  "remediation": {
+    "key": "fs.protected_symlinks",
+    "resource": "sysctl",
+    "value": "1"
+  },
+  "title": {
+    "en": "Enable Kernel Parameter to Enforce DAC on Symlinks",
+    "fr": "Activer le paramètre noyau pour appliquer le DAC sur les liens symboliques"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "With `fs.protected_symlinks=1`, the kernel follows a symbolic link in a world-writable sticky directory only when the link's owner matches the follower, or the link and directory owners match. This blocks the classic **symlink-following race** where an attacker plants a symlink in `/tmp` pointing at a sensitive file so that a privileged program writes through it. Enforcing DAC on symlink resolution closes an exploitation vector against unsafe use of `open()` or `creat()`.",
+    "fr": "Avec `fs.protected_symlinks=1`, le noyau ne suit un lien symbolique dans un répertoire sticky accessible en écriture par tous que lorsque le propriétaire du lien correspond à celui qui le suit, ou que les propriétaires du lien et du répertoire correspondent. Cela bloque la **course par suivi de lien symbolique** classique, où un attaquant place un lien symbolique dans `/tmp` pointant vers un fichier sensible afin qu'un programme privilégié écrive à travers lui. Appliquer le DAC à la résolution des liens symboliques ferme un vecteur d'exploitation contre un usage non sûr de `open()` ou `creat()`."
+  },
+  "summary": {
+    "en": "Sets `fs.protected_symlinks=1` so symlinks in world-writable sticky directories are followed only when owner constraints match, blocking symlink-following races.",
+    "fr": "Définit `fs.protected_symlinks=1` pour que les liens symboliques dans les répertoires sticky accessibles en écriture par tous ne soient suivis que si les contraintes de propriété correspondent, bloquant les courses par suivi de lien symbolique."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** via the `kernel_parameter` resource (equivalent to `sysctl fs.protected_symlinks`), not `/etc/sysctl.conf` or any `*.conf` drop-in. A configured file may never have been applied (typo, load ordering, an overriding drop-in); reading the running kernel shows what is actually enforced.",
+    "fr": "Pavois lit la **valeur effective du noyau** via la ressource `kernel_parameter` (équivalent à `sysctl fs.protected_symlinks`), et non `/etc/sysctl.conf` ou un drop-in `*.conf`. Un fichier configuré peut n'avoir jamais été appliqué (faute de frappe, ordre de chargement, drop-in qui l'écrase) ; lire le noyau en cours d'exécution montre ce qui est réellement appliqué."
+  },
+  "verify": {
+    "en": "Run `sysctl fs.protected_symlinks` — expected output `fs.protected_symlinks = 1`.",
+    "fr": "Exécutez `sysctl fs.protected_symlinks` — sortie attendue `fs.protected_symlinks = 1`."
+  },
+  "logs": {
+    "en": "Read the current value with `sysctl fs.protected_symlinks` or `cat /proc/sys/fs/protected_symlinks`. A blocked symlink follow returns `EACCES` to the caller; the kernel does not log it by default, so inspect the affected program's error output.",
+    "fr": "Lisez la valeur courante avec `sysctl fs.protected_symlinks` ou `cat /proc/sys/fs/protected_symlinks`. Un suivi de lien symbolique bloqué renvoie `EACCES` à l'appelant ; le noyau ne le journalise pas par défaut, consultez donc la sortie d'erreur du programme affecté."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan sets the `sysctl` key `fs.protected_symlinks` to `1`, persisting it to a managed drop-in and applying it live so the running kernel and future boots both use it. Applied with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois définit la clé `sysctl` `fs.protected_symlinks` à `1`, la persiste dans un drop-in géré et l'applique à chaud, de sorte que le noyau en cours d'exécution comme les démarrages futurs l'utilisent. Appliqué avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Negligible risk; enabled by default on most modern distributions. Normal software is unaffected because it does not rely on following other users' symlinks in shared directories. Reversible by resetting the key to `0`.",
+    "fr": "Risque négligeable ; activé par défaut sur la plupart des distributions modernes. Les logiciels normaux ne sont pas affectés car ils ne dépendent pas du suivi des liens symboliques d'autres utilisateurs dans les répertoires partagés. Réversible en remettant la clé à `0`."
+  }
+}

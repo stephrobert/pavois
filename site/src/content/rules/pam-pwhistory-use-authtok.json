@@ -1,0 +1,68 @@
+{
+  "id": "pam-pwhistory-use-authtok",
+  "supported_os": [
+    "debian12",
+    "fedora",
+    "rhel8",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "rhel8": "4.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (PAM modules)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.3.3.3.3"
+  },
+  "check": [
+    "describe command('grep -rqE \\'^[^#]*\\bpam_pwhistory\\\\.so\\b[^#]*\\buse_authtok\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "before": "^password.*pam_unix\\.so",
+    "file": "/etc/pam.d/common-password",
+    "line": "password required pam_pwhistory.so remember=24 use_authtok enforce_for_root",
+    "module": "pam_pwhistory.so",
+    "resource": "pam_line"
+  },
+  "title": {
+    "en": "Enforce Password History with use_authtok",
+    "fr": "Imposer l'historique des mots de passe avec use_authtok"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `use_authtok` option lets `pam_pwhistory` reuse the new password already collected by an earlier module in the password stack, so multiple modules (quality, history, unix) validate the **same** token without re-prompting the user. Without it, the modules can fall out of sync and the history check may run against a different value than the one finally stored, weakening enforcement.",
+    "fr": "L'option `use_authtok` permet à `pam_pwhistory` de réutiliser le nouveau mot de passe déjà collecté par un module antérieur de la pile password, afin que plusieurs modules (qualité, historique, unix) valident le **même** jeton sans redemander à l'utilisateur. Sans elle, les modules peuvent se désynchroniser et la vérification d'historique peut porter sur une valeur différente de celle finalement stockée, affaiblissant le contrôle."
+  },
+  "summary": {
+    "en": "Enforces the `use_authtok` option on `pam_pwhistory.so` so it validates the password already provided to the stack instead of prompting again.",
+    "fr": "Impose l'option `use_authtok` sur `pam_pwhistory.so` afin qu'il valide le mot de passe déjà fourni à la pile au lieu de le redemander."
+  },
+  "check_note": {
+    "en": "Pavois greps the **effective** PAM stack under `/etc/pam.d/` for a non-commented `pam_pwhistory.so` line carrying `use_authtok`. Reading the resolved password stack (with its `@include` chain and ordering) rather than a single file is essential here, because `use_authtok` only works correctly relative to the modules placed before it.",
+    "fr": "Pavois recherche dans la pile PAM **effective** sous `/etc/pam.d/` une ligne `pam_pwhistory.so` non commentée portant `use_authtok`. Lire la pile password résolue (avec sa chaîne `@include` et son ordre) plutôt qu'un seul fichier est essentiel ici, car `use_authtok` ne fonctionne correctement que par rapport aux modules placés avant lui."
+  },
+  "verify": {
+    "en": "Run `grep -rE '^[^#]*pam_pwhistory\\.so' /etc/pam.d/` and confirm the `password` line includes `use_authtok`. Functionally, a single `passwd` run should prompt for the new password only once and still enforce the history check.",
+    "fr": "Exécutez `grep -rE '^[^#]*pam_pwhistory\\.so' /etc/pam.d/` et vérifiez que la ligne `password` inclut `use_authtok`. Fonctionnellement, un seul `passwd` ne devrait demander le nouveau mot de passe qu'une fois tout en appliquant la vérification d'historique."
+  },
+  "logs": {
+    "en": "Password-change events are logged in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL/Fedora). The history of previous hashes is kept in `/etc/security/opasswd`.",
+    "fr": "Les changements de mot de passe sont consignés dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL/Fedora). L'historique des anciens condensats est conservé dans `/etc/security/opasswd`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `pam_line` resource to ensure the `pam_pwhistory.so` line in `/etc/pam.d/common-password` carries `use_authtok` (with `remember=24` and `enforce_for_root`), inserted before `pam_unix.so` so it receives the token from the preceding module. It is applied with `pavois harden apply`.",
+    "fr": "`pavois harden apply` utilise la ressource `pam_line` pour s'assurer que la ligne `pam_pwhistory.so` de `/etc/pam.d/common-password` porte `use_authtok` (avec `remember=24` et `enforce_for_root`), insérée avant `pam_unix.so` afin de recevoir le jeton du module précédent. Cela s'applique avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "If `use_authtok` is set but no earlier module in the stack actually supplies the token, password changes can fail with \"authentication token manipulation error\". **Precautions:** keep a root session open, make sure a password-collecting module (e.g. `pam_pwquality` or `pam_unix`) precedes `pam_pwhistory`, and test `passwd` on a throwaway user before relying on it.",
+    "fr": "Si `use_authtok` est défini mais qu'aucun module antérieur de la pile ne fournit réellement le jeton, les changements de mot de passe peuvent échouer avec « authentication token manipulation error ». **Précautions :** gardez une session root ouverte, assurez-vous qu'un module collecteur de mot de passe (par ex. `pam_pwquality` ou `pam_unix`) précède `pam_pwhistory`, et testez `passwd` sur un utilisateur jetable avant de vous y fier."
+  }
+}

@@ -1,0 +1,366 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+import { ui, languages, type Lang } from '../../../i18n/ui';
+import standards from '../../../data/standards.json';
+import socleRefs from '../../../data/socle-refs.json';
+
+export async function getStaticPaths() {
+  const allRules = await getCollection('rules');
+  return Object.keys(languages).flatMap((lang) =>
+    Object.keys(standards).map((norm) => ({
+      params: { lang, norm },
+      props: {
+        norm,
+        meta: (standards as Record<string, any>)[norm],
+        rules: allRules
+          .filter((r) => norm in r.data.norms)
+          .map((r) => ({
+            id: r.data.id,
+            socle: (socleRefs as Record<string, string>)[r.data.id] ?? '',
+            supported_os: r.data.supported_os,
+            domain: r.data.domain ?? '',
+            severity: r.data.severity,
+            title: r.data.title,
+            value: r.data.norms[norm],
+            reboot_survivable: r.data.reboot_survivable ?? null,
+          })),
+      },
+    }))
+  );
+}
+
+const { lang } = Astro.params as { lang: Lang };
+const { norm, meta, rules } = Astro.props;
+const t = ui[lang];
+const oses = [...new Set(rules.flatMap((r: any) => r.supported_os))].sort();
+const order = { high: 0, medium: 1, low: 2, unknown: 3 } as Record<string, number>;
+const sevs = [...new Set(rules.map((r: any) => r.severity))].sort((a: string, b: string) => order[a] - order[b]);
+const sevClass = (s: string): string => (s === 'medium' ? 'med' : s === 'unknown' ? 'na' : s);
+const sevLabel = (s: string): string => (t.sev as Record<string, string>)[s] ?? s;
+const sectionOf = (v: string | string[]) => (Array.isArray(v) ? v.join(' · ') : v);
+// reboot-proof coverage: of this norm's controls, how many prove a reboot-survivable state
+// (qualified verdict) vs are runtime-only. An opposable, honest measure of durable conformance.
+const rebootProof = rules.filter((r: any) => r.reboot_survivable === 'yes').length;
+const runtimeOnly = rules.length - rebootProof;
+const rbPct = rules.length ? Math.round((100 * rebootProof) / rules.length) : 0;
+// coverage: how many controls map to this norm, and how many ALSO cross another standard.
+const sectionLabel = norm === 'nist' ? 'NIST control' : norm === 'bp28' ? 'ANSSI ref' : `${meta.name.split(' ')[0]} ref`;
+---
+
+<Base title={`${meta.name} — Pavois`} description={meta.blurb?.[lang] ?? meta.name} lang={lang} breadcrumbs={[{ name: 'Pavois', path: `/${lang}/` }, { name: lang === 'fr' ? 'Normes' : 'Standards', path: `/${lang}/rules/` }, { name: meta.name, path: `/${lang}/standards/${norm}/` }]}>
+  <div class="wrap page-head">
+    <div class="crumb">
+      <a href={`/${lang}/`}>Pavois</a> / <a href={`/${lang}/rules/`}>{lang === 'fr' ? 'normes' : 'standards'}</a> / {norm}
+    </div>
+    <span class="eyebrow">{lang === 'fr' ? 'norme' : 'standard'}</span>
+    <h1>{meta.name}</h1>
+    {meta.fullname && <p class="full mono">{meta.fullname}</p>}
+    {meta.blurb && <p class="lede">{meta.blurb[lang]}</p>}
+
+    <div class="meta-row">
+      <span class="mtag"><b>{t.authority}</b> {meta.authority}</span>
+      {meta.version && <span class="mtag"><b>{t.version}</b> {meta.version}</span>}
+      <span class="mtag"><b>{lang === 'fr' ? 'couverture' : 'coverage'}</b> {rules.length} {lang === 'fr' ? 'contrôles' : 'controls'}</span>
+      <a class="mtag link" href={meta.url} target="_blank" rel="noopener noreferrer">{t.officialDoc}</a>
+      <a class="mtag link" href={`/${lang}/handbook/evidence-and-exports/`}>
+        {lang === 'fr' ? 'Preuves & exports' : 'Evidence & exports'}
+      </a>
+      <a class="mtag link" href={`/${lang}/handbook/socle-control-id/`}>
+        {lang === 'fr' ? 'Modèle d’ID' : 'ID model'}
+      </a>
+      <a class="mtag link" href={`/${lang}/downloads/`}>OSCAL ↓</a>
+    </div>
+
+    <div class="cov-row">
+      <span class="cov high"><b>{rules.filter((r: any) => r.severity === 'high').length}</b> {sevLabel('high')}</span>
+      <span class="cov med"><b>{rules.filter((r: any) => r.severity === 'medium').length}</b> {sevLabel('medium')}</span>
+      <span class="cov low"><b>{rules.filter((r: any) => r.severity === 'low').length}</b> {sevLabel('low')}</span>
+      <span class="cov"><b>{oses.length}</b> OS</span>
+      <span
+        class="cov rbproof"
+        title={lang === 'fr'
+          ? `${rebootProof} contrôles prouvent un état reboot-survivable ; ${runtimeOnly} sont runtime-only (plafonnent la note sous A tant que la persistance n’est pas prouvée).`
+          : `${rebootProof} controls prove a reboot-survivable state; ${runtimeOnly} are runtime-only (cap the grade under A until persistence is proven).`}
+        ><b>{rbPct}%</b> {lang === 'fr' ? 'reboot-proof' : 'reboot-proof'}</span
+      >
+    </div>
+
+    {
+      meta.notation && (
+        <details class="guide">
+          <summary>{lang === 'fr' ? 'Comment lire les références' : 'How to read the references'}</summary>
+          <div class="guide-body" set:html={meta.notation[lang]} />
+        </details>
+      )
+    }
+  </div>
+
+  <div class="wrap">
+    <div class="filterbar">
+      <div class="fsel fsearch-wrap">
+        <label>{lang === 'fr' ? 'Recherche' : 'Search'}</label>
+        <input id="r-search" class="fsearch" type="search" placeholder={t.searchPh} autocomplete="off" />
+      </div>
+      {
+        oses.length > 1 && (
+          <div class="fsel">
+            <label>{t.thOs}</label>
+            <select id="r-os">
+              <option value="">{t.allOs}</option>
+              {oses.map((o: string) => <option value={o}>{o}</option>)}
+            </select>
+          </div>
+        )
+      }
+      {
+        sevs.length > 1 && (
+          <div class="fsel">
+            <label>{t.severity}</label>
+            <select id="r-sev">
+              <option value="">{lang === 'fr' ? 'Toutes sévérités' : 'Any severity'}</option>
+              {sevs.map((s: string) => <option value={s}>{sevLabel(s)}</option>)}
+            </select>
+          </div>
+        )
+      }
+      <div class="fcount"><b id="r-count">{rules.length}</b> / {rules.length}</div>
+    </div>
+
+    <div class="rtable-wrap">
+      <table class="rtable">
+        <thead>
+          <tr>
+            <th data-col>{lang === 'fr' ? 'Réf.' : 'Ref'}</th>
+            <th data-col>{t.thRule}</th>
+            <th data-col>{t.thOs}</th>
+            <th data-col>{t.domain}</th>
+            <th data-col>{lang === 'fr' ? 'Sév.' : 'Sev.'}</th>
+            <th data-col>{sectionLabel}</th>
+          </tr>
+        </thead>
+        <tbody id="r-body">
+          {
+            rules.map((r: any) => (
+              <tr
+                data-os={r.supported_os.join(' ')}
+                data-sev={r.severity}
+                data-search={`${r.title[lang]} ${r.socle} ${r.domain} ${sectionOf(r.value)}`.toLowerCase()}
+              >
+                <td><a class="ref" href={`/${lang}/rules/${r.id}/`}>{r.socle}</a></td>
+                <td><a class="rule-name" href={`/${lang}/rules/${r.id}/`}>{r.title[lang]}</a></td>
+                <td class="os">{r.supported_os.length}</td>
+                <td class="dom">{r.domain}</td>
+                <td><span class={`sev ${sevClass(r.severity)}`}>{sevLabel(r.severity)}</span></td>
+                <td class="secs">{sectionOf(r.value)}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+    <p id="r-empty" hidden class="empty">{t.noResults}</p>
+  </div>
+</Base>
+
+<script>
+  const $ = (id: string) => document.getElementById(id);
+  const search = $('r-search') as HTMLInputElement | null;
+  const osf = $('r-os') as HTMLSelectElement | null;
+  const sevf = $('r-sev') as HTMLSelectElement | null;
+  const tbody = $('r-body');
+  const count = $('r-count');
+  const empty = $('r-empty');
+  if (tbody) {
+    const rows = Array.from(tbody.querySelectorAll('tr')) as HTMLElement[];
+    const apply = () => {
+      const q = (search?.value || '').trim().toLowerCase();
+      const o = osf?.value || '';
+      const s = sevf?.value || '';
+      let n = 0;
+      for (const tr of rows) {
+        const show =
+          (!q || (tr.dataset.search || '').includes(q)) &&
+          (!o || (tr.dataset.os || '').split(' ').includes(o)) &&
+          (!s || tr.dataset.sev === s);
+        tr.hidden = !show;
+        if (show) n++;
+      }
+      if (count) count.textContent = String(n);
+      if (empty) (empty as HTMLElement).hidden = n !== 0;
+    };
+    [search, osf, sevf].forEach((el) => {
+      el?.addEventListener('input', apply);
+      el?.addEventListener('change', apply);
+    });
+    const heads = Array.from(document.querySelectorAll('.rtable th[data-col]')) as HTMLElement[];
+    heads.forEach((th, idx) => {
+      th.addEventListener('click', () => {
+        const asc = th.dataset.dir !== 'asc';
+        heads.forEach((o) => (o.dataset.dir = ''));
+        th.dataset.dir = asc ? 'asc' : 'desc';
+        rows.sort(
+          (a, b) =>
+            (asc ? 1 : -1) *
+            a.children[idx].textContent!.trim().localeCompare(b.children[idx].textContent!.trim(), undefined, { numeric: true })
+        );
+        rows.forEach((r) => tbody.appendChild(r));
+      });
+    });
+  }
+</script>
+
+<style>
+  .page-head {
+    padding: 54px 28px 8px; /* keep the .wrap side padding so the head aligns with the table below */
+  }
+  .full {
+    color: var(--tx-3);
+    font-size: 13px;
+    margin-top: 8px;
+  }
+  .meta-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 20px 0 6px;
+  }
+  .mtag {
+    flex: 1;
+    min-width: 160px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--tx-2);
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: 8px;
+    padding: 9px 13px;
+  }
+  .mtag b {
+    color: var(--tx-3);
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    margin-right: 5px;
+  }
+  .mtag.link {
+    color: var(--red);
+  }
+  .cov-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 4px 0 2px;
+  }
+  .cov {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 6px 11px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    color: var(--tx-2);
+  }
+  .cov b {
+    color: var(--tx);
+    font-weight: 700;
+  }
+  .cov.high {
+    color: var(--red-br);
+    border-color: rgba(220, 38, 38, 0.4);
+  }
+  .cov.med {
+    color: var(--warn-br);
+    border-color: rgba(217, 119, 6, 0.35);
+  }
+  .cov.rbproof {
+    color: #047857;
+    border-color: rgba(5, 150, 105, 0.4);
+    cursor: help;
+  }
+  .guide {
+    margin-top: 16px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: var(--panel);
+    padding: 4px 16px;
+  }
+  .guide summary {
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--tx-2);
+    padding: 12px 0;
+  }
+  .guide summary:hover {
+    color: var(--red);
+  }
+  .guide-body {
+    font-size: 14.5px;
+    color: var(--tx-2);
+    line-height: 1.6;
+    padding: 4px 0 16px;
+  }
+  .guide-body :global(code) {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--tx);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 1px 6px;
+  }
+  .guide-body :global(strong) {
+    color: var(--tx);
+  }
+  .guide-body :global(table) {
+    border-collapse: collapse;
+    margin: 10px 0;
+  }
+  .guide-body :global(td) {
+    border: 1px solid var(--line);
+    padding: 6px 10px;
+  }
+  .filterbar {
+    align-items: flex-end; /* all controls share a clean bottom baseline, labels above */
+  }
+  .filterbar .fcount {
+    padding-bottom: 9px;
+  }
+  .fsearch-wrap {
+    flex: 1;
+    min-width: 180px;
+  }
+  .fsearch {
+    width: 100%;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--tx);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 13px;
+  }
+  .fsearch:focus {
+    outline: none;
+    border-color: var(--red);
+  }
+  .rtable thead th {
+    cursor: pointer;
+    user-select: none;
+    position: static; /* override pavois sticky (glitches in border-collapse under the 64px nav) */
+  }
+  .rtable thead th[data-dir='asc']::after {
+    content: ' ↑';
+  }
+  .rtable thead th[data-dir='desc']::after {
+    content: ' ↓';
+  }
+  .empty {
+    color: var(--tx-3);
+    padding: 24px 0;
+  }
+</style>

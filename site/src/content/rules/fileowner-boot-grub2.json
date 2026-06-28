@@ -1,0 +1,58 @@
+{
+  "id": "fileowner-boot-grub2",
+  "supported_os": [
+    "fedora"
+  ],
+  "os_versions": {},
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "1.4.2"
+  },
+  "check": [
+    "only_if { file('/boot/grub2').exist? }",
+    "describe file('/boot/grub2') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/boot/grub2",
+    "resource": "file"
+  },
+  "title": {
+    "en": "All GRUB configuration files must be owned by root",
+    "fr": "Tous les fichiers de configuration GRUB doivent appartenir à root"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `/boot/grub2` directory holds the bootloader configuration (`grub.cfg`) that controls how the system boots, including kernel command-line parameters. If it is not owned by **root**, an unprivileged user could alter boot options — for example adding `init=/bin/bash` or disabling security mitigations — to gain control of the system at boot or bypass hardening. Owning boot configuration by root is foundational to a trustworthy boot chain.",
+    "fr": "Le répertoire `/boot/grub2` contient la configuration du chargeur d'amorçage (`grub.cfg`) qui pilote le démarrage du système, y compris les paramètres de ligne de commande du noyau. S'il n'appartient pas à **root**, un utilisateur non privilégié pourrait modifier les options de démarrage — par exemple ajouter `init=/bin/bash` ou désactiver des protections — pour prendre le contrôle du système au démarrage ou contourner le durcissement. La propriété root de la configuration d'amorçage est un fondement d'une chaîne de démarrage de confiance."
+  },
+  "summary": {
+    "en": "Ensures the GRUB2 configuration directory `/boot/grub2` is owned by the **root** user (UID 0).",
+    "fr": "Garantit que le répertoire de configuration GRUB2 `/boot/grub2` appartient à l'utilisateur **root** (UID 0)."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** owner of `/boot/grub2` via the InSpec `file` resource and asserts `uid == 0`, only when the path exists (`only_if`). Inspecting the live inode ownership reflects the real on-disk state, including drift caused by `grub2-mkconfig` runs or manual edits, rather than a packaging default that may have been overridden.",
+    "fr": "Pavois lit le propriétaire **effectif** de `/boot/grub2` via la ressource `file` d'InSpec et vérifie `uid == 0`, uniquement si le chemin existe (`only_if`). L'inspection de la propriété réelle de l'inode reflète l'état exact sur le disque, y compris une dérive due à des exécutions de `grub2-mkconfig` ou à des éditions manuelles, plutôt qu'une valeur par défaut du paquet qui aurait pu être écrasée."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /boot/grub2`. Expected output: **`root 0`**. Alternatively `ls -ld /boot/grub2` should show `root` in the owner column.",
+    "fr": "Exécutez `stat -c '%U %u' /boot/grub2`. Résultat attendu : **`root 0`**. Sinon, `ls -ld /boot/grub2` doit afficher `root` dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "Ownership has no service log. Confirm the state with `stat -c '%U %u' /boot/grub2`. To trace changes, an auditd watch such as `auditctl -w /boot/grub2 -p wa -k grub-cfg` records writes/attribute changes in `/var/log/audit/audit.log`.",
+    "fr": "La propriété ne génère aucun journal de service. Vérifiez l'état avec `stat -c '%U %u' /boot/grub2`. Pour tracer les changements, une surveillance auditd telle que `auditctl -w /boot/grub2 -p wa -k grub-cfg` enregistre les écritures/changements d'attributs dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied **manually**: run `chown root /boot/grub2` (add `-R` to cover the contents) as root to set the owner to **root**.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être appliquée **manuellement** : exécutez `chown root /boot/grub2` (ajoutez `-R` pour couvrir le contenu) en root pour fixer le propriétaire à **root**."
+  },
+  "impact": {
+    "en": "**If misconfigured**, a non-root user could rewrite GRUB options and seize control of the boot process or bypass security settings.\n\n**Precautions before applying:** `chown root /boot/grub2` is safe and reversible. On UEFI systems the active config may instead live under `/boot/efi/EFI/<distro>/grub.cfg`; verify the real path before assuming. Do not change ownership to a non-existent user, and avoid combining with overly strict permissions that could prevent `grub2-mkconfig` from regenerating the file.",
+    "fr": "**En cas de mauvaise configuration**, un utilisateur non root pourrait réécrire les options GRUB et s'emparer du processus de démarrage ou contourner les réglages de sécurité.\n\n**Précautions avant application :** `chown root /boot/grub2` est sûr et réversible. Sur les systèmes UEFI, la configuration active peut se trouver sous `/boot/efi/EFI/<distro>/grub.cfg` ; vérifiez le chemin réel avant de conclure. Ne changez pas le propriétaire vers un utilisateur inexistant et évitez d'y associer des permissions trop strictes qui empêcheraient `grub2-mkconfig` de régénérer le fichier."
+  }
+}

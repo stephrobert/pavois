@@ -1,0 +1,38 @@
+{
+  "id": "pam-unix-no-nullok",
+  "supported_os": [
+    "debian12"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0"
+  },
+  "severity": "high",
+  "domain": "Accounts (PAM modules)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.3.3.4.1"
+  },
+  "check": [
+    "describe command('grep -rqE \\'^[^#]*\\bpam_unix\\\\.so\\b[^#]*\\bnullok\\' /etc/pam.d/ 2>/dev/null && echo ko || echo ok') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "# Remove 'nullok' (allow empty passwords) from pam_unix. Keep a root session open while testing.\nsed -ri 's/\\bnullok\\b//g' /etc/pam.d/common-auth /etc/pam.d/common-password\n# verify a normal login still works in another session\n",
+    "reason": "editing the PAM stack can lock you out — verify auth in a SECOND session before logout",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Prevent Login to Accounts With Empty Password",
+    "fr": "Prevent Login to Accounts With Empty Password"
+  },
+  "needs_translation": [
+    "title.fr",
+    "rationale.fr"
+  ],
+  "rationale": {
+    "en": "If an account has an empty password, anyone could log in and run commands with the privileges of that account. Accounts with empty passwords should never be used in operational environments.",
+    "fr": "If an account has an empty password, anyone could log in and run commands with the privileges of that account. Accounts with empty passwords should never be used in operational environments."
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "id": "auditd-admin-space-left-action",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Audit (auditd daemon)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.3.2.4",
+      "10.5.1",
+      "6.2.2.4"
+    ],
+    "nist": [
+      "3.3.1",
+      "AU-5(1)",
+      "AU-5(2)",
+      "AU-5(4)",
+      "AU-5(b)",
+      "CM-6(a)"
+    ],
+    "pci-dss": [
+      "10.5.1",
+      "Req-10.7"
+    ]
+  },
+  "check": [
+    "describe command('grep -qiE \\'^[[:space:]]*admin_space_left_action[[:space:]]*=[[:space:]]*(single|halt)\\b\\' /etc/audit/auditd.conf 2>/dev/null && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "file": "/etc/audit/auditd.conf",
+    "key": "admin_space_left_action",
+    "resource": "conf_line",
+    "service": "auditd",
+    "value": "halt"
+  },
+  "title": {
+    "en": "Configure auditd admin_space_left Action on Low Disk Space",
+    "fr": "Configurer l'action auditd admin_space_left en cas d'espace disque faible"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Administrators should be made aware of an inability to record audit records. If a separate partition or logical volume of adequate size is used, running low on space for audit records should never occur.",
+    "fr": "Les administrateurs doivent être informés d'une incapacité à enregistrer les événements d'audit. Si une partition ou un volume logique dédié et correctement dimensionné est utilisé, l'espace pour les enregistrements d'audit ne devrait jamais venir à manquer."
+  },
+  "summary": {
+    "en": "Sets `admin_space_left_action` in `/etc/audit/auditd.conf` to a hard reaction (**`single`** or **`halt`**) when audit storage hits the admin threshold.",
+    "fr": "Définit `admin_space_left_action` dans `/etc/audit/auditd.conf` sur une réaction stricte (**`single`** ou **`halt`**) lorsque le stockage d'audit atteint le seuil administrateur."
+  },
+  "check_note": {
+    "en": "Pavois greps `/etc/audit/auditd.conf` for `admin_space_left_action = single|halt` and expects `ok`. Reading the daemon's own config file reflects the effective policy auditd enforces — the action it will actually take when the critical low-space threshold is reached.",
+    "fr": "Pavois recherche `admin_space_left_action = single|halt` dans `/etc/audit/auditd.conf` et attend `ok`. Lire le fichier de configuration du démon reflète la politique effective appliquée par auditd — l'action réellement déclenchée lorsque le seuil critique d'espace faible est atteint."
+  },
+  "verify": {
+    "en": "Run `grep -i admin_space_left_action /etc/audit/auditd.conf`. Expected: `admin_space_left_action = halt` (or `single`). Reload auditd to apply.",
+    "fr": "Exécutez `grep -i admin_space_left_action /etc/audit/auditd.conf`. Attendu : `admin_space_left_action = halt` (ou `single`). Rechargez auditd pour appliquer."
+  },
+  "logs": {
+    "en": "- `journalctl -u auditd` and `/var/log/audit/audit.log` record when the admin threshold is crossed and the action taken.\n- `df -h /var/log/audit` shows remaining space on the audit volume.",
+    "fr": "- `journalctl -u auditd` et `/var/log/audit/audit.log` enregistrent le franchissement du seuil administrateur et l'action effectuée.\n- `df -h /var/log/audit` affiche l'espace restant sur le volume d'audit."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the **`conf_line`** resource to set `admin_space_left_action = halt` in `/etc/audit/auditd.conf`, then notifies the **`auditd`** service to reload so the new policy takes effect. Apply with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource **`conf_line`** pour définir `admin_space_left_action = halt` dans `/etc/audit/auditd.conf`, puis notifie le service **`auditd`** afin de le recharger pour que la nouvelle politique s'applique. Appliquez avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "`halt` (and to a lesser extent `single`) is intentionally drastic: when audit space is critically low the host can power off or drop to single-user mode, which stops production workloads. This is the correct fail-closed behaviour for high-assurance systems, but on general-purpose servers consider sizing a dedicated `/var/log/audit` partition and offloading logs first; test in staging and ensure you have console access before enabling, to avoid being locked out of a halted host.",
+    "fr": "`halt` (et dans une moindre mesure `single`) est volontairement drastique : lorsque l'espace d'audit est critique, l'hôte peut s'éteindre ou basculer en mode mono-utilisateur, ce qui interrompt les charges de production. C'est le comportement fail-closed correct pour les systèmes à haute assurance, mais sur des serveurs polyvalents, envisagez plutôt une partition `/var/log/audit` dédiée et un déport des journaux ; testez en pré-production et assurez-vous d'un accès console avant activation, pour ne pas rester bloqué hors d'un hôte arrêté."
+  }
+}

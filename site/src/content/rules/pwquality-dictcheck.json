@@ -1,0 +1,83 @@
+{
+  "id": "pwquality-dictcheck",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Passwords (pwquality)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.3.3.2.6",
+    "nist": [
+      "CM-6(a)",
+      "IA-5(1)(a)",
+      "IA-5(4)",
+      "IA-5(c)"
+    ],
+    "stig": [
+      "UBTU-22-611030",
+      "UBTU-24-300014"
+    ]
+  },
+  "check": [
+    "describe command('v=$(grep -rh \\'^[[:space:]]*dictcheck[[:space:]]*=\\' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ 2>/dev/null | tail -1 | grep -oE \\'[-]?[0-9]+\\'); { [ -n \"$v\" ] && [ \"$v\" -ge 1 ] && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "file": "/etc/security/pwquality.conf.d/99-pavois.conf",
+    "key": "dictcheck",
+    "resource": "keyval",
+    "value": "1"
+  },
+  "title": {
+    "en": "Ensure PAM Enforces Password Requirements - Prevent the Use of Dictionary Words",
+    "fr": "Garantir que PAM impose les exigences de mot de passe - Empêcher l'usage de mots du dictionnaire"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Password strength measures resistance to guessing and brute-force attacks. Passwords built from **dictionary words** are dramatically weaker because attackers run dictionary and wordlist attacks first — they fall in seconds regardless of length. Enabling `dictcheck` makes pwquality reject such passwords at change time, closing one of the most common avenues of credential compromise.",
+    "fr": "La robustesse d'un mot de passe mesure sa résistance aux attaques par devinette et force brute. Les mots de passe construits à partir de **mots du dictionnaire** sont nettement plus faibles car les attaquants lancent d'abord des attaques par dictionnaire et listes de mots — ils tombent en quelques secondes quelle que soit leur longueur. Activer `dictcheck` fait rejeter ces mots de passe par pwquality au moment du changement, fermant l'une des voies les plus courantes de compromission d'identifiants."
+  },
+  "summary": {
+    "en": "Sets pwquality `dictcheck = 1` so PAM **rejects passwords based on dictionary words**, preventing easily-guessable credentials.",
+    "fr": "Définit `dictcheck = 1` dans pwquality afin que PAM **rejette les mots de passe fondés sur des mots du dictionnaire**, empêchant les identifiants faciles à deviner."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** pwquality configuration by grepping `/etc/security/pwquality.conf` **and every drop-in** under `/etc/security/pwquality.conf.d/`, keeping the **last** `dictcheck=` value (the one that wins) and requiring it to be `>= 1`. Resolving the merged drop-in precedence is what a single-file check would miss.",
+    "fr": "Pavois lit la configuration pwquality **effective** en parcourant `/etc/security/pwquality.conf` **et chaque drop-in** sous `/etc/security/pwquality.conf.d/`, en conservant la **dernière** valeur `dictcheck=` (celle qui l'emporte) et en exigeant qu'elle soit `>= 1`. Résoudre la priorité des drop-ins fusionnés est ce qu'un contrôle mono-fichier raterait."
+  },
+  "verify": {
+    "en": "Run `grep -rh '^[[:space:]]*dictcheck' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1` — the effective line should read `dictcheck = 1`. Then test live: run `passwd` and try a common dictionary word (e.g. `password`); it must be rejected as based on a dictionary word.",
+    "fr": "Lancez `grep -rh '^[[:space:]]*dictcheck' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1` — la ligne effective doit indiquer `dictcheck = 1`. Testez ensuite en conditions réelles : lancez `passwd` et essayez un mot courant du dictionnaire (par ex. `password`) ; il doit être rejeté comme fondé sur un mot du dictionnaire."
+  },
+  "logs": {
+    "en": "PAM rejections are logged to `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL); look for `pam_pwquality` messages such as \"it is based on a dictionary word\". `journalctl -t passwd` also shows password-change attempts. The effective setting is confirmed from the merged `pwquality.conf.d` drop-ins.",
+    "fr": "Les rejets PAM sont journalisés dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL) ; cherchez les messages `pam_pwquality` du type « it is based on a dictionary word ». `journalctl -t passwd` montre aussi les tentatives de changement de mot de passe. Le réglage effectif se confirme depuis les drop-ins fusionnés de `pwquality.conf.d`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` writes the `keyval` setting `dictcheck = 1` into the drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf`, overriding distro defaults. No restart is required — PAM picks up the change at the next `passwd` / authentication.",
+    "fr": "`pavois harden apply` écrit le réglage `keyval` `dictcheck = 1` dans le drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf`, surchargeant les valeurs par défaut de la distribution. Aucun redémarrage n'est requis — PAM prend le changement en compte au prochain `passwd` / à la prochaine authentification."
+  },
+  "impact": {
+    "en": "Only **new or changed passwords** are affected; existing passwords keep working, so there is no lockout risk on apply. Users may be surprised when familiar passwords are refused for resembling dictionary words — communicate the policy and steer them toward passphrases. Automated tooling that sets word-based passwords will start failing, so update any such generators before enforcing fleet-wide.",
+    "fr": "Seuls les **mots de passe nouveaux ou modifiés** sont concernés ; les mots de passe existants continuent de fonctionner, il n'y a donc pas de risque de verrouillage à l'application. Les utilisateurs peuvent être surpris de voir leurs mots de passe habituels refusés car proches de mots du dictionnaire — communiquez la politique et orientez-les vers des phrases de passe. Les outils automatisés définissant des mots de passe à base de mots échoueront ; mettez-les à jour avant d'imposer la règle à tout le parc."
+  }
+}

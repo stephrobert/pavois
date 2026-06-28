@@ -1,0 +1,75 @@
+{
+  "id": "fileperm-var-log-auth",
+  "supported_os": [
+    "debian12",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.1.4.1",
+      "6.2.2.1"
+    ]
+  },
+  "check": [
+    "only_if { file('/var/log/auth.log').exist? }",
+    "describe file('/var/log/auth.log') do",
+    "  it { should_not be_executable.by('owner') }",
+    "  it { should_not be_setuid }",
+    "  it { should_not be_executable.by('group') }",
+    "  it { should_not be_writable.by('group') }",
+    "  it { should_not be_setgid }",
+    "  it { should_not be_executable.by('other') }",
+    "  it { should_not be_writable.by('other') }",
+    "  it { should_not be_readable.by('other') }",
+    "  it { should_not be_sticky }",
+    "end"
+  ],
+  "remediation": {
+    "mode": "0640",
+    "path": "/var/log/auth.log",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Permissions on /var/log/auth.log File",
+    "fr": "Verifier les permissions du fichier /var/log/auth.log"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/var/log/auth.log` records login attempts, `sudo` use, SSH sessions and PAM authentication events. If **other** can read it, an attacker enumerates valid usernames, login sources and authentication patterns useful for targeted attacks; sometimes it even captures mistyped passwords entered at a username prompt. If non-root users can **write** to it, they can forge or erase authentication evidence. It must be writable only by `root` and not readable by other.",
+    "fr": "`/var/log/auth.log` enregistre les tentatives de connexion, l'usage de `sudo`, les sessions SSH et les evenements d'authentification PAM. Si les **autres** peuvent le lire, un attaquant enumere les noms d'utilisateurs valides, les sources de connexion et les schemas d'authentification utiles pour des attaques ciblees ; il capture parfois meme des mots de passe saisis par erreur a l'invite de nom d'utilisateur. Si des utilisateurs non-root peuvent y **ecrire**, ils peuvent falsifier ou effacer les preuves d'authentification. Il ne doit etre modifiable que par `root` et non lisible par les autres."
+  },
+  "summary": {
+    "en": "Ensures `/var/log/auth.log` is not writable by group/other, not readable by other, and carries no execute/setuid/setgid/sticky bits.",
+    "fr": "Garantit que `/var/log/auth.log` n'est pas modifiable par le groupe/les autres, n'est pas lisible par les autres, et ne porte aucun bit d'execution/setuid/setgid/sticky."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective inode mode** of `/var/log/auth.log` and asserts no group/other write, no other read, and no special bits. Reading the live file beats a manifest: `logrotate` recreates this log on every rotation, so its mode is determined at runtime and can drift from any documented default.",
+    "fr": "Pavois lit le **mode effectif de l'inode** de `/var/log/auth.log` et verifie l'absence d'ecriture groupe/autres, l'absence de lecture pour les autres et l'absence de bits speciaux. Lire le fichier reel vaut mieux qu'un manifeste : `logrotate` recree ce journal a chaque rotation, donc son mode est determine a l'execution et peut deriver de toute valeur par defaut documentee."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %G %a' /var/log/auth.log`. Expected: owner `root`, group `adm`, mode `640` (or stricter `600`) — no write for group/other and no read for other.",
+    "fr": "Executez `stat -c '%U %G %a' /var/log/auth.log`. Attendu : proprietaire `root`, groupe `adm`, mode `640` (ou plus strict `600`) — aucune ecriture pour le groupe/les autres et aucune lecture pour les autres."
+  },
+  "logs": {
+    "en": "This file *is* the authentication log: tail it with `tail -f /var/log/auth.log`, or use `journalctl -u ssh` / `journalctl _COMM=sudo` for the same events via the journal. After log rotation, re-check the mode on the freshly created file.",
+    "fr": "Ce fichier *est* le journal d'authentification : suivez-le avec `tail -f /var/log/auth.log`, ou utilisez `journalctl -u ssh` / `journalctl _COMM=sudo` pour les memes evenements via le journal. Apres rotation, re-verifiez le mode du fichier nouvellement cree."
+  },
+  "remediation_note": {
+    "en": "No automated remediation ships for this rule. Tighten manually: `chown root:adm /var/log/auth.log && chmod 640 /var/log/auth.log`. To make it persist across rotations, ensure `/etc/logrotate.d/rsyslog` uses a `create 640 root adm` directive.",
+    "fr": "Aucune remediation automatique n'est fournie pour cette regle. Restreignez manuellement : `chown root:adm /var/log/auth.log && chmod 640 /var/log/auth.log`. Pour que cela persiste apres les rotations, assurez-vous que `/etc/logrotate.d/rsyslog` utilise une directive `create 640 root adm`."
+  },
+  "impact": {
+    "en": "World-readable auth logs leak usernames and login patterns; writable ones let attackers cover their tracks. Setting `640 root:adm` is the Debian/Ubuntu default and safe. **Precaution:** members of the `adm` group (and tools relying on it) keep read access — do not switch to `600` if a non-root log viewer or SIEM agent reads via the `adm` group, or it will lose visibility. Verify the `logrotate` `create` mode so the hardening survives the next rotation.",
+    "fr": "Des journaux d'authentification lisibles par tous divulguent les noms d'utilisateurs et les schemas de connexion ; des journaux modifiables permettent aux attaquants d'effacer leurs traces. Definir `640 root:adm` est la valeur par defaut de Debian/Ubuntu et sans danger. **Precaution :** les membres du groupe `adm` (et les outils qui s'en servent) conservent l'acces en lecture — ne passez pas a `600` si un lecteur de journaux non-root ou un agent SIEM lit via le groupe `adm`, sous peine de perdre la visibilite. Verifiez le mode `create` de `logrotate` pour que le durcissement survive a la prochaine rotation."
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "id": "filegroupowner-etc-issue",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "1.7.5",
+      "1.6.5"
+    ]
+  },
+  "check": [
+    "only_if { file('/etc/issue').exist? }",
+    "describe file('/etc/issue') do",
+    "  its('gid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "group": "root",
+    "path": "/etc/issue",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Group Ownership of System Login Banner",
+    "fr": "Vérifier le groupe propriétaire de la bannière de connexion locale"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/etc/issue` is the pre-login banner shown on local/console logins; many organizations are legally required to display approved use-notification text. If the file is group-owned by a non-root group (**GID ≠ 0**), unprivileged users could tamper with the banner, removing or altering the mandated legal warning. Group ownership by root ensures only root can change it.",
+    "fr": "`/etc/issue` est la bannière affichée avant connexion sur les sessions locales/console ; de nombreuses organisations sont légalement tenues d'afficher un texte d'avertissement d'usage approuvé. Si le fichier appartient à un groupe non-root (**GID ≠ 0**), des utilisateurs non privilégiés pourraient altérer la bannière, supprimant ou modifiant l'avertissement légal obligatoire. Une propriété de groupe par root garantit que seul root peut la modifier."
+  },
+  "summary": {
+    "en": "Ensures `/etc/issue` (local login banner) is group-owned by **GID 0** (root).",
+    "fr": "Garantit que `/etc/issue` (bannière de connexion locale) appartient au groupe **GID 0** (root)."
+  },
+  "check_note": {
+    "en": "Pavois asks the `file` resource for the resolved numeric `gid` of `/etc/issue` and requires it to be `0`. The check is skipped if the file is absent. Reading the file's effective group ownership directly (the kernel-resolved gid) is exact and avoids name-resolution ambiguity.",
+    "fr": "Pavois demande à la ressource `file` le `gid` numérique résolu de `/etc/issue` et exige qu'il vaille `0`. Le contrôle est ignoré si le fichier est absent. Lire directement l'appartenance de groupe effective du fichier (le gid résolu par le noyau) est exact et évite toute ambiguïté de résolution de nom."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /etc/issue`. **Expected:** group `root` and gid `0`. `ls -l /etc/issue` shows the group in the owner column.",
+    "fr": "Exécutez `stat -c '%G %g' /etc/issue`. **Attendu :** groupe `root` et gid `0`. `ls -l /etc/issue` affiche le groupe dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "- Inspect ownership: `stat -c '%U %G %a' /etc/issue` or `ls -l /etc/issue`.\n- View the banner content: `cat /etc/issue`.\n- If auditd watches the file, changes appear in `/var/log/audit/audit.log`.",
+    "fr": "- Inspecter la propriété : `stat -c '%U %G %a' /etc/issue` ou `ls -l /etc/issue`.\n- Voir le contenu de la bannière : `cat /etc/issue`.\n- Si auditd surveille le fichier, les modifications apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped for this rule. Fix it manually with `chgrp 0 /etc/issue` (or `chgrp root /etc/issue`) to restore root group ownership, then re-run the scan.",
+    "fr": "Aucune remédiation automatique n'est fournie pour cette règle. Corrigez manuellement avec `chgrp 0 /etc/issue` (ou `chgrp root /etc/issue`) pour rétablir la propriété du groupe root, puis relancez le scan."
+  },
+  "impact": {
+    "en": "Wrong group ownership lets unprivileged users edit the mandated login banner, a compliance and legal-notice gap rather than a direct breach. The `chgrp` fix is trivial and safe; it does not change the banner text, only who may modify the file.",
+    "fr": "Une mauvaise appartenance de groupe permet à des utilisateurs non privilégiés d'éditer la bannière de connexion obligatoire, un manquement de conformité et d'avis légal plutôt qu'une brèche directe. Le correctif `chgrp` est trivial et sûr ; il ne modifie pas le texte de la bannière, seulement qui peut modifier le fichier."
+  }
+}

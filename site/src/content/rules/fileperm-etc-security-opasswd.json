@@ -1,0 +1,76 @@
+{
+  "id": "fileperm-etc-security-opasswd",
+  "supported_os": [
+    "debian12",
+    "fedora",
+    "rhel8",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "rhel8": "4.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "7.1.10"
+  },
+  "check": [
+    "only_if { file('/etc/security/opasswd').exist? }",
+    "describe file('/etc/security/opasswd') do",
+    "  it { should_not be_executable.by('owner') }",
+    "  it { should_not be_setuid }",
+    "  it { should_not be_executable.by('group') }",
+    "  it { should_not be_writable.by('group') }",
+    "  it { should_not be_readable.by('group') }",
+    "  it { should_not be_setgid }",
+    "  it { should_not be_executable.by('other') }",
+    "  it { should_not be_writable.by('other') }",
+    "  it { should_not be_readable.by('other') }",
+    "  it { should_not be_sticky }",
+    "end"
+  ],
+  "remediation": {
+    "mode": "0600",
+    "path": "/etc/security/opasswd",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Permissions on /etc/security/opasswd File",
+    "fr": "Vérifier les permissions du fichier /etc/security/opasswd"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/etc/security/opasswd` is the password-history file used by `pam_pwhistory`/`pam_unix` to prevent users from reusing old passwords. It contains **old password hashes**, so it is as sensitive as `/etc/shadow`. If it is **readable** by group or other, those hashes become available for offline cracking; if it is **writable**, an attacker could erase history to allow password reuse or inject crafted entries. `setuid/setgid/executable` bits have no purpose here. Only **root** must be able to read or write it.",
+    "fr": "`/etc/security/opasswd` est le fichier d'historique des mots de passe utilisé par `pam_pwhistory`/`pam_unix` pour empêcher la réutilisation d'anciens mots de passe. Il contient d'**anciens condensats de mots de passe**, il est donc aussi sensible que `/etc/shadow`. S'il est **lisible** par le groupe ou les autres, ces condensats deviennent exploitables par cassage hors ligne ; s'il est **modifiable**, un attaquant pourrait effacer l'historique pour autoriser la réutilisation ou injecter des entrées falsifiées. Les bits `setuid/setgid/exécutable` n'ont aucune utilité ici. Seul **root** doit pouvoir le lire ou l'écrire."
+  },
+  "summary": {
+    "en": "Ensures `/etc/security/opasswd` is unreadable and unwritable by group and other (no setuid/setgid/sticky/exec), so only **root** can access the password-history hashes.",
+    "fr": "Garantit que `/etc/security/opasswd` n'est ni lisible ni modifiable par le groupe ou les autres (sans setuid/setgid/sticky/exec), afin que seul **root** puisse accéder aux condensats d'historique."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live mode bits** of `/etc/security/opasswd` on the target, including the group/other **read** bit (not just write), because the threat here is hash disclosure. Permissions are inode metadata, so the audit reflects exactly what the kernel enforces — no include or drop-in to subvert. The `only_if` guard skips the control when no history file exists yet.",
+    "fr": "Pavois lit les **bits de mode réels** de `/etc/security/opasswd` sur la cible, y compris le bit de **lecture** groupe/autres (pas seulement écriture), car la menace ici est la divulgation des condensats. Les permissions sont des métadonnées d'inode, l'audit reflète donc exactement ce que le noyau applique — aucun include ni drop-in à contourner. La garde `only_if` ignore le contrôle si aucun fichier d'historique n'existe encore."
+  },
+  "verify": {
+    "en": "Run `stat -c '%A %U %G' /etc/security/opasswd`. Expected: mode `-rw-------` (0600) — or `0640 root:root` at most — owned by `root root`, with **no** read/write bit for group or other. Quick check: `find /etc/security/opasswd -perm /0177` must return nothing.",
+    "fr": "Exécutez `stat -c '%A %U %G' /etc/security/opasswd`. Attendu : mode `-rw-------` (0600) — ou `0640 root:root` au plus — appartenant à `root root`, **sans** bit de lecture/écriture pour le groupe ou les autres. Vérification rapide : `find /etc/security/opasswd -perm /0177` ne doit rien renvoyer."
+  },
+  "logs": {
+    "en": "Permission changes are not logged by default. Watch this sensitive file with auditd: `auditctl -w /etc/security/opasswd -p wa -k identity`, then review with `grep 'key=\"identity\"' /var/log/audit/audit.log`. PAM password-history activity appears in `/var/log/auth.log` (Debian/Ubuntu) or `journalctl -u systemd-logind`/`/var/log/secure` (RHEL). Current mode and ownership: `stat /etc/security/opasswd`.",
+    "fr": "Les changements de permissions ne sont pas journalisés par défaut. Surveillez ce fichier sensible avec auditd : `auditctl -w /etc/security/opasswd -p wa -k identity`, puis consultez avec `grep 'key=\"identity\"' /var/log/audit/audit.log`. L'activité de l'historique PAM apparaît dans `/var/log/auth.log` (Debian/Ubuntu) ou `journalctl -u systemd-logind`/`/var/log/secure` (RHEL). Mode et propriété actuels : `stat /etc/security/opasswd`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule yet, so it must be applied **manually**: `chown root:root /etc/security/opasswd && chmod 0600 /etc/security/opasswd`. This removes all group/other access and any setuid/setgid/sticky bits, limiting the password-history hashes to root.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle, elle doit donc être appliquée **manuellement** : `chown root:root /etc/security/opasswd && chmod 0600 /etc/security/opasswd`. Cela supprime tout accès groupe/autres et tout bit setuid/setgid/sticky, limitant les condensats d'historique à root."
+  },
+  "impact": {
+    "en": "Risk if left mis-set: world/group **read** exposes old password hashes for offline cracking, which can reveal reused or weak passwords still in use elsewhere. Applying the fix is safe — `0600 root:root` is the expected mode and only `pam_unix` (running as root during password change) needs access. Precaution: do not loosen to `0644`; unlike `/etc/passwd`, this file must **not** be world-readable.",
+    "fr": "Risque si mal réglé : la **lecture** par tous/groupe expose d'anciens condensats au cassage hors ligne, révélant des mots de passe réutilisés ou faibles encore en usage ailleurs. Appliquer le correctif est sûr — `0600 root:root` est le mode attendu et seul `pam_unix` (exécuté en root lors d'un changement de mot de passe) en a besoin. Précaution : ne relâchez pas vers `0644` ; contrairement à `/etc/passwd`, ce fichier ne doit **pas** être lisible par tous."
+  }
+}

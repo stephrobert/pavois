@@ -1,0 +1,78 @@
+{
+  "id": "fileowner-etc-gshadow",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R50",
+    "cis": "7.1.7",
+    "nist": [
+      "AC-6(1)",
+      "CM-6(a)"
+    ]
+  },
+  "check": [
+    "only_if { file('/etc/gshadow').exist? }",
+    "describe file('/etc/gshadow') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/etc/gshadow",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify User Who Owns gshadow File",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier gshadow"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/etc/gshadow` stores **group password hashes** and group administrator lists. If a non-root user owns it, they could read the hashes for offline cracking or set a group password to gain membership of a privileged group via `newgrp` — a **privilege-escalation** path. Ownership by `root` is critical for system security.",
+    "fr": "`/etc/gshadow` stocke les **hachages des mots de passe de groupe** et les listes d'administrateurs de groupe. Si un utilisateur non root le possède, il pourrait lire les hachages pour un cassage hors ligne ou définir un mot de passe de groupe afin d'obtenir l'appartenance à un groupe privilégié via `newgrp` — une voie d'**élévation de privilèges**. La propriété par `root` est critique pour la sécurité du système."
+  },
+  "summary": {
+    "en": "Ensures the `/etc/gshadow` file is owned by the `root` user (UID 0).",
+    "fr": "Garantit que le fichier `/etc/gshadow` appartient à l'utilisateur `root` (UID 0)."
+  },
+  "check_note": {
+    "en": "Pavois stats the live inode of `/etc/gshadow` and asserts its **owner is UID 0**. Reading the actual filesystem metadata reflects the **effective** ownership in force, which the shadow utilities rely on, not an installer default.",
+    "fr": "Pavois interroge l'inode réel de `/etc/gshadow` et vérifie que son **propriétaire est l'UID 0**. Lire les métadonnées réelles du système de fichiers reflète la propriété **effective** en vigueur, sur laquelle s'appuient les utilitaires shadow, et non une valeur par défaut de l'installateur."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /etc/gshadow`. The expected output is `root 0`.",
+    "fr": "Exécutez `stat -c '%U %u' /etc/gshadow`. La sortie attendue est `root 0`."
+  },
+  "logs": {
+    "en": "Group password changes via `gpasswd` are logged in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL family). To detect direct edits, set an audit watch: `auditctl -w /etc/gshadow -p wa -k gshadow`, then review `/var/log/audit/audit.log` (grep for `key=\"gshadow\"`).",
+    "fr": "Les changements de mots de passe de groupe via `gpasswd` sont consignés dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL). Pour détecter les éditions directes, posez une surveillance audit : `auditctl -w /etc/gshadow -p wa -k gshadow`, puis examinez `/var/log/audit/audit.log` (recherchez `key=\"gshadow\"`)."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so it must be fixed **manually**: run `chown root /etc/gshadow` to restore root ownership.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être corrigée **manuellement** : exécutez `chown root /etc/gshadow` pour rétablir la propriété root."
+  },
+  "impact": {
+    "en": "A non-root owner of `/etc/gshadow` can read or set group password hashes and **escalate privileges**. Fixing it is essentially risk-free: `chown root /etc/gshadow` does not change any entry, so authentication keeps working. Combine with strict permissions (`chmod 0000` or `0640 root:shadow` per distro convention) so the hashes are not readable. The change applies immediately.",
+    "fr": "Un propriétaire non root de `/etc/gshadow` peut lire ou définir des hachages de mots de passe de groupe et **élever ses privilèges**. La correction est pratiquement sans risque : `chown root /etc/gshadow` ne modifie aucune entrée, l'authentification continue de fonctionner. Combinez-la avec des permissions strictes (`chmod 0000` ou `0640 root:shadow` selon la convention de la distribution) afin que les hachages ne soient pas lisibles. Le changement s'applique immédiatement."
+  }
+}

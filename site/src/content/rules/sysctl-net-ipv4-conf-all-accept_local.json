@@ -1,0 +1,71 @@
+{
+  "id": "sysctl-net-ipv4-conf-all-accept_local",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R12"
+  },
+  "check": [
+    "describe kernel_parameter('net.ipv4.conf.all.accept_local') do",
+    "  its('value') { should cmp 0 }",
+    "end"
+  ],
+  "remediation": {
+    "key": "net.ipv4.conf.all.accept_local",
+    "resource": "sysctl",
+    "value": "0"
+  },
+  "title": {
+    "en": "Disable Accepting Packets Routed Between Local Interfaces",
+    "fr": "Désactiver l'acceptation des paquets routés entre interfaces locales"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "When `net.ipv4.conf.all.accept_local=1`, the kernel accepts packets arriving on an interface whose **source address is one of the host's own local addresses** (including the `127.0.0.0/8` loopback block). An attacker on the wire can craft such spoofed packets to impersonate the host to itself and bypass filters that trust local source addresses. Setting it to `0` makes the kernel treat these as **invalid (martian) packets** and drop them, closing a local-address spoofing vector. This is rarely needed outside of specific routing setups.",
+    "fr": "Lorsque `net.ipv4.conf.all.accept_local=1`, le noyau accepte les paquets arrivant sur une interface dont l'**adresse source est l'une des adresses locales de l'hôte** (y compris le bloc de bouclage `127.0.0.0/8`). Un attaquant sur le réseau peut forger de tels paquets usurpés pour faire passer l'hôte pour lui-même et contourner des filtres qui font confiance aux adresses sources locales. Le mettre à `0` fait que le noyau les considère comme des **paquets invalides (martiens)** et les rejette, fermant un vecteur d'usurpation d'adresse locale. Ce comportement est rarement nécessaire hors de configurations de routage spécifiques."
+  },
+  "summary": {
+    "en": "Sets `net.ipv4.conf.all.accept_local=0` so the kernel rejects inbound packets that spoof one of the host's own local source addresses.",
+    "fr": "Définit `net.ipv4.conf.all.accept_local=0` pour que le noyau rejette les paquets entrants usurpant l'une des adresses sources locales de l'hôte."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** via `kernel_parameter('net.ipv4.conf.all.accept_local')` and asserts it equals `0`. The `all` key sets the effective default the kernel applies; reading the running value catches a drop-in that was written but never reloaded, or one overridden by a later file. A file-only scan of `sysctl.d` cannot prove what the kernel is actually enforcing on incoming packets.",
+    "fr": "Pavois lit la **valeur noyau effective** via `kernel_parameter('net.ipv4.conf.all.accept_local')` et vérifie qu'elle vaut `0`. La clé `all` fixe la valeur par défaut effective appliquée par le noyau ; lire la valeur effective détecte un drop-in écrit mais jamais rechargé, ou écrasé par un fichier ultérieur. Un balayage limité aux fichiers de `sysctl.d` ne peut pas prouver ce que le noyau applique réellement aux paquets entrants."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.conf.all.accept_local`. Expected output:\n\n```\nnet.ipv4.conf.all.accept_local = 0\n```",
+    "fr": "Exécutez `sysctl net.ipv4.conf.all.accept_local`. Sortie attendue :\n\n```\nnet.ipv4.conf.all.accept_local = 0\n```"
+  },
+  "logs": {
+    "en": "- `sysctl net.ipv4.conf.all.accept_local` shows the current value.\n- `cat /proc/sys/net/ipv4/conf/all/accept_local` is the raw kernel value.\n- Packets dropped as martian are only logged if `log_martians` is enabled — see the related `sysctl-net-ipv4-conf-all-log_martians` rule, after which dropped spoofed packets appear in `dmesg` / `journalctl -k` as `martian source` entries.",
+    "fr": "- `sysctl net.ipv4.conf.all.accept_local` affiche la valeur courante.\n- `cat /proc/sys/net/ipv4/conf/all/accept_local` est la valeur brute du noyau.\n- Les paquets rejetés comme martiens ne sont journalisés que si `log_martians` est activé — voir la règle associée `sysctl-net-ipv4-conf-all-log_martians`, après quoi les paquets usurpés rejetés apparaissent dans `dmesg` / `journalctl -k` sous forme d'entrées `martian source`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv4.conf.all.accept_local` to `0`. It writes the key into a Pavois-managed drop-in and reloads it so the setting is **active immediately** and **persistent across reboots**. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour positionner `net.ipv4.conf.all.accept_local` à `0`. Il écrit la clé dans un drop-in géré par Pavois puis le recharge, de sorte que le réglage soit **actif immédiatement** et **persistant après redémarrage**. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "For a standard host this is the safe default and has **no effect on normal traffic**. The exception is a niche topology where you deliberately route packets between two of the host's own interfaces **over the wire** (some load-balancing or multi-homed router designs rely on `accept_local=1`). **Before applying**, confirm the host is not such a router; if it is, this rule will break that path and you should scope the relaxation to the specific interface rather than disabling the protection globally.",
+    "fr": "Pour un hôte standard, c'est la valeur sûre par défaut et elle n'a **aucun effet sur le trafic normal**. L'exception est une topologie de niche où l'on route délibérément des paquets entre deux interfaces de l'hôte **par le réseau** (certaines conceptions de répartition de charge ou de routeur multi-rattaché reposent sur `accept_local=1`). **Avant d'appliquer**, vérifiez que l'hôte n'est pas un tel routeur ; si c'est le cas, cette règle cassera ce chemin et il faudra restreindre l'assouplissement à l'interface concernée plutôt que désactiver la protection globalement."
+  }
+}

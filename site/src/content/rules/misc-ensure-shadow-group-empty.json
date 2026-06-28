@@ -1,0 +1,70 @@
+{
+  "id": "misc-ensure-shadow-group-empty",
+  "supported_os": [
+    "debian12",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (misc)",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "7.2.4",
+      "8.3.2"
+    ],
+    "pci-dss": [
+      "Req-8.2.1",
+      "8.3.2"
+    ]
+  },
+  "check": [
+    "describe command('awk -F: \\'($1==\"shadow\"){print $4}\\' /etc/group') do",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "getent group shadow\n# gpasswd -d <user> shadow   for each unexpected member\n",
+    "reason": "removing members from the shadow group is deliberate (they lose shadow access)",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Ensure shadow Group is Empty",
+    "fr": "S'assurer que le groupe shadow est vide"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "On Debian/Ubuntu the `/etc/shadow` file is group-owned by `shadow` and readable by that group. Any user placed in the **shadow** group therefore gains read access to every account's hashed password and password-aging data. With that file in hand, an attacker can run an offline password-cracking tool against the hashes and use the aging/expiry fields to target additional accounts. The shadow group is meant to be used by daemons (via setgid binaries), not by people, so it should contain **no members**.",
+    "fr": "Sous Debian/Ubuntu, le fichier `/etc/shadow` appartient au groupe `shadow` et est lisible par ce groupe. Tout utilisateur placé dans le groupe **shadow** obtient donc un accès en lecture aux empreintes de mots de passe de tous les comptes ainsi qu'aux données de vieillissement. Avec ce fichier, un attaquant peut lancer un outil de cassage hors-ligne contre les empreintes et exploiter les champs d'expiration pour cibler d'autres comptes. Le groupe shadow est destiné aux démons (via des binaires setgid), pas à des personnes ; il ne doit donc avoir **aucun membre**."
+  },
+  "summary": {
+    "en": "Ensures the `shadow` group has **no members**, so no user gains read access to `/etc/shadow` and its password hashes.",
+    "fr": "Garantit que le groupe `shadow` n'a **aucun membre**, afin qu'aucun utilisateur n'obtienne d'accès en lecture à `/etc/shadow` et à ses empreintes de mots de passe."
+  },
+  "check_note": {
+    "en": "Pavois inspects the member field of the `shadow` entry as resolved on the live system. Reading the **effective** group membership matters because a user can also be in `shadow` as their *primary* group or via an NSS backend; the goal state is that no human account lists `shadow` among its supplementary groups.",
+    "fr": "Pavois inspecte le champ des membres de l'entrée `shadow` telle que résolue sur le système en cours d'exécution. Lire l'appartenance **effective** au groupe importe car un utilisateur peut aussi avoir `shadow` comme groupe *primaire* ou via un backend NSS ; l'état visé est qu'aucun compte humain ne liste `shadow` parmi ses groupes supplémentaires."
+  },
+  "verify": {
+    "en": "List the shadow group and confirm the member field is empty:\n\n- `getent group shadow` — expected output ends with an empty field, e.g. `shadow:x:42:` (nothing after the last colon).\n- `awk -F: '($1==\"shadow\"){print $4}' /etc/group` — expected output is **empty**.",
+    "fr": "Listez le groupe shadow et confirmez que le champ des membres est vide :\n\n- `getent group shadow` — la sortie attendue se termine par un champ vide, par ex. `shadow:x:42:` (rien après le dernier deux-points).\n- `awk -F: '($1==\"shadow\"){print $4}' /etc/group` — la sortie attendue est **vide**."
+  },
+  "logs": {
+    "en": "Group membership changes are recorded by user-management tooling:\n\n- `grep -E 'shadow' /var/log/auth.log` — shows `usermod`/`gpasswd` actions touching the shadow group.\n- `getent group shadow` is the authoritative current-state command; compare it before and after any change.",
+    "fr": "Les modifications d'appartenance aux groupes sont enregistrées par les outils de gestion des comptes :\n\n- `grep -E 'shadow' /var/log/auth.log` — affiche les actions `usermod`/`gpasswd` touchant le groupe shadow.\n- `getent group shadow` est la commande de référence pour l'état courant ; comparez-la avant et après toute modification."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so it must be applied **manually**: remove every user from the shadow group with `gpasswd --delete <user> shadow` (and fix any account whose *primary* group is shadow with `usermod -g <other> <user>`) until `getent group shadow` shows no members.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être appliquée **manuellement** : retirez chaque utilisateur du groupe shadow avec `gpasswd --delete <user> shadow` (et corrigez tout compte dont le groupe *primaire* est shadow avec `usermod -g <autre> <user>`) jusqu'à ce que `getent group shadow` n'affiche plus de membres."
+  },
+  "impact": {
+    "en": "**Risk if not applied:** any shadow-group member can read every password hash on the host, enabling offline cracking and lateral movement.\n\n**Precautions before applying:** check why each member was added — some legacy tools or monitoring agents may rely on shadow read access. Move those to a dedicated setgid helper or grant access narrowly instead of leaving humans in the group. Removing members is non-disruptive to login itself, since `/etc/shadow` reads by PAM happen as root, not via the group.",
+    "fr": "**Risque si non appliqué :** tout membre du groupe shadow peut lire chaque empreinte de mot de passe de l'hôte, permettant le cassage hors-ligne et les déplacements latéraux.\n\n**Précautions avant application :** vérifiez pourquoi chaque membre a été ajouté — certains outils anciens ou agents de supervision peuvent dépendre de l'accès en lecture à shadow. Déplacez-les vers un assistant setgid dédié ou accordez l'accès de façon ciblée plutôt que de laisser des humains dans le groupe. Retirer des membres ne perturbe pas la connexion elle-même, car les lectures de `/etc/shadow` par PAM se font en root, pas via le groupe."
+  }
+}

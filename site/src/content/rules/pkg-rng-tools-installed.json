@@ -1,0 +1,60 @@
+{
+  "id": "pkg-rng-tools-installed",
+  "supported_os": [
+    "fedora",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "low",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe package('rng-tools') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "rng-tools",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Install rng-tools Package",
+    "fr": "Installer le paquet rng-tools"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`rng-tools` provides the `rngd` daemon that feeds entropy from a **hardware random number generator** (or other entropy sources) into the kernel's random pool. A healthy entropy supply is essential for the quality of cryptographic operations — generating x509/PKI certificates, TLS session keys, SSH host keys and so on. On systems with low entropy, cryptographic operations can block or, worse, produce weak keys; `rng-tools` keeps the pool well-fed.",
+    "fr": "`rng-tools` fournit le démon `rngd` qui injecte l'entropie d'un **générateur matériel de nombres aléatoires** (ou d'autres sources d'entropie) dans le pool aléatoire du noyau. Un approvisionnement sain en entropie est essentiel à la qualité des opérations cryptographiques — génération de certificats x509/PKI, clés de session TLS, clés d'hôte SSH, etc. Sur les systèmes à faible entropie, les opérations cryptographiques peuvent se bloquer ou, pire, produire des clés faibles ; `rng-tools` maintient le pool bien alimenté."
+  },
+  "summary": {
+    "en": "Ensures the `rng-tools` package is installed so a hardware RNG can feed the kernel entropy pool.",
+    "fr": "Garantit que le paquet `rng-tools` est installé pour qu'un RNG matériel puisse alimenter le pool d'entropie du noyau."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective** package state with `package('rng-tools')` (resolved through `rpm`). Confirming the package is installed is more reliable than reading a service unit file: it verifies the `rngd` tooling actually exists rather than assuming a referenced unit implies a present binary.",
+    "fr": "Pavois vérifie l'état **effectif** du paquet avec `package('rng-tools')` (résolu via `rpm`). Confirmer que le paquet est installé est plus fiable que de lire un fichier d'unité de service : cela vérifie que l'outillage `rngd` existe réellement plutôt que de supposer qu'une unité référencée implique un binaire présent."
+  },
+  "verify": {
+    "en": "Run `rpm -q rng-tools`. Expected output is a versioned package name. Confirm the daemon with `systemctl status rngd` and check the entropy pool with `cat /proc/sys/kernel/random/entropy_avail`.",
+    "fr": "Exécutez `rpm -q rng-tools`. La sortie attendue est un nom de paquet versionné. Confirmez le démon avec `systemctl status rngd` et vérifiez le pool d'entropie avec `cat /proc/sys/kernel/random/entropy_avail`."
+  },
+  "logs": {
+    "en": "Installation history is visible with `dnf history` and in `/var/log/dnf.log`. The `rngd` daemon's activity and entropy source selection are logged via `journalctl -u rngd`.",
+    "fr": "L'historique d'installation est visible avec `dnf history` et dans `/var/log/dnf.log`. L'activité du démon `rngd` et la sélection de la source d'entropie sont tracées via `journalctl -u rngd`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan installs the `rng-tools` package via the **package** resource (`action: install`). It is applied with `pavois harden apply`. To actually feed the pool you should then enable and start the daemon (`systemctl enable --now rngd`); the install alone provides the tooling.",
+    "fr": "Le plan de durcissement de Pavois installe le paquet `rng-tools` via la ressource **package** (`action: install`). Il s'applique avec `pavois harden apply`. Pour alimenter réellement le pool, vous devez ensuite activer et démarrer le démon (`systemctl enable --now rngd`) ; l'installation seule fournit l'outillage."
+  },
+  "impact": {
+    "en": "Installing `rng-tools` is low-risk. The caution is hardware-dependent: configuring `rngd` to trust a low-quality or absent hardware source can inject poor entropy, and on virtual machines without a proper RNG device `rngd` may have no usable source. - On VMs prefer a paravirtualized RNG (`virtio-rng`) and verify `rngd` selects a sound source. - Avoid forcing untrusted entropy sources; let `rngd` validate them, and monitor `entropy_avail` after enabling.",
+    "fr": "Installer `rng-tools` présente un risque faible. La prudence dépend du matériel : configurer `rngd` pour faire confiance à une source matérielle de mauvaise qualité ou absente peut injecter une entropie médiocre, et sur les machines virtuelles sans dispositif RNG approprié `rngd` peut n'avoir aucune source utilisable. - Sur les VM, privilégiez un RNG paravirtualisé (`virtio-rng`) et vérifiez que `rngd` sélectionne une source saine. - Évitez de forcer des sources d'entropie non fiables ; laissez `rngd` les valider, et surveillez `entropy_avail` après activation."
+  }
+}

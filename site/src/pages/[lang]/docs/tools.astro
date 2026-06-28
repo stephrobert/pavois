@@ -1,0 +1,179 @@
+---
+import { marked } from 'marked';
+import Base from '../../../layouts/Base.astro';
+import { languages, type Lang } from '../../../i18n/ui';
+
+export function getStaticPaths() {
+  return Object.keys(languages).map((lang) => ({ params: { lang } }));
+}
+const { lang } = Astro.params as { lang: Lang };
+const md = (s: string): string => marked.parse(s, { async: false, gfm: true }) as string;
+
+const intro = {
+  en: 'Pavois is one of several Linux compliance scanners. The difference is not the catalogue — it is what each tool reads. Pavois audits the configuration a service actually runs (`sshd -T`, `sysctl`, `systemctl show`, `auditctl -l`); the others mostly read files on disk.',
+  fr: 'Pavois est l’un des scanners de conformité Linux. La différence n’est pas le catalogue — c’est ce que chaque outil lit. Pavois audite la configuration qu’un service applique vraiment (`sshd -T`, `sysctl`, `systemctl show`, `auditctl -l`) ; les autres lisent surtout des fichiers sur disque.',
+};
+
+type Sec = { id: string; t: { en: string; fr: string }; b: { en: string; fr: string } };
+const sections: Sec[] = [
+  {
+    id: 'at-a-glance',
+    t: { en: 'At a glance', fr: 'En un coup d’œil' },
+    b: {
+      en: "| | **Pavois** | OpenSCAP | Lynis | CIS-CAT |\n|---|---|---|---|---|\n| Engine | CINC Auditor / InSpec (native binary) | OVAL + XCCDF | single shell script | Java |\n| Reads | **effective state** — `sshd -T`, `sysctl`, `systemctl show`, `auditctl -l` | files on disk (OVAL probes) | files on disk | files & declared policy |\n| Sees `Include`s / drop-ins | **yes — resolved** | rarely (file-probed) | no | usually missed |\n| Standards | CIS · ANSSI BP-028 · NIST · PCI-DSS · STIG — one control, N tags | CIS · STIG · ANSSI · PCI · NIST (SSG) | heuristic, **none** | CIS only |\n| Licensing | open (Apache-2.0) | open | open (GPL) | Lite free & limited; full = paid CIS SecureSuite |\n| Output | A–E chaptered report · SARIF/JUnit/HTML/JSON/CSV · **OSCAL** | XCCDF HTML · ARF | text + hardening index | HTML + score |\n| Remediation | harden-as-code (native Chef, opt-in) | bash / Ansible fixes | suggestions only | none |\n\nNone of these tools is bad — OpenSCAP/SSG in particular is a mature, standard, broadly-supported stack, and Pavois even cross-validates its mappings against SSG. The point is narrower and only about the **service-resolved** controls: when a drop-in overrides the main file, an OVAL probe pointed at the file misses it unless it was specifically written for the resolved path — so in practice the file-based tools usually miss that case, where an effective-config read catches it. For inventory, package or filesystem controls the gap mostly closes.",
+      fr: "| | **Pavois** | OpenSCAP | Lynis | CIS-CAT |\n|---|---|---|---|---|\n| Moteur | CINC Auditor / InSpec (binaire natif) | OVAL + XCCDF | un script shell | Java |\n| Lit | **l’état effectif** — `sshd -T`, `sysctl`, `systemctl show`, `auditctl -l` | des fichiers (sondes OVAL) | des fichiers | fichiers & politique déclarée |\n| Voit `Include` / drop-ins | **oui — résolus** | rarement (sondé sur fichier) | non | souvent ratés |\n| Normes | CIS · ANSSI BP-028 · NIST · PCI-DSS · STIG — un contrôle, N tags | CIS · STIG · ANSSI · PCI · NIST (SSG) | heuristique, **aucune** | CIS seulement |\n| Licence | ouvert (Apache-2.0) | ouvert | ouvert (GPL) | Lite gratuit & limité ; complet = SecureSuite payant |\n| Sortie | rapport A–E chapitré · SARIF/JUnit/HTML/JSON/CSV · **OSCAL** | HTML XCCDF · ARF | texte + hardening index | HTML + score |\n| Remédiation | durcir-en-code (Chef natif, opt-in) | correctifs bash / Ansible | suggestions seulement | aucune |\n\nAucun de ces outils n’est mauvais — OpenSCAP/SSG est notamment une pile mature, standard et largement supportée, et Pavois recoupe même ses mappings contre SSG. Le point est plus étroit et ne vaut que pour les contrôles **résolus par un service** : quand un drop-in surcharge le fichier principal, une sonde OVAL pointée sur le fichier le rate, sauf à avoir été écrite pour le chemin résolu — en pratique les outils basés fichier ratent donc ce cas, là où une lecture effective l’attrape. Pour les contrôles d’inventaire, de paquets ou de système de fichiers, l’écart se referme largement.",
+    },
+  },
+  {
+    id: 'by-evidence',
+    t: { en: 'By evidence type', fr: 'Par type de preuve' },
+    b: {
+      en: "A tool-vs-tool table flatters whoever wrote it. The honest cut is **by what kind of evidence a control needs** — read *down* a tool's column, not across one row:\n\n| Evidence the control needs | **Pavois** | OpenSCAP / SSG | Lynis | CIS-CAT |\n|---|---|---|---|---|\n| Runtime-resolved (`sshd -T`, `sysctl`, `systemctl show`, `auditctl -l`) | **strong** | rarely (file-probed) | partial | benchmark-dependent |\n| Persistent config **with drop-in precedence** | **strong** | file, often single-path | partial | benchmark-dependent |\n| Inventory (packages, accounts present/absent) | yes | yes | yes | yes |\n| Filesystem (mode / owner / SUID) | yes | yes | yes | yes |\n| **Official** standard authority | mapping (unofficial) | SSG datastreams | none | **CIS official** |\n| Mature remediation | harden-as-code (young) | **SSG bash / Ansible** | suggestions | none |\n| Reporting & ecosystem | A–E · OSCAL | **XCCDF / ARF, broad** | hardening index | CIS suite |\n\nPavois leads on the two **resolved-state** rows — that is the whole reason it exists — and is on par (inventory, filesystem) or genuinely behind (official-standard authority, remediation maturity, ecosystem) on the rest. Pick the tool by the evidence your control actually needs; for a regulated CIS attestation you may still want CIS-CAT, for a broad SCAP pipeline OpenSCAP. They compose.",
+      fr: "Un tableau outil-contre-outil flatte celui qui l’a écrit. La coupe honnête, c’est **par le type de preuve qu’un contrôle exige** — lisez une colonne *de haut en bas*, pas une ligne en travers :\n\n| Preuve exigée par le contrôle | **Pavois** | OpenSCAP / SSG | Lynis | CIS-CAT |\n|---|---|---|---|---|\n| Résolu au runtime (`sshd -T`, `sysctl`, `systemctl show`, `auditctl -l`) | **fort** | rarement (sondé fichier) | partiel | selon benchmark |\n| Config persistante **avec précédence des drop-ins** | **fort** | fichier, souvent mono-chemin | partiel | selon benchmark |\n| Inventaire (paquets, comptes présents/absents) | oui | oui | oui | oui |\n| Système de fichiers (mode / propriétaire / SUID) | oui | oui | oui | oui |\n| Autorité de norme **officielle** | mapping (non officiel) | datastreams SSG | aucune | **CIS officiel** |\n| Remédiation mature | durcir-en-code (jeune) | **bash / Ansible SSG** | suggestions | aucune |\n| Reporting & écosystème | A–E · OSCAL | **XCCDF / ARF, large** | hardening index | suite CIS |\n\nPavois mène sur les deux lignes d’**état résolu** — c’est toute sa raison d’être — et est à égalité (inventaire, fichiers) ou réellement derrière (autorité de norme officielle, maturité de remédiation, écosystème) sur le reste. Choisissez l’outil selon la preuve dont votre contrôle a besoin ; pour une attestation CIS réglementée, CIS-CAT garde son intérêt, pour un pipeline SCAP large, OpenSCAP. Ils se composent.",
+    },
+  },
+  {
+    id: 'openscap',
+    t: { en: 'OpenSCAP (SCAP / OVAL)', fr: 'OpenSCAP (SCAP / OVAL)' },
+    b: {
+      en: "**OpenSCAP** is the reference implementation of **SCAP** — the NIST-standardised format tying **XCCDF** (benchmark & rules), **OVAL** (the low-level checks) and **CPE** (platform ID). It is genuinely strong: the **SCAP Security Guide** ships signed datastreams mapping rules to CIS, ANSSI BP-028, DISA STIG, PCI-DSS and NIST 800-53, it emits bash and Ansible remediation, and its HTML report is the layout Pavois's renderer aims to equal.\n\nThe structural limit is **how OVAL checks work**: most inspect *files on disk* (`textfilecontent54` greps a config file). An OVAL check pointed at `sshd_config` never sees a drop-in in `sshd_config.d/` — it reads the default and prints PASS while the drop-in re-enabled `PermitRootLogin yes`. Pavois keeps SCAP's chaptered, multi-norm report but swaps the file-reading engine for an effective-config one. It never runs `oscap` as an engine — only as a visual reference for the report layout.",
+      fr: "**OpenSCAP** est l’implémentation de référence de **SCAP** — le format NIST liant **XCCDF** (benchmark & règles), **OVAL** (les checks bas niveau) et **CPE** (identification de plateforme). Il est vraiment solide : le **SCAP Security Guide** fournit des datastreams signés mappant les règles à CIS, ANSSI BP-028, DISA STIG, PCI-DSS et NIST 800-53, il émet des remédiations bash et Ansible, et son rapport HTML est la mise en page que le renderer de Pavois vise à égaler.\n\nLa limite structurelle tient à **la façon dont OVAL fonctionne** : la plupart des checks inspectent des *fichiers sur disque* (`textfilecontent54` grep un fichier). Un check OVAL pointé sur `sshd_config` ne voit jamais un drop-in dans `sshd_config.d/` — il lit le défaut et affiche PASS alors que le drop-in a réactivé `PermitRootLogin yes`. Pavois garde le rapport SCAP chapitré et multi-normes mais remplace le moteur de lecture de fichiers par un moteur effective-config. Il n’exécute jamais `oscap` comme moteur — seulement comme référence visuelle de mise en page.",
+    },
+  },
+  {
+    id: 'lynis',
+    t: { en: 'Lynis', fr: 'Lynis' },
+    b: {
+      en: "**Lynis** is a single shell script — no agent, no dependencies — that audits 60+ subsystems in minutes and emits suggestions, warnings and a headline **hardening index** (0–100). As a fast first-pass triage and an inspiration source it is excellent: it tells you *where to look*.\n\nBut it is **heuristic, not normative**. Its checks encode good-practice opinions; they are **not mapped to a published standard**, and the hardening index is a Lynis-specific number, not a compliance verdict an auditor accepts. And like the others it reads files, so it can miss `Include`s and drop-ins. Use Lynis to spot the obvious and motivate quick wins; use Pavois for the rigorous, standards-mapped, auditable pass. Fabricating a `lynis_X` reference in place of a real CIS or BP-028 control would be a mistake — Pavois never does that.",
+      fr: "**Lynis** est un script shell unique — sans agent ni dépendance — qui audite 60+ sous-systèmes en minutes et émet des suggestions, avertissements et un **hardening index** (0–100). Comme triage rapide de première passe et source d’inspiration, il est excellent : il dit *où regarder*.\n\nMais il est **heuristique, pas normatif**. Ses checks encodent des opinions de bonnes pratiques ; ils ne sont **pas mappés à une norme publiée**, et le hardening index est un nombre propre à Lynis, pas un verdict de conformité qu’un auditeur accepte. Et comme les autres, il lit des fichiers : il peut rater les `Include` et drop-ins. Utilise Lynis pour repérer l’évident et motiver les gains rapides ; utilise Pavois pour la passe rigoureuse, mappée aux normes, auditable. Fabriquer une référence `lynis_X` à la place d’un vrai contrôle CIS ou BP-028 serait une erreur — Pavois ne le fait jamais.",
+    },
+  },
+  {
+    id: 'cis-cat',
+    t: { en: 'CIS-CAT', fr: 'CIS-CAT' },
+    b: {
+      en: "**CIS-CAT** is the official CIS Configuration Assessment Tool — a Java scanner that grades a host against a CIS Benchmark. The catch is the **membership model**: **CIS-CAT Lite** is free but covers only a handful of benchmarks (Windows 10, Chrome, Ubuntu); the full **CIS-CAT Pro Assessor** requires paid **CIS SecureSuite** membership (folded into the unified *CIS SecureSuite Platform* in late 2025). So the one official tool for self-assessing against a *publicly published* standard sits behind a paywall and a sealed binary.\n\nPavois is **not** CIS-CAT and ships no CIS content — it carries its own open rule base where **CIS recommendation numbers are tags** on neutral, stable IDs (~476 controls carry an explicit `cis:` mapping). Select CIS in the report, pick Level 1 or 2, and Pavois recomposes a CIS-shaped view — openly, against the **effective** state, with no membership tier.",
+      fr: "**CIS-CAT** est l’outil officiel d’évaluation de configuration de CIS — un scanner Java qui note un hôte contre un CIS Benchmark. Le hic est le **modèle d’adhésion** : **CIS-CAT Lite** est gratuit mais ne couvre qu’une poignée de benchmarks (Windows 10, Chrome, Ubuntu) ; le **CIS-CAT Pro Assessor** complet requiert l’adhésion payante **CIS SecureSuite** (intégrée à la *CIS SecureSuite Platform* unifiée fin 2025). Le seul outil officiel pour s’auto-évaluer contre une norme *publiquement publiée* est donc derrière un paywall et un binaire scellé.\n\nPavois **n’est pas** CIS-CAT et n’embarque aucun contenu CIS — il porte sa propre base ouverte où **les numéros de recommandation CIS sont des tags** sur des IDs neutres et stables (~476 contrôles portent un mapping `cis:` explicite). Choisis CIS dans le rapport, Niveau 1 ou 2, et Pavois recompose une vue CIS — ouvertement, contre l’état **effectif**, sans palier d’adhésion.",
+    },
+  },
+  {
+    id: 'remediation',
+    t: { en: 'Remediation tools', fr: 'Outils de remédiation' },
+    b: {
+      en: "Scanning finds the gap; **remediation** closes it. Here the landscape differs again — and Pavois's angle is that **the same corpus that audits also fixes**, in one loop.\n\n| | **Pavois harden** | ansible-lockdown | OpenSCAP remediation | manual |\n|---|---|---|---|---|\n| Mechanism | native **Chef** convergence (InSpec's sibling) | Ansible roles (dev-sec.io) | bash / Ansible emitted from the benchmark | shell by hand |\n| Tied to the audit | **yes — scan → plan → apply → re-verify** | separate playbook | separate from the scan | none |\n| State-aware | reads current state, applies only the secure value, re-emits compliant drop-ins | declarative apply | applies the benchmark's fix | none |\n| Opt-in granularity | **per rule**, with a dry-run | per role/tag | per rule | — |\n| Risky fixes | **delivered, not auto-run** (kernel rebuild, judgement calls) | applied | applied | — |\n\n**ansible-lockdown** (the dev-sec.io CIS/STIG roles) is mature and widely used — Pavois even **cross-validates** its mappings against it. But it applies *files* and runs as a playbook decoupled from the audit, so nothing proves the running daemon ended up compliant. **OpenSCAP** emits bash/Ansible straight from the XCCDF benchmark — file-oriented, and you trust the benchmark's fix.\n\nPavois closes the loop instead: `pavois harden plan` reads the live state, you flip `apply` per rule, a native Chef run converges, and `pavois diff` re-scans the **effective** config to prove every gap is closed and nothing regressed. A fix you can't verify isn't evidence.",
+      fr: "Le scan trouve l'écart ; la **remédiation** le ferme. Là encore le paysage diffère — et l'angle de Pavois est que **le même corpus qui audite corrige aussi**, en une seule boucle.\n\n| | **Pavois harden** | ansible-lockdown | Remédiation OpenSCAP | manuel |\n|---|---|---|---|---|\n| Mécanisme | convergence **Chef** native (le frère d'InSpec) | rôles Ansible (dev-sec.io) | bash / Ansible émis depuis le benchmark | shell à la main |\n| Lié à l'audit | **oui — scan → plan → apply → re-vérif** | playbook séparé | séparé du scan | aucun |\n| Conscient de l'état | lit l'état courant, applique la valeur sûre, réémet les drop-ins conformes | apply déclaratif | applique le correctif du benchmark | aucun |\n| Granularité opt-in | **par règle**, avec dry-run | par rôle/tag | par règle | — |\n| Correctifs risqués | **livrés, pas auto-exécutés** (recompil noyau, jugement) | appliqués | appliqués | — |\n\n**ansible-lockdown** (les rôles CIS/STIG de dev-sec.io) est mature et répandu — Pavois **cross-valide** même ses mappings contre lui. Mais il applique des *fichiers* et tourne en playbook découplé de l'audit : rien ne prouve que le démon en cours est devenu conforme. **OpenSCAP** émet du bash/Ansible directement depuis le benchmark XCCDF — orienté fichier, et tu fais confiance au correctif du benchmark.\n\nPavois ferme la boucle : `pavois harden plan` lit l'état réel, tu actives `apply` par règle, une convergence Chef native s'applique, et `pavois diff` re-scanne la config **effective** pour prouver que chaque écart est fermé et que rien n'a régressé. Un correctif invérifiable n'est pas une preuve.",
+    },
+  },
+  {
+    id: 'engine',
+    t: { en: 'The engine: CINC Auditor / InSpec', fr: 'Le moteur : CINC Auditor / InSpec' },
+    b: {
+      en: "Pavois is **100% CINC Auditor** — the free, trademark-free build of Chef InSpec. A control describes the expected state of a resource in readable language; CINC runs it against the **effective** configuration. It runs as a **native binary** so a host scan (`local://`) and an SSH scan (`ssh://`) use your own `~/.ssh/config`, routing and user — the container is only a zero-install fallback. Effective-config commands need privilege, so Pavois passes `--sudo` to CINC, over stdin, never the command line.",
+      fr: "Pavois est **100% CINC Auditor** — le build libre et sans marque de Chef InSpec. Un contrôle décrit l’état attendu d’une ressource en langage lisible ; CINC l’exécute contre la configuration **effective**. Il tourne en **binaire natif** : un scan d’hôte (`local://`) et un scan SSH (`ssh://`) utilisent ton propre `~/.ssh/config`, ton routage et ton user — le conteneur n’est qu’un repli zéro-install. Les commandes effective-config exigent du privilège : Pavois passe `--sudo` à CINC, par stdin, jamais en ligne de commande.",
+    },
+  },
+];
+
+const docNav = [
+  { href: `/${lang}/docs/`, label: { en: 'How it works', fr: 'Comment ça marche' }, on: false },
+  { href: `/${lang}/docs/tools/`, label: { en: 'Tool comparison', fr: 'Comparaison d’outils' }, on: true },
+];
+---
+
+<Base title={`Pavois — ${lang === 'fr' ? 'Comparaison d’outils' : 'Tool comparison'}`} description={intro[lang].replace(/[`*]/g, '')} lang={lang} breadcrumbs={[{ name: 'Pavois', path: `/${lang}/` }, { name: 'Docs', path: `/${lang}/docs/` }, { name: lang === 'fr' ? 'Comparaison d’outils' : 'Tool comparison', path: `/${lang}/docs/tools/` }]}>
+  <div class="wrap page-head">
+    <div class="crumb"><a href={`/${lang}/`}>Pavois</a> / docs / {lang === 'fr' ? 'outils' : 'tools'}</div>
+    <span class="eyebrow">docs</span>
+    <h1>
+      {lang === 'fr' ? 'Pavois face aux autres scanners et outils de remédiation' : 'Pavois vs other scanners and remediation tools'}
+    </h1>
+    <p class="lede" set:html={md(intro[lang])} />
+    <nav class="docnav">
+      {docNav.map((d) => <a href={d.href} class:list={{ on: d.on }}>{d.label[lang]}</a>)}
+    </nav>
+  </div>
+
+  <div class="wrap layout-doc">
+    <div class="prose">
+      {
+        sections.map((s) => (
+          <>
+            <h2 id={s.id} set:html={md(s.t[lang]).replace(/<\/?p>/g, '')} />
+            <Fragment set:html={md(s.b[lang])} />
+          </>
+        ))
+      }
+    </div>
+    <nav class="toc">
+      <h4>{lang === 'fr' ? 'Sur cette page' : 'On this page'}</h4>
+      {sections.map((s) => <a href={`#${s.id}`} set:html={md(s.t[lang]).replace(/<\/?p>/g, '')} />)}
+    </nav>
+  </div>
+</Base>
+
+<style>
+  .page-head {
+    padding: 54px 28px 8px;
+  }
+  .lede :global(code) {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    color: var(--tx);
+  }
+  .docnav {
+    display: flex;
+    gap: 8px;
+    margin-top: 18px;
+  }
+  .docnav a {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--tx-2);
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: 8px;
+    padding: 8px 13px;
+  }
+  .docnav a:hover {
+    border-color: var(--red);
+    color: var(--red);
+  }
+  .docnav a.on {
+    color: var(--red);
+    border-color: var(--red);
+    background: var(--red-dim);
+  }
+  .layout-doc {
+    padding: 8px 28px 88px;
+  }
+  .prose :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin: 0 0 22px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .prose :global(th) {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--tx-3);
+    text-align: left;
+    padding: 10px 12px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--line);
+  }
+  .prose :global(td) {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    color: var(--tx-2);
+    vertical-align: top;
+  }
+  .prose :global(td:first-child) {
+    color: var(--tx-3);
+    white-space: nowrap;
+  }
+</style>

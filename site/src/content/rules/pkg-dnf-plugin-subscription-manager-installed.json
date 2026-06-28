@@ -1,0 +1,57 @@
+{
+  "id": "pkg-dnf-plugin-subscription-manager-installed",
+  "supported_os": [
+    "rhel8"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe package('dnf-plugin-subscription-manager') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "dnf-plugin-subscription-manager",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Install dnf-plugin-subscription-manager Package",
+    "fr": "Installer le paquet dnf-plugin-subscription-manager"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "This package provides plugins to interact with repositories and subscriptions from the Red Hat entitlement platform; it contains the subscription-manager and product-id plugins, which are required to receive supported security updates.",
+    "fr": "Ce paquet fournit des plugins pour interagir avec les dépôts et les abonnements de la plateforme d'habilitation Red Hat ; il contient les plugins subscription-manager et product-id, nécessaires pour recevoir les mises à jour de sécurité prises en charge."
+  },
+  "summary": {
+    "en": "Ensures the **dnf-plugin-subscription-manager** package is installed so RHEL can access entitled repositories and receive supported security updates.",
+    "fr": "Garantit que le paquet **dnf-plugin-subscription-manager** est installé afin que RHEL puisse accéder aux dépôts habilités et recevoir les mises à jour de sécurité prises en charge."
+  },
+  "check_note": {
+    "en": "Pavois verifies that the `dnf-plugin-subscription-manager` package is present via `rpm`. Without the subscription-manager plugin, a registered RHEL host cannot resolve entitled repositories, so security patches never reach `dnf` — a silent supply gap that file scanners would not flag.",
+    "fr": "Pavois vérifie que le paquet `dnf-plugin-subscription-manager` est présent via `rpm`. Sans le plugin subscription-manager, un hôte RHEL enregistré ne peut pas résoudre les dépôts habilités, et les correctifs de sécurité n'atteignent donc jamais `dnf` — une rupture d'approvisionnement silencieuse que les scanners de fichiers ne signaleraient pas."
+  },
+  "verify": {
+    "en": "Run `rpm -q dnf-plugin-subscription-manager`, which should return an installed version. Confirm the host is registered and entitled with `subscription-manager status` (expected `Overall Status: Current`).",
+    "fr": "Exécutez `rpm -q dnf-plugin-subscription-manager`, qui doit renvoyer une version installée. Confirmez que l'hôte est enregistré et habilité avec `subscription-manager status` (attendu : `Overall Status: Current`)."
+  },
+  "logs": {
+    "en": "Confirm the package with `rpm -q dnf-plugin-subscription-manager`; entitlement and registration events are recorded in `/var/log/rhsm/rhsm.log` and repository resolution is visible in `dnf repolist`.",
+    "fr": "Confirmez le paquet avec `rpm -q dnf-plugin-subscription-manager` ; les événements d'habilitation et d'enregistrement sont consignés dans `/var/log/rhsm/rhsm.log` et la résolution des dépôts est visible avec `dnf repolist`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan installs the `dnf-plugin-subscription-manager` package (resource `package`, action `install`) and is applied with `pavois harden apply`. After installation, register the host with `subscription-manager register` to actually enable entitled repositories.",
+    "fr": "Le plan de durcissement de Pavois installe le paquet `dnf-plugin-subscription-manager` (ressource `package`, action `install`) et s'applique avec `pavois harden apply`. Après l'installation, enregistrez l'hôte avec `subscription-manager register` pour activer réellement les dépôts habilités."
+  },
+  "impact": {
+    "en": "Without this plugin, a RHEL host cannot consume Red Hat entitled repositories, leaving it unable to install supported security updates. Installing the package is non-disruptive. Note this matters only for hosts entitled through Red Hat Subscription Management; systems using Satellite, a local mirror, or a RHEL-compatible distro (AlmaLinux/Rocky) may legitimately not need it.",
+    "fr": "Sans ce plugin, un hôte RHEL ne peut pas utiliser les dépôts habilités de Red Hat, ce qui l'empêche d'installer les mises à jour de sécurité prises en charge. L'installation du paquet est sans interruption. Notez que cela ne concerne que les hôtes habilités via Red Hat Subscription Management ; les systèmes utilisant Satellite, un miroir local ou une distribution compatible RHEL (AlmaLinux/Rocky) peuvent légitimement ne pas en avoir besoin."
+  }
+}

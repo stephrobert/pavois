@@ -1,0 +1,91 @@
+{
+  "id": "kmod-usb-storage-disabled",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel modules",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "1.1.1.8",
+      "1.1.1.9",
+      "3.4.2",
+      "1.1.1.10"
+    ],
+    "nist": [
+      "3.1.21",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)",
+      "MP-7"
+    ],
+    "pci-dss": "3.4.2",
+    "stig": [
+      "UBTU-22-291010",
+      "UBTU-24-300039"
+    ]
+  },
+  "check": [
+    "describe kernel_module('usb_storage') do",
+    "  it { should_not be_loaded }",
+    "  it { should be_disabled }",
+    "end"
+  ],
+  "remediation": {
+    "action": "blacklist",
+    "name": "usb_storage",
+    "reboot_required": true,
+    "resource": "kernel_module"
+  },
+  "title": {
+    "en": "Disable Modprobe Loading of USB Storage Driver",
+    "fr": "Désactiver le chargement du pilote de stockage USB via modprobe"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "USB storage devices such as thumb drives can be used to introduce malicious software or to exfiltrate data, bypassing network controls entirely. Blacklisting the `usb_storage` module prevents the system from mounting USB mass-storage media, closing a major physical attack vector for data theft and malware delivery.",
+    "fr": "Les périphériques de stockage USB tels que les clés peuvent servir à introduire des logiciels malveillants ou à exfiltrer des données, en contournant totalement les contrôles réseau. Mettre le module `usb_storage` en liste noire empêche le système de monter les supports de masse USB, fermant un vecteur d'attaque physique majeur pour le vol de données et la diffusion de logiciels malveillants."
+  },
+  "summary": {
+    "en": "Ensures the `usb_storage` kernel module is **not loaded** and is **blacklisted** so USB mass-storage devices cannot be mounted.",
+    "fr": "Garantit que le module noyau `usb_storage` n'est **pas chargé** et qu'il est **mis en liste noire** afin que les périphériques de stockage de masse USB ne puissent pas être montés."
+  },
+  "check_note": {
+    "en": "Pavois queries the **effective module state**, not config files: it verifies `usb_storage` is absent from the running kernel and that modprobe refuses to load it. A file-only scan would pass even if the module had already auto-loaded the moment a USB drive was plugged in; inspecting the live kernel catches an active module and any drop-in that re-enables it.",
+    "fr": "Pavois interroge l'**état effectif du module**, pas les fichiers de configuration : il vérifie que `usb_storage` est absent du noyau en cours d'exécution et que modprobe refuse de le charger. Une analyse basée uniquement sur les fichiers passerait même si le module s'était déjà chargé automatiquement à l'instant où une clé USB a été branchée ; inspecter le noyau vivant détecte un module actif et tout drop-in qui le réactive."
+  },
+  "verify": {
+    "en": "- `lsmod | grep usb_storage` should return **nothing**.\n- `modprobe -n -v usb_storage` should print `install /bin/true`.\n- `grep -r usb_storage /etc/modprobe.d/` should show `blacklist usb_storage` and `install usb_storage /bin/true`.\n- Plugging a USB drive should NOT create a new block device (`lsblk` unchanged).",
+    "fr": "- `lsmod | grep usb_storage` ne doit **rien** renvoyer.\n- `modprobe -n -v usb_storage` doit afficher `install /bin/true`.\n- `grep -r usb_storage /etc/modprobe.d/` doit montrer `blacklist usb_storage` et `install usb_storage /bin/true`.\n- Brancher une clé USB ne doit PAS créer de nouveau périphérique bloc (`lsblk` inchangé)."
+  },
+  "logs": {
+    "en": "- `dmesg | grep -i usb-storage` and `journalctl -k | grep usb_storage` show attempted loads when media is inserted.\n- `lsmod` and `modprobe -n -v usb_storage` reflect the live state.",
+    "fr": "- `dmesg | grep -i usb-storage` et `journalctl -k | grep usb_storage` montrent les tentatives de chargement à l'insertion d'un support.\n- `lsmod` et `modprobe -n -v usb_storage` reflètent l'état réel."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `kernel_module` resource to **blacklist** `usb_storage`: it writes a modprobe drop-in blacklisting the module and redirecting its load to `/bin/true`, then unloads it if active. A **reboot is required** to fully clear an in-use module. Apply with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `kernel_module` pour mettre `usb_storage` en **liste noire** : il écrit un drop-in modprobe qui blackliste le module et redirige son chargement vers `/bin/true`, puis le décharge s'il est actif. Un **redémarrage est requis** pour purger un module utilisé. Appliquez avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "**Disables ALL USB mass storage** — external drives, USB keys, USB card readers will no longer mount. **Caution:** do not apply to workstations or hosts that depend on USB media for backups, installs or data transfer, and ensure you are not booting/recovering from USB. USB keyboards/mice are unaffected (different driver). Verify operational needs with `lsblk` and `findmnt` before applying.",
+    "fr": "**Désactive TOUT le stockage de masse USB** — les disques externes, clés USB et lecteurs de cartes USB ne se monteront plus. **Attention :** ne pas appliquer aux postes de travail ou aux hôtes dépendant de supports USB pour les sauvegardes, installations ou transferts de données, et assurez-vous de ne pas démarrer/récupérer depuis une clé USB. Les claviers/souris USB ne sont pas affectés (pilote différent). Vérifiez les besoins opérationnels avec `lsblk` et `findmnt` avant d'appliquer."
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "id": "fileowner-var-log-waagent",
+  "supported_os": [
+    "debian12",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.1.4.1",
+      "6.2.2.1"
+    ]
+  },
+  "check": [
+    "only_if { file('/var/log/waagent').exist? }",
+    "describe file('/var/log/waagent') do",
+    "  its('owner') { should eq 'syslog' }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "syslog",
+    "path": "/var/log/waagent",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify User Who Owns /var/log/waagent.log File",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier /var/log/waagent.log"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/var/log/waagent.log` is written by the **Azure Linux Guest Agent** and records provisioning, extension installs and agent activity — data that can reveal the host's cloud configuration and, occasionally, sensitive bootstrap details. If it is not owned by `syslog`, an unprivileged user could read this operational intelligence or tamper with the log to hide how the VM was configured or compromised.",
+    "fr": "`/var/log/waagent.log` est écrit par l'**agent invité Linux Azure** et enregistre le provisionnement, les installations d'extensions et l'activité de l'agent — des données pouvant révéler la configuration cloud de l'hôte et, occasionnellement, des détails d'amorçage sensibles. S'il n'appartient pas à `syslog`, un utilisateur non privilégié pourrait lire ces renseignements opérationnels ou altérer le journal pour masquer la façon dont la VM a été configurée ou compromise."
+  },
+  "summary": {
+    "en": "Ensures the Azure Guest Agent log `/var/log/waagent` is **owned by the `syslog` user**.",
+    "fr": "Garantit que le journal de l'agent invité Azure `/var/log/waagent` est **détenu par l'utilisateur `syslog`**."
+  },
+  "check_note": {
+    "en": "Pavois checks that the **owner of `/var/log/waagent` is `syslog`**, only when the file exists (`only_if`), since waagent is present only on Azure VMs. It reads the **live owner** (`stat`) on the target rather than a default — so a `chown` from the agent, rotation or a deployment script is caught as the **effective on-disk state**.",
+    "fr": "Pavois vérifie que le **propriétaire de `/var/log/waagent` est `syslog`**, uniquement lorsque le fichier existe (`only_if`), waagent n'étant présent que sur les VM Azure. Il lit le **propriétaire réel** (`stat`) sur la cible plutôt qu'une valeur par défaut — ainsi un `chown` issu de l'agent, de la rotation ou d'un script de déploiement est détecté comme l'**état effectif sur le disque**."
+  },
+  "verify": {
+    "en": "Confirm the owner with:\n\n```bash\nstat -c '%U' /var/log/waagent.log\n```\n\nExpected output is `syslog`.",
+    "fr": "Confirmez le propriétaire avec :\n\n```bash\nstat -c '%U' /var/log/waagent.log\n```\n\nLa sortie attendue est `syslog`."
+  },
+  "logs": {
+    "en": "This file is itself the agent log. Inspect ownership and content:\n\n```bash\nls -l /var/log/waagent.log\ntail -n 50 /var/log/waagent.log\n```\n\nThe agent status is shown by `systemctl status walinuxagent` (or `waagent`). Ownership changes can be tracked with `grep 'waagent' /var/log/audit/audit.log` if auditd watches are configured.",
+    "fr": "Ce fichier est lui-même le journal de l'agent. Inspectez la propriété et le contenu :\n\n```bash\nls -l /var/log/waagent.log\ntail -n 50 /var/log/waagent.log\n```\n\nL'état de l'agent est affiché par `systemctl status walinuxagent` (ou `waagent`). Les changements de propriété peuvent être suivis avec `grep 'waagent' /var/log/audit/audit.log` si des surveillances auditd sont configurées."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses a **`file` resource** to set the owner of `/var/log/waagent` to **`syslog`**. Run `pavois harden apply` to enforce it — the Chef engine performs the equivalent of `chown syslog /var/log/waagent`, leaving content and group untouched.",
+    "fr": "Le plan de durcissement de Pavois utilise une **ressource `file`** pour définir le propriétaire de `/var/log/waagent` sur **`syslog`**. Lancez `pavois harden apply` pour l'appliquer — le moteur Chef exécute l'équivalent de `chown syslog /var/log/waagent`, sans toucher au contenu ni au groupe."
+  },
+  "impact": {
+    "en": "**Consequences if misconfigured:** wrong ownership exposes Azure provisioning details and lets a non-logging process tamper with the agent log, hiding configuration or compromise of the VM.\n\n**Precautions before applying:** the change is low-risk. Note that the Azure Guest Agent (`waagent`) typically runs and writes its log as **root**, not `syslog`; on a genuine Azure VM, forcing the owner to `syslog` only matches the benchmark when rsyslog is configured to own the file — verify the agent can still write after applying so provisioning is not disrupted. The `only_if` guard skips non-Azure hosts entirely.",
+    "fr": "**Conséquences en cas de mauvaise configuration :** une propriété erronée expose les détails de provisionnement Azure et permet à un processus hors journalisation d'altérer le journal de l'agent, masquant la configuration ou la compromission de la VM.\n\n**Précautions avant application :** le changement est à faible risque. Notez que l'agent invité Azure (`waagent`) s'exécute et écrit généralement son journal en **root**, et non `syslog` ; sur une véritable VM Azure, forcer le propriétaire à `syslog` ne correspond au référentiel que si rsyslog est configuré pour posséder le fichier — vérifiez que l'agent peut toujours écrire après application afin de ne pas perturber le provisionnement. La garde `only_if` ignore entièrement les hôtes non-Azure."
+  }
+}

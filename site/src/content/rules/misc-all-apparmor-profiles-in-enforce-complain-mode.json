@@ -1,0 +1,63 @@
+{
+  "id": "misc-all-apparmor-profiles-in-enforce-complain-mode",
+  "supported_os": [
+    "debian12",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (misc)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {
+    "cis": "1.3.1.3"
+  },
+  "check": [
+    "describe command('aa-status 2>/dev/null | grep -qi \\'profiles are loaded\\' && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "aa-status | sed -n '1,20p'\n# set profiles to enforce: aa-enforce /etc/apparmor.d/*   (watch for app breakage, then aa-complain any that misbehave)\n",
+    "reason": "forcing all profiles to enforce can break apps with incomplete profiles — review",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "All AppArmor Profiles are in enforce or complain mode",
+    "fr": "Tous les profils AppArmor sont en mode enforce ou complain"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Loaded profiles — whether enforcing or complaining — mean the AppArmor policy is actually applied to running programs. If profiles exist on disk but none are loaded, the mandatory access control is dormant and provides no benefit. This rule is the baseline that confinement is active; a stricter companion rule (`misc-all-apparmor-profiles-enforced`) then requires enforce mode.",
+    "fr": "Des profils chargés — qu'ils soient en enforce ou en complain — signifient que la politique AppArmor est réellement appliquée aux programmes en cours. Si des profils existent sur disque mais qu'aucun n'est chargé, le contrôle d'accès obligatoire est dormant et n'apporte rien. Cette règle est la base attestant que le confinement est actif ; une règle compagne plus stricte (`misc-all-apparmor-profiles-enforced`) exige ensuite le mode enforce."
+  },
+  "summary": {
+    "en": "Verifies AppArmor has **profiles loaded** (in enforce or complain mode) rather than none, so policies are at least active and observable.",
+    "fr": "Vérifie qu'AppArmor a des **profils chargés** (en mode enforce ou complain) plutôt qu'aucun, afin que les politiques soient au moins actives et observables."
+  },
+  "check_note": {
+    "en": "Pavois parses `aa-status` output for the `profiles are loaded` line, confirming the kernel has at least one AppArmor profile loaded. Reading the live `aa-status` reflects the effective runtime state, unlike inspecting `/etc/apparmor.d/` files which only proves profiles exist on disk, not that they were applied.",
+    "fr": "Pavois analyse la sortie d'`aa-status` pour la ligne `profiles are loaded`, confirmant que le noyau a au moins un profil AppArmor chargé. Lire `aa-status` en direct reflète l'état d'exécution effectif, contrairement à l'inspection des fichiers de `/etc/apparmor.d/` qui prouve seulement leur existence sur disque, pas leur application."
+  },
+  "verify": {
+    "en": "Run `aa-status`. Expect a line like `NN profiles are loaded` with NN > 0, and a non-zero count under enforce and/or complain mode.",
+    "fr": "Exécutez `aa-status`. Attendez-vous à une ligne comme `NN profiles are loaded` avec NN > 0, et un nombre non nul en mode enforce et/ou complain."
+  },
+  "logs": {
+    "en": "AppArmor activity is logged via the kernel audit subsystem in `/var/log/audit/audit.log` (entries tagged `apparmor=`) or in `journalctl -k` / `/var/log/kern.log`. The loaded-profile inventory and modes come from `aa-status`.",
+    "fr": "L'activité d'AppArmor est journalisée via le sous-système d'audit du noyau dans `/var/log/audit/audit.log` (entrées marquées `apparmor=`) ou dans `journalctl -k` / `/var/log/kern.log`. L'inventaire des profils chargés et leurs modes proviennent d'`aa-status`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule; apply it **manually**. Ensure the `apparmor` package and the profile packages (e.g. `apparmor-profiles`) are installed, that AppArmor is enabled at boot (`systemctl enable --now apparmor`), and load profiles with `apparmor_parser -r /etc/apparmor.d/*` (or `aa-enforce`/`aa-complain` per profile).",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni ; appliquez-la **manuellement**. Assurez-vous que le paquet `apparmor` et les paquets de profils (par ex. `apparmor-profiles`) sont installés, qu'AppArmor est activé au démarrage (`systemctl enable --now apparmor`), et chargez les profils avec `apparmor_parser -r /etc/apparmor.d/*` (ou `aa-enforce`/`aa-complain` par profil)."
+  },
+  "impact": {
+    "en": "Loading profiles in complain mode is low-risk because complain only logs, it does not block — a safe first step on a system that has never used AppArmor. The risk appears when a loaded profile is in enforce mode and too restrictive (see `misc-all-apparmor-profiles-enforced`). To stage safely, load profiles in complain mode first, watch `/var/log/audit/audit.log` for would-be denials, refine, then move to enforce.",
+    "fr": "Charger des profils en mode complain est à faible risque car complain ne fait que journaliser sans bloquer — une première étape sûre sur un système n'ayant jamais utilisé AppArmor. Le risque apparaît quand un profil chargé est en mode enforce et trop restrictif (voir `misc-all-apparmor-profiles-enforced`). Pour une mise en place sûre, chargez d'abord les profils en complain, surveillez `/var/log/audit/audit.log` pour les refus potentiels, affinez, puis passez en enforce."
+  }
+}

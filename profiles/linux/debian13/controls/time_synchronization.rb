@@ -1,0 +1,17 @@
+# Rendered from pavois reference (pavois-content/debian13.yml). Do not edit by hand.
+
+control 'time-sync-present' do
+  impact 0.5
+  title 'A time-synchronization service is active'
+  tag domain: 'Time synchronization'
+  tag evidence: 'effective-runtime'
+  tag reboot: 'no'
+  tag bp28: 'R71'
+  tag('pci-dss' => '10.6.1')
+  tag nist: ['3.3.7', 'SC-45']
+  tag level_bp28: 'enhanced'
+  tag ssg: 'time-sync-present'
+  describe command('for s in chrony chronyd systemd-timesyncd ntp ntpsec; do systemctl is-active --quiet "$s" && { echo ok; exit 0; }; done; echo ko') do
+    its('stdout.strip') { should eq 'ok' }
+  end
+end

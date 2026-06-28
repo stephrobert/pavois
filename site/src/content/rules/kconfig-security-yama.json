@@ -1,0 +1,67 @@
+{
+  "id": "kconfig-security-yama",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel build",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R20"
+  },
+  "check": [
+    "describe command(\"grep -h '^CONFIG_SECURITY_YAMA=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_SECURITY_YAMA='\") do",
+    "  its('stdout') { should match(/^CONFIG_SECURITY_YAMA=y$/) }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Enable Yama support",
+    "fr": "Activer la prise en charge de Yama"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Unrestricted use of `ptrace` lets any compromised process attach to and inspect the memory of other processes owned by the same user. The **Yama** LSM (`CONFIG_SECURITY_YAMA=y`) is the kernel building block that makes the `kernel.yama.ptrace_scope` restriction available, blocking a hijacked binary (e.g. a browser or mail client) from scraping credentials, SSH keys or session tokens out of sibling processes.",
+    "fr": "L'usage non restreint de `ptrace` permet à tout processus compromis de s'attacher à d'autres processus du même utilisateur et d'en inspecter la mémoire. Le LSM **Yama** (`CONFIG_SECURITY_YAMA=y`) est la brique noyau qui rend disponible la restriction `kernel.yama.ptrace_scope`, empêchant un binaire détourné (navigateur, client mail, etc.) d'extraire identifiants, clés SSH ou jetons de session de processus voisins."
+  },
+  "summary": {
+    "en": "Requires the kernel to be built with the **Yama** LSM (`CONFIG_SECURITY_YAMA=y`), which enables `ptrace` scope restrictions.",
+    "fr": "Exige un noyau compilé avec le LSM **Yama** (`CONFIG_SECURITY_YAMA=y`), qui active les restrictions de portée `ptrace`."
+  },
+  "check_note": {
+    "en": "Pavois reads the kernel build configuration of the **running** kernel, via `/boot/config-$(uname -r)` or the in-kernel `/proc/config.gz`, and confirms `CONFIG_SECURITY_YAMA=y`. Querying the live kernel (not a packaged default config) guarantees that the kernel actually booted with Yama compiled in — a kernel installed but not yet booted, or an out-of-tree build, would otherwise give a false sense of compliance.",
+    "fr": "Pavois lit la configuration de compilation du noyau **en cours d'exécution**, via `/boot/config-$(uname -r)` ou le `/proc/config.gz` interne, et vérifie `CONFIG_SECURITY_YAMA=y`. Interroger le noyau actif (et non une config par défaut empaquetée) garantit que le noyau a réellement démarré avec Yama compilé : un noyau installé mais pas encore démarré, ou un build hors arbre, donnerait sinon une fausse conformité."
+  },
+  "verify": {
+    "en": "Confirm the option is compiled in:\n\n```\ngrep '^CONFIG_SECURITY_YAMA=' /boot/config-$(uname -r) || zcat /proc/config.gz | grep '^CONFIG_SECURITY_YAMA='\n```\n\nExpected output: `CONFIG_SECURITY_YAMA=y`. You can also confirm the runtime knob it provides exists: `sysctl kernel.yama.ptrace_scope`.",
+    "fr": "Confirmez que l'option est compilée :\n\n```\ngrep '^CONFIG_SECURITY_YAMA=' /boot/config-$(uname -r) || zcat /proc/config.gz | grep '^CONFIG_SECURITY_YAMA='\n```\n\nSortie attendue : `CONFIG_SECURITY_YAMA=y`. Vous pouvez aussi vérifier que le réglage qu'il fournit existe : `sysctl kernel.yama.ptrace_scope`."
+  },
+  "logs": {
+    "en": "Yama-blocked `ptrace` attempts are logged by the kernel. Inspect `dmesg` or `journalctl -k` for messages such as `ptrace of pid ... was attempted by ...`. The effective restriction level is read with `sysctl kernel.yama.ptrace_scope`.",
+    "fr": "Les tentatives de `ptrace` bloquées par Yama sont journalisées par le noyau. Examinez `dmesg` ou `journalctl -k` pour des messages comme `ptrace of pid ... was attempted by ...`. Le niveau de restriction effectif se lit avec `sysctl kernel.yama.ptrace_scope`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped: `CONFIG_SECURITY_YAMA` is a **compile-time** kernel option, so it cannot be toggled at runtime. The fix is to run a kernel built with Yama enabled. The stock distribution kernels for the supported OSes already ship it, so the remedy is normally to install or boot the vendor kernel rather than a custom one. If you build your own kernel, set `CONFIG_SECURITY_YAMA=y` and rebuild.",
+    "fr": "Aucune remédiation automatique n'est fournie : `CONFIG_SECURITY_YAMA` est une option noyau **à la compilation**, elle ne peut donc pas être activée à chaud. La correction consiste à exécuter un noyau compilé avec Yama. Les noyaux par défaut des distributions prises en charge l'embarquent déjà ; le remède est donc généralement d'installer ou de démarrer le noyau du fournisseur plutôt qu'un noyau personnalisé. Si vous compilez votre propre noyau, positionnez `CONFIG_SECURITY_YAMA=y` et reconstruisez."
+  },
+  "impact": {
+    "en": "Without Yama, the `kernel.yama.ptrace_scope` restriction is unavailable, leaving every user process able to `ptrace` its siblings — a major lateral-credential-theft vector. **Precautions:** switching kernels requires a reboot, so schedule a maintenance window and keep the previous kernel entry in GRUB as a fallback. Some debuggers (gdb), profilers (perf) and crash-handling tools rely on `ptrace`; with Yama enabled and `ptrace_scope` set high they may need to run as root or use `CAP_SYS_PTRACE`. Validate your debugging workflows after the change.",
+    "fr": "Sans Yama, la restriction `kernel.yama.ptrace_scope` est indisponible, laissant chaque processus utilisateur capable de `ptrace` ses voisins — un vecteur majeur de vol latéral d'identifiants. **Précautions :** changer de noyau impose un redémarrage ; planifiez une fenêtre de maintenance et conservez l'entrée GRUB du noyau précédent en repli. Certains débogueurs (gdb), profileurs (perf) et outils de gestion de crash s'appuient sur `ptrace` ; avec Yama actif et `ptrace_scope` élevé, ils peuvent devoir s'exécuter en root ou utiliser `CAP_SYS_PTRACE`. Validez vos flux de débogage après le changement."
+  }
+}

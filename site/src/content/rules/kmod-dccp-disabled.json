@@ -1,0 +1,88 @@
+{
+  "id": "kmod-dccp-disabled",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel modules",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "3.2.1",
+      "1.4.2",
+      "3.2.3"
+    ],
+    "nist": [
+      "3.4.6",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)"
+    ],
+    "pci-dss": [
+      "1.4.2",
+      "Req-1.4.2"
+    ]
+  },
+  "check": [
+    "describe kernel_module('dccp') do",
+    "  it { should_not be_loaded }",
+    "  it { should be_disabled }",
+    "end"
+  ],
+  "remediation": {
+    "action": "blacklist",
+    "name": "dccp",
+    "reboot_required": true,
+    "resource": "kernel_module"
+  },
+  "title": {
+    "en": "Disable DCCP Support",
+    "fr": "Désactiver la prise en charge DCCP"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "**DCCP** (Datagram Congestion Control Protocol) is a rarely used transport protocol. Because it is reachable over the network, its kernel module presents a **remotely exploitable** attack surface, and it has a history of serious bugs (e.g. CVE-2017-6074, a use-after-free giving local privilege escalation). Disabling the unused module protects the system against exploitation of any flaws in its implementation.",
+    "fr": "**DCCP** (Datagram Congestion Control Protocol) est un protocole de transport rarement utilisé. Étant accessible sur le réseau, son module noyau présente une surface d'attaque **exploitable à distance**, et il a un historique de bugs graves (par ex. CVE-2017-6074, un use-after-free permettant une élévation de privilèges locale). Désactiver ce module inutilisé protège le système contre l'exploitation de toute faille de son implémentation."
+  },
+  "summary": {
+    "en": "Ensures the `dccp` kernel module is not loaded and is blacklisted so the network-reachable DCCP protocol cannot be activated.",
+    "fr": "Garantit que le module noyau `dccp` n'est pas chargé et est mis en liste noire afin que le protocole DCCP accessible par le réseau ne puisse être activé."
+  },
+  "check_note": {
+    "en": "Pavois uses `kernel_module('dccp')` to assert the module is **not loaded** and is **disabled** in the effective modprobe policy. Querying the live kernel and resolved modprobe config (not a single `.conf`) catches a module blacklisted in one file yet still loaded, or re-enabled by an override — important because DCCP can be auto-loaded by an application opening a DCCP socket.",
+    "fr": "Pavois utilise `kernel_module('dccp')` pour vérifier que le module n'est **pas chargé** et qu'il est **désactivé** dans la politique modprobe effective. Interroger le noyau vivant et la config modprobe résolue (et non un seul `.conf`) détecte un module en liste noire dans un fichier mais encore chargé, ou réactivé par un override — important car DCCP peut être chargé automatiquement par une application ouvrant une socket DCCP."
+  },
+  "verify": {
+    "en": "Run `lsmod | grep dccp` (no output = not loaded) and `modprobe -n -v dccp` (expect `install /bin/true` or `/bin/false`). `modprobe --showconfig | grep dccp` shows the effective rules.",
+    "fr": "Exécutez `lsmod | grep dccp` (aucune sortie = non chargé) et `modprobe -n -v dccp` (attendu : `install /bin/true` ou `/bin/false`). `modprobe --showconfig | grep dccp` affiche les règles effectives."
+  },
+  "logs": {
+    "en": "Blocked load attempts appear in the kernel log: `journalctl -k | grep -i dccp` / `dmesg | grep -i dccp`. `lsmod` shows resident modules; `modprobe --showconfig` shows the policy.",
+    "fr": "Les tentatives de chargement bloquées apparaissent dans le journal noyau : `journalctl -k | grep -i dccp` / `dmesg | grep -i dccp`. `lsmod` montre les modules résidents ; `modprobe --showconfig` montre la politique."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `kernel_module` resource to **blacklist** `dccp`: it writes a modprobe rule (`install dccp /bin/false` plus a blacklist entry) so the protocol cannot be auto-loaded by a socket request, and unloads it if resident. `reboot_required` is true to guarantee removal.",
+    "fr": "`pavois harden apply` utilise la ressource `kernel_module` pour mettre `dccp` en **liste noire** : il écrit une règle modprobe (`install dccp /bin/false` plus une entrée blacklist) afin que le protocole ne puisse être chargé automatiquement par une requête de socket, et le décharge s'il est résident. `reboot_required` est vrai pour garantir le retrait."
+  },
+  "impact": {
+    "en": "On a standard server, disabling `dccp` has **no functional impact** — almost no software uses it. Precaution: the rare application that explicitly opens DCCP sockets would fail; confirm none does (e.g. `ss -A dccp` shows no sockets) before applying. A reboot is needed to unload an already-loaded module.",
+    "fr": "Sur un serveur standard, désactiver `dccp` n'a **aucun impact fonctionnel** — quasiment aucun logiciel ne l'utilise. Précaution : la rare application ouvrant explicitement des sockets DCCP échouerait ; confirmez qu'aucune ne le fait (par ex. `ss -A dccp` ne montre aucune socket) avant d'appliquer. Un redémarrage est nécessaire pour décharger un module déjà chargé."
+  }
+}

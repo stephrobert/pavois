@@ -1,0 +1,39 @@
+{
+  "id": "pam-faillock-root-unlock-time",
+  "supported_os": [
+    "debian12"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (faillock)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.3.3.1.3"
+  },
+  "check": [
+    "describe command('v=$(grep -rh \\'^[[:space:]]*root_unlock_time[[:space:]]*=\\' /etc/security/faillock.conf /etc/security/faillock.conf.d/ 2>/dev/null | tail -1 | grep -oE \\'[0-9]+\\'); { [ -n \"$v\" ] && [ \"$v\" -ge 60 ] && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "file": "/etc/security/faillock.conf.d/99-pavois.conf",
+    "key": "root_unlock_time",
+    "resource": "keyval",
+    "value": "60"
+  },
+  "title": {
+    "en": "Set Root Lockout Time for Failed Password Attempts",
+    "fr": "Set Root Lockout Time for Failed Password Attempts"
+  },
+  "needs_translation": [
+    "title.fr",
+    "rationale.fr"
+  ],
+  "rationale": {
+    "en": "By limiting the number of failed logon attempts the risk of unauthorized root access via password guessing, otherwise known as brute-forcing, is reduced. Limits are imposed by locking the account.",
+    "fr": "By limiting the number of failed logon attempts the risk of unauthorized root access via password guessing, otherwise known as brute-forcing, is reduced. Limits are imposed by locking the account."
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "id": "pkg-kea-removed",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R62",
+    "cis": "2.1.4"
+  },
+  "check": [
+    "describe package('kea') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "kea",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall kea Package",
+    "fr": "Désinstaller le paquet kea"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`kea` is the ISC DHCP server. A DHCP server hands out IP addresses and network parameters to clients; if it runs where it is not needed it can **disrupt the network** (rogue/conflicting leases) and exposes a network-facing daemon to exploitation. Removing the package — rather than just stopping the service — ensures it cannot be easily or accidentally reactivated and reduces the attack surface.",
+    "fr": "`kea` est le serveur DHCP de l'ISC. Un serveur DHCP distribue des adresses IP et des paramètres réseau aux clients ; s'il tourne là où il n'est pas nécessaire, il peut **perturber le réseau** (baux pirates ou conflictuels) et expose un démon en écoute réseau à une exploitation. Retirer le paquet — plutôt que simplement arrêter le service — garantit qu'il ne pourra pas être facilement ou accidentellement réactivé et réduit la surface d'attaque."
+  },
+  "summary": {
+    "en": "Ensures the `kea` ISC DHCP server package is **not installed** unless the host is an intended DHCP server.",
+    "fr": "Garantit que le paquet serveur DHCP ISC `kea` n'est **pas installé**, sauf si l'hôte est un serveur DHCP voulu."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database via InSpec `package('kea')` (`dpkg -s kea` / `rpm -q kea`) and asserts it is **not installed**. Checking the package state is more reliable than checking whether a service is stopped: a stopped `kea-dhcp4` unit can be re-enabled at any time, whereas an absent package cannot serve DHCP at all.",
+    "fr": "Pavois interroge la base de paquets via InSpec `package('kea')` (`dpkg -s kea` / `rpm -q kea`) et vérifie qu'il n'est **pas installé**. Contrôler l'état du paquet est plus fiable que de vérifier qu'un service est arrêté : une unité `kea-dhcp4` arrêtée peut être réactivée à tout moment, alors qu'un paquet absent ne peut servir aucun DHCP."
+  },
+  "verify": {
+    "en": "On Debian run `dpkg -s kea` and expect `package 'kea' is not installed`; on Fedora run `rpm -q kea` and expect `package kea is not installed`. Any installed version string means the rule fails.",
+    "fr": "Sur Debian, exécutez `dpkg -s kea` ; la sortie attendue est `package 'kea' is not installed`. Sur Fedora, exécutez `rpm -q kea` ; la sortie attendue est `package kea is not installed`. Toute chaîne de version installée signifie que la règle échoue."
+  },
+  "logs": {
+    "en": "Use the package manager history to confirm removal: `apt list --installed | grep kea` (should be empty) or `dnf history`. If `kea` was running, `journalctl -u kea-dhcp4-server` shows past lease activity; `/var/log/apt/history.log` records the removal transaction on Debian.",
+    "fr": "Utilisez l'historique du gestionnaire de paquets pour confirmer la suppression : `apt list --installed | grep kea` (doit être vide) ou `dnf history`. Si `kea` tournait, `journalctl -u kea-dhcp4-server` montre l'activité passée des baux ; `/var/log/apt/history.log` consigne la transaction de suppression sur Debian."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource named `kea` with action **remove**; `pavois harden apply` runs the equivalent of `apt-get remove kea` (or `dnf remove kea`) to reach the compliant state. If `remediation` were empty you would uninstall it manually.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` nommée `kea` avec l'action **remove** ; `pavois harden apply` exécute l'équivalent de `apt-get remove kea` (ou `dnf remove kea`) pour atteindre l'état conforme. Si `remediation` était vide, il faudrait le désinstaller manuellement."
+  },
+  "impact": {
+    "en": "Removing `kea` will stop and delete the DHCP server. **Precaution:** only apply on hosts that are not meant to provide DHCP. If this machine actually serves leases to a LAN, uninstalling it will **cut off address allocation** for every client that depends on it — clients will lose connectivity as their leases expire. Confirm the role first (`systemctl is-enabled kea-dhcp4-server`, check `/etc/kea/`) and migrate the service before removing.",
+    "fr": "Retirer `kea` arrête et supprime le serveur DHCP. **Précaution :** n'appliquez la règle que sur des hôtes qui ne doivent pas fournir de DHCP. Si cette machine distribue réellement des baux à un réseau local, la désinstaller **coupera l'attribution d'adresses** à tous les clients qui en dépendent — ils perdront la connectivité à l'expiration de leurs baux. Vérifiez d'abord le rôle (`systemctl is-enabled kea-dhcp4-server`, inspectez `/etc/kea/`) et migrez le service avant de le retirer."
+  }
+}

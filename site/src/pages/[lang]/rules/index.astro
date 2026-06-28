@@ -1,0 +1,240 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+import { ui, languages, type Lang } from '../../../i18n/ui';
+import socleRefs from '../../../data/socle-refs.json';
+import { coverageLevel } from '../../../data/coverage';
+
+export function getStaticPaths() {
+  return Object.keys(languages).map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params as { lang: Lang };
+const t = ui[lang];
+const rules = (await getCollection('rules')).sort((a, b) =>
+  (a.data.domain || '').localeCompare(b.data.domain || '') || a.data.title[lang].localeCompare(b.data.title[lang])
+);
+const domains = [...new Set(rules.map((r) => r.data.domain).filter(Boolean))].sort();
+const order = { critical: 0, high: 1, medium: 2, low: 3, unknown: 4 } as Record<string, number>;
+const sevs = [...new Set(rules.map((r) => r.data.severity))].sort((a, b) => order[a] - order[b]);
+const STD = ['cis', 'bp28', 'nist', 'pci-dss', 'stig'];
+const STD_LABEL: Record<string, string> = { cis: 'CIS', bp28: 'ANSSI-BP-028', nist: 'NIST', 'pci-dss': 'PCI-DSS', stig: 'STIG' };
+const oses = [...new Set(rules.flatMap((r) => r.data.supported_os))].sort();
+const sevLabel = (s: string): string => (t.sev as Record<string, string>)[s] ?? s;
+const sevClass = (s: string): string => (s === 'medium' ? 'med' : s === 'unknown' ? 'na' : s);
+const socleOf = (id: string): string => (socleRefs as Record<string, string>)[id] ?? '';
+const normKeys = (n: Record<string, any>) =>
+  STD.filter((k) => (Array.isArray(n[k]) ? n[k].length : n[k] != null && n[k] !== ''));
+const intro = {
+  en: 'Each control declares the evidence it gathers — resolved runtime state where a service exposes it (sshd -T, sysctl, systemctl, auditctl), otherwise persistent config, inventory or filesystem state. Filter by domain, severity, standard or OS — each row links to its check, evidence type, remediation and mappings.',
+  fr: 'Chaque contrôle indique la preuve qu’il collecte — état résolu en cours d’exécution quand un service l’expose (sshd -T, sysctl, systemctl, auditctl), sinon config persistante, inventaire ou système de fichiers. Filtre par domaine, sévérité, norme ou OS — chaque ligne mène au check, au type de preuve, à la remédiation et aux mappings.',
+};
+---
+
+<Base title={`Pavois — ${t.rules}`} description={intro[lang]} lang={lang} breadcrumbs={[{ name: 'Pavois', path: `/${lang}/` }, { name: t.rules, path: `/${lang}/rules/` }]}>
+  <div class="wrap page-head">
+    <div class="crumb"><a href={`/${lang}/`}>Pavois</a> / {lang === 'fr' ? 'règles' : 'rules'}</div>
+    <span class="eyebrow">{lang === 'fr' ? 'catalogue' : 'catalogue'}</span>
+    <h1>{lang === 'fr' ? 'Tous les contrôles' : 'All controls'}</h1>
+    <p class="lede">{intro[lang]}</p>
+  </div>
+
+  <div class="wrap">
+    <div class="filterbar">
+      <div class="fsel fsearch-wrap">
+        <label>{lang === 'fr' ? 'Recherche' : 'Search'}</label>
+        <input id="r-search" class="fsearch" type="search" placeholder={t.searchPh} autocomplete="off" />
+      </div>
+      <div class="fsel">
+        <label>{t.domain}</label>
+        <select id="r-domain">
+          <option value="">{lang === 'fr' ? 'Tous les domaines' : 'All domains'}</option>
+          {domains.map((d) => <option value={d}>{d}</option>)}
+        </select>
+      </div>
+      <div class="fsel">
+        <label>{t.severity}</label>
+        <select id="r-sev">
+          <option value="">{lang === 'fr' ? 'Toutes sévérités' : 'Any severity'}</option>
+          {sevs.map((s) => <option value={s}>{sevLabel(s)}</option>)}
+        </select>
+      </div>
+      <div class="fsel">
+        <label>{t.standards}</label>
+        <select id="r-std">
+          <option value="">{lang === 'fr' ? 'Toutes normes' : 'Any standard'}</option>
+          {STD.map((s) => <option value={s}>{STD_LABEL[s]}</option>)}
+        </select>
+      </div>
+      <div class="fsel">
+        <label>{t.thOs}</label>
+        <select id="r-os">
+          <option value="">{t.allOs}</option>
+          {oses.map((o) => <option value={o}>{o}</option>)}
+        </select>
+      </div>
+      <div class="fcount"><b id="r-count">{rules.length}</b> / {rules.length} {lang === 'fr' ? 'règles' : 'rules'}</div>
+    </div>
+
+    <div class="rtable-wrap">
+      <table class="rtable">
+        <thead>
+          <tr>
+            <th data-col>{lang === 'fr' ? 'Réf.' : 'Ref'}</th>
+            <th data-col>{t.thRule}</th>
+            <th data-col>{t.domain}</th>
+            <th data-col>{lang === 'fr' ? 'Sév.' : 'Sev.'}</th>
+            <th data-col>{t.thOs}</th>
+            <th data-col>{t.standards}</th>
+          </tr>
+        </thead>
+        <tbody id="r-body">
+          {
+            rules.map((r) => {
+              const ks = normKeys(r.data.norms);
+              return (
+                <tr
+                  data-domain={r.data.domain || ''}
+                  data-sev={r.data.severity}
+                  data-std={ks.join(' ')}
+                  data-os={r.data.supported_os.join(' ')}
+                  data-search={`${r.data.title[lang]} ${r.data.domain} ${socleOf(r.data.id)} ${ks.join(' ')}`.toLowerCase()}
+                >
+                  <td><a class="ref" href={`/${lang}/rules/${r.data.id}/`}>{socleOf(r.data.id)}</a></td>
+                  <td><a class="rule-name" href={`/${lang}/rules/${r.data.id}/`}>{r.data.title[lang]}</a></td>
+                  <td class="dom">{r.data.domain}{coverageLevel(r.data.domain) === 'shallow' && (
+                    <a class="covb" href={`/${lang}/handbook/coverage/`} title={lang === 'fr' ? 'Domaine peu couvert aujourd’hui — voir la page Couverture' : 'Shallow domain today — see the Coverage page'}>{lang === 'fr' ? 'superficiel' : 'shallow'}</a>
+                  )}</td>
+                  <td><span class={`sev ${sevClass(r.data.severity)}`}>{sevLabel(r.data.severity)}</span></td>
+                  <td class="os">{r.data.supported_os.length}</td>
+                  <td><div class="tags">{ks.map((k) => <span class="tag">{k}</span>)}</div></td>
+                </tr>
+              );
+            })
+          }
+        </tbody>
+      </table>
+    </div>
+    <p id="r-empty" hidden class="empty">{t.noResults}</p>
+  </div>
+</Base>
+
+<script>
+  const $ = (id: string) => document.getElementById(id);
+  const search = $('r-search') as HTMLInputElement | null;
+  const domain = $('r-domain') as HTMLSelectElement | null;
+  const sev = $('r-sev') as HTMLSelectElement | null;
+  const std = $('r-std') as HTMLSelectElement | null;
+  const os = $('r-os') as HTMLSelectElement | null;
+  const tbody = $('r-body');
+  const count = $('r-count');
+  const empty = $('r-empty');
+
+  if (tbody) {
+    const rows = Array.from(tbody.querySelectorAll('tr')) as HTMLElement[];
+    const apply = () => {
+      const q = (search?.value || '').trim().toLowerCase();
+      const d = domain?.value || '';
+      const s = sev?.value || '';
+      const st = std?.value || '';
+      const o = os?.value || '';
+      let n = 0;
+      for (const tr of rows) {
+        const show =
+          (!q || (tr.dataset.search || '').includes(q)) &&
+          (!d || tr.dataset.domain === d) &&
+          (!s || tr.dataset.sev === s) &&
+          (!st || (tr.dataset.std || '').split(' ').includes(st)) &&
+          (!o || (tr.dataset.os || '').split(' ').includes(o));
+        tr.hidden = !show;
+        if (show) n++;
+      }
+      if (count) count.textContent = String(n);
+      if (empty) (empty as HTMLElement).hidden = n !== 0;
+    };
+    [search, domain, sev, std, os].forEach((el) => {
+      el?.addEventListener('input', apply);
+      el?.addEventListener('change', apply);
+    });
+
+    const heads = Array.from(document.querySelectorAll('.rtable th[data-col]')) as HTMLElement[];
+    heads.forEach((th, idx) => {
+      th.addEventListener('click', () => {
+        const asc = th.dataset.dir !== 'asc';
+        heads.forEach((o) => (o.dataset.dir = ''));
+        th.dataset.dir = asc ? 'asc' : 'desc';
+        rows.sort(
+          (a, b) =>
+            (asc ? 1 : -1) *
+            a.children[idx].textContent!.trim().localeCompare(b.children[idx].textContent!.trim(), undefined, {
+              numeric: true,
+            })
+        );
+        rows.forEach((r) => tbody.appendChild(r));
+      });
+    });
+  }
+</script>
+
+<style>
+  .covb {
+    display: inline-block;
+    margin-left: 7px;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #b45309;
+    background: rgba(180, 83, 9, 0.1);
+    border: 1px solid rgba(180, 83, 9, 0.3);
+    border-radius: 20px;
+    padding: 1px 6px;
+    text-decoration: none;
+    vertical-align: middle;
+  }
+  .covb:hover {
+    border-color: #b45309;
+  }
+  .page-head {
+    padding: 54px 28px 8px; /* keep the .wrap side padding so the head aligns with the table below */
+  }
+  .filterbar {
+    align-items: flex-end; /* all controls share a clean bottom baseline, labels above */
+  }
+  .filterbar .fcount {
+    padding-bottom: 9px;
+  }
+  .fsearch-wrap {
+    flex: 1;
+    min-width: 200px;
+  }
+  .fsearch {
+    width: 100%;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--tx);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 13px;
+  }
+  .fsearch:focus {
+    outline: none;
+    border-color: var(--red);
+  }
+  .rtable thead th {
+    cursor: pointer;
+    user-select: none;
+    position: static; /* override pavois sticky (glitches in border-collapse under the 64px nav) */
+  }
+  .rtable thead th[data-dir='asc']::after {
+    content: ' ↑';
+  }
+  .rtable thead th[data-dir='desc']::after {
+    content: ' ↓';
+  }
+  .empty {
+    color: var(--tx-3);
+    padding: 24px 0;
+  }
+</style>

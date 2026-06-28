@@ -1,0 +1,89 @@
+{
+  "id": "ssh-disable-rhosts",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "SSH",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "5.1.13",
+      "2.2.6",
+      "5.1.11"
+    ],
+    "nist": [
+      "3.1.12",
+      "AC-17(a)",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)"
+    ],
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "describe command('sshd -T') do",
+    "  its('stdout') { should match(/^ignorerhosts\\s+yes$/i) }",
+    "end"
+  ],
+  "remediation": {
+    "directive": "ignorerhosts",
+    "notify": {
+      "action": "reload",
+      "service": "ssh"
+    },
+    "resource": "sshd_setting",
+    "value": "yes",
+    "verify": "sshd -t -f %{path}"
+  },
+  "title": {
+    "en": "Disable SSH Support for .rhosts Files",
+    "fr": "Désactiver la prise en charge SSH des fichiers .rhosts"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`.rhosts`/`.shosts` files implement host-based trust: they let a user from a named host log in **without supplying a credential**. This trust is based on easily-spoofed source addresses and means that compromising one host lets an attacker move trivially to every host that trusts it. `IgnoreRhosts yes` tells SSH to disregard these files entirely, closing this credential-less lateral-movement path.",
+    "fr": "Les fichiers `.rhosts`/`.shosts` implémentent une confiance basée sur l'hôte : ils permettent à un utilisateur d'un hôte nommé de se connecter **sans fournir d'identifiant**. Cette confiance repose sur des adresses source facilement usurpables, si bien que compromettre un hôte permet à un attaquant de rebondir trivialement vers tout hôte qui lui fait confiance. `IgnoreRhosts yes` indique à SSH d'ignorer entièrement ces fichiers, fermant ce chemin de mouvement latéral sans identifiant."
+  },
+  "summary": {
+    "en": "Forces **`IgnoreRhosts yes`** so SSH ignores `.rhosts` and `.shosts` files when authenticating users.",
+    "fr": "Force **`IgnoreRhosts yes`** afin que SSH ignore les fichiers `.rhosts` et `.shosts` lors de l'authentification des utilisateurs."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** value from `sshd -T`, after every `Include`, `/etc/ssh/sshd_config.d/` drop-in and `Match` block. A `Match` stanza can re-enable rhosts trust for a specific user or address range; only the resolved output exposes that, unlike a read of `/etc/ssh/sshd_config`.",
+    "fr": "Pavois lit la valeur **effective** via `sshd -T`, après chaque `Include`, drop-in de `/etc/ssh/sshd_config.d/` et bloc `Match`. Un bloc `Match` peut réactiver la confiance rhosts pour un utilisateur ou une plage d'adresses précise ; seule la sortie résolue le révèle, contrairement à une lecture de `/etc/ssh/sshd_config`."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -i '^ignorerhosts'`. Expected output is `ignorerhosts yes`.",
+    "fr": "Exécutez `sshd -T | grep -i '^ignorerhosts'`. La sortie attendue est `ignorerhosts yes`."
+  },
+  "logs": {
+    "en": "Host-based authentication attempts are logged in `/var/log/auth.log` (Debian/Ubuntu) or `journalctl -u sshd` (RHEL family); a rejected rhosts login appears as a failed authentication line.",
+    "fr": "Les tentatives d'authentification basées sur l'hôte sont journalisées dans `/var/log/auth.log` (Debian/Ubuntu) ou `journalctl -u sshd` (famille RHEL) ; une connexion rhosts rejetée apparaît comme une ligne d'échec d'authentification."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan writes the `sshd_setting` directive **`IgnoreRhosts yes`** in a managed drop-in, validates with `sshd -t`, then **reloads** the `ssh` service. Apply it with `pavois harden apply`.",
+    "fr": "Le plan harden de Pavois écrit la directive `sshd_setting` **`IgnoreRhosts yes`** dans un drop-in géré, valide avec `sshd -t`, puis **recharge** le service `ssh`. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "**Practically no impact** in any modern environment: host-based `.rhosts` trust is obsolete and almost never legitimately used. The only thing this breaks is intentional rhosts-based authentication; if you depend on it (rare), migrate to key-based auth first. The reload preserves active sessions.",
+    "fr": "**Quasiment aucun impact** dans un environnement moderne : la confiance `.rhosts` basée sur l'hôte est obsolète et presque jamais utilisée légitimement. La seule chose que cela casse est une authentification rhosts intentionnelle ; si vous en dépendez (rare), migrez d'abord vers l'authentification par clé. Le rechargement préserve les sessions actives."
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "id": "service-avahi-daemon-disabled",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "systemd services",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "2.1.2",
+      "2.2.4"
+    ],
+    "nist": [
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)"
+    ],
+    "pci-dss": "2.2.4"
+  },
+  "check": [
+    "describe service('avahi-daemon.service') do",
+    "  it { should_not be_enabled }",
+    "  it { should_not be_running }",
+    "end"
+  ],
+  "remediation": {
+    "action": [
+      "disable",
+      "stop"
+    ],
+    "name": "avahi-daemon",
+    "resource": "service"
+  },
+  "title": {
+    "en": "Disable Avahi Server Software",
+    "fr": "Désactiver le logiciel serveur Avahi"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Avahi is a zero-configuration (mDNS/DNS-SD) service-discovery daemon. It keeps an **open network port** (UDP 5353) and advertises the host on the local network, exposing it to network-based attacks and information disclosure. On servers it is almost never needed and only adds attack surface; it is appropriate only on trusted local networks where automatic discovery is genuinely required.",
+    "fr": "Avahi est un démon de découverte de services zéro-configuration (mDNS/DNS-SD). Il maintient un **port réseau ouvert** (UDP 5353) et annonce l'hôte sur le réseau local, l'exposant à des attaques réseau et à de la divulgation d'informations. Sur des serveurs il n'est presque jamais nécessaire et ne fait qu'ajouter de la surface d'attaque ; il n'est pertinent que sur des réseaux locaux de confiance où la découverte automatique est réellement requise."
+  },
+  "summary": {
+    "en": "Disables and stops the **avahi-daemon** mDNS/DNS-SD service to close its network port and stop host advertisement.",
+    "fr": "Désactive et arrête le service mDNS/DNS-SD **avahi-daemon** pour fermer son port réseau et stopper l'annonce de l'hôte."
+  },
+  "check_note": {
+    "en": "Pavois queries systemd for the **effective** state of `avahi-daemon.service` (`systemctl is-enabled` / `is-active`), so it detects the daemon running or socket-activated regardless of `/etc/avahi/avahi-daemon.conf`. A config-file scan cannot confirm whether the daemon is actually bound to UDP 5353 right now — only the live service state can.",
+    "fr": "Pavois interroge systemd sur l'état **effectif** de `avahi-daemon.service` (`systemctl is-enabled` / `is-active`), détectant ainsi un démon en cours d'exécution ou activé par socket, quel que soit `/etc/avahi/avahi-daemon.conf`. Un scan de fichier ne peut pas confirmer si le démon écoute réellement sur UDP 5353 en ce moment — seul l'état vivant du service le peut."
+  },
+  "verify": {
+    "en": "Confirm the unit is off:\n\n```sh\nsystemctl is-enabled avahi-daemon.service\nsystemctl is-active avahi-daemon.service\n```\n\nExpect `disabled` (or `masked`) and `inactive`. Also confirm nothing listens on mDNS: `ss -lunp | grep 5353` should return nothing.",
+    "fr": "Confirmez que l'unité est désactivée :\n\n```sh\nsystemctl is-enabled avahi-daemon.service\nsystemctl is-active avahi-daemon.service\n```\n\nAttendez `disabled` (ou `masked`) et `inactive`. Vérifiez aussi que rien n'écoute en mDNS : `ss -lunp | grep 5353` ne doit rien retourner."
+  },
+  "logs": {
+    "en": "Inspect the unit with `systemctl status avahi-daemon.service` and `journalctl -u avahi-daemon.service`. Confirm the listening socket is gone with `ss -lunp 'sport = :5353'`. Package presence: `dpkg -s avahi-daemon` or `rpm -q avahi`.",
+    "fr": "Inspectez l'unité avec `systemctl status avahi-daemon.service` et `journalctl -u avahi-daemon.service`. Confirmez la disparition du socket d'écoute avec `ss -lunp 'sport = :5353'`. Présence du paquet : `dpkg -s avahi-daemon` ou `rpm -q avahi`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the `service` resource named `avahi-daemon`: it runs **disable** (no start at boot) then **stop** (not running now). Applied with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource `service` nommée `avahi-daemon` : il exécute **disable** (pas de démarrage au boot) puis **stop** (arrêt immédiat). Appliqué avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Misconfiguration risk: a running Avahi daemon advertises the host and exposes a network port to local attackers. **Precautions:** disabling it removes mDNS-based discovery, so `.local` hostname resolution and automatic discovery of network printers or shares will stop working for this host. On servers this is normally desirable; on desktops or appliances that rely on Bonjour/Zeroconf printing or casting, confirm those workflows are not needed before applying. There is no remote-login or lockout risk.",
+    "fr": "Risque de mauvaise configuration : un démon Avahi actif annonce l'hôte et expose un port réseau aux attaquants locaux. **Précautions :** le désactiver supprime la découverte basée sur mDNS, donc la résolution des noms `.local` et la découverte automatique d'imprimantes ou de partages réseau cesseront de fonctionner pour cet hôte. Sur des serveurs c'est normalement souhaitable ; sur des postes ou appliances reposant sur l'impression Bonjour/Zeroconf ou le casting, vérifiez que ces usages ne sont pas nécessaires avant d'appliquer. Aucun risque de connexion à distance ni de blocage."
+  }
+}

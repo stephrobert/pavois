@@ -1,0 +1,78 @@
+{
+  "id": "filegroupowner-etc-shells",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R50",
+    "cis": "7.1.9",
+    "nist": [
+      "AC-3",
+      "MP-2"
+    ]
+  },
+  "check": [
+    "only_if { file('/etc/shells').exist? }",
+    "describe file('/etc/shells') do",
+    "  its('gid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "group": "root",
+    "path": "/etc/shells",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Group Who Owns /etc/shells File",
+    "fr": "Vérifier le groupe propriétaire du fichier /etc/shells"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `/etc/shells` file lists the full pathnames of the login shells trusted on the system. It is consulted by `chsh`, FTP daemons and other programs to decide whether an account may log in interactively. If it is group-owned by a non-privileged group, an attacker could add a rogue interpreter (e.g. a wrapper that grants extra access) and turn it into a **trusted login shell**. Owning it by group **root** (gid `0`) prevents unauthorized edits.",
+    "fr": "Le fichier `/etc/shells` liste les chemins complets des shells de connexion approuvés sur le système. Il est consulté par `chsh`, les démons FTP et d'autres programmes pour décider si un compte peut ouvrir une session interactive. Si son groupe propriétaire n'est pas privilégié, un attaquant pourrait y ajouter un interpréteur malveillant et le faire passer pour un **shell de connexion de confiance**. Le faire appartenir au groupe **root** (gid `0`) empêche toute modification non autorisée."
+  },
+  "summary": {
+    "en": "Ensures the trusted-shells list `/etc/shells` is owned by group **root** (gid `0`).",
+    "fr": "Garantit que la liste des shells de confiance `/etc/shells` appartient au groupe **root** (gid `0`)."
+  },
+  "check_note": {
+    "en": "Pavois reads the real group id of `/etc/shells` via InSpec's `file` resource and asserts `gid == 0`. Because it checks the **effective** filesystem ownership rather than what a config-management template claims, it detects drift introduced after the last deployment (manual `chgrp`, an unpacked tarball, a package that reset the group).",
+    "fr": "Pavois lit l'identifiant de groupe réel de `/etc/shells` via la ressource InSpec `file` et vérifie `gid == 0`. Comme il contrôle la propriété **effective** du système de fichiers plutôt que ce qu'affirme un modèle de gestion de configuration, il détecte les dérives survenues après le dernier déploiement (`chgrp` manuel, archive décompressée, paquet ayant réinitialisé le groupe)."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /etc/shells`. Expected output: `root 0`.",
+    "fr": "Exécutez `stat -c '%G %g' /etc/shells`. Sortie attendue : `root 0`."
+  },
+  "logs": {
+    "en": "Not logged by default. Add an auditd watch — `auditctl -w /etc/shells -p wa -k system-locale` — then changes appear in `/var/log/audit/audit.log` (filter with `grep '/etc/shells' /var/log/audit/audit.log`).",
+    "fr": "Non journalisé par défaut. Ajoutez une surveillance auditd — `auditctl -w /etc/shells -p wa -k system-locale` — les modifications apparaissent alors dans `/var/log/audit/audit.log` (filtrez avec `grep '/etc/shells' /var/log/audit/audit.log`)."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is wired for this rule, so it must be applied **manually**: `chgrp 0 /etc/shells`. Re-run `pavois harden verify` afterwards.",
+    "fr": "Aucune remédiation automatique n'est câblée pour cette règle ; elle doit être appliquée **manuellement** : `chgrp 0 /etc/shells`. Relancez ensuite `pavois harden verify`."
+  },
+  "impact": {
+    "en": "A loosely-owned `/etc/shells` lets an attacker register a malicious login shell. Resetting the group to **root** is safe: the file is world-readable and only needs root to write. No service or login flow breaks. Precaution: keep its mode at `0644` so programs that consult it (FTP, `chsh`) can still read it.",
+    "fr": "Un `/etc/shells` au groupe trop permissif permet à un attaquant d'enregistrer un shell de connexion malveillant. Remettre le groupe à **root** est sans danger : le fichier est lisible par tous et seul root doit pouvoir l'écrire. Aucun service ni flux de connexion n'est cassé. Précaution : conservez le mode `0644` pour que les programmes qui le consultent (FTP, `chsh`) puissent toujours le lire."
+  }
+}

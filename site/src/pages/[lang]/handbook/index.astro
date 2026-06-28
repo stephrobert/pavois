@@ -1,0 +1,66 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+import { ui, languages, type Lang } from '../../../i18n/ui';
+
+export function getStaticPaths() {
+  return Object.keys(languages).map((lang) => ({ params: { lang } }));
+}
+const { lang } = Astro.params as { lang: Lang };
+const t = ui[lang];
+
+const all = (await getCollection('handbook')).sort((a, b) => (a.data.order || 0) - (b.data.order || 0));
+const SECTIONS = ['foundations', 'domains', 'tooling'] as const;
+const secLabel: Record<string, { en: string; fr: string }> = {
+  foundations: { en: 'Foundations', fr: 'Fondations' },
+  domains: { en: 'Domains', fr: 'Domaines' },
+  tooling: { en: 'Tooling', fr: 'Outillage' },
+};
+const grouped = SECTIONS.map((s) => ({
+  section: s,
+  pages: all.filter((p) => p.data.section === s),
+})).filter((g) => g.pages.length);
+---
+
+<Base title={`Pavois — ${t.navHandbook}`} description={t.handbookIntro} lang={lang} breadcrumbs={[{ name: 'Pavois', path: `/${lang}/` }, { name: t.navHandbook, path: `/${lang}/handbook/` }]}>
+  <div class="wrap page-head">
+    <div class="crumb"><a href={`/${lang}/`}>Pavois</a> / {lang === 'fr' ? 'manuel' : 'handbook'}</div>
+    <span class="eyebrow">{lang === 'fr' ? 'manuel' : 'handbook'}</span>
+    <h1>{lang === 'fr' ? 'Manuel de durcissement' : 'Hardening handbook'}</h1>
+    <p class="lede">{t.handbookIntro}</p>
+  </div>
+
+  <div class="wrap hb-wrap">
+    {
+      grouped.map((g) => (
+        <div class="hb-group">
+          <div class="ghead">
+            <h2>{secLabel[g.section][lang]}</h2>
+            <span class="cnt">
+              {g.pages.length} {lang === 'fr' ? 'chapitres' : 'chapters'}
+            </span>
+          </div>
+          <div class="hb-cards">
+            {g.pages.map((p) => (
+              <a class="hb-card" href={`/${lang}/handbook/${p.data.id}/`}>
+                <h3>
+                  {p.data.title[lang]} <span class="go">→</span>
+                </h3>
+                {p.data.summary && <p>{p.data.summary[lang]}</p>}
+              </a>
+            ))}
+          </div>
+        </div>
+      ))
+    }
+  </div>
+</Base>
+
+<style>
+  .page-head {
+    padding: 54px 28px 8px;
+  }
+  .hb-wrap {
+    padding-bottom: 88px;
+  }
+</style>

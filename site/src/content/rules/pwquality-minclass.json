@@ -1,0 +1,80 @@
+{
+  "id": "pwquality-minclass",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Passwords (pwquality)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R68",
+    "cis": "5.3.3.2.3",
+    "nist": [
+      "CM-6(a)",
+      "IA-5(1)(a)",
+      "IA-5(4)",
+      "IA-5(c)"
+    ]
+  },
+  "check": [
+    "describe command('v=$(grep -rh \\'^[[:space:]]*minclass[[:space:]]*=\\' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ 2>/dev/null | tail -1 | grep -oE \\'[-]?[0-9]+\\'); { [ -n \"$v\" ] && [ \"$v\" -ge 4 ] && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "file": "/etc/security/pwquality.conf.d/99-pavois.conf",
+    "key": "minclass",
+    "resource": "keyval",
+    "value": "4"
+  },
+  "title": {
+    "en": "Ensure PAM Enforces Password Requirements - Minimum Different Categories",
+    "fr": "Garantir que PAM impose des exigences de mot de passe - Minimum de categories differentes"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "A complex password increases the time and resources needed to compromise it. The `minclass` parameter requires a minimum number of distinct **character categories** (lowercase, uppercase, digits, special). Demanding 4 categories enlarges the search space far more than length alone and resists pattern-based guessing. Without it, a long but single-category password (e.g. all letters) remains weak against dictionary and rule-based attacks.",
+    "fr": "Un mot de passe complexe augmente le temps et les ressources necessaires pour le compromettre. Le parametre `minclass` exige un nombre minimal de **categories de caracteres** distinctes (minuscules, majuscules, chiffres, speciaux). Exiger 4 categories elargit l'espace de recherche bien plus que la seule longueur et resiste au devinement par motifs. Sans cela, un mot de passe long mais d'une seule categorie (ex. uniquement des lettres) reste faible face aux attaques par dictionnaire et par regles."
+  },
+  "summary": {
+    "en": "Forces `pam_pwquality` to require characters from at least **4 distinct classes** (lowercase, uppercase, digits, special) in every new password by setting `minclass = 4`.",
+    "fr": "Force `pam_pwquality` a exiger des caracteres d'au moins **4 classes distinctes** (minuscules, majuscules, chiffres, speciaux) dans chaque nouveau mot de passe en posant `minclass = 4`."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** `minclass` value across `/etc/security/pwquality.conf` **and** all drop-ins under `/etc/security/pwquality.conf.d/`, keeping the **last** definition that wins at runtime. A file-based scanner reading only the main config would miss a value set in a drop-in. The control passes only when the resolved value is `>= 4`.",
+    "fr": "Pavois lit la valeur **effective** de `minclass` a travers `/etc/security/pwquality.conf` **et** tous les drop-ins sous `/etc/security/pwquality.conf.d/`, en conservant la **derniere** definition qui l'emporte a l'execution. Un scanner base sur les fichiers lisant uniquement la config principale manquerait une valeur posee dans un drop-in. Le controle passe uniquement quand la valeur resolue est `>= 4`."
+  },
+  "verify": {
+    "en": "Run `grep -rh '^[[:space:]]*minclass' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. The effective line must read `minclass = 4` (or any value `>= 4`).",
+    "fr": "Executez `grep -rh '^[[:space:]]*minclass' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. La ligne effective doit indiquer `minclass = 4` (ou toute valeur `>= 4`)."
+  },
+  "logs": {
+    "en": "Password changes rejected for too few character classes are logged via PAM in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL family) with `pam_pwquality` messages like **\"not enough character classes\"**. Inspect the live setting with `grep -r minclass /etc/security/pwquality.conf.d/`.",
+    "fr": "Les changements de mot de passe rejetes pour trop peu de classes de caracteres sont journalises via PAM dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL) avec des messages `pam_pwquality` comme **\"not enough character classes\"**. Inspectez le reglage actif avec `grep -r minclass /etc/security/pwquality.conf.d/`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` writes `minclass = 4` to the drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via the idempotent `keyval` resource. The `99-` prefix ensures it overrides any earlier value. No service restart is needed; it applies at the next password change.",
+    "fr": "`pavois harden apply` ecrit `minclass = 4` dans le drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via la ressource idempotente `keyval`. Le prefixe `99-` garantit qu'il surcharge toute valeur anterieure. Aucun redemarrage n'est requis ; cela s'applique au prochain changement de mot de passe."
+  },
+  "impact": {
+    "en": "Requiring all 4 classes is strict and may conflict with per-class `credit` settings; note that `minclass` and the `Xcredit` parameters interact in pwquality. Existing passwords stay valid; only **new** passwords must span 4 classes. Lockout risk is low, but before applying confirm provisioning and rotation tooling generate four-class passwords, and consider that some org policies prefer length over forced classes.",
+    "fr": "Exiger les 4 classes est strict et peut entrer en conflit avec les reglages `credit` par classe ; notez que `minclass` et les parametres `Xcredit` interagissent dans pwquality. Les mots de passe existants restent valides ; seuls les **nouveaux** mots de passe doivent couvrir 4 classes. Le risque de blocage est faible, mais avant d'appliquer, confirmez que vos outils de provisionnement et de rotation generent des mots de passe a quatre classes, et considerez que certaines politiques d'entreprise privilegient la longueur aux classes imposees."
+  }
+}

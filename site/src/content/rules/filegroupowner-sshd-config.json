@@ -1,0 +1,82 @@
+{
+  "id": "filegroupowner-sshd-config",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R50",
+    "cis": [
+      "5.1.1",
+      "5.1.2"
+    ],
+    "nist": [
+      "AC-17(a)",
+      "AC-6(1)",
+      "CM-6(a)"
+    ]
+  },
+  "check": [
+    "only_if { file('/etc/ssh/sshd_config').exist? }",
+    "describe file('/etc/ssh/sshd_config') do",
+    "  its('gid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "group": "root",
+    "path": "/etc/ssh/sshd_config",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Group Who Owns SSH Server config file",
+    "fr": "Verifier le groupe proprietaire du fichier de configuration du serveur SSH"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/etc/ssh/sshd_config` controls every security feature of the SSH daemon — authentication methods, root login, ciphers, port. If a non-root group owns it, an account in that group could weaken these settings (for example re-enabling password or root login) and open a remote foothold. Setting the group to `root` (GID 0) ensures only the most privileged group can alter the daemon's configuration.",
+    "fr": "`/etc/ssh/sshd_config` controle toutes les fonctions de securite du demon SSH — methodes d'authentification, connexion root, algorithmes, port. Si un groupe non root le possede, un compte de ce groupe pourrait affaiblir ces reglages (par exemple reactiver la connexion par mot de passe ou la connexion root) et ouvrir un acces distant. Definir le groupe sur `root` (GID 0) garantit que seul le groupe le plus privilegie peut modifier la configuration du demon."
+  },
+  "summary": {
+    "en": "Ensures `/etc/ssh/sshd_config` is group-owned by `root` (GID 0) so only the root group can modify the SSH daemon's configuration.",
+    "fr": "Garantit que `/etc/ssh/sshd_config` appartient au groupe `root` (GID 0) afin que seul le groupe root puisse modifier la configuration du demon SSH."
+  },
+  "check_note": {
+    "en": "Pavois reads the **resolved** numeric GID of `/etc/ssh/sshd_config` via the InSpec `file` resource and asserts it equals `0`. It checks the live inode metadata at audit time, so the result reflects the file's actual ownership rather than a packaging default or a documented expectation.",
+    "fr": "Pavois lit le GID numerique **resolu** de `/etc/ssh/sshd_config` via la ressource InSpec `file` et verifie qu'il vaut `0`. Il inspecte les metadonnees reelles de l'inode au moment de l'audit, de sorte que le resultat reflete la propriete reelle du fichier plutot qu'une valeur par defaut de paquet ou une attente documentee."
+  },
+  "verify": {
+    "en": "Run `stat -c '%g %G' /etc/ssh/sshd_config`. The expected output is:\n\n- `0 root`\n\nList it with `ls -l /etc/ssh/sshd_config` to confirm the group column shows `root`.",
+    "fr": "Executez `stat -c '%g %G' /etc/ssh/sshd_config`. La sortie attendue est :\n\n- `0 root`\n\nAffichez-le avec `ls -l /etc/ssh/sshd_config` pour confirmer que la colonne du groupe indique `root`."
+  },
+  "logs": {
+    "en": "SSH config changes surface when the daemon restarts: check `journalctl -u ssh` (or `journalctl -u sshd` on RHEL-family) and `/var/log/auth.log`. To trace ownership edits, add an auditd watch (`auditctl -w /etc/ssh/sshd_config -p wa -k sshd_conf`) and grep `/var/log/audit/audit.log` for `key=\"sshd_conf\"`.",
+    "fr": "Les changements de configuration SSH apparaissent au redemarrage du demon : consultez `journalctl -u ssh` (ou `journalctl -u sshd` sur la famille RHEL) et `/var/log/auth.log`. Pour tracer les modifications de proprietaire, ajoutez une surveillance auditd (`auditctl -w /etc/ssh/sshd_config -p wa -k sshd_conf`) et recherchez `key=\"sshd_conf\"` dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "This rule has no automated harden plan in Pavois. Apply it manually by setting the group to `root`: `chgrp root /etc/ssh/sshd_config` (or `chown :root /etc/ssh/sshd_config`).",
+    "fr": "Cette regle n'a pas de plan de durcissement automatise dans Pavois. Appliquez-la manuellement en definissant le groupe sur `root` : `chgrp root /etc/ssh/sshd_config` (ou `chown :root /etc/ssh/sshd_config`)."
+  },
+  "impact": {
+    "en": "If the wrong group owns this file, members of that group could quietly relax SSH hardening and create a remote-access backdoor. Fixing it only changes group ownership and does not alter the daemon's behavior, so there is no service disruption. **Precaution:** ensure no legitimate automation edits `sshd_config` under a non-root group; after correcting ownership, validate the config with `sshd -t` before restarting the daemon to avoid locking yourself out.",
+    "fr": "Si le mauvais groupe possede ce fichier, ses membres pourraient discretement assouplir le durcissement SSH et creer une porte derobee d'acces distant. La correction ne modifie que le groupe proprietaire et n'altere pas le comportement du demon, donc il n'y a pas d'interruption de service. **Precaution :** assurez-vous qu'aucune automatisation legitime ne modifie `sshd_config` sous un groupe non root ; apres correction, validez la configuration avec `sshd -t` avant de redemarrer le demon pour eviter de vous verrouiller hors de la machine."
+  }
+}

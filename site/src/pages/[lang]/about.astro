@@ -1,0 +1,149 @@
+---
+import Base from '../../layouts/Base.astro';
+import { languages, type Lang } from '../../i18n/ui';
+
+export function getStaticPaths() {
+  return Object.keys(languages).map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params as { lang: Lang };
+const origin = (Astro.site?.toString() ?? 'https://pavois.dev/').replace(/\/$/, '');
+
+const t = {
+  title: { en: 'About Pavois', fr: 'À propos de Pavois' },
+  desc: {
+    en: 'Pavois is an effective Linux compliance and hardening tool by Stéphane Robert: it audits the resolved running configuration, maps each control to five standards, grades A to E and hardens as code.',
+    fr: 'Pavois est un outil de conformité et de durcissement Linux effectif par Stéphane Robert : il audite la configuration résolue en exécution, mappe chaque contrôle à cinq normes, note de A à E et durcit en code.',
+  },
+};
+// AboutPage + the author Person (E-E-A-T). The Person uses this page as its on-site url and the
+// real external profiles as sameAs.
+const jsonld = [
+  {
+    '@type': 'AboutPage',
+    name: t.title[lang],
+    url: `${origin}/${lang}/about/`,
+    inLanguage: lang === 'fr' ? 'fr-FR' : 'en-US',
+    about: { '@id': `${origin}/#software` },
+  },
+  {
+    '@type': 'Person',
+    '@id': `${origin}/#author`,
+    name: 'Stéphane Robert',
+    url: `${origin}/${lang}/about/`,
+    jobTitle: 'DevOps Engineer',
+    knowsAbout: ['Linux hardening', 'DevSecOps', 'compliance', 'CIS Benchmarks', 'ANSSI BP-028'],
+    sameAs: ['https://blog.stephane-robert.info', 'https://github.com/stephrobert'],
+  },
+];
+const crumbs = [
+  { name: 'Pavois', path: `/${lang}/` },
+  { name: t.title[lang], path: `/${lang}/about/` },
+];
+---
+
+<Base
+  title={`${t.title[lang]} · Pavois`}
+  description={t.desc[lang]}
+  lang={lang}
+  breadcrumbs={crumbs}
+  jsonld={jsonld}
+>
+  <article class="wrap about">
+    <span class="eyebrow">{lang === 'fr' ? 'À propos' : 'About'}</span>
+    <h1>{t.title[lang]}</h1>
+
+    {lang === 'fr' ? (
+      <div class="prose">
+        <p class="lede">
+          Pavois audite la configuration que tes services <b>appliquent réellement</b> (sshd&nbsp;-T,
+          sysctl, systemctl, auditctl), pas les fichiers sur disque. Il relie chaque contrôle à CIS,
+          ANSSI BP-028, NIST, PCI-DSS et STIG, note le résultat de A à E, et le durcit en code via un
+          plan Chef conscient de l'état. Un PASS porte un verdict qualifié : actif maintenant versus
+          survit au reboot.
+        </p>
+        <h2>L'auteur</h2>
+        <p>
+          Pavois est conçu et maintenu par <b>Stéphane Robert</b>, ingénieur DevOps. Il écrit sur le
+          durcissement, le cloud et l'automatisation sur son blog. Le projet prolonge ce travail :
+          rendre la conformité Linux effective, opposable et reproductible.
+        </p>
+        <p>
+          Pour aller plus loin, ses guides de durcissement sont sur
+          <a href="https://blog.stephane-robert.info/docs/securiser/" target="_blank" rel="noopener">
+            blog.stephane-robert.info</a>.
+        </p>
+        <h2>Le projet</h2>
+        <p>
+          Pavois est 100% CINC/InSpec, sans agent, pilotable en CI. Les définitions de contrôles
+          dérivent de ComplianceAsCode/SSG (BSD-3) et sont recoupées avec ansible-lockdown. Voir la
+          page <a href={`/${lang}/attribution/`}>Attribution &amp; licences</a>.
+        </p>
+      </div>
+    ) : (
+      <div class="prose">
+        <p class="lede">
+          Pavois audits the configuration your services <b>actually run</b> (sshd&nbsp;-T, sysctl,
+          systemctl, auditctl), not the files on disk. It maps each control to CIS, ANSSI BP-028,
+          NIST, PCI-DSS and STIG, grades the result A to E, and hardens it as code with a state-aware
+          Chef plan. A PASS carries a qualified verdict: running now versus reboot-survivable.
+        </p>
+        <h2>The author</h2>
+        <p>
+          Pavois is designed and maintained by <b>Stéphane Robert</b>, a DevOps engineer who writes
+          about hardening, cloud and automation on his blog. The project extends that work: making
+          effective Linux compliance opposable and reproducible.
+        </p>
+        <p>
+          To go further, his hardening guides are on
+          <a href="https://blog.stephane-robert.info/docs/securiser/" target="_blank" rel="noopener">
+            blog.stephane-robert.info</a>.
+        </p>
+        <h2>The project</h2>
+        <p>
+          Pavois is 100% CINC/InSpec, agentless, CI-friendly. Control definitions derive from
+          ComplianceAsCode/SSG (BSD-3) and are cross-validated against ansible-lockdown. See the
+          <a href={`/${lang}/attribution/`}>Attribution &amp; licensing</a> page.
+        </p>
+      </div>
+    )}
+
+    <p class="about-links">
+      <a class="ext" href="https://blog.stephane-robert.info" target="_blank" rel="noopener">blog.stephane-robert.info ↗</a>
+      <a class="ext" href="https://github.com/stephrobert" target="_blank" rel="noopener">github.com/stephrobert ↗</a>
+    </p>
+  </article>
+</Base>
+
+<style>
+  .about {
+    max-width: 760px;
+    padding-top: 40px;
+    padding-bottom: 60px;
+  }
+  .about h1 {
+    font-size: clamp(2rem, 5vw, 3rem);
+    margin: 8px 0 20px;
+  }
+  .about .lede {
+    font-size: 1.12rem;
+    line-height: 1.6;
+    color: var(--color-dim);
+  }
+  .about h2 {
+    margin-top: 32px;
+  }
+  .about-links {
+    margin-top: 36px;
+    padding-top: 20px;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+  }
+  .about-links a {
+    color: var(--color-accent);
+  }
+</style>

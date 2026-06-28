@@ -1,0 +1,661 @@
+---
+import '../styles/global.css';
+import '../styles/pavois.css'; // maquette design system (loaded after global.css; its components win)
+import { ui, type Lang } from '../i18n/ui';
+import { INDEXABLE } from '../config/site';
+
+interface Crumb {
+  name: string;
+  path: string;
+}
+interface Props {
+  title: string;
+  description?: string;
+  lang: Lang;
+  ogType?: 'website' | 'article';
+  schema?: 'TechArticle' | 'Article' | 'CollectionPage';
+  datePublished?: string;
+  dateModified?: string;
+  image?: string;
+  breadcrumbs?: Crumb[];
+  jsonld?: Record<string, unknown> | Record<string, unknown>[];
+  noindex?: boolean;
+}
+const {
+  title,
+  description = '',
+  lang,
+  ogType = 'website',
+  schema = 'TechArticle',
+  datePublished,
+  dateModified,
+  image = '/og.png',
+  breadcrumbs = [],
+  jsonld,
+  noindex = false,
+} = Astro.props;
+
+const other: Lang = lang === 'fr' ? 'en' : 'fr';
+const otherPath = Astro.url.pathname.replace(`/${lang}`, `/${other}`);
+
+// Absolute URLs (Astro.site = https://pavois.dev). Canonical, OG image and hreflang all need them.
+const origin = (Astro.site?.toString() ?? 'https://pavois.dev/').replace(/\/$/, '');
+const abs = (p: string) => new URL(p, origin + '/').toString();
+const canonical = abs(Astro.url.pathname);
+const otherUrl = abs(otherPath);
+const enUrl = lang === 'en' ? canonical : otherUrl; // x-default points to English
+const ogImage = abs(image);
+const ogLocale = lang === 'fr' ? 'fr_FR' : 'en_US';
+const altLocale = lang === 'fr' ? 'en_US' : 'fr_FR';
+const inLanguage = lang === 'fr' ? 'fr-FR' : 'en-US';
+
+// JSON-LD graph: Organization + WebSite (with a sitelinks SearchAction) on every page; a
+// TechArticle/Article when the page is article-typed; a BreadcrumbList when crumbs are given;
+// plus any page-specific node (e.g. FAQPage). Dates are real (passed from the page's git date).
+const org = {
+  '@type': 'Organization',
+  '@id': `${origin}/#org`,
+  name: 'Pavois',
+  url: `${origin}/`,
+  logo: `${origin}/favicon.svg`,
+};
+// E-E-A-T: the content is authored by a real, identifiable person (the site's author), published
+// under the Pavois org. Google wants an author array of Person with url + sameAs profiles.
+const author = {
+  '@type': 'Person',
+  '@id': `${origin}/#author`,
+  name: 'Stéphane Robert',
+  url: 'https://blog.stephane-robert.info',
+  jobTitle: 'DevOps Engineer',
+  sameAs: ['https://blog.stephane-robert.info', 'https://github.com/stephrobert'],
+};
+const website = {
+  '@type': 'WebSite',
+  '@id': `${origin}/#website`,
+  url: `${origin}/`,
+  name: 'Pavois',
+  inLanguage,
+  publisher: { '@id': `${origin}/#org` },
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: { '@type': 'EntryPoint', urlTemplate: `${origin}/${lang}/rules/?q={search_term_string}` },
+    'query-input': 'required name=search_term_string',
+  },
+};
+// Google's Article wants a full ISO-8601 date-time WITH timezone (a bare YYYY-MM-DD trips
+// "incorrect date-time value" / "missing timezone"). The authored data is a date only, so anchor
+// it at 00:00 UTC. Pass-through anything already carrying a time.
+const isoDateTime = (d?: string) =>
+  d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? `${d}T00:00:00+00:00` : d;
+const pub = isoDateTime(datePublished);
+const mod = isoDateTime(dateModified);
+
+const graph: Record<string, unknown>[] = [org, website];
+if (ogType === 'article') {
+  graph.push({
+    '@type': schema,
+    headline: title,
+    description,
+    inLanguage,
+    isAccessibleForFree: true,
+    url: canonical,
+    image: [ogImage],
+    ...(pub ? { datePublished: pub } : {}),
+    ...(mod ? { dateModified: mod } : {}),
+    author: [author],
+    publisher: { '@id': `${origin}/#org` },
+    isPartOf: { '@id': `${origin}/#website` },
+    mainEntityOfPage: canonical,
+  });
+}
+if (breadcrumbs.length) {
+  graph.push({
+    '@type': 'BreadcrumbList',
+    itemListElement: breadcrumbs.map((b, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: b.name,
+      item: abs(b.path),
+    })),
+  });
+}
+const extra = jsonld ? (Array.isArray(jsonld) ? jsonld : [jsonld]) : [];
+const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extra] };
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <script is:inline>
+      // Anti-FOUC: apply the theme before first paint.
+      (() => {
+        try {
+          const s = localStorage.getItem('theme');
+          const dark = s === 'dark' || (!s && matchMedia('(prefers-color-scheme: dark)').matches);
+          // pavois.css defines tokens on [data-theme=dark|light] — always set it explicitly.
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+          document.documentElement.dataset.glossaryTooltips =
+            localStorage.getItem('glossary-tooltips') || 'disabled';
+        } catch {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      })();
+    </script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <meta name="theme-color" content="#0a0c10" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {(noindex || !INDEXABLE) && <meta name="robots" content="noindex, nofollow" />}
+    <link rel="alternate" hreflang={lang} href={canonical} />
+    <link rel="alternate" hreflang={other} href={otherUrl} />
+    <link rel="alternate" hreflang="x-default" href={enUrl} />
+    <link rel="alternate" type="application/rss+xml" title="Pavois Blog" href={`/${lang}/rss.xml`} />
+    <meta property="og:site_name" content="Pavois" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:locale" content={ogLocale} />
+    <meta property="og:locale:alternate" content={altLocale} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <script type="application/ld+json" set:html={JSON.stringify(ldGraph)} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-grid">
+    <header class="nav">
+      <div class="wrap nav-in">
+        <a class="brand" href={`/${lang}/`}>
+          <svg class="brand-logo" viewBox="0 0 32 32" fill="none" aria-hidden="true"
+            ><path d="M8 7 Q16 5 24 7 L24 16 Q24 22 16 27 Q8 22 8 16 Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"
+            ></path><path d="M16 8 L17.3 11 L16 26 L14.7 11 Z" fill="#dc2626"></path></svg>
+          Pavois
+        </a>
+        <nav class="nav-links">
+          <details class="std-dd">
+            <summary>{ui[lang].navDocs}</summary>
+            <div class="std-menu">
+              <a href={`/${lang}/start/`}>{lang === 'fr' ? 'Démarrer' : 'Get started'}</a>
+              <a href={`/${lang}/docs/`}>{lang === 'fr' ? 'Comment ça marche' : 'How it works'}</a>
+              <a href={`/${lang}/docs/tools/`}>{lang === 'fr' ? 'Comparaison d’outils' : 'Tool comparison'}</a>
+              <a href={`/${lang}/downloads/`}>{lang === 'fr' ? 'Téléchargements (OSCAL)' : 'Downloads (OSCAL)'}</a>
+            </div>
+          </details>
+          <a href={`/${lang}/handbook/`}>{ui[lang].navHandbook}</a>
+          <a href={`/${lang}/rules/`}>{ui[lang].rules}</a>
+          <details class="std-dd">
+            <summary>{ui[lang].standards}</summary>
+            <div class="std-menu">
+              <a href={`/${lang}/standards/cis/`}>CIS</a>
+              <a href={`/${lang}/standards/bp28/`}>ANSSI-BP-028</a>
+              <a href={`/${lang}/standards/nist/`}>NIST</a>
+              <a href={`/${lang}/standards/pci-dss/`}>PCI-DSS</a>
+              <a href={`/${lang}/standards/stig/`}>STIG</a>
+            </div>
+          </details>
+          <a href={`/${lang}/blog/`}>Blog</a>
+          <a href={`/${lang}/glossary/`}>{ui[lang].navGlossary}</a>
+        </nav>
+        <div class="nav-spacer"></div>
+        <div class="nav-meta">
+          <a class="lang" href={otherPath}>{other.toUpperCase()}</a>
+          <button id="gloss-toggle" class="toggle" aria-label="Glossary tooltips" title="Glossary tooltips">ⓘ</button>
+          <button id="theme-toggle" class="toggle" aria-label="theme">◐</button>
+          <button
+            class="hamburger"
+            id="navBtn"
+            aria-label="Open menu"
+            aria-controls="navdrawer"
+            aria-expanded="false"><span></span><span></span><span></span></button>
+        </div>
+      </div>
+    </header>
+    <div class="nav-overlay" id="navOverlay"></div>
+    <aside class="nav-drawer" id="navdrawer" aria-hidden="true">
+      <div class="drawer-head">
+        <a class="brand" href={`/${lang}/`}>
+          <svg class="brand-logo sm" viewBox="0 0 32 32" fill="none" aria-hidden="true"
+            ><path d="M8 7 Q16 5 24 7 L24 16 Q24 22 16 27 Q8 22 8 16 Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"
+            ></path><path d="M16 8 L17.3 11 L16 26 L14.7 11 Z" fill="#dc2626"></path></svg>
+          Pavois
+        </a>
+        <button class="drawer-close" id="navClose" aria-label="Close menu">✕</button>
+      </div>
+      <nav class="drawer-links">
+        <a href={`/${lang}/start/`}>{lang === 'fr' ? 'Démarrer' : 'Get started'}</a>
+        <a href={`/${lang}/docs/`}>{lang === 'fr' ? 'Docs — Comment ça marche' : 'Docs — How it works'}</a>
+        <a href={`/${lang}/docs/tools/`}>{lang === 'fr' ? 'Docs — Comparaison d’outils' : 'Docs — Tool comparison'}</a>
+        <a href={`/${lang}/downloads/`}>{lang === 'fr' ? 'Téléchargements (OSCAL)' : 'Downloads (OSCAL)'}</a>
+        <a href={`/${lang}/handbook/`}>{ui[lang].navHandbook}</a>
+        <a href={`/${lang}/rules/`}>{ui[lang].rules}</a>
+        <a href={`/${lang}/standards/cis/`}>{ui[lang].standards} — CIS</a>
+        <a href={`/${lang}/standards/bp28/`}>{ui[lang].standards} — ANSSI-BP-028</a>
+        <a href={`/${lang}/standards/nist/`}>{ui[lang].standards} — NIST</a>
+        <a href={`/${lang}/standards/pci-dss/`}>{ui[lang].standards} — PCI-DSS</a>
+        <a href={`/${lang}/standards/stig/`}>{ui[lang].standards} — STIG</a>
+        <a href={`/${lang}/blog/`}>Blog</a>
+        <a href={`/${lang}/glossary/`}>{ui[lang].navGlossary}</a>
+      </nav>
+      <div class="drawer-foot">
+        <a class="lang" href={otherPath}>{other.toUpperCase()}</a>
+      </div>
+    </aside>
+    <main><slot /></main>
+    <footer class="site-foot">
+      <div class="wrap">
+        <p class="mono">
+          Pavois · {lang === 'fr' ? 'Conformité Linux effective (CINC/InSpec)' : 'Effective Linux Compliance (CINC/InSpec)'}
+        </p>
+        <p class="foot-legal">
+          {
+            lang === 'fr'
+              ? "Pavois — profil Linux exécutable de SOCLE (CINC/InSpec). Définitions de contrôles dérivées de ComplianceAsCode/SSG (BSD-3). CIS Benchmarks, PCI DSS, STIG et NIST sont des marques de leurs détenteurs ; Pavois n'est ni affilié ni approuvé par eux. Le contenu NIST/STIG est du domaine public US."
+              : 'Pavois — the executable SOCLE Linux profile (CINC/InSpec). Control definitions derive from ComplianceAsCode/SSG (BSD-3). CIS Benchmarks, PCI DSS, STIG and NIST are trademarks of their respective owners; Pavois is not affiliated with or endorsed by them. NIST/STIG content is U.S. Government public domain.'
+          }
+        </p>
+        <a class="foot-link" href={`/${lang}/about/`}>
+          {lang === 'fr' ? 'À propos →' : 'About →'}
+        </a>
+        <a class="foot-link" href={`/${lang}/attribution/`}>
+          {lang === 'fr' ? 'Attribution & licences →' : 'Attribution & licensing →'}
+        </a>
+      </div>
+    </footer>
+    <button id="to-top" aria-label="Back to top" hidden>↑</button>
+    <script is:inline>
+      document.getElementById('theme-toggle')?.addEventListener('click', () => {
+        const el = document.documentElement;
+        const next = el.dataset.theme === 'dark' ? 'light' : 'dark';
+        el.dataset.theme = next;
+        localStorage.setItem('theme', next);
+      });
+
+      const toTop = document.getElementById('to-top');
+      if (toTop) {
+        const onScroll = () => {
+          toTop.hidden = window.scrollY < 400;
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+        toTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+      }
+
+      // Close the Standards dropdown when clicking outside it.
+      document.addEventListener('click', (e) => {
+        document.querySelectorAll('details.std-dd[open]').forEach((d) => {
+          if (!d.contains(e.target)) d.removeAttribute('open');
+        });
+      });
+
+      // Mobile hamburger -> off-canvas drawer.
+      (() => {
+        const nb = document.getElementById('navBtn');
+        const nd = document.getElementById('navdrawer');
+        const no = document.getElementById('navOverlay');
+        const nc = document.getElementById('navClose');
+        if (!nb || !nd) return;
+        const open = () => {
+          nd.classList.add('open');
+          no?.classList.add('open');
+          nb.classList.add('open');
+          nb.setAttribute('aria-expanded', 'true');
+          nd.setAttribute('aria-hidden', 'false');
+          document.body.style.overflow = 'hidden';
+        };
+        const close = () => {
+          nd.classList.remove('open');
+          no?.classList.remove('open');
+          nb.classList.remove('open');
+          nb.setAttribute('aria-expanded', 'false');
+          nd.setAttribute('aria-hidden', 'true');
+          document.body.style.overflow = '';
+        };
+        nb.addEventListener('click', () => (nd.classList.contains('open') ? close() : open()));
+        nc?.addEventListener('click', close);
+        no?.addEventListener('click', close);
+        nd.querySelectorAll('a').forEach((a) => a.addEventListener('click', close));
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') close();
+        });
+      })();
+
+      // Glossary tooltips — when enabled (header ⓘ), highlight known terms in the page
+      // content and show their definition on hover. State persisted; off by default.
+      (() => {
+        const html = document.documentElement;
+        let index = null;
+        let tip = null;
+
+        const loadIndex = async () => {
+          if (index) return index;
+          try {
+            const r = await fetch('/' + (html.lang || 'en') + '/glossary-index.json');
+            index = await r.json();
+          } catch {
+            index = {};
+          }
+          return index;
+        };
+        const clearGloss = () => {
+          document.querySelectorAll('.gloss-hl').forEach((el) => {
+            el.replaceWith(document.createTextNode(el.textContent || ''));
+          });
+        };
+        const enrichGloss = async () => {
+          const idx = await loadIndex();
+          const keys = Object.keys(idx).sort((a, b) => b.length - a.length);
+          if (!keys.length) return;
+          const re = new RegExp(
+            '\\b(' + keys.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\b',
+            'i'
+          );
+          const root = document.querySelector('main');
+          if (!root) return;
+          const seen = new Set();
+          const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+            acceptNode(n) {
+              if (!n.nodeValue || !n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+              const p = n.parentElement;
+              if (
+                !p ||
+                p.closest('a,code,pre,h1,h2,button,.gloss-hl,.kick,.pill,.badge,.sev,script,style')
+              )
+                return NodeFilter.FILTER_REJECT;
+              return NodeFilter.FILTER_ACCEPT;
+            },
+          });
+          const nodes = [];
+          while (walker.nextNode()) nodes.push(walker.currentNode);
+          for (const node of nodes) {
+            const text = node.nodeValue;
+            const m = re.exec(text);
+            if (!m) continue;
+            const low = m[0].toLowerCase();
+            if (seen.has(low)) continue;
+            const entry = idx[low];
+            if (!entry) continue;
+            seen.add(low);
+            const span = document.createElement('span');
+            span.className = 'gloss-hl';
+            span.textContent = m[0];
+            span.dataset.short = entry.short;
+            const frag = document.createDocumentFragment();
+            const before = text.slice(0, m.index);
+            const after = text.slice(m.index + m[0].length);
+            if (before) frag.appendChild(document.createTextNode(before));
+            frag.appendChild(span);
+            if (after) frag.appendChild(document.createTextNode(after));
+            node.replaceWith(frag);
+          }
+        };
+        const showTip = (el) => {
+          if (!tip) {
+            tip = document.createElement('div');
+            tip.id = 'gloss-tip';
+            tip.hidden = true;
+            document.body.appendChild(tip);
+          }
+          tip.innerHTML = el.dataset.short;
+          const r = el.getBoundingClientRect();
+          tip.style.left = Math.max(8, Math.min(window.innerWidth - 320, r.left)) + 'px';
+          tip.style.top = window.scrollY + r.bottom + 8 + 'px';
+          tip.hidden = false;
+        };
+        document.addEventListener('mouseover', (e) => {
+          const t = e.target.closest && e.target.closest('.gloss-hl');
+          if (t) showTip(t);
+        });
+        document.addEventListener('mouseout', (e) => {
+          if (tip && e.target.closest && e.target.closest('.gloss-hl')) tip.hidden = true;
+        });
+        const setGloss = (on) => {
+          html.dataset.glossaryTooltips = on ? 'enabled' : 'disabled';
+          try {
+            localStorage.setItem('glossary-tooltips', on ? 'enabled' : 'disabled');
+          } catch {}
+          if (on) enrichGloss();
+          else clearGloss();
+        };
+        document.getElementById('gloss-toggle')?.addEventListener('click', () => {
+          setGloss(html.dataset.glossaryTooltips !== 'enabled');
+        });
+        if (html.dataset.glossaryTooltips === 'enabled') enrichGloss();
+      })();
+    </script>
+
+    <style>
+      .site-head {
+        border-bottom: 1px solid var(--color-border);
+        position: sticky;
+        top: 0;
+        background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+        backdrop-filter: blur(8px);
+        z-index: 10;
+      }
+      .head-in {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 64px;
+      }
+      .brand {
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 1.2rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .brand-mark {
+        color: var(--color-accent);
+      }
+      .brand-logo {
+        width: 36px;
+        height: 36px;
+        flex: none;
+        margin: -4px 0;
+      }
+      .brand-logo.sm {
+        width: 22px;
+        height: 22px;
+        margin: 0;
+      }
+      .head-nav {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+      }
+      .head-nav a:hover {
+        color: var(--color-accent);
+      }
+      .head-nav .lang {
+        color: var(--color-dim);
+      }
+      /* dropdowns sit inside pavois .nav-links — match its <a> metrics exactly so
+         the summaries align with the flat links (same padding / font / centering). */
+      .nav-links {
+        align-items: center;
+      }
+      .std-dd {
+        position: relative;
+        display: flex;
+      }
+      .std-dd summary {
+        cursor: pointer;
+        list-style: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 7px 11px;
+        border-radius: 7px;
+        font-family: var(--font-body);
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 1;
+        color: var(--tx-2);
+        transition: color 0.15s, background 0.15s;
+      }
+      .std-dd summary:hover {
+        color: var(--tx);
+        background: var(--panel);
+      }
+      .std-dd summary::-webkit-details-marker {
+        display: none;
+      }
+      .std-dd summary::after {
+        content: '▾';
+        font-size: 0.7em;
+        opacity: 0.7;
+      }
+      .std-dd[open] summary {
+        color: var(--red);
+      }
+      .std-menu {
+        position: absolute;
+        top: calc(100% + 12px);
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 168px;
+        padding: 8px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: 12px;
+        box-shadow: 0 14px 34px -14px rgba(15, 23, 42, 0.28);
+        z-index: 30;
+      }
+      .std-menu a {
+        padding: 7px 11px;
+        border-radius: 8px;
+        font-family: var(--font-sans);
+        font-size: 0.85rem;
+        color: var(--color-text);
+      }
+      .std-menu a:hover {
+        background: var(--color-bg-2);
+        color: var(--color-accent);
+      }
+      #theme-toggle,
+      #gloss-toggle {
+        padding: 6px 10px;
+        font-size: 0.9rem;
+        line-height: 1;
+      }
+      .site-foot {
+        border-top: 1px solid var(--color-border);
+        padding: 30px 0;
+        margin-top: 60px;
+        color: var(--color-faint);
+        font-size: 0.8rem;
+      }
+      .foot-link {
+        display: inline-block;
+        margin-top: 12px;
+        font-family: var(--font-mono);
+        font-size: 0.74rem;
+        color: var(--color-accent);
+      }
+      .foot-legal {
+        margin-top: 10px;
+        max-width: 80ch;
+        font-size: 0.72rem;
+        line-height: 1.55;
+        color: var(--color-faint);
+        opacity: 0.85;
+      }
+      @media (max-width: 600px) {
+        .head-in {
+          height: 56px;
+        }
+        .head-nav {
+          gap: 11px;
+          font-size: 0.73rem;
+        }
+        .brand {
+          font-size: 1.05rem;
+        }
+        .brand-mark {
+          font-size: 0.9rem;
+        }
+        #theme-toggle,
+        #gloss-toggle {
+          padding: 4px 7px;
+        }
+      }
+      #to-top {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        color: var(--color-accent);
+        font-size: 1.15rem;
+        cursor: pointer;
+        box-shadow: 0 8px 24px -10px rgba(15, 23, 42, 0.3);
+        z-index: 20;
+        transition:
+          transform 0.18s,
+          border-color 0.18s;
+      }
+      #to-top:hover {
+        border-color: var(--color-accent);
+        transform: translateY(-3px);
+      }
+      #to-top[hidden] {
+        display: none;
+      }
+      html[data-glossary-tooltips='enabled'] #gloss-toggle {
+        color: var(--color-accent);
+        border-color: var(--color-accent);
+      }
+      /* :global — these elements are created in JS, so they don't carry the scoped cid. */
+      :global(.gloss-hl) {
+        border-bottom: 1px dotted var(--color-accent);
+        background: var(--color-accent-soft);
+        border-radius: 3px;
+        cursor: help;
+      }
+      :global(#gloss-tip) {
+        position: absolute;
+        z-index: 50;
+        max-width: 300px;
+        padding: 10px 13px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: 10px;
+        box-shadow: 0 12px 30px -12px rgba(15, 23, 42, 0.3);
+        font-size: 0.82rem;
+        color: var(--color-text);
+        line-height: 1.5;
+      }
+      :global(#gloss-tip[hidden]) {
+        display: none;
+      }
+      :global(#gloss-tip a) {
+        color: var(--color-accent);
+        font-family: var(--font-mono);
+        font-size: 0.74rem;
+      }
+    </style>
+  </body>
+</html>

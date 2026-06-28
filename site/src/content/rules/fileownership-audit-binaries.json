@@ -1,0 +1,80 @@
+{
+  "id": "fileownership-audit-binaries",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.3.4.9",
+      "6.2.4.9"
+    ],
+    "stig": [
+      "UBTU-22-232110",
+      "UBTU-24-901240"
+    ]
+  },
+  "check": [
+    "only_if { file('/sbin/auditctl').exist? }",
+    "describe file('/sbin/auditctl') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/sbin/auditctl",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify that audit tools are owned by root",
+    "fr": "Vérifier que les outils d'audit appartiennent à root"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The audit tools (`auditctl`, `auditd`, `ausearch`, `aureport`, `autrace`, `augenrules`) are what defines, collects and reviews the security audit trail. If `auditctl` is owned by a non-root user, that user can replace the binary to silently disable rules, drop events, or forge audit data — destroying the integrity of the very record investigators rely on after an incident. Restricting ownership to **root** (uid 0) ensures only the superuser can operate or alter the audit tooling.",
+    "fr": "Les outils d'audit (`auditctl`, `auditd`, `ausearch`, `aureport`, `autrace`, `augenrules`) sont ce qui définit, collecte et examine la piste d'audit de sécurité. Si `auditctl` appartient à un utilisateur non-root, celui-ci peut remplacer le binaire pour désactiver silencieusement des règles, supprimer des événements ou falsifier les données d'audit — détruisant l'intégrité du registre même sur lequel s'appuient les enquêteurs après un incident. Restreindre la propriété à **root** (uid 0) garantit que seul le superutilisateur peut exploiter ou modifier l'outillage d'audit."
+  },
+  "summary": {
+    "en": "Ensures the audit control tool `/sbin/auditctl` (representative of the audit toolset) is owned by **root** (uid 0).",
+    "fr": "Garantit que l'outil de contrôle d'audit `/sbin/auditctl` (représentatif de la suite d'outils d'audit) appartient à **root** (uid 0)."
+  },
+  "check_note": {
+    "en": "Pavois asserts that the live binary `/sbin/auditctl` has owner uid `0`, skipped via `only_if` when auditd is not installed. It reads the **effective** owner from the filesystem (`stat`) instead of the package manifest, so a binary swapped or re-owned out-of-band — exactly the kind of tampering an attacker would attempt to blind the audit subsystem — is still detected.",
+    "fr": "Pavois vérifie que le binaire réel `/sbin/auditctl` a l'uid de propriétaire `0`, en l'ignorant via `only_if` lorsque auditd n'est pas installé. Il lit le propriétaire **effectif** depuis le système de fichiers (`stat`) au lieu du manifeste de paquet, de sorte qu'un binaire remplacé ou re-attribué hors des canaux normaux — précisément le type de falsification qu'un attaquant tenterait pour aveugler le sous-système d'audit — est tout de même détecté."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /sbin/auditctl`. Expected output: `root 0`. To check the whole toolset, run `for b in auditctl auditd ausearch aureport autrace augenrules; do stat -c '%U %n' \"$(command -v $b)\"; done` and confirm every line starts with `root`.",
+    "fr": "Exécutez `stat -c '%U %u' /sbin/auditctl`. Sortie attendue : `root 0`. Pour vérifier toute la suite, exécutez `for b in auditctl auditd ausearch aureport autrace augenrules; do stat -c '%U %n' \"$(command -v $b)\"; done` et confirmez que chaque ligne commence par `root`."
+  },
+  "logs": {
+    "en": "Ownership has no continuous log; query it with `stat /sbin/auditctl`. Audit activity itself is recorded in `/var/log/audit/audit.log`; if the audit binaries' directory is watched, changes to them appear there too. Note that `ausearch` can return false \"no matches\" — grep the raw log directly, e.g. `grep auditctl /var/log/audit/audit.log`.",
+    "fr": "La propriété ne produit pas de journal continu ; interrogez-la avec `stat /sbin/auditctl`. L'activité d'audit elle-même est enregistrée dans `/var/log/audit/audit.log` ; si le répertoire des binaires d'audit est surveillé, leurs modifications y apparaissent aussi. Notez que `ausearch` peut renvoyer de faux « no matches » — recherchez directement dans le journal brut, par ex. `grep auditctl /var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined, so apply it manually: `chown root:root /sbin/auditctl` (and likewise for the other audit binaries). Reinstalling the `auditd`/`audit` package restores the correct root ownership for the whole toolset.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini, appliquez-la donc manuellement : `chown root:root /sbin/auditctl` (et de même pour les autres binaires d'audit). Réinstaller le paquet `auditd`/`audit` restaure la bonne propriété root pour toute la suite."
+  },
+  "impact": {
+    "en": "A non-root owner of the audit tools can disable or falsify your entire audit trail, defeating forensics and many compliance controls at once. Restoring root ownership is safe: it does not change how the tools behave for authorized administrators (who run them via `sudo`). **Precaution:** the audit binaries must keep their executable bit and their normal mode; only correct the owner, do not loosen permissions, or you would let non-privileged users invoke audit administration.",
+    "fr": "Un propriétaire non-root des outils d'audit peut désactiver ou falsifier l'ensemble de votre piste d'audit, mettant en échec d'un seul coup l'investigation et de nombreux contrôles de conformité. Restaurer la propriété root est sans danger : cela ne change pas le comportement des outils pour les administrateurs autorisés (qui les exécutent via `sudo`). **Précaution :** les binaires d'audit doivent conserver leur bit exécutable et leur mode normal ; corrigez seulement le propriétaire, n'assouplissez pas les permissions, sinon vous permettriez à des utilisateurs non privilégiés d'invoquer l'administration de l'audit."
+  }
+}

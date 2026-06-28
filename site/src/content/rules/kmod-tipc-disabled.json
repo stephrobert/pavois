@@ -1,0 +1,83 @@
+{
+  "id": "kmod-tipc-disabled",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Kernel modules",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "3.2.2",
+      "3.2.4",
+      "3.2.6"
+    ],
+    "nist": [
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)"
+    ]
+  },
+  "check": [
+    "describe kernel_module('tipc') do",
+    "  it { should_not be_loaded }",
+    "  it { should be_disabled }",
+    "end"
+  ],
+  "remediation": {
+    "action": "blacklist",
+    "name": "tipc",
+    "reboot_required": true,
+    "resource": "kernel_module"
+  },
+  "title": {
+    "en": "Disable TIPC Support",
+    "fr": "Désactiver la prise en charge de TIPC"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "TIPC (Transparent Inter-Process Communication) is a cluster networking protocol rarely used outside specialized clusters. Disabling it protects the system against exploitation of any flaws in its implementation — the kernel has shipped several remotely exploitable TIPC CVEs (e.g. CVE-2021-43267). Removing an unused network protocol stack shrinks the remote attack surface.",
+    "fr": "TIPC (Transparent Inter-Process Communication) est un protocole réseau de cluster rarement utilisé en dehors de clusters spécialisés. Le désactiver protège le système contre l'exploitation de toute faille de son implémentation — le noyau a livré plusieurs CVE TIPC exploitables à distance (par exemple CVE-2021-43267). Retirer une pile de protocole réseau inutilisée réduit la surface d'attaque distante."
+  },
+  "summary": {
+    "en": "Ensures the `tipc` kernel module is **not loaded** and is **blacklisted** so the unused TIPC cluster protocol cannot be auto-loaded.",
+    "fr": "Garantit que le module noyau `tipc` n'est **pas chargé** et qu'il est **mis en liste noire** afin que le protocole de cluster TIPC inutilisé ne soit pas chargé automatiquement."
+  },
+  "check_note": {
+    "en": "Pavois queries the **effective module state**: it verifies `tipc` is absent from the running kernel and that modprobe refuses to load it. A file-only scan of `/etc/modprobe.d/` could pass while the module was already loaded at runtime (TIPC auto-loads when a `AF_TIPC` socket is created); inspecting the live kernel catches that gap.",
+    "fr": "Pavois interroge l'**état effectif du module** : il vérifie que `tipc` est absent du noyau en cours d'exécution et que modprobe refuse de le charger. Une analyse basée uniquement sur `/etc/modprobe.d/` pourrait passer alors que le module est déjà chargé à l'exécution (TIPC se charge automatiquement à la création d'un socket `AF_TIPC`) ; inspecter le noyau vivant détecte cet écart."
+  },
+  "verify": {
+    "en": "- `lsmod | grep tipc` should return **nothing**.\n- `modprobe -n -v tipc` should print `install /bin/true`.\n- `grep -r tipc /etc/modprobe.d/` should show `blacklist tipc` and `install tipc /bin/true`.",
+    "fr": "- `lsmod | grep tipc` ne doit **rien** renvoyer.\n- `modprobe -n -v tipc` doit afficher `install /bin/true`.\n- `grep -r tipc /etc/modprobe.d/` doit montrer `blacklist tipc` et `install tipc /bin/true`."
+  },
+  "logs": {
+    "en": "- `dmesg | grep -i tipc` and `journalctl -k | grep tipc` show kernel/module load events.\n- `lsmod` and `modprobe -n -v tipc` reflect the live state.",
+    "fr": "- `dmesg | grep -i tipc` et `journalctl -k | grep tipc` affichent les événements de chargement noyau/module.\n- `lsmod` et `modprobe -n -v tipc` reflètent l'état réel."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `kernel_module` resource to **blacklist** `tipc`: it writes a modprobe drop-in blacklisting the module and redirecting its load to `/bin/true`, then unloads it if active. A **reboot is required** to fully clear an in-use module. Apply with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `kernel_module` pour mettre `tipc` en **liste noire** : il écrit un drop-in modprobe qui blackliste le module et redirige son chargement vers `/bin/true`, puis le décharge s'il est actif. Un **redémarrage est requis** pour purger un module utilisé. Appliquez avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Negligible on standard servers and desktops, which never use TIPC. **Only** specialized high-availability/cluster middleware uses it; if such software runs on the host, verify with `ss -a -f tipc` and `lsmod | grep tipc` before applying and exclude the rule there.",
+    "fr": "Négligeable sur les serveurs et postes standard, qui n'utilisent jamais TIPC. **Seuls** certains intergiciels de haute disponibilité/cluster spécialisés l'emploient ; si un tel logiciel tourne sur l'hôte, vérifiez avec `ss -a -f tipc` et `lsmod | grep tipc` avant d'appliquer et excluez-y la règle."
+  }
+}

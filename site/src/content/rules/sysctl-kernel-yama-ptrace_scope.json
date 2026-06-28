@@ -1,0 +1,77 @@
+{
+  "id": "sysctl-kernel-yama-ptrace_scope",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R11",
+    "cis": [
+      "1.5.2",
+      "1.5.7"
+    ],
+    "nist": "SC-7(10)"
+  },
+  "check": [
+    "describe kernel_parameter('kernel.yama.ptrace_scope') do",
+    "  its('value') { should cmp 1 }",
+    "end"
+  ],
+  "remediation": {
+    "key": "kernel.yama.ptrace_scope",
+    "resource": "sysctl",
+    "value": "1"
+  },
+  "title": {
+    "en": "Restrict usage of ptrace to descendant processes",
+    "fr": "Restreindre l'usage de ptrace aux processus descendants"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Unrestricted use of `ptrace` lets any process owned by a user inspect and manipulate the memory of every other process of that same user. A compromised binary could therefore attach to a running **SSH client, browser or password manager** and steal credentials, session keys or secrets **without any extra privilege and without tricking the user**. Setting `kernel.yama.ptrace_scope=1` confines `ptrace` to the **direct descendants** of the tracing process (the classic debugger model), which neutralizes this whole class of process-injection and credential-theft attacks.",
+    "fr": "Un usage non restreint de `ptrace` permet à n'importe quel processus appartenant à un utilisateur d'inspecter et de manipuler la mémoire de tous les autres processus de ce même utilisateur. Un binaire compromis peut ainsi s'attacher à un **client SSH, un navigateur ou un gestionnaire de mots de passe** en cours d'exécution et voler identifiants, clés de session ou secrets, **sans privilège supplémentaire et sans piéger l'utilisateur**. Définir `kernel.yama.ptrace_scope=1` confine `ptrace` aux **descendants directs** du processus traceur (le modèle classique du débogueur), ce qui neutralise toute cette catégorie d'attaques par injection de processus et vol d'identifiants."
+  },
+  "summary": {
+    "en": "Sets `kernel.yama.ptrace_scope=1` so a process can only `ptrace` its own descendants, blocking cross-process memory snooping.",
+    "fr": "Définit `kernel.yama.ptrace_scope=1` pour qu'un processus ne puisse `ptrace` que ses propres descendants, bloquant l'espionnage mémoire entre processus."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** via `kernel_parameter('kernel.yama.ptrace_scope')`, i.e. what the running kernel actually enforces, and asserts it equals `1`. Reading the running value catches the case where a drop-in in `/etc/sysctl.d/` or a `/etc/sysctl.conf` line sets the key but it was never reloaded, or where a later drop-in overrides it. A file-based scanner that only greps `sysctl.conf` would report a value that is **not** the one the kernel is applying.",
+    "fr": "Pavois lit la **valeur noyau effective** via `kernel_parameter('kernel.yama.ptrace_scope')`, c'est-à-dire ce que le noyau en cours applique réellement, et vérifie qu'elle vaut `1`. Lire la valeur effective détecte le cas où un fichier drop-in de `/etc/sysctl.d/` ou une ligne de `/etc/sysctl.conf` positionne la clé sans jamais l'avoir rechargée, ou bien où un drop-in ultérieur l'écrase. Un scanner basé sur les fichiers qui ne lit que `sysctl.conf` rapporterait une valeur qui **n'est pas** celle appliquée par le noyau."
+  },
+  "verify": {
+    "en": "Run `sysctl kernel.yama.ptrace_scope`. Expected output:\n\n```\nkernel.yama.ptrace_scope = 1\n```",
+    "fr": "Exécutez `sysctl kernel.yama.ptrace_scope`. Sortie attendue :\n\n```\nkernel.yama.ptrace_scope = 1\n```"
+  },
+  "logs": {
+    "en": "- `sysctl kernel.yama.ptrace_scope` shows the current value.\n- `cat /proc/sys/kernel/yama/ptrace_scope` is the raw kernel source of truth.\n- When a `ptrace` call is denied, the kernel logs a line via the Yama LSM visible with `dmesg | grep -i yama` (e.g. `ptrace of pid ... was attempted by ...`).",
+    "fr": "- `sysctl kernel.yama.ptrace_scope` affiche la valeur courante.\n- `cat /proc/sys/kernel/yama/ptrace_scope` est la source de vérité brute du noyau.\n- Lorsqu'un appel `ptrace` est refusé, le noyau journalise une ligne via le LSM Yama, visible avec `dmesg | grep -i yama` (ex. `ptrace of pid ... was attempted by ...`)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `kernel.yama.ptrace_scope` to `1`. It writes the key into a Pavois-managed drop-in and reloads it so the value is **active immediately** and **persistent across reboots**. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour positionner `kernel.yama.ptrace_scope` à `1`. Il écrit la clé dans un drop-in géré par Pavois puis le recharge, de sorte que la valeur soit **active immédiatement** et **persistante après redémarrage**. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Functional impact is minimal on servers. The main caveat is **debugging and tracing**: tools such as `gdb`, `strace`, `ltrace` or crash-dumpers attaching to an already-running process you did not spawn will be denied unless run as root (`CAP_SYS_PTRACE`). Some monitoring/APM agents and container introspection tools rely on cross-process `ptrace`. **Before applying**, confirm no debugger-dependent agent needs unprivileged attach; if it does, run it with the required capability rather than disabling the protection. A value of `2` or `3` is even stricter but can break more tooling, so `1` is the recommended balance.",
+    "fr": "L'impact fonctionnel est minime sur des serveurs. La principale réserve concerne le **débogage et le traçage** : des outils comme `gdb`, `strace`, `ltrace` ou les collecteurs de core dump s'attachant à un processus déjà lancé que vous n'avez pas créé seront refusés sauf s'ils tournent en root (`CAP_SYS_PTRACE`). Certains agents de supervision/APM et outils d'introspection de conteneurs reposent sur `ptrace` inter-processus. **Avant d'appliquer**, vérifiez qu'aucun agent dépendant d'un débogueur n'a besoin d'un attachement non privilégié ; si c'est le cas, lancez-le avec la capacité requise plutôt que de désactiver la protection. Les valeurs `2` ou `3` sont encore plus strictes mais cassent davantage d'outils ; `1` reste le bon compromis."
+  }
+}

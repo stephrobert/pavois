@@ -1,0 +1,67 @@
+{
+  "id": "filegroupowner-var-log-auth",
+  "supported_os": [
+    "debian12",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.1.4.1",
+      "6.2.2.1"
+    ]
+  },
+  "check": [
+    "only_if { file('/var/log/auth.log').exist? }",
+    "describe file('/var/log/auth.log') do",
+    "  its('group') { should eq 'adm' }",
+    "end"
+  ],
+  "remediation": {
+    "group": "adm",
+    "path": "/var/log/auth.log",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Group Who Owns /var/log/auth.log File",
+    "fr": "Verifier le groupe proprietaire du fichier /var/log/auth.log"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/var/log/auth.log` records login attempts, sudo use, SSH sessions and authentication events — the primary forensic trail after an incident. If a non-privileged group owns it, an attacker could read it to harvest usernames and timing, or tamper with it to erase their tracks. Restricting the file to the `adm` group preserves the integrity and confidentiality of authentication records.",
+    "fr": "`/var/log/auth.log` enregistre les tentatives de connexion, l'usage de sudo, les sessions SSH et les evenements d'authentification — la principale piste forensique apres un incident. Si un groupe non privilegie le possede, un attaquant pourrait le lire pour recolter des noms d'utilisateurs et des horaires, ou l'alterer pour effacer ses traces. Restreindre le fichier au groupe `adm` preserve l'integrite et la confidentialite des enregistrements d'authentification."
+  },
+  "summary": {
+    "en": "Ensures `/var/log/auth.log` is group-owned by `adm` so authentication records stay confidential and tamper-resistant.",
+    "fr": "Garantit que `/var/log/auth.log` appartient au groupe `adm` afin que les enregistrements d'authentification restent confidentiels et resistants a l'alteration."
+  },
+  "check_note": {
+    "en": "Pavois reads the **resolved** group ownership of `/var/log/auth.log` via the InSpec `file` resource and asserts the group is `adm`. It inspects the live inode metadata at audit time, so it reflects the file's actual ownership — even after log rotation may have recreated it.",
+    "fr": "Pavois lit l'appartenance de groupe **resolue** de `/var/log/auth.log` via la ressource InSpec `file` et verifie que le groupe est `adm`. Il inspecte les metadonnees reelles de l'inode au moment de l'audit, ce qui reflete la propriete reelle du fichier — meme apres une rotation des journaux qui aurait pu le recreer."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G' /var/log/auth.log`. The expected output is:\n\n- `adm`\n\nList it with `ls -l /var/log/auth.log` and check rotated copies with `ls -l /var/log/auth.log*`.",
+    "fr": "Executez `stat -c '%G' /var/log/auth.log`. La sortie attendue est :\n\n- `adm`\n\nAffichez-le avec `ls -l /var/log/auth.log` et verifiez les copies tournees avec `ls -l /var/log/auth.log*`."
+  },
+  "logs": {
+    "en": "This file is itself the authentication log: inspect it with `tail -f /var/log/auth.log` or, for the systemd journal equivalent, `journalctl -u ssh` and `journalctl _COMM=sudo`. To trace permission changes on it, add an auditd watch (`auditctl -w /var/log/auth.log -p wa -k logperms`) and grep `/var/log/audit/audit.log` for `key=\"logperms\"`.",
+    "fr": "Ce fichier est lui-meme le journal d'authentification : inspectez-le avec `tail -f /var/log/auth.log` ou, pour l'equivalent du journal systemd, `journalctl -u ssh` et `journalctl _COMM=sudo`. Pour tracer les changements de permissions sur ce fichier, ajoutez une surveillance auditd (`auditctl -w /var/log/auth.log -p wa -k logperms`) et recherchez `key=\"logperms\"` dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan applies the `file` resource to set the **group** of `/var/log/auth.log` to `adm`. It is applied with `pavois harden apply` and leaves the owner and permission bits untouched.",
+    "fr": "Le plan de durcissement de Pavois applique la ressource `file` pour definir le **groupe** de `/var/log/auth.log` sur `adm`. Il s'applique avec `pavois harden apply` et laisse inchanges le proprietaire et les bits de permission."
+  },
+  "impact": {
+    "en": "Wrong group ownership exposes authentication history to unprivileged users and can let an attacker cover their tracks. The fix only changes group ownership, with no service impact. **Precaution:** ensure `rsyslog`/`logrotate` recreate the file with group `adm` (check `/etc/logrotate.d/rsyslog` and the `create` directive) so the setting persists across rotations; otherwise the next rotation could revert it.",
+    "fr": "Un mauvais groupe proprietaire expose l'historique d'authentification aux utilisateurs non privilegies et peut permettre a un attaquant d'effacer ses traces. La correction ne modifie que le groupe proprietaire, sans impact sur le service. **Precaution :** assurez-vous que `rsyslog`/`logrotate` recreent le fichier avec le groupe `adm` (verifiez `/etc/logrotate.d/rsyslog` et la directive `create`) afin que le reglage persiste apres les rotations ; sinon, la prochaine rotation pourrait l'annuler."
+  }
+}

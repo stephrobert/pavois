@@ -1,0 +1,79 @@
+{
+  "id": "fileperm-sshd-drop-in-config",
+  "supported_os": [
+    "fedora",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.1.1",
+    "nist": [
+      "AC-17(a)",
+      "AC-6(1)",
+      "CM-6(a)"
+    ]
+  },
+  "check": [
+    "only_if { file('/etc/ssh/sshd_config.d').exist? }",
+    "describe file('/etc/ssh/sshd_config.d') do",
+    "  it { should_not be_executable.by('owner') }",
+    "  it { should_not be_setuid }",
+    "  it { should_not be_executable.by('group') }",
+    "  it { should_not be_writable.by('group') }",
+    "  it { should_not be_readable.by('group') }",
+    "  it { should_not be_setgid }",
+    "  it { should_not be_executable.by('other') }",
+    "  it { should_not be_writable.by('other') }",
+    "  it { should_not be_readable.by('other') }",
+    "  it { should_not be_sticky }",
+    "end"
+  ],
+  "remediation": {
+    "mode": "0600",
+    "path": "/etc/ssh/sshd_config.d",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Permissions on SSH Server Config File",
+    "fr": "Vérifier les permissions du répertoire de drop-ins du serveur SSH"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "On Ubuntu and RHEL 9 / Fedora the main `sshd_config` includes every fragment under `/etc/ssh/sshd_config.d`, so these **drop-ins define the effective SSH policy** (e.g. Ubuntu's `50-cloud-init.conf`). If the directory is writable by group or other, a non-privileged user can add a fragment that re-enables root login, weakens ciphers or installs a backdoor on the next reload; if readable beyond root, the policy is disclosed. The directory must be owned by root with no read/write/execute for group or other and no special bits.",
+    "fr": "Sur Ubuntu et RHEL 9 / Fedora, le `sshd_config` principal inclut chaque fragment de `/etc/ssh/sshd_config.d`, ces **drop-ins définissent donc la politique SSH effective** (par ex. `50-cloud-init.conf` d'Ubuntu). Si le répertoire est modifiable par le groupe ou les autres, un utilisateur non privilégié peut y ajouter un fragment qui réactive la connexion root, affaiblit les chiffrements ou installe une porte dérobée au prochain rechargement ; s'il est lisible au-delà de root, la politique est divulguée. Le répertoire doit appartenir à root sans lecture/écriture/exécution pour le groupe ou les autres ni bits spéciaux."
+  },
+  "summary": {
+    "en": "Ensures the `/etc/ssh/sshd_config.d` drop-in directory is owned by root with no access for group or other, so SSH policy fragments cannot be injected or read by unprivileged users.",
+    "fr": "Garantit que le répertoire de drop-ins `/etc/ssh/sshd_config.d` appartient à root sans accès pour le groupe ou les autres, afin que les fragments de politique SSH ne puissent être injectés ni lus par des utilisateurs non privilégiés."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective directory mode** of `/etc/ssh/sshd_config.d` and asserts no read/write/execute for group or other and no `setuid`/`setgid`/`sticky` bits. Guarded by `only_if { file('/etc/ssh/sshd_config.d').exist? }`. This is precisely the Pavois angle: a file-based scanner that only checks `sshd_config` misses the `Include`d drop-ins that actually set the policy — securing this directory closes the injection path, and `sshd -T` confirms the resolved result.",
+    "fr": "Pavois lit le **mode effectif du répertoire** `/etc/ssh/sshd_config.d` et vérifie l'absence de lecture/écriture/exécution pour le groupe ou les autres et l'absence de bits `setuid`/`setgid`/`sticky`. Protégé par `only_if { file('/etc/ssh/sshd_config.d').exist? }`. C'est précisément l'angle de Pavois : un scanner basé sur les fichiers qui ne vérifie que `sshd_config` rate les drop-ins `Include` qui définissent réellement la politique — sécuriser ce répertoire ferme la voie d'injection, et `sshd -T` confirme le résultat résolu."
+  },
+  "verify": {
+    "en": "Run `stat -c '%a %U %G' /etc/ssh/sshd_config.d`. The expected output is `700 root root` (or stricter): no read, write or execute for group or other. Then `sshd -T` shows the effective policy assembled from the fragments.",
+    "fr": "Exécutez `stat -c '%a %U %G' /etc/ssh/sshd_config.d`. La sortie attendue est `700 root root` (ou plus strict) : aucune lecture, écriture ou exécution pour le groupe ou les autres. Ensuite `sshd -T` affiche la politique effective assemblée depuis les fragments."
+  },
+  "logs": {
+    "en": "`stat /etc/ssh/sshd_config.d` shows the directory mode; `sshd -T` shows the *effective* policy after assembling the drop-ins. SSH/auth events are in `journalctl -u ssh` / `/var/log/auth.log` (Ubuntu) or `journalctl -u sshd` / `/var/log/secure` (RHEL/Fedora). Directory changes appear in `/var/log/audit/audit.log` if watched.",
+    "fr": "`stat /etc/ssh/sshd_config.d` affiche le mode du répertoire ; `sshd -T` affiche la politique *effective* après assemblage des drop-ins. Les événements SSH/authentification sont dans `journalctl -u ssh` / `/var/log/auth.log` (Ubuntu) ou `journalctl -u sshd` / `/var/log/secure` (RHEL/Fedora). Les modifications du répertoire apparaissent dans `/var/log/audit/audit.log` si surveillées."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so apply it **manually**: `chown root:root /etc/ssh/sshd_config.d` then `chmod 0700 /etc/ssh/sshd_config.d`.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle, appliquez-la donc **manuellement** : `chown root:root /etc/ssh/sshd_config.d` puis `chmod 0700 /etc/ssh/sshd_config.d`."
+  },
+  "impact": {
+    "en": "Because drop-ins override the main config, a group- or world-writable `sshd_config.d` is an even sharper risk than a writable `sshd_config`: an unprivileged user can silently win the last-wins precedence and re-enable root login or weak auth on the next reload. **Precautions:** changing only directory permissions does not drop active sessions, so it is safe; keep it `0700 root:root`, and validate any config change with `sshd -t` before reloading to avoid a daemon that fails to start and locks you out.",
+    "fr": "Comme les drop-ins surchargent la configuration principale, un `sshd_config.d` modifiable par le groupe ou tous est un risque encore plus aigu qu'un `sshd_config` modifiable : un utilisateur non privilégié peut discrètement l'emporter sur la précédence du dernier appliqué et réactiver la connexion root ou une authentification faible au prochain rechargement. **Précautions :** modifier uniquement les permissions du répertoire ne coupe pas les sessions actives, c'est donc sûr ; conservez `0700 root:root`, et validez tout changement de configuration avec `sshd -t` avant de recharger pour éviter un démon qui ne démarre pas et vous verrouille dehors."
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "id": "ssh-enable-pam",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "SSH",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "5.1.22",
+      "2.2.6",
+      "5.1.24"
+    ],
+    "pci-dss": "2.2.6",
+    "stig": [
+      "UBTU-22-255065",
+      "UBTU-24-500050"
+    ]
+  },
+  "check": [
+    "describe command('sshd -T') do",
+    "  its('stdout') { should match(/^usepam\\s+yes$/i) }",
+    "end"
+  ],
+  "remediation": {
+    "directive": "usepam",
+    "notify": {
+      "action": "reload",
+      "service": "ssh"
+    },
+    "resource": "sshd_setting",
+    "value": "yes",
+    "verify": "sshd -t -f %{path}"
+  },
+  "title": {
+    "en": "Enable PAM",
+    "fr": "Activer PAM"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "With **`UsePAM yes`**, `sshd` runs the system's PAM **account** and **session** stacks during login. This is what enforces account-level controls — access by IP, time-of-day or membership (`pam_access`), account expiry and lockout (`pam_faillock`/`pam_tally2`), resource limits (`pam_limits`), and consistent session setup (`pam_env`, `pam_systemd`). Without it, SSH bypasses these centralized controls entirely, leaving disabled or expired accounts able to log in and breaking lockout policies.",
+    "fr": "Avec **`UsePAM yes`**, `sshd` exécute les piles PAM **account** et **session** du système lors de la connexion. C'est ce qui applique les contrôles au niveau du compte — accès par IP, plage horaire ou appartenance (`pam_access`), expiration et verrouillage de compte (`pam_faillock`/`pam_tally2`), limites de ressources (`pam_limits`) et initialisation cohérente de la session (`pam_env`, `pam_systemd`). Sans cela, SSH contourne entièrement ces contrôles centralisés, laissant des comptes désactivés ou expirés se connecter et cassant les politiques de verrouillage."
+  },
+  "summary": {
+    "en": "Enables the PAM stack for SSH logins by setting **`UsePAM yes`** in `sshd`.",
+    "fr": "Active la pile PAM pour les connexions SSH en positionnant **`UsePAM yes`** dans `sshd`."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** `usepam` value from `sshd -T`, the daemon's resolved configuration. A scan of `/etc/ssh/sshd_config` could miss a value set in an `Include`d drop-in under `/etc/ssh/sshd_config.d/` — `sshd -T` reflects exactly what the running daemon enforces.",
+    "fr": "Pavois lit la valeur **effective** de `usepam` depuis `sshd -T`, la configuration résolue du démon. Un scan de `/etc/ssh/sshd_config` pourrait rater une valeur définie dans un drop-in `Include` sous `/etc/ssh/sshd_config.d/` — `sshd -T` reflète exactement ce que le démon en cours d'exécution applique."
+  },
+  "verify": {
+    "en": "Run `sudo sshd -T | grep -i usepam`. The expected output is **`usepam yes`**.",
+    "fr": "Exécutez `sudo sshd -T | grep -i usepam`. La sortie attendue est **`usepam yes`**."
+  },
+  "logs": {
+    "en": "PAM decisions for SSH (account denied, session opened/closed, faillock) appear in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL family); follow with `journalctl -u ssh -f` (or `-u sshd`). Look for `pam_unix`, `pam_faillock` and `pam_access` messages.",
+    "fr": "Les décisions PAM pour SSH (compte refusé, session ouverte/fermée, faillock) apparaissent dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL) ; suivez avec `journalctl -u ssh -f` (ou `-u sshd`). Recherchez les messages `pam_unix`, `pam_faillock` et `pam_access`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` sets the `sshd_setting` directive **`usepam`** to **`yes`** in a managed drop-in, validates it with `sshd -t -f %{path}`, then notifies a **reload** of the `ssh` service so the PAM stack is engaged without dropping live sessions.",
+    "fr": "`pavois harden apply` définit la directive `sshd_setting` **`usepam`** sur **`yes`** dans un drop-in géré, la valide avec `sshd -t -f %{path}`, puis déclenche un **reload** du service `ssh` pour activer la pile PAM sans couper les sessions actives."
+  },
+  "impact": {
+    "en": "Running SSH with `UsePAM no` silently bypasses account expiry, lockout and access-control policies — a serious security gap. Enabling it is generally safe and required by most distributions. Precaution: a **broken PAM configuration** (e.g. a misordered or missing module in `/etc/pam.d/sshd`) can cause every login to fail once `UsePAM yes` is active, so verify the PAM stack is sane first and keep a **second session or console open** when applying. The reload preserves your current SSH session, limiting lockout risk.",
+    "fr": "Exécuter SSH avec `UsePAM no` contourne silencieusement les politiques d'expiration, de verrouillage et de contrôle d'accès des comptes — une faille de sécurité sérieuse. L'activer est généralement sûr et requis par la plupart des distributions. Précaution : une **configuration PAM cassée** (par exemple un module mal ordonné ou absent dans `/etc/pam.d/sshd`) peut faire échouer toutes les connexions une fois `UsePAM yes` actif ; vérifiez d'abord que la pile PAM est saine et gardez une **deuxième session ou une console ouverte** lors de l'application. Le reload préserve votre session SSH en cours, limitant le risque de blocage."
+  }
+}

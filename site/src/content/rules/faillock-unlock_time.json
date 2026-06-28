@@ -1,0 +1,87 @@
+{
+  "id": "faillock-unlock_time",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (faillock)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R31",
+    "cis": [
+      "5.3.3.1.2",
+      "8.3.4"
+    ],
+    "nist": [
+      "3.1.8",
+      "AC-7(b)",
+      "CM-6(a)"
+    ],
+    "pci-dss": "8.3.4",
+    "stig": [
+      "UBTU-22-411045",
+      "UBTU-24-200610"
+    ]
+  },
+  "check": [
+    "describe command('v=$(grep -rh \\'^[[:space:]]*unlock_time[[:space:]]*=\\' /etc/security/faillock.conf /etc/security/faillock.conf.d/ 2>/dev/null | tail -1 | grep -oE \\'[0-9]+\\'); { [ -n \"$v\" ] && [ \"$v\" -ge 900 ] && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "file": "/etc/security/faillock.conf.d/99-pavois.conf",
+    "key": "unlock_time",
+    "resource": "keyval",
+    "value": "900"
+  },
+  "title": {
+    "en": "Set Lockout Time for Failed Password Attempts",
+    "fr": "Définir la durée de verrouillage après des échecs de saisie du mot de passe"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "A lockout threshold only slows an attacker if the lock lasts long enough to make repeated guessing futile. Holding the account locked for at least 15 minutes after the limit is reached drastically cuts the number of passwords that can be tried per hour, defeating online brute-force and password-spraying while letting a legitimate user retry after a short wait.",
+    "fr": "Un seuil de verrouillage ne ralentit un attaquant que si le verrou dure assez longtemps pour rendre les tentatives répétées inutiles. Maintenir le compte verrouillé au moins 15 minutes après l'atteinte de la limite réduit drastiquement le nombre de mots de passe pouvant être essayés par heure, déjouant la force brute en ligne et la pulvérisation de mots de passe tout en permettant à un utilisateur légitime de réessayer après une courte attente."
+  },
+  "summary": {
+    "en": "Configures `pam_faillock` so a locked account stays locked for at least **900 seconds** (15 minutes) before it can be used again (`unlock_time` ≥ 900).",
+    "fr": "Configure `pam_faillock` pour qu'un compte verrouillé le reste pendant au moins **900 secondes** (15 minutes) avant de pouvoir être réutilisé (`unlock_time` ≥ 900)."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** faillock setting by merging `/etc/security/faillock.conf` with every drop-in under `/etc/security/faillock.conf.d/` and taking the **last** `unlock_time` value (the one PAM actually applies), then requires it to be ≥ 900. Honoring drop-in precedence matters: a short `unlock_time` in a `.d` file would override a longer value in the main config, and only reading the effective merged result catches it.",
+    "fr": "Pavois lit le réglage faillock **effectif** en fusionnant `/etc/security/faillock.conf` avec chaque fichier additionnel sous `/etc/security/faillock.conf.d/` et en prenant la **dernière** valeur de `unlock_time` (celle que PAM applique réellement), puis exige qu'elle soit ≥ 900. Respecter la priorité des fichiers additionnels est important : un `unlock_time` court dans un fichier `.d` remplacerait une valeur plus longue de la configuration principale, et seule la lecture du résultat fusionné effectif le détecte."
+  },
+  "verify": {
+    "en": "Inspect the merged value with `grep -rh '^[[:space:]]*unlock_time' /etc/security/faillock.conf /etc/security/faillock.conf.d/ | tail -1` (expect `unlock_time = 900` or higher). Live lock status per user is shown by `faillock --user <name>`. Re-running the InSpec command should print `ok`.",
+    "fr": "Inspectez la valeur fusionnée avec `grep -rh '^[[:space:]]*unlock_time' /etc/security/faillock.conf /etc/security/faillock.conf.d/ | tail -1` (attendez `unlock_time = 900` ou plus). L'état de verrouillage en direct par utilisateur est affiché par `faillock --user <nom>`. La réexécution de la commande InSpec doit afficher `ok`."
+  },
+  "logs": {
+    "en": "Failed attempts and lockout events are recorded in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL family), or via `journalctl -t sshd -t login`. Inspect or clear a user's counters with `faillock --user <name>` and `faillock --user <name> --reset`.",
+    "fr": "Les tentatives échouées et les événements de verrouillage sont enregistrés dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL), ou via `journalctl -t sshd -t login`. Inspectez ou réinitialisez les compteurs d'un utilisateur avec `faillock --user <nom>` et `faillock --user <nom> --reset`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the **keyval** resource to write `unlock_time = 900` into the drop-in `/etc/security/faillock.conf.d/99-Pavois.conf`. Read last, that drop-in deterministically overrides any shorter value in the main file, enforcing the minimum lockout duration for all PAM-based logins.",
+    "fr": "`pavois harden apply` utilise la ressource **keyval** pour écrire `unlock_time = 900` dans le fichier additionnel `/etc/security/faillock.conf.d/99-Pavois.conf`. Lu en dernier, ce fichier l'emporte de façon déterministe sur toute valeur plus courte du fichier principal, imposant la durée minimale de verrouillage à toutes les connexions basées sur PAM."
+  },
+  "impact": {
+    "en": "A locked-out user must wait 15 minutes (or have an admin run `faillock --user <name> --reset`) before retrying. Combined with a strict `deny` threshold, this can lock real accounts after a few typos, so ensure you keep an out-of-band console or a second privileged account to avoid an admin lockout. Setting `unlock_time = 0` would keep accounts locked until manually reset — usable but operationally heavier.",
+    "fr": "Un utilisateur verrouillé doit attendre 15 minutes (ou demander à un administrateur d'exécuter `faillock --user <nom> --reset`) avant de réessayer. Combiné à un seuil `deny` strict, cela peut verrouiller des comptes réels après quelques fautes de frappe ; conservez donc une console hors bande ou un second compte privilégié pour éviter un verrouillage de l'administrateur. Définir `unlock_time = 0` maintiendrait les comptes verrouillés jusqu'à réinitialisation manuelle — possible mais plus lourd à exploiter."
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "id": "repowner-etc-sudoersd",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R50"
+  },
+  "check": [
+    "only_if { file('/etc/sudoers.d').exist? }",
+    "describe file('/etc/sudoers.d') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/etc/sudoers.d",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify User Who Owns /etc/sudoers.d Directory",
+    "fr": "Vérifier l'utilisateur propriétaire du répertoire /etc/sudoers.d"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `/etc/sudoers.d` directory holds drop-in files that grant `sudo` privileges. If its owner is not `root` (uid 0), a non-privileged user could create a drop-in file granting themselves passwordless root access, resulting in a complete **privilege escalation**. Root ownership is essential to keep the sudo policy trustworthy.",
+    "fr": "Le répertoire `/etc/sudoers.d` contient des fichiers drop-in qui accordent des privilèges `sudo`. Si son propriétaire n'est pas `root` (uid 0), un utilisateur non privilégié pourrait créer un fichier drop-in lui octroyant un accès root sans mot de passe, menant à une **élévation de privilèges** complète. La propriété par root est essentielle pour garder la politique sudo fiable."
+  },
+  "summary": {
+    "en": "Ensures the `/etc/sudoers.d` directory is owned by **root** (uid 0).",
+    "fr": "Garantit que le répertoire `/etc/sudoers.d` appartient à **root** (uid 0)."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** owner uid of `/etc/sudoers.d` from the filesystem (`stat`), reflecting the real on-disk state — including a directory recreated by a package update — rather than a value assumed from documentation. This is the directory `sudo` actually parses.",
+    "fr": "Pavois lit l'uid propriétaire **effectif** de `/etc/sudoers.d` depuis le système de fichiers (`stat`), reflétant l'état réel sur le disque — y compris un répertoire recréé par une mise à jour de paquet — plutôt qu'une valeur supposée. C'est le répertoire que `sudo` analyse réellement."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U' /etc/sudoers.d`. The expected output is `root`. Alternatively, `ls -ld /etc/sudoers.d` should show `root` in the owner column.",
+    "fr": "Exécutez `stat -c '%U' /etc/sudoers.d`. La sortie attendue est `root`. Sinon, `ls -ld /etc/sudoers.d` doit afficher `root` dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default; inspect with `ls -ld /etc/sudoers.d`. Sudo usage is logged in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL). If auditd watches `/etc/sudoers.d`, ownership changes appear in `/var/log/audit/audit.log`.",
+    "fr": "Les changements de propriété ne sont pas journalisés par défaut ; inspectez avec `ls -ld /etc/sudoers.d`. L'usage de sudo est journalisé dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL). Si auditd surveille `/etc/sudoers.d`, les changements de propriété apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied manually: `chown root /etc/sudoers.d`. Verify afterwards with `stat -c '%U' /etc/sudoers.d`.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit donc être appliquée manuellement : `chown root /etc/sudoers.d`. Vérifiez ensuite avec `stat -c '%U' /etc/sudoers.d`."
+  },
+  "impact": {
+    "en": "Setting the owner to `root` is the expected state and has no functional impact on `sudo`, which runs as root. There is no lockout risk. The change touches only directory metadata, not the drop-in policy files themselves, so existing sudo rules remain in effect.",
+    "fr": "Définir le propriétaire sur `root` correspond à l'état attendu et n'a aucun impact fonctionnel sur `sudo`, qui s'exécute en root. Aucun risque de verrouillage. Le changement ne touche que les métadonnées du répertoire, pas les fichiers de politique drop-in eux-mêmes, donc les règles sudo existantes restent en vigueur."
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "id": "sysctl-kernel-sysrq",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R9"
+  },
+  "check": [
+    "describe kernel_parameter('kernel.sysrq') do",
+    "  its('value') { should cmp 0 }",
+    "end"
+  ],
+  "remediation": {
+    "key": "kernel.sysrq",
+    "resource": "sysctl",
+    "value": "0"
+  },
+  "title": {
+    "en": "Disallow magic SysRq key",
+    "fr": "Interdire la touche magique SysRq"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The magic SysRq key sends commands directly to the running kernel, bypassing normal access controls. It can dump system and process state (potentially leaking sensitive information) and can immediately reboot, halt, kill all processes or sync/remount filesystems — disrupting availability. Anyone with physical or serial-console access (and in some setups via `/proc/sysrq-trigger`) could abuse it. Setting `kernel.sysrq = 0` disables these functions.",
+    "fr": "La touche magique SysRq envoie des commandes directement au noyau en cours d'exécution, contournant les contrôles d'accès normaux. Elle peut vider l'état du système et des processus (divulguant potentiellement des informations sensibles) et peut redémarrer, arrêter, tuer tous les processus ou synchroniser/remonter les systèmes de fichiers immédiatement — perturbant la disponibilité. Quiconque dispose d'un accès physique ou à la console série (et dans certains cas via `/proc/sysrq-trigger`) pourrait en abuser. Fixer `kernel.sysrq = 0` désactive ces fonctions."
+  },
+  "summary": {
+    "en": "Sets `kernel.sysrq = 0` to disable the magic SysRq key and its direct-to-kernel commands.",
+    "fr": "Fixe `kernel.sysrq = 0` pour désactiver la touche magique SysRq et ses commandes directes vers le noyau."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** with `kernel_parameter('kernel.sysrq')` (equivalent to `sysctl kernel.sysrq`), not a `/etc/sysctl.d/*.conf` line. The value is a bitmask: distributions often ship a non-zero default and a later drop-in may re-enable specific functions, so a config file alone does not reveal what is currently allowed. Only the effective parameter shows the kernel's actual SysRq policy.",
+    "fr": "Pavois lit la **valeur noyau en vigueur** via `kernel_parameter('kernel.sysrq')` (équivalent à `sysctl kernel.sysrq`), et non une ligne de `/etc/sysctl.d/*.conf`. La valeur est un masque de bits : les distributions livrent souvent une valeur par défaut non nulle et un drop-in ultérieur peut réactiver certaines fonctions ; un fichier de configuration seul ne révèle donc pas ce qui est actuellement autorisé. Seul le paramètre effectif montre la politique SysRq réelle du noyau."
+  },
+  "verify": {
+    "en": "Run `sysctl kernel.sysrq`. Expected output:\n\n```\nkernel.sysrq = 0\n```",
+    "fr": "Exécutez `sysctl kernel.sysrq`. Sortie attendue :\n\n```\nkernel.sysrq = 0\n```"
+  },
+  "logs": {
+    "en": "No dedicated log line for the setting itself. Confirm with `sysctl kernel.sysrq`. Whenever a SysRq command is actually invoked, the kernel logs `sysrq: ...` in `dmesg`/`journalctl -k`; with the value at `0` those invocations are rejected.",
+    "fr": "Aucune ligne de journal dédiée pour le réglage lui-même. Vérifiez via `sysctl kernel.sysrq`. Chaque fois qu'une commande SysRq est réellement invoquée, le noyau journalise `sysrq: ...` dans `dmesg`/`journalctl -k` ; avec la valeur à `0`, ces invocations sont rejetées."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `kernel.sysrq = 0`, persists it in a Pavois-managed drop-in under `/etc/sysctl.d/`, and applies it live (no reboot). Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour fixer `kernel.sysrq = 0`, le persiste dans un drop-in géré par Pavois sous `/etc/sysctl.d/`, et l'applique à chaud (sans redémarrage). Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "**Risk if not applied:** an attacker with console/serial access (or `/proc/sysrq-trigger` access) can halt, reboot or dump the machine, harming availability and confidentiality.\n\n**Precautions before applying:**\n- Disabling SysRq removes a valuable **emergency recovery and debugging** tool. The safe-reboot sequence (`Alt+SysRq+R-E-I-S-U-B`), live crash triggers, and on-demand stack dumps will no longer work. If your operations rely on SysRq for recovery on headless or hung systems, consider a restrictive **bitmask** instead of `0`, or ensure alternative out-of-band recovery (IPMI/iLO) is in place.\n- No application or boot lockout risk; the change is fully reversible at runtime.",
+    "fr": "**Risque si non appliqué :** un attaquant disposant d'un accès console/série (ou à `/proc/sysrq-trigger`) peut arrêter, redémarrer ou vider la machine, nuisant à la disponibilité et à la confidentialité.\n\n**Précautions avant application :**\n- Désactiver SysRq supprime un précieux outil de **récupération d'urgence et de débogage**. La séquence de redémarrage sûr (`Alt+SysRq+R-E-I-S-U-B`), les déclencheurs de crash et les dumps de pile à la demande ne fonctionneront plus. Si vos opérations reposent sur SysRq pour la récupération de systèmes headless ou figés, envisagez un **masque de bits** restrictif plutôt que `0`, ou assurez-vous d'une récupération hors-bande alternative (IPMI/iLO).\n- Aucun risque de blocage applicatif ou au démarrage ; le changement est entièrement réversible à chaud."
+  }
+}

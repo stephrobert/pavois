@@ -1,0 +1,71 @@
+{
+  "id": "sysctl-net-ipv4-conf-all-shared_media",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R12"
+  },
+  "check": [
+    "describe kernel_parameter('net.ipv4.conf.all.shared_media') do",
+    "  its('value') { should cmp 0 }",
+    "end"
+  ],
+  "remediation": {
+    "key": "net.ipv4.conf.all.shared_media",
+    "resource": "sysctl",
+    "value": "0"
+  },
+  "title": {
+    "en": "Configure Sending and Accepting Shared Media Redirects for All IPv4 Interfaces",
+    "fr": "Configurer l'envoi et l'acceptation des redirections de media partage pour toutes les interfaces IPv4"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`shared_media` tells the kernel that different subnets share the same physical medium, which makes it send ICMP redirects between those subnets. Critically, enabling `shared_media` for an interface also forces `secure_redirects` on, overriding the hardening of that parameter. To keep ICMP-redirect handling locked down, `shared_media` must be **0** so it cannot silently re-enable redirect acceptance and expose the host to redirect-based man-in-the-middle attacks.",
+    "fr": "`shared_media` indique au noyau que differents sous-reseaux partagent le meme support physique, ce qui le pousse a envoyer des redirections ICMP entre ces sous-reseaux. Surtout, activer `shared_media` pour une interface force aussi `secure_redirects` a l'etat actif, annulant le durcissement de ce parametre. Pour maintenir verrouillee la gestion des redirections ICMP, `shared_media` doit valoir **0** afin de ne pas reactiver silencieusement l'acceptation des redirections et exposer l'hote a des attaques d'homme du milieu fondees sur les redirections."
+  },
+  "summary": {
+    "en": "Forces `net.ipv4.conf.all.shared_media` to **0** so the kernel does not treat subnets as sharing a medium and cannot implicitly re-enable secure ICMP redirects.",
+    "fr": "Force `net.ipv4.conf.all.shared_media` a **0** afin que le noyau ne considere pas les sous-reseaux comme partageant un support et ne puisse pas reactiver implicitement les redirections ICMP securisees."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.all.shared_media` from the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not a `/etc/sysctl.d/` file. Because this parameter can override `secure_redirects` at runtime, only the effective kernel value reveals the true redirect posture — a config file might say `0` while a later drop-in or `sysctl -w` flipped it. Reading a file would miss that interaction.",
+    "fr": "Pavois lit la **valeur d'execution en direct** de `net.ipv4.conf.all.shared_media` depuis le noyau (ressource InSpec `kernel_parameter`, equivalente a `sysctl`), et non un fichier `/etc/sysctl.d/`. Comme ce parametre peut surcharger `secure_redirects` a l'execution, seule la valeur noyau effective revele la vraie posture vis-a-vis des redirections — un fichier de configuration pourrait indiquer `0` alors qu'un drop-in ulterieur ou un `sysctl -w` l'a inverse. Lire un fichier raterait cette interaction."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.conf.all.shared_media`. Expected output:\n\n- `net.ipv4.conf.all.shared_media = 0`\n\nThen confirm `sysctl net.ipv4.conf.all.secure_redirects` still reads `0`.",
+    "fr": "Executez `sysctl net.ipv4.conf.all.shared_media`. Sortie attendue :\n\n- `net.ipv4.conf.all.shared_media = 0`\n\nVerifiez ensuite que `sysctl net.ipv4.conf.all.secure_redirects` indique toujours `0`."
+  },
+  "logs": {
+    "en": "No dedicated log exists. Inspect the state with `sysctl net.ipv4.conf.all.shared_media` and review the related redirect settings together with `sysctl -a | grep -E 'shared_media|redirects'`. With `log_martians` on, redirect anomalies show up via `journalctl -k`.",
+    "fr": "Aucun journal dedie n'existe. Inspectez l'etat avec `sysctl net.ipv4.conf.all.shared_media` et passez en revue les reglages de redirection associes avec `sysctl -a | grep -E 'shared_media|redirects'`. Avec `log_martians` active, les anomalies de redirection apparaissent via `journalctl -k`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv4.conf.all.shared_media` to **0**, applying it to the running kernel and persisting it in a Pavois-managed drop-in under `/etc/sysctl.d/` so it survives reboot. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour definir `net.ipv4.conf.all.shared_media` a **0**, en l'appliquant au noyau en cours d'execution et en le persistant dans un drop-in gere par Pavois sous `/etc/sysctl.d/` afin qu'il survive au redemarrage. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Safe for standard topologies where each interface serves a single IP subnet. The rare exception is a network that genuinely runs multiple subnets on one shared physical medium and relies on the kernel issuing redirects between them; there, disabling `shared_media` can prevent hosts from learning optimal cross-subnet routes. For almost all servers this is not the case. Apply alongside the `secure_redirects` and `send_redirects` rules so the redirect posture stays consistent. No remote-access risk.",
+    "fr": "Sur pour les topologies standard ou chaque interface dessert un seul sous-reseau IP. L'exception rare est un reseau qui execute reellement plusieurs sous-reseaux sur un meme support physique partage et qui depend du noyau emettant des redirections entre eux ; la, desactiver `shared_media` peut empecher les hotes d'apprendre les routes inter-sous-reseaux optimales. Pour la quasi-totalite des serveurs ce n'est pas le cas. Appliquez-le conjointement aux regles `secure_redirects` et `send_redirects` pour garder une posture de redirection coherente. Aucun risque pour l'acces distant."
+  }
+}

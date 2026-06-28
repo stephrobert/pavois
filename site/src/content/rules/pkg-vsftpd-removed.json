@@ -1,0 +1,83 @@
+{
+  "id": "pkg-vsftpd-removed",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "high",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "2.1.7",
+      "2.1.6"
+    ],
+    "nist": [
+      "CM-6(a)",
+      "CM-7",
+      "CM-7(a)",
+      "CM-7(b)",
+      "IA-5(1)(c)",
+      "IA-5(1).1(v)"
+    ]
+  },
+  "check": [
+    "describe package('vsftpd') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "vsftpd",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall vsftpd Package",
+    "fr": "Désinstaller le paquet vsftpd"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`vsftpd` is an **FTP server**. FTP transmits credentials and data **in clear text**, so it offers no confidentiality or integrity and is trivially sniffed or tampered with on the network. Removing the package eliminates the risk of the service being accidentally or intentionally started, and reduces the host's attack surface. Where file transfer is genuinely required, use `sftp`/`scp` over SSH or FTPS instead.",
+    "fr": "`vsftpd` est un **serveur FTP**. FTP transmet identifiants et données **en clair**, il n'offre donc ni confidentialité ni intégrité et est trivialement interceptable ou altérable sur le réseau. Retirer le paquet élimine le risque que le service soit démarré accidentellement ou intentionnellement, et réduit la surface d'attaque de l'hôte. Lorsqu'un transfert de fichiers est réellement nécessaire, utilisez plutôt `sftp`/`scp` via SSH ou FTPS."
+  },
+  "summary": {
+    "en": "Ensures the `vsftpd` FTP server package is **not installed**.",
+    "fr": "Garantit que le paquet serveur FTP `vsftpd` n'est **pas installé**."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database via the InSpec `package('vsftpd')` resource (`rpm -q` / `dpkg -s`). Checking the package itself — rather than only whether the port 21 listener is up right now — guarantees the service cannot be started later by a reboot, a dependency, or an operator; if the package is absent, the `vsftpd` unit does not exist at all.",
+    "fr": "Pavois interroge la base de paquets via la ressource InSpec `package('vsftpd')` (`rpm -q` / `dpkg -s`). Vérifier le paquet lui-même — plutôt que seulement si l'écoute sur le port 21 est active à l'instant — garantit que le service ne pourra pas être démarré plus tard par un redémarrage, une dépendance ou un opérateur ; si le paquet est absent, l'unité `vsftpd` n'existe pas du tout."
+  },
+  "verify": {
+    "en": "On RHEL-family: `rpm -q vsftpd` → `package vsftpd is not installed`. On Debian/Ubuntu: `dpkg -s vsftpd` → `dpkg-query: package 'vsftpd' is not installed`. You can also confirm nothing listens on FTP with `ss -lntp | grep ':21'` returning no rows.",
+    "fr": "Sur famille RHEL : `rpm -q vsftpd` → `package vsftpd is not installed`. Sur Debian/Ubuntu : `dpkg -s vsftpd` → `dpkg-query: package 'vsftpd' is not installed`. Vous pouvez aussi confirmer qu'aucun service n'écoute en FTP avec `ss -lntp | grep ':21'` qui ne renvoie aucune ligne."
+  },
+  "logs": {
+    "en": "- Package state: `rpm -q vsftpd` / `dpkg -s vsftpd`; removal recorded in `/var/log/dnf.rpm.log` or `/var/log/dpkg.log`.\n- Past FTP activity (before removal): `journalctl -u vsftpd` and `/var/log/vsftpd.log`.",
+    "fr": "- État du paquet : `rpm -q vsftpd` / `dpkg -s vsftpd` ; suppression enregistrée dans `/var/log/dnf.rpm.log` ou `/var/log/dpkg.log`.\n- Activité FTP passée (avant suppression) : `journalctl -u vsftpd` et `/var/log/vsftpd.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource for `vsftpd` with action `remove`, so `pavois harden apply` uninstalls it (`dnf remove vsftpd` / `apt-get purge vsftpd`). Removing the package also removes the `vsftpd` service unit, so no restart is needed.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` pour `vsftpd` avec l'action `remove`, donc `pavois harden apply` le désinstalle (`dnf remove vsftpd` / `apt-get purge vsftpd`). Retirer le paquet supprime aussi l'unité de service `vsftpd`, aucun redémarrage n'est donc nécessaire."
+  },
+  "impact": {
+    "en": "Leaving `vsftpd` installed keeps a clear-text FTP server available that can be started and become a credential-leak and data-tampering vector. **Before applying:** verify no workflow depends on this host serving FTP — check `ss -lntp | grep ':21'` and `systemctl is-enabled vsftpd`. If FTP is in use, migrate clients to `sftp`/FTPS first, otherwise file-transfer integrations will break. Removal does not affect SSH, so there is no remote-management lockout risk.",
+    "fr": "Laisser `vsftpd` installé maintient un serveur FTP en clair qui peut être démarré et devenir un vecteur de fuite d'identifiants et d'altération de données. **Avant d'appliquer :** vérifiez qu'aucun flux ne dépend de cet hôte pour servir du FTP — consultez `ss -lntp | grep ':21'` et `systemctl is-enabled vsftpd`. Si le FTP est utilisé, migrez d'abord les clients vers `sftp`/FTPS, sinon les intégrations de transfert de fichiers casseront. La suppression n'affecte pas SSH, il n'y a donc aucun risque de verrouillage de l'administration à distance."
+  }
+}

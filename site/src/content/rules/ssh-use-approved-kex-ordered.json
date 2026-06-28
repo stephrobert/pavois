@@ -1,0 +1,61 @@
+{
+  "id": "ssh-use-approved-kex-ordered",
+  "supported_os": [
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "SSH",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "nist": "AC-17(2)",
+    "stig": [
+      "UBTU-22-255060",
+      "UBTU-24-100840"
+    ]
+  },
+  "check": [
+    "describe command('sshd -T') do",
+    "  its('stdout') { should match(/^kexalgorithms\\s+ecdh\\-sha2\\-nistp256,ecdh\\-sha2\\-nistp384,ecdh\\-sha2\\-nistp521,diffie\\-hellman\\-group\\-exchange\\-sha256$/i) }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Use Only FIPS 140-2 Validated Key Exchange Algorithms",
+    "fr": "N'utiliser que des algorithmes d'échange de clés validés FIPS 140-2"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The SSH **key exchange** establishes the session keys that protect all subsequent traffic; a weak KEX undermines the whole connection regardless of the cipher. Only **FIPS-approved** algorithms may be offered. The list is pinned **strongest to weakest** (`ecdh-sha2-nistp256`, `ecdh-sha2-nistp384`, `ecdh-sha2-nistp521`, `diffie-hellman-group-exchange-sha256`) because `sshd` selects the first server algorithm the client also supports — ordering ensures the strongest mutually-supported KEX is negotiated and excludes weak or deprecated exchanges (e.g. SHA-1 or small DH groups).",
+    "fr": "L'**échange de clés** SSH établit les clés de session qui protègent tout le trafic ultérieur ; un échange faible compromet toute la connexion, quel que soit le chiffrement. Seuls des algorithmes **approuvés FIPS** peuvent être proposés. La liste est ordonnée **du plus fort au plus faible** (`ecdh-sha2-nistp256`, `ecdh-sha2-nistp384`, `ecdh-sha2-nistp521`, `diffie-hellman-group-exchange-sha256`) car `sshd` sélectionne le premier algorithme serveur pris en charge aussi par le client — cet ordre garantit la négociation du KEX le plus robuste commun et exclut les échanges faibles ou obsolètes (p. ex. SHA-1 ou petits groupes DH)."
+  },
+  "summary": {
+    "en": "Restrict `sshd` `KexAlgorithms` to the FIPS-validated set, ordered strongest first: `ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256`.",
+    "fr": "Restreindre les `KexAlgorithms` de `sshd` à l'ensemble validé FIPS, ordonné du plus fort au plus faible : `ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256`."
+  },
+  "check_note": {
+    "en": "Pavois asserts that the **effective** `sshd -T` output lists exactly `kexalgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256`, in that order. Querying the live daemon reflects the value after all `Include` directives, `/etc/ssh/sshd_config.d/` drop-ins **and** any system-wide crypto policy are merged — a file scan can miss a drop-in or policy that re-adds a weak KEX.",
+    "fr": "Pavois vérifie que la sortie **effective** de `sshd -T` liste exactement `kexalgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256`, dans cet ordre. Interroger le démon en cours d'exécution reflète la valeur après fusion de tous les `Include`, des drop-ins de `/etc/ssh/sshd_config.d/` **et** de toute politique cryptographique système — un scan de fichiers peut manquer un drop-in ou une politique réintroduisant un KEX faible."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -i '^kexalgorithms'`. Expected output:\n\n- `kexalgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256`",
+    "fr": "Exécuter `sshd -T | grep -i '^kexalgorithms'`. Sortie attendue :\n\n- `kexalgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256`"
+  },
+  "logs": {
+    "en": "KEX negotiation is logged at `VERBOSE` level in `/var/log/auth.log` (Debian/Ubuntu) or `journalctl -u ssh`. A client offering only non-approved algorithms is refused with `Unable to negotiate ... no matching key exchange method found`, visible in the same logs.",
+    "fr": "La négociation du KEX est journalisée au niveau `VERBOSE` dans `/var/log/auth.log` (Debian/Ubuntu) ou via `journalctl -u ssh`. Un client ne proposant que des algorithmes non approuvés est refusé avec `Unable to negotiate ... no matching key exchange method found`, visible dans les mêmes journaux."
+  },
+  "remediation_note": {
+    "en": "This rule has **no automated harden plan** in the reference, so it must be applied manually: set `KexAlgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256` in a drop-in under `/etc/ssh/sshd_config.d/`, validate with `sshd -t`, then `systemctl reload ssh`. Re-run `pavois scan` to confirm the effective value.",
+    "fr": "Cette règle n'a **aucun plan de durcissement automatisé** dans la référence ; elle doit donc être appliquée manuellement : définir `KexAlgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256` dans un drop-in sous `/etc/ssh/sshd_config.d/`, valider avec `sshd -t`, puis `systemctl reload ssh`. Relancez `pavois scan` pour confirmer la valeur effective."
+  },
+  "impact": {
+    "en": "Pinning the KEX list can **break connections from clients** that don't share one of these algorithms — notably modern clients configured for `curve25519-sha256` only, or very old clients stuck on SHA-1 exchanges. Inventory your clients first and confirm overlap, validate with `sshd -t`, keep a second session open, and remember a system-wide crypto policy may further constrain the effective list.",
+    "fr": "Figer la liste des KEX peut **rompre les connexions de clients** ne partageant aucun de ces algorithmes — notamment les clients modernes configurés uniquement pour `curve25519-sha256`, ou de très vieux clients bloqués sur des échanges SHA-1. Recensez d'abord vos clients et vérifiez le recouvrement, validez avec `sshd -t`, gardez une seconde session ouverte, et rappelez-vous qu'une politique cryptographique système peut encore contraindre la liste effective."
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "id": "fileperm-etc-issue",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "1.7.5",
+      "1.6.5"
+    ]
+  },
+  "check": [
+    "only_if { file('/etc/issue').exist? }",
+    "describe file('/etc/issue') do",
+    "  it { should_not be_executable.by('owner') }",
+    "  it { should_not be_setuid }",
+    "  it { should_not be_executable.by('group') }",
+    "  it { should_not be_writable.by('group') }",
+    "  it { should_not be_setgid }",
+    "  it { should_not be_executable.by('other') }",
+    "  it { should_not be_writable.by('other') }",
+    "  it { should_not be_sticky }",
+    "end"
+  ],
+  "remediation": {
+    "mode": "0644",
+    "path": "/etc/issue",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify permissions on System Login Banner",
+    "fr": "Vérifier les permissions de la bannière de connexion système"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/etc/issue` is the **pre-login banner** shown on local terminals — typically a legally approved use-notification message. It is meant to be world-readable, but it must **not be writable by group or other**: an attacker who can edit it could remove the legal warning (weakening prosecution) or inject misleading text to aid social-engineering. Keeping write access to **root** ensures the displayed notice is authentic and consistent with policy.",
+    "fr": "`/etc/issue` est la **bannière pré-connexion** affichée sur les terminaux locaux — généralement un message d'usage légalement approuvé. Elle est destinée à être lisible par tous, mais elle ne doit **pas être modifiable par le groupe ou les autres** : un attaquant capable de l'éditer pourrait retirer l'avertissement légal (affaiblissant les poursuites) ou injecter un texte trompeur facilitant l'ingénierie sociale. Réserver l'écriture à **root** garantit que l'avis affiché est authentique et conforme à la politique."
+  },
+  "summary": {
+    "en": "Ensures `/etc/issue` is not writable by group or other and carries no executable, setuid, setgid or sticky bits (expected mode **0644 root:root**).",
+    "fr": "Garantit que `/etc/issue` n'est pas modifiable par le groupe ou les autres et ne porte aucun bit exécutable, setuid, setgid ou sticky (mode attendu **0644 root:root**)."
+  },
+  "check_note": {
+    "en": "Pavois reads the real inode permissions of `/etc/issue` with the InSpec `file` resource (a `stat`), under `only_if`. World-read is allowed (the banner is displayed to anyone at the login prompt), but group-write, other-write, and any execute/setuid/setgid/sticky bit fail — effectively requiring **0644 root:root**. Checking the live mode catches a `chmod` slip or a deployment that loosened the file, which a packaged-default assumption would miss.",
+    "fr": "Pavois lit les permissions réelles de l'inode `/etc/issue` avec la ressource InSpec `file` (un `stat`), sous `only_if`. La lecture par tous est autorisée (la bannière est affichée à quiconque au prompt de connexion), mais l'écriture groupe, l'écriture autres et tout bit exécutable/setuid/setgid/sticky font échouer la règle — exigeant de fait **0644 root:root**. Contrôler le mode réel détecte un faux pas de `chmod` ou un déploiement ayant relâché le fichier qu'une hypothèse de défaut de paquet manquerait."
+  },
+  "verify": {
+    "en": "Run `stat -c '%a %U %G' /etc/issue`. Expected output is mode **644** owned by `root root`, i.e. `644 root root`. Any group/other write or special bit fails the rule.",
+    "fr": "Exécutez `stat -c '%a %U %G' /etc/issue`. La sortie attendue est le mode **644** appartenant à `root root`, soit `644 root root`. Tout droit d'écriture groupe/autres ou bit spécial fait échouer la règle."
+  },
+  "logs": {
+    "en": "There is no service log for a static banner file; verify it directly with `stat /etc/issue` and view the banner with `cat /etc/issue`. If auditd watches `/etc/issue`, edits appear in `/var/log/audit/audit.log`. The banner itself is rendered by `getty`/`agetty` at the login prompt.",
+    "fr": "Il n'existe pas de journal de service pour un fichier de bannière statique ; vérifiez-le directement avec `stat /etc/issue` et affichez la bannière avec `cat /etc/issue`. Si auditd surveille `/etc/issue`, les modifications apparaissent dans `/var/log/audit/audit.log`. La bannière est rendue par `getty`/`agetty` au prompt de connexion."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is defined, so apply it **manually**: `chmod u-x,g-wx,o-wx /etc/issue && chown root:root /etc/issue` (target **0644 root:root**). No service restart is needed; the next login prompt reads the corrected file.",
+    "fr": "Aucune remédiation automatique n'est définie ; appliquez-la **manuellement** : `chmod u-x,g-wx,o-wx /etc/issue && chown root:root /etc/issue` (cible **0644 root:root**). Aucun redémarrage de service n'est nécessaire ; le prochain prompt de connexion lit le fichier corrigé."
+  },
+  "impact": {
+    "en": "Restoring 0644 root:root is **very low-risk** — this is the standard mode and the banner must stay world-readable to display. Do not remove world-read or the login prompt may show nothing. Keep the owner `root`. There is no lockout risk. Leaving the file writable by non-root lets an attacker strip the legal notice or plant misleading text before authentication.",
+    "fr": "Rétablir 0644 root:root est **très peu risqué** — c'est le mode standard et la bannière doit rester lisible par tous pour s'afficher. Ne retirez pas la lecture par tous, sous peine que le prompt de connexion n'affiche rien. Conservez le propriétaire `root`. Aucun risque de blocage. Laisser le fichier modifiable par un non-root permet à un attaquant de supprimer l'avis légal ou d'y placer un texte trompeur avant l'authentification."
+  }
+}

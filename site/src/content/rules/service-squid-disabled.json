@@ -1,0 +1,71 @@
+{
+  "id": "service-squid-disabled",
+  "supported_os": [
+    "debian12",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "systemd services",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "2.1.17"
+  },
+  "check": [
+    "describe service('squid.service') do",
+    "  it { should_not be_enabled }",
+    "  it { should_not be_running }",
+    "end"
+  ],
+  "remediation": {
+    "action": [
+      "disable",
+      "stop"
+    ],
+    "name": "squid",
+    "resource": "service"
+  },
+  "title": {
+    "en": "Disable Squid",
+    "fr": "Désactiver Squid"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "**Squid** is a caching forward proxy, typically listening on **`3128`** (or `8080`). A proxy that is reachable and **open** lets attackers tunnel traffic, **anonymize attacks through your host**, reach internal services it can route to, and abuse your bandwidth — open proxies are routinely scanned for and weaponized. It also adds a complex HTTP parser to the attack surface. On any host that is not meant to provide proxy/caching, Squid is needless exposure and should be stopped and disabled.",
+    "fr": "**Squid** est un proxy mandataire avec cache, écoutant généralement sur le port **`3128`** (ou `8080`). Un proxy joignable et **ouvert** permet aux attaquants de tunneliser du trafic, d'**anonymiser des attaques à travers votre hôte**, d'atteindre des services internes qu'il peut router et d'abuser de votre bande passante — les proxys ouverts sont systématiquement recherchés et exploités. Il ajoute aussi un analyseur HTTP complexe à la surface d'attaque. Sur tout hôte qui n'a pas vocation à fournir un service de proxy/cache, Squid n'est qu'exposition inutile et doit être arrêté et désactivé."
+  },
+  "summary": {
+    "en": "Ensures the **`squid.service`** (Squid caching/forward proxy) is neither enabled at boot nor running, unless the host is intentionally a proxy.",
+    "fr": "Garantit que le service **`squid.service`** (proxy cache/mandataire Squid) n'est ni activé au démarrage ni en cours d'exécution, sauf si l'hôte est volontairement un proxy."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective state** of `squid.service` from systemd, asserting it is neither *enabled* nor *running*. This reflects what is actually bound to the proxy port regardless of whether `/etc/squid/squid.conf` exists, and catches a daemon started by a drop-in override. A package/config check cannot tell you whether Squid is currently accepting connections.",
+    "fr": "Pavois lit l'**état effectif** de `squid.service` depuis systemd, en vérifiant qu'il n'est ni *enabled* ni *running*. Cela reflète ce qui est réellement lié au port du proxy indépendamment de l'existence de `/etc/squid/squid.conf`, et détecte un démon démarré par une surcharge drop-in. Une vérification de paquet/configuration ne peut pas indiquer si Squid accepte actuellement des connexions."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled squid.service` and `systemctl is-active squid.service`; expect **`disabled`/`masked`** and **`inactive`**. Confirm nothing listens with `ss -tlnp | grep -E ':3128|:8080'`.",
+    "fr": "Exécutez `systemctl is-enabled squid.service` et `systemctl is-active squid.service` ; attendez **`disabled`/`masked`** et **`inactive`**. Confirmez qu'aucun service n'écoute avec `ss -tlnp | grep -E ':3128|:8080'`."
+  },
+  "logs": {
+    "en": "Inspect `journalctl -u squid.service` for start/stop events, and `/var/log/squid/access.log` for past proxy usage. `systemctl show squid.service -p ActiveState -p UnitFileState` gives the machine-readable state. Confirm the proxy port is closed with `ss -tlnp | grep -E ':3128|:8080'`.",
+    "fr": "Inspectez `journalctl -u squid.service` pour les événements de démarrage/arrêt, et `/var/log/squid/access.log` pour l'usage passé du proxy. `systemctl show squid.service -p ActiveState -p UnitFileState` donne l'état lisible par machine. Confirmez la fermeture du port proxy avec `ss -tlnp | grep -E ':3128|:8080'`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the **`service`** resource named **`squid`** with actions **`disable`** then **`stop`**: it removes boot enablement and stops the proxy. Applied with `pavois harden apply`. Existing config and cache under `/etc/squid/` and `/var/spool/squid/` are left in place.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource **`service`** nommée **`squid`** avec les actions **`disable`** puis **`stop`** : il supprime l'activation au démarrage et arrête le proxy. Appliqué avec `pavois harden apply`. La configuration et le cache existants sous `/etc/squid/` et `/var/spool/squid/` restent en place."
+  },
+  "impact": {
+    "en": "Disabling Squid **cuts off any client that routes web traffic through this proxy**: workstations or services with `http_proxy`/`HTTP_PROXY` pointing here, or PAC/WPAD configs, will lose Internet access or fail egress through the proxy's allow-lists. **Before applying**: confirm no clients depend on it (check `/var/log/squid/access.log` for recent activity, and network proxy settings/PAC files), and that it is not an outbound egress chokepoint enforcing policy. If the host is a proxy, exclude this rule; if it must stay, lock ACLs so it is not an open proxy.",
+    "fr": "Désactiver Squid **coupe tout client qui route son trafic web via ce proxy** : postes ou services dont `http_proxy`/`HTTP_PROXY` pointe ici, ou configurations PAC/WPAD, perdront l'accès Internet ou échoueront à sortir via les listes d'autorisation du proxy. **Avant d'appliquer** : confirmez qu'aucun client n'en dépend (vérifiez `/var/log/squid/access.log` pour l'activité récente, ainsi que les paramètres proxy/fichiers PAC du réseau) et qu'il ne s'agit pas d'un point de passage de sortie imposant une politique. Si l'hôte est un proxy, excluez cette règle ; s'il doit rester, verrouillez les ACL pour qu'il ne soit pas un proxy ouvert."
+  }
+}

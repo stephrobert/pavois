@@ -1,0 +1,67 @@
+{
+  "id": "filegroupowner-var-log-wbtmp",
+  "supported_os": [
+    "debian12",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.1.4.1",
+      "6.2.2.1"
+    ]
+  },
+  "check": [
+    "only_if { file('/var/log/wbtmp').exist? }",
+    "describe file('/var/log/wbtmp') do",
+    "  its('group') { should eq 'utmp' }",
+    "end"
+  ],
+  "remediation": {
+    "group": "utmp",
+    "path": "/var/log/wbtmp",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Group Who Owns /var/log/(b|w)tmp(.*|-*) File",
+    "fr": "Vérifier le groupe propriétaire du fichier /var/log/(b|w)tmp(.*|-*)"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `wtmp`/`btmp` files under `/var/log` record the most recent (and failed) logins of all users. They must be group-owned by **`utmp`** so login-accounting tools can update them while ordinary users cannot read or tamper with login history. Loose ownership exposes who logs in from where and lets an intruder erase evidence of access.",
+    "fr": "Les fichiers `wtmp`/`btmp` sous `/var/log` enregistrent les connexions les plus récentes (et échouées) de tous les utilisateurs. Ils doivent appartenir au groupe **`utmp`** afin que les outils de comptabilité de connexion puissent les mettre à jour tandis que les utilisateurs ordinaires ne peuvent ni lire ni altérer l'historique des connexions. Une propriété trop permissive expose qui se connecte et d'où, et permet à un intrus d'effacer les preuves d'accès."
+  },
+  "summary": {
+    "en": "Ensures the `/var/log/(b|w)tmp` login-accounting files are owned by the **`utmp`** group.",
+    "fr": "Garantit que les fichiers de comptabilité de connexion `/var/log/(b|w)tmp` appartiennent au groupe **`utmp`**."
+  },
+  "check_note": {
+    "en": "Pavois reads the file's **effective owning group** with the InSpec `file` resource and asserts it is `utmp`, only when the file exists. Inspecting live filesystem metadata reflects the permissions the kernel enforces right now — catching drift from log rotation or manual `chgrp` that a static config/package scan cannot see.",
+    "fr": "Pavois lit le **groupe propriétaire effectif** du fichier avec la ressource InSpec `file` et vérifie qu'il vaut `utmp`, uniquement si le fichier existe. Inspecter les métadonnées réelles du système de fichiers reflète les permissions appliquées maintenant — détectant les dérives de rotation des journaux ou de `chgrp` manuel qu'un scan statique ne peut pas voir."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G' /var/log/wtmp` and `stat -c '%G' /var/log/btmp`. Expected output for each: `utmp`. Alternatively `ls -l /var/log/wtmp /var/log/btmp` should show `utmp` in the group column.",
+    "fr": "Exécutez `stat -c '%G' /var/log/wtmp` et `stat -c '%G' /var/log/btmp`. Sortie attendue pour chacun : `utmp`. Sinon, `ls -l /var/log/wtmp /var/log/btmp` doit afficher `utmp` dans la colonne du groupe."
+  },
+  "logs": {
+    "en": "Ownership is shown by `ls -l /var/log/wtmp /var/log/btmp` and `stat`. The data itself is read by `last` (successful logins, from `wtmp`) and `lastb` (failed logins, from `btmp`). If auditd watches `/var/log`, `chgrp`/`chown` syscalls appear in `/var/log/audit/audit.log`.",
+    "fr": "Le propriétaire est affiché par `ls -l /var/log/wtmp /var/log/btmp` et `stat`. Les données sont lues par `last` (connexions réussies, depuis `wtmp`) et `lastb` (connexions échouées, depuis `btmp`). Si auditd surveille `/var/log`, les appels `chgrp`/`chown` apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the **`file`** resource to set the owning group of the `wtmp`/`btmp` file to **`utmp`** (equivalent to `chgrp utmp /var/log/wtmp`). Apply it with `pavois harden apply`; no service restart is required.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource **`file`** pour fixer le groupe propriétaire du fichier `wtmp`/`btmp` à **`utmp`** (équivalent à `chgrp utmp /var/log/wtmp`). Appliquez-le avec `pavois harden apply` ; aucun redémarrage de service n'est requis."
+  },
+  "impact": {
+    "en": "A wrong owning group can expose login history to unprivileged users or, worse, allow tampering that hides intrusions from `last`/`lastb`. Restoring `utmp` is safe: PAM and login utilities expect this group. **Precaution:** keep the group `utmp` (not root) — login-accounting libraries write via the `utmp` group, so over-tightening to root can break session recording.",
+    "fr": "Un groupe propriétaire incorrect peut exposer l'historique des connexions à des utilisateurs non privilégiés ou, pire, permettre une altération masquant les intrusions à `last`/`lastb`. Rétablir `utmp` est sans danger : PAM et les utilitaires de connexion attendent ce groupe. **Précaution :** conservez le groupe `utmp` (pas root) — les bibliothèques de comptabilité de connexion écrivent via le groupe `utmp`, donc un durcissement excessif vers root peut casser l'enregistrement des sessions."
+  }
+}

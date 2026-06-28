@@ -1,0 +1,63 @@
+{
+  "id": "audit-var-log-journal",
+  "supported_os": [
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Audit (auditd)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "stig": [
+      "UBTU-22-654190",
+      "UBTU-24-300029"
+    ]
+  },
+  "check": [
+    "describe command('auditctl -l') do",
+    "  its('stdout') { should match(/(-k +|key=)systemd_journal\\b/) }",
+    "end"
+  ],
+  "remediation": {
+    "reboot_required": true,
+    "resource": "audit_ruleset"
+  },
+  "title": {
+    "en": "Ensure auditd Collects records for events that affect \"/var/log/journal\"",
+    "fr": "S'assurer qu'auditd collecte les enregistrements des evenements affectant \"/var/log/journal\""
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Once attackers gain access, they often try to establish persistence and **cover their tracks** by tampering with logs. The systemd journal under `/var/log/journal` holds the primary record of system and authentication activity; watching it produces a tamper-evidence trail usable for forensics. Without this watch, an intruder could delete or alter journal files silently, erasing the evidence of their intrusion.",
+    "fr": "Une fois l'acces obtenu, les attaquants cherchent souvent a etablir une persistance et a **effacer leurs traces** en alterant les journaux. Le journal systemd sous `/var/log/journal` contient l'enregistrement principal de l'activite systeme et d'authentification ; le surveiller produit une piste de detection d'alteration utilisable en analyse forensique. Sans cette surveillance, un intrus pourrait supprimer ou modifier silencieusement les fichiers de journal, effacant les preuves de son intrusion."
+  },
+  "summary": {
+    "en": "Installs an **auditd** watch keyed `systemd_journal` on `/var/log/journal` so every access to the systemd journal store is recorded.",
+    "fr": "Installe une surveillance **auditd** avec la cle `systemd_journal` sur `/var/log/journal` afin que chaque acces au stockage du journal systemd soit enregistre."
+  },
+  "check_note": {
+    "en": "Pavois runs `auditctl -l` and checks the **live** kernel ruleset for a rule keyed `systemd_journal`. A rule file present on disk is meaningless if it was never loaded (`augenrules` not run, syntax error, service not reloaded); only the live ruleset from `auditctl -l` proves `/var/log/journal` is actually being watched right now.",
+    "fr": "Pavois execute `auditctl -l` et verifie l'ensemble de regles **actif** dans le noyau pour une regle ayant la cle `systemd_journal`. Un fichier de regles present sur disque n'a aucune valeur s'il n'a jamais ete charge (`augenrules` non execute, erreur de syntaxe, service non recharge) ; seul l'ensemble actif issu de `auditctl -l` prouve que `/var/log/journal` est reellement surveille a cet instant."
+  },
+  "verify": {
+    "en": "Run `auditctl -l | grep systemd_journal`. Expect a watch such as `-w /var/log/journal -p wa -k systemd_journal`. Touch a file under the path and confirm an event is recorded.",
+    "fr": "Executez `auditctl -l | grep systemd_journal`. Attendez-vous a une surveillance telle que `-w /var/log/journal -p wa -k systemd_journal`. Modifiez un fichier sous ce chemin et confirmez qu'un evenement est enregistre."
+  },
+  "logs": {
+    "en": "Events land in `/var/log/audit/audit.log`. Since `ausearch` can falsely report \"no matches\", grep the raw log: `grep 'key=\"systemd_journal\"' /var/log/audit/audit.log`. Service state: `systemctl status auditd`.",
+    "fr": "Les evenements apparaissent dans `/var/log/audit/audit.log`. Comme `ausearch` peut signaler a tort \"no matches\", utilisez grep sur le journal brut : `grep 'key=\"systemd_journal\"' /var/log/audit/audit.log`. Etat du service : `systemctl status auditd`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `audit_ruleset` resource to write a Pavois-managed rules file under `/etc/audit/rules.d/` with `-w /var/log/journal -p wa -k systemd_journal`, then reloads auditd to load it into the kernel. A **reboot** is flagged because a hardened host locks the ruleset immutable (`-e 2`), so the new watch applies cleanly after restart.",
+    "fr": "`pavois harden apply` utilise la ressource `audit_ruleset` pour ecrire un fichier de regles gere par Pavois sous `/etc/audit/rules.d/` avec `-w /var/log/journal -p wa -k systemd_journal`, puis recharge auditd pour le charger dans le noyau. Un **redemarrage** est signale car un hote durci verrouille l'ensemble en immuable (`-e 2`), de sorte que la nouvelle surveillance s'applique proprement apres redemarrage."
+  },
+  "impact": {
+    "en": "Low impact: a single passive watch. **Precautions:** writes to the journal are frequent, so this watch generates volume — ensure `audit_backlog_limit` is large enough and that `/var/log/audit` has room. If auditd's failure policy is `halt`/`single`, a full audit partition can wedge the host; size the partition and monitor it before locking the ruleset with `-e 2`.",
+    "fr": "Impact faible : une seule surveillance passive. **Precautions :** les ecritures dans le journal sont frequentes, cette surveillance genere donc du volume : assurez-vous que `audit_backlog_limit` est suffisant et que `/var/log/audit` dispose d'espace. Si la politique d'echec d'auditd est `halt`/`single`, une partition d'audit pleine peut bloquer l'hote ; dimensionnez la partition et surveillez-la avant de verrouiller l'ensemble avec `-e 2`."
+  }
+}

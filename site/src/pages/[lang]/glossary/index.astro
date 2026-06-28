@@ -1,0 +1,228 @@
+---
+import { getCollection } from 'astro:content';
+import { marked } from 'marked';
+import Base from '../../../layouts/Base.astro';
+import { ui, languages, type Lang } from '../../../i18n/ui';
+
+export function getStaticPaths() {
+  return Object.keys(languages).map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params as { lang: Lang };
+const t = ui[lang];
+
+const terms = (await getCollection('glossary')).sort((a, b) =>
+  a.data.term.localeCompare(b.data.term, 'fr')
+);
+const categories = [...new Set(terms.map((e) => e.data.category))].sort();
+
+const catLabels: Record<string, { en: string; fr: string }> = {
+  Pavois: { en: 'Pavois', fr: 'Pavois' },
+  securite: { en: 'Security', fr: 'Sécurité' },
+  fondamentaux: { en: 'Fundamentals', fr: 'Fondamentaux' },
+  infrastructure: { en: 'Infrastructure', fr: 'Infrastructure' },
+  operations: { en: 'Operations', fr: 'Operations' },
+  reseau: { en: 'Network', fr: 'Réseau' },
+};
+const catLabel = (c: string): string => catLabels[c]?.[lang] ?? c;
+const md = (s: string): string => (s ? (marked.parse(s, { async: false, gfm: true }) as string) : '');
+
+function def(e: any) {
+  const en = e.data.en;
+  if (lang === 'en' && en?.short) return { short: en.short, full: en.full as string, fb: false };
+  return { short: e.data.fr.short, full: e.data.fr.full as string, fb: lang === 'en' };
+}
+
+// A-Z grouping.
+const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const letterOf = (s: string): string => {
+  const c = (s[0] || '#').toUpperCase();
+  return /[A-Z]/.test(c) ? c : '#';
+};
+const used = new Set(terms.map((e) => letterOf(e.data.term)));
+const letters = alphabet.filter((l) => used.has(l));
+if (used.has('#')) letters.push('#');
+const groups = letters.map((l) => ({
+  letter: l,
+  id: l === '#' ? 'num' : l,
+  items: terms.filter((e) => letterOf(e.data.term) === l),
+}));
+---
+
+<Base title={`Pavois — ${t.glossaryTitle}`} description={t.glossaryIntro} lang={lang} breadcrumbs={[{ name: 'Pavois', path: `/${lang}/` }, { name: t.navGlossary, path: `/${lang}/glossary/` }]}>
+  <div class="wrap page-head gloss-head">
+    <div class="crumb"><a href={`/${lang}/`}>Pavois</a> / {lang === 'fr' ? 'glossaire' : 'glossary'}</div>
+    <span class="eyebrow">{lang === 'fr' ? 'glossaire' : 'glossary'}</span>
+    <h1>{t.glossaryTitle}</h1>
+    <p class="lede">{t.glossaryIntro}</p>
+  </div>
+
+  <div class="wrap gloss-body">
+    <div class="filterbar">
+      <div class="fsel fsearch-wrap">
+        <label>{lang === 'fr' ? 'Recherche' : 'Search'}</label>
+        <input id="g-search" class="fsearch" type="search" placeholder={t.searchTermPh} autocomplete="off" />
+      </div>
+      <div class="fsel">
+        <label>{lang === 'fr' ? 'Catégorie' : 'Category'}</label>
+        <select id="g-cat">
+          <option value="">{t.allCategories}</option>
+          {categories.map((c) => <option value={c}>{catLabel(c)}</option>)}
+        </select>
+      </div>
+      <div class="fcount"><b id="g-count">{terms.length}</b> / {terms.length} {lang === 'fr' ? 'termes' : 'terms'}</div>
+    </div>
+
+    <nav class="az" aria-label="A-Z">
+      {alphabet.map((l) => (used.has(l) ? <a href={`#letter-${l}`}>{l}</a> : <span class="off">{l}</span>))}
+      {used.has('#') && <a href="#letter-num">#</a>}
+    </nav>
+
+    <p
+      id="g-empty"
+      hidden
+      class="empty"
+      data-msg={lang === 'fr' ? 'Aucun terme ne correspond.' : 'No term matches.'}
+    >
+    </p>
+
+    <div id="g-list">
+      {
+        groups.map((g) => (
+          <div class="g-group" id={`letter-${g.id}`} data-letter={g.letter}>
+            <div class="gloss-letter">{g.letter}</div>
+            <div class="gloss-grid">
+              {g.items.map((e) => {
+                const d = def(e);
+                const hay = [e.data.term, e.data.fr.translation, ...e.data.aliases, ...e.data.tags]
+                  .filter(Boolean)
+                  .join(' ')
+                  .toLowerCase();
+                return (
+                  <article class="term" data-cat={e.data.category} data-search={hay}>
+                    <div class="th">
+                      <h3>{e.data.term}</h3>
+                      <span class:list={['cat', { pavois: e.data.category === 'pavois' }]}>{catLabel(e.data.category)}</span>
+                    </div>
+                    <div class="short prose" set:html={md(d.short)} />
+                    {d.full && <div class="gfull prose" set:html={md(d.full)} />}
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</Base>
+
+<script>
+  const search = document.getElementById('g-search') as HTMLInputElement | null;
+  const cat = document.getElementById('g-cat') as HTMLSelectElement | null;
+  const count = document.getElementById('g-count');
+  const empty = document.getElementById('g-empty');
+  const list = document.getElementById('g-list');
+
+  if (list) {
+    const groups = Array.from(list.querySelectorAll('.g-group')) as HTMLElement[];
+    const apply = () => {
+      const q = (search?.value || '').trim().toLowerCase();
+      const c = cat?.value || '';
+      let n = 0;
+      for (const group of groups) {
+        let vis = 0;
+        for (const card of Array.from(group.querySelectorAll('.term')) as HTMLElement[]) {
+          const show =
+            (!q || (card.dataset.search || '').includes(q)) && (!c || card.dataset.cat === c);
+          card.hidden = !show;
+          if (show) vis++;
+        }
+        group.hidden = vis === 0;
+        n += vis;
+      }
+      if (count) count.textContent = String(n);
+      if (empty) {
+        const el = empty as HTMLElement;
+        el.hidden = n !== 0;
+        // inject the message only when actually empty — keeps it out of the static/scraped HTML
+        el.textContent = n === 0 ? el.dataset.msg || '' : '';
+      }
+    };
+    search?.addEventListener('input', apply);
+    cat?.addEventListener('change', apply);
+    list.addEventListener('click', (e) => {
+      const card = (e.target as HTMLElement).closest('.term');
+      if (card && !(e.target as HTMLElement).closest('a')) card.classList.toggle('expanded');
+    });
+    apply(); // correct initial count + empty-state on load
+  }
+</script>
+
+<style>
+  .page-head {
+    padding: 54px 28px 8px;
+  }
+  .gloss-body {
+    padding-bottom: 88px;
+  }
+  .az {
+    position: static;
+  }
+  .filterbar {
+    align-items: flex-end;
+    margin-top: 8px;
+  }
+  .filterbar .fcount {
+    padding-bottom: 9px;
+  }
+  .fsearch-wrap {
+    flex: 1;
+    min-width: 200px;
+  }
+  .fsearch {
+    width: 100%;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--tx);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 13px;
+  }
+  .fsearch:focus {
+    outline: none;
+    border-color: var(--red);
+  }
+  .term {
+    cursor: pointer;
+  }
+  .gfull {
+    display: none;
+    margin-top: 10px;
+    font-size: 13.5px;
+    color: var(--tx-2);
+    line-height: 1.6;
+  }
+  .term.expanded .gfull {
+    display: block;
+  }
+  .short :global(code),
+  .gfull :global(code) {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--tx);
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 1px 5px;
+  }
+  .g-group[hidden],
+  .term[hidden] {
+    display: none;
+  }
+  .empty {
+    color: var(--tx-3);
+    padding: 24px 0;
+  }
+</style>

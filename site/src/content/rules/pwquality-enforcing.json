@@ -1,0 +1,38 @@
+{
+  "id": "pwquality-enforcing",
+  "supported_os": [
+    "debian12"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0"
+  },
+  "severity": "medium",
+  "domain": "Passwords (pwquality)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.3.3.2.7"
+  },
+  "check": [
+    "describe command('grep -rqE \\'enforcing[[:space:]]*=[[:space:]]*0\\' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ /etc/pam.d/ 2>/dev/null && echo ko || echo ok') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "grep -rl 'enforcing[[:space:]]*=[[:space:]]*0' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ /etc/pam.d/ 2>/dev/null\n# delete the 'enforcing = 0' line(s) so pwquality enforces (it does by default when absent)\n",
+    "reason": "removing enforcing=0 makes pwquality reject weak passwords — verify your policy first",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Ensure PAM Enforces Password Requirements - Enforcing",
+    "fr": "Ensure PAM Enforces Password Requirements - Enforcing"
+  },
+  "needs_translation": [
+    "title.fr",
+    "rationale.fr"
+  ],
+  "rationale": {
+    "en": "Use of a complex password helps to increase the time and resources required to compromise the password. Password complexity, or strength, is a measure of the effectiveness of a password in resisting attempts at guessing and brute-force attacks. Using enforcing=1 ensures \"pwquality\" enforces complex password construction configuration and has the ability to limit brute-force attacks on the system.",
+    "fr": "Use of a complex password helps to increase the time and resources required to compromise the password. Password complexity, or strength, is a measure of the effectiveness of a password in resisting attempts at guessing and brute-force attacks. Using enforcing=1 ensures \"pwquality\" enforces complex password construction configuration and has the ability to limit brute-force attacks on the system."
+  }
+}

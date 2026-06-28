@@ -1,0 +1,71 @@
+{
+  "id": "sysctl-kernel-pid_max",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R9"
+  },
+  "check": [
+    "describe kernel_parameter('kernel.pid_max') do",
+    "  its('value') { should cmp 65536 }",
+    "end"
+  ],
+  "remediation": {
+    "key": "kernel.pid_max",
+    "resource": "sysctl",
+    "value": "65536"
+  },
+  "title": {
+    "en": "Configure maximum number of process identifiers",
+    "fr": "Configurer le nombre maximal d'identifiants de processus"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`kernel.pid_max` sets the upper limit on process identifiers (PIDs). If this ceiling is too low, the system can exhaust all available PIDs and become **unable to fork new processes**, which is both an availability hazard and a target for a fork-bomb style denial of service. Raising it to at least **65536** enlarges the PID space and improves availability under load.",
+    "fr": "`kernel.pid_max` définit la limite supérieure des identifiants de processus (PID). Si ce plafond est trop bas, le système peut épuiser tous les PID disponibles et devenir **incapable de créer de nouveaux processus**, ce qui constitue à la fois un risque de disponibilité et une cible pour un déni de service de type fork-bomb. Le porter à au moins **65536** agrandit l'espace de PID et améliore la disponibilité sous charge."
+  },
+  "summary": {
+    "en": "Sets `kernel.pid_max = 65536` so the system has a sufficiently large PID space and is less likely to exhaust process identifiers.",
+    "fr": "Fixe `kernel.pid_max = 65536` afin que le système dispose d'un espace de PID suffisamment grand et soit moins susceptible d'épuiser les identifiants de processus."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** with `kernel_parameter('kernel.pid_max')` (equivalent to `sysctl kernel.pid_max`), not a `/etc/sysctl.d/*.conf` line. A config file is meaningless if it was never applied or a later drop-in overrode it; only the effective parameter reflects the PID ceiling the kernel currently enforces.",
+    "fr": "Pavois lit la **valeur noyau en vigueur** via `kernel_parameter('kernel.pid_max')` (équivalent à `sysctl kernel.pid_max`), et non une ligne de `/etc/sysctl.d/*.conf`. Un fichier de configuration n'a aucun sens s'il n'a jamais été appliqué ou si un drop-in ultérieur l'a écrasé ; seul le paramètre effectif reflète le plafond de PID réellement appliqué par le noyau."
+  },
+  "verify": {
+    "en": "Run `sysctl kernel.pid_max`. Expected output (value of at least 65536):\n\n```\nkernel.pid_max = 65536\n```",
+    "fr": "Exécutez `sysctl kernel.pid_max`. Sortie attendue (valeur d'au moins 65536) :\n\n```\nkernel.pid_max = 65536\n```"
+  },
+  "logs": {
+    "en": "No dedicated log line. Confirm with `sysctl kernel.pid_max`. PID-exhaustion symptoms appear in `dmesg`/`journalctl -k` and application logs as `fork: Resource temporarily unavailable` / `Cannot allocate memory` when no PID is free.",
+    "fr": "Aucune ligne de journal dédiée. Vérifiez via `sysctl kernel.pid_max`. Les symptômes d'épuisement de PID apparaissent dans `dmesg`/`journalctl -k` et les journaux applicatifs sous la forme `fork: Resource temporarily unavailable` / `Cannot allocate memory` lorsqu'aucun PID n'est libre."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `kernel.pid_max = 65536`, persists it in a Pavois-managed drop-in under `/etc/sysctl.d/`, and applies it live (no reboot). Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour fixer `kernel.pid_max = 65536`, le persiste dans un drop-in géré par Pavois sous `/etc/sysctl.d/`, et l'applique à chaud (sans redémarrage). Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "**Risk if not applied:** a low PID ceiling can be reached under heavy process load (or a fork bomb), after which the system cannot start new processes — including login shells and recovery tools.\n\n**Precautions before applying:**\n- `65536` is a baseline. Hosts running thousands of concurrent processes/threads (large container nodes, build farms) may need a **higher** value (e.g. `4194304`). Setting it **lower** than the current running value could constrain a busy system, so confirm the existing value first.\n- The change is safe and reversible at runtime, with no application or boot lockout risk.",
+    "fr": "**Risque si non appliqué :** un plafond de PID bas peut être atteint sous forte charge de processus (ou lors d'une fork-bomb), après quoi le système ne peut plus démarrer de nouveaux processus — y compris les shells de connexion et les outils de récupération.\n\n**Précautions avant application :**\n- `65536` est une valeur de référence. Les hôtes exécutant des milliers de processus/threads simultanés (gros nœuds de conteneurs, fermes de build) peuvent nécessiter une valeur **plus élevée** (p. ex. `4194304`). La fixer **plus bas** que la valeur en cours pourrait contraindre un système chargé ; confirmez donc d'abord la valeur existante.\n- Le changement est sûr et réversible à chaud, sans risque de blocage applicatif ou au démarrage."
+  }
+}

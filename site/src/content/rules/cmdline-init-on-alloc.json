@@ -1,0 +1,53 @@
+{
+  "id": "cmdline-init-on-alloc",
+  "supported_os": [
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel command line",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe command('cat /proc/cmdline') do",
+    "  its('stdout') { should match(/(^| )init_on_alloc=1( |$)/) }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Configure kernel to zero out memory before allocation",
+    "fr": "Configurer le noyau pour remettre la memoire a zero avant allocation"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "With `init_on_alloc=1`, all page-allocator and slab-allocator memory is **zeroed when allocated**. This eliminates a whole class of \"uninitialised heap memory\" bugs where freshly allocated buffers expose leftover data from a previous owner — a common vector for **information disclosure** (leaking secrets, keys, or pointers that defeat ASLR) and for turning use-of-uninitialised-memory bugs into exploitable conditions.",
+    "fr": "Avec `init_on_alloc=1`, toute la memoire de l'allocateur de pages et de l'allocateur de slabs est **remise a zero a l'allocation**. Cela elimine toute une classe de bugs de \"memoire de tas non initialisee\" ou des tampons fraichement alloues exposent des donnees residuelles d'un proprietaire precedent — un vecteur courant de **divulgation d'information** (fuite de secrets, de cles ou de pointeurs contournant l'ASLR) et de transformation de bugs de memoire non initialisee en conditions exploitables."
+  },
+  "summary": {
+    "en": "Ensures the kernel booted with `init_on_alloc=1`, which zero-fills page and slab allocations so freshly allocated memory never carries stale data.",
+    "fr": "Garantit que le noyau a demarre avec `init_on_alloc=1`, qui remplit de zeros les allocations de pages et de slabs afin que la memoire fraichement allouee ne contienne jamais de donnees residuelles."
+  },
+  "check_note": {
+    "en": "Pavois reads `/proc/cmdline` — the line the **running** kernel booted with — and checks for `init_on_alloc=1`. This is more reliable than reading `/etc/default/grub`: the config file states what *should* boot, while `/proc/cmdline` proves the mitigation is **active in the running kernel**. Note some distributions build the kernel with `CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y`, in which case the behaviour is on even without the parameter — but the explicit flag guarantees it.",
+    "fr": "Pavois lit `/proc/cmdline` — la ligne avec laquelle le noyau **en cours** a demarre — et verifie la presence de `init_on_alloc=1`. C'est plus fiable que lire `/etc/default/grub` : le fichier de config indique ce qui *devrait* demarrer, tandis que `/proc/cmdline` prouve que la mitigation est **active dans le noyau en cours**. Remarque : certaines distributions compilent le noyau avec `CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y`, auquel cas le comportement est actif meme sans le parametre — mais le drapeau explicite le garantit."
+  },
+  "verify": {
+    "en": "Run `cat /proc/cmdline` and confirm it contains `init_on_alloc=1`. You can cross-check the build default with `cat /sys/kernel/...`/`zcat /proc/config.gz | grep INIT_ON_ALLOC` if available. The flag only appears after a **reboot** following a config change.",
+    "fr": "Executez `cat /proc/cmdline` et confirmez qu'elle contient `init_on_alloc=1`. Vous pouvez verifier la valeur par defaut de compilation avec `zcat /proc/config.gz | grep INIT_ON_ALLOC` si disponible. Le drapeau n'apparait qu'apres un **redemarrage** suivant un changement de configuration."
+  },
+  "logs": {
+    "en": "No dedicated runtime log; this is a build/boot-time memory policy. Confirm via `cat /proc/cmdline`; kernel security/mitigation messages appear in `dmesg`.",
+    "fr": "Aucun journal d'execution dedie ; il s'agit d'une politique memoire fixee a la compilation/au demarrage. Confirmez via `cat /proc/cmdline` ; les messages de securite/mitigation du noyau apparaissent dans `dmesg`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is wired for this rule (`remediation` is empty), so it must be applied **manually**: add `init_on_alloc=1` to the kernel command line via the bootloader (e.g. `GRUB_CMDLINE_LINUX` in `/etc/default/grub`, then `grub2-mkconfig`) and **reboot**. Confirm with `cat /proc/cmdline`.",
+    "fr": "Aucune remediation automatique n'est cablee pour cette regle (`remediation` est vide), elle doit donc etre appliquee **manuellement** : ajoutez `init_on_alloc=1` a la ligne de commande du noyau via le chargeur d'amorçage (p. ex. `GRUB_CMDLINE_LINUX` dans `/etc/default/grub`, puis `grub2-mkconfig`) et **redemarrez**. Confirmez avec `cat /proc/cmdline`."
+  },
+  "impact": {
+    "en": "Slight, usually negligible performance cost from zeroing every allocation (more noticeable on allocation-heavy workloads). **Precautions:** since RHEL 9 may already enable this by default at build time, adding the flag is harmless and idempotent. The change needs a reboot; verify the bootloader regenerated cleanly so you do not boot an unintended kernel line.",
+    "fr": "Cout de performance leger, generalement negligeable, lie a la remise a zero de chaque allocation (plus perceptible sur les charges intensives en allocation). **Precautions :** comme RHEL 9 peut deja l'activer par defaut a la compilation, ajouter le drapeau est inoffensif et idempotent. Le changement necessite un redemarrage ; verifiez que le chargeur d'amorçage s'est regenere proprement afin de ne pas demarrer une ligne de noyau imprevue."
+  }
+}

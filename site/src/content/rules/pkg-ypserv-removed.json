@@ -1,0 +1,84 @@
+{
+  "id": "pkg-ypserv-removed",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "critical",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R62",
+    "cis": [
+      "2.1.10",
+      "2.2.4"
+    ],
+    "nist": [
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)",
+      "IA-5(1)(c)"
+    ],
+    "pci-dss": [
+      "2.2.4",
+      "Req-2.2.2"
+    ]
+  },
+  "check": [
+    "describe package('ypserv') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "ypserv",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall ypserv Package",
+    "fr": "Désinstaller le paquet ypserv"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`ypserv` is the **NIS (Network Information Service) server** daemon. NIS provides an unencrypted authentication service that protects neither the confidentiality nor the integrity of user passwords or the remote session, and has a history of DoS and buffer-overflow vulnerabilities. Removing the `ypserv` package decreases the risk of accidental or intentional activation of NIS/NIS+ and removes a high-value attack surface; modern deployments should use LDAP instead.",
+    "fr": "`ypserv` est le démon **serveur NIS (Network Information Service)**. NIS fournit un service d'authentification non chiffré qui ne protège ni la confidentialité ni l'intégrité des mots de passe des utilisateurs ou de la session distante, et présente un historique de vulnérabilités par déni de service et débordement de tampon. Retirer le paquet `ypserv` réduit le risque d'activation accidentelle ou intentionnelle de NIS/NIS+ et supprime une surface d'attaque à forte valeur ; les déploiements modernes doivent utiliser LDAP à la place."
+  },
+  "summary": {
+    "en": "Ensures the insecure NIS server package `ypserv` is **not installed**.",
+    "fr": "Garantit que le paquet serveur NIS non sécurisé `ypserv` n'est **pas installé**."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database via the InSpec `package('ypserv')` resource (`rpm -q` / `dpkg -s`). Checking the package guarantees the NIS server cannot be started to serve unencrypted credential maps; if the package is gone, the `ypserv` service unit no longer exists.",
+    "fr": "Pavois interroge la base de paquets via la ressource InSpec `package('ypserv')` (`rpm -q` / `dpkg -s`). Vérifier le paquet garantit que le serveur NIS ne peut pas être démarré pour servir des cartes d'identifiants non chiffrées ; si le paquet est absent, l'unité de service `ypserv` n'existe plus."
+  },
+  "verify": {
+    "en": "On RHEL-family: `rpm -q ypserv` → `package ypserv is not installed`. On Debian/Ubuntu: `dpkg -s ypserv` → `dpkg-query: package 'ypserv' is not installed`. You can also confirm nothing serves NIS with `ss -lunp | grep ypserv` returning no rows.",
+    "fr": "Sur famille RHEL : `rpm -q ypserv` → `package ypserv is not installed`. Sur Debian/Ubuntu : `dpkg -s ypserv` → `dpkg-query: package 'ypserv' is not installed`. Vous pouvez aussi confirmer qu'aucun service NIS ne tourne avec `ss -lunp | grep ypserv` qui ne renvoie aucune ligne."
+  },
+  "logs": {
+    "en": "- Package state: `rpm -q ypserv` / `dpkg -s ypserv`; removal in `/var/log/dnf.rpm.log` or `/var/log/dpkg.log`.\n- Past NIS server activity (before removal): `journalctl -u ypserv`.",
+    "fr": "- État du paquet : `rpm -q ypserv` / `dpkg -s ypserv` ; suppression dans `/var/log/dnf.rpm.log` ou `/var/log/dpkg.log`.\n- Activité passée du serveur NIS (avant suppression) : `journalctl -u ypserv`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource for `ypserv` with action `remove`, so `pavois harden apply` uninstalls it (`dnf remove ypserv` / `apt-get purge ypserv`). Removing the package also removes the `ypserv` unit, so no restart is needed.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` pour `ypserv` avec l'action `remove`, donc `pavois harden apply` le désinstalle (`dnf remove ypserv` / `apt-get purge ypserv`). Retirer le paquet supprime aussi l'unité `ypserv`, aucun redémarrage n'est donc nécessaire."
+  },
+  "impact": {
+    "en": "If `ypserv` stays installed, this host can serve an unencrypted NIS directory exposing password maps to the network. **Before applying:** confirm this machine is not an active NIS master/slave serving other hosts — check `systemctl is-enabled ypserv` and whether clients bind to it (`ss -lunp | grep ypserv`). If it is a live NIS server, migrate the NIS clients to LDAP/SSSD before removing it, otherwise those clients lose directory/authentication and may lock out. Removal does not affect this host's own SSH access.",
+    "fr": "Si `ypserv` reste installé, cet hôte peut servir un annuaire NIS non chiffré exposant les cartes de mots de passe au réseau. **Avant d'appliquer :** confirmez que cette machine n'est pas un maître/esclave NIS actif servant d'autres hôtes — vérifiez `systemctl is-enabled ypserv` et si des clients s'y lient (`ss -lunp | grep ypserv`). Si c'est un serveur NIS en production, migrez les clients NIS vers LDAP/SSSD avant de le retirer, sinon ces clients perdent l'annuaire/l'authentification et peuvent se verrouiller. La suppression n'affecte pas l'accès SSH de cet hôte."
+  }
+}

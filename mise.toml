@@ -1,0 +1,109 @@
+# mise — unified toolchain + task runner for pavois (versions pinned, reproducible across
+# machines and CI). Activate: `mise install` then `mise trust`. Run a task: `mise run <task>`
+# (alias `mise r <task>`). List: `mise tasks`. This replaces the ad-hoc bin/pavois + scripts.
+[tools]
+go = "1.26.4"        # the pavois binary (go/)
+node = "22.22.0"     # the bilingual Astro hardening site (site/)
+python = "3.12.11"   # offline tooling: validation, reference render, norm-studio
+gh = "2.92.0"        # benchmark sources (ansible-lockdown, SSG releases)
+
+[env]
+CHEF_LICENSE = "accept-silent"   # CINC/InSpec runs non-interactively
+
+# ---- Go binary -------------------------------------------------------------------------------
+[tasks.build]
+description = "Build the pavois Go binary"
+dir = "{{config_root}}/go"
+run = "go build -o pavois ."
+
+[tasks.scan]
+description = "Scan a target, e.g. `mise run scan -- local --profile effective-config`"
+depends = ["build"]
+run = "{{config_root}}/go/pavois scan"
+
+[tasks.serve]
+description = "Serve the reports UI on http://localhost:8098"
+depends = ["build"]
+run = "{{config_root}}/go/pavois serve"
+
+[tasks.norms]
+description = "Emit the norm catalogue API (standards, versions, live coverage)"
+depends = ["build"]
+run = "{{config_root}}/go/pavois norms"
+
+[tasks.rules]
+description = "Emit the rule base as JSON, e.g. `mise run rules -- --os debian12`"
+depends = ["build"]
+run = "{{config_root}}/go/pavois rules"
+
+# ---- Validation / cross-validation ----------------------------------------------------------
+[tasks.datastreams]
+description = "Fetch the SSG datastreams (2nd validation source), idempotent"
+run = "tools/fetch_datastreams.sh"
+
+[tasks.validate]
+description = "Cross-validate CIS coverage for all OSes (>=2 sources -> reports/validation-dashboard.json)"
+depends = ["datastreams"]
+run = "uv run --with pyyaml python3 tools/validate_all.py"
+
+[tasks."validate:bp28"]
+description = "Validate ANSSI-BP-028 tags against the OFFICIAL v2.0 PDF (flags stale v1.2 R-numbers)"
+run = "uv run --with pyyaml python3 tools/validate_bp28.py"
+
+[tasks."validate:mappings"]
+description = "Cross-validate NIST + PCI-DSS tags vs intuitem/ciso-assistant frameworks (flags suspect refs)"
+run = "uv run --with pyyaml python3 tools/validate_mappings.py"
+
+[tasks."gen"]
+description = "DRY build: render the 8 per-OS reference files from docs/reference/rules.yml"
+run = "uv run --with pyyaml python3 tools/gen.py render"
+
+[tasks."gen:verify"]
+description = "CI guard: the 8 OS files match render(rules.yml) (DRY source in sync)"
+run = "uv run --with pyyaml python3 tools/gen.py verify"
+
+[tasks."gen:socle"]
+description = "Assign SOCLE-<DOM>-<FAM>-<N> refs to controls (pavois = SOCLE Linux profile)"
+run = "uv run --with pyyaml python3 tools/gen_socle_refs.py"
+
+[tasks."gen:evidence"]
+description = "Classify each control by evidence_type (effective-runtime / persistent-config / inventory-state / filesystem-state / manual / behavioral)"
+run = "uv run --with pyyaml python3 tools/gen_evidence_type.py"
+
+[tasks."gen:reboot"]
+description = "Classify each control by reboot_survivable (yes/no/unknown) — the persistence axis of the qualified verdict; run after gen:evidence"
+run = "uv run --with pyyaml python3 tools/gen_reboot_survivable.py"
+
+[tasks."gen:domain-refs"]
+description = "Generate site/src/data/domain-refs.json (handbook + blog guides + man pages per domain)"
+run = "uv run --with pyyaml python3 tools/gen_domain_refs.py"
+
+[tasks."oscal"]
+description = "Publish the pavois baseline as OSCAL (catalog + per-OS profiles)"
+run = "{{config_root}}/go/pavois oscal --out {{config_root}}/oscal"
+
+# ---- Norm studio (MCP content engine) -------------------------------------------------------
+[tasks.studio]
+description = "Run the norm-studio MCP server (surfaces official sources, exploits reference docs)"
+run = "uv run --with fastmcp --with pyyaml tools/norm_studio/server.py"
+
+# ---- Bilingual Astro site -------------------------------------------------------------------
+[tasks."site:dev"]
+description = "Dev server for the hardening site (FR/EN)"
+dir = "{{config_root}}/site"
+run = "npm install && npm run dev"
+
+[tasks."site:build"]
+description = "Build the static hardening site"
+dir = "{{config_root}}/site"
+run = "npm install && npm run build"
+
+[tasks."site:preview"]
+description = "Preview the built site locally"
+dir = "{{config_root}}/site"
+run = "npm run preview"
+
+[tasks."site:validate-seo"]
+description = "Validate every JSON-LD block in the built site against the Rich Results Test rules (run after site:build)"
+dir = "{{config_root}}/site"
+run = "node scripts/validate-jsonld.mjs dist"

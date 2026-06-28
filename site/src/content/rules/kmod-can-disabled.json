@@ -1,0 +1,64 @@
+{
+  "id": "kmod-can-disabled",
+  "supported_os": [
+    "fedora",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel modules",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "3.2.2"
+  },
+  "check": [
+    "describe kernel_module('can') do",
+    "  it { should_not be_loaded }",
+    "  it { should be_disabled }",
+    "end"
+  ],
+  "remediation": {
+    "action": "blacklist",
+    "name": "can",
+    "reboot_required": true,
+    "resource": "kernel_module"
+  },
+  "title": {
+    "en": "Disable CAN Support",
+    "fr": "Désactiver la prise en charge CAN"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "**CAN** (Controller Area Network) is an automotive/industrial bus protocol with no purpose on a general-purpose server. Its kernel module adds protocol-parsing code to the attack surface; a flaw there could be exploited for privilege escalation or denial of service. Disabling the unused module removes that exposure.",
+    "fr": "**CAN** (Controller Area Network) est un protocole de bus automobile/industriel sans utilité sur un serveur généraliste. Son module noyau ajoute du code d'analyse de protocole à la surface d'attaque ; une faille pourrait y être exploitée pour une élévation de privilèges ou un déni de service. Désactiver ce module inutilisé supprime cette exposition."
+  },
+  "summary": {
+    "en": "Ensures the `can` kernel module is not loaded and is blacklisted so the unused CAN bus protocol cannot be activated.",
+    "fr": "Garantit que le module noyau `can` n'est pas chargé et est mis en liste noire afin que le protocole de bus CAN inutilisé ne puisse être activé."
+  },
+  "check_note": {
+    "en": "Pavois uses `kernel_module('can')` to assert the module is **not loaded** and is **disabled** in the effective modprobe policy. Querying the live kernel plus the resolved modprobe config (rather than a single `.conf`) catches a module blacklisted in one place but still loaded, or re-enabled by an override.",
+    "fr": "Pavois utilise `kernel_module('can')` pour vérifier que le module n'est **pas chargé** et qu'il est **désactivé** dans la politique modprobe effective. Interroger le noyau vivant plus la config modprobe résolue (au lieu d'un seul `.conf`) détecte un module en liste noire quelque part mais encore chargé, ou réactivé par un override."
+  },
+  "verify": {
+    "en": "Run `lsmod | grep '^can'` (no output = not loaded) and `modprobe -n -v can` (expect `install /bin/true` or `/bin/false`). `modprobe --showconfig | grep can` shows the effective rules.",
+    "fr": "Exécutez `lsmod | grep '^can'` (aucune sortie = non chargé) et `modprobe -n -v can` (attendu : `install /bin/true` ou `/bin/false`). `modprobe --showconfig | grep can` affiche les règles effectives."
+  },
+  "logs": {
+    "en": "Blocked load attempts appear in the kernel log: `journalctl -k | grep -i can` / `dmesg | grep -i can`. `lsmod` shows resident modules; `modprobe --showconfig` shows the policy.",
+    "fr": "Les tentatives de chargement bloquées apparaissent dans le journal noyau : `journalctl -k | grep -i can` / `dmesg | grep -i can`. `lsmod` montre les modules résidents ; `modprobe --showconfig` montre la politique."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `kernel_module` resource to **blacklist** `can`: it writes a modprobe rule (`install can /bin/false` plus a blacklist entry) so the module cannot auto-load, and unloads it if resident. `reboot_required` is true to guarantee removal.",
+    "fr": "`pavois harden apply` utilise la ressource `kernel_module` pour mettre `can` en **liste noire** : il écrit une règle modprobe (`install can /bin/false` plus une entrée blacklist) afin que le module ne puisse se charger automatiquement, et le décharge s'il est résident. `reboot_required` est vrai pour garantir le retrait."
+  },
+  "impact": {
+    "en": "On a standard server, disabling `can` has **no functional impact**. Precaution: industrial/automotive/IoT gateways that talk to a CAN bus would lose that capability — confirm no `can`/`vcan` interface is configured (`ip link show type can`) before applying. A reboot is needed to unload an already-loaded module.",
+    "fr": "Sur un serveur standard, désactiver `can` n'a **aucun impact fonctionnel**. Précaution : les passerelles industrielles/automobiles/IoT communiquant avec un bus CAN perdraient cette capacité — confirmez qu'aucune interface `can`/`vcan` n'est configurée (`ip link show type can`) avant d'appliquer. Un redémarrage est nécessaire pour décharger un module déjà chargé."
+  }
+}

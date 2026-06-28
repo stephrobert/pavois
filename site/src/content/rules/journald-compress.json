@@ -1,0 +1,72 @@
+{
+  "id": "journald-compress",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Logging (journald)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.2.2.3",
+      "6.1.2.3",
+      "6.2.1.1.6"
+    ]
+  },
+  "check": [
+    "describe command('grep -rqiE \\'^[[:space:]]*Compress[[:space:]]*=[[:space:]]*yes\\b\\' /etc/systemd/journald.conf /etc/systemd/journald.conf.d/ 2>/dev/null && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Ensure journald is configured to compress large log files",
+    "fr": "S'assurer que journald est configuré pour compresser les gros fichiers de journaux"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Uncompressed journals can grow large enough to **fill the log partition**. Once the partition is full, journald drops new records and valuable logging information — including evidence of an attack in progress — is lost. Compression stretches the retained history within the same disk budget.",
+    "fr": "Des journaux non compressés peuvent grossir au point de **remplir la partition de logs**. Une fois la partition pleine, journald abandonne les nouveaux enregistrements et des informations de journalisation précieuses — y compris des traces d'une attaque en cours — sont perdues. La compression allonge l'historique conservé pour un même budget disque."
+  },
+  "summary": {
+    "en": "Sets `Compress=yes` for **systemd-journald** so large journal objects are compressed on disk.",
+    "fr": "Définit `Compress=yes` pour **systemd-journald** afin que les gros objets de journaux soient compressés sur le disque."
+  },
+  "check_note": {
+    "en": "Pavois greps `/etc/systemd/journald.conf` **and the `journald.conf.d/` drop-in directory** for an active `Compress=yes`. Because journald merges drop-ins over the main file, scanning both reflects the **effective setting**: a base file saying `no` overridden by a drop-in saying `yes` is correctly seen as enabled.",
+    "fr": "Pavois recherche dans `/etc/systemd/journald.conf` **et le répertoire de drop-ins `journald.conf.d/`** un `Compress=yes` actif. Comme journald fusionne les drop-ins par-dessus le fichier principal, scanner les deux reflète le **réglage effectif** : un fichier de base à `no` surchargé par un drop-in à `yes` est correctement vu comme activé."
+  },
+  "verify": {
+    "en": "Run `systemctl show systemd-journald` is not authoritative for this; instead check the resolved config with `grep -riE '^\\s*Compress\\s*=\\s*yes' /etc/systemd/journald.conf /etc/systemd/journald.conf.d/`. Expected: at least one matching `Compress=yes`. Apply changes with `systemctl restart systemd-journald`.",
+    "fr": "La commande `systemctl show systemd-journald` n'est pas faisante foi ici ; vérifiez plutôt la configuration résolue avec `grep -riE '^\\s*Compress\\s*=\\s*yes' /etc/systemd/journald.conf /etc/systemd/journald.conf.d/`. Attendu : au moins une correspondance `Compress=yes`. Appliquez les changements avec `systemctl restart systemd-journald`."
+  },
+  "logs": {
+    "en": "Inspect journald's own state and usage with `journalctl --disk-usage` and `journalctl -u systemd-journald`. Configuration reload/restart events appear via `systemctl status systemd-journald`. The active config files are `/etc/systemd/journald.conf` and `/etc/systemd/journald.conf.d/*.conf`.",
+    "fr": "Inspectez l'état et l'usage de journald avec `journalctl --disk-usage` et `journalctl -u systemd-journald`. Les événements de rechargement/redémarrage apparaissent via `systemctl status systemd-journald`. Les fichiers de configuration actifs sont `/etc/systemd/journald.conf` et `/etc/systemd/journald.conf.d/*.conf`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped for this slug (`remediation` is empty): **apply manually**. Add `Compress=yes` under `[Journal]` in a drop-in such as `/etc/systemd/journald.conf.d/99-Pavois.conf`, then run `systemctl restart systemd-journald`. (The related `journald-forwardtosyslog` rule writes that same drop-in via `pavois harden apply`.)",
+    "fr": "Aucune remédiation automatique n'est fournie pour ce slug (`remediation` est vide) : **appliquez manuellement**. Ajoutez `Compress=yes` sous `[Journal]` dans un drop-in tel que `/etc/systemd/journald.conf.d/99-Pavois.conf`, puis exécutez `systemctl restart systemd-journald`. (La règle voisine `journald-forwardtosyslog` écrit ce même drop-in via `pavois harden apply`.)"
+  },
+  "impact": {
+    "en": "Misconfiguration risks a full log partition and lost audit evidence; the control itself is low-risk to enable. **Precautions before applying:** restarting `systemd-journald` is generally safe but briefly interrupts journal writes — schedule it during a quiet window on busy log servers. Compression only applies to objects above journald's internal threshold, so do not expect existing small entries to shrink.",
+    "fr": "Une mauvaise configuration risque une partition de logs pleine et une perte de preuves d'audit ; le contrôle lui-même est peu risqué à activer. **Précautions avant application :** redémarrer `systemd-journald` est généralement sûr mais interrompt brièvement les écritures de journaux — planifiez-le pendant une fenêtre calme sur les serveurs de logs chargés. La compression ne s'applique qu'aux objets dépassant le seuil interne de journald ; n'attendez pas que les petites entrées existantes rétrécissent."
+  }
+}

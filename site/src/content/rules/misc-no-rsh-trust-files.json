@@ -1,0 +1,75 @@
+{
+  "id": "misc-no-rsh-trust-files",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "high",
+  "domain": "Hardening (misc)",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "7.2.9",
+      "7.2.10"
+    ],
+    "nist": [
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)"
+    ]
+  },
+  "check": [
+    "describe command('find /root /home -xdev -name .rhosts 2>/dev/null') do",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Remove Rsh Trust Files",
+    "fr": "Supprimer les fichiers de confiance Rsh"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "A `~/.rhosts` file declares remote host/user pairs that may log in or run commands as the local user **without a password**, via the legacy R-services (`rlogin`, `rsh`, `rcp`). If `.rhosts`/`pam_rhosts` support is enabled, these files grant host-based, unauthenticated access that is trivially spoofable on the network — a classic remote-compromise vector. Even when R-services look disabled, leftover trust files are a latent backdoor, which is why this rule is rated **high**. No `.rhosts` file should exist under `/root` or `/home`.",
+    "fr": "Un fichier `~/.rhosts` déclare des couples hôte/utilisateur distants autorisés à se connecter ou exécuter des commandes en tant qu'utilisateur local **sans mot de passe**, via les R-services hérités (`rlogin`, `rsh`, `rcp`). Si le support de `.rhosts`/`pam_rhosts` est activé, ces fichiers accordent un accès non authentifié basé sur l'hôte, trivialement usurpable sur le réseau — un vecteur classique de compromission distante. Même quand les R-services semblent désactivés, des fichiers de confiance résiduels constituent une porte dérobée latente, d'où la sévérité **haute**. Aucun fichier `.rhosts` ne doit exister sous `/root` ni `/home`."
+  },
+  "summary": {
+    "en": "Ensures **no `.rhosts` trust file** exists under `/root` or `/home`, removing any host-based unauthenticated R-services access.",
+    "fr": "Garantit qu'**aucun fichier de confiance `.rhosts`** n'existe sous `/root` ou `/home`, supprimant tout accès R-services non authentifié basé sur l'hôte."
+  },
+  "check_note": {
+    "en": "Pavois runs a live `find` over `/root` and `/home` (single filesystem via `-xdev`) for any `.rhosts` file. Enumerating files actually on disk catches trust files in every home directory — including dormant ones an attacker may have planted — rather than trusting a static account list.",
+    "fr": "Pavois lance un `find` en direct sur `/root` et `/home` (un seul système de fichiers via `-xdev`) pour tout fichier `.rhosts`. Énumérer les fichiers réellement présents sur le disque détecte les fichiers de confiance dans chaque répertoire personnel — y compris ceux, dormants, qu'un attaquant aurait pu déposer — au lieu de se fier à une liste de comptes statique."
+  },
+  "verify": {
+    "en": "Search for any rhosts trust file:\n\n- `find /root /home -xdev -name .rhosts 2>/dev/null` — expected output is **empty** (no path printed).",
+    "fr": "Recherchez tout fichier de confiance rhosts :\n\n- `find /root /home -xdev -name .rhosts 2>/dev/null` — la sortie attendue est **vide** (aucun chemin affiché)."
+  },
+  "logs": {
+    "en": "R-services access, if PAM rhosts is enabled, surfaces in the auth log:\n\n- `grep -E 'rhosts|rlogin|rsh' /var/log/auth.log` (Debian/Ubuntu) / `/var/log/secure` (RHEL) — shows `pam_rhosts` decisions.\n- File creation can be tracked via an auditd watch on home directories (`/var/log/audit/audit.log`).",
+    "fr": "L'accès aux R-services, si PAM rhosts est activé, apparaît dans le journal d'authentification :\n\n- `grep -E 'rhosts|rlogin|rsh' /var/log/auth.log` (Debian/Ubuntu) / `/var/log/secure` (RHEL) — affiche les décisions `pam_rhosts`.\n- La création de fichiers peut être suivie via une surveillance auditd des répertoires personnels (`/var/log/audit/audit.log`)."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so it must be applied **manually**: review each file found (`find /root /home -xdev -name .rhosts`) — treat its presence as suspicious — then delete it with `rm <path>`. Also confirm the R-services packages (`rsh-server`, `rsh-redone`) are removed and `pam_rhosts` is not enabled.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être appliquée **manuellement** : examinez chaque fichier trouvé (`find /root /home -xdev -name .rhosts`) — considérez sa présence comme suspecte — puis supprimez-le avec `rm <chemin>`. Vérifiez aussi que les paquets R-services (`rsh-server`, `rsh-redone`) sont supprimés et que `pam_rhosts` n'est pas activé."
+  },
+  "impact": {
+    "en": "**Risk if not applied:** any `.rhosts` file can grant unauthenticated, spoofable network logins as its owner — a direct remote-compromise path.\n\n**Precautions before applying:** legitimate modern systems do not use `.rhosts`; finding one warrants investigation as a possible intrusion artifact before deletion. Removing the file is non-disruptive (R-services are obsolete), but check that no antiquated batch job relies on `rsh`/`rcp` trust, and migrate it to SSH key-based authentication.",
+    "fr": "**Risque si non appliqué :** tout fichier `.rhosts` peut accorder des connexions réseau non authentifiées et usurpables en tant que son propriétaire — une voie directe de compromission distante.\n\n**Précautions avant application :** les systèmes modernes légitimes n'utilisent pas `.rhosts` ; en trouver un justifie une investigation comme possible artefact d'intrusion avant suppression. Retirer le fichier est sans impact (les R-services sont obsolètes), mais vérifiez qu'aucune tâche batch ancienne ne dépende de la confiance `rsh`/`rcp`, et migrez-la vers l'authentification SSH par clé."
+  }
+}

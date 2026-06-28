@@ -1,0 +1,90 @@
+{
+  "id": "ssh-set-loglevel-verbose",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "SSH",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "5.1.15",
+      "2.2.6",
+      "5.1.16"
+    ],
+    "nist": [
+      "AC-17(1)",
+      "AC-17(a)",
+      "CM-6(a)"
+    ],
+    "pci-dss": [
+      "2.2.6",
+      "Req-2.2.4"
+    ]
+  },
+  "check": [
+    "describe command('sshd -T') do",
+    "  its('stdout') { should match(/^loglevel\\s+verbose$/i) }",
+    "end"
+  ],
+  "remediation": {
+    "directive": "loglevel",
+    "notify": {
+      "action": "reload",
+      "service": "ssh"
+    },
+    "resource": "sshd_setting",
+    "value": "verbose",
+    "verify": "sshd -t -f %{path}"
+  },
+  "title": {
+    "en": "Set SSH Daemon LogLevel to VERBOSE",
+    "fr": "Définir le LogLevel du démon SSH sur VERBOSE"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "**`VERBOSE`** logging records SSH login and logout activity **and the key fingerprint** used to authenticate. That fingerprint is decisive for **incident response** and forensics: it lets you attribute a session to a specific key, spot use of an unexpected or revoked key, and discount sessions that merely disconnected. `DEBUG` is not a substitute — it drowns security signal in protocol noise — and anything below `INFO` loses the audit trail entirely, leaving account misuse undetectable.",
+    "fr": "La journalisation **`VERBOSE`** enregistre l'activité de connexion et de déconnexion SSH **ainsi que l'empreinte de la clé** utilisée pour s'authentifier. Cette empreinte est déterminante pour la **réponse à incident** et l'investigation : elle permet d'attribuer une session à une clé précise, de repérer l'usage d'une clé inattendue ou révoquée, et d'écarter les sessions simplement déconnectées. `DEBUG` n'est pas un substitut — il noie le signal de sécurité sous le bruit du protocole — et tout niveau inférieur à `INFO` supprime la piste d'audit, rendant les abus de comptes indétectables."
+  },
+  "summary": {
+    "en": "Set `sshd` `LogLevel` to **`VERBOSE`** so login activity and authenticating key fingerprints are logged.",
+    "fr": "Régler le `LogLevel` de `sshd` sur **`VERBOSE`** pour journaliser l'activité de connexion et l'empreinte des clés d'authentification."
+  },
+  "check_note": {
+    "en": "Pavois asserts that the **effective** `sshd -T` output reports exactly `loglevel verbose`. Querying the live daemon reflects the value resolved after all `Include` directives and `/etc/ssh/sshd_config.d/` drop-ins are merged — a file scan can miss a drop-in that downgrades the level and would report a false pass.",
+    "fr": "Pavois vérifie que la sortie **effective** de `sshd -T` rapporte exactement `loglevel verbose`. Interroger le démon en cours d'exécution reflète la valeur résolue après fusion de tous les `Include` et des drop-ins de `/etc/ssh/sshd_config.d/` — un scan de fichiers peut manquer un drop-in qui rétrograde le niveau et signalerait un faux succès."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -i loglevel`. Expected output:\n\n- `loglevel VERBOSE`",
+    "fr": "Exécuter `sshd -T | grep -i loglevel`. Sortie attendue :\n\n- `loglevel VERBOSE`"
+  },
+  "logs": {
+    "en": "Authentication events land in `/var/log/auth.log` (Debian/Ubuntu) or `journalctl -u ssh` / `journalctl -u sshd` (RHEL family). At `VERBOSE` each accepted login records the key fingerprint, e.g. `Accepted publickey for user ... key: SHA256:...`.",
+    "fr": "Les événements d'authentification apparaissent dans `/var/log/auth.log` (Debian/Ubuntu) ou via `journalctl -u ssh` / `journalctl -u sshd` (famille RHEL). À `VERBOSE`, chaque connexion acceptée enregistre l'empreinte de la clé, p. ex. `Accepted publickey for user ... key: SHA256:...`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan sets the `sshd_setting` resource for directive `loglevel` to **`verbose`**, validates the candidate config with `sshd -t`, then notifies a **reload** of the `ssh` service so logging takes effect immediately. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois règle la ressource `sshd_setting` pour la directive `loglevel` sur **`verbose`**, valide la configuration candidate avec `sshd -t`, puis déclenche un **reload** du service `ssh` pour que la journalisation prenne effet immédiatement. À appliquer avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Raising the log level does not affect connectivity, so there is no lockout risk. Expect **higher log volume** than `INFO`; verify that log rotation and disk space are sized for it. Do not use `DEBUG` in production — it can leak sensitive protocol internals and degrades the usefulness of the audit trail.",
+    "fr": "Augmenter le niveau de journalisation n'affecte pas la connectivité, donc aucun risque de verrouillage. Attendez-vous à un **volume de journaux plus élevé** qu'avec `INFO` ; vérifiez que la rotation des logs et l'espace disque sont dimensionnés en conséquence. N'utilisez pas `DEBUG` en production — il peut divulguer des détails internes sensibles du protocole et dégrade l'utilité de la piste d'audit."
+  }
+}

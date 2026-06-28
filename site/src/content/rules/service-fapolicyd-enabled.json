@@ -1,0 +1,63 @@
+{
+  "id": "service-fapolicyd-enabled",
+  "supported_os": [
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "systemd services",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {},
+  "check": [
+    "describe service('fapolicyd.service') do",
+    "  it { should be_enabled }",
+    "  it { should be_running }",
+    "end"
+  ],
+  "remediation": {
+    "action": [
+      "enable",
+      "start"
+    ],
+    "name": "fapolicyd",
+    "resource": "service"
+  },
+  "title": {
+    "en": "Enable the File Access Policy Service",
+    "fr": "Activer le service de politique d'accès aux fichiers (fapolicyd)"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The fapolicyd (File Access Policy Daemon) service implements application allow-listing: it decides which executables and libraries may run based on policy. Running it blocks the execution of untrusted or unauthorized binaries, a strong defense against malware and supply-chain tampering.",
+    "fr": "Le service fapolicyd (File Access Policy Daemon) met en œuvre une liste blanche d'applications : il décide quels exécutables et bibliothèques peuvent s'exécuter selon une politique. Son exécution bloque le lancement de binaires non approuvés ou non autorisés, une défense solide contre les logiciels malveillants et les altérations de la chaîne d'approvisionnement."
+  },
+  "summary": {
+    "en": "Ensures the application allow-listing daemon `fapolicyd.service` is **enabled** and **running** so only authorized executables can run.",
+    "fr": "Garantit que le démon de liste blanche d'applications `fapolicyd.service` est **activé** et **en cours d'exécution**, afin que seuls les exécutables autorisés puissent s'exécuter."
+  },
+  "check_note": {
+    "en": "Pavois queries the **resolved unit state** with `systemctl is-enabled` / `is-active` for `fapolicyd.service`. Reading the effective state confirms the daemon is actually active now — not just installed or enabled in a unit file that could be masked or failing to start.",
+    "fr": "Pavois interroge l'**état résolu de l'unité** avec `systemctl is-enabled` / `is-active` pour `fapolicyd.service`. Lire l'état effectif confirme que le démon est réellement actif — et pas seulement installé ou activé dans un fichier d'unité qui pourrait être masqué ou échouer au démarrage."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled fapolicyd.service` (expected `enabled`) and `systemctl is-active fapolicyd.service` (expected `active`).",
+    "fr": "Exécutez `systemctl is-enabled fapolicyd.service` (résultat attendu `enabled`) et `systemctl is-active fapolicyd.service` (résultat attendu `active`)."
+  },
+  "logs": {
+    "en": "Check `systemctl show fapolicyd.service` (fields `UnitFileState`, `ActiveState`) and `journalctl -u fapolicyd.service`; denied-execution events are logged to `/var/log/fapolicyd-access.log` and the audit log `/var/log/audit/audit.log`.",
+    "fr": "Vérifiez `systemctl show fapolicyd.service` (champs `UnitFileState`, `ActiveState`) et `journalctl -u fapolicyd.service` ; les exécutions refusées sont consignées dans `/var/log/fapolicyd-access.log` et le journal d'audit `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan applies a `service` resource for `fapolicyd` with actions **enable** and **start**, so the allow-listing daemon starts now and persists across reboots. Apply it with `pavois harden apply`.",
+    "fr": "Le plan harden de Pavois applique une ressource `service` sur `fapolicyd` avec les actions **enable** et **start**, de sorte que le démon de liste blanche démarre immédiatement et persiste après les redémarrages. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "fapolicyd enforces an **allow-list**: in enforcing mode it can **block legitimate binaries** not covered by policy (custom scripts, software installed outside dnf/rpm), breaking applications or even login. **Precaution:** before enabling, build/trust the rule set, run in **permissive mode** first to collect denials, and ensure the trust database (`fapolicyd-cli --update`) reflects your installed software — otherwise you risk locking yourself out of needed tools.",
+    "fr": "fapolicyd applique une **liste blanche** : en mode contraignant, il peut **bloquer des binaires légitimes** non couverts par la politique (scripts personnalisés, logiciels installés hors dnf/rpm), cassant des applications voire la connexion. **Précaution :** avant d'activer, constituez/validez l'ensemble de règles, exécutez d'abord en **mode permissif** pour collecter les refus, et assurez-vous que la base de confiance (`fapolicyd-cli --update`) reflète vos logiciels installés — sinon vous risquez de vous priver d'outils nécessaires."
+  }
+}

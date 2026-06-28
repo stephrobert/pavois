@@ -1,0 +1,72 @@
+{
+  "id": "filegroupowner-etc-sudoers",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R50"
+  },
+  "check": [
+    "only_if { file('/etc/sudoers').exist? }",
+    "describe file('/etc/sudoers') do",
+    "  its('group') { should eq 'root' }",
+    "end"
+  ],
+  "remediation": {
+    "group": "root",
+    "path": "/etc/sudoers",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Group Who Owns /etc/sudoers File",
+    "fr": "Vérifier le groupe propriétaire du fichier /etc/sudoers"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/etc/sudoers` defines who can run commands as **root** via `sudo`. If a non-privileged group owns it, a member of that group could be granted write access and grant themselves (or anyone) full root privileges — a direct **privilege-escalation** path. Group ownership by **root** keeps exclusive control of the sudo policy in trusted hands.",
+    "fr": "`/etc/sudoers` définit qui peut exécuter des commandes en tant que **root** via `sudo`. Si un groupe non privilégié en est propriétaire, un membre de ce groupe pourrait obtenir un accès en écriture et s'octroyer (ou octroyer à quiconque) les pleins privilèges root — une voie directe d'**élévation de privilèges**. La propriété par le groupe **root** garde le contrôle exclusif de la politique sudo entre des mains de confiance."
+  },
+  "summary": {
+    "en": "Ensures the sudo policy file `/etc/sudoers` is owned by group **root**.",
+    "fr": "Garantit que le fichier de politique sudo `/etc/sudoers` appartient au groupe **root**."
+  },
+  "check_note": {
+    "en": "Pavois reads the real owning group of `/etc/sudoers` via InSpec's `file` resource and asserts `group == 'root'`. It inspects the **effective** filesystem ownership applied right now, so an accidental `chgrp` or a tampered `/etc/sudoers` is detected regardless of what any deployment template claims.",
+    "fr": "Pavois lit le groupe propriétaire réel de `/etc/sudoers` via la ressource InSpec `file` et vérifie `group == 'root'`. Il inspecte la propriété **effective** du système de fichiers réellement appliquée, de sorte qu'un `chgrp` accidentel ou un `/etc/sudoers` falsifié est détecté indépendamment de ce qu'affirme un modèle de déploiement."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G' /etc/sudoers`. Expected output: `root`. (Validate syntax separately with `visudo -c`.)",
+    "fr": "Exécutez `stat -c '%G' /etc/sudoers`. Sortie attendue : `root`. (Validez la syntaxe séparément avec `visudo -c`.)"
+  },
+  "logs": {
+    "en": "Watch it with auditd — `auditctl -w /etc/sudoers -p wa -k scope` — and ownership or content changes show up in `/var/log/audit/audit.log` (`grep 'key=\"scope\"' /var/log/audit/audit.log`). Successful `sudo` invocations are also logged to `/var/log/auth.log` (Debian/Ubuntu) or `journalctl -t sudo`.",
+    "fr": "Surveillez-le avec auditd — `auditctl -w /etc/sudoers -p wa -k scope` — les changements de propriété ou de contenu apparaissent dans `/var/log/audit/audit.log` (`grep 'key=\"scope\"' /var/log/audit/audit.log`). Les invocations `sudo` réussies sont aussi journalisées dans `/var/log/auth.log` (Debian/Ubuntu) ou via `journalctl -t sudo`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `file` resource to set the owning group of `/etc/sudoers` back to **root** (equivalent to `chgrp root /etc/sudoers`). Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `file` pour remettre le groupe propriétaire de `/etc/sudoers` à **root** (équivalent à `chgrp root /etc/sudoers`). Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "A non-root group on `/etc/sudoers` is a privilege-escalation risk. Restoring group **root** is non-disruptive: `sudo` reads the file as root and refuses to run if it is writable by non-owners anyway. Precaution: never edit `/etc/sudoers` directly — use `visudo` to avoid a syntax error that would lock everyone out of `sudo`; keep the mode at `0440`.",
+    "fr": "Un groupe non-root sur `/etc/sudoers` constitue un risque d'élévation de privilèges. Restaurer le groupe **root** n'a aucun impact : `sudo` lit le fichier en tant que root et refuse de s'exécuter s'il est inscriptible par d'autres. Précaution : ne modifiez jamais `/etc/sudoers` directement — utilisez `visudo` pour éviter une erreur de syntaxe qui bloquerait l'accès `sudo` pour tous ; conservez le mode `0440`."
+  }
+}

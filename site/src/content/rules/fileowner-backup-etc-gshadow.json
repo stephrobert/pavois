@@ -1,0 +1,75 @@
+{
+  "id": "fileowner-backup-etc-gshadow",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "7.1.8",
+    "nist": "AC-6 (1)",
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "only_if { file('/etc/gshadow-').exist? }",
+    "describe file('/etc/gshadow-') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/etc/gshadow-",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify User Who Owns Backup gshadow File",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier de sauvegarde gshadow"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/etc/gshadow-` is the backup of `/etc/gshadow` and contains **group password hashes**. If it is not owned by **root** (uid 0), an unauthorized user could read those hashes and attempt offline cracking, or tamper with the backup. Because it holds credential material, protecting this file is critical to system security.",
+    "fr": "`/etc/gshadow-` est la sauvegarde de `/etc/gshadow` et contient des **empreintes de mots de passe de groupe**. S'il n'appartient pas à **root** (uid 0), un utilisateur non autorisé pourrait lire ces empreintes et tenter un cassage hors-ligne, ou altérer la sauvegarde. Comme il contient du matériel d'identification, protéger ce fichier est critique pour la sécurité du système."
+  },
+  "summary": {
+    "en": "Ensures the `/etc/gshadow-` backup file is owned by **root** (uid 0).",
+    "fr": "Garantit que le fichier de sauvegarde `/etc/gshadow-` appartient à **root** (uid 0)."
+  },
+  "check_note": {
+    "en": "Pavois reads the file's **effective owning uid** with the InSpec `file` resource and asserts it equals `0` (root), only when the file exists. Reading the live filesystem owner reflects the protection currently enforced — catching `chown` drift — instead of assuming the default created by group tooling was preserved.",
+    "fr": "Pavois lit l'**uid propriétaire effectif** du fichier avec la ressource InSpec `file` et vérifie qu'il vaut `0` (root), uniquement si le fichier existe. Lire le propriétaire réel du système de fichiers reflète la protection réellement appliquée — détectant la dérive de `chown` — au lieu de supposer que la valeur par défaut créée par les outils de gestion de groupes a été conservée."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U' /etc/gshadow-`. Expected output: `root`. Alternatively `ls -l /etc/gshadow-` should show `root` in the owner column.",
+    "fr": "Exécutez `stat -c '%U' /etc/gshadow-`. Sortie attendue : `root`. Sinon, `ls -l /etc/gshadow-` doit afficher `root` dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "Ownership is shown by `ls -l /etc/gshadow-` and `stat /etc/gshadow-`. The backup is rewritten when group passwords change (`gpasswd`, `groupmod`). If auditd watches `/etc/gshadow-` (a standard identity-file watch), `chown` and write events appear in `/var/log/audit/audit.log`.",
+    "fr": "Le propriétaire est affiché par `ls -l /etc/gshadow-` et `stat /etc/gshadow-`. La sauvegarde est réécrite lors des changements de mots de passe de groupe (`gpasswd`, `groupmod`). Si auditd surveille `/etc/gshadow-` (surveillance standard des fichiers d'identité), les événements `chown` et d'écriture apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is shipped for this rule, so it must be remediated **manually**: run `chown root /etc/gshadow-` (commonly paired with `chgrp shadow` on Debian/Ubuntu or `chgrp root` on RHEL, and `chmod 0000`/`0600` to match `/etc/gshadow`).",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle : elle doit être corrigée **manuellement** avec `chown root /etc/gshadow-` (souvent accompagné de `chgrp shadow` sur Debian/Ubuntu ou `chgrp root` sur RHEL, et `chmod 0000`/`0600` pour correspondre à `/etc/gshadow`)."
+  },
+  "impact": {
+    "en": "Non-root ownership exposes group password hashes to reading and offline cracking, or to tampering — a serious credential-compromise risk. Restoring root ownership has no operational impact; only group-management tools touch this file. **Precaution:** if `/etc/gshadow-` is absent the check is skipped; re-run after the next group-password change. Avoid loosening permissions further than `/etc/gshadow` itself.",
+    "fr": "Une propriété autre que root expose les empreintes de mots de passe de groupe à la lecture et au cassage hors-ligne, ou à l'altération — un risque sérieux de compromission d'identifiants. Rétablir la propriété root n'a aucun impact opérationnel ; seuls les outils de gestion de groupes touchent ce fichier. **Précaution :** si `/etc/gshadow-` est absent, le contrôle est ignoré ; relancez-le après le prochain changement de mot de passe de groupe. Évitez d'assouplir les permissions au-delà de celles de `/etc/gshadow` lui-même."
+  }
+}

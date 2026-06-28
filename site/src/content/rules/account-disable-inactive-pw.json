@@ -1,0 +1,45 @@
+{
+  "id": "account-disable-inactive-pw",
+  "supported_os": [
+    "debian12"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (login.defs)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.4.1.5",
+    "nist": [
+      "IA-4(e)",
+      "AC-2(3)",
+      "CM-6(a)"
+    ],
+    "pci-dss": "8.2.6"
+  },
+  "check": [
+    "describe command('awk -F= \\'/^INACTIVE=/{v=$2} END{print (v ~ /^[0-9]+$/ && v>=0 && v<=30)?\"ok\":\"ko\"}\\' /etc/default/useradd') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "useradd -D -f 30",
+    "name": "set-default-inactive",
+    "not_if": "awk -F= '/^INACTIVE=/{v=$2} END{exit !(v ~ /^[0-9]+$/ && v>=0 && v<=30)}' /etc/default/useradd",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Set Account Expiration Following Inactivity",
+    "fr": "Set Account Expiration Following Inactivity"
+  },
+  "needs_translation": [
+    "title.fr",
+    "rationale.fr"
+  ],
+  "rationale": {
+    "en": "Inactive identifiers pose a risk to systems and applications because attackers may exploit an inactive identifier and potentially obtain undetected access to the system. Disabling inactive accounts ensures that accounts which may not have been responsibly removed are not available to attackers who may have compromised their credentials. Owners of inactive accounts will not notice if unauthorized access to their user account has been obtained.",
+    "fr": "Inactive identifiers pose a risk to systems and applications because attackers may exploit an inactive identifier and potentially obtain undetected access to the system. Disabling inactive accounts ensures that accounts which may not have been responsibly removed are not available to attackers who may have compromised their credentials. Owners of inactive accounts will not notice if unauthorized access to their user account has been obtained."
+  }
+}

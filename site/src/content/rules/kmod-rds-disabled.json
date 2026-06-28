@@ -1,0 +1,83 @@
+{
+  "id": "kmod-rds-disabled",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Kernel modules",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "3.2.3",
+      "3.2.5",
+      "3.2.4"
+    ],
+    "nist": [
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)"
+    ]
+  },
+  "check": [
+    "describe kernel_module('rds') do",
+    "  it { should_not be_loaded }",
+    "  it { should be_disabled }",
+    "end"
+  ],
+  "remediation": {
+    "action": "blacklist",
+    "name": "rds",
+    "reboot_required": true,
+    "resource": "kernel_module"
+  },
+  "title": {
+    "en": "Disable RDS Support",
+    "fr": "Désactiver la prise en charge de RDS"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "RDS (Reliable Datagram Sockets) is a specialized transport protocol designed for high-performance/HPC and InfiniBand clusters. It is rarely needed and its kernel implementation has a history of serious vulnerabilities (including a local root flaw, CVE-2010-3904). Disabling RDS protects the system against exploitation of any flaws in its implementation and removes an unused network protocol from the attack surface.",
+    "fr": "RDS (Reliable Datagram Sockets) est un protocole de transport spécialisé conçu pour le calcul haute performance/HPC et les grappes InfiniBand. Il est rarement nécessaire et son implémentation noyau a un historique de vulnérabilités graves (dont une faille root locale, CVE-2010-3904). Désactiver RDS protège le système contre l'exploitation de toute faille de son implémentation et retire un protocole réseau inutilisé de la surface d'attaque."
+  },
+  "summary": {
+    "en": "Ensures the `rds` (Reliable Datagram Sockets) network protocol kernel module cannot be loaded.",
+    "fr": "Garantit que le module noyau du protocole réseau `rds` (Reliable Datagram Sockets) ne peut pas être chargé."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `kernel_module('rds')` resource to confirm the module is **not loaded** and is **disabled** (blacklist plus an `install ... /bin/true` override). This reflects the **effective** kernel state via `lsmod` and `modprobe --showconfig`, not a static grep of `/etc/modprobe.d/` — so an application or drop-in that autoloads the protocol is detected.",
+    "fr": "Pavois utilise la ressource InSpec `kernel_module('rds')` pour confirmer que le module n'est **pas chargé** et qu'il est **désactivé** (blacklist plus une redirection `install ... /bin/true`). Cela reflète l'état **effectif** du noyau via `lsmod` et `modprobe --showconfig`, et non un grep statique de `/etc/modprobe.d/` — ainsi une application ou un drop-in qui chargerait automatiquement le protocole est détecté."
+  },
+  "verify": {
+    "en": "Run `modprobe -n -v rds` — it should print `install /bin/true`. Confirm it is not loaded with `lsmod | grep rds` (no output expected). `modprobe --showconfig | grep rds` should show a `blacklist rds` and an `install rds /bin/true` line.",
+    "fr": "Exécutez `modprobe -n -v rds` — la sortie doit afficher `install /bin/true`. Vérifiez qu'il n'est pas chargé avec `lsmod | grep rds` (aucune sortie attendue). `modprobe --showconfig | grep rds` doit afficher une ligne `blacklist rds` et une ligne `install rds /bin/true`."
+  },
+  "logs": {
+    "en": "Load attempts appear in the kernel ring buffer: `dmesg | grep rds` or `journalctl -k | grep rds`. The effective modprobe policy is shown by `modprobe --showconfig | grep rds`.",
+    "fr": "Les tentatives de chargement apparaissent dans le tampon noyau : `dmesg | grep rds` ou `journalctl -k | grep rds`. La politique modprobe effective est affichée par `modprobe --showconfig | grep rds`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `kernel_module` resource to **blacklist** `rds`: it writes a drop-in under `/etc/modprobe.d/` with `blacklist rds` and `install rds /bin/true`, and unloads the module if loaded. Because the protocol may already be loaded, **`reboot_required` is true** to guarantee a clean state.",
+    "fr": "`pavois harden apply` utilise la ressource `kernel_module` pour mettre `rds` en **blacklist** : il écrit un drop-in sous `/etc/modprobe.d/` avec `blacklist rds` et `install rds /bin/true`, et décharge le module s'il est chargé. Comme le protocole peut déjà être chargé, **`reboot_required` est vrai** pour garantir un état propre."
+  },
+  "impact": {
+    "en": "Risk if not applied: a niche network protocol with a history of kernel CVEs remains loadable and reachable.\n\n- **Before applying**, confirm no application uses RDS sockets — relevant only to specific HPC/InfiniBand or Oracle RAC interconnect workloads.\n- Non-disruptive on general-purpose servers and VMs.\n- A **reboot** is required for full effect; schedule it in a maintenance window.",
+    "fr": "Risque en l'absence d'application : un protocole réseau de niche au passif de CVE noyau reste chargeable et joignable.\n\n- **Avant d'appliquer**, vérifiez qu'aucune application n'utilise de sockets RDS — pertinent uniquement pour certaines charges HPC/InfiniBand ou l'interconnexion Oracle RAC.\n- Non perturbateur sur les serveurs et VM généralistes.\n- Un **redémarrage** est requis pour un effet complet ; planifiez-le dans une fenêtre de maintenance."
+  }
+}

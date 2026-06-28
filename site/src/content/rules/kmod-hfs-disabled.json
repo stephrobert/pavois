@@ -1,0 +1,80 @@
+{
+  "id": "kmod-hfs-disabled",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Kernel modules",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "1.1.1.3",
+    "nist": [
+      "3.4.6",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)"
+    ]
+  },
+  "check": [
+    "describe kernel_module('hfs') do",
+    "  it { should_not be_loaded }",
+    "  it { should be_disabled }",
+    "end"
+  ],
+  "remediation": {
+    "action": "blacklist",
+    "name": "hfs",
+    "reboot_required": true,
+    "resource": "kernel_module"
+  },
+  "title": {
+    "en": "Disable Mounting of hfs",
+    "fr": "Désactiver le montage de hfs"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `hfs` filesystem is Apple's legacy Hierarchical File System, needed only to read old Mac media. Every filesystem driver the kernel can load adds attack surface: parsing untrusted disk structures has historically caused memory-corruption bugs. An attacker who can attach a USB drive or get a malicious image mounted could exploit flaws in this rarely-used driver to crash the system or run code in the kernel. Disabling it removes that exposure on systems that never touch HFS media.",
+    "fr": "Le système de fichiers `hfs` est l'ancien Hierarchical File System d'Apple, nécessaire uniquement pour lire d'anciens supports Mac. Chaque pilote de système de fichiers chargeable ajoute de la surface d'attaque : l'analyse de structures disque non fiables a historiquement causé des bogues de corruption mémoire. Un attaquant capable de brancher une clé USB ou de faire monter une image malveillante pourrait exploiter des failles de ce pilote rarement utilisé pour faire planter le système ou exécuter du code dans le noyau. Le désactiver supprime cette exposition sur les systèmes qui ne touchent jamais à des supports HFS."
+  },
+  "summary": {
+    "en": "Ensures the `hfs` filesystem kernel module cannot be loaded, so the legacy Apple HFS driver is unavailable.",
+    "fr": "Garantit que le module noyau du système de fichiers `hfs` ne peut pas être chargé, rendant indisponible le pilote hérité Apple HFS."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `kernel_module('hfs')` resource to confirm the module is **not loaded** and is **disabled** (blacklist plus an `install ... /bin/true` override). This reflects the **effective** kernel state via `lsmod` and `modprobe --showconfig`, not just a static grep of `/etc/modprobe.d/`. A drop-in that re-enables loading would be detected here even if a config file appears correct.",
+    "fr": "Pavois utilise la ressource InSpec `kernel_module('hfs')` pour confirmer que le module n'est **pas chargé** et qu'il est **désactivé** (blacklist plus une redirection `install ... /bin/true`). Cela reflète l'état **effectif** du noyau via `lsmod` et `modprobe --showconfig`, et pas seulement un grep statique de `/etc/modprobe.d/`. Un drop-in réactivant le chargement serait détecté ici même si un fichier de configuration semble correct."
+  },
+  "verify": {
+    "en": "Run `modprobe -n -v hfs` — it should print `install /bin/true`. Confirm it is not loaded with `lsmod | grep hfs` (no output expected). `modprobe --showconfig | grep hfs` should list a `blacklist hfs` and an `install hfs /bin/true` line.",
+    "fr": "Exécutez `modprobe -n -v hfs` — la sortie doit afficher `install /bin/true`. Vérifiez qu'il n'est pas chargé avec `lsmod | grep hfs` (aucune sortie attendue). `modprobe --showconfig | grep hfs` doit lister une ligne `blacklist hfs` et une ligne `install hfs /bin/true`."
+  },
+  "logs": {
+    "en": "Load attempts appear in the kernel ring buffer: `dmesg | grep hfs` or `journalctl -k | grep hfs`. The active modprobe policy is shown by `modprobe --showconfig | grep hfs`.",
+    "fr": "Les tentatives de chargement apparaissent dans le tampon noyau : `dmesg | grep hfs` ou `journalctl -k | grep hfs`. La politique modprobe active est affichée par `modprobe --showconfig | grep hfs`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `kernel_module` resource to **blacklist** `hfs`: it writes a drop-in under `/etc/modprobe.d/` with `blacklist hfs` and `install hfs /bin/true`, and unloads the module if loaded. Because the driver may already be resident in the running kernel or initramfs, **`reboot_required` is true** to guarantee it is not active.",
+    "fr": "`pavois harden apply` utilise la ressource `kernel_module` pour mettre `hfs` en **blacklist** : il écrit un drop-in sous `/etc/modprobe.d/` avec `blacklist hfs` et `install hfs /bin/true`, et décharge le module s'il est chargé. Comme le pilote peut déjà être présent dans le noyau en cours d'exécution ou dans l'initramfs, **`reboot_required` est vrai** pour garantir qu'il n'est pas actif."
+  },
+  "impact": {
+    "en": "Risk if not applied: a loadable legacy filesystem driver remains exploitable via mounting Apple media or a crafted image.\n\n- **Before applying**, confirm the host does not need to read HFS-formatted Apple media (very rare on servers).\n- Non-disruptive on standard Linux deployments; only affects workflows that mount HFS volumes.\n- A **reboot** is required for full effect — schedule it in a maintenance window.",
+    "fr": "Risque en l'absence d'application : un pilote de système de fichiers hérité chargeable reste exploitable via le montage de supports Apple ou d'une image forgée.\n\n- **Avant d'appliquer**, vérifiez que l'hôte n'a pas besoin de lire des supports Apple au format HFS (très rare sur serveur).\n- Non perturbateur sur les déploiements Linux standard ; n'affecte que les flux qui montent des volumes HFS.\n- Un **redémarrage** est requis pour un effet complet — planifiez-le dans une fenêtre de maintenance."
+  }
+}

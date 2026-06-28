@@ -1,0 +1,84 @@
+{
+  "id": "misc-accounts-tmout",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (misc)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R32",
+    "cis": [
+      "5.4.3.2",
+      "8.6.1"
+    ],
+    "nist": [
+      "3.1.11",
+      "AC-12",
+      "AC-2(5)",
+      "CM-6(a)",
+      "SC-10"
+    ],
+    "pci-dss": "8.6.1",
+    "stig": [
+      "UBTU-22-412030",
+      "UBTU-24-200060"
+    ]
+  },
+  "check": [
+    "describe command('grep -qrE \\'^[^#]*TMOUT=[0-9]\\' /etc/profile /etc/profile.d/ /etc/bashrc 2>/dev/null && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Set Interactive Session Timeout",
+    "fr": "Définir un délai d'expiration des sessions interactives"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Automatically terminating an idle session reduces the window in which an unattended console or SSH session left logged in can be hijacked by unauthorized personnel. Without `TMOUT`, a forgotten root shell on a screen-locked-but-not-logged-out terminal is a standing risk.",
+    "fr": "Terminer automatiquement une session inactive réduit la fenêtre durant laquelle une console ou une session SSH laissée connectée sans surveillance peut être détournée par une personne non autorisée. Sans `TMOUT`, un shell root oublié sur un terminal verrouillé mais non déconnecté constitue un risque permanent."
+  },
+  "summary": {
+    "en": "Defines a shell `TMOUT` value in `/etc/profile`, `/etc/profile.d/` or `/etc/bashrc` so idle interactive shells are automatically logged out.",
+    "fr": "Définit une valeur `TMOUT` du shell dans `/etc/profile`, `/etc/profile.d/` ou `/etc/bashrc` afin que les shells interactifs inactifs soient automatiquement déconnectés."
+  },
+  "check_note": {
+    "en": "Pavois greps the shell init files (`/etc/profile`, `/etc/profile.d/*`, `/etc/bashrc`) for an uncommented `TMOUT=` assignment. Because `TMOUT` is a shell builtin set at login through these scripts (there is no service to query), the effective source of truth is the init files themselves — Pavois checks the very files the shell sources, including drop-ins under `/etc/profile.d/`.",
+    "fr": "Pavois recherche dans les fichiers d'initialisation du shell (`/etc/profile`, `/etc/profile.d/*`, `/etc/bashrc`) une affectation `TMOUT=` non commentée. Comme `TMOUT` est une variable interne du shell positionnée à la connexion par ces scripts (il n'y a pas de service à interroger), la source de vérité effective est les fichiers d'init eux-mêmes — Pavois vérifie précisément les fichiers que le shell source, y compris les drop-ins de `/etc/profile.d/`."
+  },
+  "verify": {
+    "en": "Run `grep -rE '^[^#]*TMOUT=' /etc/profile /etc/profile.d/ /etc/bashrc`. Expect at least one match such as `readonly TMOUT=600`. In a fresh login shell, `echo $TMOUT` should print the configured number of seconds.",
+    "fr": "Exécutez `grep -rE '^[^#]*TMOUT=' /etc/profile /etc/profile.d/ /etc/bashrc`. Attendez-vous à au moins une correspondance telle que `readonly TMOUT=600`. Dans un nouveau shell de connexion, `echo $TMOUT` doit afficher le nombre de secondes configuré."
+  },
+  "logs": {
+    "en": "Session ends triggered by `TMOUT` close the SSH/console session, logged in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL). Verify the variable directly with `echo $TMOUT` in an interactive shell.",
+    "fr": "Les fins de session déclenchées par `TMOUT` ferment la session SSH/console, journalisées dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL). Vérifiez directement la variable avec `echo $TMOUT` dans un shell interactif."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule; apply it **manually**. Add a file such as `/etc/profile.d/tmout.sh` containing `TMOUT=600; readonly TMOUT; export TMOUT` (10 minutes). Using `readonly` prevents users from unsetting it. Beware that only `/bin/sh`/bash honor `TMOUT`; other shells (zsh, fish) need their own equivalent.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni ; appliquez-la **manuellement**. Ajoutez un fichier comme `/etc/profile.d/tmout.sh` contenant `TMOUT=600; readonly TMOUT; export TMOUT` (10 minutes). L'usage de `readonly` empêche les utilisateurs de le désactiver. Attention : seuls `/bin/sh`/bash respectent `TMOUT` ; les autres shells (zsh, fish) nécessitent leur propre équivalent."
+  },
+  "impact": {
+    "en": "Setting `TMOUT` too low frustrates legitimate work — long-running interactive commands at the prompt, a paused editor, or a watched log can disconnect mid-use, and a `readonly` value cannot be overridden per session. Choose a value (commonly 600–900 s) that balances security and usability, and remember it applies to all interactive shells including administrators'. It does not affect non-interactive jobs, cron, or established background processes, so there is no service-outage risk.",
+    "fr": "Définir `TMOUT` trop bas gêne le travail légitime — des commandes interactives longues à l'invite, un éditeur en pause ou un suivi de log peuvent se déconnecter en pleine utilisation, et une valeur `readonly` ne peut être contournée par session. Choisissez une valeur (souvent 600–900 s) équilibrant sécurité et ergonomie, et rappelez-vous qu'elle s'applique à tous les shells interactifs, y compris ceux des administrateurs. Elle n'affecte pas les tâches non interactives, cron ou les processus d'arrière-plan établis, donc aucun risque d'interruption de service."
+  }
+}

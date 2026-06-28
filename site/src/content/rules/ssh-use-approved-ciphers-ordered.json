@@ -1,0 +1,60 @@
+{
+  "id": "ssh-use-approved-ciphers-ordered",
+  "supported_os": [
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "SSH",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "stig": [
+      "UBTU-22-255050",
+      "UBTU-24-100820"
+    ]
+  },
+  "check": [
+    "describe command('sshd -T') do",
+    "  its('stdout') { should match(/^ciphers\\s+aes256\\-ctr,aes256\\-gcm@openssh\\.com,aes128\\-ctr,aes128\\-gcm@openssh\\.com$/i) }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Use Only FIPS 140-2 Validated Ciphers",
+    "fr": "N'utiliser que des chiffrements validés FIPS 140-2"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Only **FIPS 140-2 validated** symmetric ciphers may protect the SSH session. Unapproved or weak ciphers cannot be relied on for confidentiality or integrity, so traffic protected by them may be readable or tamperable. The list is pinned **strongest to weakest** (`aes256-ctr`, `aes256-gcm@openssh.com`, `aes128-ctr`, `aes128-gcm@openssh.com`) because `sshd` negotiates the first server cipher the client also offers — ordering guarantees the strongest mutually-supported algorithm is chosen.",
+    "fr": "Seuls des chiffrements symétriques **validés FIPS 140-2** peuvent protéger la session SSH. Des chiffrements non approuvés ou faibles ne garantissent ni la confidentialité ni l'intégrité, si bien que le trafic qu'ils protègent peut être lisible ou falsifiable. La liste est ordonnée **du plus fort au plus faible** (`aes256-ctr`, `aes256-gcm@openssh.com`, `aes128-ctr`, `aes128-gcm@openssh.com`) car `sshd` négocie le premier chiffrement serveur que le client propose aussi — cet ordre garantit le choix de l'algorithme le plus robuste pris en charge des deux côtés."
+  },
+  "summary": {
+    "en": "Restrict `sshd` `Ciphers` to the FIPS-validated set, ordered strongest first: `aes256-ctr,aes256-gcm@openssh.com,aes128-ctr,aes128-gcm@openssh.com`.",
+    "fr": "Restreindre les `Ciphers` de `sshd` à l'ensemble validé FIPS, ordonné du plus fort au plus faible : `aes256-ctr,aes256-gcm@openssh.com,aes128-ctr,aes128-gcm@openssh.com`."
+  },
+  "check_note": {
+    "en": "Pavois asserts that the **effective** `sshd -T` output lists exactly `ciphers aes256-ctr,aes256-gcm@openssh.com,aes128-ctr,aes128-gcm@openssh.com`, in that order. Querying the live daemon reflects the value after all `Include` directives, `/etc/ssh/sshd_config.d/` drop-ins **and** any system-wide crypto policy are merged — reading `sshd_config` alone can miss a drop-in or policy that re-adds a weak cipher.",
+    "fr": "Pavois vérifie que la sortie **effective** de `sshd -T` liste exactement `ciphers aes256-ctr,aes256-gcm@openssh.com,aes128-ctr,aes128-gcm@openssh.com`, dans cet ordre. Interroger le démon en cours d'exécution reflète la valeur après fusion de tous les `Include`, des drop-ins de `/etc/ssh/sshd_config.d/` **et** de toute politique cryptographique système — lire le seul `sshd_config` peut manquer un drop-in ou une politique réintroduisant un chiffrement faible."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -i '^ciphers'`. Expected output:\n\n- `ciphers aes256-ctr,aes256-gcm@openssh.com,aes128-ctr,aes128-gcm@openssh.com`",
+    "fr": "Exécuter `sshd -T | grep -i '^ciphers'`. Sortie attendue :\n\n- `ciphers aes256-ctr,aes256-gcm@openssh.com,aes128-ctr,aes128-gcm@openssh.com`"
+  },
+  "logs": {
+    "en": "The negotiated cipher per session is logged at `VERBOSE` level in `/var/log/auth.log` (Debian/Ubuntu) or `journalctl -u ssh`. Clients offering only non-approved ciphers are refused with `no matching cipher found`, also visible there.",
+    "fr": "Le chiffrement négocié par session est journalisé au niveau `VERBOSE` dans `/var/log/auth.log` (Debian/Ubuntu) ou via `journalctl -u ssh`. Les clients ne proposant que des chiffrements non approuvés sont refusés avec `no matching cipher found`, également visible dans ces journaux."
+  },
+  "remediation_note": {
+    "en": "This rule has **no automated harden plan** in the reference, so it must be applied manually: set `Ciphers aes256-ctr,aes256-gcm@openssh.com,aes128-ctr,aes128-gcm@openssh.com` in a drop-in under `/etc/ssh/sshd_config.d/`, validate with `sshd -t`, then `systemctl reload ssh`. Re-run `pavois scan` to confirm the effective value.",
+    "fr": "Cette règle n'a **aucun plan de durcissement automatisé** dans la référence ; elle doit donc être appliquée manuellement : définir `Ciphers aes256-ctr,aes256-gcm@openssh.com,aes128-ctr,aes128-gcm@openssh.com` dans un drop-in sous `/etc/ssh/sshd_config.d/`, valider avec `sshd -t`, puis `systemctl reload ssh`. Relancez `pavois scan` pour confirmer la valeur effective."
+  },
+  "impact": {
+    "en": "Restricting the cipher list can **lock out older clients** that lack these algorithms (legacy SSH libraries, embedded devices, old jump hosts). Before applying, inventory the clients that connect to this host and confirm they support AES-CTR/AES-GCM; validate with `sshd -t` and keep a second session open. Note a system-wide crypto policy (e.g. Ubuntu/RHEL `update-crypto-policies`) may also constrain or override the effective list.",
+    "fr": "Restreindre la liste des chiffrements peut **exclure d'anciens clients** dépourvus de ces algorithmes (bibliothèques SSH héritées, équipements embarqués, vieux rebonds). Avant d'appliquer, recensez les clients qui se connectent à cet hôte et vérifiez qu'ils prennent en charge AES-CTR/AES-GCM ; validez avec `sshd -t` et gardez une seconde session ouverte. Notez qu'une politique cryptographique système (p. ex. `update-crypto-policies`) peut aussi contraindre ou supplanter la liste effective."
+  }
+}

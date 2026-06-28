@@ -1,0 +1,59 @@
+{
+  "id": "pkg-rear-installed",
+  "supported_os": [
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe package('rear') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "rear",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Install rear Package",
+    "fr": "Installer le paquet rear"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`rear` provides the **Relax-and-Recover (ReaR)** utility, which produces a bootable rescue image of the system and can restore it from backup using that image. A tested bare-metal/disaster-recovery capability is part of resilience and availability requirements: without it, recovering a failed or compromised host after a ransomware event or hardware loss is slow and error-prone. Installing ReaR makes the recovery tooling available so backups can be turned into a restorable system.",
+    "fr": "`rear` fournit l'utilitaire **Relax-and-Recover (ReaR)**, qui produit une image de secours amorçable du système et peut le restaurer à partir d'une sauvegarde grâce à cette image. Une capacité de reprise après sinistre testée fait partie des exigences de résilience et de disponibilité : sans elle, restaurer un hôte en panne ou compromis après un rançongiciel ou une perte matérielle est lent et source d'erreurs. Installer ReaR rend l'outillage de reprise disponible afin que les sauvegardes puissent être transformées en système restaurable."
+  },
+  "summary": {
+    "en": "Ensures the `rear` (Relax-and-Recover) disaster-recovery package is installed.",
+    "fr": "Garantit que le paquet de reprise après sinistre `rear` (Relax-and-Recover) est installé."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective** package state with `package('rear')` (resolved through `rpm`). The presence of a `/etc/rear/local.conf` does not prove the tool is installed; Pavois confirms the `rear` binary's package is actually present rather than inferring recovery readiness from a config file.",
+    "fr": "Pavois vérifie l'état **effectif** du paquet avec `package('rear')` (résolu via `rpm`). La présence d'un `/etc/rear/local.conf` ne prouve pas que l'outil est installé ; Pavois confirme que le paquet du binaire `rear` est réellement présent plutôt que de déduire la disponibilité de la reprise à partir d'un fichier de configuration."
+  },
+  "verify": {
+    "en": "Run `rpm -q rear`. Expected output is a versioned package name such as `rear-2.x-...`. You can confirm the tool runs with `rear --version`.",
+    "fr": "Exécutez `rpm -q rear`. La sortie attendue est un nom de paquet versionné comme `rear-2.x-...`. Vous pouvez vérifier que l'outil fonctionne avec `rear --version`."
+  },
+  "logs": {
+    "en": "Installation history is visible with `dnf history` and in `/var/log/dnf.log`. ReaR backup/recovery runs log to `/var/log/rear/` (e.g. `rear-<hostname>.log`).",
+    "fr": "L'historique d'installation est visible avec `dnf history` et dans `/var/log/dnf.log`. Les exécutions de sauvegarde/reprise de ReaR sont tracées dans `/var/log/rear/` (par ex. `rear-<hostname>.log`)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan installs the `rear` package via the **package** resource (`action: install`). It is applied with `pavois harden apply`. Installing the package does not create a recovery image — you must still configure `/etc/rear/local.conf` (backup method, output target) and run `rear mkbackup` to produce a usable rescue medium.",
+    "fr": "Le plan de durcissement de Pavois installe le paquet `rear` via la ressource **package** (`action: install`). Il s'applique avec `pavois harden apply`. L'installation du paquet ne crée pas d'image de reprise — vous devez encore configurer `/etc/rear/local.conf` (méthode de sauvegarde, cible de sortie) et exécuter `rear mkbackup` pour produire un support de secours exploitable."
+  },
+  "impact": {
+    "en": "Installing `rear` is low-risk; it adds tooling and does not alter running services. The real consideration is operational: an unconfigured or untested ReaR gives a false sense of recoverability. - After install, configure and test a real recovery (`rear mkbackup` then a restore drill on spare hardware/VM). - ReaR images can contain sensitive data — store the output target securely and restrict its permissions.",
+    "fr": "Installer `rear` présente un risque faible ; cela ajoute de l'outillage sans modifier les services en cours. La vraie considération est opérationnelle : un ReaR non configuré ou non testé donne un faux sentiment de récupérabilité. - Après l'installation, configurez et testez une reprise réelle (`rear mkbackup` puis un exercice de restauration sur matériel/VM de rechange). - Les images ReaR peuvent contenir des données sensibles — stockez la cible de sortie de façon sécurisée et restreignez ses permissions."
+  }
+}

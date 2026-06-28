@@ -1,0 +1,68 @@
+{
+  "id": "ssh-disable-compression",
+  "supported_os": [
+    "almalinux9",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "SSH",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "nist": "3.1.12"
+  },
+  "check": [
+    "describe command('sshd -T') do",
+    "  its('stdout') { should match(/^compression\\s+no$/i) }",
+    "end"
+  ],
+  "remediation": {
+    "directive": "compression",
+    "notify": {
+      "action": "reload",
+      "service": "ssh"
+    },
+    "resource": "sshd_setting",
+    "value": "no",
+    "verify": "sshd -t -f %{path}"
+  },
+  "title": {
+    "en": "Disable Compression Or Set Compression to delayed",
+    "fr": "Désactiver la compression SSH (ou la limiter à delayed)"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "When SSH compression is enabled, the compression code runs **before the client has authenticated**. Any vulnerability in the compression library (historically the source of pre-auth memory-corruption bugs) is then reachable by an **unauthenticated** remote attacker, potentially leading to code execution in the privileged `sshd` process. Setting `Compression no` removes this pre-auth attack surface; the safer `delayed` value at least defers compression until after authentication.",
+    "fr": "Lorsque la compression SSH est activée, le code de compression s'exécute **avant l'authentification du client**. Toute vulnérabilité dans la bibliothèque de compression (historiquement à l'origine de corruptions mémoire pré-auth) devient alors atteignable par un attaquant distant **non authentifié**, pouvant mener à l'exécution de code dans le processus privilégié `sshd`. Positionner `Compression no` supprime cette surface d'attaque pré-auth ; la valeur plus sûre `delayed` diffère au moins la compression jusqu'après l'authentification."
+  },
+  "summary": {
+    "en": "Forces the SSH daemon to set **`Compression no`** so packet compression is not negotiated, especially before the client is authenticated.",
+    "fr": "Force le démon SSH à positionner **`Compression no`** afin que la compression de paquets ne soit pas négociée, en particulier avant l'authentification du client."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** value from `sshd -T`, the configuration sshd actually resolved after parsing the main file, every `Include`, drop-ins under `/etc/ssh/sshd_config.d/`, and `Match` blocks. Grepping `/etc/ssh/sshd_config` alone would miss a `Compression yes` set in a drop-in or a crypto-policy include.",
+    "fr": "Pavois lit la valeur **effective** via `sshd -T`, la configuration réellement résolue par sshd après analyse du fichier principal, de chaque `Include`, des drop-ins de `/etc/ssh/sshd_config.d/` et des blocs `Match`. Se contenter de grep sur `/etc/ssh/sshd_config` raterait un `Compression yes` posé dans un drop-in ou un include de politique crypto."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -i '^compression'`. Expected output is `compression no`.",
+    "fr": "Exécutez `sshd -T | grep -i '^compression'`. La sortie attendue est `compression no`."
+  },
+  "logs": {
+    "en": "SSH session and daemon events are in `/var/log/auth.log` (Debian/Ubuntu) or via `journalctl -u sshd` (RHEL family). Negotiation/protocol errors at connection time also surface there with `LogLevel VERBOSE`.",
+    "fr": "Les événements de session et de démon SSH sont dans `/var/log/auth.log` (Debian/Ubuntu) ou via `journalctl -u sshd` (famille RHEL). Les erreurs de négociation/protocole à la connexion y apparaissent aussi avec `LogLevel VERBOSE`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan writes the `sshd_setting` directive **`Compression no`** (into a managed drop-in), validates the config with `sshd -t` before committing, and then **reloads** the `ssh` service so the change takes effect without dropping existing sessions. Apply it with `pavois harden apply`.",
+    "fr": "Le plan harden de Pavois écrit la directive `sshd_setting` **`Compression no`** (dans un drop-in géré), valide la configuration avec `sshd -t` avant de committer, puis **recharge** le service `ssh` pour que le changement prenne effet sans couper les sessions en cours. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Disabling compression has **no functional impact** on interactive sessions and negligible effect on throughput over modern fast links; it can slightly slow bulk transfers over very slow/high-latency links where compression helped. There is **no lockout risk**. The harden plan reloads rather than restarts sshd, so existing connections survive; still keep a second session open when changing any sshd setting as a precaution.",
+    "fr": "Désactiver la compression n'a **aucun impact fonctionnel** sur les sessions interactives et un effet négligeable sur le débit des liens rapides modernes ; cela peut légèrement ralentir les transferts volumineux sur des liens très lents/à forte latence où la compression aidait. **Aucun risque de verrouillage**. Le plan harden recharge sshd au lieu de le redémarrer, donc les connexions existantes survivent ; gardez tout de même une seconde session ouverte par précaution lors de tout changement sshd."
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "id": "filegroupowner-cron-deny",
+  "supported_os": [
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "only_if { file('/etc/cron.deny').exist? }",
+    "describe file('/etc/cron.deny') do",
+    "  its('gid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "group": "root",
+    "path": "/etc/cron.deny",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Group Who Owns cron.deny",
+    "fr": "Vérifier le groupe propriétaire de cron.deny"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/etc/cron.deny` lists the users **forbidden** from creating cron jobs. If its group owner is not `root` (gid `0`), a non-privileged group could edit the file to remove its own entry and regain cron access, defeating the deny list. Because cron jobs run unattended, this enables persistence and privilege escalation.",
+    "fr": "`/etc/cron.deny` liste les utilisateurs **interdits** de créer des tâches cron. Si son groupe propriétaire n'est pas `root` (gid `0`), un groupe non privilégié pourrait modifier le fichier pour retirer sa propre entrée et retrouver l'accès à cron, contournant la liste d'interdiction. Comme les tâches cron s'exécutent sans surveillance, cela permet la persistance et l'élévation de privilèges."
+  },
+  "summary": {
+    "en": "Ensures `/etc/cron.deny`, the list of users denied use of `cron`, is group-owned by `root` (gid `0`).",
+    "fr": "Garantit que `/etc/cron.deny`, la liste des utilisateurs privés de `cron`, a `root` (gid `0`) pour groupe propriétaire."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective ownership** of `/etc/cron.deny` from the inode (via `stat`) and asserts `gid == 0`. Checking the live inode catches drift from package updates or manual edits rather than trusting a template. The `only_if` guard skips the check when the file is absent (hardened systems often use `cron.allow` instead and delete `cron.deny`).",
+    "fr": "Pavois lit la **propriété effective** de `/etc/cron.deny` depuis l'inode (via `stat`) et vérifie `gid == 0`. Contrôler l'inode réel détecte la dérive due aux mises à jour de paquets ou aux modifications manuelles plutôt que de se fier à un modèle. La garde `only_if` ignore le contrôle lorsque le fichier est absent (les systèmes durcis utilisent souvent `cron.allow` à la place et suppriment `cron.deny`)."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /etc/cron.deny`. Expected output: **`root 0`**. If the file does not exist the control is skipped.",
+    "fr": "Exécutez `stat -c '%G %g' /etc/cron.deny`. Sortie attendue : **`root 0`**. Si le fichier n'existe pas, le contrôle est ignoré."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default. Inspect with `ls -l /etc/cron.deny` or `stat /etc/cron.deny`. With an auditd watch (`auditctl -w /etc/cron.deny -p wa`), `chown` events appear in `/var/log/audit/audit.log`. Cron job execution is visible in `journalctl -u crond` on RHEL 9.",
+    "fr": "Les changements de propriété ne sont pas journalisés par défaut. Inspectez avec `ls -l /etc/cron.deny` ou `stat /etc/cron.deny`. Avec une surveillance auditd (`auditctl -w /etc/cron.deny -p wa`), les événements `chown` apparaissent dans `/var/log/audit/audit.log`. L'exécution des tâches cron est visible dans `journalctl -u crond` sur RHEL 9."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so it must be applied **manually**: run `chgrp root /etc/cron.deny` (or `chown :root /etc/cron.deny`) to restore the `root` group owner.",
+    "fr": "Aucun plan de durcissement automatisé n'est encore défini pour cette règle ; elle doit donc être appliquée **manuellement** : exécutez `chgrp root /etc/cron.deny` (ou `chown :root /etc/cron.deny`) pour restaurer le groupe propriétaire `root`."
+  },
+  "impact": {
+    "en": "A wrong group owner on `/etc/cron.deny` lets an unprivileged group edit the deny list and regain cron access, a path to persistence and privilege escalation. **Precautions:** restoring `root` group ownership is low-risk and does not change who is currently denied. Verify no configuration manager will revert it. Note that `cron.allow`, when present, takes precedence over `cron.deny`; prefer an allow-list model for stronger control.",
+    "fr": "Un mauvais groupe propriétaire sur `/etc/cron.deny` permet à un groupe non privilégié de modifier la liste d'interdiction et de retrouver l'accès à cron, une voie vers la persistance et l'élévation de privilèges. **Précautions :** restaurer la propriété de groupe `root` est peu risqué et ne change pas qui est actuellement interdit. Vérifiez qu'aucun gestionnaire de configuration ne l'annulera. Notez que `cron.allow`, lorsqu'il est présent, a priorité sur `cron.deny` ; préférez un modèle de liste d'autorisation pour un contrôle plus strict."
+  }
+}

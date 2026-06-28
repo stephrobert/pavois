@@ -1,0 +1,81 @@
+{
+  "id": "logindefs-pass_warn_age",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (login.defs)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "5.4.1.3",
+      "8.3.9"
+    ],
+    "nist": [
+      "3.5.8",
+      "CM-6(a)",
+      "IA-5(1)(d)",
+      "IA-5(f)"
+    ],
+    "pci-dss": [
+      "8.3.9",
+      "Req-8.2.4"
+    ]
+  },
+  "check": [
+    "describe login_defs do",
+    "  its('PASS_WARN_AGE') { should cmp >= 7 }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Set Password Warning Age",
+    "fr": "Définir le délai d'avertissement d'expiration des mots de passe"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Warning users in advance of password expiration lets them change it at a convenient time rather than being locked out unexpectedly. Without a warning window, a password can silently expire mid-task, forcing rushed (often weaker) replacements or generating help-desk tickets and lost access.",
+    "fr": "Avertir les utilisateurs à l'avance de l'expiration leur permet de changer leur mot de passe à un moment opportun plutôt que d'être verrouillés à l'improviste. Sans fenêtre d'avertissement, un mot de passe peut expirer silencieusement en pleine tâche, forçant des remplacements précipités (souvent plus faibles) ou générant des tickets de support et des pertes d'accès."
+  },
+  "summary": {
+    "en": "Sets `PASS_WARN_AGE` in `/etc/login.defs` so users are warned at least **7 days** before their password expires.",
+    "fr": "Définit `PASS_WARN_AGE` dans `/etc/login.defs` pour que les utilisateurs soient avertis au moins **7 jours** avant l'expiration de leur mot de passe."
+  },
+  "check_note": {
+    "en": "Pavois reads the resolved `PASS_WARN_AGE` from `/etc/login.defs` via the InSpec `login_defs` resource and asserts it is **>= 7**. This is the default applied to newly created accounts; per-account overrides live in `/etc/shadow` (field 6). Reading the effective directive avoids relying on documentation or assumptions.",
+    "fr": "Pavois lit la valeur résolue `PASS_WARN_AGE` de `/etc/login.defs` via la ressource InSpec `login_defs` et vérifie qu'elle est **>= 7**. C'est la valeur par défaut appliquée aux nouveaux comptes ; les surcharges par compte se trouvent dans `/etc/shadow` (champ 6). Lire la directive effective évite de se fier à la documentation ou à des suppositions."
+  },
+  "verify": {
+    "en": "Run `grep '^PASS_WARN_AGE' /etc/login.defs`. Expected output: `PASS_WARN_AGE  7` (or higher). To check an existing account, run `chage -l <user>` and read the **Password expires** / warning fields.",
+    "fr": "Exécutez `grep '^PASS_WARN_AGE' /etc/login.defs`. Sortie attendue : `PASS_WARN_AGE  7` (ou plus). Pour un compte existant, exécutez `chage -l <user>` et lisez les champs d'expiration/avertissement."
+  },
+  "logs": {
+    "en": "Expiration warnings appear at login in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL). Per-account aging is shown by `chage -l <user>`; the default by `grep PASS_WARN_AGE /etc/login.defs`.",
+    "fr": "Les avertissements d'expiration apparaissent à la connexion dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL). Le vieillissement par compte est affiché par `chage -l <user>` ; la valeur par défaut par `grep PASS_WARN_AGE /etc/login.defs`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule; apply it **manually** by setting `PASS_WARN_AGE 7` in `/etc/login.defs`. This affects only newly created accounts — existing accounts keep their `/etc/shadow` value, which you can update with `chage --warndays 7 <user>`.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni ; appliquez-la **manuellement** en positionnant `PASS_WARN_AGE 7` dans `/etc/login.defs`. Cela n'affecte que les nouveaux comptes — les comptes existants conservent leur valeur dans `/etc/shadow`, que vous pouvez mettre à jour avec `chage --warndays 7 <user>`."
+  },
+  "impact": {
+    "en": "This is a low-risk, advisory setting: it never blocks logins and cannot cause lockout. The only consequence of a low or zero value is reduced warning time, leading to surprise expirations. When applying, remember the `login.defs` value only governs future accounts; run `chage` on existing users if you need uniform behavior.",
+    "fr": "C'est un réglage à faible risque et purement informatif : il ne bloque jamais les connexions et ne peut causer de verrouillage. La seule conséquence d'une valeur faible ou nulle est une fenêtre d'avertissement réduite, menant à des expirations surprises. À l'application, rappelez-vous que la valeur de `login.defs` ne régit que les comptes futurs ; lancez `chage` sur les comptes existants pour un comportement uniforme."
+  }
+}

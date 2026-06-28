@@ -1,0 +1,68 @@
+{
+  "id": "fileperm-etc-selinux",
+  "supported_os": [
+    "almalinux9",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R50"
+  },
+  "check": [
+    "only_if { file('/etc/selinux').exist? }",
+    "describe file('/etc/selinux') do",
+    "  it { should_not be_setuid }",
+    "  it { should_not be_writable.by('group') }",
+    "  it { should_not be_setgid }",
+    "  it { should_not be_writable.by('other') }",
+    "  it { should_not be_sticky }",
+    "end"
+  ],
+  "remediation": {
+    "mode": "0755",
+    "path": "/etc/selinux",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Permissions On /etc/selinux Directory",
+    "fr": "Vérifier les permissions du répertoire /etc/selinux"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/etc/selinux` hosts the SELinux configuration, including `config` which decides whether SELinux runs **enforcing**, **permissive** or **disabled** at boot. If the directory is **writable** by group or other, an unprivileged user could drop or replace files there to weaken or disable the system's mandatory access control — defeating the kernel's strongest containment layer. `setuid/setgid` on a directory affect new files, and a non-standard `sticky` bit signals tampering. Only **root** must control this directory.",
+    "fr": "`/etc/selinux` héberge la configuration SELinux, dont `config` qui décide si SELinux s'exécute en mode **enforcing**, **permissive** ou **disabled** au démarrage. Si le répertoire est **modifiable** par le groupe ou les autres, un utilisateur non privilégié pourrait y déposer ou remplacer des fichiers pour affaiblir ou désactiver le contrôle d'accès obligatoire — neutralisant la couche de confinement la plus forte du noyau. Les bits `setuid/setgid` sur un répertoire affectent les nouveaux fichiers, et un bit `sticky` non standard signale une altération. Seul **root** doit contrôler ce répertoire."
+  },
+  "summary": {
+    "en": "Ensures the `/etc/selinux` directory is not group/other-writable and carries no setuid/setgid/sticky bits, so only **root** can change the SELinux configuration.",
+    "fr": "Garantit que le répertoire `/etc/selinux` n'est pas modifiable par le groupe/les autres et ne porte aucun bit setuid/setgid/sticky, afin que seul **root** puisse modifier la configuration SELinux."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live mode bits** of the `/etc/selinux` directory on the target (group/other write, setuid/setgid/sticky) — the effective permissions the kernel enforces, not a documented baseline. Directory permissions are inode metadata, so there is no include or drop-in to subvert. The `only_if` guard skips the control on systems without SELinux.",
+    "fr": "Pavois lit les **bits de mode réels** du répertoire `/etc/selinux` sur la cible (écriture groupe/autres, setuid/setgid/sticky) — les permissions effectives appliquées par le noyau, et non une base documentée. Les permissions de répertoire sont des métadonnées d'inode, aucun include ni drop-in ne peut donc les contourner. La garde `only_if` ignore le contrôle sur les systèmes sans SELinux."
+  },
+  "verify": {
+    "en": "Run `stat -c '%A %U %G' /etc/selinux`. Expected: mode `drwxr-xr-x` (0755) owned by `root root`, with **no** write bit for group/other and no `s`/`t` bits. Quick check: `find /etc/selinux -maxdepth 0 -perm /7022` must return nothing. Confirm SELinux is still active with `getenforce` (Enforcing).",
+    "fr": "Exécutez `stat -c '%A %U %G' /etc/selinux`. Attendu : mode `drwxr-xr-x` (0755) appartenant à `root root`, **sans** bit d'écriture pour le groupe/les autres ni bits `s`/`t`. Vérification rapide : `find /etc/selinux -maxdepth 0 -perm /7022` ne doit rien renvoyer. Confirmez que SELinux est toujours actif avec `getenforce` (Enforcing)."
+  },
+  "logs": {
+    "en": "Permission changes are not logged by default. Watch the directory with auditd: `auditctl -w /etc/selinux/ -p wa -k selinux`, then review with `grep 'key=\"selinux\"' /var/log/audit/audit.log`. SELinux policy denials and mode changes also surface via `ausearch -m AVC` / `journalctl -t setroubleshoot`. Current mode and ownership: `stat /etc/selinux`.",
+    "fr": "Les changements de permissions ne sont pas journalisés par défaut. Surveillez le répertoire avec auditd : `auditctl -w /etc/selinux/ -p wa -k selinux`, puis consultez avec `grep 'key=\"selinux\"' /var/log/audit/audit.log`. Les refus de politique SELinux et les changements de mode apparaissent aussi via `ausearch -m AVC` / `journalctl -t setroubleshoot`. Mode et propriété actuels : `stat /etc/selinux`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule yet, so it must be applied **manually**: `chown root:root /etc/selinux && chmod 0755 /etc/selinux`. This removes any group/other write and any setuid/setgid/sticky bits while keeping the directory traversable by all (needed for SELinux tooling to read `config`).",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle, elle doit donc être appliquée **manuellement** : `chown root:root /etc/selinux && chmod 0755 /etc/selinux`. Cela supprime toute écriture groupe/autres et tout bit setuid/setgid/sticky tout en gardant le répertoire traversable par tous (nécessaire pour que les outils SELinux lisent `config`)."
+  },
+  "impact": {
+    "en": "Risk if left mis-set: a writable `/etc/selinux` lets a non-root user alter `config` and set SELinux to `permissive` or `disabled` at next boot, silently removing mandatory access control. Applying the fix is safe: `0755 root:root` is the standard mode. Precaution: keep the directory at least `0755` (traversable/readable) — tightening it further can break `load_policy`, `semanage` and boot-time policy loading.",
+    "fr": "Risque si mal réglé : un `/etc/selinux` modifiable permet à un utilisateur non-root de modifier `config` et de mettre SELinux en `permissive` ou `disabled` au prochain démarrage, supprimant silencieusement le contrôle d'accès obligatoire. Appliquer le correctif est sûr : `0755 root:root` est le mode standard. Précaution : gardez le répertoire au moins en `0755` (traversable/lisible) — le restreindre davantage peut casser `load_policy`, `semanage` et le chargement de la politique au démarrage."
+  }
+}

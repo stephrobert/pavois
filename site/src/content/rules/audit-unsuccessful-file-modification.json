@@ -1,0 +1,90 @@
+{
+  "id": "audit-unsuccessful-file-modification",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Audit (auditd)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R73",
+    "cis": [
+      "6.3.3.7",
+      "6.2.3.7",
+      "6.3.3.11"
+    ],
+    "nist": [
+      "3.1.7",
+      "AU-12(c)",
+      "AU-2(d)",
+      "CM-6(a)"
+    ],
+    "pci-dss": [
+      "Req-10.2.1",
+      "10.2.1.4"
+    ],
+    "stig": [
+      "UBTU-22-654165",
+      "UBTU-24-900160"
+    ]
+  },
+  "check": [
+    "describe command('auditctl -l') do",
+    "  its('stdout') { should match(/(-k +|key=)access\\b/) }",
+    "end"
+  ],
+  "remediation": {
+    "reboot_required": true,
+    "resource": "audit_ruleset"
+  },
+  "title": {
+    "en": "Record Unsuccessful Access Attempts to Files - creat",
+    "fr": "Enregistrer les tentatives d'accès infructueuses aux fichiers - creat"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "**Unsuccessful attempts to access or modify files — those failing with `EACCES` (permission denied) or `EPERM` (operation not permitted) — are a strong indicator of malicious activity** such as an attacker probing the filesystem or trying to escalate beyond their rights. Auditing these failed `creat`/`open`/`openat`/`truncate` calls captures evidence of attempted compromise that a successful-only audit policy would miss.",
+    "fr": "**Les tentatives infructueuses d'accès ou de modification de fichiers — celles échouant avec `EACCES` (permission refusée) ou `EPERM` (opération non permise) — sont un indicateur fort d'activité malveillante**, comme un attaquant sondant le système de fichiers ou cherchant à dépasser ses droits. Auditer ces appels `creat`/`open`/`openat`/`truncate` en échec capture la preuve d'une tentative de compromission qu'une politique n'auditant que les succès laisserait passer."
+  },
+  "summary": {
+    "en": "Enforces an **auditd** rule (key `access`) that records unsuccessful (permission-denied) file access and modification attempts.",
+    "fr": "Impose une règle **auditd** (clé `access`) qui enregistre les tentatives infructueuses (permission refusée) d'accès et de modification de fichiers."
+  },
+  "check_note": {
+    "en": "Pavois runs `auditctl -l` and checks a rule with the key `access` is loaded. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule on disk that was never loaded (no `augenrules --load`, syntax error, reload failure) would make a file scanner falsely **pass**. `auditctl -l` reflects what the kernel audits now.",
+    "fr": "Pavois exécute `auditctl -l` et vérifie qu'une règle de clé `access` est chargée. Lire le **jeu de règles réellement chargé dans le noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : une règle sur disque jamais chargée (pas de `augenrules --load`, erreur de syntaxe, échec de rechargement) ferait passer à tort un scanner de fichiers. `auditctl -l` reflète ce que le noyau audite à l'instant présent."
+  },
+  "verify": {
+    "en": "Run `auditctl -l | grep -E '(-k |key=)access'` (as root). Expected output is the syscall rules capturing `EACCES`/`EPERM` failures, for example:\n\n- `-a always,exit -F arch=b64 -S creat,open,openat,truncate,ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=unset -k access`\n- `-a always,exit -F arch=b64 -S creat,open,openat,truncate,ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=unset -k access`\n\nNo output means the rules are not loaded.",
+    "fr": "Exécutez `auditctl -l | grep -E '(-k |key=)access'` (en root). La sortie attendue est l'ensemble des règles d'appel système capturant les échecs `EACCES`/`EPERM`, par exemple :\n\n- `-a always,exit -F arch=b64 -S creat,open,openat,truncate,ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=unset -k access`\n- `-a always,exit -F arch=b64 -S creat,open,openat,truncate,ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=unset -k access`\n\nAucune sortie signifie que les règles ne sont pas chargées."
+  },
+  "logs": {
+    "en": "Events go to `/var/log/audit/audit.log`. After a denied file access, find the record with `grep 'key=\"access\"' /var/log/audit/audit.log` (grep the raw log; `ausearch` can falsely report no matches). The record shows the `auid`, the failing syscall, the target file and the `EACCES`/`EPERM` exit code.",
+    "fr": "Les événements aboutissent dans `/var/log/audit/audit.log`. Après un accès fichier refusé, trouvez l'enregistrement avec `grep 'key=\"access\"' /var/log/audit/audit.log` (grep sur le journal brut ; `ausearch` peut signaler à tort l'absence de correspondance). L'enregistrement indique l'`auid`, l'appel système en échec, le fichier ciblé et le code de sortie `EACCES`/`EPERM`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `audit_ruleset` resource to add the missing `access` syscall rules to a Pavois-managed drop-in in `/etc/audit/rules.d/` and load them. Because the audit subsystem is locked once running, the change is fully effective only after a **reboot** (`reboot_required: true`).",
+    "fr": "`pavois harden apply` utilise la ressource `audit_ruleset` pour ajouter les règles d'appel système `access` manquantes dans un drop-in géré par Pavois sous `/etc/audit/rules.d/` et les charger. Le sous-système d'audit étant verrouillé une fois lancé, la modification n'est pleinement effective qu'après un **redémarrage** (`reboot_required: true`)."
+  },
+  "impact": {
+    "en": "These are **passive syscall watches** — they only record failed accesses and never block anything, so applications keep working; they only add records to `/var/log/audit/audit.log`. Precautions:\n\n- Permission-denied events are common in normal operation (applications probing optional paths), so this rule can be **noisy** — ensure `/var/log/audit` has space and rotation and consider `auditd`'s backlog limit before enabling on busy hosts.\n- If the ruleset is immutable (`-e 2`), the rule can only be added after a reboot.\n- Confirm the rule parsed with `augenrules --load` and re-check `auditctl -l`.",
+    "fr": "Ce sont des **surveillances d'appels système passives** — elles n'enregistrent que les accès en échec et ne bloquent jamais rien, donc les applications continuent de fonctionner ; elles ajoutent seulement des enregistrements dans `/var/log/audit/audit.log`. Précautions :\n\n- Les événements de permission refusée sont fréquents en fonctionnement normal (applications sondant des chemins optionnels), donc cette règle peut être **bruyante** — assurez-vous que `/var/log/audit` dispose d'espace et de rotation, et surveillez la limite de backlog d'`auditd` avant de l'activer sur des hôtes très sollicités.\n- Si le jeu de règles est immuable (`-e 2`), la règle ne peut être ajoutée qu'après un redémarrage.\n- Confirmez que la règle a été analysée avec `augenrules --load` puis revérifiez `auditctl -l`."
+  }
+}

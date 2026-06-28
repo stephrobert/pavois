@@ -1,0 +1,69 @@
+{
+  "id": "mount-var-tmp-nosuid",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R28",
+    "cis": "1.1.2.5.3"
+  },
+  "check": [
+    "describe mount('/var/tmp') do",
+    "  its('options') { should include 'nosuid' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Add nosuid Option to /var/tmp",
+    "fr": "Ajouter l'option nosuid à /var/tmp"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "SUID and SGID executables run with elevated privileges and must be tightly controlled — users should never be able to run SUID/SGID binaries from temporary storage. Mounting `/var/tmp` with **`nosuid`** makes the kernel ignore those bits, so a SUID-root binary dropped into this world-writable directory cannot be used to escalate privileges.",
+    "fr": "Les exécutables SUID et SGID s'exécutent avec des privilèges élevés et doivent être strictement contrôlés — les utilisateurs ne devraient jamais pouvoir lancer de binaires SUID/SGID depuis un stockage temporaire. Monter `/var/tmp` avec **`nosuid`** force le noyau à ignorer ces bits : un binaire SUID-root déposé dans ce répertoire inscriptible par tous ne pourra pas servir à élever les privilèges."
+  },
+  "summary": {
+    "en": "Mount `/var/tmp` with the **`nosuid`** option so SUID/SGID bits on files there are ignored by the kernel.",
+    "fr": "Monter `/var/tmp` avec l'option **`nosuid`** afin que les bits SUID/SGID des fichiers qui s'y trouvent soient ignorés par le noyau."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** mount options via `mount('/var/tmp')`, the live kernel view. Because `/var/tmp` is frequently a bind mount or systemd tmpfs, this catches runtime/bind configurations that parsing `/etc/fstab` alone would miss.",
+    "fr": "Pavois lit les options de montage **effectives** via `mount('/var/tmp')`, la vue réelle du noyau. Comme `/var/tmp` est souvent un montage lié ou un tmpfs systemd, cela détecte les configurations à l'exécution ou par bind qu'une simple analyse de `/etc/fstab` manquerait."
+  },
+  "verify": {
+    "en": "Run `findmnt -no OPTIONS /var/tmp` and confirm **`nosuid`** is present. Example output: `rw,nosuid,nodev,noexec,relatime`.",
+    "fr": "Exécutez `findmnt -no OPTIONS /var/tmp` et vérifiez la présence de **`nosuid`**. Exemple de sortie : `rw,nosuid,nodev,noexec,relatime`."
+  },
+  "logs": {
+    "en": "Inspect mount state with `findmnt /var/tmp` and `mount | grep ' /var/tmp '`. Kernel mount events appear in `journalctl -k` / `dmesg`. To find SUID files that would be neutralized, run `find /var/tmp -perm -4000 -o -perm -2000`.",
+    "fr": "Inspectez l'état de montage avec `findmnt /var/tmp` et `mount | grep ' /var/tmp '`. Les événements de montage du noyau apparaissent dans `journalctl -k` / `dmesg`. Pour repérer les fichiers SUID qui seraient neutralisés : `find /var/tmp -perm -4000 -o -perm -2000`."
+  },
+  "remediation_note": {
+    "en": "There is **no automated harden plan** for this rule, because `/var/tmp` must be a **separate filesystem or bind mount** to carry its own options. Apply it manually: configure `/var/tmp` as its own mount, add `nosuid` to its `/etc/fstab` entry (or systemd mount unit), then `mount -o remount /var/tmp` and reboot to confirm persistence.",
+    "fr": "Il n'existe **aucun plan de durcissement automatisé** pour cette règle, car `/var/tmp` doit être un **système de fichiers ou montage lié séparé** pour porter ses propres options. Appliquez-la manuellement : configurez `/var/tmp` comme un montage distinct, ajoutez `nosuid` à son entrée `/etc/fstab` (ou à l'unité de montage systemd), puis `mount -o remount /var/tmp` et redémarrez pour confirmer la persistance."
+  },
+  "impact": {
+    "en": "**What can break:** almost nothing — no legitimate workflow stores SUID/SGID binaries in a temporary directory. **Precautions:** before enforcing, sanity-check with `find /var/tmp -perm -4000 -o -perm -2000` (should normally be empty). If `/var/tmp` is not yet a separate mount, making it one (often a bind mount) is the prerequisite. Reboot to confirm the option persists.",
+    "fr": "**Ce qui peut casser :** presque rien — aucun flux légitime ne stocke de binaires SUID/SGID dans un répertoire temporaire. **Précautions :** avant d'appliquer, vérifiez avec `find /var/tmp -perm -4000 -o -perm -2000` (normalement vide). Si `/var/tmp` n'est pas encore un montage séparé, en faire un (souvent un bind) est le prérequis. Redémarrez pour confirmer la persistance de l'option."
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "id": "audit-etc",
+  "supported_os": [
+    "fedora"
+  ],
+  "os_versions": {},
+  "severity": "medium",
+  "domain": "Audit (auditd)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe command('auditctl -l') do",
+    "  its('stdout') { should match(/(-k +|key=)user\\-modify\\b/) }",
+    "end"
+  ],
+  "remediation": {
+    "reboot_required": true,
+    "resource": "audit_ruleset"
+  },
+  "title": {
+    "en": "Record Events that Modify User/Group Information via open syscall - /etc/group",
+    "fr": "Enregistrer les evenements modifiant les informations utilisateur/groupe via l'appel systeme open - /etc/group"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Creating or altering groups by editing `/etc/group` directly (instead of `groupadd`/`gpasswd`) can be a sign of malicious activity. Without an audit record of these writes, an attacker who adds themselves to a privileged group such as `sudo` or `wheel` leaves no trail, and incident responders cannot prove **when** or **by whom** the account database was tampered with.",
+    "fr": "Creer ou modifier des groupes en editant directement `/etc/group` (au lieu de `groupadd`/`gpasswd`) peut etre un signe d'activite malveillante. Sans trace d'audit de ces ecritures, un attaquant qui s'ajoute a un groupe privilegie comme `sudo` ou `wheel` ne laisse aucune trace, et les enqueteurs ne peuvent prouver **quand** ni **par qui** la base de comptes a ete alteree."
+  },
+  "summary": {
+    "en": "Ensures `auditd` has an active rule tagged `user-modify` that records any access to account databases such as `/etc/group`, `/etc/passwd` and `/etc/shadow`.",
+    "fr": "Garantit que `auditd` possede une regle active taguee `user-modify` qui enregistre tout acces aux bases de comptes telles que `/etc/group`, `/etc/passwd` et `/etc/shadow`."
+  },
+  "check_note": {
+    "en": "Pavois runs `auditctl -l` and checks that a loaded rule carries the `user-modify` key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule present in a file but never loaded (syntax error, `augenrules` not run, service not restarted) gives a false sense of coverage. `auditctl -l` shows only what the kernel actually enforces right now.",
+    "fr": "Pavois execute `auditctl -l` et verifie qu'une regle chargee porte la cle `user-modify`. Lire le **jeu de regles vivant du noyau** vaut mieux que d'analyser `/etc/audit/rules.d/*.rules` : une regle presente dans un fichier mais jamais chargee (erreur de syntaxe, `augenrules` non execute, service non redemarre) donne une fausse impression de couverture. `auditctl -l` ne montre que ce que le noyau applique reellement."
+  },
+  "verify": {
+    "en": "Run `auditctl -l | grep user-modify`. You should see watch rules such as `-w /etc/group -p wa -k user-modify` (and matching lines for `/etc/passwd`, `/etc/shadow`, `/etc/gshadow`). Empty output means the rule is not loaded.",
+    "fr": "Executez `auditctl -l | grep user-modify`. Vous devez voir des regles de surveillance telles que `-w /etc/group -p wa -k user-modify` (et des lignes equivalentes pour `/etc/passwd`, `/etc/shadow`, `/etc/gshadow`). Une sortie vide signifie que la regle n'est pas chargee."
+  },
+  "logs": {
+    "en": "Triggered events land in `/var/log/audit/audit.log`. Search with `grep 'key=\"user-modify\"' /var/log/audit/audit.log` (note: `ausearch -k user-modify` can wrongly report no matches, so grep the raw log).",
+    "fr": "Les evenements declenches arrivent dans `/var/log/audit/audit.log`. Recherchez avec `grep 'key=\"user-modify\"' /var/log/audit/audit.log` (attention : `ausearch -k user-modify` peut signaler a tort aucune correspondance, donc grepez le journal brut)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `audit_ruleset` resource to write the watch rules into `/etc/audit/rules.d/`, then reloads auditd so the kernel picks them up. Because the audit config may be made immutable, a **reboot is required** for the change to fully take effect. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour ecrire les regles de surveillance dans `/etc/audit/rules.d/`, puis recharge auditd pour que le noyau les prenne en compte. Comme la configuration d'audit peut etre rendue immuable, un **redemarrage est necessaire** pour que le changement soit pleinement applique. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Without this rule, edits to the account databases go unrecorded, blinding you to privilege-escalation and persistence attacks. The rule itself is purely observational and cannot break logins. Precautions: account-database files change on every legitimate user/group operation, so expect volume — size `audit.log` rotation and `space_left_action` so a full disk does not halt the system (when `auditd` is configured to `halt`).",
+    "fr": "Sans cette regle, les modifications des bases de comptes ne sont pas enregistrees, vous aveuglant face aux attaques d'escalade de privileges et de persistance. La regle elle-meme est purement observationnelle et ne peut casser les connexions. Precautions : les fichiers de bases de comptes changent a chaque operation legitime sur les utilisateurs/groupes, attendez-vous donc a du volume — dimensionnez la rotation de `audit.log` et `space_left_action` pour qu'un disque plein n'arrete pas le systeme (lorsque `auditd` est configure sur `halt`)."
+  }
+}
