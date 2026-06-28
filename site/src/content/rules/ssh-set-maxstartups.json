@@ -1,0 +1,83 @@
+{
+  "id": "ssh-set-maxstartups",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "SSH",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "5.1.17",
+      "2.2.6",
+      "5.1.18",
+      "5.1.20"
+    ],
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "describe command('sshd -T') do",
+    "  its('stdout') { should match(/^maxstartups\\s+10:30:60$/i) }",
+    "end"
+  ],
+  "remediation": {
+    "directive": "maxstartups",
+    "notify": {
+      "action": "reload",
+      "service": "ssh"
+    },
+    "resource": "sshd_setting",
+    "value": "10:30:60",
+    "verify": "sshd -t -f %{path}"
+  },
+  "title": {
+    "en": "Ensure SSH MaxStartups is configured",
+    "fr": "Configurer le MaxStartups de SSH"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`MaxStartups` rate-limits **concurrent unauthenticated connections** to `sshd`, the half-open sockets between TCP connect and successful login. The `10:30:60` form means: accept up to 10 pending connections, then start randomly dropping new ones at a 30% probability, and refuse all once 60 are pending. This blunts **connection-flood denial-of-service** at the login stage and limits how many brute-force slots an attacker can hold, preserving the **availability** of legitimate logins.",
+    "fr": "`MaxStartups` limite le débit des **connexions simultanées non authentifiées** à `sshd`, c'est-à-dire les sockets semi-ouverts entre la connexion TCP et l'authentification réussie. La forme `10:30:60` signifie : accepter jusqu'à 10 connexions en attente, puis rejeter aléatoirement les nouvelles avec une probabilité de 30 %, et toutes les refuser une fois 60 en attente. Cela atténue le **déni de service par inondation de connexions** au stade de la connexion et limite le nombre de créneaux de force brute qu'un attaquant peut mobiliser, préservant la **disponibilité** des connexions légitimes."
+  },
+  "summary": {
+    "en": "Rate-limit concurrent unauthenticated SSH connections with `MaxStartups` set to **`10:30:60`**.",
+    "fr": "Limiter le débit des connexions SSH simultanées non authentifiées avec `MaxStartups` réglé sur **`10:30:60`**."
+  },
+  "check_note": {
+    "en": "Pavois asserts that the **effective** `sshd -T` output reports `maxstartups 10:30:60`. Reading the live daemon reflects the value after all `Include` directives and `/etc/ssh/sshd_config.d/` drop-ins are merged — a file scan can miss an override and report a false result.",
+    "fr": "Pavois vérifie que la sortie **effective** de `sshd -T` rapporte `maxstartups 10:30:60`. Lire le démon en cours d'exécution reflète la valeur après fusion de tous les `Include` et des drop-ins de `/etc/ssh/sshd_config.d/` — un scan de fichiers peut manquer une surcharge et signaler un faux résultat."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -i maxstartups`. Expected output:\n\n- `maxstartups 10:30:60`",
+    "fr": "Exécuter `sshd -T | grep -i maxstartups`. Sortie attendue :\n\n- `maxstartups 10:30:60`"
+  },
+  "logs": {
+    "en": "Dropped pending connections are logged in `/var/log/auth.log` (Debian/Ubuntu) or `journalctl -u ssh` / `journalctl -u sshd` (RHEL family) as `drop connection #N from ...` once the threshold is reached.",
+    "fr": "Les connexions en attente rejetées sont journalisées dans `/var/log/auth.log` (Debian/Ubuntu) ou via `journalctl -u ssh` / `journalctl -u sshd` (famille RHEL) sous la forme `drop connection #N from ...` une fois le seuil atteint."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan sets the `sshd_setting` resource for directive `maxstartups` to **`10:30:60`**, validates the candidate config with `sshd -t`, then notifies a **reload** of the `ssh` service. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois règle la ressource `sshd_setting` pour la directive `maxstartups` sur **`10:30:60`**, valide la configuration candidate avec `sshd -t`, puis déclenche un **reload** du service `ssh`. À appliquer avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "On busy bastions or CI hosts that legitimately open **many simultaneous SSH connections**, an over-tight threshold can cause sporadic `Connection refused`/`drop connection` errors during bursts. Size the values to your real peak concurrency (raise the start/full thresholds if needed), stagger automated jobs, keep a second session open, and rely on the built-in `sshd -t` validation so a typo never breaks the listener.",
+    "fr": "Sur des bastions ou hôtes de CI très sollicités qui ouvrent légitimement **de nombreuses connexions SSH simultanées**, un seuil trop strict peut provoquer des erreurs sporadiques `Connection refused`/`drop connection` lors des pics. Dimensionnez les valeurs selon votre pic de concurrence réel (augmentez les seuils de début/plein si nécessaire), échelonnez les tâches automatisées, gardez une seconde session ouverte, et appuyez-vous sur la validation intégrée `sshd -t` pour qu'une coquille ne casse jamais le service en écoute."
+  }
+}

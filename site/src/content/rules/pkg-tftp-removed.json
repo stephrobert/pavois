@@ -1,0 +1,77 @@
+{
+  "id": "pkg-tftp-removed",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R62",
+    "cis": [
+      "2.2.5",
+      "2.2.4"
+    ],
+    "pci-dss": "2.2.4"
+  },
+  "check": [
+    "describe package('tftp') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "tftp",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Remove tftp Daemon",
+    "fr": "Supprimer le client tftp"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `tftp` **client** speaks Trivial FTP, a UDP file-transfer protocol with **no authentication and no encryption**. Keeping it lets users fetch or push files over an insecure channel. Unless a specific need exists (e.g. a boot/PXE server), removing it reduces the attack surface.",
+    "fr": "Le **client** `tftp` parle le protocole Trivial FTP, un transfert de fichiers UDP **sans authentification ni chiffrement**. Le conserver permet aux utilisateurs de récupérer ou d'envoyer des fichiers via un canal non sécurisé. Sauf besoin spécifique (par ex. un serveur de démarrage/PXE), le supprimer réduit la surface d'attaque."
+  },
+  "summary": {
+    "en": "Ensures the `tftp` client package is **not installed**.",
+    "fr": "Garantit que le paquet client `tftp` n'est **pas installé**."
+  },
+  "check_note": {
+    "en": "Pavois verifies that the `tftp` package is absent from the package database. The presence of the client binary is the relevant exposure, so querying the package manager directly is the authoritative signal.",
+    "fr": "Pavois vérifie que le paquet `tftp` est absent de la base de paquets. La présence du binaire client constitue l'exposition pertinente, donc interroger directement le gestionnaire de paquets est le signal qui fait autorité."
+  },
+  "verify": {
+    "en": "On Debian/Ubuntu run `dpkg -s tftp` and expect **`package 'tftp' is not installed`**; on RHEL-family run `rpm -q tftp` and expect **`package tftp is not installed`**.",
+    "fr": "Sur Debian/Ubuntu, exécutez `dpkg -s tftp` : attendez **`package 'tftp' is not installed`** ; sur la famille RHEL, exécutez `rpm -q tftp` : attendez **`package tftp is not installed`**."
+  },
+  "logs": {
+    "en": "Removal is recorded by the package manager: `grep tftp /var/log/dpkg.log` (Debian/Ubuntu) or `dnf history` / `rpm -q --last tftp` (RHEL family).",
+    "fr": "La suppression est enregistrée par le gestionnaire de paquets : `grep tftp /var/log/dpkg.log` (Debian/Ubuntu) ou `dnf history` / `rpm -q --last tftp` (famille RHEL)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares the `tftp` **package** resource with action **remove**, so `pavois harden apply` uninstalls the client via the system package manager (`apt`/`dnf`).",
+    "fr": "Le plan de durcissement de Pavois déclare la ressource **package** `tftp` avec l'action **remove** ; ainsi `pavois harden apply` désinstalle le client via le gestionnaire de paquets système (`apt`/`dnf`)."
+  },
+  "impact": {
+    "en": "Removing the `tftp` client is low-risk on most servers. **Precaution:** PXE provisioning, network-boot tooling, and some appliance/firmware update workflows fetch files over TFTP; if any operational task uses the `tftp` client, replace it with an authenticated/encrypted transfer (SCP/SFTP/HTTPS) before removing the package.",
+    "fr": "Supprimer le client `tftp` présente un faible risque sur la plupart des serveurs. **Précaution :** le provisionnement PXE, l'outillage de démarrage réseau et certaines mises à jour d'équipements/firmware récupèrent des fichiers en TFTP ; si une tâche opérationnelle utilise le client `tftp`, remplacez-le par un transfert authentifié/chiffré (SCP/SFTP/HTTPS) avant de supprimer le paquet."
+  }
+}

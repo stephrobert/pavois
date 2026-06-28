@@ -1,0 +1,68 @@
+{
+  "id": "dconf-gnome-screensaver-mode-blank",
+  "supported_os": [
+    "fedora",
+    "rhel9",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "GNOME desktop (dconf)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "nist": [
+      "3.1.10",
+      "AC-11(1)",
+      "AC-11(1).1",
+      "CM-6(a)"
+    ],
+    "pci-dss": "8.2.8",
+    "cis": "8.2.8",
+    "stig": "UBTU-24-200043"
+  },
+  "check": [
+    "describe command('{ grep -rqE \\'^[[:space:]]*picture-uri[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null && grep -rqxF \\'/org/gnome/desktop/screensaver/picture-uri\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "resource": "dconf"
+  },
+  "title": {
+    "en": "Implement Blank Screensaver",
+    "fr": "Mettre en place un économiseur d'écran vide"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Setting the screensaver mode to blank-only conceals the contents of the display from passersby.",
+    "fr": "Régler l'économiseur d'écran sur un affichage vide masque le contenu de l'écran aux personnes de passage."
+  },
+  "summary": {
+    "en": "Forces the GNOME screensaver to display a **blank** screen (empty `picture-uri`) and **locks** that setting so users cannot override it.",
+    "fr": "Force l'économiseur d'écran GNOME à afficher un écran **vide** (`picture-uri` vide) et **verrouille** ce réglage pour que les utilisateurs ne puissent pas le modifier."
+  },
+  "check_note": {
+    "en": "Pavois verifies, via the **effective** dconf database under `/etc/dconf/db/*.d/`, that the `picture-uri` key is set system-wide AND that `/org/gnome/desktop/screensaver/picture-uri` appears in a `locks/` file. Inspecting the compiled-source dconf keyfiles plus their lock entries is what proves the policy is both applied and non-overridable — a check that only read a user's `~/.config` would miss the mandatory system policy.",
+    "fr": "Pavois vérifie, via la base dconf **effective** sous `/etc/dconf/db/*.d/`, que la clé `picture-uri` est définie au niveau système ET que `/org/gnome/desktop/screensaver/picture-uri` figure dans un fichier `locks/`. Inspecter les fichiers de clés dconf compilés ainsi que leurs verrous prouve que la politique est à la fois appliquée et non contournable — un contrôle qui ne lirait que le `~/.config` d'un utilisateur passerait à côté de la politique système obligatoire."
+  },
+  "verify": {
+    "en": "Run `gsettings get org.gnome.desktop.screensaver picture-uri` (expect an empty string `''`) and confirm the lock with `grep -r picture-uri /etc/dconf/db/*/locks/`. Re-running the InSpec command should print `ok`.",
+    "fr": "Exécutez `gsettings get org.gnome.desktop.screensaver picture-uri` (attendez une chaîne vide `''`) et confirmez le verrou avec `grep -r picture-uri /etc/dconf/db/*/locks/`. La réexécution de la commande InSpec doit afficher `ok`."
+  },
+  "logs": {
+    "en": "dconf changes are not logged to syslog; inspect state directly with `gsettings get org.gnome.desktop.screensaver picture-uri` and list the active databases with `ls /etc/dconf/db/`. After editing keyfiles, `dconf update` recompiles the binary databases.",
+    "fr": "Les modifications dconf ne sont pas journalisées dans syslog ; inspectez l'état directement avec `gsettings get org.gnome.desktop.screensaver picture-uri` et listez les bases actives avec `ls /etc/dconf/db/`. Après modification des fichiers de clés, `dconf update` recompile les bases binaires."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the **dconf** resource to write `picture-uri=''` into a system dconf keyfile, add the matching entry to the `locks/` directory, then run `dconf update` so the policy takes effect for all users.",
+    "fr": "`pavois harden apply` utilise la ressource **dconf** pour écrire `picture-uri=''` dans un fichier de clés dconf système, ajoute l'entrée correspondante dans le répertoire `locks/`, puis exécute `dconf update` afin que la politique s'applique à tous les utilisateurs."
+  },
+  "impact": {
+    "en": "Low risk: only the screensaver background is affected, no login or service disruption. After applying, users must log out and back in (or run `dconf update`) for the new mandatory policy to load. This rule only matters on systems with a GNOME desktop installed; on headless servers it is not applicable.",
+    "fr": "Risque faible : seul l'arrière-plan de l'économiseur d'écran est concerné, aucune interruption de connexion ou de service. Après application, les utilisateurs doivent se déconnecter puis se reconnecter (ou lancer `dconf update`) pour charger la nouvelle politique obligatoire. Cette règle ne concerne que les systèmes dotés d'un bureau GNOME ; sur un serveur sans interface graphique elle ne s'applique pas."
+  }
+}

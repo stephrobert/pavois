@@ -1,0 +1,65 @@
+{
+  "id": "filegroupownerships-var-log-landscape",
+  "supported_os": [
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.2.2.1",
+      "6.1.4.1"
+    ]
+  },
+  "check": [
+    "only_if { file('/var/log/landscape').exist? }",
+    "describe file('/var/log/landscape') do",
+    "  its('group') { should eq 'root' }",
+    "end"
+  ],
+  "remediation": {
+    "group": "root",
+    "path": "/var/log/landscape",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Groupownership of Files in /var/log/landscape",
+    "fr": "Verifier le groupe proprietaire des fichiers dans /var/log/landscape"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `/var/log/landscape` directory holds logs of the Landscape management client, which orchestrates system administration tasks on Ubuntu fleets. These logs can reveal management endpoints, scheduled actions and host details. Restricting the directory to the `root` group keeps administrative telemetry away from ordinary users.",
+    "fr": "Le repertoire `/var/log/landscape` contient les journaux du client de gestion Landscape, qui orchestre les taches d'administration systeme sur les parcs Ubuntu. Ces journaux peuvent reveler des points de gestion, des actions planifiees et des details sur l'hote. Restreindre le repertoire au groupe `root` garde cette telemetrie d'administration hors de portee des utilisateurs ordinaires."
+  },
+  "summary": {
+    "en": "Ensures the `/var/log/landscape` directory is group-owned by `root` so Landscape management logs are restricted to privileged accounts.",
+    "fr": "Garantit que le repertoire `/var/log/landscape` appartient au groupe `root` afin que les journaux de gestion Landscape soient reserves aux comptes privilegies."
+  },
+  "check_note": {
+    "en": "Pavois reads the **resolved** group ownership of `/var/log/landscape` via the InSpec `file` resource and asserts the group is `root`. It inspects the live inode metadata, so it reflects the directory's actual state on disk rather than a packaging default.",
+    "fr": "Pavois lit l'appartenance de groupe **resolue** de `/var/log/landscape` via la ressource InSpec `file` et verifie que le groupe est `root`. Il inspecte les metadonnees reelles de l'inode, ce qui reflete l'etat effectif du repertoire sur le disque plutot qu'une valeur par defaut de paquet."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G' /var/log/landscape`. The expected output is:\n\n- `root`\n\nInspect the tree with `ls -ld /var/log/landscape` and `find /var/log/landscape -printf '%g %p\\n'`.",
+    "fr": "Executez `stat -c '%G' /var/log/landscape`. La sortie attendue est :\n\n- `root`\n\nInspectez l'arborescence avec `ls -ld /var/log/landscape` et `find /var/log/landscape -printf '%g %p\\n'`."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by Landscape itself. To audit them, add an auditd watch (`auditctl -w /var/log/landscape -p wa -k logperms`) and grep `/var/log/audit/audit.log` for `key=\"logperms\"`.",
+    "fr": "Les changements de proprietaire ne sont pas journalises par Landscape lui-meme. Pour les auditer, ajoutez une surveillance auditd (`auditctl -w /var/log/landscape -p wa -k logperms`) et recherchez `key=\"logperms\"` dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan applies the `file` resource to set the **group** of `/var/log/landscape` to `root`. It is applied with `pavois harden apply` and leaves the owner and permission bits untouched.",
+    "fr": "Le plan de durcissement de Pavois applique la ressource `file` pour definir le **groupe** de `/var/log/landscape` sur `root`. Il s'applique avec `pavois harden apply` et laisse inchanges le proprietaire et les bits de permission."
+  },
+  "impact": {
+    "en": "Misconfiguration exposes Landscape management telemetry to unprivileged users. The change is low-risk: only group ownership is altered to the already-restrictive `root` group. **Precaution:** if the `landscape` service account or a log shipper relies on group read access, confirm it still reads via its owner or another mechanism before applying, so management logging continues uninterrupted.",
+    "fr": "Une mauvaise configuration expose la telemetrie de gestion Landscape aux utilisateurs non privilegies. Le changement est peu risque : seul le groupe proprietaire est modifie vers le groupe deja restrictif `root`. **Precaution :** si le compte de service `landscape` ou un collecteur de journaux depend de l'acces en lecture par le groupe, verifiez qu'il lit toujours via son proprietaire ou un autre mecanisme avant d'appliquer, afin que la journalisation de gestion se poursuive sans interruption."
+  }
+}

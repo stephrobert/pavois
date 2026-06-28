@@ -1,0 +1,67 @@
+{
+  "id": "fileowner-var-log-auth",
+  "supported_os": [
+    "debian12",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.1.4.1",
+      "6.2.2.1"
+    ]
+  },
+  "check": [
+    "only_if { file('/var/log/auth.log').exist? }",
+    "describe file('/var/log/auth.log') do",
+    "  its('owner') { should eq 'syslog' }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "syslog",
+    "path": "/var/log/auth.log",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify User Who Owns /var/log/auth.log File",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier /var/log/auth.log"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/var/log/auth.log` records **login attempts, sudo use and PAM authentication events** — exactly the data an attacker wants to read (to harvest usernames and timing) or write (to forge or erase traces of an intrusion). If the file is not owned by the dedicated `syslog` account, an unprivileged or compromised process could tamper with the authentication trail, destroying the evidence needed for forensic investigation and accountability.",
+    "fr": "`/var/log/auth.log` enregistre les **tentatives de connexion, l'usage de sudo et les événements d'authentification PAM** — précisément les données qu'un attaquant veut lire (pour récolter des noms d'utilisateurs et des horaires) ou écrire (pour falsifier ou effacer les traces d'une intrusion). Si le fichier n'appartient pas au compte dédié `syslog`, un processus non privilégié ou compromis pourrait altérer la piste d'authentification, détruisant les preuves nécessaires à l'investigation forensique et à la traçabilité."
+  },
+  "summary": {
+    "en": "Ensures the authentication log `/var/log/auth.log` is **owned by the `syslog` user** so only the logging daemon can write it.",
+    "fr": "Garantit que le journal d'authentification `/var/log/auth.log` est **détenu par l'utilisateur `syslog`**, afin que seul le démon de journalisation puisse y écrire."
+  },
+  "check_note": {
+    "en": "Pavois checks that the **owner of `/var/log/auth.log` is `syslog`**, but only when the file exists (`only_if`). It reads the **live owner reported by the filesystem** (`stat`) on the target, not a packaging default or a logrotate template — so even if a misbehaving cron job, log-shipping agent or rotation hook `chown`-ed the file, the control reflects the **effective on-disk state** at scan time.",
+    "fr": "Pavois vérifie que le **propriétaire de `/var/log/auth.log` est `syslog`**, mais uniquement lorsque le fichier existe (`only_if`). Il lit le **propriétaire réel rapporté par le système de fichiers** (`stat`) sur la cible, pas une valeur par défaut de paquet ni un modèle logrotate — ainsi, même si une tâche cron, un agent d'expédition de logs ou un hook de rotation défaillant a fait un `chown` sur le fichier, le contrôle reflète l'**état effectif sur le disque** au moment du scan."
+  },
+  "verify": {
+    "en": "Confirm the owner with:\n\n```bash\nstat -c '%U' /var/log/auth.log\n```\n\nExpected output is `syslog`.",
+    "fr": "Confirmez le propriétaire avec :\n\n```bash\nstat -c '%U' /var/log/auth.log\n```\n\nLa sortie attendue est `syslog`."
+  },
+  "logs": {
+    "en": "This file **is** the authentication log. Inspect its content and ownership directly:\n\n```bash\nls -l /var/log/auth.log\ntail -n 50 /var/log/auth.log\n```\n\nThe rsyslog daemon that owns it can be checked with `systemctl status rsyslog`. Ownership changes can be tracked, if auditd file-watches are configured, with `grep 'auth.log' /var/log/audit/audit.log`.",
+    "fr": "Ce fichier **est** le journal d'authentification. Inspectez son contenu et sa propriété directement :\n\n```bash\nls -l /var/log/auth.log\ntail -n 50 /var/log/auth.log\n```\n\nLe démon rsyslog qui le possède peut être vérifié avec `systemctl status rsyslog`. Les changements de propriété peuvent être suivis, si des surveillances de fichiers auditd sont configurées, avec `grep 'auth.log' /var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses a **`file` resource** to set the owner of `/var/log/auth.log` to **`syslog`**. Run `pavois harden apply` to enforce it — the Chef engine issues the equivalent of `chown syslog /var/log/auth.log` and leaves the file otherwise untouched (content and group preserved).",
+    "fr": "Le plan de durcissement de Pavois utilise une **ressource `file`** pour définir le propriétaire de `/var/log/auth.log` sur **`syslog`**. Lancez `pavois harden apply` pour l'appliquer — le moteur Chef exécute l'équivalent de `chown syslog /var/log/auth.log` et laisse le fichier inchangé par ailleurs (contenu et groupe préservés)."
+  },
+  "impact": {
+    "en": "**Consequences if misconfigured:** wrong ownership lets a non-logging user read sensitive authentication data or alter/erase the audit trail, undermining accountability and incident response.\n\n**Precautions before applying:** changing the owner to `syslog` is safe and non-disruptive — rsyslog already runs as `syslog` on Debian/Ubuntu, so it keeps writing normally. Ensure the `syslog` user exists (it does on a standard rsyslog install) before applying; if you ship logs with an agent running as another user, confirm that agent reads via group or root rather than relying on file ownership, so the `chown` does not break collection.",
+    "fr": "**Conséquences en cas de mauvaise configuration :** une propriété erronée permet à un utilisateur hors journalisation de lire des données d'authentification sensibles ou de modifier/effacer la piste d'audit, compromettant la traçabilité et la réponse aux incidents.\n\n**Précautions avant application :** changer le propriétaire en `syslog` est sûr et sans interruption — rsyslog s'exécute déjà sous `syslog` sur Debian/Ubuntu, il continue donc d'écrire normalement. Assurez-vous que l'utilisateur `syslog` existe (c'est le cas sur une installation rsyslog standard) avant d'appliquer ; si vous expédiez les logs avec un agent s'exécutant sous un autre utilisateur, vérifiez que cet agent lit via le groupe ou root plutôt qu'en s'appuyant sur la propriété du fichier, afin que le `chown` ne casse pas la collecte."
+  }
+}

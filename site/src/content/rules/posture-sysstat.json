@@ -1,0 +1,66 @@
+{
+  "id": "posture-sysstat",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Hardening (posture)",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe command('command -v sar >/dev/null 2>&1 && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "System statistics collection (sysstat)",
+    "fr": "Collecte des statistiques système (sysstat)"
+  },
+  "needs_translation": [],
+  "summary": {
+    "en": "Requires the **sysstat** toolkit (the `sar` binary) to be installed so historical system-activity metrics are collected for monitoring and incident analysis.",
+    "fr": "Exige l'installation de la suite **sysstat** (le binaire `sar`) afin que des métriques historiques d'activité système soient collectées pour la supervision et l'analyse d'incidents."
+  },
+  "rationale": {
+    "en": "Without historical performance data you are blind **after** an event: you cannot tell whether a spike in CPU, network or disk activity preceded an outage or signalled an attack (crypto-mining, exfiltration, DoS). `sysstat` continuously records system activity so you can correlate resource anomalies with security events and reconstruct what the machine was doing during an incident.",
+    "fr": "Sans données de performance historiques, vous êtes aveugle **après** un évènement : impossible de savoir si un pic de CPU, de réseau ou de disque a précédé une panne ou signalé une attaque (minage de cryptomonnaie, exfiltration, DoS). `sysstat` enregistre en continu l'activité système afin de corréler les anomalies de ressources avec les évènements de sécurité et de reconstituer ce que faisait la machine pendant un incident."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective state** by probing `PATH` for the `sar` binary (`command -v sar`). Resolving the live command is more dependable than inspecting a package manifest and directly confirms the tool an admin would actually invoke is present.",
+    "fr": "Pavois contrôle l'**état effectif** en sondant le `PATH` pour le binaire `sar` (`command -v sar`). Résoudre la commande réelle est plus fiable que d'inspecter un manifeste de paquets et confirme directement que l'outil qu'un administrateur invoquerait réellement est présent."
+  },
+  "verify": {
+    "en": "Run `command -v sar` — it should print a path (e.g. `/usr/bin/sar`). To confirm collection is active, check the timer with `systemctl status sysstat-collect.timer` and that data files appear under `/var/log/sysstat/` (or `/var/log/sa/`); `sar` with no args should show today's metrics.",
+    "fr": "Lancez `command -v sar` — un chemin doit s'afficher (par ex. `/usr/bin/sar`). Pour confirmer que la collecte est active, vérifiez le timer avec `systemctl status sysstat-collect.timer` et la présence de fichiers de données sous `/var/log/sysstat/` (ou `/var/log/sa/`) ; `sar` sans argument doit afficher les métriques du jour."
+  },
+  "logs": {
+    "en": "sysstat stores its binary data under `/var/log/sysstat/` (Debian/Ubuntu) or `/var/log/sa/` (RHEL), read with `sar`, `sadf`, `iostat`, `mpstat`. The collection timers are visible via `systemctl list-timers | grep sysstat`. Package presence: `dpkg -l sysstat` / `rpm -q sysstat`.",
+    "fr": "sysstat stocke ses données binaires sous `/var/log/sysstat/` (Debian/Ubuntu) ou `/var/log/sa/` (RHEL), lues via `sar`, `sadf`, `iostat`, `mpstat`. Les timers de collecte sont visibles via `systemctl list-timers | grep sysstat`. Présence du paquet : `dpkg -l sysstat` / `rpm -q sysstat`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped, so apply it **manually**: install the package (`apt install sysstat` / `dnf install sysstat`), enable collection (set `ENABLED=\"true\"` in `/etc/default/sysstat` on Debian/Ubuntu) and start the timers (`systemctl enable --now sysstat sysstat-collect.timer sysstat-summary.timer`).",
+    "fr": "Aucune remédiation automatisée n'est fournie, appliquez-la donc **manuellement** : installez le paquet (`apt install sysstat` / `dnf install sysstat`), activez la collecte (mettez `ENABLED=\"true\"` dans `/etc/default/sysstat` sur Debian/Ubuntu) et démarrez les timers (`systemctl enable --now sysstat sysstat-collect.timer sysstat-summary.timer`)."
+  },
+  "impact": {
+    "en": "Installing sysstat is non-disruptive. The only considerations are a small, regular **CPU/I/O cost from the collection cron/timer** and **disk growth in `/var/log/sysstat`** — tune the retention with `HISTORY` in `/etc/sysstat/sysstat`. No services are affected, and on Debian/Ubuntu remember collection is **off until you set `ENABLED=\"true\"`**.",
+    "fr": "Installer sysstat n'est pas perturbant. Les seuls points d'attention sont un léger **coût CPU/E-S régulier dû au cron/timer de collecte** et la **croissance du disque dans `/var/log/sysstat`** — ajustez la rétention avec `HISTORY` dans `/etc/sysstat/sysstat`. Aucun service n'est affecté, et sur Debian/Ubuntu, rappelez-vous que la collecte reste **inactive tant que vous n'avez pas mis `ENABLED=\"true\"`**."
+  }
+}

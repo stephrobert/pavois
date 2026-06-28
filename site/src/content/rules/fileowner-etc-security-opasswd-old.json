@@ -1,0 +1,67 @@
+{
+  "id": "fileowner-etc-security-opasswd-old",
+  "supported_os": [
+    "debian12",
+    "fedora",
+    "rhel8",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "rhel8": "4.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "7.1.10"
+  },
+  "check": [
+    "only_if { file('/etc/security/opasswd.old').exist? }",
+    "describe file('/etc/security/opasswd.old') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/etc/security/opasswd.old",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify User Who Owns /etc/security/opasswd.old File",
+    "fr": "Verifier l'utilisateur proprietaire du fichier /etc/security/opasswd.old"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `/etc/security/opasswd.old` file is the **backup** PAM writes when rotating `/etc/security/opasswd`; it likewise contains **hashes of previous passwords**. Being a backup makes it just as sensitive: if a non-root account owns it, those hashes can be read for offline cracking or the history can be tampered with. Setting **`root` (UID 0)** as the owner keeps the backup under exclusive privileged control.",
+    "fr": "Le fichier `/etc/security/opasswd.old` est la **sauvegarde** ecrite par PAM lors de la rotation de `/etc/security/opasswd` ; il contient lui aussi des **empreintes d'anciens mots de passe**. Etant une sauvegarde, il est tout aussi sensible : si un compte non-root le possede, ces empreintes peuvent etre lues pour un cassage hors-ligne ou l'historique falsifie. Definir **`root` (UID 0)** comme proprietaire maintient la sauvegarde sous controle privilegie exclusif."
+  },
+  "summary": {
+    "en": "Ensures the password-history backup `/etc/security/opasswd.old` is owned by `root` (UID 0).",
+    "fr": "Garantit que la sauvegarde de l'historique des mots de passe `/etc/security/opasswd.old` appartient a `root` (UID 0)."
+  },
+  "check_note": {
+    "en": "Pavois inspects the **live filesystem** with the InSpec `file('/etc/security/opasswd.old')` resource and asserts `uid == 0`, guarded by `only_if` so it is skipped when no backup exists yet. Reading the real inode owner reflects the **effective** on-disk state and catches a `chown` that would expose the backed-up hashes.",
+    "fr": "Pavois inspecte le **systeme de fichiers reel** via la ressource InSpec `file('/etc/security/opasswd.old')` et verifie `uid == 0`, protege par `only_if` afin d'etre ignore si aucune sauvegarde n'existe encore. Lire le proprietaire reel de l'inode reflete l'etat **effectif** sur le disque et detecte un `chown` qui exposerait les empreintes sauvegardees."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u %n' /etc/security/opasswd.old`. Expected output: `root 0 /etc/security/opasswd.old`. The numeric `0` confirms root ownership.",
+    "fr": "Executez `stat -c '%U %u %n' /etc/security/opasswd.old`. Sortie attendue : `root 0 /etc/security/opasswd.old`. Le `0` numerique confirme la propriete par root."
+  },
+  "logs": {
+    "en": "Watch the file with `auditctl -w /etc/security/opasswd.old -p wa -k password-history` and inspect `/var/log/audit/audit.log` (`grep 'key=\"password-history\"'`). It is rewritten during password changes, which PAM also logs in `/var/log/auth.log` / `journalctl`.",
+    "fr": "Surveillez le fichier avec `auditctl -w /etc/security/opasswd.old -p wa -k password-history` et inspectez `/var/log/audit/audit.log` (`grep 'key=\"password-history\"'`). Il est reecrit lors des changements de mot de passe, que PAM journalise aussi dans `/var/log/auth.log` / `journalctl`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped for this rule. Apply it manually with `chown root /etc/security/opasswd.old` (run as root or via `sudo`); the file should be group `root` and mode `0600` to keep the hashes unreadable.",
+    "fr": "Aucune remediation automatisee n'est fournie pour cette regle. Appliquez-la manuellement avec `chown root /etc/security/opasswd.old` (en root ou via `sudo`) ; le fichier doit etre en groupe `root` et mode `0600` pour garder les empreintes illisibles."
+  },
+  "impact": {
+    "en": "A non-root owner can read or forge the backed-up password hashes, exposing credential material. **Risk of applying:** none — `chown root` does not affect PAM's history handling. **Precaution:** keep the mode restrictive (`0600`); never make this backup group- or world-readable.",
+    "fr": "Un proprietaire non-root peut lire ou falsifier les empreintes sauvegardees, exposant des donnees d'authentification. **Risque a l'application :** nul — `chown root` n'affecte pas la gestion de l'historique par PAM. **Precaution :** gardez le mode restrictif (`0600`) ; ne rendez jamais cette sauvegarde lisible par le groupe ou par tous."
+  }
+}

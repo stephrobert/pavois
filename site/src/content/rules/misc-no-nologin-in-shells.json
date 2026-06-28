@@ -1,0 +1,67 @@
+{
+  "id": "misc-no-nologin-in-shells",
+  "supported_os": [
+    "debian12",
+    "fedora",
+    "rhel8",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "rhel8": "4.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (misc)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.4.3.1"
+  },
+  "check": [
+    "describe command('grep -qE \\'nologin|/bin/false\\' /etc/shells 2>/dev/null && echo ko || echo ok') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "sed -ri '\\#(nologin|/bin/false)#d' /etc/shells",
+    "name": "strip-nologin-from-shells",
+    "not_if": "! grep -qE 'nologin|/bin/false' /etc/shells",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Ensure nologin Shell is Not Listed in /etc/shells",
+    "fr": "S'assurer que le shell nologin n'est pas listé dans /etc/shells"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/etc/shells` is the list of **valid login shells**, consulted by programs such as `chsh`, FTP daemons and various PAM modules to decide whether an account is a real interactive user. `nologin` and `/bin/false` are deliberately *non-login* shells assigned to service/system accounts to deny them a session. Listing them in `/etc/shells` declares them valid login shells — which can re-enable interactive access (e.g. via FTP or `chsh`) for accounts that were meant to have none. They must be absent from the file.",
+    "fr": "`/etc/shells` est la liste des **shells de connexion valides**, consultée par des programmes comme `chsh`, les démons FTP et divers modules PAM pour déterminer si un compte est un véritable utilisateur interactif. `nologin` et `/bin/false` sont des shells *non interactifs* délibérément attribués aux comptes de service/système pour leur refuser une session. Les lister dans `/etc/shells` les déclare comme shells de connexion valides — ce qui peut réactiver l'accès interactif (par ex. via FTP ou `chsh`) pour des comptes censés n'en avoir aucun. Ils doivent être absents du fichier."
+  },
+  "summary": {
+    "en": "Ensures `nologin` and `/bin/false` are **not listed** in `/etc/shells`, so they remain true non-login shells.",
+    "fr": "Garantit que `nologin` et `/bin/false` ne sont **pas listés** dans `/etc/shells`, afin qu'ils restent de vrais shells sans connexion."
+  },
+  "check_note": {
+    "en": "Pavois greps the live `/etc/shells` for any `nologin` or `/bin/false` entry and expects none. This file is itself the effective source of truth consulted by `chsh`/FTP/PAM, so inspecting it directly reflects exactly what those programs will accept as a valid login shell.",
+    "fr": "Pavois recherche dans le `/etc/shells` en vigueur toute entrée `nologin` ou `/bin/false` et n'en attend aucune. Ce fichier est lui-même la source de vérité effective consultée par `chsh`/FTP/PAM ; l'inspecter directement reflète exactement ce que ces programmes accepteront comme shell de connexion valide."
+  },
+  "verify": {
+    "en": "Confirm neither non-login shell is listed:\n\n- `grep -E 'nologin|/bin/false' /etc/shells` — expected output is **empty** (no match).\n- `cat /etc/shells` — should list only real interactive shells such as `/bin/bash`, `/bin/sh`, `/usr/bin/zsh`.",
+    "fr": "Confirmez qu'aucun shell sans connexion n'est listé :\n\n- `grep -E 'nologin|/bin/false' /etc/shells` — la sortie attendue est **vide** (aucune correspondance).\n- `cat /etc/shells` — ne doit lister que de vrais shells interactifs comme `/bin/bash`, `/bin/sh`, `/usr/bin/zsh`."
+  },
+  "logs": {
+    "en": "Changes to login-shell configuration leave traces:\n\n- `grep -E 'chsh|shells' /var/log/auth.log` (Debian/Ubuntu) / `/var/log/secure` (RHEL) — shows `chsh` invocations that read `/etc/shells`.\n- `cat /etc/shells` is the authoritative current-state view of accepted login shells.",
+    "fr": "Les modifications de la configuration des shells de connexion laissent des traces :\n\n- `grep -E 'chsh|shells' /var/log/auth.log` (Debian/Ubuntu) / `/var/log/secure` (RHEL) — affiche les appels à `chsh` qui lisent `/etc/shells`.\n- `cat /etc/shells` est la vue de référence de l'état courant des shells de connexion acceptés."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so it must be applied **manually**: edit `/etc/shells` and remove any line referencing `nologin` or `/bin/false`. Removing them from the *valid shells list* does not change which shell each account actually uses (that stays in `/etc/passwd`); it only stops those non-login shells from being treated as valid login shells.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être appliquée **manuellement** : éditez `/etc/shells` et supprimez toute ligne référençant `nologin` ou `/bin/false`. Les retirer de la *liste des shells valides* ne change pas le shell réellement utilisé par chaque compte (celui-ci reste dans `/etc/passwd`) ; cela empêche seulement ces shells sans connexion d'être traités comme des shells de connexion valides."
+  },
+  "impact": {
+    "en": "**Risk if not applied:** service accounts assigned `nologin`/`/bin/false` may regain interactive access through programs that gate on `/etc/shells` (FTP, `chsh`).\n\n**Precautions before applying:** removing these entries is low-risk and does not affect existing logins of real users. Just confirm no in-house tooling explicitly requires `nologin` to be present in `/etc/shells` (rare). After the change, verify service accounts still cannot open an interactive session.",
+    "fr": "**Risque si non appliqué :** des comptes de service affectés à `nologin`/`/bin/false` peuvent regagner un accès interactif via des programmes qui se basent sur `/etc/shells` (FTP, `chsh`).\n\n**Précautions avant application :** retirer ces entrées présente peu de risque et n'affecte pas les connexions existantes des utilisateurs réels. Vérifiez simplement qu'aucun outil interne n'exige explicitement la présence de `nologin` dans `/etc/shells` (rare). Après la modification, vérifiez que les comptes de service ne peuvent toujours pas ouvrir de session interactive."
+  }
+}

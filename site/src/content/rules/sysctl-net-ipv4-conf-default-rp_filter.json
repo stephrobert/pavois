@@ -1,0 +1,83 @@
+{
+  "id": "sysctl-net-ipv4-conf-default-rp_filter",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R12",
+    "cis": [
+      "3.3.7",
+      "3.3.1.13"
+    ],
+    "nist": [
+      "3.1.20",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)",
+      "SC-7(a)"
+    ]
+  },
+  "check": [
+    "describe kernel_parameter('net.ipv4.conf.default.rp_filter') do",
+    "  its('value') { should cmp 1 }",
+    "end"
+  ],
+  "remediation": {
+    "key": "net.ipv4.conf.default.rp_filter",
+    "resource": "sysctl",
+    "value": "1"
+  },
+  "title": {
+    "en": "Enable Kernel Parameter to Use Reverse Path Filtering on all IPv4 Interfaces by Default",
+    "fr": "Activer le parametre noyau de filtrage par chemin inverse sur toutes les interfaces IPv4 par defaut"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Reverse Path Filtering (RPF) makes the kernel verify that an incoming packet's source address is reachable through the interface it arrived on; otherwise the packet is dropped. This defeats IP spoofing and asymmetric-route attacks. The `default` template should be **1** (strict) so every interface created after boot inherits spoofing protection. Strict RPF suits end hosts and routers on simple, symmetric topologies; multi-homed routers with asymmetric routing may need loose mode (`2`) to avoid dropping legitimate return traffic.",
+    "fr": "Le filtrage par chemin inverse (RPF) fait verifier au noyau que l'adresse source d'un paquet entrant est joignable via l'interface par laquelle il est arrive ; sinon, le paquet est rejete. Cela contre l'usurpation d'adresse IP et les attaques par route asymetrique. Le modele `default` doit valoir **1** (strict) afin que chaque interface creee apres le demarrage herite de la protection contre l'usurpation. Le RPF strict convient aux hotes terminaux et aux routeurs sur des topologies simples et symetriques ; les routeurs multi-rattaches a routage asymetrique peuvent avoir besoin du mode souple (`2`) pour ne pas rejeter le trafic de retour legitime."
+  },
+  "summary": {
+    "en": "Forces `net.ipv4.conf.default.rp_filter` to **1** (strict reverse path filtering) so newly created IPv4 interfaces drop packets with unverifiable source addresses by default.",
+    "fr": "Force `net.ipv4.conf.default.rp_filter` a **1** (filtrage strict par chemin inverse) afin que les interfaces IPv4 nouvellement creees rejettent par defaut les paquets a adresse source non verifiable."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.default.rp_filter` from the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not a `/etc/sysctl.d/` file. The `default` key sets the template inherited by interfaces created later, so the running value is what determines future interfaces' spoofing protection. A drop-in might declare `1` while a later override left it at `0` or `2`; only the effective parameter is authoritative.",
+    "fr": "Pavois lit la **valeur d'execution en direct** de `net.ipv4.conf.default.rp_filter` depuis le noyau (ressource InSpec `kernel_parameter`, equivalente a `sysctl`), et non un fichier `/etc/sysctl.d/`. La cle `default` definit le modele herite par les interfaces creees ulterieurement, donc la valeur en cours determine la protection anti-usurpation des futures interfaces. Un drop-in pourrait declarer `1` alors qu'une surcharge ulterieure l'a laisse a `0` ou `2` ; seul le parametre effectif fait autorite."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.conf.default.rp_filter`. Expected output:\n\n- `net.ipv4.conf.default.rp_filter = 1`",
+    "fr": "Executez `sysctl net.ipv4.conf.default.rp_filter`. Sortie attendue :\n\n- `net.ipv4.conf.default.rp_filter = 1`"
+  },
+  "logs": {
+    "en": "RPF drops are not logged unless `log_martians` is enabled; with it on, dropped spoofed packets appear via `dmesg | grep -i martian` and `journalctl -k`. Inspect the tunable state with `sysctl net.ipv4.conf.default.rp_filter` and per-interface values with `sysctl -a | grep rp_filter`.",
+    "fr": "Les rejets RPF ne sont pas journalises sauf si `log_martians` est active ; dans ce cas, les paquets usurpes rejetes apparaissent via `dmesg | grep -i martian` et `journalctl -k`. Inspectez l'etat du parametre avec `sysctl net.ipv4.conf.default.rp_filter` et les valeurs par interface avec `sysctl -a | grep rp_filter`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv4.conf.default.rp_filter` to **1**, applying it to the running kernel and persisting it in a Pavois-managed drop-in under `/etc/sysctl.d/` so it survives reboot. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour definir `net.ipv4.conf.default.rp_filter` a **1**, en l'appliquant au noyau en cours d'execution et en le persistant dans un drop-in gere par Pavois sous `/etc/sysctl.d/` afin qu'il survive au redemarrage. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Strict RPF (`1`) is safe for the vast majority of hosts and is the recommended default. **Caution on routers with asymmetric routing** (multiple uplinks, multi-homing, some VPN/policy-routing setups): strict mode silently drops return traffic arriving on a different interface than the forward path, which can break connectivity. On such systems use loose mode (`2`). This is the `default` template; pair with the `all.rp_filter` rule. Before applying on a router, confirm routing is symmetric or test on a non-production node. No effect on a single-homed server's remote access.",
+    "fr": "Le RPF strict (`1`) est sur pour la grande majorite des hotes et constitue le defaut recommande. **Prudence sur les routeurs a routage asymetrique** (plusieurs liaisons montantes, multi-rattachement, certaines configurations VPN/routage par politique) : le mode strict rejette silencieusement le trafic de retour arrivant sur une interface differente du chemin aller, ce qui peut couper la connectivite. Sur ces systemes, utilisez le mode souple (`2`). C'est le modele `default` ; associez-le a la regle `all.rp_filter`. Avant d'appliquer sur un routeur, confirmez que le routage est symetrique ou testez sur un noeud hors production. Aucun effet sur l'acces distant d'un serveur mono-rattache."
+  }
+}

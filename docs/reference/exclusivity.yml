@@ -1,0 +1,49 @@
+# "One of" requirements — SEPARATE from the controls, multi-OS, pavois-owned.
+#
+# Some needs are satisfied by ANY of several interchangeable technologies: a host
+# firewall (ufw | nftables | firewalld), a time-sync daemon (chrony | ntp | timesyncd),
+# a logging daemon (rsyslog | syslog-ng). Mirroring them as per-tech install/remove
+# controls produces contradictions in one OS ("install ufw" AND "remove ufw").
+#
+# Instead, resolve_exclusivity.py REPLACES every per-tech control of a group with ONE
+# control "<group>-present": it passes if AT LEAST ONE technology is active. It inherits
+# the union of the replaced controls' standards/levels. pavois imposes NO default — if
+# none is active it is a gap, and in the plan the admin PICKS one of `options` to install
+# (`choose: ufw`); apply installs + enables that one. Mirrors NixOS `assertions`;
+# service-based, so it ports across distros.
+
+groups:
+  firewall:
+    title: "A host firewall is installed and active"
+    domain: "Firewall"
+    severity: high
+    members: '^(fw-|pkg-(ufw|nftables|iptables)|service-(ufw|nftables|firewalld|iptables)|(file|rep)(perm|owner|groupowner)-etc-(iptables|nftables)|posture-firewall)'
+    # basic: at least one firewall service is active
+    check: 'for s in ufw nftables firewalld; do systemctl is-active --quiet "$s" && { echo ok; exit 0; }; done; echo ko'
+    default: {apt: ufw, rhel: firewalld}
+    options:
+      ufw:       {package: ufw, service: ufw}
+      nftables:  {package: nftables, service: nftables}
+      firewalld: {package: firewalld, service: firewalld}
+
+  time-sync:
+    title: "A time-synchronization service is active"
+    domain: "Time synchronization"
+    severity: medium
+    members: '^(pkg-(chrony|ntp|ntpsec|systemd-timesyncd)|service-(chronyd?|ntpd?|ntpsec|timesyncd)|misc-(chronyd?|ntp)|(file|rep)(perm|owner|groupowner)-etc-chrony|posture-ntp)'
+    check: 'for s in chrony chronyd systemd-timesyncd ntp ntpsec; do systemctl is-active --quiet "$s" && { echo ok; exit 0; }; done; echo ko'
+    default: {apt: chrony, rhel: chrony}
+    options:
+      chrony:    {package: chrony, service: chrony}
+      timesyncd: {package: systemd-timesyncd, service: systemd-timesyncd}
+
+  logging:
+    title: "A system logging daemon is active"
+    domain: "Logging"
+    severity: medium
+    members: '^(pkg-(rsyslog|syslog-ng)|service-(rsyslog|syslog-ng)|misc-rsyslog)'
+    check: 'for s in rsyslog syslog-ng; do systemctl is-active --quiet "$s" && { echo ok; exit 0; }; done; echo ko'
+    default: {apt: rsyslog, rhel: rsyslog}
+    options:
+      rsyslog:   {package: rsyslog, service: rsyslog}
+      syslog-ng: {package: syslog-ng, service: syslog-ng}

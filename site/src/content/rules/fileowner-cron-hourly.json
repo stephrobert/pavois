@@ -1,0 +1,81 @@
+{
+  "id": "fileowner-cron-hourly",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "2.4.1.3",
+      "2.2.6"
+    ],
+    "nist": [
+      "AC-6(1)",
+      "CM-6(a)"
+    ],
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "only_if { file('/etc/cron.hourly').exist? }",
+    "describe file('/etc/cron.hourly') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/etc/cron.hourly",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Owner on cron.hourly",
+    "fr": "Vérifier le propriétaire de cron.hourly"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `/etc/cron.hourly` directory holds scripts that **run automatically every hour as root**. If it is not owned by **root**, an unprivileged user could drop or modify a script there and have it executed with root privileges — a classic route to **privilege escalation and persistence**. Restricting ownership to root keeps scheduled execution trustworthy.",
+    "fr": "Le répertoire `/etc/cron.hourly` contient des scripts **exécutés automatiquement chaque heure en tant que root**. S'il n'appartient pas à **root**, un utilisateur non privilégié pourrait y déposer ou modifier un script qui serait alors exécuté avec les privilèges root — une voie classique vers l'**élévation de privilèges et la persistance**. Restreindre la propriété à root garantit la fiabilité de l'exécution planifiée."
+  },
+  "summary": {
+    "en": "Ensures the hourly cron directory `/etc/cron.hourly` is owned by the **root** user (UID 0).",
+    "fr": "Garantit que le répertoire cron horaire `/etc/cron.hourly` appartient à l'utilisateur **root** (UID 0)."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** owner of `/etc/cron.hourly` via the InSpec `file` resource and asserts `uid == 0`, only when the directory exists (`only_if`). Inspecting the live inode ownership reflects the real on-disk state and catches drift from package installs or manual changes, instead of an assumed default.",
+    "fr": "Pavois lit le propriétaire **effectif** de `/etc/cron.hourly` via la ressource `file` d'InSpec et vérifie `uid == 0`, uniquement si le répertoire existe (`only_if`). L'inspection de la propriété réelle de l'inode reflète l'état exact sur le disque et détecte une dérive due à des installations de paquets ou des changements manuels, au lieu d'une valeur par défaut supposée."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /etc/cron.hourly`. Expected output: **`root 0`**. Alternatively `ls -ld /etc/cron.hourly` should show `root` in the owner column.",
+    "fr": "Exécutez `stat -c '%U %u' /etc/cron.hourly`. Résultat attendu : **`root 0`**. Sinon, `ls -ld /etc/cron.hourly` doit afficher `root` dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "Ownership has no service log. Confirm the state with `stat -c '%U %u' /etc/cron.hourly`. To trace changes, an auditd watch such as `auditctl -w /etc/cron.hourly -p wa -k cron-dir` records writes/attribute changes in `/var/log/audit/audit.log`; cron execution is logged via `journalctl -u cron` (Debian/Ubuntu) or `journalctl -u crond` (RHEL family).",
+    "fr": "La propriété ne génère aucun journal de service. Vérifiez l'état avec `stat -c '%U %u' /etc/cron.hourly`. Pour tracer les changements, une surveillance auditd telle que `auditctl -w /etc/cron.hourly -p wa -k cron-dir` enregistre les écritures/changements d'attributs dans `/var/log/audit/audit.log` ; l'exécution cron est journalisée via `journalctl -u cron` (Debian/Ubuntu) ou `journalctl -u crond` (famille RHEL)."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied **manually**: run `chown root /etc/cron.hourly` as root to set the owner to **root**.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être appliquée **manuellement** : exécutez `chown root /etc/cron.hourly` en root pour fixer le propriétaire à **root**."
+  },
+  "impact": {
+    "en": "**If misconfigured**, a non-root user could plant an hourly script that runs as root, leading to escalation or persistence.\n\n**Precautions before applying:** `chown root /etc/cron.hourly` is safe and reversible with no service restart. Apply to the directory; if you use `-R`, review existing scripts so you do not re-own files managed by packages.",
+    "fr": "**En cas de mauvaise configuration**, un utilisateur non root pourrait y déposer un script horaire exécuté en root, menant à une élévation ou une persistance.\n\n**Précautions avant application :** `chown root /etc/cron.hourly` est sûr et réversible, sans redémarrage de service. Appliquez-le au répertoire ; si vous utilisez `-R`, examinez les scripts existants pour ne pas réattribuer des fichiers gérés par des paquets."
+  }
+}

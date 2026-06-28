@@ -1,0 +1,80 @@
+{
+  "id": "fileownership-audit-configuration",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.3.4.6",
+      "6.2.4.6"
+    ],
+    "stig": [
+      "UBTU-22-653070",
+      "UBTU-24-900050"
+    ]
+  },
+  "check": [
+    "only_if { file('/etc/audit').exist? }",
+    "describe file('/etc/audit') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/etc/audit",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Audit Configuration Files Must Be Owned By Root",
+    "fr": "Les fichiers de configuration d'audit doivent appartenir à root"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `/etc/audit` directory holds `auditd.conf` and the rule files (`audit.rules`, `rules.d/`) that decide which security events are recorded. If a non-root user owns this directory, they can rewrite the rules to stop auditing critical events, disable the audit trail entirely, or flood it to mask their activity — making it far harder to detect, correlate and attribute an incident. Restricting ownership to **root** (uid 0) ensures only the superuser controls what gets audited.",
+    "fr": "Le répertoire `/etc/audit` contient `auditd.conf` et les fichiers de règles (`audit.rules`, `rules.d/`) qui décident quels événements de sécurité sont enregistrés. Si un utilisateur non-root possède ce répertoire, il peut réécrire les règles pour cesser d'auditer des événements critiques, désactiver entièrement la piste d'audit ou la saturer pour masquer son activité — rendant bien plus difficile la détection, la corrélation et l'attribution d'un incident. Restreindre la propriété à **root** (uid 0) garantit que seul le superutilisateur contrôle ce qui est audité."
+  },
+  "summary": {
+    "en": "Ensures the audit configuration directory `/etc/audit` is owned by **root** (uid 0).",
+    "fr": "Garantit que le répertoire de configuration d'audit `/etc/audit` appartient à **root** (uid 0)."
+  },
+  "check_note": {
+    "en": "Pavois asserts that the live directory `/etc/audit` has owner uid `0`, skipping via `only_if` when audit is not present. It reads the **effective** owner from the filesystem (`stat`) rather than a deployment manifest, so any out-of-band `chown` on the audit config — a classic way to prepare tampering with the rules — is detected.",
+    "fr": "Pavois vérifie que le répertoire réel `/etc/audit` a l'uid de propriétaire `0`, en l'ignorant via `only_if` lorsque l'audit n'est pas présent. Il lit le propriétaire **effectif** depuis le système de fichiers (`stat`) plutôt qu'un manifeste de déploiement, de sorte que tout `chown` hors-canal sur la configuration d'audit — méthode classique pour préparer une falsification des règles — est détecté."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /etc/audit`. Expected output: `root 0`. To cover the contents too, run `find /etc/audit -not -user root` — it should print nothing.",
+    "fr": "Exécutez `stat -c '%U %u' /etc/audit`. Sortie attendue : `root 0`. Pour couvrir aussi le contenu, exécutez `find /etc/audit -not -user root` — il ne doit rien afficher."
+  },
+  "logs": {
+    "en": "Ownership has no running log; query it with `stat /etc/audit`. The audit subsystem logs to `/var/log/audit/audit.log`; if `/etc/audit` is watched (`auditctl -w /etc/audit/ -p wa -k auditconfig`), changes appear there — grep the raw log: `grep auditconfig /var/log/audit/audit.log`.",
+    "fr": "La propriété ne génère pas de journal continu ; interrogez-la avec `stat /etc/audit`. Le sous-système d'audit écrit dans `/var/log/audit/audit.log` ; si `/etc/audit` est surveillé (`auditctl -w /etc/audit/ -p wa -k auditconfig`), les modifications y apparaissent — recherchez dans le journal brut : `grep auditconfig /var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined, so apply it manually: `chown root:root /etc/audit` and, to be thorough, `chown -R root:root /etc/audit`. Reinstalling the `auditd`/`audit` package also restores root ownership.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini, appliquez-la donc manuellement : `chown root:root /etc/audit` et, par souci d'exhaustivité, `chown -R root:root /etc/audit`. Réinstaller le paquet `auditd`/`audit` restaure également la propriété root."
+  },
+  "impact": {
+    "en": "A non-root owner of `/etc/audit` can neutralize your audit policy and hide their tracks. Restoring root ownership is safe and does not affect the running auditd, which already runs as root. **Precaution:** if you recurse with `chown -R`, do not also change permissions — the rule files should stay readable only by root (mode 0640/0600); loosening them would let attackers read which events are monitored and design around them.",
+    "fr": "Un propriétaire non-root de `/etc/audit` peut neutraliser votre politique d'audit et effacer ses traces. Restaurer la propriété root est sans danger et n'affecte pas l'auditd en cours d'exécution, qui tourne déjà en root. **Précaution :** si vous récursez avec `chown -R`, ne modifiez pas aussi les permissions — les fichiers de règles doivent rester lisibles uniquement par root (mode 0640/0600) ; les assouplir laisserait des attaquants lire quels événements sont surveillés et les contourner."
+  }
+}

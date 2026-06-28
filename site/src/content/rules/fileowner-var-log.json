@@ -1,0 +1,69 @@
+{
+  "id": "fileowner-var-log",
+  "supported_os": [
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "stig": [
+      "UBTU-22-232120",
+      "UBTU-24-700110"
+    ]
+  },
+  "check": [
+    "only_if { file('/var/log').exist? }",
+    "describe file('/var/log') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/var/log",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify User Who Owns /var/log Directory",
+    "fr": "Vérifier l'utilisateur propriétaire du répertoire /var/log"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/var/log` is the **root of the system log tree**. Whoever owns this directory can create, rename or delete the log files it contains — regardless of the permissions on the individual files. If it is not owned by **root (UID 0)**, an attacker could replace a log with a symlink, swap a sensitive log for a world-readable copy, or remove entries wholesale, defeating logging as a control and crippling forensic analysis.",
+    "fr": "`/var/log` est la **racine de l'arborescence des journaux système**. Quiconque possède ce répertoire peut créer, renommer ou supprimer les fichiers de log qu'il contient — indépendamment des permissions des fichiers individuels. S'il n'appartient pas à **root (UID 0)**, un attaquant pourrait remplacer un journal par un lien symbolique, échanger un log sensible contre une copie lisible par tous, ou supprimer des entrées en masse, anéantissant la journalisation en tant que contrôle et paralysant l'analyse forensique."
+  },
+  "summary": {
+    "en": "Ensures the system log directory `/var/log` is **owned by `root` (UID 0)**.",
+    "fr": "Garantit que le répertoire des journaux système `/var/log` est **détenu par `root` (UID 0)**."
+  },
+  "check_note": {
+    "en": "Pavois checks that the **owner UID of the `/var/log` directory is `0` (root)** when it exists (`only_if`). It reads the **live directory owner** (`stat`) on the target, not a packaging default — so even if a deployment script or container image build re-owned `/var/log`, the control reports the **effective on-disk state**.",
+    "fr": "Pavois vérifie que l'**UID propriétaire du répertoire `/var/log` est `0` (root)** lorsqu'il existe (`only_if`). Il lit le **propriétaire réel du répertoire** (`stat`) sur la cible, pas une valeur par défaut de paquet — ainsi, même si un script de déploiement ou une construction d'image conteneur a réattribué `/var/log`, le contrôle rapporte l'**état effectif sur le disque**."
+  },
+  "verify": {
+    "en": "Confirm the owner with:\n\n```bash\nstat -c '%U %u' /var/log\n```\n\nExpected output is `root 0`.",
+    "fr": "Confirmez le propriétaire avec :\n\n```bash\nstat -c '%U %u' /var/log\n```\n\nLa sortie attendue est `root 0`."
+  },
+  "logs": {
+    "en": "This is the log directory itself. Inspect ownership directly:\n\n```bash\nstat /var/log\nls -ld /var/log\n```\n\nChanges to the directory ownership can be tracked with `grep ' name=\"/var/log\"' /var/log/audit/audit.log` if auditd watches are configured.",
+    "fr": "Il s'agit du répertoire de logs lui-même. Inspectez la propriété directement :\n\n```bash\nstat /var/log\nls -ld /var/log\n```\n\nLes changements de propriété du répertoire peuvent être suivis avec `grep ' name=\"/var/log\"' /var/log/audit/audit.log` si des surveillances auditd sont configurées."
+  },
+  "remediation_note": {
+    "en": "No automated remediation plan is defined, so this rule must be **applied manually**. Restore root ownership with:\n\n```bash\nchown root /var/log\n```\n\nUse `chown root /var/log` (not `-R`) to re-own only the directory; log files inside have their own ownership rules. (`pavois harden apply` will not change this directory until a remediation resource is added.)",
+    "fr": "Aucun plan de remédiation automatisé n'est défini ; cette règle doit donc être **appliquée manuellement**. Restaurez la propriété root avec :\n\n```bash\nchown root /var/log\n```\n\nUtilisez `chown root /var/log` (sans `-R`) pour ne réattribuer que le répertoire ; les fichiers de log à l'intérieur ont leurs propres règles de propriété. (`pavois harden apply` ne modifiera pas ce répertoire tant qu'une ressource de remédiation n'aura pas été ajoutée.)"
+  },
+  "impact": {
+    "en": "**Consequences if misconfigured:** a non-root owner of `/var/log` can delete or replace log files (e.g. symlink attacks), erasing or poisoning the audit trail for the whole system.\n\n**Precautions before applying:** re-owning the directory to root is safe — system loggers run as root or have their files owned individually. **Do not** add `-R`: a recursive `chown` would override the per-file ownership that other rules require (e.g. `syslog`-owned logs) and could break log rotation or collection agents. Re-own only the top directory.",
+    "fr": "**Conséquences en cas de mauvaise configuration :** un propriétaire non-root de `/var/log` peut supprimer ou remplacer des fichiers de log (par ex. attaques par lien symbolique), effaçant ou empoisonnant la piste d'audit de tout le système.\n\n**Précautions avant application :** réattribuer le répertoire à root est sûr — les journaliseurs système s'exécutent en root ou possèdent leurs fichiers individuellement. **N'ajoutez pas** `-R` : un `chown` récursif écraserait la propriété par fichier requise par d'autres règles (par ex. logs détenus par `syslog`) et pourrait casser la rotation des logs ou les agents de collecte. Ne réattribuez que le répertoire de tête."
+  }
+}

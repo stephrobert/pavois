@@ -1,0 +1,67 @@
+{
+  "id": "filegroupowner-var-log-waagent",
+  "supported_os": [
+    "debian12",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.1.4.1",
+      "6.2.2.1"
+    ]
+  },
+  "check": [
+    "only_if { file('/var/log/waagent').exist? }",
+    "describe file('/var/log/waagent') do",
+    "  its('group') { should eq 'adm' }",
+    "end"
+  ],
+  "remediation": {
+    "group": "adm",
+    "path": "/var/log/waagent",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Group Who Owns /var/log/waagent.log File",
+    "fr": "Vérifier le groupe propriétaire du fichier /var/log/waagent.log"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `/var/log/waagent.log` file records events from the **Azure Linux Guest Agent**, useful for troubleshooting but also containing provisioning details, endpoint URLs and host metadata. It must be restricted to the **`adm`** group so only authorized personnel can read it; otherwise it leaks cloud-provisioning context that aids an attacker.",
+    "fr": "Le fichier `/var/log/waagent.log` enregistre les événements de l'**agent invité Linux Azure**, utiles au dépannage mais contenant aussi des détails de provisionnement, des URL de points de terminaison et des métadonnées d'hôte. Il doit être restreint au groupe **`adm`** afin que seul le personnel autorisé puisse le lire ; sinon il divulgue un contexte de provisionnement cloud qui aide un attaquant."
+  },
+  "summary": {
+    "en": "Ensures the `/var/log/waagent.log` Azure agent log is owned by the **`adm`** group.",
+    "fr": "Garantit que le journal de l'agent Azure `/var/log/waagent.log` appartient au groupe **`adm`**."
+  },
+  "check_note": {
+    "en": "Pavois reads the file's **effective owning group** with the InSpec `file` resource and asserts it is `adm`, only when the file exists (the agent is present only on Azure VMs). Reading live filesystem metadata reflects the permissions enforced right now, catching drift from rotation or manual changes a static scan would miss.",
+    "fr": "Pavois lit le **groupe propriétaire effectif** du fichier avec la ressource InSpec `file` et vérifie qu'il vaut `adm`, uniquement si le fichier existe (l'agent n'est présent que sur les VM Azure). Lire les métadonnées réelles du système de fichiers reflète les permissions appliquées maintenant, détectant les dérives de rotation ou les modifications manuelles qu'un scan statique manquerait."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G' /var/log/waagent.log`. Expected output: `adm`. Alternatively `ls -l /var/log/waagent.log` should show `adm` in the group column.",
+    "fr": "Exécutez `stat -c '%G' /var/log/waagent.log`. Sortie attendue : `adm`. Sinon, `ls -l /var/log/waagent.log` doit afficher `adm` dans la colonne du groupe."
+  },
+  "logs": {
+    "en": "Ownership is shown by `ls -l /var/log/waagent.log` and `stat /var/log/waagent.log`. The file is written by the Azure agent — check `systemctl status walinuxagent` (or `waagent`) and `journalctl -u walinuxagent`. If auditd watches `/var/log`, ownership-change syscalls appear in `/var/log/audit/audit.log`.",
+    "fr": "Le propriétaire est affiché par `ls -l /var/log/waagent.log` et `stat /var/log/waagent.log`. Le fichier est écrit par l'agent Azure — vérifiez `systemctl status walinuxagent` (ou `waagent`) et `journalctl -u walinuxagent`. Si auditd surveille `/var/log`, les appels de changement de propriétaire apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the **`file`** resource to set the owning group of `/var/log/waagent.log` to **`adm`** (equivalent to `chgrp adm /var/log/waagent.log`). Apply it with `pavois harden apply`; no service restart is required.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource **`file`** pour fixer le groupe propriétaire de `/var/log/waagent.log` à **`adm`** (équivalent à `chgrp adm /var/log/waagent.log`). Appliquez-le avec `pavois harden apply` ; aucun redémarrage de service n'est requis."
+  },
+  "impact": {
+    "en": "If the group is wrong, unprivileged users can read Azure provisioning logs and harvest cloud-context intelligence. Setting the group to `adm` is low-risk because the Azure agent runs as root. **Precaution:** this control only matters on Azure VMs; on other platforms the file is absent and the check is skipped. Confirm no custom tooling reads the log under a different group before applying.",
+    "fr": "Si le groupe est incorrect, des utilisateurs non privilégiés peuvent lire les journaux de provisionnement Azure et collecter des renseignements sur le contexte cloud. Définir le groupe à `adm` est peu risqué car l'agent Azure tourne en root. **Précaution :** ce contrôle ne concerne que les VM Azure ; ailleurs le fichier est absent et le contrôle est ignoré. Vérifiez qu'aucun outil personnalisé ne lit le journal via un autre groupe avant d'appliquer."
+  }
+}

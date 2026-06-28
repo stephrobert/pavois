@@ -1,0 +1,77 @@
+{
+  "id": "pkg-ftp-removed",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "2.2.1",
+      "2.2.4",
+      "2.2.6"
+    ],
+    "pci-dss": "2.2.4"
+  },
+  "check": [
+    "describe package('ftp') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "ftp",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Remove ftp Package",
+    "fr": "Supprimer le paquet ftp"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `ftp` client transmits data **and authentication credentials in clear text**, offering no confidentiality or integrity protection. Anyone able to observe the network can capture usernames, passwords and transferred files. Unless an FTP workflow is genuinely required, removing the client reduces the attack surface and prevents users from inadvertently using an insecure protocol; **`sftp`/`scp`** should be used instead.",
+    "fr": "Le client `ftp` transmet les donnees **et les identifiants en clair**, sans aucune protection de confidentialite ni d'integrite. Quiconque observe le reseau peut capturer noms d'utilisateurs, mots de passe et fichiers transferes. A moins qu'un flux FTP soit reellement necessaire, supprimer le client reduit la surface d'attaque et empeche les utilisateurs d'employer par inadvertance un protocole non securise ; il faut utiliser **`sftp`/`scp`** a la place."
+  },
+  "summary": {
+    "en": "Removes the insecure clear-text `ftp` client so credentials and files are never transferred unencrypted.",
+    "fr": "Supprime le client `ftp` non securise en clair afin que les identifiants et fichiers ne soient jamais transferes sans chiffrement."
+  },
+  "check_note": {
+    "en": "Pavois asks the **package manager** via `package('ftp')` whether the client is installed, giving the **effective** state of the system rather than parsing dotfiles or scripts that might mention `ftp`. Only the package database reliably tells you whether the binary is actually present and runnable.",
+    "fr": "Pavois demande au **gestionnaire de paquets** via `package('ftp')` si le client est installe, ce qui donne l'etat **effectif** du systeme plutot que d'analyser des scripts ou fichiers de configuration mentionnant `ftp`. Seule la base de paquets indique de maniere fiable si le binaire est reellement present et executable."
+  },
+  "verify": {
+    "en": "On Debian/Ubuntu run `dpkg -s ftp` (expect `package 'ftp' is not installed`); on RHEL-family run `rpm -q ftp` (expect `package ftp is not installed`). Either result confirms the rule passes.",
+    "fr": "Sur Debian/Ubuntu, executez `dpkg -s ftp` (attendu : `package 'ftp' is not installed`) ; sur la famille RHEL, executez `rpm -q ftp` (attendu : `package ftp is not installed`). L'un ou l'autre resultat confirme que la regle passe."
+  },
+  "logs": {
+    "en": "Verify removal with `dpkg -s ftp` or `rpm -q ftp`. Package-management actions are recorded in `/var/log/dpkg.log` (Debian/Ubuntu) or `/var/log/dnf.log` / `dnf history` (RHEL-family).",
+    "fr": "Verifiez la suppression avec `dpkg -s ftp` ou `rpm -q ftp`. Les actions du gestionnaire de paquets sont enregistrees dans `/var/log/dpkg.log` (Debian/Ubuntu) ou `/var/log/dnf.log` / `dnf history` (famille RHEL)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan removes the `ftp` package (resource `package`, action `remove`) when you run `pavois harden apply`. No service is stopped because `ftp` is a client; only the binary is uninstalled.",
+    "fr": "Le plan de durcissement de Pavois supprime le paquet `ftp` (ressource `package`, action `remove`) lorsque vous lancez `pavois harden apply`. Aucun service n'est arrete car `ftp` est un client ; seul le binaire est desinstalle."
+  },
+  "impact": {
+    "en": "Impact of leaving it installed: clear-text transfers can leak credentials and data. **Precaution before removing:** confirm no scripts, cron jobs or batch jobs invoke the `ftp` command; migrate them to `sftp`/`curl`/`lftp` over TLS first. Removing the client is low-risk and does not affect a deliberately run FTP *server* package.",
+    "fr": "Impact si on le laisse installe : les transferts en clair peuvent divulguer identifiants et donnees. **Precaution avant suppression :** verifiez qu'aucun script, tache cron ou traitement par lots n'invoque la commande `ftp` ; migrez-les d'abord vers `sftp`/`curl`/`lftp` sur TLS. La suppression du client est a faible risque et n'affecte pas un paquet *serveur* FTP execute volontairement."
+  }
+}

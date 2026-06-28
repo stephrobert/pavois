@@ -1,0 +1,79 @@
+{
+  "id": "file-cron-allow-exists",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Cron/at access control",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "2.4.1.8",
+      "2.4.1.2",
+      "2.4.1.9"
+    ]
+  },
+  "check": [
+    "describe file('/etc/cron.allow') do",
+    "  it { should exist }",
+    "end"
+  ],
+  "remediation": {
+    "content": "",
+    "group": "root",
+    "mode": "0600",
+    "owner": "root",
+    "path": "/etc/cron.allow",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Ensure that /etc/cron.allow exists",
+    "fr": "Garantir l'existence de /etc/cron.allow"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`crond` decides who may run `crontab` based on `cron.allow`/`cron.deny`. When `cron.allow` exists, only users listed in it (plus root) can install cron jobs — a default-deny posture. An allow list is safer than a deny list: forgetting to deny a new account silently grants it scheduling, whereas an allow list grants nothing by default. An empty, root-owned `cron.allow` blocks all non-root crontabs, limiting a foothold an attacker could use for persistence.",
+    "fr": "`crond` décide qui peut exécuter `crontab` selon `cron.allow`/`cron.deny`. Lorsque `cron.allow` existe, seuls les utilisateurs qui y figurent (et root) peuvent installer des tâches cron — une posture par défaut de refus. Une liste d'autorisation est plus sûre qu'une liste d'interdiction : oublier d'interdire un nouveau compte lui accorde silencieusement la planification, alors qu'une liste d'autorisation n'accorde rien par défaut. Un `cron.allow` vide appartenant à root bloque toutes les crontabs non-root, limitant un point d'appui qu'un attaquant pourrait utiliser pour la persistance."
+  },
+  "summary": {
+    "en": "Ensures `/etc/cron.allow` exists (owned by **root:root**, mode **0600**) so `crontab` use is restricted to an explicit allow list.",
+    "fr": "Garantit l'existence de `/etc/cron.allow` (propriété **root:root**, mode **0600**) afin que l'usage de `crontab` soit limité à une liste d'autorisation explicite."
+  },
+  "check_note": {
+    "en": "Pavois verifies the **actual** file `/etc/cron.allow` exists on the live system via the InSpec `file` resource, which queries the real inode rather than a config template. The presence of this file is the effective access-control state `crond` reads when a user runs `crontab`.",
+    "fr": "Pavois vérifie que le fichier **réel** `/etc/cron.allow` existe sur le système en fonctionnement via la ressource InSpec `file`, qui interroge l'inode réel plutôt qu'un modèle de configuration. La présence de ce fichier constitue l'état de contrôle d'accès effectif que `crond` lit lorsqu'un utilisateur exécute `crontab`."
+  },
+  "verify": {
+    "en": "Run `ls -l /etc/cron.allow` and confirm it exists with owner `root`, group `root`, mode `0600`. Test enforcement by running `crontab -e` as a non-listed user (it should be refused: `You (user) are not allowed to use this program`). Re-running the InSpec command should pass.",
+    "fr": "Exécutez `ls -l /etc/cron.allow` et confirmez qu'il existe avec le propriétaire `root`, le groupe `root` et le mode `0600`. Testez l'application en lançant `crontab -e` en tant qu'utilisateur non listé (cela devrait être refusé : `You (user) are not allowed to use this program`). La réexécution de la commande InSpec doit réussir."
+  },
+  "logs": {
+    "en": "Inspect the file state with `stat /etc/cron.allow`. Cron access denials and job activity are logged by the cron service via `journalctl -u cron` (Debian/Ubuntu) or `journalctl -u crond` (RHEL family), or in `/var/log/cron` / `/var/log/syslog`.",
+    "fr": "Inspectez l'état du fichier avec `stat /etc/cron.allow`. Les refus d'accès cron et l'activité des tâches sont journalisés par le service cron via `journalctl -u cron` (Debian/Ubuntu) ou `journalctl -u crond` (famille RHEL), ou dans `/var/log/cron` / `/var/log/syslog`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the **file** resource to create `/etc/cron.allow` as an empty file owned by `root:root` with mode `0600`. An empty allow list means only root may use `crontab`; add usernames (one per line) afterward to grant specific accounts.",
+    "fr": "`pavois harden apply` utilise la ressource **file** pour créer `/etc/cron.allow` en tant que fichier vide appartenant à `root:root` avec le mode `0600`. Une liste d'autorisation vide signifie que seul root peut utiliser `crontab` ; ajoutez ensuite des noms d'utilisateurs (un par ligne) pour autoriser des comptes spécifiques."
+  },
+  "impact": {
+    "en": "Creating an empty `cron.allow` immediately blocks all non-root users from installing crontabs. Existing crontabs already installed keep running, but affected users can no longer edit them. If legitimate users rely on `crontab`, add their usernames to the file before or right after applying. No service restart is required; the change takes effect on the next `crontab` invocation.",
+    "fr": "Créer un `cron.allow` vide bloque immédiatement tous les utilisateurs non-root de l'installation de crontabs. Les crontabs déjà installées continuent de s'exécuter, mais les utilisateurs concernés ne peuvent plus les modifier. Si des utilisateurs légitimes dépendent de `crontab`, ajoutez leurs noms d'utilisateurs au fichier avant ou juste après l'application. Aucun redémarrage de service n'est requis ; le changement prend effet à la prochaine invocation de `crontab`."
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "id": "fileperm-audit-configuration",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "6.3.4.5",
+    "nist": "AU-12 b"
+  },
+  "check": [
+    "only_if { file('/etc/audit').exist? }",
+    "describe file('/etc/audit') do",
+    "  it { should_not be_executable.by('owner') }",
+    "  it { should_not be_setuid }",
+    "  it { should_not be_executable.by('group') }",
+    "  it { should_not be_writable.by('group') }",
+    "  it { should_not be_setgid }",
+    "  it { should_not be_executable.by('other') }",
+    "  it { should_not be_writable.by('other') }",
+    "  it { should_not be_readable.by('other') }",
+    "  it { should_not be_sticky }",
+    "end"
+  ],
+  "remediation": {
+    "mode": "0640",
+    "path": "/etc/audit",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Audit Configuration Files Permissions are 640 or More Restrictive",
+    "fr": "Les permissions des fichiers de configuration d'audit sont 640 ou plus restrictives"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The audit configuration under `/etc/audit` (`auditd.conf`, `audit.rules`, `rules.d/`, `plugins.d/`) defines **which events are recorded and how**. If these files are group/other-writable, an attacker could **silently disable rules** so their actions go unlogged; if they are other-readable they reveal exactly what is — and is not — monitored, helping an intruder evade detection. Restricting to `0640` (or stricter for the directory) keeps audit policy under root's exclusive control and preserves the integrity of the audit trail.",
+    "fr": "La configuration d'audit sous `/etc/audit` (`auditd.conf`, `audit.rules`, `rules.d/`, `plugins.d/`) definit **quels evenements sont enregistres et comment**. Si ces fichiers sont modifiables par le groupe/les autres, un attaquant pourrait **desactiver silencieusement des regles** pour que ses actions ne soient pas journalisees ; s'ils sont lisibles par les autres, ils revelent exactement ce qui est — et n'est pas — surveille, aidant un intrus a echapper a la detection. Les restreindre a `0640` (ou plus strict pour le repertoire) garde la politique d'audit sous le controle exclusif de root et preserve l'integrite de la piste d'audit."
+  },
+  "summary": {
+    "en": "Ensures the audit configuration tree `/etc/audit` is not other-readable, not group/other-writable, and carries no executable or special (setuid/setgid/sticky) bits — i.e. mode `0640` or stricter.",
+    "fr": "Garantit que l'arborescence de configuration d'audit `/etc/audit` n'est ni lisible par les autres, ni modifiable par le groupe/les autres, et ne porte aucun bit executable ou special (setuid/setgid/sticky) — soit le mode `0640` ou plus strict."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live mode bits** of `/etc/audit` via the InSpec `file` resource — the permissions the kernel actually enforces — rather than a packaging assumption. This catches a config loosened after install. Note: this control inspects the `/etc/audit` node; a thorough hardening also applies `0640` recursively to `rules.d/*.rules`. The `only_if` guard skips the check when audit is not installed.",
+    "fr": "Pavois lit les **bits de mode reels** de `/etc/audit` via la ressource InSpec `file` — les permissions reellement appliquees par le noyau — plutot qu'une hypothese de paquet. Cela detecte une configuration relachee apres installation. Note : ce controle inspecte le noeud `/etc/audit` ; un durcissement complet applique aussi `0640` recursivement a `rules.d/*.rules`. La garde `only_if` ignore le controle si l'audit n'est pas installe."
+  },
+  "verify": {
+    "en": "Run `stat -c '%a %U %G %n' /etc/audit /etc/audit/auditd.conf /etc/audit/rules.d/*.rules`. Expected output shows `640` (files) / `750` or `700` (the directory) owned by `root root`, with no other-read or group-write.",
+    "fr": "Executez `stat -c '%a %U %G %n' /etc/audit /etc/audit/auditd.conf /etc/audit/rules.d/*.rules`. La sortie attendue affiche `640` (fichiers) / `750` ou `700` (repertoire) appartenant a `root root`, sans lecture par les autres ni ecriture groupe."
+  },
+  "logs": {
+    "en": "auditd reports its loaded policy with `auditctl -l` and its status with `auditctl -s`; events land in `/var/log/audit/audit.log`. Watch for changes to the config itself by adding an auditd watch on `/etc/audit` and grepping the log for its key.",
+    "fr": "auditd rapporte sa politique chargee avec `auditctl -l` et son etat avec `auditctl -s` ; les evenements arrivent dans `/var/log/audit/audit.log`. Surveillez les modifications de la configuration en ajoutant une regle auditd sur `/etc/audit` et en recherchant sa cle dans le journal."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is defined, so apply it **manually**: `chmod -R u-x,g-wx,o-rwx /etc/audit && chown -R root:root /etc/audit` (effectively `0640` for files, `0750` for directories). Reload the policy afterwards with `augenrules --load` or `systemctl restart auditd` so the running ruleset matches.",
+    "fr": "Aucune remediation automatique n'est definie ; appliquez-la **manuellement** : `chmod -R u-x,g-wx,o-rwx /etc/audit && chown -R root:root /etc/audit` (soit `0640` pour les fichiers, `0750` pour les repertoires). Rechargez ensuite la politique avec `augenrules --load` ou `systemctl restart auditd` pour que le jeu de regles actif corresponde."
+  },
+  "impact": {
+    "en": "Risk if not applied: writable audit config lets an attacker turn off logging; readable config maps your detection coverage for them. Precautions: restricting to `0640`/`0750` is safe — only root and the `auditd` daemon read these files. Do not remove read access for the owner, and reload auditd after changing permissions so a partially-applied change does not leave the daemon running an old policy.",
+    "fr": "Risque en cas de non-application : une config d'audit modifiable permet a un attaquant de couper la journalisation ; une config lisible cartographie votre couverture de detection pour lui. Precautions : restreindre a `0640`/`0750` est sans danger — seuls root et le demon `auditd` lisent ces fichiers. Ne retirez pas l'acces en lecture au proprietaire, et rechargez auditd apres avoir change les permissions pour qu'un changement partiel ne laisse pas le demon sur une ancienne politique."
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "id": "fileowner-at-deny",
+  "supported_os": [
+    "debian12",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "2.4.2.1"
+  },
+  "check": [
+    "only_if { file('/etc/at.deny').exist? }",
+    "describe file('/etc/at.deny') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/etc/at.deny",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify User Who Owns /etc/at.deny file",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier /etc/at.deny"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/etc/at.deny` is the deny-list controlling who is **forbidden** from scheduling `at` jobs. If it is not owned by **root** (uid 0), an unauthorized user could remove their own entry to gain `at` access, or read it to learn the scheduling policy. Root ownership keeps the deny-list authoritative and tamper-resistant.",
+    "fr": "`/etc/at.deny` est la liste d'interdiction déterminant qui est **interdit** de planifier des tâches `at`. S'il n'appartient pas à **root** (uid 0), un utilisateur non autorisé pourrait retirer sa propre entrée pour obtenir l'accès à `at`, ou le lire pour découvrir la politique de planification. La propriété par root maintient la liste d'interdiction autoritaire et résistante à l'altération."
+  },
+  "summary": {
+    "en": "Ensures `/etc/at.deny` is owned by **root** (uid 0).",
+    "fr": "Garantit que `/etc/at.deny` appartient à **root** (uid 0)."
+  },
+  "check_note": {
+    "en": "Pavois reads the file's **effective owning uid** with the InSpec `file` resource and asserts it equals `0` (root), only when the file exists. Reading the live filesystem owner reflects the policy actually enforced now — catching `chown` drift — instead of trusting a package default.",
+    "fr": "Pavois lit l'**uid propriétaire effectif** du fichier avec la ressource InSpec `file` et vérifie qu'il vaut `0` (root), uniquement si le fichier existe. Lire le propriétaire réel du système de fichiers reflète la politique réellement appliquée maintenant — détectant la dérive de `chown` — au lieu de faire confiance à une valeur par défaut de paquet."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U' /etc/at.deny`. Expected output: `root`. Alternatively `ls -l /etc/at.deny` should show `root` in the owner column.",
+    "fr": "Exécutez `stat -c '%U' /etc/at.deny`. Sortie attendue : `root`. Sinon, `ls -l /etc/at.deny` doit afficher `root` dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "Ownership is shown by `ls -l /etc/at.deny` and `stat /etc/at.deny`. `at` activity is logged via `journalctl -u atd` (or `systemctl status atd`) and in `/var/log/syslog`/`/var/log/cron`. If auditd watches `/etc/at.deny`, `chown` and write events appear in `/var/log/audit/audit.log`.",
+    "fr": "Le propriétaire est affiché par `ls -l /etc/at.deny` et `stat /etc/at.deny`. L'activité `at` est journalisée via `journalctl -u atd` (ou `systemctl status atd`) et dans `/var/log/syslog`/`/var/log/cron`. Si auditd surveille `/etc/at.deny`, les événements `chown` et d'écriture apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is shipped for this rule, so it must be remediated **manually**: run `chown root /etc/at.deny` (commonly paired with `chgrp root` and `chmod 600`). Note that hardening guides often recommend removing `at.deny` entirely in favor of an `at.allow` allow-list; if you keep it, root must own it.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle : elle doit être corrigée **manuellement** avec `chown root /etc/at.deny` (souvent accompagné de `chgrp root` et `chmod 600`). Notez que les guides de durcissement recommandent souvent de supprimer `at.deny` au profit d'une liste d'autorisation `at.allow` ; si vous le conservez, root doit en être propriétaire."
+  },
+  "impact": {
+    "en": "Non-root ownership lets a user edit the deny-list to bypass `at` restrictions, undermining job-scheduling controls. Restoring root ownership is operationally safe since `atd` runs as root. **Precaution:** if the file is absent the check is skipped; deleting `at.deny` while no `at.allow` exists makes `at` available to all users — decide your scheduling policy before changing either file.",
+    "fr": "Une propriété autre que root permet à un utilisateur de modifier la liste d'interdiction pour contourner les restrictions `at`, affaiblissant les contrôles de planification. Rétablir la propriété root est sans danger opérationnel car `atd` tourne en root. **Précaution :** si le fichier est absent, le contrôle est ignoré ; supprimer `at.deny` sans qu'un `at.allow` existe rend `at` accessible à tous — définissez votre politique de planification avant de modifier l'un ou l'autre fichier."
+  }
+}

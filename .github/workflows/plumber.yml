@@ -1,0 +1,41 @@
+name: Plumber compliance
+
+# Validates Pavois's own CI/CD with Plumber (getplumber.io), the same way Plumber validates
+# itself: analyze the repo's GitHub Actions workflows + repo settings against .plumber.yaml,
+# upload findings to Code Scanning, and fail below the compliance threshold. The action verifies
+# the downloaded Plumber binary's SLSA build-provenance attestation before running it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  plumber:
+    name: Plumber analyze
+    # Draft while the repo is private: uploading SARIF to Code Scanning needs GitHub Advanced
+    # Security (public repos get it free), and Plumber's API checks need broader access than a
+    # private default token grants. Skips on private, activates automatically once public.
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write   # upload SARIF to Code Scanning
+      actions: read            # read the workflow run (Plumber telemetry / status)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Plumber compliance scan
+        uses: getplumber/plumber@v0.3.17
+        with:
+          version: v0.3.17
+          verify-attestation: 'true'
+          threshold: '100'
+          upload-sarif: 'true'
+          upload-artifacts: 'true'

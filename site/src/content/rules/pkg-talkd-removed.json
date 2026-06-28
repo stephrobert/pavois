@@ -1,0 +1,63 @@
+{
+  "id": "pkg-talkd-removed",
+  "supported_os": [
+    "debian12",
+    "debian13"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0"
+  },
+  "severity": "critical",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R62",
+    "cis": "2.2.4",
+    "pci-dss": "2.2.4"
+  },
+  "check": [
+    "describe package('talkd') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "talkd",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall talk-server Package",
+    "fr": "Désinstaller le paquet talk-server (talkd)"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`talkd` is the server for the legacy **`talk`** real-time messaging service. The talk software presents a security risk because it uses **unencrypted protocols** for communication, sending all traffic in cleartext over the network. Removing the `talk-server` package decreases the risk of the **accidental (or intentional) activation** of talk services and removes an obsolete listening daemon that has no place on a modern hardened host.",
+    "fr": "`talkd` est le serveur du service de messagerie en temps réel hérité **`talk`**. Le logiciel talk présente un risque de sécurité car il utilise des **protocoles non chiffrés**, transmettant tout le trafic en clair sur le réseau. Supprimer le paquet `talk-server` réduit le risque d'**activation accidentelle (ou intentionnelle)** des services talk et élimine un démon à l'écoute obsolète qui n'a pas sa place sur un hôte durci moderne."
+  },
+  "summary": {
+    "en": "Ensures the **`talkd`** (talk-server) package is **not installed**, removing the legacy cleartext talk messaging daemon.",
+    "fr": "Garantit que le paquet **`talkd`** (talk-server) n'est **pas installé**, supprimant le démon de messagerie talk hérité en clair."
+  },
+  "check_note": {
+    "en": "Pavois asserts absence of `talkd` via CINC/InSpec's `package` resource against the **effective** package database (`dpkg`). If the package is present, the talk daemon (typically launched via inetd on UDP/518) can be activated regardless of inetd config-file state, so the package check is the authoritative signal.",
+    "fr": "Pavois vérifie l'absence de `talkd` via la ressource `package` de CINC/InSpec sur la base de données de paquets **effective** (`dpkg`). Si le paquet est présent, le démon talk (généralement lancé via inetd sur UDP/518) peut être activé quel que soit l'état des fichiers de configuration d'inetd ; le contrôle de paquet est donc le signal faisant autorité."
+  },
+  "verify": {
+    "en": "Run `dpkg -s talkd`; a compliant host returns **`package 'talkd' is not installed`**. Confirm nothing answers talk with `ss -ulnp | grep ':518'` (no output).",
+    "fr": "Exécutez `dpkg -s talkd` ; un hôte conforme renvoie **`package 'talkd' is not installed`**. Confirmez qu'aucun service ne répond en talk avec `ss -ulnp | grep ':518'` (aucune sortie)."
+  },
+  "logs": {
+    "en": "- Removal events appear in `/var/log/dpkg.log` and `/var/log/apt/history.log`.\n- After removal, `systemctl status talkd` (or the inetd entry) reports **not-found** and UDP/518 is no longer bound (`ss -ulnp`).",
+    "fr": "- Les événements de suppression apparaissent dans `/var/log/dpkg.log` et `/var/log/apt/history.log`.\n- Après suppression, `systemctl status talkd` (ou l'entrée inetd) indique **not-found** et UDP/518 n'est plus en écoute (`ss -ulnp`)."
+  },
+  "remediation_note": {
+    "en": "The harden plan declares a **`package`** resource for `talkd` with action **`remove`**; `pavois harden apply` uninstalls it via `apt`. The talk daemon can no longer be started.",
+    "fr": "Le plan de durcissement déclare une ressource **`package`** pour `talkd` avec l'action **`remove`** ; `pavois harden apply` le désinstalle via `apt`. Le démon talk ne peut plus être démarré."
+  },
+  "impact": {
+    "en": "Impact is negligible: `talk` is an obsolete protocol with no legitimate modern use, so removing the server breaks nothing in practice. The only consideration is if some legacy interactive workflow still depends on `talk` — in that case migrate to an encrypted alternative (SSH/`write` over a trusted channel, modern chat) rather than keeping a cleartext daemon. No reboot or lockout risk.",
+    "fr": "L'impact est négligeable : `talk` est un protocole obsolète sans usage moderne légitime, sa suppression ne casse donc rien en pratique. La seule réserve est si un flux interactif hérité dépend encore de `talk` — dans ce cas, migrez vers une alternative chiffrée (SSH/`write` sur un canal de confiance, messagerie moderne) plutôt que de conserver un démon en clair. Aucun risque de redémarrage ni de blocage."
+  }
+}

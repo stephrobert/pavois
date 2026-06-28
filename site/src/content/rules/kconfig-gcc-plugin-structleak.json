@@ -1,0 +1,67 @@
+{
+  "id": "kconfig-gcc-plugin-structleak",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel build",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R21"
+  },
+  "check": [
+    "describe command(\"grep -h '^CONFIG_GCC_PLUGIN_STRUCTLEAK=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_GCC_PLUGIN_STRUCTLEAK='\") do",
+    "  its('stdout') { should match(/^CONFIG_GCC_PLUGIN_STRUCTLEAK=y$/) }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Force initialization of variables containing userspace addresses",
+    "fr": "Forcer l'initialisation des variables contenant des adresses de l'espace utilisateur"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Initializing structures from userspace can prevent some classes of information exposure.",
+    "fr": "Initialiser les structures provenant de l'espace utilisateur peut prévenir certaines classes d'exposition d'informations."
+  },
+  "summary": {
+    "en": "Requires the kernel to be built with `CONFIG_GCC_PLUGIN_STRUCTLEAK=y`, a GCC plugin that forces zero-initialization of local structures that may carry userspace data.",
+    "fr": "Exige que le noyau soit compilé avec `CONFIG_GCC_PLUGIN_STRUCTLEAK=y`, un plugin GCC qui force l'initialisation à zéro des structures locales susceptibles de transporter des données de l'espace utilisateur."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** build flag of the running kernel via `/boot/config-$(uname -r)` or `/proc/config.gz`, keyed on `$(uname -r)`, so it reflects the booted image rather than a stray `.config` a fixed-path file scan might match.",
+    "fr": "Pavois lit le drapeau de compilation **effectif** du noyau en cours d'exécution via `/boot/config-$(uname -r)` ou `/proc/config.gz`, indexé sur `$(uname -r)` : il reflète l'image démarrée plutôt qu'un `.config` égaré qu'un scan à chemin fixe pourrait capter."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_GCC_PLUGIN_STRUCTLEAK=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep '^CONFIG_GCC_PLUGIN_STRUCTLEAK='`). Expected output: `CONFIG_GCC_PLUGIN_STRUCTLEAK=y`. Absent or `# ... is not set` is a failure.",
+    "fr": "Exécutez `grep '^CONFIG_GCC_PLUGIN_STRUCTLEAK=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep '^CONFIG_GCC_PLUGIN_STRUCTLEAK='`). Sortie attendue : `CONFIG_GCC_PLUGIN_STRUCTLEAK=y`. Absente ou `# ... is not set` est un échec."
+  },
+  "logs": {
+    "en": "This plugin is a compile-time transformation with no dedicated runtime log; its effect is the absence of info leaks. Confirm the flag with `zcat /proc/config.gz | grep STRUCTLEAK`.",
+    "fr": "Ce plugin est une transformation à la compilation sans journal d'exécution dédié ; son effet est l'absence de fuites d'information. Confirmez le drapeau avec `zcat /proc/config.gz | grep STRUCTLEAK`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped: a kernel build option cannot be set by editing a file. Apply it **manually** by installing and booting a kernel compiled with `CONFIG_GCC_PLUGIN_STRUCTLEAK=y`.",
+    "fr": "Aucune remédiation automatisée n'est fournie : une option de compilation du noyau ne se règle pas en éditant un fichier. Appliquez-la **manuellement** en installant et démarrant un noyau compilé avec `CONFIG_GCC_PLUGIN_STRUCTLEAK=y`."
+  },
+  "impact": {
+    "en": "When the kernel copies a structure back to userspace, any field or padding byte left **uninitialized** carries whatever was previously on the stack — leftover kernel pointers or secrets — producing an **information leak** that helps defeat KASLR and stage further attacks. The structleak plugin forces zero-initialization of local structures that can reach userspace, so no stale stack content escapes. The basic mode targets structures with userspace-bound data; the stricter `BYREF_ALL` variant covers more. Without it, a class of uninitialized-structure info leaks remains exploitable. This is a **build-time** option needing GCC plugin support, set only by booting a kernel compiled with it. **Precautions:** there is a modest runtime cost from the extra zeroing; switching to a hardened kernel changes module ABI, so validate driver loading off production before deploying. No reboot risk beyond a normal kernel swap.",
+    "fr": "Lorsque le noyau recopie une structure vers l'espace utilisateur, tout champ ou octet de remplissage laissé **non initialisé** transporte ce qui se trouvait précédemment sur la pile — pointeurs noyau ou secrets résiduels — produisant une **fuite d'information** qui aide à défaire le KASLR et à préparer d'autres attaques. Le plugin structleak force l'initialisation à zéro des structures locales pouvant atteindre l'espace utilisateur, de sorte qu'aucun contenu de pile périmé ne s'échappe. Le mode de base vise les structures contenant des données destinées à l'espace utilisateur ; la variante plus stricte `BYREF_ALL` en couvre davantage. Sans lui, une classe de fuites d'information par structure non initialisée reste exploitable. C'est une option **à la compilation** nécessitant le support des plugins GCC, posée uniquement en démarrant un noyau compilé avec. **Précautions :** il y a un coût modéré à l'exécution dû à l'initialisation supplémentaire ; passer à un noyau durci change l'ABI des modules, donc vérifiez le chargement des pilotes hors production avant déploiement. Aucun risque de redémarrage au-delà d'un échange de noyau classique."
+  }
+}

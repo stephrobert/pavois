@@ -1,0 +1,71 @@
+{
+  "id": "sysctl-net-ipv6-conf-default-autoconf",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R13"
+  },
+  "check": [
+    "describe kernel_parameter('net.ipv6.conf.default.autoconf') do",
+    "  its('value') { should cmp 0 }",
+    "end"
+  ],
+  "remediation": {
+    "key": "net.ipv6.conf.default.autoconf",
+    "resource": "sysctl",
+    "value": "0"
+  },
+  "title": {
+    "en": "Configure Auto Configuration on All IPv6 Interfaces By Default",
+    "fr": "Configurer l'autoconfiguration sur toutes les interfaces IPv6 par défaut"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`net.ipv6.conf.default.autoconf` controls **stateless address autoconfiguration (SLAAC)**: when enabled, the host automatically derives global IPv6 addresses from prefixes advertised in Router Advertisements. An attacker who can inject forged RAs can drive the host to configure addresses on rogue prefixes and route through a malicious gateway — a **man-in-the-middle** vector. On hosts that should use static or DHCPv6 addressing, disabling autoconfiguration by default removes this exposure and keeps addressing under administrative control.",
+    "fr": "`net.ipv6.conf.default.autoconf` contrôle l'**autoconfiguration d'adresse sans état (SLAAC)** : lorsqu'elle est activée, l'hôte dérive automatiquement des adresses IPv6 globales à partir des préfixes annoncés dans les annonces de routeur. Un attaquant capable d'injecter de fausses RA peut amener l'hôte à configurer des adresses sur des préfixes malveillants et à router via une passerelle malveillante — un vecteur d'**homme du milieu**. Sur les hôtes qui devraient utiliser un adressage statique ou DHCPv6, désactiver l'autoconfiguration par défaut supprime cette exposition et garde l'adressage sous contrôle administratif."
+  },
+  "summary": {
+    "en": "Disables IPv6 **stateless address autoconfiguration (SLAAC)** for new interfaces by setting `net.ipv6.conf.default.autoconf = 0`.",
+    "fr": "Désactive l'**autoconfiguration d'adresse IPv6 sans état (SLAAC)** pour les nouvelles interfaces en réglant `net.ipv6.conf.default.autoconf = 0`."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** kernel value of `net.ipv6.conf.default.autoconf`, not a config file. The live value merges `/etc/sysctl.conf`, drop-ins in `/etc/sysctl.d/` and `/run/sysctl.d/`, kernel boot parameters and any runtime `sysctl -w` (NetworkManager and systemd-networkd both touch this). A clean file can coexist with a kernel that still autoconfigures; Pavois reports the enforced value.",
+    "fr": "Pavois lit la valeur **effective** du noyau pour `net.ipv6.conf.default.autoconf`, pas un fichier de configuration. La valeur active fusionne `/etc/sysctl.conf`, les drop-ins dans `/etc/sysctl.d/` et `/run/sysctl.d/`, les paramètres de démarrage du noyau et tout `sysctl -w` à chaud (NetworkManager et systemd-networkd touchent tous deux à ce paramètre). Un fichier propre peut coexister avec un noyau qui autoconfigure encore ; Pavois rapporte la valeur appliquée."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv6.conf.default.autoconf` and confirm the output is `net.ipv6.conf.default.autoconf = 0`. List current IPv6 addresses with `ip -6 addr show` to confirm no SLAAC-derived addresses appear unexpectedly.",
+    "fr": "Exécutez `sysctl net.ipv6.conf.default.autoconf` et vérifiez que la sortie est `net.ipv6.conf.default.autoconf = 0`. Listez les adresses IPv6 actuelles avec `ip -6 addr show` pour confirmer qu'aucune adresse dérivée de SLAAC n'apparaît de façon inattendue."
+  },
+  "logs": {
+    "en": "No dedicated log. Inspect runtime state with `sysctl net.ipv6.conf.default.autoconf` and `sysctl -a | grep autoconf`. To find which file set it, run `sysctl --system 2>&1 | grep autoconf`. Autoconfigured addresses (flagged `dynamic`/`mngtmpaddr`) are visible with `ip -6 addr show`.",
+    "fr": "Aucun journal dédié. Inspectez l'état d'exécution avec `sysctl net.ipv6.conf.default.autoconf` et `sysctl -a | grep autoconf`. Pour trouver le fichier qui l'a défini, exécutez `sysctl --system 2>&1 | grep autoconf`. Les adresses autoconfigurées (marquées `dynamic`/`mngtmpaddr`) sont visibles avec `ip -6 addr show`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv6.conf.default.autoconf = 0`, persisting it in a managed drop-in and applying it live. Run `pavois harden apply` to enforce it; it is re-applied at boot via the persisted entry.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour définir `net.ipv6.conf.default.autoconf = 0`, en le persistant dans un drop-in géré et en l'appliquant à chaud. Exécutez `pavois harden apply` pour l'imposer ; il est réappliqué au démarrage via l'entrée persistante."
+  },
+  "impact": {
+    "en": "Significant on hosts that **depend on SLAAC** for their IPv6 address: disabling autoconfiguration can leave them without a usable global IPv6 address and break IPv6 connectivity. Before applying, confirm the host uses **static IPv6 or DHCPv6**, or is IPv4-only. On dual-stack clients that need IPv6 via RAs, do not apply this rule. The change is reversible by resetting the key, but a remote IPv6-only session could drop, so validate over IPv4 or console first.",
+    "fr": "Significatif sur les hôtes qui **dépendent de SLAAC** pour leur adresse IPv6 : désactiver l'autoconfiguration peut les laisser sans adresse IPv6 globale utilisable et rompre la connectivité IPv6. Avant d'appliquer, vérifiez que l'hôte utilise un adressage **IPv6 statique ou DHCPv6**, ou qu'il est uniquement IPv4. Sur les clients double pile qui ont besoin d'IPv6 via les RA, n'appliquez pas cette règle. Le changement est réversible en réinitialisant la clé, mais une session distante uniquement IPv6 pourrait tomber, alors validez d'abord via IPv4 ou la console."
+  }
+}

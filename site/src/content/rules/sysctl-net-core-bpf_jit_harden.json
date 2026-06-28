@@ -1,0 +1,76 @@
+{
+  "id": "sysctl-net-core-bpf_jit_harden",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R12",
+    "nist": [
+      "CM-6",
+      "SC-7(10)"
+    ]
+  },
+  "check": [
+    "describe kernel_parameter('net.core.bpf_jit_harden') do",
+    "  its('value') { should cmp 2 }",
+    "end"
+  ],
+  "remediation": {
+    "key": "net.core.bpf_jit_harden",
+    "resource": "sysctl",
+    "value": "2"
+  },
+  "title": {
+    "en": "Harden the operation of the BPF just-in-time compiler",
+    "fr": "Durcir le fonctionnement du compilateur à la volée (JIT) de BPF"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The eBPF just-in-time (JIT) compiler turns BPF bytecode into native machine code for speed, but that generated code lives in kernel space and its addresses can leak via `/proc/kallsyms`. Attackers have abused the JIT to build **JIT-spraying** primitives and to defeat kernel ASLR, turning a BPF program into a stepping stone for kernel exploitation. Setting `net.core.bpf_jit_harden=2` enables hardening for **all** users (not just unprivileged ones): it randomizes/blinds constants in the emitted code and stops exposing JIT addresses, removing these exploitation aids.",
+    "fr": "Le compilateur à la volée (JIT) d'eBPF transforme le bytecode BPF en code machine natif pour la performance, mais ce code généré réside dans l'espace noyau et ses adresses peuvent fuiter via `/proc/kallsyms`. Des attaquants ont détourné le JIT pour construire des primitives de **JIT-spraying** et contourner l'ASLR du noyau, transformant un programme BPF en tremplin d'exploitation. Définir `net.core.bpf_jit_harden=2` active le durcissement pour **tous** les utilisateurs (pas seulement les non privilégiés) : il randomise/aveugle les constantes du code émis et cesse d'exposer les adresses du JIT, supprimant ces aides à l'exploitation."
+  },
+  "summary": {
+    "en": "Sets `net.core.bpf_jit_harden=2` to blind constants and hide addresses in JIT-compiled BPF code for all users.",
+    "fr": "Définit `net.core.bpf_jit_harden=2` pour aveugler les constantes et masquer les adresses du code BPF compilé en JIT, pour tous les utilisateurs."
+  },
+  "check_note": {
+    "en": "Pavois reads the **running kernel value** via `kernel_parameter('net.core.bpf_jit_harden')` and asserts it equals `2`. The effective value is what governs how the JIT actually emits code right now; a key written in `/etc/sysctl.d/` but not reloaded, or shadowed by another drop-in, would leave the kernel at its default. Only reading the live value (not the config files) proves the hardening is truly in force.",
+    "fr": "Pavois lit la **valeur noyau effective** via `kernel_parameter('net.core.bpf_jit_harden')` et vérifie qu'elle vaut `2`. La valeur effective est celle qui régit réellement la façon dont le JIT émet le code à l'instant présent ; une clé écrite dans `/etc/sysctl.d/` mais non rechargée, ou masquée par un autre drop-in, laisserait le noyau à sa valeur par défaut. Seule la lecture de la valeur effective (et non des fichiers de configuration) prouve que le durcissement est réellement en vigueur."
+  },
+  "verify": {
+    "en": "Run `sysctl net.core.bpf_jit_harden`. Expected output:\n\n```\nnet.core.bpf_jit_harden = 2\n```",
+    "fr": "Exécutez `sysctl net.core.bpf_jit_harden`. Sortie attendue :\n\n```\nnet.core.bpf_jit_harden = 2\n```"
+  },
+  "logs": {
+    "en": "- `sysctl net.core.bpf_jit_harden` shows the current value.\n- `cat /proc/sys/net/core/bpf_jit_harden` is the raw kernel value.\n- This parameter produces no per-event log; it only changes how the JIT emits code. To audit BPF usage itself, inspect loaded programs with `bpftool prog show` (requires root).",
+    "fr": "- `sysctl net.core.bpf_jit_harden` affiche la valeur courante.\n- `cat /proc/sys/net/core/bpf_jit_harden` est la valeur brute du noyau.\n- Ce paramètre ne produit aucun journal par événement ; il change seulement la façon dont le JIT émet le code. Pour auditer l'usage de BPF lui-même, inspectez les programmes chargés avec `bpftool prog show` (nécessite root)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.core.bpf_jit_harden` to `2`. It writes the key into a Pavois-managed drop-in and reloads it so the JIT hardening is **active immediately** and **survives reboots**. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour positionner `net.core.bpf_jit_harden` à `2`. Il écrit la clé dans un drop-in géré par Pavois puis le recharge, de sorte que le durcissement du JIT soit **actif immédiatement** et **persiste après redémarrage**. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Constant blinding adds CPU overhead to JIT-compiled BPF programs, so workloads that lean heavily on eBPF in the **hot path** (high-rate XDP/tc traffic filtering, certain observability tracers like Cilium or heavy `bpftrace` use) may see measurably reduced BPF throughput. There is **no risk of network or service lockout** — this is a pure performance/security trade-off. **Before applying** on a BPF-intensive datapath, benchmark the impact; if it is unacceptable, value `1` (hardens only unprivileged programs) is a lighter alternative, though `2` is what the benchmarks require.",
+    "fr": "L'aveuglement des constantes ajoute une surcharge CPU aux programmes BPF compilés en JIT ; les charges qui s'appuient fortement sur eBPF dans le **chemin critique** (filtrage de trafic XDP/tc à haut débit, certains traceurs d'observabilité comme Cilium ou un usage intensif de `bpftrace`) peuvent voir leur débit BPF mesurablement réduit. Il n'y a **aucun risque de blocage réseau ou de service** — c'est un pur compromis performance/sécurité. **Avant d'appliquer** sur un plan de données intensif en BPF, mesurez l'impact ; s'il est inacceptable, la valeur `1` (durcit uniquement les programmes non privilégiés) est une alternative plus légère, même si les référentiels exigent `2`."
+  }
+}

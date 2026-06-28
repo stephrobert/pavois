@@ -1,0 +1,89 @@
+{
+  "id": "fileperm-etc-group",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R50",
+    "cis": [
+      "7.1.3",
+      "2.2.6"
+    ],
+    "nist": [
+      "AC-6(1)",
+      "CM-6(a)"
+    ],
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "only_if { file('/etc/group').exist? }",
+    "describe file('/etc/group') do",
+    "  it { should_not be_executable.by('owner') }",
+    "  it { should_not be_setuid }",
+    "  it { should_not be_executable.by('group') }",
+    "  it { should_not be_writable.by('group') }",
+    "  it { should_not be_setgid }",
+    "  it { should_not be_executable.by('other') }",
+    "  it { should_not be_writable.by('other') }",
+    "  it { should_not be_sticky }",
+    "end"
+  ],
+  "remediation": {
+    "mode": "0644",
+    "path": "/etc/group",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Permissions on group File",
+    "fr": "Vérifier les permissions du fichier group"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/etc/group` defines the **groups and their memberships** that drive much of the system's access control. It is world-readable by design (programs resolve group names), but it must **not be writable by group or other**: anyone who can write it could add themselves to `sudo`, `wheel`, `docker` or `shadow` and escalate to root. Restricting writes to **root** preserves the integrity of group-based authorization.",
+    "fr": "`/etc/group` définit les **groupes et leurs appartenances** qui régissent une grande part du contrôle d'accès du système. Il est lisible par tous par conception (les programmes résolvent les noms de groupes), mais il ne doit **pas être modifiable par le groupe ou les autres** : quiconque peut l'écrire pourrait s'ajouter à `sudo`, `wheel`, `docker` ou `shadow` et obtenir les privilèges root. Restreindre l'écriture à **root** préserve l'intégrité de l'autorisation par groupes."
+  },
+  "summary": {
+    "en": "Ensures `/etc/group` is not writable by group or other and carries no executable, setuid, setgid or sticky bits (expected mode **0644 root:root**).",
+    "fr": "Garantit que `/etc/group` n'est pas modifiable par le groupe ou les autres et ne porte aucun bit exécutable, setuid, setgid ou sticky (mode attendu **0644 root:root**)."
+  },
+  "check_note": {
+    "en": "Pavois reads the real inode permissions of `/etc/group` with the InSpec `file` resource (a `stat`), under `only_if`. World-read is allowed (the file is meant to be readable), but group-write, other-write, and any execute/setuid/setgid/sticky bit fail the rule — effectively requiring **0644 root:root**. Checking the live permissions catches a `chmod` mistake or a bad backup restore that a packaged-default assumption would not.",
+    "fr": "Pavois lit les permissions réelles de l'inode `/etc/group` avec la ressource InSpec `file` (un `stat`), sous `only_if`. La lecture par tous est autorisée (le fichier est destiné à être lisible), mais l'écriture groupe, l'écriture autres et tout bit exécutable/setuid/setgid/sticky font échouer la règle — exigeant de fait **0644 root:root**. Contrôler les permissions réelles détecte une erreur de `chmod` ou une mauvaise restauration de sauvegarde qu'une hypothèse de défaut de paquet manquerait."
+  },
+  "verify": {
+    "en": "Run `stat -c '%a %U %G' /etc/group`. Expected output is mode **644** owned by `root root`, i.e. `644 root root`. Any group-write, other-write or special bit fails the rule.",
+    "fr": "Exécutez `stat -c '%a %U %G' /etc/group`. La sortie attendue est le mode **644** appartenant à `root root`, soit `644 root root`. Tout droit d'écriture groupe ou autres, ou bit spécial, fait échouer la règle."
+  },
+  "logs": {
+    "en": "Group changes are normally made via `groupadd`/`gpasswd`/`usermod`, which log to `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL). Use `getent group` to list the effective groups and `stat /etc/group` to confirm permissions. If auditd watches `/etc/group`, edits appear in `/var/log/audit/audit.log`.",
+    "fr": "Les changements de groupes se font normalement via `groupadd`/`gpasswd`/`usermod`, qui consignent dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL). Utilisez `getent group` pour lister les groupes effectifs et `stat /etc/group` pour confirmer les permissions. Si auditd surveille `/etc/group`, les modifications apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is defined, so apply it **manually**: `chmod u-x,g-wx,o-wx /etc/group && chown root:root /etc/group` (target **0644 root:root**). No service restart is needed; new logins immediately see the corrected permissions.",
+    "fr": "Aucune remédiation automatique n'est définie ; appliquez-la **manuellement** : `chmod u-x,g-wx,o-wx /etc/group && chown root:root /etc/group` (cible **0644 root:root**). Aucun redémarrage de service n'est nécessaire ; les nouvelles connexions voient immédiatement les permissions corrigées."
+  },
+  "impact": {
+    "en": "Restoring 0644 root:root is **very low-risk** — this is the standard mode every tool expects. Do **not** remove world-read: utilities like `ls -l` and `id` resolve group names through it, and stripping read can break name resolution and logins. Keep the owner `root`. There is no lockout risk from removing group/other write. Leaving the file writable by non-root is a direct privilege-escalation path.",
+    "fr": "Rétablir 0644 root:root est **très peu risqué** — c'est le mode standard attendu par tous les outils. Ne **supprimez pas** la lecture par tous : des utilitaires comme `ls -l` et `id` résolvent les noms de groupes via ce fichier, et en retirer la lecture peut casser la résolution de noms et les connexions. Conservez le propriétaire `root`. Retirer l'écriture groupe/autres ne présente aucun risque de blocage. Laisser le fichier modifiable par un non-root constitue une voie directe d'élévation de privilèges."
+  }
+}

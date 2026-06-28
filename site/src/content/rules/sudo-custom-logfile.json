@@ -1,0 +1,43 @@
+{
+  "id": "sudo-custom-logfile",
+  "supported_os": [
+    "debian12"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0"
+  },
+  "severity": "low",
+  "domain": "Sudo",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.2.3",
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "describe command('grep -rqE \\'^[^#]*Defaults[^#]*\\blogfile\\b\\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "content": "Defaults logfile=\"/var/log/sudo.log\"\n",
+    "group": "root",
+    "mode": "0440",
+    "owner": "root",
+    "path": "/etc/sudoers.d/99-pavois-logfile",
+    "resource": "file",
+    "verify": "visudo -cf %{path}"
+  },
+  "title": {
+    "en": "Ensure Sudo Logfile Exists - sudo logfile",
+    "fr": "Ensure Sudo Logfile Exists - sudo logfile"
+  },
+  "needs_translation": [
+    "title.fr",
+    "rationale.fr"
+  ],
+  "rationale": {
+    "en": "A sudo log file simplifies auditing of sudo commands.",
+    "fr": "A sudo log file simplifies auditing of sudo commands."
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "id": "fileperm-sshd-config",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R50",
+    "cis": [
+      "5.1.1",
+      "2.2.6",
+      "5.1.2"
+    ],
+    "nist": [
+      "AC-17(a)",
+      "AC-6(1)",
+      "CM-6(a)"
+    ],
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "only_if { file('/etc/ssh/sshd_config').exist? }",
+    "describe file('/etc/ssh/sshd_config') do",
+    "  it { should_not be_executable.by('owner') }",
+    "  it { should_not be_setuid }",
+    "  it { should_not be_executable.by('group') }",
+    "  it { should_not be_writable.by('group') }",
+    "  it { should_not be_readable.by('group') }",
+    "  it { should_not be_setgid }",
+    "  it { should_not be_executable.by('other') }",
+    "  it { should_not be_writable.by('other') }",
+    "  it { should_not be_readable.by('other') }",
+    "  it { should_not be_sticky }",
+    "end"
+  ],
+  "remediation": {
+    "mode": "0600",
+    "path": "/etc/ssh/sshd_config",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Permissions on SSH Server config file",
+    "fr": "Vérifier les permissions du fichier de configuration du serveur SSH"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/etc/ssh/sshd_config` is the master configuration of the SSH daemon and enables or disables security-critical features (root login, password vs. key auth, ciphers, allowed users). If it is writable by group or other, a non-privileged user could alter it to **weaken remote access or plant a backdoor** that takes effect on the next reload; if readable by group/other, the access policy is disclosed to anyone on the host. The file must be owned by root with no read/write/execute for group or other and no special bits, so only the administrator controls the SSH server policy.",
+    "fr": "`/etc/ssh/sshd_config` est la configuration maîtresse du démon SSH et active ou désactive des fonctionnalités critiques (connexion root, authentification par mot de passe ou par clé, chiffrements, utilisateurs autorisés). S'il est modifiable par le groupe ou les autres, un utilisateur non privilégié pourrait l'altérer pour **affaiblir l'accès distant ou installer une porte dérobée** prenant effet au prochain rechargement ; s'il est lisible par le groupe/les autres, la politique d'accès est divulguée à quiconque sur l'hôte. Le fichier doit appartenir à root sans lecture/écriture/exécution pour le groupe ou les autres ni bits spéciaux, afin que seul l'administrateur contrôle la politique du serveur SSH."
+  },
+  "summary": {
+    "en": "Ensures `/etc/ssh/sshd_config` is owned by root with no read/write/execute for group or other, protecting the SSH daemon's master policy from tampering and disclosure.",
+    "fr": "Garantit que `/etc/ssh/sshd_config` appartient à root sans lecture/écriture/exécution pour le groupe ou les autres, protégeant la politique maîtresse du démon SSH contre l'altération et la divulgation."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective inode mode** of `/etc/ssh/sshd_config` and asserts no read/write/execute for group or other and no `setuid`/`setgid`/`sticky` bits. Guarded by `only_if { file('/etc/ssh/sshd_config').exist? }`. Note: this control covers the *permissions of the file*; the effective SSH policy itself (which can be overridden by `Include`d drop-ins) is what `sshd -T` reports — Pavois's service controls audit that resolved state, while this rule locks down the file that seeds it.",
+    "fr": "Pavois lit le **mode effectif de l'inode** de `/etc/ssh/sshd_config` et vérifie l'absence de lecture/écriture/exécution pour le groupe ou les autres et l'absence de bits `setuid`/`setgid`/`sticky`. Protégé par `only_if { file('/etc/ssh/sshd_config').exist? }`. Note : ce contrôle couvre les *permissions du fichier* ; la politique SSH effective elle-même (qui peut être surchargée par des drop-ins `Include`) est ce que rapporte `sshd -T` — les contrôles de service de Pavois auditent cet état résolu, tandis que cette règle verrouille le fichier qui l'amorce."
+  },
+  "verify": {
+    "en": "Run `stat -c '%a %U %G' /etc/ssh/sshd_config`. The expected output is `600 root root` (or stricter): no read, write or execute for group or other.",
+    "fr": "Exécutez `stat -c '%a %U %G' /etc/ssh/sshd_config`. La sortie attendue est `600 root root` (ou plus strict) : aucune lecture, écriture ou exécution pour le groupe ou les autres."
+  },
+  "logs": {
+    "en": "`stat /etc/ssh/sshd_config` shows the current mode; `sshd -T` shows the *effective* policy it produces. SSH service and auth events are in `journalctl -u ssh` / `/var/log/auth.log` (Debian/Ubuntu) or `journalctl -u sshd` / `/var/log/secure` (RHEL family). File modifications appear in `/var/log/audit/audit.log` if watched.",
+    "fr": "`stat /etc/ssh/sshd_config` affiche le mode courant ; `sshd -T` affiche la politique *effective* qu'il produit. Les événements de service et d'authentification SSH sont dans `journalctl -u ssh` / `/var/log/auth.log` (Debian/Ubuntu) ou `journalctl -u sshd` / `/var/log/secure` (famille RHEL). Les modifications du fichier apparaissent dans `/var/log/audit/audit.log` si surveillées."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so apply it **manually**: `chown root:root /etc/ssh/sshd_config` then `chmod 0600 /etc/ssh/sshd_config`.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle, appliquez-la donc **manuellement** : `chown root:root /etc/ssh/sshd_config` puis `chmod 0600 /etc/ssh/sshd_config`."
+  },
+  "impact": {
+    "en": "A group- or world-writable `sshd_config` lets an unprivileged user re-enable root login, switch on password auth, or whitelist a backdoor account on the next reload — a critical remote-access compromise; a readable one leaks the access policy. **Precautions:** tightening to `0600 root:root` does not interrupt active SSH sessions and matches the distro default, so it is low-risk. Run `sshd -t` to validate syntax before any reload to avoid bringing the daemon down and locking yourself out, and keep at least one authenticated session open during changes.",
+    "fr": "Un `sshd_config` modifiable par le groupe ou tous permet à un utilisateur non privilégié de réactiver la connexion root, d'activer l'authentification par mot de passe ou d'autoriser un compte dérobé au prochain rechargement — une compromission critique de l'accès distant ; un fichier lisible divulgue la politique d'accès. **Précautions :** le resserrement à `0600 root:root` n'interrompt pas les sessions SSH actives et correspond au défaut de la distribution, le risque est donc faible. Lancez `sshd -t` pour valider la syntaxe avant tout rechargement afin d'éviter d'arrêter le démon et de vous verrouiller dehors, et gardez au moins une session authentifiée ouverte pendant les modifications."
+  }
+}

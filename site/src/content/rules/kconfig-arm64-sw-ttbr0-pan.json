@@ -1,0 +1,67 @@
+{
+  "id": "kconfig-arm64-sw-ttbr0-pan",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel build",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R27"
+  },
+  "check": [
+    "describe command(\"grep -h '^CONFIG_ARM64_SW_TTBR0_PAN=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_ARM64_SW_TTBR0_PAN='\") do",
+    "  its('stdout') { should match(/^CONFIG_ARM64_SW_TTBR0_PAN=y$/) }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Emulate Privileged Access Never (PAN)",
+    "fr": "Émuler Privileged Access Never (PAN)"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Privileged Access Never (PAN) is the ARM equivalent of x86 **SMAP**: it stops the kernel from accidentally (or maliciously, via an exploit) dereferencing user-space addresses while running in privileged mode. On ARM64 hardware that lacks the hardware PAN feature, `CONFIG_ARM64_SW_TTBR0_PAN=y` emulates it in software by switching `TTBR0`. Without it, classic exploit techniques like **ret2usr** — placing attacker-controlled code/data in user memory and tricking the kernel into using it — become viable, turning a kernel bug into full compromise.",
+    "fr": "Privileged Access Never (PAN) est l'équivalent ARM du **SMAP** x86 : il empêche le noyau de déréférencer accidentellement (ou de façon malveillante, via un exploit) des adresses de l'espace utilisateur lorsqu'il s'exécute en mode privilégié. Sur le matériel ARM64 dépourvu de la fonction PAN matérielle, `CONFIG_ARM64_SW_TTBR0_PAN=y` l'émule en logiciel en basculant `TTBR0`. Sans lui, des techniques d'exploitation classiques comme **ret2usr** — placer du code/des données contrôlés par l'attaquant en mémoire utilisateur et tromper le noyau pour qu'il les utilise — deviennent viables, transformant un bug noyau en compromission totale."
+  },
+  "summary": {
+    "en": "Ensures the ARM64 kernel is built with `CONFIG_ARM64_SW_TTBR0_PAN=y`, providing software emulation of Privileged Access Never (PAN) on CPUs without hardware PAN.",
+    "fr": "Garantit que le noyau ARM64 est compilé avec `CONFIG_ARM64_SW_TTBR0_PAN=y`, fournissant une émulation logicielle de Privileged Access Never (PAN) sur les CPU sans PAN matériel."
+  },
+  "check_note": {
+    "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)` (fallback `/proc/config.gz`) and asserts `CONFIG_ARM64_SW_TTBR0_PAN=y`. Reading the live kernel's effective config — keyed on `uname -r` — is more reliable than guessing from a `/boot/config-*` file, because it matches the exact image GRUB booted even when several kernels coexist. This option only applies on ARM64; on x86 systems the line is simply absent (the equivalent protection is SMAP).",
+    "fr": "Pavois lit la config de compilation du noyau **en cours d'exécution** via `/boot/config-$(uname -r)` (repli `/proc/config.gz`) et vérifie `CONFIG_ARM64_SW_TTBR0_PAN=y`. Lire la config effective du noyau vivant — indexée sur `uname -r` — est plus fiable que deviner depuis un fichier `/boot/config-*`, car cela correspond à l'image exacte démarrée par GRUB même si plusieurs noyaux coexistent. Cette option ne s'applique qu'à ARM64 ; sur x86 la ligne est simplement absente (la protection équivalente est SMAP)."
+  },
+  "verify": {
+    "en": "Run `grep -h '^CONFIG_ARM64_SW_TTBR0_PAN=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep ARM64_SW_TTBR0_PAN`). Expected on ARM64: `CONFIG_ARM64_SW_TTBR0_PAN=y`. Confirm the arch with `uname -m` (should report `aarch64`).",
+    "fr": "Exécutez `grep -h '^CONFIG_ARM64_SW_TTBR0_PAN=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep ARM64_SW_TTBR0_PAN`). Attendu sur ARM64 : `CONFIG_ARM64_SW_TTBR0_PAN=y`. Confirmez l'architecture avec `uname -m` (doit indiquer `aarch64`)."
+  },
+  "logs": {
+    "en": "This is a static kernel build option with no runtime log. Inspect it with `zcat /proc/config.gz | grep ARM64_SW_TTBR0_PAN` or `grep ARM64_SW_TTBR0_PAN /boot/config-$(uname -r)`. On boot, `dmesg | grep -i pan` may indicate PAN support on the CPU.",
+    "fr": "C'est une option de compilation statique du noyau sans journal d'exécution. Inspectez-la avec `zcat /proc/config.gz | grep ARM64_SW_TTBR0_PAN` ou `grep ARM64_SW_TTBR0_PAN /boot/config-$(uname -r)`. Au démarrage, `dmesg | grep -i pan` peut indiquer le support PAN du CPU."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped: this is a **kernel compile-time** option. Apply it by booting an ARM64 kernel built with `CONFIG_ARM64_SW_TTBR0_PAN=y` — most distribution kernels already enable it, otherwise rebuild the kernel. `pavois harden apply` cannot change it.",
+    "fr": "Aucune remédiation automatisée n'est fournie : c'est une option de **compilation du noyau**. Appliquez-la en démarrant un noyau ARM64 compilé avec `CONFIG_ARM64_SW_TTBR0_PAN=y` — la plupart des noyaux de distribution l'activent déjà, sinon recompilez le noyau. `pavois harden apply` ne peut pas la modifier."
+  },
+  "impact": {
+    "en": "**Risk if absent:** on ARM64 CPUs without hardware PAN, the kernel can be tricked into reading/executing user-space memory, enabling ret2usr-style privilege escalation from an otherwise limited kernel bug.\n\n**Precautions before changing it:** the option is only meaningful on ARM64; ignore the finding on x86. Software TTBR0 PAN adds a small per-syscall overhead but no functional risk. Changing kernels requires a reboot — keep the previous kernel entry in GRUB as a fallback and validate boot on a console before decommissioning the old image.",
+    "fr": "**Risque en l'absence :** sur les CPU ARM64 sans PAN matériel, le noyau peut être trompé pour lire/exécuter la mémoire utilisateur, permettant une élévation de privilèges de type ret2usr à partir d'un simple bug noyau.\n\n**Précautions avant de modifier :** l'option n'a de sens que sur ARM64 ; ignorez le constat sur x86. Le PAN logiciel via TTBR0 ajoute un léger surcoût par appel système mais aucun risque fonctionnel. Changer de noyau nécessite un redémarrage — conservez l'entrée du noyau précédent dans GRUB en repli et validez le démarrage sur une console avant de retirer l'ancienne image."
+  }
+}

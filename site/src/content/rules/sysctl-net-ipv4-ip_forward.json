@@ -1,0 +1,90 @@
+{
+  "id": "sysctl-net-ipv4-ip_forward",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R12",
+    "cis": [
+      "3.3.1",
+      "1.4.3",
+      "3.3.1.1"
+    ],
+    "nist": [
+      "3.1.20",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)",
+      "SC-5",
+      "SC-7(a)"
+    ],
+    "pci-dss": [
+      "1.4.3",
+      "Req-1.3.1",
+      "Req-1.3.2"
+    ]
+  },
+  "check": [
+    "describe kernel_parameter('net.ipv4.ip_forward') do",
+    "  its('value') { should cmp 0 }",
+    "end"
+  ],
+  "remediation": {
+    "key": "net.ipv4.ip_forward",
+    "resource": "sysctl",
+    "value": "0"
+  },
+  "title": {
+    "en": "Disable Kernel Parameter for IP Forwarding on IPv4 Interfaces",
+    "fr": "Désactiver le paramètre noyau de routage IP sur les interfaces IPv4"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "IP forwarding turns the host into a router that relays packets between interfaces. On a system that is not meant to route, enabling it lets an attacker pivot traffic across network segments and bypass segmentation controls, and it can leak internal topology. It must stay disabled unless the host is an intentional gateway.",
+    "fr": "Le routage IP transforme l'hôte en routeur qui relaie les paquets entre interfaces. Sur un système non destiné à router, l'activer permet à un attaquant de faire transiter du trafic entre segments réseau et de contourner les contrôles de segmentation, tout en pouvant exposer la topologie interne. Il doit rester désactivé sauf si l'hôte est une passerelle assumée."
+  },
+  "summary": {
+    "en": "Stops the host from routing packets between interfaces by setting `net.ipv4.ip_forward` to **0**.",
+    "fr": "Empêche l'hôte de router des paquets entre interfaces en positionnant `net.ipv4.ip_forward` à **0**."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live** value via `kernel_parameter('net.ipv4.ip_forward')`, reflecting the running kernel after all `sysctl.conf` / `/etc/sysctl.d/` drop-ins and runtime `sysctl -w` are merged. This matters because tools like Docker, libvirt or a VPN can flip `ip_forward` to 1 at runtime — only the effective value exposes that, never `/etc/sysctl.conf`.",
+    "fr": "Pavois lit la valeur **effective** via `kernel_parameter('net.ipv4.ip_forward')`, qui reflète le noyau en cours après fusion de tous les drop-ins `sysctl.conf` / `/etc/sysctl.d/` et des `sysctl -w` runtime. C'est important car des outils comme Docker, libvirt ou un VPN peuvent basculer `ip_forward` à 1 à chaud — seule la valeur effective le révèle, jamais `/etc/sysctl.conf`."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.ip_forward` and expect `net.ipv4.ip_forward = 0`.",
+    "fr": "Exécuter `sysctl net.ipv4.ip_forward` et attendre `net.ipv4.ip_forward = 0`."
+  },
+  "logs": {
+    "en": "Confirm with `sysctl net.ipv4.ip_forward`. If it keeps flipping back to 1, find the culprit: check for a running container engine or VPN, and inspect drop-ins with `sysctl --system 2>&1 | grep ip_forward` and `grep -r ip_forward /etc/sysctl.conf /etc/sysctl.d/`.",
+    "fr": "Confirmer avec `sysctl net.ipv4.ip_forward`. S'il revient sans cesse à 1, identifier la cause : vérifier un moteur de conteneurs ou un VPN actif, et inspecter les drop-ins avec `sysctl --system 2>&1 | grep ip_forward` et `grep -r ip_forward /etc/sysctl.conf /etc/sysctl.d/`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan sets `net.ipv4.ip_forward = 0` via the **sysctl** resource, persisting it in a Pavois-owned drop-in and applying it live (no reboot). Run it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois positionne `net.ipv4.ip_forward = 0` via la ressource **sysctl**, en le persistant dans un drop-in géré par Pavois et en l'appliquant à chaud (sans redémarrage). À exécuter avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "**High-impact if misapplied.** Do NOT apply this on a machine that must route: routers, NAT gateways, VPN concentrators, Kubernetes nodes, Docker/Podman hosts with bridged networking, or libvirt/KVM hypervisors all need `ip_forward = 1`. Disabling it there breaks container/VM/inter-subnet connectivity. Precaution: confirm the host is a plain endpoint before applying; if it runs container or virtualization workloads, exclude this rule (those platforms commonly re-enable it anyway).",
+    "fr": "**Fort impact en cas de mauvaise application.** NE PAS appliquer sur une machine qui doit router : routeurs, passerelles NAT, concentrateurs VPN, nœuds Kubernetes, hôtes Docker/Podman en réseau bridgé, ou hyperviseurs libvirt/KVM nécessitent tous `ip_forward = 1`. Le désactiver casse la connectivité conteneurs/VM/inter-sous-réseaux. Précaution : confirmer que l'hôte est un simple terminal avant d'appliquer ; s'il exécute des charges conteneurs ou de virtualisation, exclure cette règle (ces plateformes le réactivent souvent de toute façon)."
+  }
+}

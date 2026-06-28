@@ -1,0 +1,45 @@
+version: 2
+
+# Supply-chain quarantine: a 14-day cooldown before adopting any new dependency version. A freshly
+# published (or freshly compromised) release is not pulled in until it has aged 14 days. Security
+# updates from Dependabot alerts are NOT subject to the cooldown — they open immediately, so a real
+# CVE fix is never delayed. Combined with the Trivy gate (deps.yml) and SHA-pinned actions.
+updates:
+  - package-ecosystem: gomod
+    directory: /go
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 10
+    groups:
+      go-modules:
+        patterns: ["*"]
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: npm
+    directory: /site
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 10
+    groups:
+      npm:
+        patterns: ["*"]
+    commit-message:
+      prefix: "chore(deps)"
+
+  # Keeps the SHA-pinned actions fresh (Dependabot bumps the pinned SHA + comment).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "chore(ci)"

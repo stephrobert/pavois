@@ -1,0 +1,75 @@
+{
+  "id": "fileperm-efi-user-cfg",
+  "supported_os": [
+    "almalinux9",
+    "fedora",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R29",
+    "nist": "3.4.5",
+    "cis": "1.4.2"
+  },
+  "check": [
+    "only_if { file('/boot/grub2/user.cfg').exist? }",
+    "describe file('/boot/grub2/user.cfg') do",
+    "  it { should_not be_setuid }",
+    "  it { should_not be_executable.by('group') }",
+    "  it { should_not be_writable.by('group') }",
+    "  it { should_not be_readable.by('group') }",
+    "  it { should_not be_setgid }",
+    "  it { should_not be_executable.by('other') }",
+    "  it { should_not be_writable.by('other') }",
+    "  it { should_not be_readable.by('other') }",
+    "  it { should_not be_sticky }",
+    "end"
+  ],
+  "remediation": {
+    "mode": "0700",
+    "path": "/boot/grub2/user.cfg",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify /boot/grub2/user.cfg Permissions",
+    "fr": "Vérifier les permissions de /boot/grub2/user.cfg"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/boot/grub2/user.cfg` stores the **GRUB boot password** as a PBKDF2 hash (`GRUB2_PASSWORD=grub.pbkdf2...`). If it is readable by group or other, that hash can be extracted and cracked offline, defeating the boot-time password that protects single-user mode and kernel-argument edits. If it is writable by group or other, an attacker can replace the hash with one they know and gain interactive access to the boot loader. Restricting access to root keeps the boot password secret and tamper-proof.",
+    "fr": "`/boot/grub2/user.cfg` stocke le **mot de passe d'amorçage GRUB** sous forme de hachage PBKDF2 (`GRUB2_PASSWORD=grub.pbkdf2...`). S'il est lisible par le groupe ou les autres, ce hachage peut être extrait et cassé hors ligne, mettant en échec le mot de passe d'amorçage qui protège le mode mono-utilisateur et l'édition des arguments du noyau. S'il est modifiable par le groupe ou les autres, un attaquant peut remplacer le hachage par un qu'il connaît et obtenir un accès interactif au chargeur d'amorçage. Restreindre l'accès à root maintient le mot de passe d'amorçage secret et inviolable."
+  },
+  "summary": {
+    "en": "Ensures the GRUB password file `/boot/grub2/user.cfg` is owned by root and is **not readable, writable or executable by group or other**, with no setuid/setgid/sticky bits, so only root can read or modify the boot password hash.",
+    "fr": "Garantit que le fichier de mot de passe GRUB `/boot/grub2/user.cfg` appartient à root et n'est **ni lisible, ni modifiable, ni exécutable par le groupe ou les autres**, sans bits setuid/setgid/sticky, afin que seul root puisse lire ou modifier le hachage du mot de passe d'amorçage."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live inode** with `file('/boot/grub2/user.cfg')` and asserts no group/other access and no special mode bits, gated by `only_if` to skip when the file is absent (it only exists once a GRUB password has been set). Inspecting effective on-disk permissions catches drift introduced when the file is regenerated or restored from backup — which can reset the mode — rather than assuming the value from documentation.",
+    "fr": "Pavois lit l'**inode réel** via `file('/boot/grub2/user.cfg')` et vérifie l'absence d'accès groupe/autres et de bits spéciaux, avec une garde `only_if` qui l'ignore si le fichier est absent (il n'existe qu'une fois un mot de passe GRUB défini). Inspecter les permissions effectives sur le disque détecte la dérive introduite lorsque le fichier est régénéré ou restauré depuis une sauvegarde — qui peut réinitialiser le mode — au lieu de supposer la valeur d'après la documentation."
+  },
+  "verify": {
+    "en": "Run `stat -c '%a %U %G' /boot/grub2/user.cfg`. Expected: mode `600` (or stricter, e.g. `700`), owner `root`, group `root` — no read/write/execute for `group` or `other`, and no setuid/setgid/sticky bit.",
+    "fr": "Exécutez `stat -c '%a %U %G' /boot/grub2/user.cfg`. Attendu : mode `600` (ou plus strict, ex. `700`), propriétaire `root`, groupe `root` — aucune lecture/écriture/exécution pour `group` ni `other`, et aucun bit setuid/setgid/sticky."
+  },
+  "logs": {
+    "en": "No service log applies; inspect with `stat /boot/grub2/user.cfg` or `ls -l /boot/grub2/user.cfg`. To detect tampering, add an auditd watch (`auditctl -w /boot/grub2/user.cfg -p wa -k grub`) and grep `/var/log/audit/audit.log` for `key=\"grub\"`.",
+    "fr": "Aucun journal de service ne s'applique ; inspectez avec `stat /boot/grub2/user.cfg` ou `ls -l /boot/grub2/user.cfg`. Pour détecter une altération, ajoutez une surveillance auditd (`auditctl -w /boot/grub2/user.cfg -p wa -k grub`) et recherchez `key=\"grub\"` dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is defined, so apply it **manually**: `chown root:root /boot/grub2/user.cfg && chmod 600 /boot/grub2/user.cfg`. Re-run the scan to confirm the rule passes.",
+    "fr": "Aucune remédiation automatique n'est définie ; appliquez-la **manuellement** : `chown root:root /boot/grub2/user.cfg && chmod 600 /boot/grub2/user.cfg`. Relancez le scan pour confirmer que la règle passe."
+  },
+  "impact": {
+    "en": "**Risk if left misconfigured:** a readable `user.cfg` exposes the GRUB password hash for offline cracking; a writable one lets an attacker swap in a known password and own the boot loader. **Precautions:** tightening to `root:root 600` is safe — GRUB reads this file during early boot from firmware, not as a normal user, so the boot password keeps working. Re-verify after regenerating the GRUB configuration, which may reset the mode.",
+    "fr": "**Risque si laissé mal configuré :** un `user.cfg` lisible expose le hachage du mot de passe GRUB à un cassage hors ligne ; modifiable, il permet à un attaquant d'y placer un mot de passe connu et de s'approprier le chargeur d'amorçage. **Précautions :** durcir à `root:root 600` est sans danger — GRUB lit ce fichier lors de l'amorçage précoce depuis le firmware, pas en tant qu'utilisateur normal, donc le mot de passe d'amorçage continue de fonctionner. Revérifiez après régénération de la configuration GRUB, qui peut réinitialiser le mode."
+  }
+}

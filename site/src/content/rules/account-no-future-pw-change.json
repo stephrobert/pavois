@@ -1,0 +1,39 @@
+{
+  "id": "account-no-future-pw-change",
+  "supported_os": [
+    "debian12"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.4.1.6",
+    "pci-dss": "8.3.5"
+  },
+  "check": [
+    "describe command('d=$(( $(date +%s) / 86400 )); awk -v d=\"$d\" \\'BEGIN{FS=\":\"}($3 ~ /^[0-9]+$/ && $3+0>d){c++} END{print c?\"ko\":\"ok\"}\\' /etc/shadow') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "d=$(( $(date +%s) / 86400 )); awk -F: -v d=\"$d\" '($3 ~ /^[0-9]+$/ && $3+0>d){print $1}' /etc/shadow\n# for each listed user: chage -d $(date +%F) <user>   (set last change to today)\n",
+    "reason": "a future last-change date is per-user — fix each with chage after review",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Ensure all users last password change date is in the past",
+    "fr": "Ensure all users last password change date is in the past"
+  },
+  "needs_translation": [
+    "title.fr",
+    "rationale.fr"
+  ],
+  "rationale": {
+    "en": "If a user recorded password change date is in the future then they could bypass any set password expiration.",
+    "fr": "If a user recorded password change date is in the future then they could bypass any set password expiration."
+  }
+}

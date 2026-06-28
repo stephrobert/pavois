@@ -1,0 +1,67 @@
+{
+  "id": "home-files-groupownership",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (home dirs)",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R50"
+  },
+  "check": [
+    "describe command('awk -F: \\'($3>=1000 && $3!=65534 && $6!=\"/\"){print $3\":\"$4\":\"$6}\\' /etc/passwd | while IFS=: read u g h; do [ -d \"$h\" ] && timeout 60 find -P \"$h\" ! -gid \"$g\" ! -type l -print 2>/dev/null; done | head -1') do",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "All User Files and Directories In The Home Directory Must Be Group-Owned By The Primary Group",
+    "fr": "Tous les fichiers et répertoires du home doivent appartenir au groupe primaire de l'utilisateur"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "If a user's files are group-owned by a group the user is **not** in control of, members of that group may read or modify private data they should not access. Consistent primary-group ownership keeps a user's data isolated to that user and their intended group.",
+    "fr": "Si les fichiers d'un utilisateur appartiennent à un groupe qu'il **ne** maîtrise pas, les membres de ce groupe peuvent lire ou modifier des données privées auxquelles ils ne devraient pas accéder. Une appartenance cohérente au groupe primaire confine les données de l'utilisateur à lui-même et à son groupe prévu."
+  },
+  "summary": {
+    "en": "Ensures **every** file and directory (recursively) inside each interactive user's home is group-owned by that user's **primary group**.",
+    "fr": "Garantit que **tous** les fichiers et répertoires (récursivement) du home de chaque utilisateur interactif appartiennent au **groupe primaire** de cet utilisateur."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live** `/etc/passwd` for each interactive user's primary GID and home, then runs a **recursive** `find -P \"$h\" ! -gid \"$g\" ! -type l` (symlinks excluded, no symlink traversal). It compares against the **effective primary GID**, catching deep files left behind by archives, restores or other users — not just the top-level dotfiles.",
+    "fr": "Pavois lit le `/etc/passwd` **réel** pour le GID primaire et le home de chaque utilisateur interactif, puis exécute un `find -P \"$h\" ! -gid \"$g\" ! -type l` **récursif** (liens symboliques exclus, sans traversée). Il compare au **GID primaire effectif**, repérant des fichiers profonds laissés par des archives, restaurations ou d'autres utilisateurs — pas uniquement les fichiers cachés de surface."
+  },
+  "verify": {
+    "en": "For a user, run `find ~user ! -gid $(id -g user) ! -type l -printf '%p %g\\n'`. Expected: **no output** (the whole tree is group-owned by the primary group).",
+    "fr": "Pour un utilisateur, exécutez `find ~user ! -gid $(id -g user) ! -type l -printf '%p %g\\n'`. Attendu : **aucune sortie** (toute l'arborescence appartient au groupe primaire)."
+  },
+  "logs": {
+    "en": "Group ownership is inspected directly, not logged. Audit recursively with `find ~user ! -gid $(id -g user) -printf '%p %g\\n'`. With file-integrity auditing enabled, `chgrp` events on home paths appear in `/var/log/audit/audit.log` under the relevant watch key.",
+    "fr": "L'appartenance de groupe est inspectée directement, non journalisée. Auditez récursivement avec `find ~user ! -gid $(id -g user) -printf '%p %g\\n'`. Avec l'audit d'intégrité activé, les événements `chgrp` sur les chemins du home apparaissent dans `/var/log/audit/audit.log` sous la clé de surveillance concernée."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped (`remediation` is empty): **apply manually**. For each flagged user, reset group ownership across their home, e.g. `find ~user ! -gid $(id -g user) ! -type l -exec chgrp $(id -gn user) {} +`. Review unusual paths first rather than blindly recursing.",
+    "fr": "Aucune remédiation automatique n'est fournie (`remediation` est vide) : **appliquez manuellement**. Pour chaque utilisateur signalé, réaffectez le groupe sur tout son home, par ex. `find ~user ! -gid $(id -g user) ! -type l -exec chgrp $(id -gn user) {} +`. Examinez d'abord les chemins inhabituels plutôt que de récurser aveuglément."
+  },
+  "impact": {
+    "en": "Wrong group ownership can leak or expose private files to a shared group. **Precautions before applying:** some legitimate workflows place shared-project files under a collaboration group inside `$HOME` — a blanket `chgrp` to the primary group would revoke that sharing. Inspect the offending paths, exclude deliberate shared subtrees, and beware of recursing into mounted filesystems under the home.",
+    "fr": "Une mauvaise appartenance de groupe peut exposer des fichiers privés à un groupe partagé. **Précautions avant application :** certains flux légitimes placent des fichiers de projet partagé sous un groupe de collaboration dans `$HOME` — un `chgrp` global vers le groupe primaire supprimerait ce partage. Inspectez les chemins fautifs, excluez les sous-arbres partagés volontaires, et méfiez-vous de la récursion dans des systèmes de fichiers montés sous le home."
+  }
+}

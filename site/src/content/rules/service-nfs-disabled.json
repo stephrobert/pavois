@@ -1,0 +1,82 @@
+{
+  "id": "service-nfs-disabled",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "systemd services",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "2.1.9",
+    "nist": [
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)"
+    ],
+    "stig": "UBTU-24-100050"
+  },
+  "check": [
+    "describe service('nfs-server.service') do",
+    "  it { should_not be_enabled }",
+    "  it { should_not be_running }",
+    "end"
+  ],
+  "remediation": {
+    "action": [
+      "disable",
+      "stop"
+    ],
+    "name": "nfs",
+    "resource": "service"
+  },
+  "title": {
+    "en": "Disable Network File System (nfs)",
+    "fr": "Désactiver le système de fichiers réseau (nfs)"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The NFS server (`nfs-server.service`) exports file systems over the network and depends on RPC services that broaden the attack surface. Unless the host is an intended file server, it should be disabled to reduce exposure.",
+    "fr": "Le serveur NFS (`nfs-server.service`) exporte des systèmes de fichiers sur le réseau et dépend de services RPC qui élargissent la surface d'attaque. À moins que l'hôte ne soit un serveur de fichiers voulu, il doit être désactivé pour réduire l'exposition."
+  },
+  "summary": {
+    "en": "Ensures the NFS server (`nfs-server.service`) is **disabled** and **not running** unless the host is an intentional file server.",
+    "fr": "Garantit que le serveur NFS (`nfs-server.service`) est **désactivé** et **arrêté**, sauf si l'hôte est un serveur de fichiers voulu."
+  },
+  "check_note": {
+    "en": "Pavois queries the **resolved unit state** with `systemctl is-enabled` / `is-active` for `nfs-server.service`. The effective state catches a server enabled via a drop-in or socket activation that scanning `/etc/exports` and `/etc/nfs.conf` files would miss.",
+    "fr": "Pavois interroge l'**état résolu de l'unité** avec `systemctl is-enabled` / `is-active` pour `nfs-server.service`. L'état effectif détecte un serveur activé via un drop-in ou une activation socket qu'un scan des fichiers `/etc/exports` et `/etc/nfs.conf` manquerait."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled nfs-server.service` (expected `disabled` or `not-found`) and `systemctl is-active nfs-server.service` (expected `inactive`).",
+    "fr": "Exécutez `systemctl is-enabled nfs-server.service` (résultat attendu `disabled` ou `not-found`) et `systemctl is-active nfs-server.service` (résultat attendu `inactive`)."
+  },
+  "logs": {
+    "en": "Check `systemctl show nfs-server.service` (fields `UnitFileState`, `ActiveState`) and `journalctl -u nfs-server.service`; active exports are listed by `exportfs -v` and `showmount -e localhost`.",
+    "fr": "Vérifiez `systemctl show nfs-server.service` (champs `UnitFileState`, `ActiveState`) et `journalctl -u nfs-server.service` ; les exports actifs sont listés par `exportfs -v` et `showmount -e localhost`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan applies a `service` resource for `nfs` with actions **disable** and **stop**, so the NFS server stays off across reboots and is stopped immediately. Apply it with `pavois harden apply`.",
+    "fr": "Le plan harden de Pavois applique une ressource `service` sur `nfs` avec les actions **disable** et **stop**, de sorte que le serveur NFS reste éteint après les redémarrages et soit arrêté immédiatement. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "On a host that is not a file server, disabling `nfs-server.service` has **no functional impact**. **Precaution:** if other systems mount exports from this machine, do **not** disable it — those clients would lose access to their shared storage (and may hang on stale mounts); document the exception instead. Disabling the server does **not** affect this host acting as an NFS *client*.",
+    "fr": "Sur un hôte qui n'est pas un serveur de fichiers, désactiver `nfs-server.service` n'a **aucun impact fonctionnel**. **Précaution :** si d'autres systèmes montent des exports depuis cette machine, ne la désactivez **pas** — ces clients perdraient l'accès à leur stockage partagé (et pourraient se bloquer sur des montages obsolètes) ; documentez plutôt l'exception. Désactiver le serveur n'affecte **pas** le rôle de *client* NFS de cet hôte."
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "id": "pkg-setroubleshoot-plugins-removed",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R49"
+  },
+  "check": [
+    "describe package('setroubleshoot-plugins') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "setroubleshoot-plugins",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall the setroubleshoot-plugins Package",
+    "fr": "Désinstaller le paquet setroubleshoot-plugins"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `setroubleshoot-plugins` package supplies the analysis plugins for the SETroubleshoot daemon, which interprets SELinux AVC denials and surfaces desktop notifications. This troubleshooting helper is unnecessary on a server, adds attack surface, and runs code analysing security-relevant events outside the core SELinux path. Removing it (alongside `setroubleshoot`) keeps the server minimal and aligned with the principle of installing only required software (ANSSI R49).",
+    "fr": "Le paquet `setroubleshoot-plugins` fournit les plugins d'analyse du démon SETroubleshoot, qui interprète les refus AVC de SELinux et affiche des notifications de bureau. Cet assistant de dépannage est inutile sur un serveur, accroît la surface d'attaque et exécute du code analysant des événements de sécurité hors du chemin SELinux principal. Le supprimer (avec `setroubleshoot`) garde le serveur minimal et conforme au principe de n'installer que les logiciels nécessaires (ANSSI R49)."
+  },
+  "summary": {
+    "en": "Ensures the `setroubleshoot-plugins` package (SETroubleshoot analysis plugins) is **not installed**.",
+    "fr": "Garantit que le paquet `setroubleshoot-plugins` (plugins d'analyse SETroubleshoot) **n'est pas installé**."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database with `describe package('setroubleshoot-plugins')` and asserts it `should_not be_installed`, reflecting the **real installed state** rather than scanning for plugin files on disk.",
+    "fr": "Pavois interroge la base de paquets avec `describe package('setroubleshoot-plugins')` et vérifie qu'il `should_not be_installed`, reflétant l'**état d'installation réel** plutôt que de rechercher des fichiers de plugins sur le disque."
+  },
+  "verify": {
+    "en": "RPM: `rpm -q setroubleshoot-plugins` → `package setroubleshoot-plugins is not installed`. Debian/Ubuntu: `dpkg -s setroubleshoot-plugins` → `package 'setroubleshoot-plugins' is not installed`.",
+    "fr": "RPM : `rpm -q setroubleshoot-plugins` → `package setroubleshoot-plugins is not installed`. Debian/Ubuntu : `dpkg -s setroubleshoot-plugins` → `package 'setroubleshoot-plugins' is not installed`."
+  },
+  "logs": {
+    "en": "Removal is recorded by the package manager: `dnf history` / `/var/log/dnf.rpm.log` (RPM) or `/var/log/dpkg.log` (Debian/Ubuntu); filter with `grep setroubleshoot`. SELinux denials themselves are logged in `/var/log/audit/audit.log` (type=AVC) independently of this package. Confirm state with `rpm -q setroubleshoot-plugins`.",
+    "fr": "La suppression est enregistrée par le gestionnaire de paquets : `dnf history` / `/var/log/dnf.rpm.log` (RPM) ou `/var/log/dpkg.log` (Debian/Ubuntu) ; filtrez avec `grep setroubleshoot`. Les refus SELinux eux-mêmes sont journalisés dans `/var/log/audit/audit.log` (type=AVC) indépendamment de ce paquet. Confirmez l'état avec `rpm -q setroubleshoot-plugins`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan removes the `setroubleshoot-plugins` package (resource `package`, action `remove`). Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois supprime le paquet `setroubleshoot-plugins` (ressource `package`, action `remove`). Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Removing the plugins only disables SELinux troubleshooting notifications; SELinux enforcement and AVC auditing are unaffected. There is no service-availability or lockout risk. On an administered server you lose the friendly `sealert` analysis, but raw denials remain in `/var/log/audit/audit.log` for diagnosis.",
+    "fr": "Supprimer les plugins ne désactive que les notifications de dépannage SELinux ; l'application de SELinux et l'audit AVC ne sont pas affectés. Aucun risque de disponibilité de service ni de verrouillage. Sur un serveur administré, vous perdez l'analyse conviviale `sealert`, mais les refus bruts restent dans `/var/log/audit/audit.log` pour le diagnostic."
+  }
+}

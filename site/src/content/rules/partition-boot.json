@@ -1,0 +1,63 @@
+{
+  "id": "partition-boot",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "rhel8"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0"
+  },
+  "severity": "medium",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {
+    "bp28": "R28"
+  },
+  "check": [
+    "describe mount('/boot') do",
+    "  it { should be_mounted }",
+    "end"
+  ],
+  "remediation": {
+    "command": "# /boot should be its OWN filesystem (isolation + mount options). This needs (re)partitioning —\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /boot >/dev/null 2>&1 && echo '/boot is already a mount point' || echo '/boot is NOT separate'\n# Then: dedicate an LVM volume / disk to /boot and add it to /etc/fstab.\n",
+    "reason": "a separate /boot filesystem needs partitioning/LVM/tmpfs — not a safe runtime change",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Ensure /boot Located On Separate Partition",
+    "fr": "S'assurer que /boot est sur une partition separee"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `/boot` partition holds the kernel, initramfs and bootloader files. Mounting it separately lets you apply restrictive mount options (`nodev`, `nosuid`, `noexec`, and read-only outside upgrades), limiting tampering with the boot chain, and keeps the boot files isolated from a full root filesystem.",
+    "fr": "La partition `/boot` contient le noyau, l'initramfs et les fichiers du chargeur d'amorcage. La monter separement permet d'appliquer des options de montage restrictives (`nodev`, `nosuid`, `noexec`, voire lecture seule hors mises a jour), limitant l'alteration de la chaine de demarrage et isolant les fichiers de boot d'un systeme de fichiers racine sature."
+  },
+  "summary": {
+    "en": "Verifies that **`/boot`** is mounted on its own partition so restrictive mount options can protect the kernel and bootloader.",
+    "fr": "Verifie que **`/boot`** est monte sur sa propre partition afin que des options de montage restrictives protegent le noyau et le chargeur d'amorcage."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `mount('/boot')` resource, which reads the **effective** mount table (`/proc/self/mountinfo`) rather than parsing `/etc/fstab`. This reflects what the running kernel has actually mounted — catching mounts added at runtime or fstab entries that never took effect, which a file-only check would report incorrectly.",
+    "fr": "Pavois utilise la ressource InSpec `mount('/boot')`, qui lit la table de montage **effective** (`/proc/self/mountinfo`) plutot que d'analyser `/etc/fstab`. Cela reflete ce que le noyau en cours d'execution a reellement monte — captant les montages ajoutes a chaud ou les entrees fstab jamais appliquees, qu'un controle limite aux fichiers signalerait a tort."
+  },
+  "verify": {
+    "en": "Run:\n\n```bash\nfindmnt /boot\n```\n\nExpected: a row showing `/boot` as its own mounted source (a distinct device/partition). If `findmnt /boot` returns nothing, `/boot` is part of the root filesystem and the rule fails.",
+    "fr": "Executez :\n\n```bash\nfindmnt /boot\n```\n\nAttendu : une ligne montrant `/boot` comme source montee a part (un peripherique/partition distinct). Si `findmnt /boot` ne renvoie rien, `/boot` fait partie du systeme de fichiers racine et la regle echoue."
+  },
+  "logs": {
+    "en": "Inspect mounts with `findmnt /boot` or `mount | grep ' /boot '`; the persistent definition is in `/etc/fstab`. Mount/unmount events appear in the journal via `journalctl -k` (kernel) and unit logs `journalctl -u boot.mount`.",
+    "fr": "Inspectez les montages avec `findmnt /boot` ou `mount | grep ' /boot '` ; la definition persistante est dans `/etc/fstab`. Les evenements de montage/demontage apparaissent dans le journal via `journalctl -k` (noyau) et les journaux d'unite `journalctl -u boot.mount`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule — splitting `/boot` onto its own partition is a **manual** disk-layout change, ideally done at install time. On an existing system it requires repartitioning, copying boot files, adding an `/etc/fstab` entry and updating the bootloader; Pavois cannot perform this safely online.",
+    "fr": "Aucun plan de durcissement automatise n'est fourni pour cette regle — separer `/boot` sur sa propre partition est une modification **manuelle** de l'agencement disque, ideale a l'installation. Sur un systeme existant, cela exige un repartitionnement, la copie des fichiers de boot, l'ajout d'une entree `/etc/fstab` et la mise a jour du chargeur d'amorcage ; Pavois ne peut pas l'effectuer sans risque a chaud."
+  },
+  "impact": {
+    "en": "Repartitioning `/boot` on a live system is high-risk: a mistake in the bootloader or `/etc/fstab` can leave the machine **unbootable**. **Precautions:** plan this at install time; if retrofitting, take a full backup and console/snapshot access, validate `update-grub`/`grub2-mkconfig` output, and reboot-test before relying on it. The control passing only requires the mount to exist — it does not, by itself, break anything.",
+    "fr": "Repartitionner `/boot` sur un systeme en service est tres risque : une erreur dans le chargeur d'amorcage ou `/etc/fstab` peut rendre la machine **non amorcable**. **Precautions :** planifiez-le a l'installation ; en retrofit, faites une sauvegarde complete, gardez un acces console/snapshot, validez la sortie de `update-grub`/`grub2-mkconfig` et testez un redemarrage avant de vous y fier. Le simple fait que le controle passe n'exige que l'existence du montage — il ne casse rien par lui-meme."
+  }
+}

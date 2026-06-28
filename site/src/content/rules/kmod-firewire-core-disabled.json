@@ -1,0 +1,64 @@
+{
+  "id": "kmod-firewire-core-disabled",
+  "supported_os": [
+    "fedora",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "low",
+  "domain": "Kernel modules",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "1.1.1.9"
+  },
+  "check": [
+    "describe kernel_module('firewire-core') do",
+    "  it { should_not be_loaded }",
+    "  it { should be_disabled }",
+    "end"
+  ],
+  "remediation": {
+    "action": "blacklist",
+    "name": "firewire_core",
+    "reboot_required": true,
+    "resource": "kernel_module"
+  },
+  "title": {
+    "en": "Disable IEEE 1394 (FireWire) Support",
+    "fr": "Désactiver la prise en charge IEEE 1394 (FireWire)"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "**FireWire (IEEE 1394)** grants connected devices **DMA access** to system memory, so a malicious peripheral can read or write RAM directly — bypassing the OS to steal keys or inject code (a classic physical-access/DMA attack). On systems that do not use FireWire, disabling the module protects against exploitation of any flaws in its implementation and closes this DMA vector.",
+    "fr": "**FireWire (IEEE 1394)** accorde aux périphériques connectés un **accès DMA** à la mémoire système ; un périphérique malveillant peut donc lire ou écrire la RAM directement — contournant l'OS pour voler des clés ou injecter du code (attaque DMA / accès physique classique). Sur les systèmes n'utilisant pas FireWire, désactiver le module protège contre l'exploitation de toute faille de son implémentation et ferme ce vecteur DMA."
+  },
+  "summary": {
+    "en": "Ensures the `firewire-core` kernel module is not loaded and is blacklisted so the DMA-capable FireWire stack cannot be activated.",
+    "fr": "Garantit que le module noyau `firewire-core` n'est pas chargé et est mis en liste noire afin que la pile FireWire capable de DMA ne puisse être activée."
+  },
+  "check_note": {
+    "en": "Pavois uses `kernel_module('firewire-core')` to assert the module is **not loaded** and is **disabled** in the effective modprobe policy. Inspecting the live kernel and resolved modprobe config (not a lone `.conf`) catches a module blacklisted in one file yet still loaded, or re-enabled by an override drop-in.",
+    "fr": "Pavois utilise `kernel_module('firewire-core')` pour vérifier que le module n'est **pas chargé** et qu'il est **désactivé** dans la politique modprobe effective. Inspecter le noyau vivant et la config modprobe résolue (et non un seul `.conf`) détecte un module en liste noire dans un fichier mais encore chargé, ou réactivé par un override."
+  },
+  "verify": {
+    "en": "Run `lsmod | grep firewire` (no output = not loaded) and `modprobe -n -v firewire_core` (expect `install /bin/true` or `/bin/false`). `modprobe --showconfig | grep firewire` shows the effective rules.",
+    "fr": "Exécutez `lsmod | grep firewire` (aucune sortie = non chargé) et `modprobe -n -v firewire_core` (attendu : `install /bin/true` ou `/bin/false`). `modprobe --showconfig | grep firewire` affiche les règles effectives."
+  },
+  "logs": {
+    "en": "Blocked load attempts appear in the kernel log: `journalctl -k | grep -i firewire` / `dmesg | grep -i firewire`. `lsmod` shows resident modules; `modprobe --showconfig` shows the policy.",
+    "fr": "Les tentatives de chargement bloquées apparaissent dans le journal noyau : `journalctl -k | grep -i firewire` / `dmesg | grep -i firewire`. `lsmod` montre les modules résidents ; `modprobe --showconfig` montre la politique."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `kernel_module` resource to **blacklist** `firewire_core`: it writes a modprobe rule (`install firewire_core /bin/false` plus a blacklist entry) preventing auto-load when a FireWire device appears, and unloads it if resident. `reboot_required` is true to fully remove the dependent FireWire driver stack.",
+    "fr": "`pavois harden apply` utilise la ressource `kernel_module` pour mettre `firewire_core` en **liste noire** : il écrit une règle modprobe (`install firewire_core /bin/false` plus une entrée blacklist) empêchant le chargement automatique à l'apparition d'un périphérique FireWire, et le décharge s'il est résident. `reboot_required` est vrai pour retirer totalement la pile de pilotes FireWire dépendante."
+  },
+  "impact": {
+    "en": "On a standard server, disabling FireWire has **no functional impact** — IEEE 1394 ports are essentially gone from modern hardware. Precaution: the rare host using FireWire audio/video capture or external 1394 storage would lose those devices; confirm none are in use (`lspci | grep -i 1394`, `lsmod | grep firewire`) before applying. A reboot is needed to unload an already-loaded stack.",
+    "fr": "Sur un serveur standard, désactiver FireWire n'a **aucun impact fonctionnel** — les ports IEEE 1394 ont quasiment disparu du matériel moderne. Précaution : l'hôte rare utilisant la capture audio/vidéo FireWire ou du stockage externe 1394 perdrait ces périphériques ; confirmez qu'aucun n'est utilisé (`lspci | grep -i 1394`, `lsmod | grep firewire`) avant d'appliquer. Un redémarrage est nécessaire pour décharger une pile déjà chargée."
+  }
+}

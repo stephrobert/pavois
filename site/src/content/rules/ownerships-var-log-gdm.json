@@ -1,0 +1,67 @@
+{
+  "id": "ownerships-var-log-gdm",
+  "supported_os": [
+    "debian12",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.1.4.1",
+      "6.2.2.1"
+    ]
+  },
+  "check": [
+    "only_if { command('test -d /var/log/gdm').exit_status.zero? }",
+    "describe command('timeout 60 find -P /var/log/gdm -type f ! -user 0 2>/dev/null | head -1') do",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "# Set root ownership recursively under the gdm log dir (only if it exists):\n[ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo 'no /var/log/gdm'\n",
+    "reason": "recursive ownership fix under /var/log/gdm — verify the service is present and review",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Verify Ownership of Files in /var/log/gdm",
+    "fr": "Vérifier l'appartenance des fichiers dans /var/log/gdm"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `/var/log/gdm` directory holds logs from the GNOME Display Manager (GDM), which can contain session, authentication and X server details. If these files are owned by a non-root user, that user could tamper with or read sensitive log data; restricting ownership to root keeps the audit trail trustworthy.",
+    "fr": "Le répertoire `/var/log/gdm` contient les journaux du gestionnaire d'affichage GNOME (GDM), qui peuvent inclure des détails de session, d'authentification et du serveur X. Si ces fichiers appartiennent à un utilisateur non-root, celui-ci pourrait altérer ou lire des données de journal sensibles ; restreindre l'appartenance à root préserve la fiabilité de la piste d'audit."
+  },
+  "summary": {
+    "en": "Ensure every file under `/var/log/gdm` is **owned by root** (UID 0).",
+    "fr": "S'assurer que chaque fichier sous `/var/log/gdm` **appartient à root** (UID 0)."
+  },
+  "check_note": {
+    "en": "Pavois runs `find -P /var/log/gdm -type f ! -user 0` (only if the directory exists) and expects **no output**. It inspects the real inodes' effective ownership rather than relying on packaging defaults, so any log file created or re-owned at runtime by GDM is caught.",
+    "fr": "Pavois exécute `find -P /var/log/gdm -type f ! -user 0` (uniquement si le répertoire existe) et attend **aucune sortie**. Il inspecte l'appartenance effective des inodes réels plutôt que de se fier aux valeurs par défaut du paquet, ce qui détecte tout fichier de journal créé ou ré-attribué à l'exécution par GDM."
+  },
+  "verify": {
+    "en": "Run `find -P /var/log/gdm -type f ! -user 0` — it should print **nothing**. Any printed line is a non-root-owned log file to fix.",
+    "fr": "Exécutez `find -P /var/log/gdm -type f ! -user 0` — il ne doit **rien** afficher. Toute ligne affichée correspond à un fichier de journal n'appartenant pas à root à corriger."
+  },
+  "logs": {
+    "en": "List offending files with `find -P /var/log/gdm -type f ! -user 0 -printf '%u %p\\n'`. The GDM logs themselves live here; display-manager service events can be reviewed with `journalctl -u gdm`.",
+    "fr": "Listez les fichiers fautifs avec `find -P /var/log/gdm -type f ! -user 0 -printf '%u %p\\n'`. Les journaux de GDM eux-mêmes s'y trouvent ; les événements du service de gestionnaire d'affichage se consultent avec `journalctl -u gdm`."
+  },
+  "remediation_note": {
+    "en": "There is **no automated harden plan** for this rule. Apply it manually after review: `find -P /var/log/gdm -type f ! -user 0 -exec chown root {} +`. (This rule is only relevant on systems with a graphical session / GDM installed.)",
+    "fr": "Il n'existe **aucun plan de durcissement automatisé** pour cette règle. Appliquez-la manuellement après examen : `find -P /var/log/gdm -type f ! -user 0 -exec chown root {} +`. (Cette règle ne concerne que les systèmes dotés d'une session graphique / de GDM installé.)"
+  },
+  "impact": {
+    "en": "**What can break:** essentially nothing — GDM continues to write its logs regardless of owner. **Precautions:** review files before re-owning; a non-root owner here may indicate GDM was run abnormally or a misconfigured log rotation. On headless servers without GDM the directory is absent and the rule is automatically skipped (`only_if`).",
+    "fr": "**Ce qui peut casser :** quasiment rien — GDM continue d'écrire ses journaux quel que soit le propriétaire. **Précautions :** examinez les fichiers avant de les ré-attribuer ; un propriétaire non-root ici peut indiquer un lancement anormal de GDM ou une rotation de journaux mal configurée. Sur les serveurs sans interface graphique et sans GDM, le répertoire est absent et la règle est automatiquement ignorée (`only_if`)."
+  }
+}

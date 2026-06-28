@@ -1,0 +1,1173 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { ui, languages, type Lang } from '../../i18n/ui';
+import standards from '../../data/standards.json';
+import socleRefs from '../../data/socle-refs.json';
+
+export function getStaticPaths() {
+  return Object.keys(languages).map((lang) => ({ params: { lang } }));
+}
+
+const { lang } = Astro.params as { lang: Lang };
+const t = ui[lang];
+const rules = await getCollection('rules');
+
+const flat = (v: any): string[] => (Array.isArray(v) ? v.map(String) : v != null ? [String(v)] : []);
+const normCount = (n: Record<string, any>) => Object.values(n).filter((v) => flat(v).length > 0).length;
+const normRefs = rules.reduce(
+  (acc, r) => acc + Object.values(r.data.norms).reduce((a: number, v: any) => a + flat(v).length, 0),
+  0
+);
+const multiNorm = rules.filter((r) => normCount(r.data.norms) >= 3).length;
+const osCount = new Set(rules.flatMap((r) => r.data.supported_os)).size;
+const nf = (x: number) => x.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US');
+const socleOf = (id: string): string => (socleRefs as Record<string, string>)[id] ?? '';
+
+const stats = [
+  { n: nf(rules.length), l: { en: 'controls', fr: 'contrôles' } },
+  { n: nf(normRefs), l: { en: 'norm references', fr: 'références de normes' } },
+  { n: nf(multiNorm), l: { en: 'controls cross ≥3 standards', fr: 'contrôles croisent ≥3 normes' } },
+  { n: nf(osCount), l: { en: 'Linux targets', fr: 'cibles Linux' } },
+  { n: String(Object.keys(standards).length), l: { en: 'standards, one rule base', fr: 'normes, une base' } },
+];
+
+// Featured control for the "one check, every standard" section — a real, highly-crossed control.
+const featured =
+  rules.find((r) => r.data.id === 'faillock-deny') ??
+  rules.slice().sort((a, b) => normCount(b.data.norms) - normCount(a.data.norms))[0];
+const NORM_LABEL: Record<string, string> = {
+  cis: 'CIS',
+  bp28: 'ANSSI-BP-028',
+  nist: 'NIST',
+  'pci-dss': 'PCI-DSS',
+  stig: 'DISA STIG',
+};
+const featuredRef = socleOf(featured.data.id);
+const featuredNorms = ['cis', 'bp28', 'nist', 'pci-dss', 'stig']
+  .filter((k) => flat((featured.data.norms as any)[k]).length)
+  .map((k) => ({ k, label: NORM_LABEL[k], v: flat((featured.data.norms as any)[k])[0] }));
+
+const c = {
+  heroEyebrow: { en: 'built on SOCLE', fr: 'bâti sur SOCLE' },
+  heroH1a: { en: '', fr: '' },
+  heroHl: { en: 'Effective', fr: 'Conformité' },
+  heroH1b: { en: ' Linux Compliance', fr: ' Linux effective' },
+  heroLede: {
+    en: 'Pavois audits the configuration your services <b>actually run</b> — <code>sshd&nbsp;-T</code>, <code>sysctl</code>, <code>systemctl&nbsp;show</code> — not the files on disk. It catches the Includes and drop-ins that file-based scanners miss, grades the result <b>A–E</b>, and remediates it as code.',
+    fr: 'Pavois audite la configuration que tes services <b>appliquent réellement</b> — <code>sshd&nbsp;-T</code>, <code>sysctl</code>, <code>systemctl&nbsp;show</code> — pas les fichiers sur disque. Il capte les Include et drop-ins que les scanners de fichiers ratent, note le résultat <b>A–E</b>, et remédie en code.',
+  },
+  ctaDocs: { en: 'Read the docs', fr: 'Lire la doc' },
+  ctaBrowse: { en: `Browse ${rules.length} controls`, fr: `Parcourir les ${rules.length} contrôles` },
+  thesisKick: { en: 'the thesis', fr: 'la thèse' },
+  thesisH2: {
+    en: 'File scanners read the file.<br>Attackers read the drop-in.',
+    fr: 'Les scanners lisent le fichier.<br>Les attaquants lisent le drop-in.',
+  },
+  thesisP: {
+    en: 'A permissive override in a <code>.d</code> directory silently defeats a stricter main config. Read the file and you get a green check that isn’t true. Read the effective state and you get the truth.',
+    fr: 'Une surcharge permissive dans un répertoire <code>.d</code> annule en silence une config principale plus stricte. Lis le fichier et tu obtiens un feu vert mensonger. Lis l’état effectif et tu obtiens la vérité.',
+  },
+  fileTag: { en: 'File scanner — oscap / OVAL', fr: 'Scanner de fichiers — oscap / OVAL' },
+  ckTag: { en: 'Pavois — effective config', fr: 'Pavois — config effective' },
+  fileNote: {
+    en: 'Never opened <b>sshd_config.d/90-cloud.conf</b>. The Include is invisible to a file read.',
+    fr: 'N’a jamais ouvert <b>sshd_config.d/90-cloud.conf</b>. L’Include est invisible à une lecture de fichier.',
+  },
+  ckNote: {
+    en: 'The drop-in re-enabled root login. Pavois evaluates exactly what the daemon applies.',
+    fr: 'Le drop-in a réactivé le login root. Pavois évalue exactement ce que le démon applique.',
+  },
+  thesisCaption: {
+    en: 'The file says <b>no</b>. The daemon says <b>yes</b>. Wherever a service resolves its own config — <code>sshd -T</code>, <code>sysctl</code>, <code>systemctl</code>, <code>auditctl</code> — only the effective read catches the override. Each control states the evidence it relies on, so you always know what a pass proves.',
+    fr: 'Le fichier dit <b>non</b>. Le démon dit <b>oui</b>. Partout où un service résout sa propre config — <code>sshd -T</code>, <code>sysctl</code>, <code>systemctl</code>, <code>auditctl</code> — seule la lecture effective attrape la surcharge. Chaque contrôle indique la preuve sur laquelle il s’appuie : on sait toujours ce qu’un PASS démontre.',
+  },
+  howKick: { en: 'workflow', fr: 'workflow' },
+  howH2: { en: 'Audit, grade, harden, prove.', fr: 'Auditer, noter, durcir, prouver.' },
+  howP: {
+    en: 'A state-aware loop, not a blind script. Nothing changes until you opt in, and every fix is proven against a fresh scan.',
+    fr: 'Une boucle consciente de l’état, pas un script aveugle. Rien ne change sans ton accord, et chaque correctif est prouvé contre un nouveau scan.',
+  },
+  stdKick: { en: 'standards', fr: 'normes' },
+  stdH2: { en: 'One check, every standard.', fr: 'Un check, toutes les normes.' },
+  stdP: {
+    en: 'A single effective-config assertion carries every mapping. One control, five authorities — never a duplicated rule, never a divergent result.',
+    fr: 'Une seule assertion de config effective porte tous les mappings. Un contrôle, cinq autorités — jamais de règle dupliquée, jamais de résultat divergent.',
+  },
+  mapCheck: { en: 'effective-config check', fr: 'check config effective' },
+  socleKick: { en: 'the reference', fr: 'la référence' },
+  socleH2a: { en: 'Built on ', fr: 'Bâti sur ' },
+  socleH2b: { en: ' — one hardening norm, every tool.', fr: ' — une norme de durcissement, tous les outils.' },
+  socleP1: {
+    en: 'Pavois’s controls come from <b>SOCLE</b>: a neutral, versioned reference that maps each requirement to CIS, ANSSI-BP-028, NIST, PCI-DSS and STIG at once — so a single check is the source of truth across all five.',
+    fr: 'Les contrôles de Pavois viennent de <b>SOCLE</b> : une référence neutre et versionnée qui relie chaque exigence à CIS, ANSSI-BP-028, NIST, PCI-DSS et STIG d’un coup — un seul check fait foi sur les cinq.',
+  },
+  socleP2: {
+    en: 'Each control carries a stable ID — <code>SOCLE-&lt;domain&gt;-&lt;family&gt;-&lt;n&gt;</code> — under SOCLE’s RUN (runtime) and CLD (host posture) domains. Consume it as JSON or OSCAL, version it, test it.',
+    fr: 'Chaque contrôle porte un ID stable — <code>SOCLE-&lt;domaine&gt;-&lt;famille&gt;-&lt;n&gt;</code> — sous les domaines RUN (runtime) et CLD (posture hôte) de SOCLE. Consomme-le en JSON ou OSCAL, versionne-le, teste-le.',
+  },
+  socleVh: { en: 'SOCLE · one control → five mappings', fr: 'SOCLE · un contrôle → cinq mappings' },
+  featKick: { en: 'how it’s built', fr: 'comment c’est construit' },
+  featH2: { en: 'Native, agentless, CI-ready.', fr: 'Natif, sans agent, prêt pour la CI.' },
+  ctaH2: { en: 'Audit what your servers<br>actually run.', fr: 'Audite ce que tes serveurs<br>appliquent réellement.' },
+  ctaP: {
+    en: 'A single Go binary. Point it at a host and read the truth.',
+    fr: 'Un seul binaire Go. Pointe-le sur un hôte et lis la vérité.',
+  },
+  ctaGet: { en: 'Get started', fr: 'Commencer' },
+  ctaHb: { en: 'Read the handbook', fr: 'Lire le handbook' },
+};
+const tr = (f: { en: string; fr: string }) => f[lang];
+
+const steps = [
+  { num: { en: '01 · scan', fr: '01 · scan' }, h: { en: 'Audit', fr: 'Auditer' }, p: { en: 'Resolve the effective config of any target and grade it A–E against the standard you choose.', fr: 'Résous la config effective de n’importe quelle cible et note-la A–E contre la norme choisie.' }, code: 'pavois scan <target>' },
+  { num: { en: '02 · report', fr: '02 · report' }, h: { en: 'Grade', fr: 'Noter' }, p: { en: 'A chaptered A–E report, per-standard. SARIF, JUnit, HTML, and CI-friendly exit codes.', fr: 'Un rapport A–E chapitré, par norme. SARIF, JUnit, HTML, et des codes de sortie pour la CI.' }, code: '--format sarif --fail-under 80' },
+  { num: { en: '03 · harden', fr: '03 · harden' }, h: { en: 'Remediate', fr: 'Remédier' }, p: { en: 'Plan the fixes, flip <code>apply</code> per rule, converge a native Chef run. No bash.', fr: 'Planifie les correctifs, active <code>apply</code> par règle, converge un run Chef natif. Pas de bash.' }, code: 'pavois harden plan local' },
+  { num: { en: '04 · prove', fr: '04 · prove' }, h: { en: 'Prove', fr: 'Prouver' }, p: { en: 'Re-scan after a real reboot: a fix that survives is <b>reboot-proven</b>. The verdict is honest — runtime-only passes can’t earn a clean A.', fr: 'Re-scanne après un vrai reboot : un correctif qui survit est <b>prouvé reboot-proof</b>. Le verdict est honnête — un PASS runtime-only ne décroche pas un A net.' }, code: 'pavois harden apply --reboot --scan' },
+];
+
+const features = [
+  { h: { en: 'Native CINC / InSpec', fr: 'CINC / InSpec natif' }, p: { en: 'Runs <code>cinc-auditor</code> natively over local, SSH or docker targets. No agent, your own <code>~/.ssh/config</code>.', fr: 'Lance <code>cinc-auditor</code> en natif sur des cibles local, SSH ou docker. Aucun agent, ton propre <code>~/.ssh/config</code>.' } },
+  { h: { en: 'Effective by design', fr: 'Effectif par conception' }, p: { en: 'The resolved state — <code>sshd -T</code>, <code>sysctl -a</code>, <code>systemctl show</code>, <code>auditctl -l</code> — never the text of one file.', fr: 'L’état résolu — <code>sshd -T</code>, <code>sysctl -a</code>, <code>systemctl show</code>, <code>auditctl -l</code> — jamais le texte d’un fichier.' } },
+  { h: { en: 'A–E grading', fr: 'Note A–E' }, p: { en: 'A chaptered report, a per-standard view, and a <code>--fail-under</code> gate that turns the grade into a CI check. <a class="inlink" href="/en/handbook/scoring-methodology/">How the grade is computed →</a>', fr: 'Un rapport chapitré, une vue par norme, et un seuil <code>--fail-under</code> qui transforme la note en check CI. <a class="inlink" href="/fr/handbook/scoring-methodology/">Comment la note est calculée →</a>' } },
+  { h: { en: 'Qualified verdict', fr: 'Verdict qualifié' }, p: { en: 'A PASS says what it proves: <b>running now</b> vs <b>reboot-survivable</b>. A runtime-only pass (a live <code>sysctl</code> not pinned on disk) is qualified — it caps the grade under A until persistence is proven. <a class="inlink" href="/en/handbook/qualified-verdict/">What a pass proves →</a>', fr: 'Un PASS dit ce qu’il prouve : <b>actif maintenant</b> vs <b>survit au reboot</b>. Un PASS runtime-only (un <code>sysctl</code> live non épinglé sur disque) est qualifié — il plafonne la note sous A tant que la persistance n’est pas prouvée. <a class="inlink" href="/fr/handbook/qualified-verdict/">Ce qu’un PASS prouve →</a>' } },
+  { h: { en: 'Harden as code', fr: 'Durcir en code' }, p: { en: 'Plan, edit, apply. A native Chef convergence, opt-in per rule, with a dry-run — never a blind shell script.', fr: 'Planifie, édite, applique. Une convergence Chef native, opt-in par règle, avec dry-run — jamais un script shell aveugle.' } },
+  { h: { en: 'CI-native output', fr: 'Sortie CI-native' }, p: { en: 'SARIF for code scanning, JUnit for test reports, CSV/HTML/JSON, and exit codes a pipeline can act on.', fr: 'SARIF pour le code scanning, JUnit pour les rapports de test, CSV/HTML/JSON, et des codes de sortie exploitables.' } },
+  { h: { en: 'Credential-safe', fr: 'Secrets protégés' }, p: { en: 'Passwords reach the engine over <code>stdin</code> only — nothing leaks via <code>ps</code>, <code>/proc</code> or shell history.', fr: 'Les mots de passe atteignent le moteur par <code>stdin</code> seulement — rien ne fuit via <code>ps</code>, <code>/proc</code> ou l’historique shell.' } },
+];
+
+// Home structured data: Pavois is free, open-source Linux security/compliance software. Published
+// via the layout's `jsonld` slot (merged into the page @graph next to Organization + WebSite).
+const heroDesc = tr(c.heroLede).replace(/<[^>]+>/g, '');
+const siteOrigin = (Astro.site?.toString() ?? 'https://pavois.dev/').replace(/\/$/, '');
+const softwareApp = {
+  '@type': 'SoftwareApplication',
+  '@id': `${siteOrigin}/#software`,
+  name: 'Pavois',
+  applicationCategory: 'SecurityApplication',
+  applicationSubCategory: 'Linux compliance & hardening',
+  operatingSystem: 'Linux',
+  url: `${siteOrigin}/`,
+  description: heroDesc,
+  inLanguage: lang === 'fr' ? 'fr-FR' : 'en-US',
+  isAccessibleForFree: true,
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  publisher: { '@id': `${siteOrigin}/#org` },
+  softwareHelp: { '@type': 'CreativeWork', url: `${siteOrigin}/${lang}/handbook/` },
+};
+---
+
+<Base title={`Pavois — ${t.tagline}`} description={heroDesc} lang={lang} jsonld={softwareApp}>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <div class="hero-brand">
+          <svg class="hero-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true"
+            ><path d="M8 7 Q16 5 24 7 L24 16 Q24 22 16 27 Q8 22 8 16 Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"
+            ></path><path d="M16 8 L17.3 11 L16 26 L14.7 11 Z" fill="#dc2626"></path></svg>
+          <span>Pavois</span>
+        </div>
+        <span class="eyebrow">{tr(c.heroEyebrow)}</span>
+        <h1>{tr(c.heroH1a)}<span class="hl">{tr(c.heroHl)}</span>{tr(c.heroH1b)}</h1>
+        <p class="lede" set:html={tr(c.heroLede)} />
+        <div class="cmd"><span class="p">$</span><span>pavois scan local --sudo</span></div>
+        <div class="cta-row">
+          <a class="btn btn-primary" href={`/${lang}/docs/`}>{tr(c.ctaDocs)} <span class="arr">→</span></a>
+          <a class="btn btn-ghost" href={`/${lang}/rules/`}>{tr(c.ctaBrowse)}</a>
+        </div>
+      </div>
+
+      <div class="term hero-term" aria-hidden="true">
+        <div class="term-bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="ttl">pavois — harden a host live</span>
+        </div>
+        <video class="term-vid" autoplay muted loop playsinline preload="metadata" poster="/media/harden-demo-poster.jpg">
+          <source src="/media/harden-demo.webm" type="video/webm" />
+          <source src="/media/harden-demo.mp4" type="video/mp4" />
+        </video>
+      </div>
+    </div>
+  </section>
+
+  <!-- THESIS -->
+  <section class="blk" id="why">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">{tr(c.thesisKick)}</span>
+        <h2 set:html={tr(c.thesisH2)} />
+        <p set:html={tr(c.thesisP)} />
+      </div>
+      <div class="vs">
+        <div class="vs-card left">
+          <div class="vs-tag">{tr(c.fileTag)}</div>
+          <div class="vs-cmd">{lang === 'fr' ? 'lit' : 'reads'} <b>/etc/ssh/sshd_config</b><br>→ <code>PermitRootLogin no</code></div>
+          <div class="verdict pass"><span class="ic">✓</span> PASS</div>
+          <div class="vs-note" set:html={tr(c.fileNote)} />
+        </div>
+        <div class="vs-mid"><span class="chip">{lang === 'fr' ? 'même hôte' : 'same host'}</span></div>
+        <div class="vs-card right">
+          <div class="vs-tag">{tr(c.ckTag)}</div>
+          <div class="vs-cmd">{lang === 'fr' ? 'lit' : 'reads'} <b>sshd -T</b><br>→ <code>permitrootlogin yes</code></div>
+          <div class="verdict fail"><span class="ic">✗</span> FAIL</div>
+          <div class="vs-note" set:html={tr(c.ckNote)} />
+        </div>
+      </div>
+      <p class="vs-caption" set:html={tr(c.thesisCaption)} />
+      <p class="vs-more">
+        <a href={`/${lang}/handbook/effective-configuration/`}>
+          {lang === 'fr'
+            ? 'Plus sur la configuration effective — la vérité qu’aucun fichier ne contient →'
+            : 'More on effective configuration — the truth no file holds →'}
+        </a>
+      </p>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section class="blk tight">
+    <div class="wrap">
+      <div class="stats">
+        {stats.map((s) => <div class="stat"><div class="n">{s.n}</div><div class="l">{tr(s.l)}</div></div>)}
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW -->
+  <section class="blk">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">{tr(c.howKick)}</span>
+        <h2>{tr(c.howH2)}</h2>
+        <p>{tr(c.howP)}</p>
+      </div>
+      <div class="steps">
+        {steps.map((s) => (
+          <div class="step">
+            <div class="num">{tr(s.num)}</div>
+            <h3>{tr(s.h)}</h3>
+            <p set:html={tr(s.p)} />
+            <code>{s.code}</code>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- STANDARDS -->
+  <section class="blk" id="standards">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">{tr(c.stdKick)}</span>
+        <h2>{tr(c.stdH2)}</h2>
+        <p>{tr(c.stdP)}</p>
+      </div>
+      <div class="map-wrap">
+        <div class="map-top">
+          <a class="map-ref" href={`/${lang}/rules/${featured.data.id}/`}>{featuredRef}</a>
+          <span class="map-rule">{featured.data.title[lang]}</span>
+        </div>
+        <div class="map-flow">
+          <div class="map-check"><span class="tick">✓</span> {tr(c.mapCheck)}</div>
+          <div class="map-arrow">→</div>
+          <div class="std-badges">
+            {featuredNorms.map((n) => (
+              <a class="std" href={`/${lang}/standards/${n.k}/`}>{n.label}<span class="v">{n.v}</span></a>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SOCLE -->
+  <section class="blk socle">
+    <div class="wrap socle-grid">
+      <div>
+        <span class="eyebrow">{tr(c.socleKick)}</span>
+        <h2>{tr(c.socleH2a)}<span class="r">SOCLE</span>{tr(c.socleH2b)}</h2>
+        <p set:html={tr(c.socleP1)} />
+        <p set:html={tr(c.socleP2)} />
+        <div class="cmd json"><span class="p">$</span><span>pavois oscal --out oscal/</span></div>
+      </div>
+      <div class="socle-vis">
+        <div class="vh">{tr(c.socleVh)}</div>
+        <div class="layer core"><span class="lk">SOCLE</span><span class="ld">{featuredRef} <span>· {lang === 'fr' ? 'assertion config effective' : 'effective-config assertion'}</span></span></div>
+        <div class="stack-conn"></div>
+        {featuredNorms.map((n) => (
+          <div class="layer"><span class="lk">{n.k === 'bp28' ? 'ANSSI' : n.k === 'pci-dss' ? 'PCI' : n.label}</span><span class="ld">{n.v}</span></div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- PERSONAS -->
+  <section class="blk">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">{lang === 'fr' ? 'pour qui' : 'for whom'}</span>
+        <h2>{lang === 'fr' ? 'Trois façons d’entrer.' : 'Three ways in.'}</h2>
+      </div>
+      <div class="feat">
+        <a class="fcard pcard" href={`/${lang}/docs/`}>
+          <span class="ptag">Sysadmin</span>
+          <h3>{lang === 'fr' ? 'Durcir un serveur Linux' : 'Harden a Linux server'}</h3>
+          <p>
+            {lang === 'fr'
+              ? 'Scanner l’hôte, comprendre les écarts, appliquer la remédiation, vérifier l’état effectif.'
+              : 'Scan the host, understand the gaps, apply remediation, verify the effective state.'}
+          </p>
+          <span class="pcta">{lang === 'fr' ? 'Quickstart →' : 'Quickstart →'}</span>
+        </a>
+        <a class="fcard pcard" href={`/${lang}/standards/cis/`}>
+          <span class="ptag">{lang === 'fr' ? 'Auditeur / GRC' : 'Auditor / GRC'}</span>
+          <h3>{lang === 'fr' ? 'Prouver une conformité' : 'Prove compliance'}</h3>
+          <p>
+            {lang === 'fr'
+              ? 'Voir les mappings CIS/ANSSI/NIST/PCI/STIG, les preuves et les exports OSCAL.'
+              : 'Review the CIS/ANSSI/NIST/PCI/STIG mappings, the evidence and the OSCAL exports.'}
+          </p>
+          <span class="pcta">{lang === 'fr' ? 'Couverture des normes →' : 'Standards coverage →'}</span>
+        </a>
+        <a class="fcard pcard" href={`/${lang}/rules/`}>
+          <span class="ptag">{lang === 'fr' ? 'RSSI / plateforme' : 'Platform / Security'}</span>
+          <h3>{lang === 'fr' ? 'Standardiser le durcissement' : 'Standardise hardening'}</h3>
+          <p>
+            {lang === 'fr'
+              ? 'Des contrôles SOCLE versionnés et des preuves répétables sur tout le parc.'
+              : 'Versioned SOCLE controls and repeatable evidence across the fleet.'}
+          </p>
+          <span class="pcta">{lang === 'fr' ? 'Parcourir les contrôles →' : 'Browse controls →'}</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="blk">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">{tr(c.featKick)}</span>
+        <h2>{tr(c.featH2)}</h2>
+      </div>
+      <div class="feat">
+        {features.map((f) => (
+          <div class="fcard">
+            <h3>{tr(f.h)}</h3>
+            <p set:html={tr(f.p)} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <div class="wrap">
+      <h2 set:html={tr(c.ctaH2)} />
+      <p>{tr(c.ctaP)}</p>
+      <div class="cmd"><span class="p">$</span><span>pavois scan local --sudo</span></div>
+      <div class="cta-row">
+        <a class="btn btn-primary" href={`/${lang}/docs/`}>{tr(c.ctaGet)} <span class="arr">→</span></a>
+        <a class="btn btn-ghost" href={`/${lang}/handbook/`}>{tr(c.ctaHb)}</a>
+      </div>
+    </div>
+  </section>
+
+</Base>
+
+<style>
+
+  /* ── hero terminal video — a real recorded pavois harden run ── */
+  .hero-term {
+    line-height: 0;
+  }
+  .hero-term .term-vid {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: #0c0f14;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    color: var(--color-accent);
+    font-weight: 500;
+  }
+  .eyebrow::before {
+    content: '// ';
+    color: var(--color-faint);
+  }
+  .hero {
+    position: relative;
+    padding: 64px 0 72px;
+    overflow: hidden;
+  }
+  .hero-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 0.82fr 1.18fr;
+    gap: 44px;
+    align-items: center;
+  }
+  .hero-brand {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 24px;
+    color: var(--color-text);
+  }
+  .hero-mark {
+    width: 66px;
+    height: 66px;
+    flex: none;
+  }
+  .hero-brand span {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 48px;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(40px, 5.4vw, 62px);
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    margin: 14px 0 0;
+  }
+  .hero h1 .hl {
+    color: var(--color-accent);
+  }
+  .lede {
+    font-size: 1.12rem;
+    line-height: 1.62;
+    color: var(--color-dim);
+    margin-top: 20px;
+    max-width: 42ch;
+  }
+  .lede :global(b) {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+  .lede :global(code),
+  .vs-cmd code,
+  .step :global(code),
+  .fcard :global(code) {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    color: var(--color-text);
+  }
+  .cmd {
+    margin-top: 26px;
+    font-family: var(--font-mono);
+    font-size: 0.84rem;
+    background: #0c0f14;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 13px 16px;
+    color: #e9edf2;
+    display: flex;
+    gap: 10px;
+    max-width: max-content;
+  }
+  .cmd .p {
+    color: var(--color-accent-bright);
+    font-weight: 700;
+  }
+  .cta-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 12px 20px;
+    border-radius: 9px;
+    transition: 0.16s;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid transparent;
+  }
+  .btn-primary {
+    background: var(--color-accent);
+    color: #fff;
+  }
+  .btn-primary:hover {
+    background: var(--color-accent-bright);
+    transform: translateY(-1px);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--color-text);
+    border-color: var(--color-border);
+  }
+  .btn-ghost:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+  .btn:hover .arr {
+    transform: translateX(3px);
+  }
+  .arr {
+    transition: transform 0.2s;
+  }
+
+  /* terminal */
+  .term {
+    background: #0c0f14;
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 30px 80px -40px rgba(0, 0, 0, 0.7);
+    font-family: var(--font-mono);
+  }
+  .term-bar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 11px 14px;
+    border-bottom: 1px solid #20262f;
+    background: #0e1218;
+  }
+  .dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+  }
+  .dot.r {
+    background: #ff5f57;
+  }
+  .dot.y {
+    background: #febc2e;
+  }
+  .dot.g {
+    background: #28c840;
+  }
+  .term-bar .ttl {
+    margin-left: 8px;
+    font-size: 0.72rem;
+    color: #6c7480;
+  }
+  .term-body {
+    padding: 16px 17px;
+    font-size: 0.79rem;
+    line-height: 1.85;
+  }
+  .tl {
+    color: #c4ccd6;
+    white-space: pre-wrap;
+  }
+  .tl .p {
+    color: var(--color-accent-bright);
+    font-weight: 700;
+  }
+  .tl .mut {
+    color: #5c6470;
+  }
+  .tl .ok {
+    color: #22c55e;
+  }
+  .tl .bad {
+    color: var(--color-accent-bright);
+  }
+  .tl .warn {
+    color: #f0a93b;
+  }
+  .grade-line {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 12px 0;
+    padding: 12px 14px;
+    border: 1px solid #232a34;
+    border-radius: 10px;
+    background: #10141a;
+  }
+  .grade {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.6rem;
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    flex: none;
+    background: conic-gradient(#d97706 0 82%, #232a34 82% 100%);
+    position: relative;
+  }
+  .grade span {
+    position: absolute;
+    inset: 5px;
+    background: #10141a;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    color: #f0a93b;
+  }
+  .grade-meta .g-pct {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: #e9edf2;
+  }
+  .grade-meta .g-sub {
+    font-size: 0.72rem;
+    color: #6c7480;
+  }
+  .cur {
+    display: inline-block;
+    width: 7px;
+    height: 14px;
+    background: var(--color-accent-bright);
+    vertical-align: -2px;
+    animation: blink 1.1s steps(1) infinite;
+  }
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  /* sections */
+  .blk {
+    padding: 72px 0;
+    border-top: 1px solid var(--color-border);
+  }
+  .blk.tight {
+    padding-top: 0;
+    border-top: none;
+  }
+  .sec-head {
+    max-width: 64ch;
+  }
+  .sec-head h2 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(1.7rem, 3.2vw, 2.4rem);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-top: 12px;
+  }
+  .sec-head p {
+    color: var(--color-dim);
+    font-size: 1.05rem;
+    margin-top: 14px;
+    line-height: 1.6;
+  }
+
+  /* thesis vs */
+  .vs {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    margin-top: 38px;
+    align-items: stretch;
+  }
+  .vs-card {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    padding: 22px 22px 24px;
+  }
+  .vs-card.left {
+    border-radius: 14px 0 0 14px;
+    border-right: none;
+  }
+  .vs-card.right {
+    border-radius: 0 14px 14px 0;
+    border-left: none;
+    box-shadow: 0 0 0 1px var(--color-accent) inset;
+  }
+  .vs-tag {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-faint);
+  }
+  .vs-card.right .vs-tag {
+    color: var(--color-accent);
+  }
+  .vs-cmd {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--color-dim);
+    margin: 14px 0 16px;
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 9px 11px;
+  }
+  .vs-cmd b {
+    color: var(--color-text);
+  }
+  .verdict {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 11px 13px;
+    border-radius: 9px;
+  }
+  .verdict.pass {
+    background: rgba(22, 163, 74, 0.1);
+    color: #22c55e;
+    border: 1px solid rgba(22, 163, 74, 0.3);
+  }
+  .verdict.fail {
+    background: var(--color-accent-soft);
+    color: var(--color-accent-bright);
+    border: 1px solid var(--color-accent-line);
+  }
+  .verdict .ic {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 0.75rem;
+    flex: none;
+  }
+  .verdict.pass .ic {
+    background: #22c55e;
+    color: #06210f;
+  }
+  .verdict.fail .ic {
+    background: var(--color-accent-bright);
+    color: #2a0606;
+  }
+  .vs-note {
+    font-size: 0.82rem;
+    color: var(--color-faint);
+    margin-top: 13px;
+    line-height: 1.55;
+  }
+  .vs-note :global(b) {
+    color: var(--color-dim);
+  }
+  .vs-mid {
+    display: grid;
+    place-items: center;
+    padding: 0 4px;
+  }
+  .vs-mid .chip {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--color-faint);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    border-radius: 20px;
+    padding: 6px 12px;
+  }
+  .vs-caption {
+    margin-top: 24px;
+    font-size: 1rem;
+    color: var(--color-dim);
+    max-width: 62ch;
+    line-height: 1.55;
+  }
+  .vs-caption :global(b) {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+  .vs-more {
+    margin-top: 14px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+  }
+  .vs-more a {
+    color: var(--color-accent);
+  }
+  .vs-more a:hover {
+    text-decoration: underline;
+  }
+
+  /* stats */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--color-surface);
+  }
+  .stat {
+    padding: 24px 20px;
+    border-right: 1px solid var(--color-border);
+  }
+  .stat:last-child {
+    border-right: none;
+  }
+  .stat .n {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 2rem;
+    letter-spacing: -0.02em;
+    color: var(--color-text);
+  }
+  .stat .l {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--color-faint);
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+
+  /* steps */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-top: 40px;
+  }
+  .step {
+    border: 1px solid var(--color-border);
+    border-radius: 13px;
+    background: var(--color-surface);
+    padding: 22px 20px;
+    transition: 0.2s;
+  }
+  .step:hover {
+    transform: translateY(-3px);
+    border-color: var(--color-accent-line);
+  }
+  .step .num {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--color-accent);
+  }
+  .step h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin: 12px 0 8px;
+  }
+  .step p {
+    font-size: 0.85rem;
+    color: var(--color-dim);
+    line-height: 1.55;
+  }
+  .step :global(code) {
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 2px 7px;
+    display: inline-block;
+    margin-top: 13px;
+    font-size: 0.74rem;
+  }
+
+  /* standards map */
+  .map-wrap {
+    margin-top: 38px;
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    background: var(--color-surface);
+    overflow: hidden;
+  }
+  .map-top {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .map-ref {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--color-accent);
+    border: 1px solid var(--color-accent);
+    border-radius: 7px;
+    padding: 5px 11px;
+    background: var(--color-accent-soft);
+  }
+  .map-rule {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1rem;
+  }
+  .map-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 24px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .map-check {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--color-dim);
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    padding: 12px 16px;
+  }
+  .map-check .tick {
+    color: #22c55e;
+    font-weight: 700;
+  }
+  .map-arrow {
+    color: var(--color-faint);
+    font-family: var(--font-mono);
+    padding: 0 18px;
+    font-size: 1.1rem;
+  }
+  .std-badges {
+    display: flex;
+    gap: 9px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .std {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 9px 13px;
+    color: var(--color-text);
+    background: var(--color-bg);
+    text-align: center;
+    line-height: 1.3;
+    transition: 0.15s;
+  }
+  .std:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+  .std .v {
+    display: block;
+    font-size: 0.66rem;
+    color: var(--color-faint);
+    margin-top: 2px;
+  }
+
+  /* socle */
+  .socle-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 52px;
+    align-items: center;
+  }
+  .socle h2 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(1.8rem, 3.6vw, 2.7rem);
+    letter-spacing: -0.025em;
+    line-height: 1.06;
+    margin-top: 12px;
+  }
+  .socle h2 .r {
+    color: var(--color-accent);
+  }
+  .socle p {
+    color: var(--color-dim);
+    font-size: 1.05rem;
+    margin-top: 18px;
+    line-height: 1.62;
+  }
+  .socle p :global(b) {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+  .socle p :global(code) {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    color: var(--color-text);
+  }
+  .socle-vis {
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    background: var(--color-surface);
+    padding: 6px;
+  }
+  .socle-vis .vh {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--color-faint);
+    padding: 13px 16px 11px;
+  }
+  .layer {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 14px 16px;
+    border-radius: 11px;
+    margin: 6px;
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+  }
+  .layer.core {
+    background: var(--color-accent-soft);
+    border-color: var(--color-accent-line);
+  }
+  .layer .lk {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--color-accent);
+    flex: none;
+    width: 64px;
+  }
+  .layer .ld {
+    font-size: 0.82rem;
+    color: var(--color-text);
+  }
+  .layer .ld span {
+    color: var(--color-faint);
+    font-size: 0.78rem;
+  }
+  .stack-conn {
+    height: 14px;
+    width: 1px;
+    background: var(--color-border);
+    margin-left: 39px;
+  }
+
+  /* features */
+  .feat {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-top: 40px;
+  }
+  .fcard {
+    border: 1px solid var(--color-border);
+    border-radius: 13px;
+    background: var(--color-surface);
+    padding: 22px 20px;
+    transition: 0.2s;
+  }
+  .fcard:hover {
+    transform: translateY(-3px);
+    border-color: var(--color-accent-line);
+  }
+  .fcard h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.05rem;
+  }
+  .fcard p {
+    font-size: 0.85rem;
+    color: var(--color-dim);
+    margin-top: 8px;
+    line-height: 1.56;
+  }
+  .pcard {
+    display: flex;
+    flex-direction: column;
+  }
+  .pcard:hover {
+    border-color: var(--color-accent);
+  }
+  .ptag {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin-bottom: 8px;
+  }
+  .pcard h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.05rem;
+  }
+  .pcard p {
+    flex: 1;
+  }
+  .pcta {
+    margin-top: 14px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--color-accent);
+  }
+
+  /* cta */
+  .cta {
+    text-align: center;
+    padding: 84px 0;
+    border-top: 1px solid var(--color-border);
+  }
+  .cta h2 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(1.9rem, 4vw, 2.9rem);
+    letter-spacing: -0.025em;
+    line-height: 1.06;
+  }
+  .cta p {
+    color: var(--color-dim);
+    font-size: 1.1rem;
+    margin-top: 16px;
+  }
+  .cta .cmd {
+    margin: 26px auto 0;
+    justify-content: center;
+  }
+  .cta .cta-row {
+    justify-content: center;
+  }
+
+  @media (max-width: 920px) {
+    .hero-grid,
+    .socle-grid {
+      grid-template-columns: 1fr;
+      gap: 36px;
+    }
+    .stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .stat:nth-child(2n) {
+      border-right: none;
+    }
+    .stat {
+      border-bottom: 1px solid var(--color-border);
+    }
+    .steps {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .feat {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (max-width: 620px) {
+    .vs {
+      grid-template-columns: 1fr;
+    }
+    .vs-card.left {
+      border-radius: 14px 14px 0 0;
+      border-right: 1px solid var(--color-border);
+      border-bottom: none;
+    }
+    .vs-card.right {
+      border-radius: 0 0 14px 14px;
+    }
+    .stats,
+    .steps,
+    .feat {
+      grid-template-columns: 1fr;
+    }
+    .stat {
+      border-right: none;
+    }
+    .map-arrow {
+      transform: rotate(90deg);
+      padding: 12px 0;
+    }
+  }
+</style>

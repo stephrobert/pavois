@@ -1,0 +1,197 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+import Toc from '../../../components/Toc.astro';
+import { ui, languages, type Lang } from '../../../i18n/ui';
+import { renderMarkdown } from '../../../lib/markdown';
+
+export async function getStaticPaths() {
+  const pages = await getCollection('handbook');
+  return Object.keys(languages).flatMap((lang) =>
+    pages.map((p) => ({ params: { lang, id: p.data.id }, props: { page: p.data } }))
+  );
+}
+
+const { lang } = Astro.params as { lang: Lang };
+const { page } = Astro.props;
+const t = ui[lang];
+// Content bodies use root-relative internal links (/handbook/x/, /downloads/…) so they stay
+// lang-agnostic; rewrite them to the current language at render time.
+const INTERNAL = 'handbook|rules|standards|docs|glossary|downloads|attribution';
+const { html: bodyHtml, headings } = renderMarkdown(page.body[lang], { lang, internal: INTERNAL });
+
+const all = (await getCollection('handbook')).sort((a, b) => (a.data.order || 0) - (b.data.order || 0));
+const SECTIONS = ['foundations', 'domains', 'tooling'] as const;
+const secLabel: Record<string, { en: string; fr: string }> = {
+  foundations: { en: 'Foundations', fr: 'Fondations' },
+  domains: { en: 'Domains', fr: 'Domaines' },
+  tooling: { en: 'Tooling', fr: 'Outillage' },
+};
+const grouped = SECTIONS.map((s) => ({
+  section: s,
+  pages: all.filter((p) => p.data.section === s),
+})).filter((g) => g.pages.length);
+
+const relatedRules = page.domain
+  ? (await getCollection('rules'))
+      .filter((r) => r.data.domain === page.domain)
+      .sort((a, b) => a.data.id.localeCompare(b.data.id))
+  : [];
+const sectionOf = secLabel[page.section]?.[lang]?.toLowerCase() ?? '';
+const crumbs = [
+  { name: 'Pavois', path: `/${lang}/` },
+  { name: t.navHandbook, path: `/${lang}/handbook/` },
+  { name: page.title[lang], path: `/${lang}/handbook/${page.id}/` },
+];
+---
+
+<Base
+  title={`${page.title[lang]} · Pavois`}
+  description={page.summary?.[lang] ?? ''}
+  lang={lang}
+  ogType="article"
+  schema="TechArticle"
+  datePublished={page.datePublished}
+  dateModified={page.dateModified ?? page.datePublished}
+  breadcrumbs={crumbs}
+>
+  <div class="wrap layout-book has-toc">
+    <aside class="side">
+      {
+        grouped.map((g) => (
+          <div class="sgroup">
+            <h4>{secLabel[g.section][lang]}</h4>
+            {g.pages.map((p) => (
+              <a
+                href={`/${lang}/handbook/${p.data.id}/`}
+                class:list={[{ active: p.data.id === page.id }]}
+              >
+                {p.data.title[lang]}
+              </a>
+            ))}
+          </div>
+        ))
+      }
+    </aside>
+
+    <main>
+      <details class="mobnav">
+        <summary>
+          {lang === 'fr' ? 'Sections du handbook' : 'Handbook sections'}
+          <span class="chev">▾</span>
+        </summary>
+        <div class="mob-list">
+          {
+            grouped.map((g) => (
+              <>
+                <h5>{secLabel[g.section][lang]}</h5>
+                {g.pages.map((p) => (
+                  <a
+                    href={`/${lang}/handbook/${p.data.id}/`}
+                    class:list={[{ active: p.data.id === page.id }]}
+                  >
+                    {p.data.title[lang]}
+                  </a>
+                ))}
+              </>
+            ))
+          }
+        </div>
+      </details>
+
+      <div class="crumb"><a href={`/${lang}/handbook/`}>{t.navHandbook.toLowerCase()}</a> / {sectionOf}</div>
+      <h1 class="book-h1">{page.title[lang]}</h1>
+      {page.summary && <p class="book-lede">{page.summary[lang]}</p>}
+
+      <div class="prose" set:html={bodyHtml} />
+
+      {
+        page.cite && page.cite.length > 0 && (
+          <div class="deepen">
+            <span class="dk">{lang === 'fr' ? 'Pour aller plus loin' : 'Go deeper'}</span>
+            {page.cite.map((c) => (
+              <a href={c.url} target="_blank" rel="noopener noreferrer">
+                {c.label} ↗
+              </a>
+            ))}
+          </div>
+        )
+      }
+
+      {
+        relatedRules.length > 0 && (
+          <section class="related">
+            <h2>{lang === 'fr' ? 'Règles Pavois' : 'Pavois rules'} ({relatedRules.length})</h2>
+            <div class="rule-pills">
+              {relatedRules.map((r) => (
+                <a class="rule-pill" href={`/${lang}/rules/${r.data.id}/`}>
+                  {r.data.title[lang]}
+                </a>
+              ))}
+            </div>
+          </section>
+        )
+      }
+    </main>
+    <Toc headings={headings} lang={lang} />
+  </div>
+</Base>
+
+<style>
+  /* 3-column manual layout: page-nav · article · table of contents (chapter links). */
+  .layout-book.has-toc {
+    grid-template-columns: 248px minmax(0, 1fr) 220px;
+  }
+  @media (max-width: 1180px) {
+    .layout-book.has-toc {
+      grid-template-columns: 248px minmax(0, 1fr);
+    }
+    .layout-book.has-toc :global(.toc) {
+      display: none;
+    }
+  }
+  @media (max-width: 900px) {
+    .layout-book.has-toc {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* page-specific bits not in the design system (crumb/h1/lede/related); .side, .mobnav,
+     .prose, .deepen, .rule-pills all come from pavois.css. */
+  .crumb {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--tx-3);
+    margin-bottom: 12px;
+  }
+  .crumb a:hover {
+    color: var(--red);
+  }
+  .book-h1 {
+    font-family: var(--font-disp);
+    font-weight: 800;
+    font-size: clamp(30px, 4vw, 44px);
+    letter-spacing: -0.025em;
+    line-height: 1.06;
+    margin: 8px 0 14px;
+  }
+  .book-lede {
+    font-size: 18px;
+    color: var(--tx-2);
+    line-height: 1.6;
+    max-width: 70ch;
+    margin: 0 0 26px;
+  }
+  .related {
+    margin-top: 40px;
+    border-top: 1px solid var(--line);
+    padding-top: 24px;
+  }
+  .related h2 {
+    font-family: var(--font-disp);
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: -0.01em;
+    margin-bottom: 14px;
+  }
+</style>

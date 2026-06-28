@@ -1,0 +1,71 @@
+{
+  "id": "sysctl-net-ipv4-tcp_rfc1337",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R12"
+  },
+  "check": [
+    "describe kernel_parameter('net.ipv4.tcp_rfc1337') do",
+    "  its('value') { should cmp 1 }",
+    "end"
+  ],
+  "remediation": {
+    "key": "net.ipv4.tcp_rfc1337",
+    "resource": "sysctl",
+    "value": "1"
+  },
+  "title": {
+    "en": "Enable Kernel Parameter to Use TCP RFC 1337 on IPv4 Interfaces",
+    "fr": "Activer le paramètre noyau pour appliquer TCP RFC 1337 sur les interfaces IPv4"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "RFC 1337 describes the **TIME_WAIT assassination** hazard: when disabled, a RST received in the `TIME_WAIT` state closes the socket immediately instead of waiting out the `TIME_WAIT` period, which can let stale or spoofed segments corrupt a new connection reusing the same socket. Enabling RFC 1337 behavior drops such RSTs and protects connection integrity.",
+    "fr": "La RFC 1337 décrit le risque d'**assassinat de TIME_WAIT** : lorsqu'il est désactivé, un RST reçu dans l'état `TIME_WAIT` ferme la socket immédiatement au lieu d'attendre la fin de la période `TIME_WAIT`, ce qui peut laisser des segments périmés ou usurpés corrompre une nouvelle connexion réutilisant la même socket. Activer le comportement RFC 1337 ignore ces RST et protège l'intégrité des connexions."
+  },
+  "summary": {
+    "en": "Enables RFC 1337 protection against TIME_WAIT assassination by setting `net.ipv4.tcp_rfc1337` to **1**.",
+    "fr": "Active la protection RFC 1337 contre l'assassinat de TIME_WAIT en positionnant `net.ipv4.tcp_rfc1337` à **1**."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live** value via `kernel_parameter('net.ipv4.tcp_rfc1337')`, reflecting the running kernel after all `sysctl.conf` / `/etc/sysctl.d/` drop-ins and runtime overrides are merged — not what a static read of `/etc/sysctl.conf` might claim.",
+    "fr": "Pavois lit la valeur **effective** via `kernel_parameter('net.ipv4.tcp_rfc1337')`, qui reflète le noyau en cours après fusion de tous les drop-ins `sysctl.conf` / `/etc/sysctl.d/` et des surcharges runtime — et non ce qu'une lecture statique de `/etc/sysctl.conf` pourrait prétendre."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.tcp_rfc1337` and expect `net.ipv4.tcp_rfc1337 = 1`.",
+    "fr": "Exécuter `sysctl net.ipv4.tcp_rfc1337` et attendre `net.ipv4.tcp_rfc1337 = 1`."
+  },
+  "logs": {
+    "en": "Confirm with `sysctl net.ipv4.tcp_rfc1337`. There is no dedicated log line; TCP state behavior can be observed with `ss -tan state time-wait` and packet captures (`tcpdump -ni any 'tcp[tcpflags] & tcp-rst != 0'`).",
+    "fr": "Confirmer avec `sysctl net.ipv4.tcp_rfc1337`. Il n'y a pas de ligne de journal dédiée ; le comportement des états TCP s'observe avec `ss -tan state time-wait` et des captures de paquets (`tcpdump -ni any 'tcp[tcpflags] & tcp-rst != 0'`)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan sets `net.ipv4.tcp_rfc1337 = 1` via the **sysctl** resource, persisting it in a Pavois-owned drop-in and applying it live (no reboot). Run it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois positionne `net.ipv4.tcp_rfc1337 = 1` via la ressource **sysctl**, en le persistant dans un drop-in géré par Pavois et en l'appliquant à chaud (sans redémarrage). À exécuter avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "No meaningful downside on servers or workstations — it only changes how RSTs are handled in `TIME_WAIT`, hardening connection integrity. Precaution: in very rare high-churn scenarios that aggressively recycle TIME_WAIT sockets, keeping these sockets the full duration uses slightly more socket memory; this is negligible for normal workloads.",
+    "fr": "Aucun inconvénient notable sur serveurs ou postes de travail — cela ne change que la gestion des RST en `TIME_WAIT`, renforçant l'intégrité des connexions. Précaution : dans de très rares scénarios à fort renouvellement qui recyclent agressivement les sockets TIME_WAIT, conserver ces sockets toute la durée consomme un peu plus de mémoire socket ; négligeable pour des charges normales."
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "id": "kmod-uvcvideo-disabled",
+  "supported_os": [
+    "rhel8"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel modules",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe kernel_module('uvcvideo') do",
+    "  it { should_not be_loaded }",
+    "  it { should be_disabled }",
+    "end"
+  ],
+  "remediation": {
+    "action": "blacklist",
+    "name": "uvcvideo",
+    "reboot_required": true,
+    "resource": "kernel_module"
+  },
+  "title": {
+    "en": "Disable the uvcvideo module",
+    "fr": "Désactiver le module uvcvideo"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `uvcvideo` module drives USB webcams (UVC devices). Failing to disconnect from collaborative computing devices such as cameras can lead to compromise of organizational information through covert recording. Blacklisting the driver on hosts that have no legitimate need for a camera removes the device entirely as an attack surface and guarantees it cannot be activated by malware.",
+    "fr": "Le module `uvcvideo` pilote les webcams USB (périphériques UVC). Ne pas se déconnecter des dispositifs de visioconférence tels que les caméras peut conduire à la compromission d'informations de l'organisation par enregistrement furtif. Mettre le pilote en liste noire sur les hôtes n'ayant aucun besoin légitime de caméra supprime entièrement ce périphérique comme surface d'attaque et garantit qu'il ne peut être activé par un logiciel malveillant."
+  },
+  "summary": {
+    "en": "Ensures the `uvcvideo` USB-webcam kernel module is **not loaded** and is **blacklisted** so cameras cannot be activated.",
+    "fr": "Garantit que le module noyau `uvcvideo` (webcam USB) n'est **pas chargé** et qu'il est **mis en liste noire** afin que les caméras ne puissent pas être activées."
+  },
+  "check_note": {
+    "en": "Pavois queries the **effective module state**, not config files: it verifies `uvcvideo` is absent from the running kernel and that modprobe refuses to load it. A file-only scan would miss a module already auto-loaded when a webcam was plugged in; inspecting the live kernel catches both an active module and any drop-in that re-enables it.",
+    "fr": "Pavois interroge l'**état effectif du module**, pas les fichiers de configuration : il vérifie que `uvcvideo` est absent du noyau en cours d'exécution et que modprobe refuse de le charger. Une analyse basée uniquement sur les fichiers manquerait un module déjà chargé automatiquement à l'insertion d'une webcam ; inspecter le noyau vivant détecte un module actif et tout drop-in qui le réactive."
+  },
+  "verify": {
+    "en": "- `lsmod | grep uvcvideo` should return **nothing**.\n- `modprobe -n -v uvcvideo` should print `install /bin/true`.\n- `grep -r uvcvideo /etc/modprobe.d/` should show `blacklist uvcvideo` and `install uvcvideo /bin/true`.",
+    "fr": "- `lsmod | grep uvcvideo` ne doit **rien** renvoyer.\n- `modprobe -n -v uvcvideo` doit afficher `install /bin/true`.\n- `grep -r uvcvideo /etc/modprobe.d/` doit montrer `blacklist uvcvideo` et `install uvcvideo /bin/true`."
+  },
+  "logs": {
+    "en": "- `dmesg | grep -i uvcvideo` and `journalctl -k | grep uvcvideo` show load attempts when a camera is connected.\n- `lsmod` and `modprobe -n -v uvcvideo` reflect the live state.",
+    "fr": "- `dmesg | grep -i uvcvideo` et `journalctl -k | grep uvcvideo` montrent les tentatives de chargement à la connexion d'une caméra.\n- `lsmod` et `modprobe -n -v uvcvideo` reflètent l'état réel."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `kernel_module` resource to **blacklist** `uvcvideo`: it writes a modprobe drop-in blacklisting the module and redirecting its load to `/bin/true`, then unloads it if active. A **reboot is required** to fully clear an in-use module. Apply with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `kernel_module` pour mettre `uvcvideo` en **liste noire** : il écrit un drop-in modprobe qui blackliste le module et redirige son chargement vers `/bin/true`, puis le décharge s'il est actif. Un **redémarrage est requis** pour purger un module utilisé. Appliquez avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "**Disables all USB webcams.** Do not apply to workstations, laptops or conferencing endpoints that legitimately use a camera — video calls and capture software will stop working. Intended for servers and kiosks with no camera role. Verify with `lsmod | grep uvcvideo` and `v4l2-ctl --list-devices` before applying.",
+    "fr": "**Désactive toutes les webcams USB.** Ne pas appliquer aux postes de travail, portables ou terminaux de visioconférence qui utilisent légitimement une caméra — les appels vidéo et logiciels de capture cesseront de fonctionner. Destiné aux serveurs et bornes sans rôle de caméra. Vérifiez avec `lsmod | grep uvcvideo` et `v4l2-ctl --list-devices` avant d'appliquer."
+  }
+}

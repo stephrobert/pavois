@@ -1,0 +1,73 @@
+{
+  "id": "cmdline-page-poison",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel command line",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R8",
+    "nist": "CM-6(a)"
+  },
+  "check": [
+    "describe command('cat /proc/cmdline') do",
+    "  its('stdout') { should match(/(^| )page_poison=1( |$)/) }",
+    "end"
+  ],
+  "remediation": {
+    "param": "page_poison=1",
+    "reboot_required": true,
+    "resource": "kernel_cmdline"
+  },
+  "title": {
+    "en": "Enable page allocator poisoning",
+    "fr": "Activer l'empoisonnement de l'allocateur de pages"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Page poisoning writes a known pattern into memory **pages as they are freed**, so any read or write to a page after it has been freed (or before it is re-initialized) is detected and prevented. This neutralizes large classes of **use-after-free** vulnerabilities at very low performance cost, and additionally **scrubs sensitive data** left in freed pages so it cannot leak to the next allocation.",
+    "fr": "L'empoisonnement de pages écrit un motif connu dans les **pages mémoire au moment de leur libération**, si bien que toute lecture ou écriture sur une page après sa libération (ou avant sa réinitialisation) est détectée et empêchée. Cela neutralise de larges classes de vulnérabilités **use-after-free** à très faible coût de performance, et **efface les données sensibles** restées dans les pages libérées afin qu'elles ne fuient pas vers l'allocation suivante."
+  },
+  "summary": {
+    "en": "Requires the **`page_poison=1`** kernel boot parameter so freed memory pages are overwritten with a poison pattern, catching use-after-free and scrubbing leftover data.",
+    "fr": "Exige le paramètre de démarrage noyau **`page_poison=1`** afin que les pages mémoire libérées soient écrasées par un motif d'empoisonnement, détectant les use-after-free et effaçant les données résiduelles."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel command line** from `/proc/cmdline` and checks for `page_poison=1`. It reflects what the running kernel parsed, not `/etc/default/grub` — a file edit that was never turned into a rebuilt bootloader config would falsely pass a file-based scan while the mitigation is still inactive.",
+    "fr": "Pavois lit la **ligne de commande noyau active** depuis `/proc/cmdline` et vérifie la présence de `page_poison=1`. Elle reflète ce que le noyau en cours a analysé, et non `/etc/default/grub` — une modification de fichier jamais transformée en config bootloader régénérée passerait à tort un scan basé fichier alors que la mitigation reste inactive."
+  },
+  "verify": {
+    "en": "Run `cat /proc/cmdline` and confirm it contains `page_poison=1`. Where exposed, the runtime state can be read at `/sys/module/page_poison/parameters/...` depending on kernel version; the boot line is the canonical proof.",
+    "fr": "Lancez `cat /proc/cmdline` et confirmez la présence de `page_poison=1`. Lorsqu'il est exposé, l'état d'exécution est lisible dans `/sys/module/page_poison/parameters/...` selon la version du noyau ; la ligne de boot reste la preuve canonique."
+  },
+  "logs": {
+    "en": "A poison violation surfaces in the kernel ring buffer as a **bad page state / corruption** report — inspect `dmesg | grep -iE 'poison|bad page'` or `journalctl -k | grep -iE 'poison|bad page'`.",
+    "fr": "Une violation d'empoisonnement apparaît dans le ring buffer noyau comme un rapport de **bad page state / corruption** — inspectez `dmesg | grep -iE 'poison|bad page'` ou `journalctl -k | grep -iE 'poison|bad page'`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the **`kernel_cmdline`** resource to add `page_poison=1` to the bootloader configuration and regenerate it, so the option is present on next boot. A **reboot is required** to take effect.",
+    "fr": "`pavois harden apply` utilise la ressource **`kernel_cmdline`** pour ajouter `page_poison=1` à la configuration du bootloader et la régénérer, afin que l'option soit présente au prochain démarrage. Un **redémarrage est requis** pour qu'il prenne effet."
+  },
+  "impact": {
+    "en": "Page poisoning carries a **small, usually negligible CPU cost** for the overwrite on free. Precautions:\n\n- On extremely **memory-churn-heavy** workloads, benchmark to confirm the overhead is acceptable.\n- It can make latent **buggy drivers** panic when they touch freed pages — surfacing pre-existing corruption rather than causing it; validate on a non-critical node first.\n- Applies **after reboot** only — schedule a maintenance window.",
+    "fr": "L'empoisonnement de pages a un **faible coût CPU, généralement négligeable**, pour l'écrasement à la libération. Précautions :\n\n- Sur des charges à **très fort renouvellement mémoire**, mesurez pour confirmer que le surcoût est acceptable.\n- Il peut faire planter des **pilotes bogués** latents lorsqu'ils touchent des pages libérées — révélant une corruption préexistante plutôt que la causant ; validez d'abord sur un nœud non critique.\n- S'applique uniquement **après redémarrage** — planifiez une fenêtre de maintenance."
+  }
+}

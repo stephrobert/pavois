@@ -1,0 +1,73 @@
+{
+  "id": "partition-var",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {
+    "bp28": "R28",
+    "cis": "1.1.2.4.1",
+    "nist": [
+      "CM-6(a)",
+      "SC-5(2)"
+    ]
+  },
+  "check": [
+    "describe mount('/var') do",
+    "  it { should be_mounted }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Ensure /var Located On Separate Partition",
+    "fr": "Placer /var sur une partition distincte"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Mounting `/var` on its own partition lets you set more restrictive mount options (e.g. **`nodev`**, **`nosuid`**) and protects the system services (daemons and other programs) that write there. `/var` commonly holds world-writable directories shipped by other packages, and isolating it prevents a flood of files there from **filling the root filesystem** and crashing the whole system.",
+    "fr": "Monter `/var` sur sa propre partition permet d'appliquer des options de montage plus restrictives (par ex. **`nodev`**, **`nosuid`**) et protège les services système (démons et autres programmes) qui y écrivent. `/var` contient fréquemment des répertoires accessibles en écriture à tous, installés par d'autres paquets ; l'isoler empêche qu'un afflux de fichiers ne **sature le système de fichiers racine** et ne fasse planter tout le système."
+  },
+  "summary": {
+    "en": "Mounts `/var` on a **dedicated filesystem** so variable data is isolated and growth there cannot exhaust the root partition.",
+    "fr": "Monte `/var` sur un **système de fichiers dédié** afin d'isoler les données variables et d'empêcher que leur croissance ne sature la partition racine."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** mount table through the `mount('/var')` resource (`findmnt` / `/proc/self/mountinfo`), not `/etc/fstab`. `fstab` only records intent — a mount can fail silently at boot or be shadowed by a systemd `.mount` unit. Checking the live kernel state proves `/var` is **currently** a separate mounted filesystem.",
+    "fr": "Pavois lit la table de montage **effective** via la ressource `mount('/var')` (`findmnt` / `/proc/self/mountinfo`), et non `/etc/fstab`. `fstab` n'enregistre qu'une intention — un montage peut échouer silencieusement au démarrage ou être masqué par une unité systemd `.mount`. Vérifier l'état réel du noyau prouve que `/var` est **actuellement** un système de fichiers monté séparément."
+  },
+  "verify": {
+    "en": "Run `findmnt /var`. A returned line confirms `/var` is its own mounted filesystem. Empty output means `/var` lives on the root partition and the rule fails.",
+    "fr": "Exécutez `findmnt /var`. Une ligne renvoyée confirme que `/var` est son propre système de fichiers monté. Une sortie vide signifie que `/var` réside sur la partition racine et que la règle échoue."
+  },
+  "logs": {
+    "en": "Check `findmnt /var` and `df -h /var` for current usage. Boot-time mount problems show up in `journalctl -b | grep -i var` and `systemctl status var.mount`.",
+    "fr": "Vérifiez `findmnt /var` et `df -h /var` pour l'usage courant. Les problèmes de montage au démarrage apparaissent dans `journalctl -b | grep -i var` et `systemctl status var.mount`."
+  },
+  "remediation_note": {
+    "en": "There is **no automated harden plan**: carving out `/var` on a running system is disruptive (services write there constantly) and risky. Apply it **manually**, ideally at install time, by giving `/var` a dedicated partition or LVM volume and declaring it in `/etc/fstab`.",
+    "fr": "Il n'existe **aucun plan de durcissement automatisé** : extraire `/var` sur un système en fonctionnement est perturbant (des services y écrivent en permanence) et risqué. Appliquez-la **manuellement**, idéalement à l'installation, en attribuant à `/var` une partition ou un volume LVM dédié et en le déclarant dans `/etc/fstab`."
+  },
+  "impact": {
+    "en": "Without a separate `/var`, log spam, mail spools, package caches or container layers can fill the root filesystem and **take the whole host down**. **Precautions before migrating:** `/var` is written to constantly, so move it with services stopped (single-user mode or a rescue boot), copy data with `rsync -aHAX` to preserve ownership/ACLs, size it generously, and **keep console/rescue access** in case the new mount fails at boot.",
+    "fr": "Sans `/var` séparé, des journaux envahissants, des spools de courrier, des caches de paquets ou des couches de conteneurs peuvent saturer le système de fichiers racine et **mettre tout l'hôte hors service**. **Précautions avant migration :** `/var` est sollicité en écriture en permanence ; déplacez-le services arrêtés (mode mono-utilisateur ou démarrage de secours), copiez les données avec `rsync -aHAX` pour préserver propriétaires/ACL, dimensionnez-le généreusement et **conservez un accès console/secours** au cas où le nouveau montage échouerait au démarrage."
+  }
+}

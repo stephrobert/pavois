@@ -1,0 +1,65 @@
+{
+  "id": "pam-pwhistory-enforce",
+  "supported_os": [
+    "debian12",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (PAM modules)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.3.3.3.2"
+  },
+  "check": [
+    "describe command('grep -rqE \\'^[^#]*\\bpam_pwhistory\\\\.so\\b[^#]*\\benforce_for_root\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "before": "^password.*pam_unix\\.so",
+    "file": "/etc/pam.d/common-password",
+    "line": "password required pam_pwhistory.so remember=24 use_authtok enforce_for_root",
+    "module": "pam_pwhistory.so",
+    "resource": "pam_line"
+  },
+  "title": {
+    "en": "Limit Password Reuse",
+    "fr": "Limiter la réutilisation des mots de passe"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Preventing reuse of previous passwords helps ensure that a compromised password is not silently reinstated by a user. `pam_pwhistory` exempts root by default, leaving a hole for the most powerful account; `enforce_for_root` makes the reuse policy universal so password history is genuinely enforced across the system.",
+    "fr": "Empêcher la réutilisation d'anciens mots de passe garantit qu'un mot de passe compromis n'est pas silencieusement réinstauré par un utilisateur. `pam_pwhistory` exempte root par défaut, laissant une faille pour le compte le plus puissant ; `enforce_for_root` rend la politique anti-réutilisation universelle pour que l'historique soit réellement appliqué sur tout le système."
+  },
+  "summary": {
+    "en": "Enforces the `enforce_for_root` option on `pam_pwhistory.so` so the password-reuse restriction applies to every account, including root.",
+    "fr": "Impose l'option `enforce_for_root` sur `pam_pwhistory.so` afin que la restriction de réutilisation des mots de passe s'applique à tous les comptes, root compris."
+  },
+  "check_note": {
+    "en": "Pavois greps the **effective** PAM stack under `/etc/pam.d/` for a non-commented `pam_pwhistory.so` line carrying `enforce_for_root`. Resolving the assembled password stack (its `common-password` plus `@include` chain) instead of one file prevents a false pass where the flag is in a sample but not in the rule PAM actually applies.",
+    "fr": "Pavois recherche dans la pile PAM **effective** sous `/etc/pam.d/` une ligne `pam_pwhistory.so` non commentée portant `enforce_for_root`. Résoudre la pile password assemblée (`common-password` plus sa chaîne `@include`) plutôt qu'un seul fichier évite un faux positif où le drapeau figure dans un exemple mais pas dans la règle réellement appliquée par PAM."
+  },
+  "verify": {
+    "en": "Run `grep -rE '^[^#]*pam_pwhistory\\.so' /etc/pam.d/` and confirm the `password` line includes `enforce_for_root`. Functionally, try setting a recently used password with `passwd` (as a normal user and as root) — both should be rejected.",
+    "fr": "Exécutez `grep -rE '^[^#]*pam_pwhistory\\.so' /etc/pam.d/` et vérifiez que la ligne `password` inclut `enforce_for_root`. Fonctionnellement, essayez de définir un mot de passe récemment utilisé avec `passwd` (en tant qu'utilisateur normal et en tant que root) — les deux devraient être rejetés."
+  },
+  "logs": {
+    "en": "Password-change attempts and reuse rejections are logged in `/var/log/auth.log` (Debian/Ubuntu). The stored history lives in `/etc/security/opasswd`.",
+    "fr": "Les tentatives de changement de mot de passe et les rejets pour réutilisation sont consignés dans `/var/log/auth.log` (Debian/Ubuntu). L'historique stocké réside dans `/etc/security/opasswd`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `pam_line` resource to ensure `/etc/pam.d/common-password` contains `password required pam_pwhistory.so remember=24 use_authtok enforce_for_root`, inserted before the `pam_unix.so` line. It is applied with `pavois harden apply`.",
+    "fr": "`pavois harden apply` utilise la ressource `pam_line` pour s'assurer que `/etc/pam.d/common-password` contient `password required pam_pwhistory.so remember=24 use_authtok enforce_for_root`, insérée avant la ligne `pam_unix.so`. Cela s'applique avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "This only restricts password changes and does not affect logins or live sessions. The main risk is a malformed `password` line that blocks **all** password changes, or root being unable to reset a password to a value it had just retired. **Precautions:** keep a root session open, test `passwd` on a throwaway user after applying, and confirm the line precedes `pam_unix.so` so `use_authtok` works.",
+    "fr": "Cela ne restreint que les changements de mot de passe et n'affecte ni les connexions ni les sessions actives. Le risque principal est une ligne `password` malformée qui bloque **tous** les changements de mot de passe, ou un root incapable de redéfinir un mot de passe qu'il venait d'abandonner. **Précautions :** gardez une session root ouverte, testez `passwd` sur un utilisateur jetable après application, et confirmez que la ligne précède `pam_unix.so` pour que `use_authtok` fonctionne."
+  }
+}

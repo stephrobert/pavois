@@ -1,0 +1,89 @@
+{
+  "id": "fileperm-cron-daily",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "2.4.1.4",
+      "2.2.6"
+    ],
+    "nist": [
+      "AC-6(1)",
+      "CM-6(a)"
+    ],
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "only_if { file('/etc/cron.daily').exist? }",
+    "describe file('/etc/cron.daily') do",
+    "  it { should_not be_setuid }",
+    "  it { should_not be_executable.by('group') }",
+    "  it { should_not be_writable.by('group') }",
+    "  it { should_not be_readable.by('group') }",
+    "  it { should_not be_setgid }",
+    "  it { should_not be_executable.by('other') }",
+    "  it { should_not be_writable.by('other') }",
+    "  it { should_not be_readable.by('other') }",
+    "  it { should_not be_sticky }",
+    "end"
+  ],
+  "remediation": {
+    "mode": "0700",
+    "path": "/etc/cron.daily",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Permissions on cron.daily",
+    "fr": "Vérifier les permissions de cron.daily"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/etc/cron.daily` holds scripts that the cron daemon runs **every day as root**. If the directory is writable by group or other, an unauthorized user can drop or alter a script and have it executed with root privileges — full system compromise. If it is merely readable by group/other, attackers can enumerate scheduled jobs to plan an attack. Restricting it to the owner prevents both unauthorized changes and reconnaissance.",
+    "fr": "`/etc/cron.daily` contient les scripts que le démon cron exécute **chaque jour en tant que root**. Si le répertoire est modifiable par le groupe ou les autres, un utilisateur non autorisé peut y déposer ou y altérer un script et le faire exécuter avec les privilèges root — compromission totale du système. S'il est seulement lisible par le groupe/les autres, un attaquant peut énumérer les tâches planifiées pour préparer une attaque. Le restreindre au propriétaire empêche à la fois les modifications non autorisées et la reconnaissance."
+  },
+  "summary": {
+    "en": "Ensures the `/etc/cron.daily` directory is owned by root and is **not readable, writable or executable by group or other**, with no setuid/setgid/sticky bits, so only root can add or change daily cron scripts.",
+    "fr": "Garantit que le répertoire `/etc/cron.daily` appartient à root et n'est **ni lisible, ni modifiable, ni exécutable par le groupe ou les autres**, sans bits setuid/setgid/sticky, afin que seul root puisse ajouter ou modifier les scripts cron quotidiens."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live inode** with `file('/etc/cron.daily')` and asserts no group/other access and no special mode bits. The `only_if` guard skips the test when the path is absent. Reading the effective permissions on disk catches drift introduced by package upgrades, ad-hoc `chmod`, or restore-from-backup — things a file-template assumption would miss.",
+    "fr": "Pavois lit l'**inode réel** via `file('/etc/cron.daily')` et vérifie l'absence d'accès groupe/autres et de bits de mode spéciaux. La garde `only_if` ignore le test si le chemin est absent. Lire les permissions effectives sur le disque détecte les dérives introduites par les mises à jour de paquets, un `chmod` improvisé ou une restauration de sauvegarde — ce qu'une simple hypothèse sur un modèle de fichier manquerait."
+  },
+  "verify": {
+    "en": "Run `stat -c '%a %U %G' /etc/cron.daily`. Expected: mode `700` (or stricter), owner `root`, group `root` — no read/write/execute for `group` or `other`, and no setuid/setgid/sticky bit.",
+    "fr": "Exécutez `stat -c '%a %U %G' /etc/cron.daily`. Attendu : mode `700` (ou plus strict), propriétaire `root`, groupe `root` — aucune lecture/écriture/exécution pour `group` ni `other`, et aucun bit setuid/setgid/sticky."
+  },
+  "logs": {
+    "en": "No service log applies; inspect with `stat /etc/cron.daily` or `ls -ld /etc/cron.daily`. To detect tampering, add an auditd watch (`auditctl -w /etc/cron.daily -p wa -k cron`) and grep `/var/log/audit/audit.log` for `key=\"cron\"`.",
+    "fr": "Aucun journal de service ne s'applique ; inspectez avec `stat /etc/cron.daily` ou `ls -ld /etc/cron.daily`. Pour détecter une altération, ajoutez une surveillance auditd (`auditctl -w /etc/cron.daily -p wa -k cron`) et recherchez `key=\"cron\"` dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is defined, so apply it **manually**: `chown root:root /etc/cron.daily && chmod 700 /etc/cron.daily`. Re-run the scan to confirm the rule passes.",
+    "fr": "Aucune remédiation automatique n'est définie ; appliquez-la **manuellement** : `chown root:root /etc/cron.daily && chmod 700 /etc/cron.daily`. Relancez le scan pour confirmer que la règle passe."
+  },
+  "impact": {
+    "en": "**Risk if left misconfigured:** a group/other-writable `cron.daily` is a direct root-code-execution and persistence vector; a readable one leaks the schedule. **Precautions:** restricting this directory to root is safe — the cron daemon runs as root and is unaffected. Just verify that no non-root service legitimately needs to read or write here (uncommon) before tightening, and keep ownership at `root:root` so root retains full control.",
+    "fr": "**Risque si laissé mal configuré :** un `cron.daily` modifiable par le groupe/les autres est un vecteur direct d'exécution de code root et de persistance ; lisible, il divulgue la planification. **Précautions :** restreindre ce répertoire à root est sans danger — le démon cron s'exécute en tant que root et n'est pas affecté. Vérifiez simplement qu'aucun service non-root n'a légitimement besoin d'y lire ou écrire (rare) avant de durcir, et gardez le propriétaire à `root:root` pour que root conserve le contrôle total."
+  }
+}

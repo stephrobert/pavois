@@ -1,0 +1,73 @@
+{
+  "id": "journald-forwardtosyslog",
+  "supported_os": [
+    "debian12",
+    "fedora",
+    "rhel8",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "rhel8": "4.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Logging (journald)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.1.3.3",
+      "6.2.2.2",
+      "6.2.1.1.4"
+    ]
+  },
+  "check": [
+    "describe command('grep -rqiE \\'^[[:space:]]*ForwardToSyslog[[:space:]]*=[[:space:]]*no\\b\\' /etc/systemd/journald.conf /etc/systemd/journald.conf.d/ 2>/dev/null && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "content": "[Journal]\nCompress=yes\nForwardToSyslog=no\nStorage=persistent\n",
+    "group": "root",
+    "mode": "0644",
+    "owner": "root",
+    "path": "/etc/systemd/journald.conf.d/99-pavois.conf",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Ensure journald is configured to send logs to rsyslog",
+    "fr": "S'assurer que journald est configuré pour la transmission des journaux vers rsyslog"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "When journald forwards everything to syslog as well, records are written twice — wasting disk and I/O and creating divergent copies. The hardened baseline keeps one authoritative pipeline; centralized/remote shipping should be configured explicitly (e.g. an rsyslog `@@remote` rule) rather than relying on blanket forwarding. Storing log data on a remote host also protects integrity: if an attacker gains root locally, they can tamper with or delete local logs, so a single, intentionally-configured forwarding path is easier to secure and reason about.",
+    "fr": "Quand journald transmet aussi tout vers syslog, les enregistrements sont écrits deux fois — gaspillant disque et E/S et créant des copies divergentes. La base durcie conserve un seul pipeline faisant autorité ; l'envoi centralisé/distant doit être configuré explicitement (par ex. une règle rsyslog `@@distant`) plutôt que de s'appuyer sur une transmission systématique. Stocker les journaux sur un hôte distant protège aussi leur intégrité : si un attaquant obtient root localement, il peut altérer ou supprimer les logs locaux ; un unique chemin de transmission configuré à dessein est plus simple à sécuriser et à maîtriser."
+  },
+  "summary": {
+    "en": "Sets `ForwardToSyslog=no` so journald does **not** duplicate every record into syslog, leaving a single deliberate logging pipeline.",
+    "fr": "Définit `ForwardToSyslog=no` afin que journald ne **duplique pas** chaque enregistrement vers syslog, ne laissant qu'un seul pipeline de journalisation maîtrisé."
+  },
+  "check_note": {
+    "en": "Pavois greps `/etc/systemd/journald.conf` **and the `journald.conf.d/` drop-ins** for an active `ForwardToSyslog=no`. Since journald merges drop-ins over the base file, scanning both yields the **effective value** — a drop-in setting `no` correctly overrides a base `yes`.",
+    "fr": "Pavois recherche dans `/etc/systemd/journald.conf` **et les drop-ins `journald.conf.d/`** un `ForwardToSyslog=no` actif. Comme journald fusionne les drop-ins par-dessus le fichier de base, scanner les deux donne la **valeur effective** — un drop-in à `no` surcharge correctement un `yes` de base."
+  },
+  "verify": {
+    "en": "Run `grep -riE '^\\s*ForwardToSyslog\\s*=\\s*no' /etc/systemd/journald.conf /etc/systemd/journald.conf.d/`. Expected: at least one matching line. Apply with `systemctl restart systemd-journald`.",
+    "fr": "Exécutez `grep -riE '^\\s*ForwardToSyslog\\s*=\\s*no' /etc/systemd/journald.conf /etc/systemd/journald.conf.d/`. Attendu : au moins une ligne correspondante. Appliquez avec `systemctl restart systemd-journald`."
+  },
+  "logs": {
+    "en": "Check journald state with `journalctl -u systemd-journald` and `systemctl status systemd-journald`. If syslog is in use, confirm whether records are being duplicated by comparing `journalctl` output against `/var/log/syslog` (Debian/Ubuntu) or `/var/log/messages` (RHEL). Active config: `/etc/systemd/journald.conf` and `/etc/systemd/journald.conf.d/*.conf`.",
+    "fr": "Vérifiez l'état de journald avec `journalctl -u systemd-journald` et `systemctl status systemd-journald`. Si syslog est utilisé, confirmez l'éventuelle duplication en comparant la sortie de `journalctl` à `/var/log/syslog` (Debian/Ubuntu) ou `/var/log/messages` (RHEL). Config active : `/etc/systemd/journald.conf` et `/etc/systemd/journald.conf.d/*.conf`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` writes the **`file`** resource `/etc/systemd/journald.conf.d/99-Pavois.conf` (root:root, `0644`) containing `[Journal]` with `Compress=yes`, `ForwardToSyslog=no` and `Storage=persistent` — so this single drop-in satisfies the compress, forward and storage journald rules at once. Reload journald afterwards (`systemctl restart systemd-journald`) for it to take effect.",
+    "fr": "`pavois harden apply` écrit la ressource **`file`** `/etc/systemd/journald.conf.d/99-Pavois.conf` (root:root, `0644`) contenant `[Journal]` avec `Compress=yes`, `ForwardToSyslog=no` et `Storage=persistent` — ce drop-in unique satisfait donc d'un coup les règles journald de compression, de transmission et de stockage. Rechargez ensuite journald (`systemctl restart systemd-journald`) pour qu'il prenne effet."
+  },
+  "impact": {
+    "en": "Disabling forwarding is low-risk, but **do not disable it blindly if syslog is your only path to a central SIEM** — you would stop shipping logs off-box. Precaution: before applying, confirm how logs reach your collector; if it is via journald→syslog forwarding, set up explicit remote rsyslog/`systemd-journal-upload` first, then turn forwarding off. The drop-in is overwritten on each apply, so any manual `[Journal]` tuning in the same file must be folded into Pavois's content. Restarting journald briefly pauses journal writes.",
+    "fr": "Désactiver la transmission est peu risqué, mais **ne la désactivez pas aveuglément si syslog est votre seul chemin vers un SIEM central** — vous cesseriez d'exporter les logs hors machine. Précaution : avant d'appliquer, vérifiez comment les logs atteignent votre collecteur ; si c'est via journald→syslog, mettez d'abord en place un rsyslog distant explicite / `systemd-journal-upload`, puis coupez la transmission. Le drop-in est réécrit à chaque application : tout réglage `[Journal]` manuel dans ce fichier doit être intégré au contenu de Pavois. Redémarrer journald suspend brièvement les écritures de journaux."
+  }
+}

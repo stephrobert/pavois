@@ -1,0 +1,72 @@
+{
+  "id": "ownership-library-dirs",
+  "supported_os": [
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "nist": [
+      "AC-6(1)",
+      "CM-5(6)",
+      "CM-5(6).1",
+      "CM-6(a)"
+    ],
+    "stig": [
+      "UBTU-22-232070",
+      "UBTU-24-300007"
+    ]
+  },
+  "check": [
+    "only_if { command('test -d /lib').exit_status.zero? }",
+    "describe command('timeout 60 find -P /lib -type f ! -user 0 2>/dev/null | head -1') do",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Verify that Shared Library Files Have Root Ownership",
+    "fr": "Vérifier que les fichiers de bibliothèques partagées appartiennent à root"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Files in the shared library directories are loaded into the address space of processes (including privileged ones) and of the kernel itself at runtime. If a non-root user owns one, they can overwrite it and inject code that runs with the privileges of every process that loads the library — root ownership is essential to protect system integrity.",
+    "fr": "Les fichiers des répertoires de bibliothèques partagées sont chargés dans l'espace d'adressage des processus (y compris privilégiés) et du noyau lui-même à l'exécution. Si un utilisateur non-root en possède un, il peut le réécrire et injecter du code s'exécutant avec les privilèges de chaque processus chargeant la bibliothèque — l'appartenance à root est indispensable pour protéger l'intégrité du système."
+  },
+  "summary": {
+    "en": "Ensure every file under the shared library directory `/lib` is **owned by root** (UID 0).",
+    "fr": "S'assurer que chaque fichier sous le répertoire de bibliothèques partagées `/lib` **appartient à root** (UID 0)."
+  },
+  "check_note": {
+    "en": "Pavois runs `find -P /lib -type f ! -user 0` and expects **no output** — any file not owned by UID 0 is a finding. It enumerates the actual on-disk inodes (the effective ownership the loader sees), not a package manifest, so files added or re-owned after install are caught.",
+    "fr": "Pavois exécute `find -P /lib -type f ! -user 0` et attend **aucune sortie** — tout fichier n'appartenant pas à l'UID 0 constitue une non-conformité. Il énumère les inodes réellement présents sur disque (l'appartenance effective vue par le chargeur), et non un manifeste de paquet, ce qui détecte les fichiers ajoutés ou ré-attribués après l'installation."
+  },
+  "verify": {
+    "en": "Run `find -P /lib -type f ! -user 0` — it should print **nothing**. Any line printed is a non-root-owned library file that must be fixed.",
+    "fr": "Exécutez `find -P /lib -type f ! -user 0` — il ne doit **rien** afficher. Toute ligne affichée correspond à un fichier de bibliothèque n'appartenant pas à root qui doit être corrigé."
+  },
+  "logs": {
+    "en": "Confirm package-provided ownership with `dpkg -V` (Debian/Ubuntu) or `rpm -Va` (RHEL/Fedora), which flag ownership/permission drift. List offending files with `find -P /lib -type f ! -user 0 -printf '%u %p\\n'`.",
+    "fr": "Vérifiez l'appartenance fournie par les paquets avec `dpkg -V` (Debian/Ubuntu) ou `rpm -Va` (RHEL/Fedora), qui signalent les dérives d'appartenance/permissions. Listez les fichiers fautifs avec `find -P /lib -type f ! -user 0 -printf '%u %p\\n'`."
+  },
+  "remediation_note": {
+    "en": "There is **no automated harden plan** for this rule, to avoid blindly re-owning files that may legitimately belong to a package's setup. Apply it manually after review: identify offenders with `find -P /lib -type f ! -user 0`, then `chown root <file>` on each (or `find -P /lib -type f ! -user 0 -exec chown root {} +`).",
+    "fr": "Il n'existe **aucun plan de durcissement automatisé** pour cette règle, afin d'éviter de ré-attribuer aveuglément des fichiers pouvant légitimement appartenir à un paquet. Appliquez-la manuellement après examen : identifiez les fautifs avec `find -P /lib -type f ! -user 0`, puis `chown root <fichier>` sur chacun (ou `find -P /lib -type f ! -user 0 -exec chown root {} +`)."
+  },
+  "impact": {
+    "en": "**What can break:** very little — `chown root` on library files only removes non-standard ownership and rarely affects function. The real risk is masking a problem: a non-root-owned library often signals a compromised package or a misbehaving installer, so **investigate the cause** before re-owning. **Precautions:** review each offending file first; if it came from a third-party package, reinstall that package rather than just changing ownership, so permissions and content are both restored.",
+    "fr": "**Ce qui peut casser :** très peu — `chown root` sur des fichiers de bibliothèque ne fait que retirer une appartenance non standard et affecte rarement le fonctionnement. Le vrai risque est de masquer un problème : une bibliothèque n'appartenant pas à root signale souvent un paquet compromis ou un installeur défaillant, donc **enquêtez sur la cause** avant de ré-attribuer. **Précautions :** examinez d'abord chaque fichier fautif ; s'il provient d'un paquet tiers, réinstallez ce paquet plutôt que de seulement changer l'appartenance, afin de restaurer à la fois les permissions et le contenu."
+  }
+}

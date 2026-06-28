@@ -1,0 +1,76 @@
+{
+  "id": "mount-var-log-audit-nosuid",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "1.1.2.7.3",
+    "nist": [
+      "AC-6",
+      "AC-6(1)",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)",
+      "MP-7"
+    ]
+  },
+  "check": [
+    "describe mount('/var/log/audit') do",
+    "  its('options') { should include 'nosuid' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Add nosuid Option to /var/log/audit",
+    "fr": "Ajouter l'option nosuid à /var/log/audit"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "SUID and SGID executables run with their owner's privileges (often root) instead of the caller's, so their presence must be tightly controlled. The audit log partition `/var/log/audit` has no reason to host such binaries. The **`nosuid`** option makes the kernel ignore the set-user-ID and set-group-ID bits on anything stored there, removing a potential privilege-escalation vector if an attacker manages to write to the partition.",
+    "fr": "Les exécutables SUID et SGID s'exécutent avec les privilèges de leur propriétaire (souvent root) plutôt que de l'appelant ; leur présence doit donc être strictement contrôlée. La partition des logs d'audit `/var/log/audit` n'a aucune raison d'héberger de tels binaires. L'option **`nosuid`** force le noyau à ignorer les bits set-user-ID et set-group-ID de tout ce qui y est stocké, supprimant un vecteur potentiel d'élévation de privilèges si un attaquant parvient à écrire sur la partition."
+  },
+  "summary": {
+    "en": "Mounts `/var/log/audit` with the **`nosuid`** option so the kernel ignores set-UID/set-GID bits on binaries there.",
+    "fr": "Monte `/var/log/audit` avec l'option **`nosuid`** afin que le noyau ignore les bits set-UID/set-GID des binaires qui s'y trouvent."
+  },
+  "check_note": {
+    "en": "Pavois inspects the **effective** mount with `mount('/var/log/audit')` and asserts its resolved options include `nosuid`. It reads the live kernel mount table — what is actually enforced — rather than `/etc/fstab`, so it catches a partition remounted without the flag, a `systemd` mount-unit override, or an fstab entry that never applied, which a file-based scanner would wrongly pass.",
+    "fr": "Pavois inspecte le montage **effectif** via `mount('/var/log/audit')` et vérifie que ses options résolues incluent `nosuid`. Il lit la table de montage active du noyau — ce qui est réellement appliqué — plutôt que `/etc/fstab` ; il détecte donc une partition remontée sans le drapeau, un écrasement par une unité `systemd`, ou une entrée fstab jamais appliquée, ce qu'un scanner basé sur les fichiers validerait à tort."
+  },
+  "verify": {
+    "en": "Run `findmnt /var/log/audit` (or `findmnt -no OPTIONS /var/log/audit`) and confirm `nosuid` is in the option list. Expected output contains `nosuid`, e.g. `/var/log/audit ... rw,nosuid,nodev,noexec,relatime`.",
+    "fr": "Exécutez `findmnt /var/log/audit` (ou `findmnt -no OPTIONS /var/log/audit`) et confirmez que `nosuid` figure dans la liste des options. La sortie attendue contient `nosuid`, par exemple `/var/log/audit ... rw,nosuid,nodev,noexec,relatime`."
+  },
+  "logs": {
+    "en": "Mount state is queried live with `findmnt /var/log/audit` or `cat /proc/mounts`, not from a log. Boot-time and remount events appear via `journalctl -b | grep -i audit`. The audit daemon writes its records to `/var/log/audit/audit.log`.",
+    "fr": "L'état du montage s'interroge en direct avec `findmnt /var/log/audit` ou `cat /proc/mounts`, pas depuis un log. Les événements de démarrage et de remontage apparaissent via `journalctl -b | grep -i audit`. Le démon d'audit écrit ses enregistrements dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule yet, so it must be applied **manually**: this requires `/var/log/audit` to be a separate partition. Add `nosuid` to its `/etc/fstab` entry, then `mount -o remount /var/log/audit` — or reboot — and re-scan to confirm.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle ; elle doit donc être appliquée **manuellement** : cela suppose que `/var/log/audit` soit une partition séparée. Ajoutez `nosuid` à son entrée dans `/etc/fstab`, puis `mount -o remount /var/log/audit` — ou redémarrez — et relancez le scan pour confirmer."
+  },
+  "impact": {
+    "en": "Functional impact is essentially nil — no legitimate SUID/SGID binary belongs under the audit log directory. **Precautions:** the option can only be set if `/var/log/audit` is a dedicated partition; on a default layout you must first create it (a disruptive change requiring planning, migration of existing audit logs, and a reboot). Stop `auditd` before migrating data to avoid corrupting the active log.",
+    "fr": "L'impact fonctionnel est quasi nul — aucun binaire SUID/SGID légitime n'a sa place sous le répertoire des logs d'audit. **Précautions :** l'option ne peut être posée que si `/var/log/audit` est une partition dédiée ; sur une disposition par défaut, vous devez d'abord la créer (changement perturbateur nécessitant planification, migration des logs d'audit existants et redémarrage). Arrêtez `auditd` avant de migrer les données pour ne pas corrompre le log actif."
+  }
+}

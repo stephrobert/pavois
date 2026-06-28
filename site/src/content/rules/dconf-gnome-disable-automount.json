@@ -1,0 +1,83 @@
+{
+  "id": "dconf-gnome-disable-automount",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "GNOME desktop (dconf)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "1.8.6",
+      "1.7.6",
+      "1.7.7",
+      "3.4.2",
+      "1.8.4"
+    ],
+    "nist": [
+      "3.1.7",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)"
+    ],
+    "pci-dss": "3.4.2"
+  },
+  "check": [
+    "describe command('{ s=$(grep -rhE \\'^[[:space:]]*automount[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null | tail -1 | sed -E \\'s/^[^=]*=[[:space:]]*//\\' | tr -d \"\\'\\\\\"\"); [ \"$s\" = \"false\" ] && grep -rqxF \\'/org/gnome/desktop/media-handling/automount\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "resource": "dconf"
+  },
+  "title": {
+    "en": "Disable GNOME3 Automounting",
+    "fr": "Désactiver le montage automatique GNOME3"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Automatically mounting removable media (USB drives, optical disks) lets an attacker with brief physical access introduce malware or hostile filesystems that are processed by the kernel and userspace the moment the device is inserted. Setting `automount=false` and locking it forces a deliberate user action to mount media. The trade-off is that legitimate removable-media use becomes less convenient for desktop users.",
+    "fr": "Le montage automatique des supports amovibles (clés USB, disques optiques) permet à un attaquant disposant d'un bref accès physique d'introduire des logiciels malveillants ou des systèmes de fichiers hostiles, traités par le noyau et l'espace utilisateur dès l'insertion du périphérique. Définir `automount=false` et le verrouiller impose une action délibérée de l'utilisateur pour monter un support. En contrepartie, l'usage légitime des supports amovibles devient moins pratique pour les utilisateurs de bureau."
+  },
+  "summary": {
+    "en": "Prevents GNOME from automatically mounting removable media by setting `automount=false` and locking the key.",
+    "fr": "Empêche GNOME de monter automatiquement les supports amovibles en définissant `automount=false` et en verrouillant la clé."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective** dconf state: the last definition of `automount` across `/etc/dconf/db/*.d/*` must resolve to `false`, **and** the key `/org/gnome/desktop/media-handling/automount` must appear in a dconf **lock** file. Evaluating the resolved precedence (last drop-in wins) plus the lock mirrors how dconf computes the real value, so a later drop-in re-enabling automount or unlocking the key is correctly flagged.",
+    "fr": "Pavois vérifie l'état dconf **effectif** : la dernière définition de `automount` parmi `/etc/dconf/db/*.d/*` doit valoir `false`, **et** la clé `/org/gnome/desktop/media-handling/automount` doit figurer dans un fichier de **verrou** dconf. Évaluer la précédence résolue (le dernier drop-in l'emporte) plus le verrou reflète la façon dont dconf calcule la valeur réelle, de sorte qu'un drop-in ultérieur réactivant l'automontage ou déverrouillant la clé est correctement signalé."
+  },
+  "verify": {
+    "en": "After `dconf update`, run `gsettings get org.gnome.desktop.media-handling automount` (should print `false`) and confirm the key is locked by checking `/etc/dconf/db/*/locks/*` for `/org/gnome/desktop/media-handling/automount`.",
+    "fr": "Après `dconf update`, exécutez `gsettings get org.gnome.desktop.media-handling automount` (doit afficher `false`) et confirmez que la clé est verrouillée en cherchant `/org/gnome/desktop/media-handling/automount` dans `/etc/dconf/db/*/locks/*`."
+  },
+  "logs": {
+    "en": "dconf produces no runtime log; verify with `gsettings get org.gnome.desktop.media-handling automount` and inspect `/etc/dconf/db/*.d/*` and `/etc/dconf/db/*/locks/*`. Device-insertion events handled by udev/udisks can be observed with `journalctl -u udisks2` or `journalctl -f` while plugging media.",
+    "fr": "dconf ne produit aucun journal à l'exécution ; vérifiez avec `gsettings get org.gnome.desktop.media-handling automount` et inspectez `/etc/dconf/db/*.d/*` et `/etc/dconf/db/*/locks/*`. Les événements d'insertion de périphériques gérés par udev/udisks s'observent avec `journalctl -u udisks2` ou `journalctl -f` lors du branchement d'un support."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `dconf` resource to write `automount=false` into a system dconf profile drop-in, add `/org/gnome/desktop/media-handling/automount` to a `locks` file, and run `dconf update` to compile the database. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `dconf` pour écrire `automount=false` dans un drop-in de profil dconf système, ajouter `/org/gnome/desktop/media-handling/automount` à un fichier `locks`, et exécuter `dconf update` pour compiler la base. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Applies only to GNOME desktops; irrelevant on headless servers. After applying, removable media will no longer auto-mount — users must mount manually from Files/Nautilus or with `udisksctl mount`. Precaution: communicate this change to desktop users who rely on USB/optical media, and pair it with `automount-open` and `autorun-never` for full coverage. No reboot is required; `dconf update` is enough.",
+    "fr": "Ne s'applique qu'aux bureaux GNOME ; sans objet sur les serveurs sans interface graphique. Après application, les supports amovibles ne seront plus montés automatiquement — les utilisateurs devront les monter manuellement depuis Fichiers/Nautilus ou avec `udisksctl mount`. Précaution : informez les utilisateurs de bureau qui dépendent des supports USB/optiques, et associez cette règle à `automount-open` et `autorun-never` pour une couverture complète. Aucun redémarrage n'est requis ; `dconf update` suffit."
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "id": "kconfig-gcc-plugin-randstruct",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel build",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R21"
+  },
+  "check": [
+    "describe command(\"grep -h '^CONFIG_GCC_PLUGIN_RANDSTRUCT=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_GCC_PLUGIN_RANDSTRUCT='\") do",
+    "  its('stdout') { should match(/^CONFIG_GCC_PLUGIN_RANDSTRUCT=y$/) }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Randomize layout of sensitive kernel structures",
+    "fr": "Randomiser la disposition des structures sensibles du noyau"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Randomizing the layout of kernel data structures make it more difficult for an attacker to know the location of sensitive data.",
+    "fr": "Randomiser la disposition des structures de données du noyau rend plus difficile pour un attaquant la localisation des données sensibles."
+  },
+  "summary": {
+    "en": "Requires the kernel to be built with `CONFIG_GCC_PLUGIN_RANDSTRUCT=y`, a GCC plugin that randomizes the field layout of sensitive kernel structures at build time.",
+    "fr": "Exige que le noyau soit compilé avec `CONFIG_GCC_PLUGIN_RANDSTRUCT=y`, un plugin GCC qui randomise à la compilation la disposition des champs des structures sensibles du noyau."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** build flag of the running kernel via `/boot/config-$(uname -r)` or `/proc/config.gz`, keyed on `$(uname -r)`, so it reflects the booted image rather than a stray `.config` a fixed-path file scan might match.",
+    "fr": "Pavois lit le drapeau de compilation **effectif** du noyau en cours d'exécution via `/boot/config-$(uname -r)` ou `/proc/config.gz`, indexé sur `$(uname -r)` : il reflète l'image démarrée plutôt qu'un `.config` égaré qu'un scan à chemin fixe pourrait capter."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_GCC_PLUGIN_RANDSTRUCT=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep '^CONFIG_GCC_PLUGIN_RANDSTRUCT='`). Expected output: `CONFIG_GCC_PLUGIN_RANDSTRUCT=y`. Absent or `# ... is not set` is a failure.",
+    "fr": "Exécutez `grep '^CONFIG_GCC_PLUGIN_RANDSTRUCT=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep '^CONFIG_GCC_PLUGIN_RANDSTRUCT='`). Sortie attendue : `CONFIG_GCC_PLUGIN_RANDSTRUCT=y`. Absente ou `# ... is not set` est un échec."
+  },
+  "logs": {
+    "en": "No dedicated runtime log. A module built against a different seed fails to load with a `disagrees about version of symbol` / structure-layout error visible in `dmesg` or `journalctl -k`. Confirm the flag with `zcat /proc/config.gz | grep RANDSTRUCT`.",
+    "fr": "Aucun journal d'exécution dédié. Un module compilé avec une graine différente échoue au chargement avec une erreur `disagrees about version of symbol` / de disposition de structure visible dans `dmesg` ou `journalctl -k`. Confirmez le drapeau avec `zcat /proc/config.gz | grep RANDSTRUCT`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped: a kernel build option cannot be set by editing a file. Apply it **manually** by installing and booting a kernel compiled with `CONFIG_GCC_PLUGIN_RANDSTRUCT=y`.",
+    "fr": "Aucune remédiation automatisée n'est fournie : une option de compilation du noyau ne se règle pas en éditant un fichier. Appliquez-la **manuellement** en installant et démarrant un noyau compilé avec `CONFIG_GCC_PLUGIN_RANDSTRUCT=y`."
+  },
+  "impact": {
+    "en": "Many kernel exploits rely on knowing the **exact byte offset** of a field inside a structure (for example a credentials or function-pointer field) so they can corrupt it precisely. `CONFIG_GCC_PLUGIN_RANDSTRUCT` reorders the members of selected sensitive structures with a per-build random seed, so those offsets differ from one kernel build to the next and are not known to an attacker who only has a generic exploit. Without it, structure layout is predictable and exploitation is easier. This is a **build-time** option requiring GCC plugin support; the randomization is fixed per build, set only by booting a kernel compiled with it. **Precautions:** out-of-tree modules must be compiled against the **same RANDSTRUCT seed** as the kernel or they will fail to load with structure-mismatch errors — this is the main operational gotcha. Validate every needed driver loads on the target kernel off production before deploying. No reboot risk beyond a normal kernel swap.",
+    "fr": "De nombreux exploits noyau reposent sur la connaissance du **décalage exact en octets** d'un champ dans une structure (par exemple un champ de credentials ou de pointeur de fonction) pour le corrompre précisément. `CONFIG_GCC_PLUGIN_RANDSTRUCT` réordonne les membres de certaines structures sensibles avec une graine aléatoire propre à chaque build, de sorte que ces décalages diffèrent d'un build noyau à l'autre et restent inconnus d'un attaquant ne disposant que d'un exploit générique. Sans cela, la disposition des structures est prévisible et l'exploitation est facilitée. C'est une option **à la compilation** nécessitant le support des plugins GCC ; la randomisation est figée par build, posée uniquement en démarrant un noyau compilé avec. **Précautions :** les modules hors-arbre doivent être compilés avec la **même graine RANDSTRUCT** que le noyau, sinon ils échouent au chargement avec des erreurs d'incompatibilité de structure — c'est le principal piège opérationnel. Vérifiez que chaque pilote requis se charge sur le noyau cible hors production avant déploiement. Aucun risque de redémarrage au-delà d'un échange de noyau classique."
+  }
+}

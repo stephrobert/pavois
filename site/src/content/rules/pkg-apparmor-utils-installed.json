@@ -1,0 +1,63 @@
+{
+  "id": "pkg-apparmor-utils-installed",
+  "supported_os": [
+    "debian12",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "1.3.1.1"
+  },
+  "check": [
+    "describe package('apparmor-utils') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "apparmor-utils",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Ensure AppArmor Utils is installed",
+    "fr": "Garantir l'installation des utilitaires AppArmor"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The base `apparmor` package enforces profiles but ships no management commands. Without **apparmor-utils**, administrators cannot inspect profile state, switch profiles between enforce and complain mode, or generate new profiles — making the MAC layer effectively unmaintainable. CIS requires the utilities so AppArmor can be operated and audited.",
+    "fr": "Le paquet de base `apparmor` applique les profils mais ne fournit aucune commande de gestion. Sans **apparmor-utils**, les administrateurs ne peuvent ni inspecter l'etat des profils, ni basculer entre les modes enforce et complain, ni generer de nouveaux profils — rendant la couche MAC de fait inexploitable. CIS exige ces utilitaires pour qu'AppArmor puisse etre operee et auditee."
+  },
+  "summary": {
+    "en": "Ensures the **apparmor-utils** package is installed, providing the tools (`aa-status`, `aa-enforce`, `aa-complain`, `aa-genprof`) needed to manage AppArmor profiles.",
+    "fr": "Garantit que le paquet **apparmor-utils** est installe, fournissant les outils (`aa-status`, `aa-enforce`, `aa-complain`, `aa-genprof`) necessaires a la gestion des profils AppArmor."
+  },
+  "check_note": {
+    "en": "Pavois asks `dpkg` (via the InSpec `package` resource) whether `apparmor-utils` is installed. This reflects the **effective package state** rather than assuming the tools exist because the base framework is present.",
+    "fr": "Pavois interroge `dpkg` (via la ressource InSpec `package`) pour savoir si `apparmor-utils` est installe. Cela reflete l'**etat effectif des paquets** plutot que de supposer la presence des outils parce que le cadre de base est installe."
+  },
+  "verify": {
+    "en": "Run `dpkg -s apparmor-utils` — expected `Status: install ok installed`. Then `aa-status` should run and report the number of loaded profiles.",
+    "fr": "Executez `dpkg -s apparmor-utils` — attendu `Status: install ok installed`. Ensuite `aa-status` doit s'executer et indiquer le nombre de profils charges."
+  },
+  "logs": {
+    "en": "- `dpkg -l apparmor-utils` confirms installation; `aa-status` lists enforced/complain profiles.\n- Profile changes made with these tools surface as kernel AppArmor events in `journalctl -k | grep apparmor` and audit denials in `/var/log/audit/audit.log`.",
+    "fr": "- `dpkg -l apparmor-utils` confirme l'installation ; `aa-status` liste les profils enforce/complain.\n- Les modifications de profils faites avec ces outils apparaissent comme evenements noyau AppArmor dans `journalctl -k | grep apparmor` et comme refus d'audit dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan installs the `apparmor-utils` package (`package` resource, `install` action) when you run `pavois harden apply`. It pulls in the management commands but does not change any profile's mode.",
+    "fr": "Le plan de durcissement de Pavois installe le paquet `apparmor-utils` (ressource `package`, action `install`) lorsque vous lancez `pavois harden apply`. Il installe les commandes de gestion mais ne change le mode d'aucun profil."
+  },
+  "impact": {
+    "en": "Installing the utilities is safe and non-disruptive — it only adds command-line tools. Risk only arises from how those tools are subsequently used (e.g. `aa-enforce` on an incomplete profile could block a service); test profile changes in complain mode first.",
+    "fr": "Installer les utilitaires est sur et non perturbateur — cela n'ajoute que des outils en ligne de commande. Le risque ne provient que de l'usage ulterieur de ces outils (par exemple `aa-enforce` sur un profil incomplet pourrait bloquer un service) ; testez d'abord les changements de profils en mode complain."
+  }
+}

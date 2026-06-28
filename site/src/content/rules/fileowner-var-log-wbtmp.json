@@ -1,0 +1,67 @@
+{
+  "id": "fileowner-var-log-wbtmp",
+  "supported_os": [
+    "debian12",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.1.4.1",
+      "6.2.2.1"
+    ]
+  },
+  "check": [
+    "only_if { file('/var/log/wbtmp').exist? }",
+    "describe file('/var/log/wbtmp') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/var/log/wbtmp",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify User Who Owns /var/log/(b|w)tmp(.*|-*) File",
+    "fr": "Verifier l'utilisateur proprietaire du fichier /var/log/(b|w)tmp(.*|-*)"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `/var/log/(b|w)tmp(.*|-*)` files record the most recent successful (`wtmp`) and failed (`btmp`) login of every user. If they are not owned by **root** (uid 0), an unprivileged or compromised account could tamper with login history to **hide intrusions**, forge sessions, or erase the trail of a brute-force attack, undermining accountability and incident response.",
+    "fr": "Les fichiers `/var/log/(b|w)tmp(.*|-*)` enregistrent la derniere connexion reussie (`wtmp`) et echouee (`btmp`) de chaque utilisateur. S'ils n'appartiennent pas a **root** (uid 0), un compte non privilegie ou compromis pourrait alterer l'historique de connexion pour **dissimuler une intrusion**, falsifier des sessions ou effacer les traces d'une attaque par force brute, compromettant la tracabilite et la reponse a incident."
+  },
+  "summary": {
+    "en": "Ensures the login-record files `/var/log/wtmp` and `/var/log/btmp` (and their rotated variants) are owned by **root**.",
+    "fr": "Garantit que les fichiers d'enregistrement des connexions `/var/log/wtmp` et `/var/log/btmp` (et leurs variantes rotees) appartiennent a **root**."
+  },
+  "check_note": {
+    "en": "Pavois reads the file's **effective owner** via the InSpec `file` resource (`its('uid') { should eq 0 }`), the same uid the kernel enforces on disk — not a parsed configuration line. Ownership has no \"effective config\" command equivalent, but querying the live inode (rather than trusting a packaging manifest or expected default) guarantees Pavois reports the **actual state** after any post-install change or log rotation.",
+    "fr": "Pavois lit le **proprietaire effectif** du fichier via la ressource InSpec `file` (`its('uid') { should eq 0 }`), le meme uid que le noyau applique sur le disque — pas une ligne de configuration analysee. La propriete n'a pas d'equivalent \"config effective\" en commande, mais interroger l'inode reel (plutot que de se fier a un manifeste de paquet ou a une valeur par defaut attendue) garantit que Pavois rapporte l'**etat reel** apres toute modification post-installation ou rotation de log."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u %n' /var/log/wtmp /var/log/btmp`. Expected output shows `root 0` as the owner for each file, e.g. `root 0 /var/log/wtmp`.",
+    "fr": "Executez `stat -c '%U %u %n' /var/log/wtmp /var/log/btmp`. La sortie attendue affiche `root 0` comme proprietaire de chaque fichier, par exemple `root 0 /var/log/wtmp`."
+  },
+  "logs": {
+    "en": "Login records themselves are read with `last -f /var/log/wtmp` (successful logins) and `lastb -f /var/log/btmp` (failed logins). Ownership changes appear in the audit log if a watch is set: `grep wtmp /var/log/audit/audit.log`.",
+    "fr": "Les enregistrements de connexion se lisent avec `last -f /var/log/wtmp` (connexions reussies) et `lastb -f /var/log/btmp` (connexions echouees). Les changements de propriete apparaissent dans le journal d'audit si une regle de surveillance est posee : `grep wtmp /var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is defined for this rule, so it must be applied **manually**: `chown root:root /var/log/wtmp /var/log/btmp` (and any rotated `*.1`, `*-*` variants). On most distributions `logrotate` recreates these files with the correct owner, so also confirm the rotation template keeps `root` ownership.",
+    "fr": "Aucune remediation automatique n'est definie pour cette regle ; elle doit donc etre appliquee **manuellement** : `chown root:root /var/log/wtmp /var/log/btmp` (et toute variante rotee `*.1`, `*-*`). Sur la plupart des distributions, `logrotate` recree ces fichiers avec le bon proprietaire ; verifiez aussi que le modele de rotation conserve la propriete `root`."
+  },
+  "impact": {
+    "en": "Risk if not applied: a non-root owner can rewrite or truncate login history, letting an attacker **erase evidence** of their access. Precautions: changing ownership of these log files is non-disruptive — `root` ownership is the long-standing default and no service depends on a different owner. The only thing to watch is a custom log-collection agent that might have been mistakenly granted write access via ownership; switch it to a group or ACL instead before reverting to `root`.",
+    "fr": "Risque en cas de non-application : un proprietaire autre que root peut reecrire ou tronquer l'historique de connexion, permettant a un attaquant d'**effacer les preuves** de son acces. Precautions : changer la propriete de ces fichiers est sans impact — la propriete `root` est la valeur par defaut historique et aucun service ne depend d'un autre proprietaire. Le seul point d'attention est un agent de collecte de logs personnalise qui aurait recu un acces en ecriture par la propriete ; basculez-le sur un groupe ou une ACL avant de revenir a `root`."
+  }
+}

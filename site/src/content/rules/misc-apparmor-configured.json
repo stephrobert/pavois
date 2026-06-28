@@ -1,0 +1,78 @@
+{
+  "id": "misc-apparmor-configured",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (misc)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {
+    "bp28": "R45",
+    "nist": [
+      "AC-3(4)",
+      "AC-6(8)",
+      "AC-6(10)",
+      "CM-7(5)(b)",
+      "CM-7(2)",
+      "SC-7(21)",
+      "CM-6(a)"
+    ],
+    "stig": [
+      "UBTU-22-431015",
+      "UBTU-24-100510"
+    ]
+  },
+  "check": [
+    "describe command('aa-status 2>/dev/null | grep -qi \\'module is loaded\\' && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "apt-get install -y apparmor apparmor-utils\n# ensure the bootloader passes apparmor=1 security=apparmor (pavois's kernel-cmdline controls do this),\nsystemctl enable --now apparmor\n# then REBOOT for the cmdline to take effect, and: aa-enforce /etc/apparmor.d/*\n",
+    "reason": "enabling AppArmor needs a kernel cmdline change + reboot — do it deliberately",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Ensure AppArmor is Active and Configured",
+    "fr": "Garantir qu'AppArmor est actif et configuré"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "AppArmor implements mandatory access control: it restricts each confined program to an explicit allow-list of files, capabilities and network access, acting as a software whitelist that limits the blast radius of a compromised or vulnerable program. None of that applies if the AppArmor module is not even loaded — the entire MAC layer is then absent, leaving only standard discretionary permissions.",
+    "fr": "AppArmor implémente un contrôle d'accès obligatoire : il restreint chaque programme confiné à une liste d'autorisations explicite de fichiers, capacités et accès réseau, agissant comme une liste blanche logicielle qui limite le rayon d'impact d'un programme compromis ou vulnérable. Rien de tout cela ne s'applique si le module AppArmor n'est même pas chargé — toute la couche MAC est alors absente, ne laissant que les permissions discrétionnaires standard."
+  },
+  "summary": {
+    "en": "Confirms the **AppArmor kernel module is loaded and active**, the prerequisite for any profile-based confinement.",
+    "fr": "Confirme que le **module noyau AppArmor est chargé et actif**, prérequis de tout confinement par profil."
+  },
+  "check_note": {
+    "en": "Pavois checks `aa-status` for `module is loaded`, confirming the LSM is active in the running kernel. This queries the live kernel state rather than assuming the package is installed or trusting a config file, so it catches the case where AppArmor was disabled on the kernel command line or never started.",
+    "fr": "Pavois vérifie dans `aa-status` la présence de `module is loaded`, confirmant que le LSM est actif dans le noyau en cours. Cela interroge l'état noyau en direct plutôt que de supposer le paquet installé ou de se fier à un fichier de config, attrapant ainsi le cas où AppArmor a été désactivé sur la ligne de commande du noyau ou jamais démarré."
+  },
+  "verify": {
+    "en": "Run `aa-status` (or `aa-enabled`). Expect `apparmor module is loaded.` Cross-check with `systemctl is-active apparmor` (should be `active`) and `cat /sys/module/apparmor/parameters/enabled` (should be `Y`).",
+    "fr": "Exécutez `aa-status` (ou `aa-enabled`). Attendez-vous à `apparmor module is loaded.` Recoupez avec `systemctl is-active apparmor` (doit être `active`) et `cat /sys/module/apparmor/parameters/enabled` (doit être `Y`)."
+  },
+  "logs": {
+    "en": "Module load and AppArmor events appear in the kernel log (`journalctl -k` / `/var/log/kern.log`) and policy decisions in `/var/log/audit/audit.log` (entries tagged `apparmor=`). Service state comes from `systemctl status apparmor`.",
+    "fr": "Le chargement du module et les événements AppArmor apparaissent dans le journal noyau (`journalctl -k` / `/var/log/kern.log`) et les décisions de politique dans `/var/log/audit/audit.log` (entrées marquées `apparmor=`). L'état du service provient de `systemctl status apparmor`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule; apply it **manually**. Install AppArmor (`apt install apparmor apparmor-utils`), enable the service (`systemctl enable --now apparmor`), and ensure it is not disabled on the kernel command line — remove any `apparmor=0`/`security=` override from GRUB (`/etc/default/grub`), run `update-grub`, and reboot so the module loads at boot.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni ; appliquez-la **manuellement**. Installez AppArmor (`apt install apparmor apparmor-utils`), activez le service (`systemctl enable --now apparmor`), et assurez-vous qu'il n'est pas désactivé sur la ligne de commande du noyau — retirez tout `apparmor=0`/`security=` de GRUB (`/etc/default/grub`), lancez `update-grub` et redémarrez pour que le module se charge au boot."
+  },
+  "impact": {
+    "en": "Merely loading the AppArmor module is non-disruptive on its own; impact comes from the profiles it then enforces. If you enable AppArmor and the distribution's profiles are in enforce mode, confined services (e.g. MySQL, cups, man) may be restricted — review their profiles and `/var/log/audit/audit.log` first. Enabling AppArmor requires a reboot only if it was disabled on the kernel command line. Note AppArmor and SELinux are mutually exclusive; do not enable both.",
+    "fr": "Charger simplement le module AppArmor est en soi non perturbateur ; l'impact vient des profils qu'il applique ensuite. Si vous activez AppArmor et que les profils de la distribution sont en mode enforce, des services confinés (par ex. MySQL, cups, man) peuvent être restreints — examinez d'abord leurs profils et `/var/log/audit/audit.log`. Activer AppArmor n'exige un redémarrage que s'il était désactivé sur la ligne de commande du noyau. Notez qu'AppArmor et SELinux sont mutuellement exclusifs ; n'activez pas les deux."
+  }
+}

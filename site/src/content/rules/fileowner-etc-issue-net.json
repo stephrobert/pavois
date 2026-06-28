@@ -1,0 +1,78 @@
+{
+  "id": "fileowner-etc-issue-net",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "1.7.6",
+      "1.2.8",
+      "1.6.6"
+    ],
+    "pci-dss": "1.2.8"
+  },
+  "check": [
+    "only_if { file('/etc/issue.net').exist? }",
+    "describe file('/etc/issue.net') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/etc/issue.net",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify ownership of System Login Banner for Remote Connections",
+    "fr": "Verifier le proprietaire de la banniere de connexion systeme pour les connexions distantes"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `/etc/issue.net` file holds the pre-login banner shown to **remote** users (notably by `sshd` via the `Banner` directive). If a non-root account owns it, that user can alter or remove the legal/usage notice, weakening the enforceability of acceptable-use policy and potentially injecting misleading text. Setting **`root` (UID 0)** as the owner ensures only privileged users can change the banner, keeping the notification consistent with applicable laws, policies and standards.",
+    "fr": "Le fichier `/etc/issue.net` contient la banniere de pre-connexion affichee aux utilisateurs **distants** (notamment par `sshd` via la directive `Banner`). Si un compte non-root le possede, cet utilisateur peut modifier ou supprimer l'avis legal/d'usage, ce qui affaiblit l'opposabilite de la politique d'utilisation et permet d'injecter du texte trompeur. Definir **`root` (UID 0)** comme proprietaire garantit que seuls les utilisateurs privilegies peuvent changer la banniere, conformement aux lois, politiques et normes applicables."
+  },
+  "summary": {
+    "en": "Ensures `/etc/issue.net` (the remote pre-login banner) is owned by `root` (UID 0).",
+    "fr": "Garantit que `/etc/issue.net` (la banniere de pre-connexion distante) appartient a `root` (UID 0)."
+  },
+  "check_note": {
+    "en": "Pavois inspects the **live filesystem** with the InSpec `file('/etc/issue.net')` resource and asserts `uid == 0`, guarded by `only_if` so the test is skipped when the file is absent. Reading the actual inode owner (rather than trusting a config-management manifest or a copied template) reflects the **effective** state on disk, including any post-deployment `chown` an operator or compromised process may have performed.",
+    "fr": "Pavois inspecte le **systeme de fichiers reel** via la ressource InSpec `file('/etc/issue.net')` et verifie `uid == 0`, protege par `only_if` afin d'ignorer le test si le fichier est absent. Lire le proprietaire reel de l'inode (plutot que de se fier a un manifeste de gestion de configuration ou a un modele copie) reflete l'etat **effectif** sur le disque, y compris tout `chown` post-deploiement effectue par un operateur ou un processus compromis."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u %n' /etc/issue.net`. Expected output: `root 0 /etc/issue.net`. The numeric `0` confirms the rule even if the name service maps UID 0 to an unusual label.",
+    "fr": "Executez `stat -c '%U %u %n' /etc/issue.net`. Sortie attendue : `root 0 /etc/issue.net`. Le `0` numerique confirme la regle meme si le service de noms associe l'UID 0 a un libelle inhabituel."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default. With the audit framework, add a watch (`auditctl -w /etc/issue.net -p wa -k banner`) then inspect `/var/log/audit/audit.log` (filter on `grep 'key=\"banner\"'`). The banner itself is emitted by SSH at connect time, visible in `journalctl -u ssh` / `/var/log/auth.log`.",
+    "fr": "Les changements de proprietaire ne sont pas journalises par defaut. Avec le framework d'audit, ajoutez une surveillance (`auditctl -w /etc/issue.net -p wa -k banner`) puis consultez `/var/log/audit/audit.log` (filtrez avec `grep 'key=\"banner\"'`). La banniere elle-meme est emise par SSH a la connexion, visible dans `journalctl -u ssh` / `/var/log/auth.log`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped for this rule. Apply it manually with `chown root /etc/issue.net` (run as root or via `sudo`); the file should remain group `root` and mode `0644`.",
+    "fr": "Aucune remediation automatisee n'est fournie pour cette regle. Appliquez-la manuellement avec `chown root /etc/issue.net` (en root ou via `sudo`) ; le fichier doit rester en groupe `root` et mode `0644`."
+  },
+  "impact": {
+    "en": "A wrong owner lets a non-privileged user rewrite the legal notice users see before authenticating. **Risk of applying:** essentially none — `/etc/issue.net` is a static text file with no service dependency, so `chown root` does not interrupt logins or SSH. As a precaution, confirm the file is still readable (`0644`) afterward so the banner keeps displaying.",
+    "fr": "Un mauvais proprietaire permet a un utilisateur non privilegie de reecrire l'avis legal vu avant authentification. **Risque a l'application :** quasi nul — `/etc/issue.net` est un fichier texte statique sans dependance de service, donc `chown root` n'interrompt ni les connexions ni SSH. Par precaution, verifiez ensuite que le fichier reste lisible (`0644`) pour que la banniere continue de s'afficher."
+  }
+}

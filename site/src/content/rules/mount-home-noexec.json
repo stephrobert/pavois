@@ -1,0 +1,68 @@
+{
+  "id": "mount-home-noexec",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R28",
+    "nist": "CM-6(b)"
+  },
+  "check": [
+    "describe mount('/home') do",
+    "  its('options') { should include 'noexec' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Add noexec Option to /home",
+    "fr": "Ajouter l'option noexec à /home"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`/home` contains the writable data of individual users. Binaries there must **not** be treated as trusted, and users should not be able to execute them. Mounting `/home` with `noexec` prevents running any program stored under a user's home directory, blocking a common path for malware and unauthorized tools that an unprivileged user (or an attacker who compromised their account) could drop and run.",
+    "fr": "`/home` contient les données inscriptibles des utilisateurs. Les binaires qui s'y trouvent ne doivent **pas** être considérés comme fiables, et les utilisateurs ne devraient pas pouvoir les exécuter. Monter `/home` avec `noexec` empêche l'exécution de tout programme stocké dans un répertoire personnel, bloquant un chemin courant pour les logiciels malveillants et les outils non autorisés qu'un utilisateur non privilégié (ou un attaquant ayant compromis son compte) pourrait déposer et exécuter."
+  },
+  "summary": {
+    "en": "Mounts the `/home` partition with the `noexec` option so users cannot execute binaries from their home directories.",
+    "fr": "Monte la partition `/home` avec l'option `noexec` afin que les utilisateurs ne puissent pas exécuter de binaires depuis leur répertoire personnel."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** mount via `mount('/home')` and asserts the resolved options include `noexec`. The live mount table reflects what the kernel actually applied — including options from `systemd` mount units or a remount — which a static read of `/etc/fstab` could misrepresent. If `/home` is not a separate mount point, there is no dedicated partition to harden.",
+    "fr": "Pavois lit le montage **effectif** via `mount('/home')` et vérifie que les options résolues incluent `noexec`. La table de montage réelle reflète ce que le noyau a réellement appliqué — y compris les options des unités de montage `systemd` ou d'un remontage — qu'une lecture statique d'`/etc/fstab` pourrait mal représenter. Si `/home` n'est pas un point de montage distinct, il n'y a pas de partition dédiée à durcir."
+  },
+  "verify": {
+    "en": "Run `findmnt /home` (or `findmnt -no OPTIONS /home`) and confirm `noexec` is present, e.g. `rw,nosuid,nodev,noexec,relatime`.",
+    "fr": "Exécutez `findmnt /home` (ou `findmnt -no OPTIONS /home`) et vérifiez la présence de `noexec`, par exemple `rw,nosuid,nodev,noexec,relatime`."
+  },
+  "logs": {
+    "en": "Use `findmnt /home` to inspect the active options. Running a binary from a `noexec` mount fails with **Permission denied**; auditd `EXECVE` denials in `/var/log/audit/audit.log` can surface blocked attempts, which is a useful indicator of users running unauthorized tools.",
+    "fr": "Utilisez `findmnt /home` pour inspecter les options actives. L'exécution d'un binaire depuis un montage `noexec` échoue avec **Permission denied** ; les refus auditd `EXECVE` dans `/var/log/audit/audit.log` peuvent faire remonter les tentatives bloquées, un indicateur utile d'utilisateurs exécutant des outils non autorisés."
+  },
+  "remediation_note": {
+    "en": "This rule has **no automated harden plan**: apply it **manually**. Add `noexec` to the `/home` line in `/etc/fstab` (e.g. `defaults,nodev,nosuid,noexec`), then `mount -o remount /home` and verify with `findmnt /home`.",
+    "fr": "Cette règle **n'a pas de plan de durcissement automatisé** : appliquez-la **manuellement**. Ajoutez `noexec` à la ligne `/home` d'`/etc/fstab` (par ex. `defaults,nodev,nosuid,noexec`), puis `mount -o remount /home` et vérifiez avec `findmnt /home`."
+  },
+  "impact": {
+    "en": "`noexec` on `/home` is the **most disruptive** of the mount options: it breaks any legitimate workflow where users run programs from their home — developer toolchains, `pip install --user`, language version managers (`rbenv`, `nvm`, `cargo`), local scripts, and some build/CI agents. **Precautions:** survey real usage first; on multi-user developer or build hosts this option is often **inappropriate**. If `/home` is **not a separate partition**, never apply `noexec` to `/`, which would render the system unusable. The `remount` itself is reversible, but test interactive and automated user workflows before keeping it.",
+    "fr": "`noexec` sur `/home` est l'option de montage la **plus perturbatrice** : elle casse tout flux légitime où les utilisateurs exécutent des programmes depuis leur répertoire personnel — chaînes d'outils de développement, `pip install --user`, gestionnaires de versions (`rbenv`, `nvm`, `cargo`), scripts locaux et certains agents de build/CI. **Précautions :** étudiez d'abord l'usage réel ; sur des hôtes multi-utilisateurs de développement ou de build, cette option est souvent **inappropriée**. Si `/home` **n'est pas une partition distincte**, n'appliquez jamais `noexec` à `/`, ce qui rendrait le système inutilisable. Le `remount` est réversible, mais testez les flux interactifs et automatisés avant de le conserver."
+  }
+}

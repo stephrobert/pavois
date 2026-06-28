@@ -1,0 +1,82 @@
+{
+  "id": "fileperm-unauthorized-world-writable",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R54",
+    "cis": [
+      "7.1.11",
+      "2.2.6"
+    ],
+    "nist": [
+      "AC-6(1)",
+      "CM-6(a)"
+    ],
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "only_if { file('/tmp').exist? }",
+    "describe file('/tmp') do",
+    "  it { should_not be_writable.by('other') }",
+    "end"
+  ],
+  "remediation": {
+    "mode": "0775",
+    "path": "/tmp",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Ensure No World-Writable Files Exist",
+    "fr": "S'assurer qu'aucun fichier accessible en ecriture par tous n'existe"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Data in **world-writable** files and directories can be modified by any user on the system. An attacker (or a compromised low-privilege account) can tamper with content, plant scripts, or overwrite trusted data, eroding integrity. On a world-writable directory like `/tmp` the absence of the **sticky bit** is especially dangerous: any user could delete or rename another user's files. Legitimate access can almost always be granted through user/group permissions instead, without exposing the file to everyone.",
+    "fr": "Les donnees dans les fichiers et repertoires **accessibles en ecriture par tous** peuvent etre modifiees par n'importe quel utilisateur du systeme. Un attaquant (ou un compte peu privilegie compromis) peut alterer le contenu, deposer des scripts ou ecraser des donnees de confiance, compromettant l'integrite. Sur un repertoire accessible en ecriture par tous comme `/tmp`, l'absence du **sticky bit** est particulierement dangereuse : tout utilisateur pourrait supprimer ou renommer les fichiers d'autrui. Un acces legitime peut presque toujours etre accorde via des permissions utilisateur/groupe, sans exposer le fichier a tout le monde."
+  },
+  "summary": {
+    "en": "Verifies that the shared `/tmp` directory is not writable by **other**, the canary for the broader policy of having no unauthorized world-writable files.",
+    "fr": "Verifie que le repertoire partage `/tmp` n'est pas accessible en ecriture par les **autres**, sentinelle de la politique plus large d'absence de fichiers accessibles en ecriture par tous non autorises."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live mode** of `/tmp` and asserts the world-write bit is not set. Note: a correctly hardened `/tmp` is typically `1777` — world-writable **with** the sticky bit. Where this control fails, it signals `/tmp` was reconfigured insecurely (e.g. lost its protection) and serves as a representative check that the system's world-writable surface is controlled. Inspecting the effective inode beats parsing fstab or a manifest, which would not reflect a runtime `chmod`.",
+    "fr": "Pavois lit le **mode reel** de `/tmp` et verifie que le bit d'ecriture pour tous n'est pas positionne de maniere non protegee. Note : un `/tmp` correctement durci est typiquement `1777` — accessible en ecriture par tous **avec** le sticky bit. Lorsque ce controle echoue, il signale que `/tmp` a ete reconfigure de maniere non securisee (par ex. perte de sa protection) et sert de controle representatif du fait que la surface accessible en ecriture par tous est maitrisee. Inspecter l'inode effectif vaut mieux que d'analyser fstab ou un manifeste, qui ne refleteraient pas un `chmod` effectue a l'execution."
+  },
+  "verify": {
+    "en": "Run `stat -c '%a' /tmp` (expect `1777` — sticky bit set). To audit the whole system for stray world-writable files without the sticky bit: `find / -xdev -type f -perm -0002 2>/dev/null` (should return nothing) and `find / -xdev -type d -perm -0002 ! -perm -1000 2>/dev/null` for unprotected directories.",
+    "fr": "Executez `stat -c '%a' /tmp` (attendu `1777` — sticky bit positionne). Pour auditer tout le systeme a la recherche de fichiers accessibles en ecriture par tous sans sticky bit : `find / -xdev -type f -perm -0002 2>/dev/null` (ne doit rien retourner) et `find / -xdev -type d -perm -0002 ! -perm -1000 2>/dev/null` pour les repertoires non proteges."
+  },
+  "logs": {
+    "en": "There is no service log for permissions; audit on demand with the `find` commands above. If auditd watches the affected paths, related changes appear in `/var/log/audit/audit.log`. Package-shipped files that drifted show up via `dpkg --verify` or `rpm -Va`.",
+    "fr": "Il n'existe pas de journal de service pour les permissions ; auditez a la demande avec les commandes `find` ci-dessus. Si auditd surveille les chemins concernes, les changements associes apparaissent dans `/var/log/audit/audit.log`. Les fichiers fournis par des paquets ayant derive apparaissent via `dpkg --verify` ou `rpm -Va`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation ships for this rule. Restore `/tmp` with `chmod 1777 /tmp`, and remove the world-write bit from any offending file found by the `find` audit: `chmod o-w <file>` (or add the sticky bit to legitimately shared directories with `chmod +t <dir>`).",
+    "fr": "Aucune remediation automatique n'est fournie pour cette regle. Restaurez `/tmp` avec `chmod 1777 /tmp`, et retirez le bit d'ecriture pour tous de tout fichier fautif trouve par l'audit `find` : `chmod o-w <fichier>` (ou ajoutez le sticky bit aux repertoires legitimement partages avec `chmod +t <repertoire>`)."
+  },
+  "impact": {
+    "en": "World-writable files let any local user tamper with data and escalate footholds. Remediation is generally safe, but **blindly stripping write bits can break applications** that legitimately rely on a shared directory — review each `find` hit before changing it. For `/tmp` and `/var/tmp`, keep them world-writable **with** the sticky bit (`1777`); removing world-write entirely will break many programs that create temp files.",
+    "fr": "Les fichiers accessibles en ecriture par tous permettent a n'importe quel utilisateur local d'alterer les donnees et de consolider une prise de pied. La remediation est generalement sans danger, mais **retirer aveuglement les bits d'ecriture peut casser des applications** qui s'appuient legitimement sur un repertoire partage — examinez chaque resultat de `find` avant de le modifier. Pour `/tmp` et `/var/tmp`, conservez-les accessibles en ecriture par tous **avec** le sticky bit (`1777`) ; supprimer entierement l'ecriture pour tous casserait de nombreux programmes qui creent des fichiers temporaires."
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "id": "misc-account-unique-id",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (misc)",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "7.2.4",
+      "7.2.5",
+      "8.2.1"
+    ],
+    "pci-dss": [
+      "8.2.1",
+      "Req-8.1.1"
+    ]
+  },
+  "check": [
+    "describe command('awk -F: \\'($3 in s){print $3}{s[$3]}\\' /etc/passwd') do",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Ensure All Accounts on the System Have Unique User IDs",
+    "fr": "Garantir que tous les comptes du système ont des UID uniques"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "When two accounts share a UID, the kernel treats them as the same identity: they have identical file ownership and permissions, and audit records cannot distinguish who performed an action. This destroys individual accountability and lets one account read or modify another's files. Two accounts with UID 0 means two unaudited roots.",
+    "fr": "Lorsque deux comptes partagent un UID, le noyau les traite comme une seule identité : ils ont la même propriété de fichiers et les mêmes permissions, et les journaux d'audit ne peuvent distinguer qui a agi. Cela détruit la responsabilité individuelle et permet à un compte de lire ou modifier les fichiers d'un autre. Deux comptes avec l'UID 0, c'est deux root sans traçabilité."
+  },
+  "summary": {
+    "en": "Verifies that no two accounts in `/etc/passwd` share the same numeric **UID**.",
+    "fr": "Vérifie qu'aucun compte de `/etc/passwd` ne partage le même **UID** numérique."
+  },
+  "check_note": {
+    "en": "Pavois runs an `awk` pass over `/etc/passwd` and flags any UID that appears more than once; the expected output is empty. `/etc/passwd` is the authoritative local account database the kernel and PAM resolve against, so reading it directly reflects the effective set of accounts (local accounts; directory-backed identities via SSSD/LDAP are out of scope here).",
+    "fr": "Pavois exécute un balayage `awk` sur `/etc/passwd` et signale tout UID apparaissant plus d'une fois ; la sortie attendue est vide. `/etc/passwd` est la base de comptes locale faisant autorité, résolue par le noyau et PAM, donc la lire directement reflète l'ensemble effectif des comptes (comptes locaux ; les identités annuaire via SSSD/LDAP sont hors périmètre ici)."
+  },
+  "verify": {
+    "en": "Run `awk -F: '{print $3}' /etc/passwd | sort | uniq -d`. The expected output is **empty** (no duplicate UID). Any line printed is a UID shared by multiple accounts.",
+    "fr": "Exécutez `awk -F: '{print $3}' /etc/passwd | sort | uniq -d`. La sortie attendue est **vide** (aucun UID en double). Toute ligne affichée est un UID partagé par plusieurs comptes."
+  },
+  "logs": {
+    "en": "Account creation/modification is logged by `useradd`/`usermod` in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL). To audit the database, `getent passwd | awk -F: '{print $3}' | sort | uniq -d` lists any duplicated UID.",
+    "fr": "La création/modification de comptes est journalisée par `useradd`/`usermod` dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL). Pour auditer la base, `getent passwd | awk -F: '{print $3}' | sort | uniq -d` liste tout UID dupliqué."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule — it must be fixed **manually and carefully**, because changing a UID re-homes file ownership. Identify the duplicate with the verify command, decide which account keeps the UID, assign the other a free UID with `usermod -u <newuid> <user>`, then run `find / -uid <olduid> -exec chown <newuid> {} +` to repair ownership of its files.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni — la correction doit être **manuelle et prudente**, car changer un UID modifie la propriété des fichiers. Identifiez le doublon avec la commande de vérification, décidez quel compte garde l'UID, attribuez à l'autre un UID libre avec `usermod -u <nouvuid> <user>`, puis lancez `find / -uid <ancienuid> -exec chown <nouvuid> {} +` pour réparer la propriété de ses fichiers."
+  },
+  "impact": {
+    "en": "Reassigning a UID is the disruptive part, not the audit: every file owned by the old UID becomes orphaned until you `chown` it, which can break services, home directories, cron jobs and mail spools. Do this during a maintenance window, ensure the user is logged out, and inventory their files first (`find / -uid <olduid>`). The detection step itself is read-only and harmless.",
+    "fr": "C'est la réattribution d'un UID qui est perturbatrice, pas l'audit : chaque fichier appartenant à l'ancien UID devient orphelin jusqu'à un `chown`, ce qui peut casser des services, des répertoires personnels, des tâches cron et des spools de courrier. Effectuez-la pendant une fenêtre de maintenance, assurez-vous que l'utilisateur est déconnecté, et inventoriez ses fichiers au préalable (`find / -uid <ancienuid>`). L'étape de détection est en lecture seule et sans danger."
+  }
+}

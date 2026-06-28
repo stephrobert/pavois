@@ -1,0 +1,68 @@
+# Plumber trust policy for Pavois CI/CD (https://getplumber.io).
+# Required by `plumber analyze` / the getplumber/plumber action. GitHub Actions controls,
+# mirrored from the upstream getplumber/plumber policy. Regenerate/extend with
+# `plumber config generate`.
+version: "2.0"
+
+github:
+  controls:
+    # Third-party actions must be pinned by 40-char commit SHA (mutable tags are a
+    # supply-chain vector, cf. tj-actions/changed-files CVE-2025-30066). First-party
+    # and the deliberately-adopted Plumber/OpenSSF actions are trusted.
+    actionsMustBePinnedByCommitSha:
+      enabled: true
+      trustedOwners:
+        - actions
+        - github
+        - getplumber
+        - ossf
+
+    containerImageMustNotUseForbiddenTags:
+      enabled: true
+      containerImagesMustBePinnedByDigest: true
+
+    pipelineMustNotUseDockerInDocker:
+      enabled: true
+      detectInsecureDaemon: true
+
+    reusableWorkflowsMustNotInheritSecrets:
+      enabled: true
+
+    securityJobsMustNotBeWeakened:
+      enabled: true
+
+    workflowMustNotInjectUserInputInScripts:
+      enabled: true
+
+    workflowMustNotUseDangerousTriggers:
+      enabled: true
+
+    pipelineMustNotRunRceToolsOnUntrustedCode:
+      enabled: true
+
+    workflowsMustDeclarePermissions:
+      enabled: true
+
+    workflowMustNotGrantPermissionsWriteAll:
+      enabled: true
+
+    actionsMustNotBeArchived:
+      enabled: true
+
+    actionsMustNotCarryKnownCVEs:
+      enabled: true
+
+    pipelineMustNotEnableDebugTrace:
+      enabled: true
+      forbiddenVariables:
+        - ACTIONS_STEP_DEBUG
+        - ACTIONS_RUNNER_DEBUG
+
+    # Repository governance (needs a token with Administration:read; abstains otherwise).
+    branchMustBeProtected:
+      enabled: true
+      defaultMustBeProtected: true
+      namePatterns:
+        - main
+      allowForcePush: false
+      codeOwnerApprovalRequired: true

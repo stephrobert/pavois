@@ -1,0 +1,73 @@
+{
+  "id": "pkg-setroubleshoot-removed",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R49",
+    "cis": "1.3.1.8"
+  },
+  "check": [
+    "describe package('setroubleshoot') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "setroubleshoot",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall the setroubleshoot Package",
+    "fr": "Désinstaller le paquet setroubleshoot"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `setroubleshoot` daemon interprets SELinux AVC denials and raises desktop notifications to help diagnose policy problems. It is a GUI-oriented helper that is unnecessary on a headless server, especially where X Windows is removed or disabled. Running it adds an extra daemon and attack surface for no operational benefit, so it should be removed (ANSSI R49, CIS 1.3.1.8).",
+    "fr": "Le démon `setroubleshoot` interprète les refus AVC de SELinux et émet des notifications de bureau pour aider à diagnostiquer les problèmes de politique. C'est un assistant orienté interface graphique, inutile sur un serveur sans affichage, surtout lorsque X Window est supprimé ou désactivé. L'exécuter ajoute un démon et une surface d'attaque supplémentaires sans bénéfice opérationnel ; il doit donc être supprimé (ANSSI R49, CIS 1.3.1.8)."
+  },
+  "summary": {
+    "en": "Ensures the `setroubleshoot` package (SELinux troubleshooting daemon) is **not installed**.",
+    "fr": "Garantit que le paquet `setroubleshoot` (démon de dépannage SELinux) **n'est pas installé**."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database with `describe package('setroubleshoot')` and asserts it `should_not be_installed`, reflecting the **real installed state** rather than checking for the daemon's files on disk.",
+    "fr": "Pavois interroge la base de paquets avec `describe package('setroubleshoot')` et vérifie qu'il `should_not be_installed`, reflétant l'**état d'installation réel** plutôt que de vérifier les fichiers du démon sur le disque."
+  },
+  "verify": {
+    "en": "RPM: `rpm -q setroubleshoot` → `package setroubleshoot is not installed`. Debian/Ubuntu: `dpkg -s setroubleshoot` → `package 'setroubleshoot' is not installed`.",
+    "fr": "RPM : `rpm -q setroubleshoot` → `package setroubleshoot is not installed`. Debian/Ubuntu : `dpkg -s setroubleshoot` → `package 'setroubleshoot' is not installed`."
+  },
+  "logs": {
+    "en": "Removal is recorded by the package manager: `dnf history` / `/var/log/dnf.rpm.log` (RPM) or `/var/log/dpkg.log` (Debian/Ubuntu); filter with `grep setroubleshoot`. SELinux denials themselves remain in `/var/log/audit/audit.log` (type=AVC). Confirm state with `rpm -q setroubleshoot`.",
+    "fr": "La suppression est enregistrée par le gestionnaire de paquets : `dnf history` / `/var/log/dnf.rpm.log` (RPM) ou `/var/log/dpkg.log` (Debian/Ubuntu) ; filtrez avec `grep setroubleshoot`. Les refus SELinux eux-mêmes restent dans `/var/log/audit/audit.log` (type=AVC). Confirmez l'état avec `rpm -q setroubleshoot`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan removes the `setroubleshoot` package (resource `package`, action `remove`). Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois supprime le paquet `setroubleshoot` (ressource `package`, action `remove`). Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Removing setroubleshoot only disables the friendly SELinux notification/analysis helper; SELinux enforcement and AVC auditing are unaffected, so there is no availability or lockout risk. Administrators lose `sealert` convenience but can still analyse raw denials in `/var/log/audit/audit.log` or with `ausearch -m AVC`.",
+    "fr": "Supprimer setroubleshoot ne désactive que l'assistant convivial de notification/analyse SELinux ; l'application de SELinux et l'audit AVC ne sont pas affectés, donc aucun risque de disponibilité ni de verrouillage. Les administrateurs perdent la commodité de `sealert` mais peuvent toujours analyser les refus bruts dans `/var/log/audit/audit.log` ou avec `ausearch -m AVC`."
+  }
+}

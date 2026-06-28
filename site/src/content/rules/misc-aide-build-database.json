@@ -1,0 +1,82 @@
+{
+  "id": "misc-aide-build-database",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (misc)",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R76",
+    "cis": [
+      "6.1.1",
+      "11.5.2",
+      "6.3.1"
+    ],
+    "nist": "CM-6(a)",
+    "pci-dss": [
+      "11.5.2",
+      "Req-11.5"
+    ],
+    "stig": [
+      "UBTU-22-651015",
+      "UBTU-24-100110"
+    ]
+  },
+  "check": [
+    "describe command('command -v aide >/dev/null 2>&1 && ls /var/lib/aide/aide.db* >/dev/null 2>&1 && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Build and Test AIDE Database",
+    "fr": "Construire et tester la base de données AIDE"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "AIDE (Advanced Intrusion Detection Environment) detects unauthorized changes to files by comparing the current state against a baseline. That baseline is only useful if a \"known-good\" database has actually been built from a trusted installation. Without an initialized database, AIDE cannot tell whether a binary, config or library was tampered with — silently providing no protection.",
+    "fr": "AIDE (Advanced Intrusion Detection Environment) détecte les modifications non autorisées de fichiers en comparant l'état courant à une référence. Cette référence n'est utile que si une base « known-good » a réellement été construite à partir d'une installation de confiance. Sans base initialisée, AIDE ne peut dire si un binaire, une config ou une bibliothèque a été altéré — n'offrant silencieusement aucune protection."
+  },
+  "summary": {
+    "en": "Ensures **AIDE** is installed and that an initial integrity database exists under `/var/lib/aide/aide.db*`.",
+    "fr": "Garantit que **AIDE** est installé et qu'une base d'intégrité initiale existe sous `/var/lib/aide/aide.db*`."
+  },
+  "check_note": {
+    "en": "Pavois confirms the `aide` binary is on `PATH` and that an `aide.db*` file is present in `/var/lib/aide/`. It checks the actual on-disk database rather than just the package state, because a package can be installed without the database ever having been initialized — the effective protective artifact is the database file itself.",
+    "fr": "Pavois confirme que le binaire `aide` est dans le `PATH` et qu'un fichier `aide.db*` est présent dans `/var/lib/aide/`. Il vérifie la base réellement sur disque, pas seulement l'état du paquet, car un paquet peut être installé sans que la base ait jamais été initialisée — l'artefact protecteur effectif est le fichier de base lui-même."
+  },
+  "verify": {
+    "en": "Run `command -v aide && ls -l /var/lib/aide/aide.db*`. Expect the binary path plus a non-empty database file. A manual check with `aide --check` (RHEL) or `aide.wrapper --check` (Debian) should report no unexpected changes on a clean system.",
+    "fr": "Exécutez `command -v aide && ls -l /var/lib/aide/aide.db*`. Attendez-vous au chemin du binaire ainsi qu'à un fichier de base non vide. Une vérification manuelle avec `aide --check` (RHEL) ou `aide.wrapper --check` (Debian) doit ne signaler aucun changement inattendu sur un système propre."
+  },
+  "logs": {
+    "en": "AIDE run results are written to `/var/log/aide/aide.log` (Debian) or to the report path in `/etc/aide.conf`, and often mailed to root. Confirm the package with `dpkg -l aide` / `rpm -q aide`, and the database file with `ls -l /var/lib/aide/aide.db*`.",
+    "fr": "Les résultats des exécutions d'AIDE sont écrits dans `/var/log/aide/aide.log` (Debian) ou vers le chemin de rapport de `/etc/aide.conf`, et souvent envoyés par mail à root. Confirmez le paquet avec `dpkg -l aide` / `rpm -q aide`, et le fichier de base avec `ls -l /var/lib/aide/aide.db*`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule; apply it **manually**. Install AIDE (`apt install aide` / `dnf install aide`), then initialize the baseline: on Debian/Ubuntu `aideinit` (writes `aide.db.new`, which you move to `aide.db`); on RHEL `aide --init` then `mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz`. Build the baseline **only on a trusted, freshly installed system**.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni ; appliquez-la **manuellement**. Installez AIDE (`apt install aide` / `dnf install aide`), puis initialisez la référence : sur Debian/Ubuntu `aideinit` (écrit `aide.db.new`, que vous déplacez vers `aide.db`) ; sur RHEL `aide --init` puis `mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz`. Construisez la référence **uniquement sur un système de confiance fraîchement installé**."
+  },
+  "impact": {
+    "en": "The critical precaution is trust of the baseline: if you initialize the database on an already-compromised host, AIDE will treat the attacker's files as known-good and never flag them. Build it before exposing the machine to the network. Operationally, the initial scan is I/O heavy and can take minutes on large filesystems, and you must rebuild the database (`aide --update`) after every legitimate change (package updates, config edits) or you will drown in false positives.",
+    "fr": "La précaution essentielle est la confiance dans la référence : si vous initialisez la base sur un hôte déjà compromis, AIDE considérera les fichiers de l'attaquant comme sains et ne les signalera jamais. Construisez-la avant d'exposer la machine au réseau. Sur le plan opérationnel, le balayage initial est gourmand en E/S et peut prendre plusieurs minutes sur de grands systèmes de fichiers, et vous devez reconstruire la base (`aide --update`) après chaque changement légitime (mises à jour de paquets, modifications de config), sous peine de faux positifs en masse."
+  }
+}

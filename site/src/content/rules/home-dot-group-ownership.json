@@ -1,0 +1,72 @@
+{
+  "id": "home-dot-group-ownership",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (home dirs)",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R50",
+    "cis": [
+      "7.2.9",
+      "7.2.10"
+    ]
+  },
+  "check": [
+    "describe command('awk -F: \\'($3>=1000 && $3!=65534 && $6!=\"/\"){print $3\":\"$4\":\"$6}\\' /etc/passwd | while IFS=: read u g h; do [ -d \"$h\" ] && timeout 60 find -P \"$h\" -maxdepth 1 -type f -name \\'.[^.]*\\' ! -gid \"$g\" -print 2>/dev/null; done | head -1') do",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "User Initialization Files Must Be Group-Owned By The Primary Group",
+    "fr": "Les fichiers d'initialisation utilisateur doivent appartenir au groupe primaire"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Local initialization files configure a user's shell environment at login. If a dotfile is group-owned by a group the user does not control, a member of that group could **modify the file and execute code in the victim's session** the next time they log in — a privilege/account compromise on logon.",
+    "fr": "Les fichiers d'initialisation locaux configurent l'environnement shell de l'utilisateur à la connexion. Si un fichier caché appartient à un groupe que l'utilisateur ne maîtrise pas, un membre de ce groupe pourrait **modifier le fichier et exécuter du code dans la session de la victime** à sa prochaine connexion — une compromission du compte au logon."
+  },
+  "summary": {
+    "en": "Ensures the dotfiles (e.g. `.bashrc`, `.profile`) at the top level of each interactive user's home are group-owned by that user's **primary group**.",
+    "fr": "Garantit que les fichiers cachés (par ex. `.bashrc`, `.profile`) à la racine du home de chaque utilisateur interactif appartiennent au **groupe primaire** de cet utilisateur."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live** `/etc/passwd` to learn each interactive user's UID, primary GID and home, then runs `find -maxdepth 1 -type f -name '.[^.]*' ! -gid \"$g\"` against the home that actually exists on disk. It compares against the **effective primary GID** from passwd, so it catches dotfiles left group-owned by a stale or shared group, regardless of any skeleton template.",
+    "fr": "Pavois lit le `/etc/passwd` **réel** pour connaître l'UID, le GID primaire et le home de chaque utilisateur interactif, puis exécute `find -maxdepth 1 -type f -name '.[^.]*' ! -gid \"$g\"` sur le home présent sur disque. Il compare au **GID primaire effectif** issu de passwd, détectant ainsi les fichiers cachés appartenant à un groupe obsolète ou partagé, quel que soit le modèle de squelette."
+  },
+  "verify": {
+    "en": "For a user, run `find ~user -maxdepth 1 -type f -name '.[^.]*' ! -gid $(id -g user) -printf '%p %g\\n'`. Expected: **no output** (every dotfile is group-owned by the primary group).",
+    "fr": "Pour un utilisateur, exécutez `find ~user -maxdepth 1 -type f -name '.[^.]*' ! -gid $(id -g user) -printf '%p %g\\n'`. Attendu : **aucune sortie** (chaque fichier caché appartient au groupe primaire)."
+  },
+  "logs": {
+    "en": "There is no event log; ownership is inspected directly. Audit with `ls -la ~user | grep '^\\.'` or `stat -c '%U %G %n' ~user/.*`. If file-integrity auditing is active, group-ownership changes (`chgrp`) on these paths appear in `/var/log/audit/audit.log` under the relevant watch key.",
+    "fr": "Il n'y a pas de journal d'événements ; l'appartenance est inspectée directement. Auditez avec `ls -la ~user | grep '^\\.'` ou `stat -c '%U %G %n' ~user/.*`. Si l'audit d'intégrité des fichiers est actif, les changements de groupe (`chgrp`) sur ces chemins apparaissent dans `/var/log/audit/audit.log` sous la clé de surveillance concernée."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped (`remediation` is empty): **apply manually**. For each flagged user, reset group ownership of their top-level dotfiles to the primary group, e.g. `find ~user -maxdepth 1 -type f -name '.[^.]*' ! -gid $(id -g user) -exec chgrp $(id -gn user) {} +`.",
+    "fr": "Aucune remédiation automatique n'est fournie (`remediation` est vide) : **appliquez manuellement**. Pour chaque utilisateur signalé, réaffectez le groupe de ses fichiers cachés de premier niveau au groupe primaire, par ex. `find ~user -maxdepth 1 -type f -name '.[^.]*' ! -gid $(id -g user) -exec chgrp $(id -gn user) {} +`."
+  },
+  "impact": {
+    "en": "Leaving dotfiles owned by a shared group enables code execution in another user's session at logon. **Precautions before applying:** confirm the intended primary group with `id -gn <user>` first — some sites deliberately use a shared collaboration group; blindly running `chgrp` could break workflows or revoke needed group access. Apply per-user and avoid recursing into bind-mounted or symlinked subtrees.",
+    "fr": "Laisser des fichiers cachés appartenant à un groupe partagé permet l'exécution de code dans la session d'un autre utilisateur au logon. **Précautions avant application :** confirmez d'abord le groupe primaire voulu avec `id -gn <user>` — certains environnements utilisent volontairement un groupe de collaboration partagé ; lancer `chgrp` aveuglément pourrait casser des flux de travail ou retirer un accès de groupe nécessaire. Appliquez par utilisateur et évitez de descendre dans des sous-arbres montés ou liés par lien symbolique."
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "id": "findloop-file-ownerships-var-log",
+  "supported_os": [
+    "debian12"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0"
+  },
+  "severity": "medium",
+  "domain": "Filesystem (scan)",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R71",
+    "cis": "6.1.4.1",
+    "pci-dss": "10.3.2"
+  },
+  "check": [
+    "describe command('timeout 90 find /var/log -type f ! -user root ! -user syslog 2>/dev/null') do",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog -exec chgrp root {} + 2>/dev/null; true",
+    "name": "fix-varlog-ownership",
+    "not_if": "test -z \"$(find /var/log -type f \\( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog \\) 2>/dev/null | head -1)\"",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Verify user ownership of log files",
+    "fr": "Vérifier l'utilisateur propriétaire des fichiers de journaux"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Log files under `/var/log` record errors, authentication events and audit traces that are essential for incident response. If a log file is owned by a user other than **root** or **syslog**, that user can read sensitive data (credentials surfacing in error messages, session details) or rewrite the records to conceal an intrusion. Restricting the file owner keeps log access limited to the logging subsystem and trusted administrators, preserving the integrity of the audit trail.",
+    "fr": "Les fichiers de journaux sous `/var/log` enregistrent les erreurs, les événements d'authentification et les traces d'audit essentiels à la réponse à incident. Si un fichier de journal appartient à un utilisateur autre que **root** ou **syslog**, celui-ci peut lire des données sensibles (identifiants apparaissant dans des messages d'erreur, détails de session) ou réécrire les enregistrements pour dissimuler une intrusion. Restreindre le propriétaire du fichier limite l'accès au sous-système de journalisation et aux administrateurs de confiance, préservant l'intégrité de la piste d'audit."
+  },
+  "summary": {
+    "en": "Ensures every file under `/var/log` is owned by the **root** or **syslog** user.",
+    "fr": "Garantit que chaque fichier sous `/var/log` appartient à l'utilisateur **root** ou **syslog**."
+  },
+  "check_note": {
+    "en": "Pavois runs `find /var/log -type f ! -user root ! -user syslog` and expects **empty output** — any listed path is a log file with an unexpected owner. Auditing the live filesystem (rather than a static inventory) catches log files created at runtime by services, rotated logs and operator-dropped files that a file-list audit would never see.",
+    "fr": "Pavois lance `find /var/log -type f ! -user root ! -user syslog` et attend une **sortie vide** : tout chemin listé est un fichier de journal au propriétaire inattendu. Auditer le système de fichiers réel (plutôt qu'un inventaire statique) détecte les journaux créés à l'exécution par les services, les journaux après rotation et les fichiers déposés manuellement qu'un audit de liste de fichiers ne verrait jamais."
+  },
+  "verify": {
+    "en": "Run the scan manually:\n\n```\nfind /var/log -type f ! -user root ! -user syslog\n```\n\n**Expected output: nothing** (empty). Inspect any printed file with `ls -l <file>`.",
+    "fr": "Lancez l'analyse manuellement :\n\n```\nfind /var/log -type f ! -user root ! -user syslog\n```\n\n**Sortie attendue : rien** (vide). Inspectez tout fichier affiché avec `ls -l <fichier>`."
+  },
+  "logs": {
+    "en": "List offending files and their owner with `find /var/log -type f ! -user root ! -user syslog -printf '%u %p\\n'`. After remediation, confirm with `ls -l /var/log/`. Ownership changes are recorded only if an `auditd` watch on `chown` is configured.",
+    "fr": "Listez les fichiers fautifs et leur propriétaire avec `find /var/log -type f ! -user root ! -user syslog -printf '%u %p\\n'`. Après remédiation, vérifiez avec `ls -l /var/log/`. Les changements de propriétaire ne sont enregistrés que si une surveillance `auditd` sur `chown` est configurée."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan runs an `exec` resource (`fix-varlog-ownership`) that re-owns every file in `/var/log` whose user is not **root**/**syslog** back to `root` (and, in the same step, fixes group ownership). A `not_if` guard skips the change when nothing is out of policy, making the run idempotent. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois exécute une ressource `exec` (`fix-varlog-ownership`) qui réattribue à `root` tout fichier de `/var/log` dont l'utilisateur n'est pas **root**/**syslog** (et corrige le groupe dans la même étape). Une garde `not_if` ignore l'opération quand rien n'est hors politique, rendant l'exécution idempotente. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Risk if left as-is: log files owned by an unprivileged user can leak secrets or be rewritten to erase evidence of compromise. Before applying: some daemons (e.g. web or database servers) deliberately write logs owned by their own service user; forcing them to `root` can break log rotation or stop the daemon writing. Review the offending files first and exclude legitimate service-owned logs rather than blindly re-owning the whole tree.",
+    "fr": "Risque en l'état : des fichiers de journaux appartenant à un utilisateur non privilégié peuvent fuiter des secrets ou être réécrits pour effacer les traces d'une compromission. Avant d'appliquer : certains démons (serveurs web ou bases de données) écrivent volontairement des journaux appartenant à leur propre utilisateur de service ; les forcer à `root` peut casser la rotation ou empêcher le démon d'écrire. Examinez d'abord les fichiers fautifs et excluez les journaux légitimes appartenant à un service plutôt que de réattribuer toute l'arborescence aveuglément."
+  }
+}

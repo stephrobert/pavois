@@ -1,0 +1,70 @@
+# Behavioral validation probes — pavois-owned, extensible. Each probe ATTEMPTS the
+# forbidden action and confirms the protection actually holds. This is the strongest,
+# tool-independent proof that a remediation is OPERATIONAL — beyond reading the config,
+# it checks the threat is really blocked (a config can say "deny" yet not enforce).
+#
+# run:    on-target (executed over SSH on the host) | from-host (run locally, e.g. an
+#         inbound connection attempt against the target)
+# cmd:    shell command; {host} = target host, {target} = full user@host
+# expect: fail (the action MUST fail = protection holds) | success (MUST succeed) |
+#         empty (stdout must be empty)
+
+probes:
+  - id: root-ssh-refused
+    title: "Root SSH login is refused (PermitRootLogin)"
+    run: from-host
+    cmd: 'ssh -o BatchMode=yes -o ConnectTimeout=6 -o StrictHostKeyChecking=no -F /dev/null root@{host} true'
+    expect: fail
+
+  - id: no-insecure-clients
+    title: "Insecure network clients are absent (telnet/rsh/ftp/tftp)"
+    run: on-target
+    cmd: 'for b in telnet rsh rlogin ftp tftp talk; do command -v "$b" >/dev/null 2>&1 && echo "$b"; done; true'
+    expect: empty
+
+  - id: aslr-active
+    title: "ASLR is actually randomizing the address space"
+    run: on-target
+    cmd: 'a=$(grep -m1 stack /proc/self/maps); b=$(grep -m1 stack /proc/self/maps); [ -n "$a" ] && [ "$a" != "$b" ]'
+    expect: success
+
+  - id: auditd-enabled
+    title: "Auditd is running and accepting rules"
+    run: on-target
+    cmd: 'sudo auditctl -s 2>/dev/null | grep -qE "enabled (1|2)"'
+    expect: success
+
+  # For each audit category: TRIGGER the audited action, then confirm auditd RECORDED it.
+  #
+  # Detection counts `key="<k>"` records in the raw log BEFORE and AFTER the action
+  # (delta > 0 = recorded). We deliberately do NOT use ausearch: it has documented bugs
+  # where -ts/date filtering and late-timestamp events make it return "no matches" even
+  # though the events ARE in /var/log/audit/audit.log — linux-audit/audit-userspace
+  # issues #50 and #148. Upstream/Red Hat advice is to grep the raw log directly.
+  # Matching the `key=` field (not the filename) avoids execve noise where a command's own
+  # arguments mention the file. CIS syscall rules also filter `-F auid>=1000`, so we stamp
+  # a real loginuid first (a non-interactive context can have an unset auid = 4294967295,
+  # which the rule excludes) — reproducing a real admin action.
+  - id: audit-perm-mod
+    title: "Auditd RECORDS a permission change (perm_mod)"
+    run: on-target
+    cmd: 'sudo sh -c "echo 1000 > /proc/self/loginuid 2>/dev/null; B=\$(grep -cE ''key=.perm_mod'' /var/log/audit/audit.log); F=/tmp/pavois-audit-pm; : > \$F; chmod 600 \$F; sleep 1; A=\$(grep -cE ''key=.perm_mod'' /var/log/audit/audit.log); rm -f \$F; [ \$A -gt \$B ]"'
+    expect: success
+
+  - id: audit-delete
+    title: "Auditd RECORDS a file deletion (delete)"
+    run: on-target
+    cmd: 'sudo sh -c "echo 1000 > /proc/self/loginuid 2>/dev/null; B=\$(grep -cE ''key=.delete'' /var/log/audit/audit.log); F=/tmp/pavois-audit-del; : > \$F; rm -f \$F; sleep 1; A=\$(grep -cE ''key=.delete'' /var/log/audit/audit.log); [ \$A -gt \$B ]"'
+    expect: success
+
+  - id: audit-access-denied
+    title: "Auditd RECORDS a denied file access (access)"
+    run: on-target
+    cmd: 'sudo sh -c "echo 1000 > /proc/self/loginuid 2>/dev/null; B=\$(grep -cE ''key=.access'' /var/log/audit/audit.log); setpriv --reuid=1000 --regid=1000 --clear-groups cat /etc/shadow >/dev/null 2>&1; sleep 1; A=\$(grep -cE ''key=.access'' /var/log/audit/audit.log); [ \$A -gt \$B ]"'
+    expect: success
+
+  - id: audit-identity
+    title: "Auditd RECORDS a change to an identity file (audit_rules_usergroup_modification)"
+    run: on-target
+    cmd: 'sudo sh -c "B=\$(grep -cE ''key=.audit_rules_usergroup_modification'' /var/log/audit/audit.log); chmod --reference=/etc/passwd /etc/passwd; sleep 1; A=\$(grep -cE ''key=.audit_rules_usergroup_modification'' /var/log/audit/audit.log); [ \$A -gt \$B ]"'
+    expect: success

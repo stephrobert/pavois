@@ -1,0 +1,95 @@
+{
+  "id": "time-sync-present",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Time synchronization",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {
+    "bp28": "R71",
+    "cis": [
+      "2.3.1",
+      "2.3.1.1",
+      "2.3.2"
+    ],
+    "nist": [
+      "3.3.7",
+      "SC-45"
+    ],
+    "pci-dss": "10.6.1",
+    "stig": [
+      "UBTU-22-215020",
+      "UBTU-24-100010"
+    ]
+  },
+  "check": [
+    "describe command('for s in chrony chronyd systemd-timesyncd ntp ntpsec; do systemctl is-active --quiet \"$s\" && { echo ok; exit 0; }; done; echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "default": "chrony",
+    "options": {
+      "chrony": {
+        "package": "chrony",
+        "service": "chrony"
+      },
+      "timesyncd": {
+        "package": "systemd-timesyncd",
+        "service": "systemd-timesyncd"
+      }
+    },
+    "resource": "choose"
+  },
+  "title": {
+    "en": "A time-synchronization service is active",
+    "fr": "Un service de synchronisation de l'heure est actif"
+  },
+  "needs_translation": [],
+  "summary": {
+    "en": "Ensures at least one **time-synchronization daemon** (`chrony`, `chronyd`, `systemd-timesyncd`, `ntp` or `ntpsec`) is **active** so the system clock stays accurate.",
+    "fr": "Garantit qu'au moins un **demon de synchronisation de l'heure** (`chrony`, `chronyd`, `systemd-timesyncd`, `ntp` ou `ntpsec`) est **actif** afin que l'horloge systeme reste exacte."
+  },
+  "rationale": {
+    "en": "Accurate, synchronized clocks are a prerequisite for **trustworthy security**. Without time sync, log timestamps drift across hosts, making **incident correlation and forensics** unreliable; **TLS/Kerberos** authentication breaks (certificate validity windows, ticket lifetimes); scheduled jobs and certificate renewals fire at the wrong time; and **PCI-DSS / ANSSI** auditing requirements that depend on a common time reference cannot be met.",
+    "fr": "Des horloges precises et synchronisees sont un prerequis a une **securite fiable**. Sans synchronisation, les horodatages des journaux derivent d'un hote a l'autre, rendant la **correlation d'incidents et l'analyse forensique** peu fiables ; l'authentification **TLS/Kerberos** echoue (fenetres de validite des certificats, duree de vie des tickets) ; les taches planifiees et les renouvellements de certificats se declenchent au mauvais moment ; et les exigences d'audit **PCI-DSS / ANSSI** reposant sur une reference temporelle commune ne peuvent etre satisfaites."
+  },
+  "check_note": {
+    "en": "Pavois asks **systemd for the live unit state** with `systemctl is-active`, iterating over every known time daemon and passing if any one is running. This audits the **effective** service status, not the presence of a config file or an installed package: a daemon can be installed and configured yet `masked`, `failed` or simply stopped. Only `is-active` reflects whether the clock is actually being disciplined right now.",
+    "fr": "Pavois interroge **systemd sur l'etat reel de l'unite** via `systemctl is-active`, en parcourant chaque demon de temps connu et en validant des que l'un d'eux tourne. Cela audite le statut **effectif** du service, pas la presence d'un fichier de configuration ni d'un paquet installe : un demon peut etre installe et configure tout en etant `masked`, `failed` ou simplement arrete. Seul `is-active` reflete si l'horloge est reellement disciplinee a l'instant present."
+  },
+  "verify": {
+    "en": "Check the running daemon, e.g. `systemctl is-active chrony` (expected `active`), and confirm it is actually tracking a source:\n\n```\n# chrony\nchronyc tracking\n\n# systemd-timesyncd\ntimedatectl status   # \"System clock synchronized: yes\"\n```",
+    "fr": "Verifiez le demon actif, par ex. `systemctl is-active chrony` (attendu `active`), et confirmez qu'il suit reellement une source :\n\n```\n# chrony\nchronyc tracking\n\n# systemd-timesyncd\ntimedatectl status   # \"System clock synchronized: yes\"\n```"
+  },
+  "logs": {
+    "en": "Use `systemctl show <unit>` for the unit state and `journalctl -u chrony` (or `-u systemd-timesyncd`) for sync events, source selection and step/slew messages. `timedatectl status` summarizes whether the clock is synchronized and which service is in charge; `chronyc sources -v` lists upstream peers and their reachability.",
+    "fr": "Utilisez `systemctl show <unite>` pour l'etat de l'unite et `journalctl -u chrony` (ou `-u systemd-timesyncd`) pour les evenements de synchronisation, la selection de source et les messages de saut/glissement. `timedatectl status` resume si l'horloge est synchronisee et quel service en a la charge ; `chronyc sources -v` liste les pairs amont et leur joignabilite."
+  },
+  "remediation_note": {
+    "en": "The harden plan uses a **`choose`** resource: by **default** it installs and enables **`chrony`** (package `chrony`, service `chrony`), with **`timesyncd`** (`systemd-timesyncd`) as an alternative. `pavois harden apply` installs the chosen package and activates its service so a synchronization daemon is running. Pick `timesyncd` on minimal/container-adjacent hosts where chrony is undesirable.",
+    "fr": "Le plan de durcissement utilise une ressource **`choose`** : par **defaut** il installe et active **`chrony`** (paquet `chrony`, service `chrony`), avec **`timesyncd`** (`systemd-timesyncd`) en alternative. `pavois harden apply` installe le paquet choisi et active son service afin qu'un demon de synchronisation tourne. Choisissez `timesyncd` sur les hotes minimalistes ou chrony n'est pas souhaitable."
+  },
+  "impact": {
+    "en": "Enabling a time daemon is low-risk. Two cautions: (1) **only one** daemon may discipline the clock - `chrony`, `ntp/ntpsec` and `systemd-timesyncd` conflict, so enabling chrony should be paired with disabling/masking timesyncd to avoid them fighting over the clock; (2) on first sync a large offset can cause a **clock step** (a sudden jump), which can confuse long-running jobs, databases or TLS sessions - on sensitive hosts prefer slewing (chrony's default) and ensure the host can reach its NTP servers (outbound **UDP/123**) before relying on it. Inside containers that share the host clock, no in-container daemon is needed.",
+    "fr": "Activer un demon de temps presente peu de risque. Deux precautions : (1) **un seul** demon doit discipliner l'horloge - `chrony`, `ntp/ntpsec` et `systemd-timesyncd` entrent en conflit, donc activer chrony doit s'accompagner de la desactivation/masquage de timesyncd pour eviter qu'ils se disputent l'horloge ; (2) a la premiere synchronisation, un grand ecart peut provoquer un **saut d'horloge** (un bond soudain), pouvant perturber les taches longues, les bases de donnees ou les sessions TLS - sur les hotes sensibles, preferez le glissement (defaut de chrony) et assurez-vous que l'hote peut joindre ses serveurs NTP (**UDP/123** sortant) avant de vous y fier. Dans les conteneurs qui partagent l'horloge de l'hote, aucun demon interne n'est necessaire."
+  }
+}

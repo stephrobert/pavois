@@ -1,0 +1,61 @@
+{
+  "id": "fileowner-cron-yearly",
+  "supported_os": [
+    "fedora",
+    "rhel8"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "2.4.1.7"
+  },
+  "check": [
+    "only_if { file('/etc/cron.yearly').exist? }",
+    "describe file('/etc/cron.yearly') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/etc/cron.yearly",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Owner on cron.yearly",
+    "fr": "Vérifier le propriétaire de cron.yearly"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `/etc/cron.yearly` directory holds scripts that `cron` runs **as root** once a year. If it is not owned by `root`, an unprivileged user who can write to it can drop or alter a script and have it executed with full root privileges — a direct **privilege-escalation** path. Restricting ownership to `root` ensures only the administrator controls scheduled yearly tasks.",
+    "fr": "Le répertoire `/etc/cron.yearly` contient des scripts que `cron` exécute **en tant que root** une fois par an. S'il n'appartient pas à `root`, un utilisateur non privilégié pouvant y écrire peut déposer ou modifier un script et le faire exécuter avec les pleins privilèges root — une voie directe d'**élévation de privilèges**. Restreindre la propriété à `root` garantit que seul l'administrateur contrôle les tâches annuelles planifiées."
+  },
+  "summary": {
+    "en": "Ensures the `/etc/cron.yearly` directory is owned by the `root` user (UID 0).",
+    "fr": "Garantit que le répertoire `/etc/cron.yearly` appartient à l'utilisateur `root` (UID 0)."
+  },
+  "check_note": {
+    "en": "Pavois stats the live inode of `/etc/cron.yearly` and asserts its **owner is UID 0**. The check is skipped if the directory does not exist. Reading the actual filesystem metadata (not a config file) reflects the **effective** ownership cron will honor at runtime, including any post-install change.",
+    "fr": "Pavois interroge l'inode réel de `/etc/cron.yearly` et vérifie que son **propriétaire est l'UID 0**. Le contrôle est ignoré si le répertoire n'existe pas. Lire les métadonnées réelles du système de fichiers (et non un fichier de configuration) reflète la propriété **effective** que cron respectera à l'exécution, y compris toute modification postérieure à l'installation."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /etc/cron.yearly`. The expected output is `root 0`.",
+    "fr": "Exécutez `stat -c '%U %u' /etc/cron.yearly`. La sortie attendue est `root 0`."
+  },
+  "logs": {
+    "en": "Cron execution is recorded in `/var/log/cron` (RHEL family) or via `journalctl -u crond`. Ownership changes can be tracked with auditd if a watch is set: `auditctl -w /etc/cron.yearly -p wa`.",
+    "fr": "L'exécution de cron est consignée dans `/var/log/cron` (famille RHEL) ou via `journalctl -u crond`. Les changements de propriété peuvent être suivis avec auditd si une surveillance est posée : `auditctl -w /etc/cron.yearly -p wa`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so it must be fixed **manually**: run `chown root /etc/cron.yearly` to restore root ownership.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être corrigée **manuellement** : exécutez `chown root /etc/cron.yearly` pour rétablir la propriété root."
+  },
+  "impact": {
+    "en": "If the directory is owned by a non-root user, that user can schedule arbitrary root-level commands, leading to **full system compromise**. Fixing it is low-risk: `chown root /etc/cron.yearly` only changes the owner, not the scripts or their schedule. Verify no legitimate automation relies on a non-root owner before applying — almost never the case for system cron directories.",
+    "fr": "Si le répertoire appartient à un utilisateur non root, celui-ci peut planifier des commandes arbitraires de niveau root, menant à une **compromission complète du système**. La correction présente peu de risque : `chown root /etc/cron.yearly` ne change que le propriétaire, ni les scripts ni leur planification. Vérifiez qu'aucune automatisation légitime ne dépend d'un propriétaire non root avant d'appliquer — ce qui n'arrive quasiment jamais pour les répertoires cron système."
+  }
+}

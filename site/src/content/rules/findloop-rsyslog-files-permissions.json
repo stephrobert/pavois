@@ -1,0 +1,63 @@
+{
+  "id": "findloop-rsyslog-files-permissions",
+  "supported_os": [
+    "almalinux9",
+    "debian13",
+    "fedora"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian13": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Filesystem (scan)",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R71",
+    "cis": [
+      "6.2.4.1",
+      "6.2.6.1"
+    ],
+    "pci-dss": "10.3.1"
+  },
+  "check": [
+    "describe command('timeout 90 find /var/log -type f -perm /037 2>/dev/null') do",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Ensure System Log Files Have Correct Permissions",
+    "fr": "S'assurer que les fichiers journaux systeme ont les permissions correctes"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Log files can contain valuable information about system configuration and activity. If the system log files are not protected, unauthorized users could read them to gather reconnaissance, or change the logged data to eliminate its forensic value — hiding the traces of an intrusion. Keeping log permissions tight (no group-write, no other-access) preserves both their confidentiality and their integrity for investigations.",
+    "fr": "Les fichiers journaux peuvent contenir des informations precieuses sur la configuration et l'activite du systeme. S'ils ne sont pas proteges, des utilisateurs non autorises pourraient les lire pour de la reconnaissance, ou modifier les donnees consignees pour aneantir leur valeur forensique — masquant les traces d'une intrusion. Maintenir des permissions strictes (pas d'ecriture groupe, aucun acces aux autres) preserve a la fois leur confidentialite et leur integrite pour les investigations."
+  },
+  "summary": {
+    "en": "Ensures no file under `/var/log` is group-writable/executable or accessible to others (no bit in mask `/037`, i.e. mode at most `0640`).",
+    "fr": "Garantit qu'aucun fichier sous `/var/log` n'est inscriptible/executable par le groupe ni accessible aux autres (aucun bit du masque `/037`, soit un mode au plus `0640`)."
+  },
+  "check_note": {
+    "en": "Pavois runs `find /var/log -type f -perm /037` and expects empty output. The mask `/037` matches any file that has group-write, group-execute, or any other-read/write/execute bit; empty output means every log file is at most `0640`. Scanning the live inodes catches files created at runtime by daemons and logrotate, which a static rsyslog config audit would miss.",
+    "fr": "Pavois execute `find /var/log -type f -perm /037` et attend une sortie vide. Le masque `/037` correspond a tout fichier possedant l'ecriture groupe, l'execution groupe, ou un bit de lecture/ecriture/execution pour les autres ; une sortie vide signifie que chaque journal est au plus en `0640`. Analyser les inodes en direct detecte les fichiers crees a l'execution par les services et logrotate, qu'un audit statique de la configuration rsyslog manquerait."
+  },
+  "verify": {
+    "en": "Run `sudo find /var/log -type f -perm /037 2>/dev/null`. Expected output: **empty**. Inspect any returned path with `ls -l <path>` to see its over-permissive mode.",
+    "fr": "Executez `sudo find /var/log -type f -perm /037 2>/dev/null`. Sortie attendue : **vide**. Inspectez tout chemin renvoye avec `ls -l <chemin>` pour voir son mode trop permissif."
+  },
+  "logs": {
+    "en": "List offending files and modes with `find /var/log -type f -perm /037 -printf '%M %p\\n'`. After fixing, the same command prints nothing. If files regain bad modes, check the `create` directive in `/etc/logrotate.d/*` and the daemon's umask.",
+    "fr": "Listez les fichiers fautifs et leurs modes avec `find /var/log -type f -perm /037 -printf '%M %p\\n'`. Apres correction, la meme commande n'affiche rien. Si des fichiers reprennent de mauvais modes, verifiez la directive `create` dans `/etc/logrotate.d/*` et l'umask du service."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is bundled with this rule on these OSes; apply the fix manually. Tighten each offending file with `chmod g-wx,o-rwx <file>` (or `find /var/log -type f -perm /037 -exec chmod g-wx,o-rwx {} +`), which leaves owner and group-read intact.",
+    "fr": "Aucun plan de durcissement automatise n'est fourni avec cette regle sur ces OS ; appliquez la correction manuellement. Resserrez chaque fichier fautif avec `chmod g-wx,o-rwx <fichier>` (ou `find /var/log -type f -perm /037 -exec chmod g-wx,o-rwx {} +`), ce qui preserve le proprietaire et la lecture groupe."
+  },
+  "impact": {
+    "en": "Tightening log permissions is low-risk because owner and the log group keep access. The edge case: an unprivileged process that reads its log via **other-read**, or multiple writers sharing a group via **group-write**, could lose access after the change. Confirm your logging topology (which users/groups read or write each file) before applying broadly to avoid silencing a service's logs.",
+    "fr": "Resserrer les permissions des journaux presente peu de risque car le proprietaire et le groupe de journalisation conservent l'acces. Cas limite : un processus non privilegie qui lit son journal via la **lecture autres**, ou plusieurs ecrivains partageant un groupe via l'**ecriture groupe**, pourraient perdre l'acces apres le changement. Verifiez votre topologie de journalisation (quels utilisateurs/groupes lisent ou ecrivent chaque fichier) avant une application large, pour ne pas faire taire les journaux d'un service."
+  }
+}

@@ -1,0 +1,1032 @@
+---
+import { getCollection } from 'astro:content';
+import { marked } from 'marked';
+import Base from '../../../layouts/Base.astro';
+import { ui, languages, type Lang } from '../../../i18n/ui';
+import domainRefs from '../../../data/domain-refs.json';
+import standards from '../../../data/standards.json';
+import socleRefs from '../../../data/socle-refs.json';
+import { coverageLevel } from '../../../data/coverage';
+
+export async function getStaticPaths() {
+  const rules = await getCollection('rules');
+  return Object.keys(languages).flatMap((lang) =>
+    rules.map((r) => ({ params: { lang, id: r.data.id }, props: { data: r.data } }))
+  );
+}
+
+const { lang } = Astro.params as { lang: Lang };
+const { data } = Astro.props;
+const t = ui[lang];
+const tr = (f?: { en: string; fr: string }) => (f ? f[lang] : '');
+const md = (f?: { en: string; fr: string }) =>
+  f ? (marked.parse(f[lang], { async: false, gfm: true }) as string) : '';
+const fmtVal = (v: any): string =>
+  v && typeof v === 'object' && !Array.isArray(v)
+    ? Object.entries(v)
+        .map(([k, x]) => `${k}: ${fmtVal(x)}`)
+        .join(', ')
+    : Array.isArray(v)
+      ? v.join(', ')
+      : String(v);
+const hasRem = Object.keys(data.remediation || {}).length > 0;
+// Pavois is the executable Linux profile of the SOCLE norm — this is the control's citable reference.
+const socleRef = (socleRefs as Record<string, string>)[data.id];
+
+// Evidence type — what the check actually proves. Honest about "effective" not being universal.
+const EVIDENCE: Record<string, { label: Record<Lang, string>; blurb: Record<Lang, string> }> = {
+  'effective-runtime': {
+    label: { en: 'effective runtime', fr: 'runtime effectif' },
+    blurb: {
+      en: 'Checked against the resolved running state (e.g. sshd -T, sysctl, systemctl show) — catches drop-ins and Includes a file read would miss. Caveat: runtime ≠ persistence; a value correct now may not survive a reboot.',
+      fr: 'Vérifié sur l’état résolu en cours d’exécution (ex. sshd -T, sysctl, systemctl show) — attrape les drop-ins et Include qu’une lecture de fichier raterait. Réserve : runtime ≠ persistance ; une valeur correcte maintenant peut ne pas survivre à un redémarrage.',
+    },
+  },
+  'persistent-config': {
+    label: { en: 'persistent config', fr: 'config persistante' },
+    blurb: {
+      en: 'Checked against the content of a persistent configuration file — the source of truth that survives reboots.',
+      fr: 'Vérifié sur le contenu d’un fichier de configuration persistant — la source de vérité qui survit aux redémarrages.',
+    },
+  },
+  'inventory-state': {
+    label: { en: 'inventory state', fr: 'état d’inventaire' },
+    blurb: {
+      en: 'Checked against what is installed or registered — packages present/absent, account databases.',
+      fr: 'Vérifié sur ce qui est installé ou enregistré — paquets présents/absents, bases de comptes.',
+    },
+  },
+  'filesystem-state': {
+    label: { en: 'filesystem state', fr: 'état du système de fichiers' },
+    blurb: {
+      en: 'Checked against a path’s metadata — mode, owner, group, SUID/SGID.',
+      fr: 'Vérifié sur les métadonnées d’un chemin — mode, propriétaire, groupe, SUID/SGID.',
+    },
+  },
+  manual: {
+    label: { en: 'manual', fr: 'manuel' },
+    blurb: {
+      en: 'No machine check — requires human judgement and business context.',
+      fr: 'Pas de vérification automatique — jugement humain et contexte métier requis.',
+    },
+  },
+  behavioral: {
+    label: { en: 'behavioral', fr: 'comportemental' },
+    blurb: {
+      en: 'Verified by actively attempting a forbidden action.',
+      fr: 'Vérifié en tentant réellement une action interdite.',
+    },
+  },
+};
+const ev = data.evidence_type ? EVIDENCE[data.evidence_type] : null;
+
+// What a PASS proves — derived from the evidence type, not hand-authored. The qualified verdict:
+// 'yes' proven · 'unk' not measured by this check · 'na' not applicable.
+const PROVES: Record<string, { running: string; disk: string; reboot: string }> = {
+  'effective-runtime': { running: 'yes', disk: 'unk', reboot: 'unk' },
+  'persistent-config': { running: 'unk', disk: 'yes', reboot: 'yes' },
+  'inventory-state': { running: 'yes', disk: 'yes', reboot: 'yes' },
+  'filesystem-state': { running: 'yes', disk: 'yes', reboot: 'yes' },
+  behavioral: { running: 'yes', disk: 'unk', reboot: 'unk' },
+  manual: { running: 'na', disk: 'na', reboot: 'na' },
+};
+// reboot_survivable is the authoritative persistence axis (the check may fold a persistence
+// proof on top of a runtime read — e.g. a sysctl asserting /etc/sysctl.d). When it is 'yes',
+// the pass proves on-disk + reboot-survivable even for an effective-runtime check. Copy the
+// derived row before overriding (PROVES is shared across pages).
+const pvBase = data.evidence_type ? PROVES[data.evidence_type] : null;
+const pv = pvBase ? { ...pvBase } : null;
+if (pv && data.reboot_survivable === 'yes') { pv.disk = 'yes'; pv.reboot = 'yes'; }
+// Domains the coverage page flags as thin — surface the honest caveat on those fiches only.
+const domainThin = coverageLevel(data.domain) === 'shallow';
+const provesLabels = {
+  head: { en: 'A pass proves', fr: 'Un PASS prouve' },
+  running: { en: 'running now', fr: 'actif maintenant' },
+  disk: { en: 'on disk', fr: 'sur disque' },
+  reboot: { en: 'survives reboot', fr: 'survit au reboot' },
+};
+const pvMark: Record<string, string> = { yes: '✓', unk: '?', na: '—' };
+
+// Compliance crosswalk: one effective-config check, proof for N standards (Pavois's unique angle —
+// no file-based norm publishes a unified, effective-config crosswalk). Drives the hero banner.
+const normMeta: Record<string, string> = {
+  cis: 'CIS',
+  bp28: 'ANSSI BP-028',
+  nist: 'NIST 800-53/171',
+  'pci-dss': 'PCI-DSS',
+  stig: 'DISA STIG',
+};
+const cxNorms = Object.entries(data.norms).filter(([, v]) => (Array.isArray(v) ? v.length > 0 : !!v));
+// Mapping strength, derived: prescriptive line-level standards (CIS/STIG/PCI/ANSSI) are a direct
+// match; NIST families are abstract -> a supporting cross-reference. See /handbook/the-standards.
+const mappingType = (n: string): 'direct' | 'supporting' => (n === 'nist' ? 'supporting' : 'direct');
+const mtLabel: Record<string, { en: string; fr: string }> = {
+  direct: { en: 'direct', fr: 'direct' },
+  supporting: { en: 'supporting', fr: 'support' },
+};
+const cx = {
+  oneCheck: { en: 'One check', fr: 'Un seul check' },
+  proves: { en: 'maps to', fr: 'mappé sur' },
+  standards: { en: 'standards', fr: 'normes' },
+  standard: { en: 'standard', fr: 'norme' },
+  mapnote: {
+    en: 'A mapping is a **cross-reference** to where each standard places this requirement — anchored and cross-validated, not a claim of equivalence. A passing check is *evidence toward* these references, [how to read it](/en/handbook/the-standards/).',
+    fr: 'Un mapping est une **référence croisée** vers l’endroit où chaque norme situe cette exigence — ancrée et recoupée, pas une affirmation d’équivalence. Un check réussi est une *preuve vers* ces références, [comment le lire](/fr/handbook/the-standards/).',
+  },
+  effective: {
+    en: 'Pavois asserts the **effective** configuration — the live, resolved state, not a file. File-based scanners (OVAL/SCAP, Lynis) miss `Include`s, drop-ins and runtime defaults; this check sees what is **actually applied**.',
+    fr: 'Pavois vérifie la configuration **effective** — l’état résolu et réellement appliqué, pas un fichier. Les scanners basés fichier (OVAL/SCAP, Lynis) ratent les `Include`, drop-ins et défauts runtime ; ce check voit ce qui est **réellement en vigueur**.',
+  },
+};
+
+// Sources & references — make every claim traceable to an authority. NIST 800-53 controls deep-link
+// to csf.tools; the norms link to their official page; the domain links to the Pavois handbook
+// guide (internal) + the author's hardening guide (blog.stephane-robert.info) + man pages; any CVE
+// named in the prose links to NVD. Built from the data (no regeneration). See docs/site-enrichment.md.
+const nistUrl = (ref: string): string | null => {
+  const m = ref.match(/^([A-Z]{2})-(\d+)/);
+  return m ? `https://csf.tools/reference/nist-sp-800-53/r5/${m[1].toLowerCase()}/${m[1].toLowerCase()}-${m[2]}/` : null;
+};
+const dref = (domainRefs as Record<string, any>)[data.domain ?? ''] ?? {};
+const std = standards as Record<string, any>;
+const nistRefs = (Array.isArray(data.norms.nist) ? data.norms.nist : [])
+  .map((r: string) => ({ ref: r, url: nistUrl(r) }))
+  .filter((x: { url: string | null }) => x.url) as { ref: string; url: string }[];
+const normLandings = Object.keys(data.norms)
+  .filter((n) => std[n]?.url)
+  .map((n) => ({ key: n, label: std[n].name ?? n, url: std[n].url as string, version: std[n].version as string | undefined }));
+// Auditable mapping table: per standard, the reference(s), the mapping TYPE (direct/supporting),
+// the standard VERSION (fixed for ANSSI/NIST/PCI; the per-OS benchmark for CIS), and a derived
+// CONFIDENCE. Provenance is corpus-level (cross-validated vs SSG + ansible-lockdown), stated in a
+// note below — we never fabricate per-mapping reviewer/date.
+const NORM_SHORT: Record<string, string> = {
+  cis: 'CIS', bp28: 'ANSSI BP-028', nist: 'NIST', 'pci-dss': 'PCI DSS', stig: 'DISA STIG',
+};
+const cisVers = [...new Set(Object.values((data.os_versions ?? {}) as Record<string, string>))].sort();
+const mapVersion = (n: string): string =>
+  std[n]?.version ??
+  (n === 'cis' && cisVers.length
+    ? cisVers.length > 1 ? `${cisVers[0]}–${cisVers[cisVers.length - 1]}` : cisVers[0]
+    : '—');
+const mappingRows = cxNorms.map(([n, v]) => ({
+  n,
+  label: NORM_SHORT[n] ?? n,
+  refs: Array.isArray(v) ? v.join(', ') : String(v),
+  type: mappingType(n),
+  version: mapVersion(n),
+  perOS: n === 'cis' && !std[n]?.version,
+}));
+const mapTable = {
+  head: { en: 'Standards mapping', fr: 'Mapping des normes' },
+  cStd: { en: 'Standard', fr: 'Norme' },
+  cRef: { en: 'Reference', fr: 'Référence' },
+  cType: { en: 'Type', fr: 'Type' },
+  cVer: { en: 'Version', fr: 'Version' },
+  cConf: { en: 'Confidence', fr: 'Confiance' },
+  high: { en: 'high', fr: 'haute' },
+  medium: { en: 'medium', fr: 'moyenne' },
+  perOS: { en: 'per-OS benchmark', fr: 'benchmark par OS' },
+  note: {
+    en: 'Each reference is a **cross-reference** anchored in the upstream benchmark and cross-validated against the SCAP Security Guide and ansible-lockdown — not a claim of equivalence. *Direct* = a prescriptive, line-level requirement; *supporting* = an abstract control family (NIST) the check provides evidence toward. [How to read a mapping](/' + lang + '/handbook/the-standards/).',
+    fr: 'Chaque référence est une **référence croisée** ancrée dans le benchmark amont et recoupée avec le SCAP Security Guide et ansible-lockdown — pas une affirmation d’équivalence. *Direct* = une exigence prescriptive au niveau de la ligne ; *support* = une famille de contrôle abstraite (NIST) vers laquelle le check apporte une preuve. [Comment lire un mapping](/' + lang + '/handbook/the-standards/).',
+  },
+};
+const proseBlob = [data.rationale, data.impact, data.summary]
+  .map((f: any) => (f ? `${f.en} ${f.fr}` : ''))
+  .join(' ');
+const cves = [...new Set(proseBlob.match(/CVE-\d{4}-\d{4,7}/g) ?? [])].map((c) => ({
+  id: c,
+  url: `https://nvd.nist.gov/vuln/detail/${c}`,
+}));
+const hasSources =
+  nistRefs.length || normLandings.length || dref.blog || dref.handbook || dref.man?.length || cves.length;
+const srcT = {
+  title: { en: 'Sources & references', fr: 'Sources & références' },
+  guides: { en: 'Hardening guides', fr: 'Guides de durcissement' },
+  standardsTxt: { en: 'Official standards', fr: 'Normes officielles' },
+  nistTxt: { en: 'NIST SP 800-53 controls', fr: 'Contrôles NIST SP 800-53' },
+  manuals: { en: 'Manual pages', fr: 'Pages de manuel' },
+  handbookLink: { en: 'Pavois handbook', fr: 'manuel Pavois' },
+};
+---
+
+<Base
+  title={`${data.title[lang]} · Pavois`}
+  description={tr(data.summary) || tr(data.rationale)}
+  lang={lang}
+  ogType="article"
+  schema="TechArticle"
+  datePublished={data.datePublished}
+  dateModified={data.dateModified ?? data.datePublished}
+  breadcrumbs={[
+    { name: 'Pavois', path: `/${lang}/` },
+    { name: lang === 'fr' ? 'Contrôles' : 'Controls', path: `/${lang}/rules/` },
+    { name: data.title[lang], path: `/${lang}/rules/${data.id}/` },
+  ]}
+>
+  <article class="wrap rule">
+    <a class="back" href={`/${lang}/rules/`}>← {t.allRules}</a>
+
+    <div class="rule-meta">
+      {socleRef && (
+        <a
+          class="ref"
+          href={`/${lang}/handbook/socle-control-id/`}
+          title={lang === 'fr' ? 'Modèle d’identifiant SOCLE' : 'SOCLE control ID model'}
+          >{socleRef}</a
+        >
+      )}
+      <span class="dom">// {data.domain ?? 'rule'}</span>
+      <span class={`sev ${data.severity === 'medium' ? 'med' : data.severity === 'unknown' ? 'na' : data.severity}`}>
+        {t.sev[data.severity]}
+      </span>
+      {data.evidence_type && ev && (
+        <span class={`ev ev-${data.evidence_type}`} title={ev.blurb[lang]}>{ev.label[lang]}</span>
+      )}
+    </div>
+    <h1 class="rule-h1">{data.title[lang]}</h1>
+    {data.summary && <p class="rule-desc">{tr(data.summary)}</p>}
+    {ev && <p class="ev-note">{ev.blurb[lang]}</p>}
+    {pv && data.evidence_type !== 'manual' && (
+      <div class="proves">
+        <span class="proves-h">{provesLabels.head[lang]}</span>
+        <span class={`pv pv-${pv.running}`}>{pvMark[pv.running]} {provesLabels.running[lang]}</span>
+        <span class={`pv pv-${pv.disk}`}>{pvMark[pv.disk]} {provesLabels.disk[lang]}</span>
+        <span class={`pv pv-${pv.reboot}`}>{pvMark[pv.reboot]} {provesLabels.reboot[lang]}</span>
+        <a class="pv-more" href={`/${lang}/handbook/qualified-verdict/`}>{lang === 'fr' ? 'le verdict qualifié →' : 'the qualified verdict →'}</a>
+      </div>
+    )}
+    {domainThin && (
+      <p class="covnote">
+        {lang === 'fr'
+          ? 'Domaine peu couvert par Pavois aujourd’hui — '
+          : 'This domain is thinly covered by Pavois today — '}
+        <a href={`/${lang}/handbook/coverage/`}>{lang === 'fr' ? 'voir la couverture' : 'see coverage'}</a>.
+      </p>
+    )}
+
+    <div class="os-row">
+      {
+        data.supported_os.map((os) => (
+          <span class="os-chip">
+            {os}
+            {data.os_versions?.[os] && <span class="v">CIS {data.os_versions[os]}</span>}
+          </span>
+        ))
+      }
+    </div>
+
+    {
+      cxNorms.length > 0 && (
+        <>
+          <div class="proof">
+            <span class="t">✓</span> {tr(cx.oneCheck)} — {tr(cx.proves)}{' '}
+            <b>{cxNorms.length} {cxNorms.length > 1 ? tr(cx.standards) : tr(cx.standard)}</b>
+          </div>
+          <div class="map5">
+            {cxNorms.map(([n, v]) => (
+              <a class="m" href={`/${lang}/standards/${n}/`}>
+                <div class="s">{normMeta[n] ?? n}</div>
+                <div class="r">{Array.isArray(v) ? v.join(' · ') : v}</div>
+                <div class={`mt mt-${mappingType(n)}`}>{mtLabel[mappingType(n)][lang]}</div>
+              </a>
+            ))}
+          </div>
+          {data.evidence_type === 'effective-runtime' && (
+            <p class="effnote" set:html={md(cx.effective)} />
+          )}
+          <p class="mapnote" set:html={md(cx.mapnote)} />
+        </>
+      )
+    }
+
+    <div class="layout">
+      <div class="body">
+        {
+          data.rationale && (
+            <section>
+              <h2>{t.secWhy}</h2>
+              <div class="prose" set:html={md(data.rationale)} />
+            </section>
+          )
+        }
+
+        <section>
+          <h2>{t.secCheck}</h2>
+          {data.check_note && <div class="prose" set:html={md(data.check_note)} />}
+          {data.check.length > 0 && <pre class="code mono"><code>{data.check.join('\n')}</code></pre>}
+        </section>
+
+        {
+          data.verify && (
+            <section class="op">
+              <h2>{t.secVerify}</h2>
+              <div class="prose" set:html={md(data.verify)} />
+            </section>
+          )
+        }
+
+        {
+          data.logs && (
+            <section class="op">
+              <h2>{t.secLogs}</h2>
+              <div class="prose" set:html={md(data.logs)} />
+            </section>
+          )
+        }
+
+        <section>
+          <h2>{t.secRemediation}</h2>
+          {
+            hasRem ? (
+              <>
+                {data.remediation_note && <div class="prose" set:html={md(data.remediation_note)} />}
+                <p class="harden-lead">{t.hardenNote}</p>
+                <table class="harden">
+                  <tbody>
+                    {Object.entries(data.remediation).map(([k, v]) => (
+                      <tr>
+                        <th>{k}</th>
+                        <td class="mono">{fmtVal(v)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <pre class="code mono"><code>pavois harden plan local</code></pre>
+                <p class="target-hint">
+                  {t.targetHint} <a href={`/${lang}/docs/#harden`}>{t.navDocs}</a>
+                </p>
+              </>
+            ) : (
+              <p class="muted">{t.noRemediation}</p>
+            )
+          }
+        </section>
+
+        {
+          data.impact && (
+            <section class="warn">
+              <h2>{t.secImpact}</h2>
+              <div class="prose" set:html={md(data.impact)} />
+            </section>
+          )
+        }
+
+        {
+          mappingRows.length > 0 && (
+            <section>
+              <h2>{mapTable.head[lang]}</h2>
+              <table class="maptable">
+                <thead>
+                  <tr>
+                    <th>{mapTable.cStd[lang]}</th>
+                    <th>{mapTable.cRef[lang]}</th>
+                    <th>{mapTable.cType[lang]}</th>
+                    <th>{mapTable.cVer[lang]}</th>
+                    <th>{mapTable.cConf[lang]}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mappingRows.map((r) => (
+                    <tr>
+                      <td><a href={`/${lang}/standards/${r.n}/`}>{r.label}</a></td>
+                      <td class="mono">{r.refs}</td>
+                      <td><span class={`mt mt-${r.type}`}>{mtLabel[r.type][lang]}</span></td>
+                      <td class="mono">{r.perOS ? `${r.version} · ${mapTable.perOS[lang]}` : r.version}</td>
+                      <td>
+                        <span class={`conf conf-${r.type === 'direct' ? 'high' : 'med'}`}>
+                          {r.type === 'direct' ? mapTable.high[lang] : mapTable.medium[lang]}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p class="mapnote" set:html={md(mapTable.note)} />
+            </section>
+          )
+        }
+
+        {
+          hasSources && (
+            <section class="sources">
+              <h2>{tr(srcT.title)}</h2>
+              <div class="src-grid">
+                {(dref.handbook || dref.blog) && (
+                  <div class="src-col">
+                    <h3>{tr(srcT.guides)}</h3>
+                    {dref.handbook && (
+                      <a class="src-link" href={`/${lang}/handbook/${dref.handbook.id}/`}>
+                        {tr(srcT.handbookLink)} — {dref.handbook.title[lang]}
+                      </a>
+                    )}
+                    {dref.blog && (
+                      <a class="src-link ext" href={dref.blog.url} target="_blank" rel="noopener">
+                        {dref.blog.label} — blog.stephane-robert.info ↗
+                      </a>
+                    )}
+                  </div>
+                )}
+                {normLandings.length > 0 && (
+                  <div class="src-col">
+                    <h3>{tr(srcT.standardsTxt)}</h3>
+                    {normLandings.map((n) => (
+                      <a class="src-link ext" href={n.url} target="_blank" rel="noopener">
+                        {n.label}
+                        {n.version ? ` (${n.version})` : ''} ↗
+                      </a>
+                    ))}
+                  </div>
+                )}
+                {nistRefs.length > 0 && (
+                  <div class="src-col">
+                    <h3>{tr(srcT.nistTxt)}</h3>
+                    <div class="src-chips">
+                      {nistRefs.map((n) => (
+                        <a class="src-chip ext" href={n.url} target="_blank" rel="noopener">
+                          {n.ref} ↗
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {dref.man?.length > 0 && (
+                  <div class="src-col">
+                    <h3>{tr(srcT.manuals)}</h3>
+                    <div class="src-chips">
+                      {dref.man.map((m: { page: string; url: string }) => (
+                        <a class="src-chip ext mono" href={m.url} target="_blank" rel="noopener">
+                          {m.page} ↗
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {cves.length > 0 && (
+                  <div class="src-col">
+                    <h3>CVE</h3>
+                    <div class="src-chips">
+                      {cves.map((c) => (
+                        <a class="src-chip ext mono" href={c.url} target="_blank" rel="noopener">
+                          {c.id} ↗
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          )
+        }
+      </div>
+    </div>
+  </article>
+</Base>
+
+<style>
+  .rule {
+    max-width: 1080px;
+    padding-top: 36px;
+    padding-bottom: 90px;
+  }
+  /* evidence-type badge + its honesty note */
+  .ev {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    cursor: help;
+  }
+  .ev-effective-runtime {
+    color: #15803d;
+    background: rgba(22, 163, 74, 0.12);
+    border-color: rgba(22, 163, 74, 0.35);
+  }
+  .ev-persistent-config {
+    color: #1d4ed8;
+    background: rgba(37, 99, 235, 0.12);
+    border-color: rgba(37, 99, 235, 0.35);
+  }
+  .ev-inventory-state {
+    color: #7c3aed;
+    background: rgba(124, 58, 237, 0.12);
+    border-color: rgba(124, 58, 237, 0.35);
+  }
+  .ev-filesystem-state {
+    color: #b45309;
+    background: rgba(180, 83, 9, 0.12);
+    border-color: rgba(180, 83, 9, 0.35);
+  }
+  .ev-manual {
+    color: var(--tx-2);
+    background: var(--bg-2);
+    border-color: var(--line-2);
+  }
+  .ev-behavioral {
+    color: #be185d;
+    background: rgba(190, 24, 93, 0.12);
+    border-color: rgba(190, 24, 93, 0.35);
+  }
+  .ev-note {
+    color: var(--color-dim);
+    font-size: 0.9rem;
+    line-height: 1.55;
+    margin: 4px 0 0;
+    padding-left: 12px;
+    border-left: 2px solid var(--color-border);
+    max-width: 72ch;
+  }
+  .mapnote {
+    color: var(--color-dim);
+    font-size: 0.82rem;
+    line-height: 1.55;
+    margin: 10px 0 0;
+    max-width: 78ch;
+  }
+  .proves {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0 0;
+  }
+  .proves-h {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-faint);
+  }
+  .pv {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+  }
+  .pv-yes {
+    color: #15803d;
+    background: rgba(22, 163, 74, 0.12);
+    border-color: rgba(22, 163, 74, 0.3);
+  }
+  .pv-unk {
+    color: #b45309;
+    background: rgba(180, 83, 9, 0.1);
+    border-color: rgba(180, 83, 9, 0.3);
+  }
+  .pv-na {
+    color: var(--color-faint);
+    background: var(--color-surface-2);
+    border-color: var(--color-border);
+  }
+  .mapnote :global(a) {
+    color: var(--color-accent);
+  }
+  .pv-more {
+    align-self: center;
+    font-size: 0.74rem;
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+  .pv-more:hover {
+    text-decoration: underline;
+  }
+  /* per-mapping strength badge in the crosswalk grid */
+  .map5 .m .mt {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 8px;
+  }
+  .mt-direct {
+    color: var(--ok);
+  }
+  .mt-supporting {
+    color: var(--warn);
+  }
+  .maptable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.86rem;
+    margin: 6px 0 10px;
+  }
+  .maptable th {
+    text-align: left;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-faint);
+    border-bottom: 1px solid var(--color-border);
+    padding: 5px 10px;
+  }
+  .maptable td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: top;
+  }
+  .maptable .mt {
+    font-weight: 600;
+  }
+  .conf {
+    font-size: 0.74rem;
+    font-weight: 600;
+  }
+  .conf-high {
+    color: #15803d;
+  }
+  .conf-med {
+    color: #b45309;
+  }
+  .covnote {
+    margin: 10px 0 0;
+    font-size: 0.82rem;
+    color: var(--warn);
+    background: rgba(217, 119, 6, 0.08);
+    border: 1px solid rgba(217, 119, 6, 0.25);
+    border-radius: 8px;
+    padding: 7px 11px;
+    max-width: 78ch;
+  }
+  .covnote a {
+    color: var(--warn);
+    text-decoration: underline;
+  }
+  .back {
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    display: inline-block;
+    margin-bottom: 18px;
+  }
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .ref-id {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--color-accent);
+    background: var(--color-accent-soft);
+    border: 1px solid var(--color-accent-line);
+    border-radius: 7px;
+    padding: 3px 9px;
+    letter-spacing: 0.02em;
+  }
+  .kick .dom {
+    color: var(--color-faint);
+    margin-left: 8px;
+  }
+  .rule h1 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    margin: 10px 0;
+  }
+  .lead {
+    color: var(--color-dim);
+    font-size: 1.15rem;
+    max-width: 72ch;
+  }
+  .sev {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    padding: 5px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+  }
+  .sev-critical {
+    color: #fff;
+    background: var(--color-danger);
+    border-color: var(--color-danger);
+  }
+  .sev-high {
+    color: var(--color-danger);
+    border-color: var(--color-accent-line);
+    background: var(--color-accent-soft);
+  }
+  .sev-medium {
+    color: var(--color-warning);
+    border-color: color-mix(in srgb, var(--color-warning) 40%, transparent);
+  }
+  .sev-low {
+    color: var(--color-success);
+    border-color: var(--color-success-line);
+  }
+  .os-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 18px 0 6px;
+  }
+  .os {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+  .os em {
+    color: var(--color-faint);
+    font-style: normal;
+  }
+  .layout {
+    margin-top: 26px;
+  }
+  .crosswalk {
+    margin-top: 22px;
+    padding: 18px 22px;
+    border-radius: 16px;
+    border: 1px solid var(--color-accent-line);
+    background: linear-gradient(
+      180deg,
+      var(--color-accent-soft),
+      color-mix(in srgb, var(--color-accent-soft) 30%, transparent)
+    );
+  }
+  .cx-top {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .cx-badge {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-accent);
+    padding: 4px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--color-accent-line);
+    background: var(--color-bg);
+  }
+  .cx-proves {
+    color: var(--color-dim);
+    font-size: 0.95rem;
+  }
+  .cx-proves b {
+    color: var(--color-text);
+    font-size: 1.1rem;
+  }
+  .cx-norms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .cx-norm {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+    padding: 7px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    font-size: 0.82rem;
+  }
+  .cx-norm b {
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+    color: var(--color-accent);
+  }
+  .cx-norm span {
+    font-family: var(--font-mono);
+    color: var(--color-dim);
+  }
+  .cx-foot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-border-soft);
+  }
+  .cx-note {
+    margin: 0;
+    max-width: 78ch;
+    font-size: 0.86rem;
+    color: var(--color-dim);
+  }
+  .cx-ver {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--color-faint);
+    white-space: nowrap;
+  }
+  .cx-ver:hover {
+    color: var(--color-accent);
+  }
+  .sources {
+    margin-top: 10px;
+  }
+  .src-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px 26px;
+  }
+  .src-col h3 {
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-faint);
+    margin: 0 0 10px;
+  }
+  .src-link {
+    display: block;
+    font-size: 0.86rem;
+    color: var(--color-accent);
+    margin-bottom: 7px;
+    line-height: 1.4;
+  }
+  .src-link:hover {
+    text-decoration: underline;
+  }
+  .src-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .src-chip {
+    font-size: 0.74rem;
+    padding: 3px 9px;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-2);
+    color: var(--color-dim);
+  }
+  .src-chip.mono,
+  .src-link.mono {
+    font-family: var(--font-mono);
+  }
+  .src-chip:hover {
+    border-color: var(--color-accent-line);
+    color: var(--color-accent);
+  }
+  .src-link.ext,
+  .src-chip.ext {
+    --x: 1;
+  }
+  .body section {
+    padding: 15px;
+    margin-bottom: 40px;
+  }
+  section.op,
+  section.warn {
+    margin-bottom: 30px;
+  }
+  .body h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 14px;
+  }
+  section.op,
+  section.warn {
+    padding: 20px 24px;
+    border-radius: 14px;
+    border: 1px solid var(--color-border);
+  }
+  section.op {
+    background: var(--color-accent-soft);
+    border-color: var(--color-accent-line);
+  }
+  section.warn {
+    background: color-mix(in srgb, var(--color-warning) 9%, transparent);
+    border-color: color-mix(in srgb, var(--color-warning) 32%, transparent);
+  }
+  section.op h2 {
+    margin-top: 0;
+    color: var(--color-accent);
+  }
+  section.warn h2 {
+    margin-top: 0;
+    color: var(--color-warning);
+  }
+  .code {
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 14px 0 0;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+  .harden-lead {
+    color: var(--color-dim);
+    font-size: 0.92rem;
+    margin-bottom: 10px;
+  }
+  .target-hint {
+    color: var(--color-faint);
+    font-size: 0.82rem;
+    margin-top: 8px;
+  }
+  .target-hint a {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+  .harden {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 14px;
+    font-size: 0.85rem;
+  }
+  .harden th {
+    text-align: left;
+    width: 130px;
+    padding: 7px 12px;
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    vertical-align: top;
+    border-bottom: 1px solid var(--color-border-soft);
+  }
+  .harden td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--color-border-soft);
+  }
+  .muted {
+    color: var(--color-faint);
+    font-style: italic;
+  }
+  .prose {
+    max-width: 72ch;
+  }
+  .prose :global(p) {
+    margin: 0 0 12px;
+  }
+  .prose :global(p:last-child),
+  .prose :global(ul:last-child) {
+    margin-bottom: 0;
+  }
+  .prose :global(ul) {
+    margin: 0 0 12px;
+    padding-left: 0;
+    list-style-position: inside;
+  }
+  .prose :global(li) {
+    margin: 4px 0;
+  }
+  .prose :global(strong) {
+    color: var(--color-text);
+    font-weight: 700;
+  }
+  .prose :global(code) {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 1px 6px;
+  }
+  .side {
+    border-left: 1px solid var(--color-border);
+    padding-left: 26px;
+  }
+  .side h2 {
+    font-size: 0.78rem;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-faint);
+    margin: 0 0 6px;
+  }
+  .side-note {
+    font-size: 0.78rem;
+    color: var(--color-faint);
+    margin-bottom: 12px;
+  }
+  .norm-tags {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .norm b {
+    text-transform: uppercase;
+    color: var(--color-accent);
+  }
+  @media (max-width: 820px) {
+    .layout {
+      grid-template-columns: 1fr;
+    }
+    .side {
+      border-left: none;
+      padding-left: 0;
+    }
+  }
+</style>

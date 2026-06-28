@@ -1,0 +1,67 @@
+{
+  "id": "service-nginx-disabled",
+  "supported_os": [
+    "debian12",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "systemd services",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "2.1.18"
+  },
+  "check": [
+    "describe service('nginx.service') do",
+    "  it { should_not be_enabled }",
+    "  it { should_not be_running }",
+    "end"
+  ],
+  "remediation": {
+    "action": [
+      "disable",
+      "stop"
+    ],
+    "name": "nginx",
+    "resource": "service"
+  },
+  "title": {
+    "en": "Disable nginx Service",
+    "fr": "Désactiver le service nginx"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "An **nginx** instance listens on the network (typically `80`/`443`) and exposes a parser, TLS stack and any configured virtual hosts to remote attackers. On a machine that is not meant to serve HTTP, a forgotten or default nginx install needlessly **widens the attack surface**: a single nginx CVE, a misconfigured `location` block or an exposed status page can become an entry point or an information leak. If the role is not required, the service should be stopped and disabled.",
+    "fr": "Une instance **nginx** écoute sur le réseau (généralement `80`/`443`) et expose à des attaquants distants un analyseur, une pile TLS et tout hôte virtuel configuré. Sur une machine qui n'a pas vocation à servir du HTTP, une installation nginx oubliée ou par défaut **élargit inutilement la surface d'attaque** : une seule CVE nginx, un bloc `location` mal configuré ou une page de statut exposée peut devenir un point d'entrée ou une fuite d'information. Si ce rôle n'est pas requis, le service doit être arrêté et désactivé."
+  },
+  "summary": {
+    "en": "Ensures the **`nginx.service`** unit is neither enabled at boot nor running, unless the host is intentionally a web server.",
+    "fr": "Garantit que l'unité **`nginx.service`** n'est ni activée au démarrage ni en cours d'exécution, sauf si l'hôte est volontairement un serveur web."
+  },
+  "check_note": {
+    "en": "Pavois queries the **effective service state** via `service('nginx.service')`, which resolves both the *enabled* (boot-time) and *running* (current) status from systemd, not from a config file. This matters because a unit can be masked, overridden by a drop-in under `/etc/systemd/system/nginx.service.d/`, or socket-activated — facts only systemd knows. A file-based scanner that just checks whether the nginx package is installed would miss a service that is installed but actively running, or vice-versa.",
+    "fr": "Pavois interroge l'**état effectif du service** via `service('nginx.service')`, qui résout à la fois le statut *enabled* (au démarrage) et *running* (courant) depuis systemd, et non depuis un fichier de configuration. C'est important car une unité peut être masquée, surchargée par un drop-in sous `/etc/systemd/system/nginx.service.d/`, ou activée par socket — des faits que seul systemd connaît. Un scanner basé sur les fichiers qui se contente de vérifier si le paquet nginx est installé manquerait un service installé mais bel et bien en cours d'exécution, ou inversement."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled nginx.service` and `systemctl is-active nginx.service`. Both should report **`disabled`** (or `masked`/`not-found`) and **`inactive`** respectively. A full view: `systemctl status nginx.service` should show `Loaded: ... disabled` and `Active: inactive (dead)`.",
+    "fr": "Exécutez `systemctl is-enabled nginx.service` et `systemctl is-active nginx.service`. Les deux doivent renvoyer respectivement **`disabled`** (ou `masked`/`not-found`) et **`inactive`**. Vue complète : `systemctl status nginx.service` doit afficher `Loaded: ... disabled` et `Active: inactive (dead)`."
+  },
+  "logs": {
+    "en": "Inspect `journalctl -u nginx.service` for start/stop events and any past listener activity. `systemctl show nginx.service -p ActiveState -p UnitFileState` gives the machine-readable state Pavois relies on. To confirm nothing is still bound to HTTP ports, use `ss -tlnp | grep -E ':80|:443'`.",
+    "fr": "Inspectez `journalctl -u nginx.service` pour les événements de démarrage/arrêt et toute activité passée de l'écouteur. `systemctl show nginx.service -p ActiveState -p UnitFileState` donne l'état lisible par machine sur lequel Pavois s'appuie. Pour confirmer que rien n'est encore lié aux ports HTTP, utilisez `ss -tlnp | grep -E ':80|:443'`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the **`service`** resource named **`nginx`** with actions **`disable`** then **`stop`**: it removes the boot-time enablement and stops the running instance. Applied with `pavois harden apply`. No file is rewritten — only the systemd unit state changes.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource **`service`** nommée **`nginx`** avec les actions **`disable`** puis **`stop`** : il supprime l'activation au démarrage et arrête l'instance en cours. Appliqué avec `pavois harden apply`. Aucun fichier n'est réécrit — seul l'état de l'unité systemd change."
+  },
+  "impact": {
+    "en": "If nginx is **legitimately serving traffic** (web app, reverse proxy, ACME/Let's Encrypt HTTP-01 challenge), disabling it will take that service offline and may break dependent applications or certificate renewals. **Before applying**: confirm the host is not meant to serve HTTP (`ss -tlnp | grep -E ':80|:443'`, check for vhosts in `/etc/nginx/sites-enabled/`), and that no reverse-proxy or load-balancer role depends on it. On a host that genuinely needs nginx, this rule does not apply and should be scoped out.",
+    "fr": "Si nginx **sert légitimement du trafic** (application web, reverse proxy, challenge ACME/Let's Encrypt HTTP-01), le désactiver mettra ce service hors ligne et pourra casser les applications dépendantes ou le renouvellement des certificats. **Avant d'appliquer** : confirmez que l'hôte n'a pas vocation à servir du HTTP (`ss -tlnp | grep -E ':80|:443'`, vérifiez les vhosts dans `/etc/nginx/sites-enabled/`) et qu'aucun rôle de reverse-proxy ou de répartiteur de charge n'en dépend. Sur un hôte qui a réellement besoin de nginx, cette règle ne s'applique pas et doit être exclue du périmètre."
+  }
+}

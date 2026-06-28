@@ -1,0 +1,76 @@
+{
+  "id": "mount-tmp-nodev",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "1.1.2.1.2",
+    "nist": [
+      "AC-6",
+      "AC-6(1)",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)",
+      "MP-7"
+    ]
+  },
+  "check": [
+    "describe mount('/tmp') do",
+    "  its('options') { should include 'nodev' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Add nodev Option to /tmp",
+    "fr": "Ajouter l'option nodev à /tmp"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The only legitimate place for device files is `/dev` on the root partition (chroot jails being the rare exception). Mounting `/tmp` with **`nodev`** tells the kernel to ignore any character or block special device found there. Without it, an attacker who can write to the world-writable `/tmp` could plant a device node (for example a copy of `/dev/sda` or `/dev/mem`) and use it to bypass filesystem permissions and read or tamper with raw disk or kernel memory.",
+    "fr": "Le seul emplacement légitime pour les fichiers de périphérique est `/dev` sur la partition racine (les prisons chroot étant la rare exception). Monter `/tmp` avec **`nodev`** indique au noyau d'ignorer tout périphérique spécial (caractère ou bloc) qui s'y trouverait. Sans cette option, un attaquant capable d'écrire dans le `/tmp` accessible à tous pourrait y créer un nœud de périphérique (par exemple une copie de `/dev/sda` ou `/dev/mem`) et l'utiliser pour contourner les permissions du système de fichiers et lire ou altérer le disque brut ou la mémoire noyau."
+  },
+  "summary": {
+    "en": "Mounts `/tmp` with the **`nodev`** option so the kernel refuses to interpret device files placed in that directory.",
+    "fr": "Monte `/tmp` avec l'option **`nodev`** afin que le noyau refuse d'interpréter les fichiers de périphérique placés dans ce répertoire."
+  },
+  "check_note": {
+    "en": "Pavois inspects the **effective** mount with `mount('/tmp')` and asserts that its resolved options include `nodev`. This reads the live mount table (what the kernel actually applied), not `/etc/fstab` — so it catches a partition remounted at runtime, an option dropped by a `systemd` mount unit, or an entry that never took effect, which a file-based scanner reading `/etc/fstab` alone would miss.",
+    "fr": "Pavois inspecte le montage **effectif** via `mount('/tmp')` et vérifie que ses options résolues incluent `nodev`. Cela lit la table de montage active (ce que le noyau a réellement appliqué), et non `/etc/fstab` — il détecte donc une partition remontée à l'exécution, une option retirée par une unité de montage `systemd`, ou une entrée jamais prise en compte, ce qu'un scanner basé sur les fichiers lisant seulement `/etc/fstab` manquerait."
+  },
+  "verify": {
+    "en": "Run `findmnt /tmp` (or `findmnt -no OPTIONS /tmp`) and confirm `nodev` is present in the option list. You can also use `mount | grep ' /tmp '`. Expected output contains `nodev`, e.g. `/tmp ... rw,nosuid,nodev,noexec,relatime`.",
+    "fr": "Exécutez `findmnt /tmp` (ou `findmnt -no OPTIONS /tmp`) et confirmez que `nodev` figure dans la liste des options. Vous pouvez aussi utiliser `mount | grep ' /tmp '`. La sortie attendue contient `nodev`, par exemple `/tmp ... rw,nosuid,nodev,noexec,relatime`."
+  },
+  "logs": {
+    "en": "Mount state is not in a log file; query it live with `findmnt /tmp` or `cat /proc/mounts`. Remount and boot-time mount events are visible via `journalctl -b | grep -i tmp` or `journalctl -u tmp.mount` when `/tmp` is backed by a `systemd` mount unit.",
+    "fr": "L'état du montage ne réside pas dans un fichier de log ; interrogez-le en direct avec `findmnt /tmp` ou `cat /proc/mounts`. Les événements de remontage et de montage au démarrage sont visibles via `journalctl -b | grep -i tmp` ou `journalctl -u tmp.mount` lorsque `/tmp` repose sur une unité de montage `systemd`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule yet, so it must be applied **manually**: add `nodev` to the `/tmp` entry's options in `/etc/fstab` (or to the relevant `systemd` mount unit), then `mount -o remount /tmp` — or reboot — and re-scan to confirm.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle ; elle doit donc être appliquée **manuellement** : ajoutez `nodev` aux options de l'entrée `/tmp` dans `/etc/fstab` (ou à l'unité de montage `systemd` concernée), puis `mount -o remount /tmp` — ou redémarrez — et relancez le scan pour confirmer."
+  },
+  "impact": {
+    "en": "Functional impact is low: legitimate software almost never needs device nodes under `/tmp`. **Precautions:** ensure `/tmp` is a real separate mount (or a `tmpfs`) before adding the option — on systems where `/tmp` lives on the root filesystem there is no dedicated mount to set it on, and you must first carve out a partition or a `tmpfs` unit. Apply with `mount -o remount /tmp`; if a remount fails because of busy files, schedule it for the next reboot rather than forcing it.",
+    "fr": "L'impact fonctionnel est faible : les logiciels légitimes n'ont presque jamais besoin de nœuds de périphérique sous `/tmp`. **Précautions :** assurez-vous que `/tmp` est un montage séparé réel (ou un `tmpfs`) avant d'ajouter l'option — sur les systèmes où `/tmp` réside sur le système de fichiers racine, il n'existe pas de montage dédié sur lequel la poser, et vous devez d'abord créer une partition ou une unité `tmpfs`. Appliquez avec `mount -o remount /tmp` ; si un remontage échoue à cause de fichiers ouverts, planifiez-le au prochain redémarrage plutôt que de le forcer."
+  }
+}

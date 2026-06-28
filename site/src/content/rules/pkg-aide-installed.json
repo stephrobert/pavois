@@ -1,0 +1,86 @@
+{
+  "id": "pkg-aide-installed",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R76",
+    "cis": [
+      "6.1.1",
+      "11.5.2",
+      "6.3.1"
+    ],
+    "nist": "CM-6(a)",
+    "pci-dss": [
+      "11.5.2",
+      "Req-11.5"
+    ],
+    "stig": [
+      "UBTU-22-651010",
+      "UBTU-24-100100"
+    ]
+  },
+  "check": [
+    "describe package('aide') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "aide",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Install AIDE",
+    "fr": "Installer AIDE"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "**AIDE** maintains a cryptographic baseline of critical files (binaries, libraries, configuration) and reports any unauthorized change. Without it installed, no host-based integrity check exists, so an attacker who tampers with `/etc`, system binaries, or implants a rootkit can do so undetected. File integrity monitoring is a core defense-in-depth control and a requirement of CIS, ANSSI BP-028 (R76) and PCI-DSS 11.5.",
+    "fr": "**AIDE** maintient une empreinte cryptographique des fichiers critiques (binaires, bibliotheques, configuration) et signale toute modification non autorisee. Sans son installation, aucun controle d'integrite local n'existe : un attaquant qui altere `/etc`, des binaires systeme ou implante un rootkit peut le faire sans etre detecte. La surveillance d'integrite des fichiers est un controle de defense en profondeur central, exige par CIS, ANSSI BP-028 (R76) et PCI-DSS 11.5."
+  },
+  "summary": {
+    "en": "Ensures the **AIDE** (Advanced Intrusion Detection Environment) package is installed so the host can perform file integrity monitoring.",
+    "fr": "Garantit que le paquet **AIDE** (Advanced Intrusion Detection Environment) est installe afin que l'hote puisse assurer la surveillance de l'integrite des fichiers."
+  },
+  "check_note": {
+    "en": "Pavois asks the package manager whether `aide` is installed via the InSpec `package` resource (resolving to `dpkg`/`rpm` underneath). This queries the **effective package database**, not a guessed path, so it stays correct whether AIDE was installed from the distro repo or a meta-package.",
+    "fr": "Pavois interroge le gestionnaire de paquets pour savoir si `aide` est installe via la ressource InSpec `package` (s'appuyant sur `dpkg`/`rpm`). Cela interroge la **base de paquets effective**, et non un chemin suppose, et reste donc correct que AIDE provienne du depot de la distribution ou d'un meta-paquet."
+  },
+  "verify": {
+    "en": "Run `dpkg -s aide` on Debian/Ubuntu or `rpm -q aide` on RHEL-family. Expected output shows the package present (`Status: install ok installed` or a version string like `aide-0.16-...`).",
+    "fr": "Executez `dpkg -s aide` sur Debian/Ubuntu ou `rpm -q aide` sur les distributions de la famille RHEL. La sortie attendue indique le paquet present (`Status: install ok installed` ou une version comme `aide-0.16-...`)."
+  },
+  "logs": {
+    "en": "- `dpkg -l aide` / `rpm -q aide` confirm installation.\n- AIDE runs typically log to `/var/log/aide/aide.log` and a daily cron/systemd timer (`aidecheck.timer`) emails or journals integrity diffs; check `journalctl -u dailyaidecheck.service` or `journalctl -u aidecheck.service`.",
+    "fr": "- `dpkg -l aide` / `rpm -q aide` confirment l'installation.\n- Les executions d'AIDE journalisent en general dans `/var/log/aide/aide.log` et un timer cron/systemd quotidien (`aidecheck.timer`) envoie ou journalise les ecarts d'integrite ; consultez `journalctl -u dailyaidecheck.service` ou `journalctl -u aidecheck.service`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan installs the `aide` package (`package` resource, `install` action) when you run `pavois harden apply`. Note that installation alone does not build the integrity database: initialize it afterwards with `aideinit` (Debian/Ubuntu) or `aide --init` (RHEL) and schedule periodic checks.",
+    "fr": "Le plan de durcissement de Pavois installe le paquet `aide` (ressource `package`, action `install`) lorsque vous lancez `pavois harden apply`. Notez que l'installation seule ne construit pas la base d'integrite : initialisez-la ensuite avec `aideinit` (Debian/Ubuntu) ou `aide --init` (RHEL) et planifiez des controles periodiques."
+  },
+  "impact": {
+    "en": "Installing AIDE is low-risk: it adds a tool without altering running services. The real operational cost comes later — the first `aide --init` is I/O intensive and the baseline must be **regenerated after every legitimate change** (package updates, config edits), otherwise daily reports flood with false positives. Store the database and config on read-only or off-host media so an intruder cannot rewrite the baseline.",
+    "fr": "Installer AIDE presente peu de risque : il ajoute un outil sans modifier les services en cours. Le vrai cout operationnel vient ensuite — le premier `aide --init` est gourmand en E/S et la base de reference doit etre **regeneree apres chaque changement legitime** (mises a jour de paquets, modifications de config), sinon les rapports quotidiens se remplissent de faux positifs. Stockez la base et la configuration sur un support en lecture seule ou deporte pour qu'un intrus ne puisse pas reecrire la reference."
+  }
+}

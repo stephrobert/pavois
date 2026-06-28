@@ -1,0 +1,78 @@
+{
+  "id": "filegroupownership-sshd-pub-key",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R50",
+    "cis": [
+      "5.1.2",
+      "5.1.3",
+      "5.1.5"
+    ]
+  },
+  "check": [
+    "only_if { file('/etc/ssh').exist? }",
+    "describe file('/etc/ssh') do",
+    "  its('gid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "group": "root",
+    "path": "/etc/ssh",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Group Ownership on SSH Server Public *.pub Key Files",
+    "fr": "Vérifier le groupe propriétaire des clés publiques *.pub du serveur SSH"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The SSH host public keys (`/etc/ssh/ssh_host_*_key.pub`) are presented to clients to verify the server's identity. If an unauthorized user can modify a public key file, the SSH service can be **compromised** — for example a swapped public key paired with a rogue private key enables host impersonation. Group ownership by **root** (gid `0`) prevents non-privileged users from tampering with these files.",
+    "fr": "Les clés publiques d'hôte SSH (`/etc/ssh/ssh_host_*_key.pub`) sont présentées aux clients pour vérifier l'identité du serveur. Si un utilisateur non autorisé peut modifier un fichier de clé publique, le service SSH peut être **compromis** — par exemple une clé publique substituée associée à une clé privée malveillante permet l'usurpation d'identité de l'hôte. La propriété par le groupe **root** (gid `0`) empêche les utilisateurs non privilégiés d'altérer ces fichiers."
+  },
+  "summary": {
+    "en": "Ensures the SSH host public-key location `/etc/ssh` is owned by group **root** (gid `0`).",
+    "fr": "Garantit que l'emplacement des clés publiques d'hôte SSH `/etc/ssh` appartient au groupe **root** (gid `0`)."
+  },
+  "check_note": {
+    "en": "Pavois reads the real group id of `/etc/ssh` via InSpec's `file` resource and asserts `gid == 0`. It checks the **effective** ownership on disk, so a regenerated `.pub` file (e.g. after `ssh-keygen -A`) that landed with the wrong group is detected even when the deployment manifest still looks correct.",
+    "fr": "Pavois lit l'identifiant de groupe réel de `/etc/ssh` via la ressource InSpec `file` et vérifie `gid == 0`. Il contrôle la propriété **effective** sur le disque, de sorte qu'un fichier `.pub` régénéré (par ex. après `ssh-keygen -A`) au mauvais groupe est détecté même si le manifeste de déploiement semble correct."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /etc/ssh` (expected `root 0`) and check the public keys: `stat -c '%n %G %a' /etc/ssh/ssh_host_*_key.pub` — they should be group `root` with mode `0644`.",
+    "fr": "Exécutez `stat -c '%G %g' /etc/ssh` (attendu `root 0`) et vérifiez les clés publiques : `stat -c '%n %G %a' /etc/ssh/ssh_host_*_key.pub` — elles doivent être du groupe `root` avec le mode `0644`."
+  },
+  "logs": {
+    "en": "Add an auditd watch — `auditctl -w /etc/ssh -p wa -k sshd_keys` — to record ownership or content changes in `/var/log/audit/audit.log`. SSH daemon start-up and host-key loading is logged via `journalctl -u sshd` / `/var/log/auth.log`.",
+    "fr": "Ajoutez une surveillance auditd — `auditctl -w /etc/ssh -p wa -k sshd_keys` — pour enregistrer les changements de propriété ou de contenu dans `/var/log/audit/audit.log`. Le démarrage du démon SSH et le chargement des clés d'hôte sont journalisés via `journalctl -u sshd` / `/var/log/auth.log`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is wired for this rule, so it must be applied **manually**: `chgrp 0 /etc/ssh` (and the `*.pub` files within it). Re-run `pavois harden verify` afterwards.",
+    "fr": "Aucune remédiation automatique n'est câblée pour cette règle ; elle doit être appliquée **manuellement** : `chgrp 0 /etc/ssh` (et les fichiers `*.pub` qu'il contient). Relancez ensuite `pavois harden verify`."
+  },
+  "impact": {
+    "en": "If public host keys can be modified by a non-root group, an attacker can substitute keys and enable host impersonation. Resetting the group to **root** is safe — public keys are world-readable (`0644`) by design, so SSH clients and the daemon keep working. No session impact. Precaution: do not confuse these with the private keys, which on some distros use the `ssh_keys` group; only the `.pub` files and the directory should be group `root` here.",
+    "fr": "Si les clés publiques d'hôte peuvent être modifiées par un groupe non-root, un attaquant peut substituer des clés et permettre l'usurpation d'identité de l'hôte. Remettre le groupe à **root** est sans danger — les clés publiques sont lisibles par tous (`0644`) par conception, les clients SSH et le démon continuent donc de fonctionner. Aucun impact sur les sessions. Précaution : ne les confondez pas avec les clés privées, qui sur certaines distributions utilisent le groupe `ssh_keys` ; ici, seuls les fichiers `.pub` et le répertoire doivent être du groupe `root`."
+  }
+}

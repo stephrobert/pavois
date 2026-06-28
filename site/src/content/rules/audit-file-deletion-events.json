@@ -1,0 +1,88 @@
+{
+  "id": "audit-file-deletion-events",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Audit (auditd)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R73",
+    "cis": [
+      "6.3.3.13",
+      "10.2.1.7",
+      "6.2.3.13",
+      "6.3.3.22"
+    ],
+    "nist": [
+      "3.1.7",
+      "AU-12(c)",
+      "AU-2(d)",
+      "CM-6(a)"
+    ],
+    "pci-dss": "10.2.1.7",
+    "stig": [
+      "UBTU-22-654185",
+      "UBTU-24-900540"
+    ]
+  },
+  "check": [
+    "describe command('auditctl -l') do",
+    "  its('stdout') { should match(/(-k +|key=)delete\\b/) }",
+    "end"
+  ],
+  "remediation": {
+    "reboot_required": true,
+    "resource": "audit_ruleset"
+  },
+  "title": {
+    "en": "Ensure auditd Collects File Deletion Events by User - rename",
+    "fr": "Garantir que auditd collecte les evenements de suppression de fichiers par utilisateur - rename"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Auditing file deletions creates a trail for files removed from the system. That trail aids troubleshooting and, crucially, helps detect malicious processes that delete or `rename` log files and artifacts to conceal their presence. Without it, an attacker can erase evidence and you cannot tell what was removed, when, or by whom.",
+    "fr": "Auditer les suppressions de fichiers cree une trace des fichiers retires du systeme. Cette trace aide au depannage et, surtout, permet de detecter les processus malveillants qui suppriment ou renomment (`rename`) des journaux et artefacts pour dissimuler leur presence. Sans elle, un attaquant peut effacer les preuves et vous ne pouvez savoir ce qui a ete retire, quand, ni par qui."
+  },
+  "summary": {
+    "en": "Ensures `auditd` has an active rule tagged `delete` that records file-removal syscalls (`unlink`, `unlinkat`, `rename`, `renameat`) performed by ordinary users.",
+    "fr": "Garantit que `auditd` possede une regle active taguee `delete` qui enregistre les appels systeme de suppression de fichiers (`unlink`, `unlinkat`, `rename`, `renameat`) effectues par les utilisateurs ordinaires."
+  },
+  "check_note": {
+    "en": "Pavois runs `auditctl -l` and checks for a loaded rule carrying the `delete` key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule present in a file but not loaded (no `augenrules`, syntax error, service not restarted) gives false assurance. `auditctl -l` shows exactly what the kernel enforces now.",
+    "fr": "Pavois execute `auditctl -l` et verifie la presence d'une regle chargee portant la cle `delete`. Lire le **jeu de regles vivant du noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : une regle presente dans un fichier mais non chargee (pas d'`augenrules`, erreur de syntaxe, service non redemarre) donne une fausse assurance. `auditctl -l` montre exactement ce que le noyau applique."
+  },
+  "verify": {
+    "en": "Run `auditctl -l | grep delete`. You should see syscall rules such as `-a always,exit -F arch=b64 -S unlink,unlinkat,rename,renameat -F auid>=1000 -F auid!=unset -k delete` (and a `b32` variant). Empty output means the rule is not loaded.",
+    "fr": "Executez `auditctl -l | grep delete`. Vous devez voir des regles d'appels systeme telles que `-a always,exit -F arch=b64 -S unlink,unlinkat,rename,renameat -F auid>=1000 -F auid!=unset -k delete` (et une variante `b32`). Une sortie vide signifie que la regle n'est pas chargee."
+  },
+  "logs": {
+    "en": "Triggered events land in `/var/log/audit/audit.log`. Search with `grep 'key=\"delete\"' /var/log/audit/audit.log` (prefer grep over `ausearch -k delete`, which can wrongly report no matches).",
+    "fr": "Les evenements declenches arrivent dans `/var/log/audit/audit.log`. Recherchez avec `grep 'key=\"delete\"' /var/log/audit/audit.log` (preferez grep a `ausearch -k delete`, qui peut signaler a tort aucune correspondance)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `audit_ruleset` resource to write the deletion syscall rules into `/etc/audit/rules.d/`, then reloads auditd. Because the audit config may be immutable, a **reboot is required** to fully apply. Run `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour ecrire les regles d'appels systeme de suppression dans `/etc/audit/rules.d/`, puis recharge auditd. Comme la configuration d'audit peut etre immuable, un **redemarrage est necessaire** pour une application complete. Executez `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Without this rule, attackers can delete logs and files with no trace. The rule is log-only and cannot block deletions, so it breaks nothing functionally. Precautions: deletion syscalls are extremely frequent (builds, temp files, package operations), making this one of the noisiest audit rules — size `audit.log` rotation, `max_log_file` and `space_left_action` carefully so a full disk does not halt the host when `auditd` is set to `halt`.",
+    "fr": "Sans cette regle, les attaquants peuvent supprimer journaux et fichiers sans trace. La regle ne fait que journaliser et ne peut bloquer les suppressions, elle ne casse donc rien fonctionnellement. Precautions : les appels systeme de suppression sont extremement frequents (compilations, fichiers temporaires, operations de paquets), ce qui en fait l'une des regles d'audit les plus bruyantes — dimensionnez soigneusement la rotation de `audit.log`, `max_log_file` et `space_left_action` afin qu'un disque plein n'arrete pas l'hote lorsque `auditd` est sur `halt`."
+  }
+}

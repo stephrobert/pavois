@@ -1,0 +1,40 @@
+{
+  "id": "sudo-require-reauthentication",
+  "supported_os": [
+    "debian12"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0"
+  },
+  "severity": "medium",
+  "domain": "Sudo",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.2.6",
+    "nist": "IA-11",
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "describe command('grep -rqE \\'timestamp_timeout[[:space:]]*=[[:space:]]*-1\\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "grep -rl 'timestamp_timeout[[:space:]]*=[[:space:]]*-1' /etc/sudoers /etc/sudoers.d/ 2>/dev/null\n# remove the 'timestamp_timeout=-1' line from each with visudo (default is 15min re-auth)\n",
+    "reason": "sudoers edits risk lockout — always edit via visudo",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Require Re-Authentication When Using the sudo Command",
+    "fr": "Require Re-Authentication When Using the sudo Command"
+  },
+  "needs_translation": [
+    "title.fr",
+    "rationale.fr"
+  ],
+  "rationale": {
+    "en": "Without re-authentication, users may access resources or perform tasks for which they do not have authorization. When operating systems provide the capability to escalate a functional capability, it is critical that the user re-authenticate.",
+    "fr": "Without re-authentication, users may access resources or perform tasks for which they do not have authorization. When operating systems provide the capability to escalate a functional capability, it is critical that the user re-authenticate."
+  }
+}

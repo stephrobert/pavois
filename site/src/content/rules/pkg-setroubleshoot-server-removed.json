@@ -1,0 +1,71 @@
+{
+  "id": "pkg-setroubleshoot-server-removed",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R49"
+  },
+  "check": [
+    "describe package('setroubleshoot-server') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "setroubleshoot-server",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall setroubleshoot-server Package",
+    "fr": "Désinstaller le paquet setroubleshoot-server"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The **SETroubleshoot** daemon (`setroubleshootd`) analyzes SELinux AVC denials and surfaces desktop notifications. It is a workstation convenience tool with **no place on a server**: it runs a long-lived service, parses untrusted log data, and enlarges the attack surface for no operational benefit. Removing the package eliminates an unnecessary daemon and aligns the host with the principle of running only the software you actually need.",
+    "fr": "Le démon **SETroubleshoot** (`setroubleshootd`) analyse les refus AVC de SELinux et affiche des notifications de bureau. C'est un outil de confort pour poste de travail qui **n'a pas sa place sur un serveur** : il exécute un service permanent, analyse des données de journaux non fiables et augmente la surface d'attaque sans aucun bénéfice opérationnel. Supprimer le paquet élimine un démon inutile et aligne l'hôte sur le principe de n'installer que les logiciels réellement nécessaires."
+  },
+  "summary": {
+    "en": "Ensures the **`setroubleshoot-server`** package is **not installed**, so the SETroubleshoot SELinux notification daemon never runs on the host.",
+    "fr": "Garantit que le paquet **`setroubleshoot-server`** n'est **pas installé**, afin que le démon de notification SELinux SETroubleshoot ne s'exécute jamais sur l'hôte."
+  },
+  "check_note": {
+    "en": "Pavois queries the **package database** through CINC/InSpec's `package` resource and asserts the package is absent. Unlike checks that grep config files, this reflects the **effective** installed state reported by `dpkg`/`rpm` — the same source the service manager uses to decide whether `setroubleshootd` can start.",
+    "fr": "Pavois interroge la **base de données des paquets** via la ressource `package` de CINC/InSpec et vérifie que le paquet est absent. Contrairement aux contrôles qui analysent des fichiers de configuration, cela reflète l'état **effectif** d'installation rapporté par `dpkg`/`rpm` — la même source que le gestionnaire de services consulte pour savoir si `setroubleshootd` peut démarrer."
+  },
+  "verify": {
+    "en": "Confirm the package is gone:\n\n- Debian/Ubuntu: `dpkg -s setroubleshoot-server` returns **`package ... is not installed`**.\n- RHEL/Alma: `rpm -q setroubleshoot-server` returns **`package setroubleshoot-server is not installed`**.",
+    "fr": "Confirmez que le paquet est absent :\n\n- Debian/Ubuntu : `dpkg -s setroubleshoot-server` renvoie **`package ... is not installed`**.\n- RHEL/Alma : `rpm -q setroubleshoot-server` renvoie **`package setroubleshoot-server is not installed`**."
+  },
+  "logs": {
+    "en": "- Package removal is recorded in `/var/log/dpkg.log` (Debian/Ubuntu) or via `rpm -q --last setroubleshoot-server` and `/var/log/dnf.log` (RHEL).\n- If the service was running, `systemctl status setroubleshootd` should now report **not-found / inactive**.",
+    "fr": "- La suppression du paquet est enregistrée dans `/var/log/dpkg.log` (Debian/Ubuntu) ou consultable via `rpm -q --last setroubleshoot-server` et `/var/log/dnf.log` (RHEL).\n- Si le service tournait, `systemctl status setroubleshootd` doit désormais indiquer **not-found / inactive**."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a **`package`** resource for `setroubleshoot-server` with action **`remove`**, so running `pavois harden apply` uninstalls it via the native package manager (`apt`/`dnf`). No service restart is needed; the daemon simply stops existing.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource **`package`** pour `setroubleshoot-server` avec l'action **`remove`** ; l'exécution de `pavois harden apply` le désinstalle donc via le gestionnaire de paquets natif (`apt`/`dnf`). Aucun redémarrage de service n'est nécessaire ; le démon cesse simplement d'exister."
+  },
+  "impact": {
+    "en": "Impact is minimal on a server: you lose **graphical SELinux denial notifications**, which are irrelevant headless. Before applying, confirm no admin workflow relies on the `sealert` GUI to triage AVC denials — you can still inspect denials with `ausearch -m avc` or `journalctl`. Removing it does **not** disable SELinux enforcement itself.",
+    "fr": "L'impact est minime sur un serveur : vous perdez les **notifications graphiques des refus SELinux**, sans intérêt sur une machine sans interface. Avant d'appliquer, vérifiez qu'aucun flux d'administration ne dépend de l'interface `sealert` pour trier les refus AVC — vous pouvez toujours inspecter les refus avec `ausearch -m avc` ou `journalctl`. Sa suppression **ne désactive pas** l'application de SELinux elle-même."
+  }
+}

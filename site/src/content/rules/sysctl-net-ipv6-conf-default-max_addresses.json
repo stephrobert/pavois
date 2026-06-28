@@ -1,0 +1,71 @@
+{
+  "id": "sysctl-net-ipv6-conf-default-max_addresses",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R13"
+  },
+  "check": [
+    "describe kernel_parameter('net.ipv6.conf.default.max_addresses') do",
+    "  its('value') { should cmp 1 }",
+    "end"
+  ],
+  "remediation": {
+    "key": "net.ipv6.conf.default.max_addresses",
+    "resource": "sysctl",
+    "value": "1"
+  },
+  "title": {
+    "en": "Configure Maximum Number of Autoconfigured Addresses on All IPv6 Interfaces By Default",
+    "fr": "Configurer le nombre maximal d'adresses autoconfigurées sur toutes les interfaces IPv6 par défaut"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`net.ipv6.conf.default.max_addresses` caps how many autoconfigured (SLAAC) IPv6 addresses an interface may hold. Without a tight cap, a flood of forged Router Advertisements carrying many prefixes can make the host configure a large number of addresses, exhausting memory and creating a **denial-of-service** condition, and it complicates auditing the host's true network identity. Limiting the count to the number of statically required addresses bounds this exposure; the value `1` enforces a strict single-address default.",
+    "fr": "`net.ipv6.conf.default.max_addresses` plafonne le nombre d'adresses IPv6 autoconfigurées (SLAAC) qu'une interface peut détenir. Sans plafond strict, un flot de fausses annonces de routeur portant de nombreux préfixes peut amener l'hôte à configurer un grand nombre d'adresses, épuisant la mémoire et créant une condition de **déni de service**, et compliquant l'audit de la véritable identité réseau de l'hôte. Limiter le nombre à celui des adresses statiquement requises borne cette exposition ; la valeur `1` impose une limite stricte d'une seule adresse par défaut."
+  },
+  "summary": {
+    "en": "Limits the number of autoconfigured IPv6 addresses per new interface to one by setting `net.ipv6.conf.default.max_addresses = 1`.",
+    "fr": "Limite à une le nombre d'adresses IPv6 autoconfigurées par nouvelle interface en réglant `net.ipv6.conf.default.max_addresses = 1`."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** kernel value of `net.ipv6.conf.default.max_addresses`, not a config file. The live value merges `/etc/sysctl.conf`, drop-ins in `/etc/sysctl.d/` and `/run/sysctl.d/`, kernel boot parameters and any runtime `sysctl -w`. A clean file does not prove the running kernel enforces the cap; Pavois reports the value actually in effect.",
+    "fr": "Pavois lit la valeur **effective** du noyau pour `net.ipv6.conf.default.max_addresses`, pas un fichier de configuration. La valeur active fusionne `/etc/sysctl.conf`, les drop-ins dans `/etc/sysctl.d/` et `/run/sysctl.d/`, les paramètres de démarrage du noyau et tout `sysctl -w` à chaud. Un fichier propre ne prouve pas que le noyau en cours d'exécution applique le plafond ; Pavois rapporte la valeur réellement en vigueur."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv6.conf.default.max_addresses` and confirm the output is `net.ipv6.conf.default.max_addresses = 1`. Count current addresses per interface with `ip -6 addr show`.",
+    "fr": "Exécutez `sysctl net.ipv6.conf.default.max_addresses` et vérifiez que la sortie est `net.ipv6.conf.default.max_addresses = 1`. Comptez les adresses actuelles par interface avec `ip -6 addr show`."
+  },
+  "logs": {
+    "en": "No dedicated log. Inspect runtime state with `sysctl net.ipv6.conf.default.max_addresses` and `sysctl -a | grep max_addresses`. To find which file set it, run `sysctl --system 2>&1 | grep max_addresses`. The number of addresses currently held is visible with `ip -6 addr show dev <if>`.",
+    "fr": "Aucun journal dédié. Inspectez l'état d'exécution avec `sysctl net.ipv6.conf.default.max_addresses` et `sysctl -a | grep max_addresses`. Pour trouver le fichier qui l'a défini, exécutez `sysctl --system 2>&1 | grep max_addresses`. Le nombre d'adresses actuellement détenues est visible avec `ip -6 addr show dev <if>`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv6.conf.default.max_addresses = 1`, persisting it in a managed drop-in and applying it live. Run `pavois harden apply` to enforce it; it is re-applied at boot via the persisted entry.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour définir `net.ipv6.conf.default.max_addresses = 1`, en le persistant dans un drop-in géré et en l'appliquant à chaud. Exécutez `pavois harden apply` pour l'imposer ; il est réappliqué au démarrage via l'entrée persistante."
+  },
+  "impact": {
+    "en": "A cap of `1` is appropriate for hosts with a single static or SLAAC address per interface, but it will **break legitimate multi-address setups**: SLAAC with **privacy extensions** (temporary addresses) needs at least 2-3, and hosts with multiple prefixes or aliases need more. Before applying, confirm the host does not use IPv6 privacy addresses or multiple IPv6 addresses per interface; if it does, raise the value to match the real requirement rather than leaving it at `1`.",
+    "fr": "Un plafond de `1` convient aux hôtes avec une seule adresse statique ou SLAAC par interface, mais il **cassera les configurations multi-adresses légitimes** : SLAAC avec **extensions de confidentialité** (adresses temporaires) nécessite au moins 2-3 adresses, et les hôtes avec plusieurs préfixes ou alias en nécessitent davantage. Avant d'appliquer, vérifiez que l'hôte n'utilise pas d'adresses de confidentialité IPv6 ni plusieurs adresses IPv6 par interface ; si c'est le cas, augmentez la valeur pour correspondre au besoin réel plutôt que de la laisser à `1`."
+  }
+}

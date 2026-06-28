@@ -1,0 +1,136 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+import Toc from '../../../components/Toc.astro';
+import { type Lang } from '../../../i18n/ui';
+import { categoryLabel, formatDate, readingTimeMinutes } from '../../../lib/blog';
+
+export async function getStaticPaths() {
+  const posts = (await getCollection('blog')).filter((p) => !p.data.draft);
+  return posts.map((p) => ({
+    params: { lang: p.data.lang, slug: p.id.replace(/^(en|fr)\//, '') },
+    props: { post: p },
+  }));
+}
+
+const { lang } = Astro.params as { lang: Lang };
+const { post } = Astro.props;
+const { Content, headings } = await render(post);
+// Table of contents (chapter links) from the markdown headings (Astro auto-slugs them as ids).
+const toc = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
+const d = post.data;
+const slug = post.id.replace(/^(en|fr)\//, '');
+const minutes = readingTimeMinutes(post.body);
+const cat = categoryLabel(d.category, lang);
+
+const crumbs = [
+  { name: 'Pavois', path: `/${lang}/` },
+  { name: 'Blog', path: `/${lang}/blog/` },
+  { name: d.title, path: `/${lang}/blog/${slug}/` },
+];
+---
+
+<Base
+  title={`${d.title} · Pavois`}
+  description={d.description}
+  lang={lang}
+  ogType="article"
+  schema="Article"
+  datePublished={d.datePublished}
+  dateModified={d.dateModified ?? d.datePublished}
+  image={d.image}
+  breadcrumbs={crumbs}
+>
+  <div class="wrap post-layout">
+   <article class="post">
+    <p class="post-kicker"><a href={`/${lang}/blog/`}>{lang === 'fr' ? 'Blog' : 'Blog'}</a> · {cat}</p>
+    <h1>{d.title}</h1>
+    <p class="post-meta">
+      {formatDate(d.dateModified ?? d.datePublished, lang)} · {minutes} {lang === 'fr' ? 'min de lecture' : 'min read'} · Stéphane Robert
+    </p>
+    <p class="post-lede">{d.description}</p>
+    {d.tags.length > 0 && (
+      <ul class="post-tags">
+        {d.tags.map((tg) => <li>{tg}</li>)}
+      </ul>
+    )}
+    <div class="prose post-body">
+      <Content />
+    </div>
+    <p class="post-foot">
+      <a href={`/${lang}/blog/`}>{lang === 'fr' ? '← Tous les articles' : '← All posts'}</a>
+    </p>
+   </article>
+   <Toc headings={toc} lang={lang} />
+  </div>
+</Base>
+
+<style>
+  .post-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 760px) 220px;
+    gap: 48px;
+    justify-content: center;
+    padding-top: 36px;
+    padding-bottom: 60px;
+  }
+  .post {
+    min-width: 0;
+  }
+  @media (max-width: 980px) {
+    .post-layout {
+      grid-template-columns: minmax(0, 760px);
+    }
+    .post-layout :global(.toc) {
+      display: none;
+    }
+  }
+  .post-kicker {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--color-accent);
+    margin: 0 0 10px;
+  }
+  .post h1 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    line-height: 1.15;
+    margin: 0 0 12px;
+  }
+  .post-meta {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--color-faint);
+    margin: 0 0 18px;
+  }
+  .post-lede {
+    font-size: 1.12rem;
+    line-height: 1.6;
+    color: var(--color-dim);
+    margin: 0 0 20px;
+  }
+  .post-tags {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    padding: 0;
+    margin: 0 0 28px;
+  }
+  .post-tags li {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    padding: 3px 9px;
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    color: var(--color-faint);
+  }
+  .post-foot {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--color-border);
+  }
+  .post-foot a,
+  .post-kicker a {
+    color: var(--color-accent);
+  }
+</style>

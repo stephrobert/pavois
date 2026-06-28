@@ -1,0 +1,67 @@
+{
+  "id": "kconfig-vmap-stack",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel build",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R15"
+  },
+  "check": [
+    "describe command(\"grep -h '^CONFIG_VMAP_STACK=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_VMAP_STACK='\") do",
+    "  its('stdout') { should match(/^CONFIG_VMAP_STACK=y$/) }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "User a virtually-mapped stack",
+    "fr": "Utiliser une pile à mappage virtuel"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`CONFIG_VMAP_STACK=y` allocates kernel thread stacks in **vmalloc** space, each fenced by an unmapped **guard page**. A stack overflow then faults immediately instead of silently corrupting adjacent kernel memory. Without it, kernel stack overflows produce **hard-to-diagnose memory corruption** that attackers can leverage for privilege escalation, and that masks the root cause of crashes.",
+    "fr": "`CONFIG_VMAP_STACK=y` alloue les piles des threads noyau dans l'espace **vmalloc**, chacune protégée par une **page de garde** non mappée. Un débordement de pile provoque alors une faute immédiate au lieu de corrompre silencieusement la mémoire noyau adjacente. Sans cette option, les débordements de pile noyau produisent une **corruption mémoire difficile à diagnostiquer**, exploitable pour une élévation de privilèges et masquant la cause racine des plantages."
+  },
+  "summary": {
+    "en": "Requires the kernel to be built with `CONFIG_VMAP_STACK=y` so kernel stacks have guard pages that catch overflows immediately.",
+    "fr": "Exige que le noyau soit compilé avec `CONFIG_VMAP_STACK=y` afin que les piles noyau disposent de pages de garde détectant immédiatement les débordements."
+  },
+  "check_note": {
+    "en": "Pavois reads the **build-time config of the running kernel** (`/boot/config-$(uname -r)` or `/proc/config.gz`) and requires `CONFIG_VMAP_STACK=y`. Querying the live kernel — not a static config file that may belong to another kernel package — guarantees the assertion describes the kernel actually executing.",
+    "fr": "Pavois lit la **configuration de compilation du noyau en cours d'exécution** (`/boot/config-$(uname -r)` ou `/proc/config.gz`) et exige `CONFIG_VMAP_STACK=y`. Interroger le noyau vivant — et non un fichier de config statique pouvant appartenir à un autre paquet noyau — garantit que l'assertion décrit le noyau réellement exécuté."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_VMAP_STACK=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep CONFIG_VMAP_STACK`). Expected output: `CONFIG_VMAP_STACK=y`.",
+    "fr": "Exécutez `grep '^CONFIG_VMAP_STACK=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep CONFIG_VMAP_STACK`). Sortie attendue : `CONFIG_VMAP_STACK=y`."
+  },
+  "logs": {
+    "en": "Build-time options leave no audit trail. If a guarded stack overflow occurs, the kernel logs it: check `dmesg` / `journalctl -k` for `kernel stack overflow` traces.",
+    "fr": "Les options de compilation ne laissent aucune trace d'audit. En cas de débordement de pile protégé, le noyau le journalise : consultez `dmesg` / `journalctl -k` pour les traces `kernel stack overflow`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation: `remediation` is empty because `CONFIG_VMAP_STACK` is fixed at **kernel compile time**. Current distribution kernels (Debian, Ubuntu, RHEL/Alma on x86-64 and arm64) already ship with it enabled; if the check fails, install/boot a compliant vendor kernel manually and re-scan.",
+    "fr": "Aucune remédiation automatique : `remediation` est vide car `CONFIG_VMAP_STACK` est figé à la **compilation du noyau**. Les noyaux des distributions actuelles (Debian, Ubuntu, RHEL/Alma sur x86-64 et arm64) l'activent déjà ; si le contrôle échoue, installez/démarrez manuellement un noyau fournisseur conforme puis relancez le scan."
+  },
+  "impact": {
+    "en": "Failing means kernel stack overflows can **silently corrupt memory** rather than faulting cleanly, weakening exploit resistance and crash diagnosability. Precautions: changing kernels is the only remedy — keep the prior kernel bootable for rollback and validate that out-of-tree modules still load. The guard-page mechanism itself has negligible runtime cost.",
+    "fr": "Un échec signifie que les débordements de pile noyau peuvent **corrompre silencieusement la mémoire** au lieu de provoquer une faute propre, affaiblissant la résistance aux exploits et la capacité de diagnostic des plantages. Précautions : changer de noyau est le seul remède — gardez le noyau précédent amorçable pour revenir en arrière et vérifiez que les modules hors arbre se chargent toujours. Le mécanisme de page de garde a lui-même un coût d'exécution négligeable."
+  }
+}

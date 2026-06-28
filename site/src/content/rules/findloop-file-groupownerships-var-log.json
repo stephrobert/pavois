@@ -1,0 +1,62 @@
+{
+  "id": "findloop-file-groupownerships-var-log",
+  "supported_os": [
+    "debian12"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0"
+  },
+  "severity": "medium",
+  "domain": "Filesystem (scan)",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R71",
+    "cis": "6.1.4.1",
+    "pci-dss": "10.3.2"
+  },
+  "check": [
+    "describe command('timeout 90 find /var/log -type f ! -group root ! -group adm ! -group syslog 2>/dev/null') do",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog -exec chgrp root {} + 2>/dev/null; true",
+    "name": "fix-varlog-ownership",
+    "not_if": "test -z \"$(find /var/log -type f \\( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog \\) 2>/dev/null | head -1)\"",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Verify group ownership of log files",
+    "fr": "Vérifier le groupe propriétaire des fichiers de journaux"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Log files under `/var/log` record errors, authentication events and audit traces that are essential for incident response. If a log file is group-owned by anything other than **root**, **adm** or **syslog**, members of that group can read sensitive data (credentials in error messages, session details) or tamper with the records to hide an intrusion. Restricting group ownership keeps log access limited to authorized administrators and preserves the integrity of the audit trail.",
+    "fr": "Les fichiers de journaux sous `/var/log` enregistrent les erreurs, les événements d'authentification et les traces d'audit indispensables à la réponse à incident. Si un fichier de journal appartient à un groupe autre que **root**, **adm** ou **syslog**, les membres de ce groupe peuvent lire des données sensibles (identifiants dans des messages d'erreur, détails de session) ou altérer les enregistrements pour masquer une intrusion. Restreindre le groupe propriétaire limite l'accès aux administrateurs autorisés et préserve l'intégrité de la piste d'audit."
+  },
+  "summary": {
+    "en": "Ensures every file under `/var/log` is group-owned by **root**, **adm** or **syslog** so that log data stays readable only by authorized administrators.",
+    "fr": "Garantit que chaque fichier sous `/var/log` appartient au groupe **root**, **adm** ou **syslog**, afin que les journaux ne restent lisibles que par les administrateurs autorisés."
+  },
+  "check_note": {
+    "en": "Pavois walks `/var/log` with `find ... ! -group root ! -group adm ! -group syslog` and expects **empty output** — any listed path is a file with an unexpected group owner. Scanning the live filesystem (rather than a static inventory or package manifest) catches log files created at runtime by services, rotated logs and operator-dropped files that a file-list audit would never see.",
+    "fr": "Pavois parcourt `/var/log` avec `find ... ! -group root ! -group adm ! -group syslog` et attend une **sortie vide** : tout chemin listé est un fichier au groupe propriétaire inattendu. Analyser le système de fichiers réel (plutôt qu'un inventaire statique ou un manifeste de paquet) détecte les journaux créés à l'exécution par les services, les journaux après rotation et les fichiers déposés manuellement qu'un audit de liste de fichiers ne verrait jamais."
+  },
+  "verify": {
+    "en": "Run the same scan manually:\n\n```\nfind /var/log -type f ! -group root ! -group adm ! -group syslog\n```\n\n**Expected output: nothing** (empty). Any file printed has a non-compliant group; inspect it with `ls -l <file>`.",
+    "fr": "Lancez la même analyse manuellement :\n\n```\nfind /var/log -type f ! -group root ! -group adm ! -group syslog\n```\n\n**Sortie attendue : rien** (vide). Tout fichier affiché possède un groupe non conforme ; inspectez-le avec `ls -l <fichier>`."
+  },
+  "logs": {
+    "en": "List offending files and their group with `find /var/log -type f ! -group root ! -group adm ! -group syslog -printf '%g %p\\n'`. After remediation, confirm with `ls -lg /var/log/`. Group-ownership changes themselves are not logged unless an `auditd` watch on `chown`/`chgrp` is in place.",
+    "fr": "Listez les fichiers fautifs et leur groupe avec `find /var/log -type f ! -group root ! -group adm ! -group syslog -printf '%g %p\\n'`. Après remédiation, vérifiez avec `ls -lg /var/log/`. Les changements de groupe ne sont pas journalisés sauf si une surveillance `auditd` sur `chown`/`chgrp` est en place."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan runs an `exec` resource (`fix-varlog-ownership`) that re-owns every file in `/var/log` whose user is not **root**/**syslog** back to `root`, and whose group is not **root**/**adm**/**syslog** back to the `root` group. A `not_if` guard skips the change when nothing is out of policy, so the run is idempotent. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois exécute une ressource `exec` (`fix-varlog-ownership`) qui réattribue à `root` tout fichier de `/var/log` dont l'utilisateur n'est pas **root**/**syslog**, et au groupe `root` tout fichier dont le groupe n'est pas **root**/**adm**/**syslog**. Une garde `not_if` ignore l'opération quand rien n'est hors politique, rendant l'exécution idempotente. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Risk if left as-is: log files readable or writable by an unprivileged group can leak secrets or be altered to erase evidence of compromise. Before applying: a few daemons (e.g. some web or database servers) deliberately write logs owned by their own service group; forcing them to `root:adm` can break log rotation or make the daemon unable to write. Review the offending files first and add an exclusion for legitimate service-owned logs rather than blindly re-owning everything.",
+    "fr": "Risque en l'état : des fichiers de journaux lisibles ou modifiables par un groupe non privilégié peuvent fuiter des secrets ou être altérés pour effacer les traces d'une compromission. Avant d'appliquer : certains démons (serveurs web ou bases de données) écrivent volontairement des journaux appartenant à leur propre groupe de service ; les forcer à `root:adm` peut casser la rotation ou empêcher le démon d'écrire. Examinez d'abord les fichiers fautifs et excluez les journaux légitimes appartenant à un service plutôt que de tout réattribuer aveuglément."
+  }
+}

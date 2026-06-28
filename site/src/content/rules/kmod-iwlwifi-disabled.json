@@ -1,0 +1,59 @@
+{
+  "id": "kmod-iwlwifi-disabled",
+  "supported_os": [
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel modules",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe kernel_module('iwlwifi') do",
+    "  it { should_not be_loaded }",
+    "  it { should be_disabled }",
+    "end"
+  ],
+  "remediation": {
+    "action": "blacklist",
+    "name": "iwlwifi",
+    "reboot_required": true,
+    "resource": "kernel_module"
+  },
+  "title": {
+    "en": "Disable Kernel iwlwifi Module",
+    "fr": "Désactiver le module noyau iwlwifi"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`iwlwifi` is the core driver for Intel Wireless Wi-Fi adapters. On servers and other systems where wireless networking must be off, an active Wi-Fi stack is an unmanaged network path that can bypass perimeter firewalls and adds driver code that parses untrusted radio frames. Preventing the kernel from loading `iwlwifi` provides an additional safeguard against accidental or malicious activation of wireless connectivity, beyond merely turning the radio off in software.",
+    "fr": "`iwlwifi` est le pilote principal des adaptateurs Wi-Fi sans fil Intel. Sur les serveurs et autres systèmes où le réseau sans fil doit être désactivé, une pile Wi-Fi active est un chemin réseau non maîtrisé pouvant contourner les pare-feu de périmètre et ajoute du code pilote qui analyse des trames radio non fiables. Empêcher le noyau de charger `iwlwifi` apporte une protection supplémentaire contre l'activation accidentelle ou malveillante de la connectivité sans fil, au-delà de la simple désactivation logicielle de la radio."
+  },
+  "summary": {
+    "en": "Ensures the `iwlwifi` Intel wireless kernel module cannot be loaded, keeping the Wi-Fi driver off on systems where wireless must be disabled.",
+    "fr": "Garantit que le module noyau Intel sans fil `iwlwifi` ne peut pas être chargé, maintenant le pilote Wi-Fi désactivé sur les systèmes où le sans-fil doit l'être."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `kernel_module('iwlwifi')` resource to confirm the module is **not loaded** and is **disabled** (blacklist plus an `install ... /bin/true` override). This reads the **effective** kernel state via `lsmod` and `modprobe --showconfig`, not just a config-file grep — so a drop-in or hardware-triggered autoload that re-enables wireless is detected.",
+    "fr": "Pavois utilise la ressource InSpec `kernel_module('iwlwifi')` pour confirmer que le module n'est **pas chargé** et qu'il est **désactivé** (blacklist plus une redirection `install ... /bin/true`). Cela lit l'état **effectif** du noyau via `lsmod` et `modprobe --showconfig`, et pas seulement un grep de fichier de configuration — ainsi un drop-in ou un autoload déclenché par le matériel qui réactiverait le sans-fil est détecté."
+  },
+  "verify": {
+    "en": "Run `modprobe -n -v iwlwifi` — it should print `install /bin/true`. Confirm it is not loaded with `lsmod | grep iwlwifi` (no output expected). `modprobe --showconfig | grep iwlwifi` should show a `blacklist iwlwifi` and an `install iwlwifi /bin/true` line.",
+    "fr": "Exécutez `modprobe -n -v iwlwifi` — la sortie doit afficher `install /bin/true`. Vérifiez qu'il n'est pas chargé avec `lsmod | grep iwlwifi` (aucune sortie attendue). `modprobe --showconfig | grep iwlwifi` doit afficher une ligne `blacklist iwlwifi` et une ligne `install iwlwifi /bin/true`."
+  },
+  "logs": {
+    "en": "Load attempts and hardware detection appear in the kernel ring buffer: `dmesg | grep iwlwifi` or `journalctl -k | grep iwlwifi`. The effective modprobe policy is shown by `modprobe --showconfig | grep iwlwifi`.",
+    "fr": "Les tentatives de chargement et la détection matérielle apparaissent dans le tampon noyau : `dmesg | grep iwlwifi` ou `journalctl -k | grep iwlwifi`. La politique modprobe effective est affichée par `modprobe --showconfig | grep iwlwifi`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `kernel_module` resource to **blacklist** `iwlwifi`: it writes a drop-in under `/etc/modprobe.d/` with `blacklist iwlwifi` and `install iwlwifi /bin/true`, and unloads the module if loaded. Because the wireless stack may already be active, **`reboot_required` is true** to guarantee a clean state. Note `iwlwifi` is the base for `iwlmvm`, so blacklisting it removes the whole Intel Wi-Fi stack.",
+    "fr": "`pavois harden apply` utilise la ressource `kernel_module` pour mettre `iwlwifi` en **blacklist** : il écrit un drop-in sous `/etc/modprobe.d/` avec `blacklist iwlwifi` et `install iwlwifi /bin/true`, et décharge le module s'il est chargé. Comme la pile sans fil peut déjà être active, **`reboot_required` est vrai** pour garantir un état propre. À noter, `iwlwifi` est la base de `iwlmvm`, donc le mettre en blacklist retire toute la pile Wi-Fi Intel."
+  },
+  "impact": {
+    "en": "Risk if not applied: Wi-Fi can be brought up on a host that should be wired-only, opening an unmanaged network path and exposing radio-frame parsing code.\n\n- **Do not apply on laptops or any host that legitimately relies on Intel Wi-Fi** — blacklisting `iwlwifi` disables all Intel wireless networking and could cut off a remote machine with no wired connectivity.\n- Verify a working wired/management path before applying.\n- A **reboot** is required for full effect; schedule it in a maintenance window.",
+    "fr": "Risque en l'absence d'application : le Wi-Fi peut être activé sur un hôte censé être uniquement filaire, ouvrant un chemin réseau non maîtrisé et exposant le code d'analyse des trames radio.\n\n- **N'appliquez pas sur les portables ni sur tout hôte qui dépend légitimement du Wi-Fi Intel** — mettre `iwlwifi` en blacklist désactive tout le réseau sans fil Intel et pourrait couper une machine distante dépourvue de connectivité filaire.\n- Vérifiez un chemin filaire/d'administration fonctionnel avant d'appliquer.\n- Un **redémarrage** est requis pour un effet complet ; planifiez-le dans une fenêtre de maintenance."
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "id": "sysctl-net-ipv4-conf-all-forwarding",
+  "supported_os": [
+    "fedora",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "3.3.1.2"
+  },
+  "check": [
+    "describe kernel_parameter('net.ipv4.conf.all.forwarding') do",
+    "  its('value') { should cmp 0 }",
+    "end"
+  ],
+  "remediation": {
+    "key": "net.ipv4.conf.all.forwarding",
+    "resource": "sysctl",
+    "value": "0"
+  },
+  "title": {
+    "en": "Disable Kernel Parameter for IPv4 Forwarding on all IPv4 Interfaces",
+    "fr": "Désactiver le transfert IPv4 (forwarding) sur toutes les interfaces IPv4"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "IP forwarding lets the kernel **route packets from one interface to another**, turning the host into a router. On a system that is not meant to route, leaving forwarding enabled lets an attacker who gains a foothold use the host as a **pivot** to reach networks it bridges, bypassing segmentation and firewalls. Setting `net.ipv4.conf.all.forwarding=0` ensures the host only handles traffic addressed to itself. Forwarding should be enabled only on machines whose explicit role is routing (gateways, NAT boxes, container/VM hosts).",
+    "fr": "Le transfert IP permet au noyau de **router des paquets d'une interface à une autre**, transformant l'hôte en routeur. Sur un système qui n'est pas censé router, laisser le transfert activé permet à un attaquant ayant pris pied d'utiliser l'hôte comme **pivot** pour atteindre les réseaux qu'il relie, contournant la segmentation et les pare-feux. Définir `net.ipv4.conf.all.forwarding=0` garantit que l'hôte ne traite que le trafic qui lui est destiné. Le transfert ne doit être activé que sur les machines dont le rôle explicite est le routage (passerelles, boîtiers NAT, hôtes de conteneurs/VM)."
+  },
+  "summary": {
+    "en": "Sets `net.ipv4.conf.all.forwarding=0` so a non-router host does not route packets between its interfaces.",
+    "fr": "Définit `net.ipv4.conf.all.forwarding=0` pour qu'un hôte non routeur ne route pas les paquets entre ses interfaces."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** via `kernel_parameter('net.ipv4.conf.all.forwarding')` and asserts it equals `0`. Whether the host actually forwards traffic depends on the running kernel value — and tools like Docker, libvirt or a started VPN frequently flip this on at runtime, regardless of what `sysctl.d` files say. Reading the effective value catches that drift; a file-based scanner that only inspects config would falsely report forwarding as disabled.",
+    "fr": "Pavois lit la **valeur noyau effective** via `kernel_parameter('net.ipv4.conf.all.forwarding')` et vérifie qu'elle vaut `0`. Le fait que l'hôte transfère réellement le trafic dépend de la valeur noyau effective — et des outils comme Docker, libvirt ou un VPN démarré l'activent souvent à l'exécution, indépendamment de ce qu'indiquent les fichiers de `sysctl.d`. Lire la valeur effective détecte cette dérive ; un scanner basé sur les fichiers qui n'inspecte que la configuration rapporterait à tort le transfert comme désactivé."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.conf.all.forwarding` (equivalently `sysctl net.ipv4.ip_forward`). Expected output:\n\n```\nnet.ipv4.conf.all.forwarding = 0\n```",
+    "fr": "Exécutez `sysctl net.ipv4.conf.all.forwarding` (équivalent à `sysctl net.ipv4.ip_forward`). Sortie attendue :\n\n```\nnet.ipv4.conf.all.forwarding = 0\n```"
+  },
+  "logs": {
+    "en": "- `sysctl net.ipv4.conf.all.forwarding` shows the current value.\n- `cat /proc/sys/net/ipv4/ip_forward` is the raw global toggle.\n- To find what re-enabled it, check `systemctl status docker libvirtd` and any VPN/`firewalld` masquerade unit; many of these set forwarding when they start.",
+    "fr": "- `sysctl net.ipv4.conf.all.forwarding` affiche la valeur courante.\n- `cat /proc/sys/net/ipv4/ip_forward` est le commutateur global brut.\n- Pour trouver ce qui l'a réactivé, vérifiez `systemctl status docker libvirtd` ainsi que toute unité VPN/masquerade `firewalld` ; beaucoup d'entre elles activent le transfert à leur démarrage."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv4.conf.all.forwarding` to `0`. It writes the key into a Pavois-managed drop-in and reloads it so forwarding is disabled **immediately** and **persistently**. Apply it with `pavois harden apply`. Note: a service that needs routing may re-enable it at runtime, so re-scan after starting such services.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour positionner `net.ipv4.conf.all.forwarding` à `0`. Il écrit la clé dans un drop-in géré par Pavois puis le recharge, de sorte que le transfert soit désactivé **immédiatement** et **durablement**. Appliquez-le avec `pavois harden apply`. Remarque : un service nécessitant le routage peut le réactiver à l'exécution ; relancez donc un scan après le démarrage de tels services."
+  },
+  "impact": {
+    "en": "Disabling forwarding **breaks any routing role**. Do **not** apply (or explicitly exclude) hosts that are gateways, NAT/VPN endpoints, Kubernetes nodes, or **Docker/libvirt hosts** — those require forwarding for container/VM networking and will lose connectivity for their guests. **Before applying**, confirm the host's only job is to be an endpoint. On such endpoint servers there is no impact and no remote-access lockout, since their own inbound/outbound SSH does not require forwarding.",
+    "fr": "Désactiver le transfert **casse tout rôle de routage**. N'appliquez **pas** (ou excluez explicitement) les hôtes qui sont des passerelles, points de terminaison NAT/VPN, nœuds Kubernetes, ou **hôtes Docker/libvirt** — ceux-ci ont besoin du transfert pour le réseau des conteneurs/VM et leurs invités perdront la connectivité. **Avant d'appliquer**, vérifiez que le seul rôle de l'hôte est d'être un point de terminaison. Sur de tels serveurs terminaux, il n'y a aucun impact ni blocage d'accès distant, car leur propre SSH entrant/sortant ne nécessite pas le transfert."
+  }
+}

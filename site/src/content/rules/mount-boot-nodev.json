@@ -1,0 +1,55 @@
+{
+  "id": "mount-boot-nodev",
+  "supported_os": [
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe mount('/boot') do",
+    "  its('options') { should include 'nodev' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "Add nodev Option to /boot",
+    "fr": "Ajouter l'option nodev à /boot"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "Legitimate device nodes belong only in `/dev`. If `/boot` is mounted without `nodev`, an attacker who can write there could plant a malicious character or block device file (for example a raw-disk node) and use it to bypass access controls and reach kernel memory or storage directly. The `nodev` option makes the kernel ignore device files on that mount, removing this escalation and information-disclosure vector with no functional downside for a boot partition.",
+    "fr": "Les nœuds de périphériques légitimes n'appartiennent qu'à `/dev`. Si `/boot` est monté sans `nodev`, un attaquant capable d'y écrire pourrait y déposer un fichier de périphérique caractère ou bloc malveillant (par exemple un nœud d'accès brut au disque) et l'utiliser pour contourner les contrôles d'accès et atteindre directement la mémoire noyau ou le stockage. L'option `nodev` fait ignorer par le noyau les fichiers de périphériques de ce montage, supprimant ce vecteur d'élévation et de divulgation sans inconvénient fonctionnel pour une partition de démarrage."
+  },
+  "summary": {
+    "en": "Mounts the `/boot` partition with the **`nodev`** option, so the kernel refuses to interpret any device special file placed on it.",
+    "fr": "Monte la partition `/boot` avec l'option **`nodev`**, afin que le noyau refuse d'interpréter tout fichier spécial de périphérique qui y serait placé."
+  },
+  "check_note": {
+    "en": "Pavois inspects the **effective** mount through InSpec's `mount('/boot')` resource, reading the live kernel mount table (as `findmnt`/`/proc/mounts` do). This shows how `/boot` is **actually** mounted at this moment, capturing runtime remounts and overrides that a check of `/etc/fstab` alone could miss.",
+    "fr": "Pavois inspecte le montage **effectif** via la ressource InSpec `mount('/boot')`, en lisant la table de montage vivante du noyau (comme `findmnt`/`/proc/mounts`). Cela montre comment `/boot` est **réellement** monté à cet instant, capturant les remontages et surcharges à l'exécution qu'un examen du seul `/etc/fstab` pourrait manquer."
+  },
+  "verify": {
+    "en": "Run `findmnt /boot` (or `mount | grep ' /boot '`). The expected output lists `nodev` among the mount options. Ensure the option is also present in the `/boot` line of `/etc/fstab` so it persists across reboots.",
+    "fr": "Exécutez `findmnt /boot` (ou `mount | grep ' /boot '`). La sortie attendue liste `nodev` parmi les options de montage. Assurez-vous que l'option figure aussi dans la ligne `/boot` de `/etc/fstab` afin qu'elle persiste après les redémarrages."
+  },
+  "logs": {
+    "en": "There is no dedicated event log; confirm the live state with `findmnt /boot`. Mount and remount operations appear in `journalctl -k` / `dmesg`, and the persistent definition is in `/etc/fstab`.",
+    "fr": "Il n'existe pas de journal d'événements dédié ; confirmez l'état vivant avec `findmnt /boot`. Les opérations de montage et de remontage apparaissent dans `journalctl -k` / `dmesg`, et la définition persistante se trouve dans `/etc/fstab`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined, so this must be applied **manually**: add `nodev` to the `/boot` entry options in `/etc/fstab`, then apply it live with `mount -o remount /boot` (or reboot). Verify with `findmnt /boot`.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini ; cela doit donc être appliqué **manuellement** : ajoutez `nodev` aux options de l'entrée `/boot` dans `/etc/fstab`, puis appliquez-le à chaud avec `mount -o remount /boot` (ou redémarrez). Vérifiez avec `findmnt /boot`."
+  },
+  "impact": {
+    "en": "This is a low-risk change: `/boot` holds kernels, initramfs images and bootloader files, never device nodes, so `nodev` has no functional effect on normal operation or booting. Note that `/boot` must exist as a **separate mount** for this to apply; if it is part of the root filesystem, create the option on the appropriate entry. As always, edit `/etc/fstab` carefully and test with `mount -a` before rebooting to avoid a boot-time mount failure.",
+    "fr": "C'est un changement à faible risque : `/boot` contient des noyaux, des images initramfs et des fichiers de chargeur d'amorçage, jamais de nœuds de périphériques ; `nodev` n'a donc aucun effet fonctionnel sur le fonctionnement normal ou le démarrage. Notez que `/boot` doit exister en tant que **montage séparé** pour que cela s'applique ; s'il fait partie du système de fichiers racine, placez l'option sur l'entrée appropriée. Comme toujours, éditez `/etc/fstab` avec soin et testez avec `mount -a` avant de redémarrer pour éviter un échec de montage au démarrage."
+  }
+}

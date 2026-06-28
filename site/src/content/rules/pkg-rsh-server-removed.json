@@ -1,0 +1,80 @@
+{
+  "id": "pkg-rsh-server-removed",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "critical",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R62",
+    "nist": [
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)",
+      "IA-5(1)(c)"
+    ],
+    "pci-dss": "2.2.4",
+    "cis": "2.2.4",
+    "stig": [
+      "UBTU-22-215030",
+      "UBTU-24-100040"
+    ]
+  },
+  "check": [
+    "describe package('rsh-server') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "rsh-server",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall the rsh-server Package",
+    "fr": "Désinstaller le paquet rsh-server"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "The `rsh-server` package provides the `rshd`, `rlogind` and `rexecd` services, which offer **unencrypted** remote access with very weak, trust-based authentication (`.rhosts`/`hosts.equiv`). Passwords and the entire session travel in clear text, so a network eavesdropper can capture credentials and hijack connections — if a privileged user logs in this way, **root can be compromised**. Removing the package eliminates these obsolete services and prevents their accidental or malicious activation.",
+    "fr": "Le paquet `rsh-server` fournit les services `rshd`, `rlogind` et `rexecd`, qui offrent un accès distant **non chiffré** avec une authentification très faible fondée sur la confiance (`.rhosts`/`hosts.equiv`). Les mots de passe et toute la session circulent en clair ; un espion réseau peut donc capturer les identifiants et détourner les connexions — si un utilisateur privilégié s'y connecte, **root peut être compromis**. Supprimer le paquet élimine ces services obsolètes et empêche leur activation accidentelle ou malveillante."
+  },
+  "summary": {
+    "en": "Ensures the `rsh-server` package (insecure `rshd`/`rlogind`/`rexecd` services) is **not installed**.",
+    "fr": "Garantit que le paquet `rsh-server` (services non sécurisés `rshd`/`rlogind`/`rexecd`) **n'est pas installé**."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database with `describe package('rsh-server')` and asserts it `should_not be_installed`. Checking the actual installed package is more reliable than scanning for config files, which may be absent even when the daemon is present.",
+    "fr": "Pavois interroge la base de paquets avec `describe package('rsh-server')` et vérifie qu'il `should_not be_installed`. Vérifier le paquet réellement installé est plus fiable que rechercher des fichiers de configuration, qui peuvent être absents même lorsque le démon est présent."
+  },
+  "verify": {
+    "en": "On Debian/Ubuntu: `dpkg -s rsh-server` → `package 'rsh-server' is not installed`. On AlmaLinux/Fedora: `rpm -q rsh-server` → `package rsh-server is not installed`. Confirm no listener with `ss -ltnp | grep -E ':513|:514'` (no output).",
+    "fr": "Sur Debian/Ubuntu : `dpkg -s rsh-server` → `package 'rsh-server' is not installed`. Sur AlmaLinux/Fedora : `rpm -q rsh-server` → `package rsh-server is not installed`. Vérifiez l'absence d'écoute avec `ss -ltnp | grep -E ':513|:514'` (aucune sortie)."
+  },
+  "logs": {
+    "en": "Removal is recorded in `/var/log/dpkg.log` (Debian/Ubuntu) or `dnf history` / `/var/log/dnf.rpm.log` (RPM). Past rsh logins, if the service ran, would appear in `/var/log/auth.log` or `journalctl`. Confirm state with `dpkg -l rsh-server` / `rpm -q rsh-server`.",
+    "fr": "La suppression est enregistrée dans `/var/log/dpkg.log` (Debian/Ubuntu) ou `dnf history` / `/var/log/dnf.rpm.log` (RPM). Les connexions rsh passées, si le service a tourné, apparaîtraient dans `/var/log/auth.log` ou `journalctl`. Confirmez l'état avec `dpkg -l rsh-server` / `rpm -q rsh-server`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan removes the `rsh-server` package (resource `package`, action `remove`). Apply it with `pavois harden apply`. This stops and uninstalls the `rshd`/`rlogind`/`rexecd` services.",
+    "fr": "Le plan de durcissement de Pavois supprime le paquet `rsh-server` (ressource `package`, action `remove`). Appliquez-le avec `pavois harden apply`. Cela arrête et désinstalle les services `rshd`/`rlogind`/`rexecd`."
+  },
+  "impact": {
+    "en": "Removing rsh-server stops any rsh/rlogin/rexec remote access. Before applying, ensure SSH is installed and working so you keep remote administration access, and confirm no legacy hosts depend on rsh trust relationships. Any inbound rsh sessions will be cut; migrate clients to SSH first to avoid disruption.",
+    "fr": "Supprimer rsh-server coupe tout accès distant rsh/rlogin/rexec. Avant d'appliquer, assurez-vous que SSH est installé et fonctionnel pour conserver l'accès d'administration distant, et vérifiez qu'aucun hôte hérité ne dépend des relations de confiance rsh. Les sessions rsh entrantes seront interrompues ; migrez d'abord les clients vers SSH pour éviter toute coupure."
+  }
+}

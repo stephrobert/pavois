@@ -1,0 +1,59 @@
+{
+  "id": "pkg-iprutils-removed",
+  "supported_os": [
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe package('iprutils') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "iprutils",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall iprutils Package",
+    "fr": "Désinstaller le paquet iprutils"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`iprutils` provides a suite of utilities to manage and configure SCSI devices supported by the IBM Power `ipr` SCSI storage device driver. On systems that do not use IBM Power RAID storage adapters the package is dead weight: it ships privileged management binaries (e.g. `iprconfig`) that needlessly widen the **attack surface** and provide an attacker with extra tooling. Removing it follows the principle of minimizing installed software.",
+    "fr": "`iprutils` fournit une suite d'utilitaires pour gérer et configurer les périphériques SCSI pris en charge par le pilote de stockage `ipr` des serveurs IBM Power. Sur les systèmes qui n'utilisent pas d'adaptateurs RAID IBM Power, ce paquet est inutile : il livre des binaires d'administration privilégiés (par ex. `iprconfig`) qui élargissent inutilement la **surface d'attaque** et offrent à un attaquant un outillage supplémentaire. Le retirer applique le principe de minimisation des logiciels installés."
+  },
+  "summary": {
+    "en": "Ensures the `iprutils` IBM Power SCSI management package is **not installed**.",
+    "fr": "Garantit que le paquet de gestion SCSI IBM Power `iprutils` n'est **pas installé**."
+  },
+  "check_note": {
+    "en": "Pavois asks the package manager directly via the InSpec `package('iprutils')` resource (`rpm -q iprutils` under the hood) and asserts it is **not installed**. Querying the live package database is authoritative: it reflects what is actually present on the running system, not what a manifest or kickstart file claims should be there.",
+    "fr": "Pavois interroge directement le gestionnaire de paquets via la ressource InSpec `package('iprutils')` (`rpm -q iprutils` en coulisses) et vérifie qu'il n'est **pas installé**. Interroger la base de paquets vivante fait autorité : elle reflète ce qui est réellement présent sur le système en cours d'exécution, et non ce qu'un manifeste ou un fichier kickstart prétend devoir y être."
+  },
+  "verify": {
+    "en": "Run `rpm -q iprutils`. The expected output is `package iprutils is not installed`. A line such as `iprutils-2.4.x-...` means the package is still present and the rule fails.",
+    "fr": "Exécutez `rpm -q iprutils`. La sortie attendue est `package iprutils is not installed`. Une ligne comme `iprutils-2.4.x-...` signifie que le paquet est encore présent et que la règle échoue."
+  },
+  "logs": {
+    "en": "Package removal is recorded by the package manager: inspect `dnf history` (or `rpm -q --last iprutils`) to confirm when and by whom it was uninstalled. `/var/log/dnf.log` and `/var/log/dnf.rpm.log` also trace the transaction.",
+    "fr": "La suppression du paquet est consignée par le gestionnaire de paquets : consultez `dnf history` (ou `rpm -q --last iprutils`) pour confirmer quand et par qui il a été désinstallé. `/var/log/dnf.log` et `/var/log/dnf.rpm.log` tracent également la transaction."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource named `iprutils` with action **remove**, so `pavois harden apply` runs the equivalent of `dnf remove iprutils` to take the system to the compliant state. If `remediation` were empty you would remove it manually.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` nommée `iprutils` avec l'action **remove** ; `pavois harden apply` exécute donc l'équivalent de `dnf remove iprutils` pour amener le système à l'état conforme. Si `remediation` était vide, il faudrait le retirer manuellement."
+  },
+  "impact": {
+    "en": "Leaving `iprutils` installed keeps unused privileged storage tooling on the host, enlarging the attack surface for no operational benefit. **Precaution:** before removing, confirm the system has **no IBM Power `ipr` SCSI/RAID adapter** in active use (`lspci | grep -i raid`, `lsmod | grep ipr`). On hardware that relies on these adapters, removing the package can leave the array unmanageable — keep it there and mark this rule as not applicable.",
+    "fr": "Laisser `iprutils` installé maintient sur l'hôte un outillage de stockage privilégié inutilisé, ce qui élargit la surface d'attaque sans aucun bénéfice opérationnel. **Précaution :** avant de le retirer, vérifiez que le système n'utilise **aucun adaptateur SCSI/RAID IBM Power `ipr`** (`lspci | grep -i raid`, `lsmod | grep ipr`). Sur du matériel qui dépend de ces adaptateurs, retirer le paquet peut rendre la grappe ingérable — conservez-le et marquez cette règle comme non applicable."
+  }
+}

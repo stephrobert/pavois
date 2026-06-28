@@ -1,0 +1,71 @@
+{
+  "id": "sysctl-kernel-perf_event_max_sample_rate",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R9"
+  },
+  "check": [
+    "describe kernel_parameter('kernel.perf_event_max_sample_rate') do",
+    "  its('value') { should cmp 1 }",
+    "end"
+  ],
+  "remediation": {
+    "key": "kernel.perf_event_max_sample_rate",
+    "resource": "sysctl",
+    "value": "1"
+  },
+  "title": {
+    "en": "Limit sampling frequency of the Perf system",
+    "fr": "Limiter la fréquence d'échantillonnage du sous-système Perf"
+  },
+  "needs_translation": [],
+  "rationale": {
+    "en": "`kernel.perf_event_max_sample_rate` sets the maximum frequency, in samples per second, at which the Perf subsystem collects events. A very high sample rate forces the kernel to spend more time servicing performance interrupts, which can be abused to degrade availability. Restricting the rate (here to **1** sample/s) decreases the risk of availability problems from excessive Perf activity.",
+    "fr": "`kernel.perf_event_max_sample_rate` définit la fréquence maximale, en échantillons par seconde, à laquelle le sous-système Perf collecte les événements. Une fréquence très élevée force le noyau à passer plus de temps à traiter les interruptions de performance, ce qui peut être détourné pour dégrader la disponibilité. Restreindre la fréquence (ici à **1** échantillon/s) réduit le risque de problèmes de disponibilité dus à une activité Perf excessive."
+  },
+  "summary": {
+    "en": "Sets `kernel.perf_event_max_sample_rate = 1` to cap how many Perf samples per second the kernel collects, protecting availability.",
+    "fr": "Fixe `kernel.perf_event_max_sample_rate = 1` pour plafonner le nombre d'échantillons Perf par seconde collectés par le noyau, protégeant la disponibilité."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** with `kernel_parameter('kernel.perf_event_max_sample_rate')` (equivalent to `sysctl kernel.perf_event_max_sample_rate`), not a `/etc/sysctl.d/*.conf` line. The kernel can also auto-adjust this value at runtime when it self-throttles, so a static file would not reflect reality. Only the effective parameter shows the rate the kernel currently enforces.",
+    "fr": "Pavois lit la **valeur noyau en vigueur** via `kernel_parameter('kernel.perf_event_max_sample_rate')` (équivalent à `sysctl kernel.perf_event_max_sample_rate`), et non une ligne de `/etc/sysctl.d/*.conf`. Le noyau peut aussi ajuster automatiquement cette valeur à chaud lorsqu'il s'auto-bride ; un fichier statique ne refléterait donc pas la réalité. Seul le paramètre effectif montre la fréquence réellement appliquée."
+  },
+  "verify": {
+    "en": "Run `sysctl kernel.perf_event_max_sample_rate`. Expected output:\n\n```\nkernel.perf_event_max_sample_rate = 1\n```",
+    "fr": "Exécutez `sysctl kernel.perf_event_max_sample_rate`. Sortie attendue :\n\n```\nkernel.perf_event_max_sample_rate = 1\n```"
+  },
+  "logs": {
+    "en": "No dedicated log line. Confirm with `sysctl kernel.perf_event_max_sample_rate`. When the kernel lowers the rate due to overrun it logs `perf: interrupt took too long ... lowering kernel.perf_event_max_sample_rate` in `dmesg`/`journalctl -k`.",
+    "fr": "Aucune ligne de journal dédiée. Vérifiez via `sysctl kernel.perf_event_max_sample_rate`. Lorsque le noyau abaisse la fréquence pour cause de dépassement, il journalise `perf: interrupt took too long ... lowering kernel.perf_event_max_sample_rate` dans `dmesg`/`journalctl -k`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `kernel.perf_event_max_sample_rate = 1`, persists it in a Pavois-managed drop-in under `/etc/sysctl.d/`, and applies it live (no reboot). Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour fixer `kernel.perf_event_max_sample_rate = 1`, le persiste dans un drop-in géré par Pavois sous `/etc/sysctl.d/`, et l'applique à chaud (sans redémarrage). Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "**Risk if not applied:** an excessively high Perf sample rate lets profiling activity consume disproportionate CPU, threatening availability.\n\n**Precautions before applying:**\n- This is an **observability trade-off**. A maximum of 1 sample/s makes high-resolution profiling effectively impossible; legitimate `perf record` runs will produce sparse data. On dedicated performance-analysis hosts, relax this value.\n- No application breakage or lockout risk; the change is fully reversible at runtime.",
+    "fr": "**Risque si non appliqué :** une fréquence d'échantillonnage Perf trop élevée laisse l'activité de profilage consommer un CPU disproportionné, menaçant la disponibilité.\n\n**Précautions avant application :**\n- C'est un compromis **observabilité**. Un maximum de 1 échantillon/s rend le profilage haute résolution pratiquement impossible ; des exécutions `perf record` légitimes produiront des données éparses. Sur des hôtes dédiés à l'analyse de performance, assouplissez cette valeur.\n- Aucun risque de casse applicative ou de blocage ; le changement est entièrement réversible à chaud."
+  }
+}

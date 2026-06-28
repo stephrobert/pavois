@@ -1,0 +1,66 @@
+{
+  "id": "posture-file-integrity",
+  "supported_os": [
+    "almalinux9",
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404"
+  ],
+  "os_versions": {
+    "almalinux9": "2.0.0",
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (posture)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {},
+  "check": [
+    "describe command('for c in aide tripwire aa-status; do command -v $c >/dev/null 2>&1 && { echo ok; exit; }; done; echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {},
+  "title": {
+    "en": "A file integrity tool is installed",
+    "fr": "Un outil de contrôle d'intégrité des fichiers est installé"
+  },
+  "needs_translation": [],
+  "summary": {
+    "en": "Requires that a **file integrity / host monitoring tool** — `aide`, `tripwire`, or AppArmor (`aa-status`) — is present so unexpected changes to critical files can be detected.",
+    "fr": "Exige la présence d'un **outil de contrôle d'intégrité ou de surveillance de l'hôte** — `aide`, `tripwire` ou AppArmor (`aa-status`) — afin de détecter les modifications inattendues des fichiers critiques."
+  },
+  "rationale": {
+    "en": "Attackers who gain a foothold routinely **modify or replace system binaries and configuration files** (backdoored `sshd`, altered cron jobs, tampered libraries). A **File Integrity Monitoring** tool keeps a cryptographic baseline of critical files and flags any deviation, giving you a reliable signal of compromise or unauthorised change. Without one, such tampering can go unnoticed for a long time.",
+    "fr": "Les attaquants qui prennent pied sur une machine **modifient ou remplacent couramment des binaires système et des fichiers de configuration** (`sshd` piégé, tâches cron altérées, bibliothèques falsifiées). Un outil de **contrôle d'intégrité des fichiers (FIM)** conserve une empreinte cryptographique de référence des fichiers critiques et signale toute déviation, fournissant un indicateur fiable de compromission ou de changement non autorisé. Sans cela, ce type de falsification peut passer inaperçu longtemps."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective state** by testing whether any of `aide`, `tripwire` or `aa-status` is actually present on `PATH` (`command -v`), not just whether a package line exists somewhere. This reflects what the running system can really do rather than what a manifest claims.",
+    "fr": "Pavois contrôle l'**état effectif** en testant si l'un de `aide`, `tripwire` ou `aa-status` est réellement présent dans le `PATH` (`command -v`), et pas seulement la présence d'une ligne de paquet quelque part. Cela reflète ce que le système en fonctionnement peut réellement faire, plutôt que ce qu'un manifeste prétend."
+  },
+  "verify": {
+    "en": "Run `command -v aide tripwire aa-status` — at least one path should be returned. For AIDE you can further confirm a baseline exists with `aide --check` (after `aide --init`); for AppArmor, `aa-status` should list loaded profiles.",
+    "fr": "Lancez `command -v aide tripwire aa-status` — au moins un chemin doit être renvoyé. Pour AIDE, confirmez l'existence d'une base de référence avec `aide --check` (après `aide --init`) ; pour AppArmor, `aa-status` doit lister les profils chargés."
+  },
+  "logs": {
+    "en": "AIDE reports go to its log (commonly `/var/log/aide/aide.log`) and to email/cron output when run on a schedule. AppArmor denials appear in the kernel log via `journalctl -k | grep apparmor` (or `dmesg`). Package presence can be confirmed with `dpkg -l aide` / `rpm -q aide`.",
+    "fr": "Les rapports AIDE vont dans son journal (souvent `/var/log/aide/aide.log`) et dans la sortie mail/cron lors des exécutions planifiées. Les refus AppArmor apparaissent dans le journal du noyau via `journalctl -k | grep apparmor` (ou `dmesg`). La présence du paquet se confirme avec `dpkg -l aide` / `rpm -q aide`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped, so apply it **manually**: install AIDE (`apt install aide` / `dnf install aide`), initialise the database (`aideinit` or `aide --init`, then move the new DB into place), and schedule a periodic `aide --check`. AppArmor is enabled by default on Debian/Ubuntu and already satisfies this check.",
+    "fr": "Aucune remédiation automatisée n'est fournie, appliquez-la donc **manuellement** : installez AIDE (`apt install aide` / `dnf install aide`), initialisez la base (`aideinit` ou `aide --init`, puis déplacez la nouvelle base à sa place), et planifiez un `aide --check` périodique. AppArmor est activé par défaut sur Debian/Ubuntu et satisfait déjà ce contrôle."
+  },
+  "impact": {
+    "en": "Installing a FIM tool is non-disruptive. The practical considerations are operational: AIDE's **initial database must be built on a known-good system** (do it right after install, before exposing the host) and **re-baselined after every legitimate change** (updates, deployments), otherwise it produces noise. AppArmor in enforce mode can block applications with missing profiles — review denials before tightening profiles.",
+    "fr": "Installer un outil FIM n'est pas perturbant. Les points d'attention sont opérationnels : la **base initiale d'AIDE doit être construite sur un système sain et connu** (faites-le juste après l'installation, avant d'exposer l'hôte) et **régénérée après chaque changement légitime** (mises à jour, déploiements), faute de quoi elle génère du bruit. AppArmor en mode enforce peut bloquer des applications dont le profil est incomplet — examinez les refus avant de durcir les profils."
+  }
+}
