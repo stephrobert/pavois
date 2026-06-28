@@ -25,9 +25,21 @@ jobs:
           - { goos: darwin, goarch: amd64 }
           - { goos: darwin, goarch: arm64 }
     steps:
-      - name: Checkout
+      # go.mod has `replace github.com/stephrobert/scankit => ../../scankit`, so the private
+      # scankit repo is checked out as a sibling: from pavois/go/go.mod, ../../scankit resolves to
+      # $GITHUB_WORKSPACE/scankit. SCANKIT_TOKEN is a repo secret (PAT/App with read on scankit).
+      - name: Checkout pavois
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          path: pavois
+          persist-credentials: false
+
+      - name: Checkout scankit (private dependency)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: stephrobert/scankit
+          token: ${{ secrets.SCANKIT_TOKEN }}
+          path: scankit
           persist-credentials: false
 
       - name: Setup Go
@@ -36,7 +48,7 @@ jobs:
           go-version: '1.26'
 
       - name: Build binary
-        working-directory: go
+        working-directory: pavois/go
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
@@ -44,7 +56,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           OUT="pavois-${GOOS}-${GOARCH}"
-          go build -trimpath -ldflags="-s -w -X pavois/cmd.version=${VERSION}" -o "../dist/${OUT}" .
+          go build -trimpath -ldflags="-s -w -X pavois/cmd.version=${VERSION}" -o "../../dist/${OUT}" .
 
       - name: Upload artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
