@@ -1,6 +1,5 @@
 ---
-import '../styles/global.css';
-import '../styles/pavois.css'; // maquette design system (loaded after global.css; its components win)
+import '../styles/global.css'; // the single stylesheet: Tailwind + tokens + design system + pages
 import { ui, type Lang } from '../i18n/ui';
 import { INDEXABLE } from '../config/site';
 
@@ -254,7 +253,21 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
         <a class="lang" href={otherPath}>{other.toUpperCase()}</a>
       </div>
     </aside>
-    <main><slot /></main>
+    <main>
+      {breadcrumbs.length > 0 && (
+        <nav class="wrap breadcrumb" aria-label="Breadcrumb">
+          {breadcrumbs.map((b, i) => (
+            <Fragment>
+              {i > 0 && <span class="bc-sep">/</span>}
+              {i < breadcrumbs.length - 1
+                ? <a href={b.path}>{b.name}</a>
+                : <span class="bc-cur" aria-current="page">{b.name}</span>}
+            </Fragment>
+          ))}
+        </nav>
+      )}
+      <slot />
+    </main>
     <footer class="site-foot">
       <div class="wrap">
         <p class="mono">
@@ -659,5 +672,31 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
         font-size: 0.74rem;
       }
     </style>
+
+    <!-- Copy button on every prose code block — one source for docs, handbook, blog, start, install. -->
+    <script is:inline>
+      (function () {
+        var fr = document.documentElement.lang === 'fr';
+        var labelCopy = fr ? 'Copier' : 'Copy';
+        var labelDone = fr ? 'Copié' : 'Copied';
+        document.querySelectorAll('.prose pre, pre.code').forEach(function (pre) {
+          if (pre.querySelector('.copy-btn')) return;
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'copy-btn';
+          btn.textContent = labelCopy;
+          btn.setAttribute('aria-label', labelCopy);
+          btn.addEventListener('click', function () {
+            var code = pre.querySelector('code') || pre;
+            navigator.clipboard.writeText(code.innerText).then(function () {
+              btn.textContent = labelDone;
+              btn.classList.add('ok');
+              setTimeout(function () { btn.textContent = labelCopy; btn.classList.remove('ok'); }, 1500);
+            });
+          });
+          pre.appendChild(btn);
+        });
+      })();
+    </script>
   </body>
 </html>

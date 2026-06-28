@@ -12,9 +12,9 @@ const fr = lang === 'fr';
 const sections = [
   { slug: 'prerequisites', en: 'Prerequisites', fr: 'Prérequis' },
   { slug: 'install', en: 'Install a verified binary', fr: 'Installer un binaire vérifié' },
-  { slug: 'build', en: '1. Build from source', fr: '1. Construire depuis les sources' },
-  { slug: 'scan', en: '2. First scan', fr: '2. Premier scan' },
-  { slug: 'harden', en: '3. Harden, then prove', fr: '3. Durcir, puis prouver' },
+  { slug: 'build', en: 'Build from source', fr: 'Construire depuis les sources' },
+  { slug: 'scan', en: 'First scan', fr: 'Premier scan' },
+  { slug: 'harden', en: 'Harden, then prove', fr: 'Durcir, puis prouver' },
   { slug: 'takeaways', en: 'Key takeaways', fr: 'À retenir' },
   { slug: 'next', en: 'Next steps', fr: 'Prochaines étapes' },
 ];
@@ -31,13 +31,13 @@ const crumbs = [
 ---
 
 <Base title={title} description={desc} lang={lang} breadcrumbs={crumbs}>
-  <div class="wrap layout-doc">
-   <main>
-    <article class="start">
-    <span class="eyebrow">{fr ? 'Démarrer' : 'Get started'}</span>
+  <div class="wrap page-head">
     <h1>{fr ? 'De la source au verdict en trois commandes' : 'From source to verdict in three commands'}</h1>
     <p class="lede">{desc}</p>
-
+  </div>
+  <div class="wrap layout-doc">
+   <main>
+    <div class="prose">
     <h2 id="prerequisites">{fr ? 'Prérequis' : 'Prerequisites'}</h2>
     <p>
       {fr
@@ -53,7 +53,7 @@ const crumbs = [
     <p>{fr
       ? 'Chaque release publie un binaire statique par plateforme et un fichier checksums.txt. Télécharge-le, vérifie son intégrité, et vérifie qu’il a bien été produit par la chaîne de release :'
       : 'Each release ships a static binary per platform plus a checksums.txt. Download it, check its integrity, and verify it was produced by the release pipeline:'}</p>
-    <pre class="code mono"><code>gh release download v0.1.0 --repo stephrobert/pavois \
+    <pre><code>gh release download v0.1.0 --repo stephrobert/pavois \
   --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
 sha256sum --ignore-missing --check checksums.txt
 gh attestation verify pavois-linux-amd64 --repo stephrobert/pavois
@@ -63,30 +63,29 @@ chmod +x pavois-linux-amd64 &amp;&amp; ./pavois-linux-amd64 version</code></pre>
       : 'sha256sum confirms integrity against the published checksums; gh attestation verify confirms the SLSA provenance, that the file is exactly what the release workflow built (available once the repository is public).'}</p>
 
     <h2 id="build">{fr ? '1. Construire depuis les sources' : '1. Build from source'}</h2>
-    <p>{fr ? 'Clone le dépôt, installe la chaîne épinglée, compile le binaire :' : 'Clone the repository, install the pinned toolchain, compile the binary:'}</p>
-    <pre class="code mono"><code>git clone https://github.com/stephrobert/pavois.git
+    <p>{fr ? 'Clone le dépôt, installe la chaîne épinglée, compile le binaire, régénère le corpus :' : 'Clone the repository, install the pinned toolchain, compile the binary, regenerate the corpus:'}</p>
+    <pre><code>git clone https://github.com/stephrobert/pavois.git
 cd pavois
 mise trust &amp;&amp; mise install   # {fr ? 'Go, Node, Python épinglés' : 'pinned Go, Node, Python'}
-mise run build                # -&gt; go/pavois</code></pre>
-    <p class="muted">{fr ? 'Vérifie : ' : 'Verify: '}<code class="mono">./go/pavois version</code> {fr ? 'affiche la version.' : 'prints the version.'}</p>
+mise run build               # -&gt; go/pavois
+mise run regen               # {fr ? 'corpus .rb + OSCAL depuis la référence' : 'rule corpus + OSCAL from the reference'}</code></pre>
+    <p class="muted">{fr ? 'Détails et dépannage : ' : 'Details and troubleshooting: '}<a href={`/${lang}/installation/`}>Installation</a>.</p>
 
     <h2 id="scan">{fr ? '2. Premier scan (note A à E)' : '2. First scan (A to E grade)'}</h2>
     <p>{fr ? 'Audite une cible SSH avec sudo (la config effective exige root) :' : 'Audit an SSH target with sudo (effective config needs root):'}</p>
-    <pre class="code mono"><code>./go/pavois scan user@host --key ~/.ssh/id_ed25519 \
+    <pre><code>./go/pavois scan user@host --key ~/.ssh/id_ed25519 \
   --sudo --profile profiles/linux/debian12</code></pre>
     <p>
       {fr
         ? 'La sortie liste les écarts par sévérité et affiche la note A à E en grosse lettre, plus le chemin du rapport HTML. Pour servir les rapports : '
         : 'The output lists deviations by severity and prints the A to E grade as a large letter, plus the HTML report path. To serve reports: '}
-      <code class="mono">./go/pavois serve</code> {fr ? '(http://localhost:8098).' : '(http://localhost:8098).'}
+      <code>./go/pavois serve</code> (http://localhost:8098).
     </p>
-    <p>
-      <a href="/sample-report.html" target="_blank" rel="noopener">{fr ? 'Voir un rapport d’exemple (scan réel) →' : 'See a sample report (real scan) →'}</a>
-    </p>
+    <p><a href="/sample-report.html" target="_blank" rel="noopener">{fr ? 'Voir un rapport d’exemple (scan réel) →' : 'See a sample report (real scan) →'}</a></p>
 
     <h2 id="harden">{fr ? '3. Durcir, puis prouver' : '3. Harden, then prove'}</h2>
     <p>{fr ? 'Planifie les correctifs, active ceux que tu veux, converge un run Chef natif, et re-scanne :' : 'Plan the fixes, opt into the ones you want, converge a native Chef run, and re-scan:'}</p>
-    <pre class="code mono"><code>./go/pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo
+    <pre><code>./go/pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo
 # {fr ? 'édite le plan : passe des règles à apply: true' : 'edit the plan: flip rules to apply: true'}
 ./go/pavois harden apply hardening-plan-debian12.yml --scan</code></pre>
     <p>
@@ -98,55 +97,20 @@ mise run build                # -&gt; go/pavois</code></pre>
 
     <h2 id="takeaways">{fr ? 'À retenir' : 'Key takeaways'}</h2>
     <ul>
-      <li>{fr ? 'Trois commandes : ' : 'Three commands: '}<code class="mono">build</code>, <code class="mono">scan</code>, <code class="mono">harden</code>.</li>
+      <li>{fr ? 'Trois commandes : ' : 'Three commands: '}<code>build</code>, <code>scan</code>, <code>harden</code>.</li>
       <li>{fr ? 'Pas d’agent : Pavois utilise ton ~/.ssh/config et ton sudo, comme oscap/lynis.' : 'No agent: Pavois uses your ~/.ssh/config and your sudo, like oscap/lynis.'}</li>
       <li>{fr ? 'Un A net exige une posture reboot-proof, pas seulement active.' : 'A clean A requires a reboot-proof posture, not just a live one.'}</li>
     </ul>
 
     <h2 id="next">{fr ? 'Prochaines étapes' : 'Next steps'}</h2>
     <ul>
+      <li><a href={`/${lang}/installation/`}>Installation {fr ? '(prérequis, OS, erreurs)' : '(prerequisites, OS, errors)'}</a></li>
       <li><a href={`/${lang}/docs/`}>{fr ? 'Comment ça marche' : 'How it works'}</a></li>
       <li><a href={`/${lang}/rules/`}>{fr ? 'Parcourir les contrôles' : 'Browse the controls'}</a></li>
       <li><a href={`/${lang}/handbook/scoring-methodology/`}>{fr ? 'Comment la note est calculée' : 'How the grade is computed'}</a></li>
     </ul>
-    </article>
+    </div>
    </main>
    <Toc headings={toc} lang={lang} />
   </div>
 </Base>
-
-<style>
-  .start {
-    max-width: 800px;
-    padding-top: 40px;
-    padding-bottom: 60px;
-  }
-  .start h1 {
-    font-size: clamp(1.9rem, 4.5vw, 2.8rem);
-    margin: 8px 0 14px;
-  }
-  .start .lede {
-    font-size: 1.12rem;
-    line-height: 1.6;
-    color: var(--color-dim);
-    margin-bottom: 12px;
-  }
-  .start h2 {
-    margin-top: 34px;
-  }
-  .start pre.code {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    padding: 14px 16px;
-    overflow: auto;
-    font-size: 0.82rem;
-    line-height: 1.55;
-  }
-  .start ul {
-    line-height: 1.7;
-  }
-  .start a {
-    color: var(--color-accent);
-  }
-</style>
