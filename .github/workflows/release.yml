@@ -85,13 +85,17 @@ jobs:
           sha256sum pavois-* > checksums.txt
           cat checksums.txt
 
+      # SLSA build-provenance attestation is unavailable for user-owned PRIVATE repos (GitHub
+      # rejects it: "make this repository public"). Skipped while private; activates on public.
       - name: Attest build provenance
         id: attest
+        if: ${{ !github.event.repository.private }}
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
           subject-path: dist/pavois-*
 
       - name: Copy provenance into dist
+        if: ${{ !github.event.repository.private && steps.attest.outputs.bundle-path != '' }}
         run: cp "${{ steps.attest.outputs.bundle-path }}" dist/provenance.intoto.jsonl
 
       - name: Create release with assets
@@ -100,6 +104,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           generate_release_notes: true
+          fail_on_unmatched_files: false
           files: |
             dist/pavois-*
             dist/checksums.txt
