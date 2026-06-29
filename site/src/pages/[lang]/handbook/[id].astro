@@ -20,6 +20,35 @@ const t = ui[lang];
 const INTERNAL = 'handbook|rules|standards|docs|glossary|downloads|attribution';
 const { html: bodyHtml, headings } = renderMarkdown(page.body[lang], { lang, internal: INTERNAL });
 
+// FAQPage JSON-LD: parse the `## FAQ` section (blocks of `**Question?** Answer.`) so the Q&A is
+// eligible for rich results and, above all, gets cited by answer engines (GEO). Strip inline
+// markdown so the structured text is clean. Emitted only when there are at least two real pairs.
+const stripMd = (s: string) => s.replace(/[*`]/g, '').replace(/\s+/g, ' ').trim();
+function extractFaq(md: string): { q: string; a: string }[] {
+  const after = md.split(/^##\s+FAQ\s*$/m)[1];
+  if (!after) return [];
+  const section = after.split(/^##\s/m)[0];
+  return section
+    .split(/\n\n+/)
+    .map((b) => b.trim())
+    .map((b) => b.match(/^\*\*(.+?)\*\*\s*([\s\S]+)$/))
+    .filter((m): m is RegExpMatchArray => !!m)
+    .map((m) => ({ q: stripMd(m[1]), a: stripMd(m[2]) }))
+    .filter((qa) => qa.q && qa.a);
+}
+const faq = extractFaq(page.body[lang]);
+const faqLd =
+  faq.length >= 2
+    ? {
+        '@type': 'FAQPage',
+        mainEntity: faq.map(({ q, a }) => ({
+          '@type': 'Question',
+          name: q,
+          acceptedAnswer: { '@type': 'Answer', text: a },
+        })),
+      }
+    : undefined;
+
 const all = (await getCollection('handbook')).sort((a, b) => (a.data.order || 0) - (b.data.order || 0));
 const SECTIONS = ['foundations', 'domains', 'tooling'] as const;
 const secLabel: Record<string, { en: string; fr: string }> = {
@@ -54,6 +83,7 @@ const crumbs = [
   datePublished={page.datePublished}
   dateModified={page.dateModified ?? page.datePublished}
   breadcrumbs={crumbs}
+  jsonld={faqLd}
 >
   <div class="wrap layout-book has-toc">
     <aside class="side">
