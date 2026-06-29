@@ -155,6 +155,14 @@ explicit about its edges: some domains (firewall ruleset, log forwarding, MAC po
 shallow today. The honest [coverage matrix](https://pavois.dev/en/handbook/coverage/) names what is
 deep and what is not.
 
+## 🤝 Contributing
+
+The **rule library** is where the project most needs help — **[CONTRIBUTING.md](CONTRIBUTING.md)**
+has a "Where to help" table mapping each intent (add a rule, deepen a thin domain, add an OS, source
+a mapping…) to a concrete action. How the code fits together: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+By participating you agree to the **[Code of Conduct](CODE_OF_CONDUCT.md)**. Report security issues
+privately via **[SECURITY.md](SECURITY.md)**.
+
 ## 📄 License & attribution
 
 Apache-2.0 (see [LICENSE](LICENSE)). Control definitions derive from
