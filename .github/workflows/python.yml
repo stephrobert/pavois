@@ -1,15 +1,16 @@
 name: Python
 
-# Quality gate for the offline Python tooling (tools/, test-vms/): ruff lint + format check and
+# Quality gate for the offline Python tooling (tools/): ruff lint + format check and
 # bandit security scan. Config lives in pyproject.toml ([tool.ruff], [tool.bandit]). Mirrors
 # .pre-commit-config.yaml. Actions pinned by commit SHA; tools pinned by version.
+# NB: test-vms/ is gitignored (lab tooling, not published), so it is not linted in CI.
 
 on:
   push:
     branches: [main]
-    paths: ['tools/**', 'test-vms/**', 'pyproject.toml', '.github/workflows/python.yml']
+    paths: ['tools/**', 'pyproject.toml', '.github/workflows/python.yml']
   pull_request:
-    paths: ['tools/**', 'test-vms/**', 'pyproject.toml', '.github/workflows/python.yml']
+    paths: ['tools/**', 'pyproject.toml', '.github/workflows/python.yml']
   workflow_dispatch:
 
 permissions: {}
@@ -35,10 +36,10 @@ jobs:
         run: pip install --no-cache-dir ruff==0.14.9 'bandit[toml]==1.9.2'
 
       - name: ruff (lint)
-        run: ruff check tools/ test-vms/
+        run: ruff check tools/
 
       - name: ruff (format check)
-        run: ruff format --check tools/ test-vms/
+        run: ruff format --check tools/
 
       - name: bandit (security)
-        run: bandit -r tools/ test-vms/ -c pyproject.toml -q
+        run: bandit -r tools/ -c pyproject.toml -q
