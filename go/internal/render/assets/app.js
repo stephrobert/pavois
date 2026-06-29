@@ -56,6 +56,17 @@ function grade(set){
   if(rq&&L==='A')L='B';
   return {letter:L,final:fin,counts:counts,qualified:qualified,rq:rq};
 }
+// remClass : classe de remédiation (miroir de audit.RemediationClass), pour la ventilation
+// par posture du résumé exécutif. Dérivée de l'id, du domaine et du type de preuve.
+function remClass(c){
+  var id=c.id||'';
+  if(id==='kmod-loading-disabled'||id.indexOf('modules-disabled')>=0||id.indexOf('grub-password')>=0||id.indexOf('cmdline-iommu')===0)return 'dangerous';
+  var d=(c.domain||'').toLowerCase();
+  if(d==='kernel build')return 'kernel-build';
+  if(d==='mounts'||id.indexOf('partition-')===0)return 'install-time';
+  if(c.evidence==='manual')return 'manual';
+  return 'auto';
+}
 function esc(s){return (s==null?'':''+s).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function applicable(c,norm){return norm==='all'||(c.norms&&c.norms[norm]!=null);}
@@ -182,6 +193,35 @@ function render(){
     +'<div class="muted" style="margin-top:.5rem">Vue : <b class="pill">'+(norm==='all'?'Toutes normes':LABELS[norm]||norm)+'</b>'
     +(lvl!=='all'?' &middot; niveau <b class="pill">'+(LEVEL_LABEL[lvl]||lvl)+'</b> et inférieurs':'')
     +' &middot; '+set.length+' contrôles applicables</div>';
+  // Résumé exécutif : écarts prioritaires + posture par classe de remédiation + note remédiable.
+  (function(){
+    var CL=['auto','manual','dangerous','install-time','kernel-build'];
+    var HINT={'install-time':'partition séparée requise','kernel-build':'noyau à recompiler','dangerous':'remédiation à risque','manual':'remédiation manuelle'};
+    var stat={};CL.forEach(function(k){stat[k]={p:0,t:0};});
+    var rem=[];
+    set.forEach(function(c){
+      if(c.status!=='passed'&&c.status!=='failed')return;
+      var k=remClass(c);if(!stat[k])stat[k]={p:0,t:0};
+      stat[k].t++;if(c.status==='passed')stat[k].p++;
+      if(k!=='install-time'&&k!=='kernel-build')rem.push(c);
+    });
+    var rg=grade(rem),remp=rem.filter(function(c){return c.status==='passed';}).length;
+    var gaps=set.filter(function(c){return c.status==='failed';})
+      .sort(function(a,b){return _sevRank(b.sev)-_sevRank(a.sev);});
+    var topN=gaps.slice(0,8);
+    var gapsHtml=topN.length
+      ?'<ol class="exec-gaps">'+topN.map(function(c){return '<li>'+sevBadge(c.sev)+' <span class="cid">'+esc(c.id)+'</span> '+esc(c.title)+'</li>';}).join('')+'</ol>'+(gaps.length>topN.length?'<div class="muted">+ '+(gaps.length-topN.length)+' autres écarts</div>':'')
+      :'<p class="muted">Aucun écart sur cette vue.</p>';
+    var posHtml=CL.filter(function(k){return stat[k].t;}).map(function(k){
+      return '<div class="exec-cls"><span>'+k+'</span> <b>'+stat[k].p+'/'+stat[k].t+'</b>'+(HINT[k]?' <span class="muted">'+HINT[k]+'</span>':'')+'</div>';
+    }).join('');
+    document.getElementById('cf-exec').innerHTML=
+      '<div class="exec-grid">'
+      +'<div><h3>Écarts prioritaires</h3>'+gapsHtml+'</div>'
+      +'<div><h3>Posture par classe de remédiation</h3>'+posHtml
+      +'<div class="exec-rem">Posture remédiable : <b class="g-'+rg.letter+'">'+rg.letter+'</b> <span class="muted">('+remp+'/'+rem.length+', hors install-time + kernel-build)</span></div>'
+      +'</div></div>';
+  })();
   // chapitres
   var chaps={},order=[];
   set.forEach(function(c){var ch=chapterOf(c,norm);if(!chaps[ch]){chaps[ch]=[];order.push(ch);}chaps[ch].push(c);});
