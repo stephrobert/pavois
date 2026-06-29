@@ -571,7 +571,7 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		// (which would sever Pavois). Per-user override wins; visudo-verified.
 		// strings.Builder.Write never errors, so the Fprintf return is safely discarded.
 		_, _ = fmt.Fprintf(&b, "file %q do\n  content %q\n  owner 'root'\n  group 'root'\n  mode '0440'\n  verify 'visudo -cf %%{path}'\nend\n\n",
-			"/etc/sudoers.d/zz-Pavois-mgmt-exec",
+			"/etc/sudoers.d/zz-pavois-mgmt-exec",
 			"# pavois: the management user runs cinc (which execs programs), so it must be\n"+
 				"# exempt from Defaults noexec. noexec still applies to every other user.\n"+
 				"Defaults:"+noexecUser+" !noexec\n")
@@ -592,7 +592,31 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		n += len(k)
 	}
 	if fwEnableCmd != "" { // AFTER the package batch so ufw is installed; open SSH then enable
-		_, _ = fmt.Fprintf(&b, "execute 'Pavois-firewall-enable' do\n  command %q\n  not_if 'systemctl is-active --quiet ufw'\nend\n\n", fwEnableCmd)
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-firewall-enable' do\n  command %q\n  not_if 'systemctl is-active --quiet ufw'\nend\n\n", fwEnableCmd)
+		n++
+	}
+	if _, ok := sysctl["kernel.modules_disabled"]; ok {
+		// kernel.modules_disabled=1 is a ONE-WAY switch: once set, no module can load until the
+		// next reboot. In a sysctl.d drop-in it is applied by systemd-sysctl during sysinit,
+		// BEFORE local-fs.target mounts /boot/efi (vfat) -> the vfat module can never load ->
+		// "unknown filesystem type 'vfat'" -> local-fs fails -> emergency mode + a locked root =
+		// an unrecoverable brick (proven via the offline journal on an EFI VM). Apply it LATE
+		// instead: a oneshot ordered After=local-fs.target, so every boot-time module (vfat for
+		// the EFI partition included) is loaded first, then module loading is locked. Still
+		// reboot-survivable (the unit re-runs and re-locks on every boot).
+		delete(sysctl, "kernel.modules_disabled")
+		unitContent := "[Unit]\\n" +
+			"Description=Pavois: lock kernel module loading (late, after boot modules are loaded)\\n" +
+			"After=local-fs.target network-online.target\\n\\n" +
+			"[Service]\\n" +
+			"Type=oneshot\\n" +
+			"RemainAfterExit=yes\\n" +
+			"ExecStart=/sbin/sysctl -q -w kernel.modules_disabled=1\\n\\n" +
+			"[Install]\\n" +
+			"WantedBy=multi-user.target\\n"
+		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\n  notifies :run, 'execute[pavois-modules-disabled-enable]', :immediately\nend\n\n",
+			"/etc/systemd/system/pavois-modules-disabled.service", unitContent)
+		b.WriteString("execute 'pavois-modules-disabled-enable' do\n  command 'systemctl daemon-reload && systemctl enable pavois-modules-disabled.service'\n  action :nothing\nend\n\n")
 		n++
 	}
 	if len(sysctl) > 0 {
@@ -604,9 +628,9 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		for _, k := range sortedKeysS(sysctl) {
 			c.WriteString(k + " = " + sysctl[k] + "\\n")
 		}
-		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\n  notifies :run, 'execute[Pavois-sysctl-reload]', :immediately\nend\n\n",
-			"/etc/sysctl.d/zz-Pavois.conf", c.String())
-		b.WriteString("execute 'Pavois-sysctl-reload' do\n  command 'sysctl --system'\n  action :nothing\nend\n\n")
+		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\n  notifies :run, 'execute[pavois-sysctl-reload]', :immediately\nend\n\n",
+			"/etc/sysctl.d/zz-pavois.conf", c.String())
+		b.WriteString("execute 'pavois-sysctl-reload' do\n  command 'sysctl --system'\n  action :nothing\nend\n\n")
 		n += len(sysctl)
 	}
 	for _, k := range sortedKeysS(svc) {
@@ -619,7 +643,7 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	}
 	for _, mod := range sortedKeys(kmods) {
 		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"install %s /bin/true\\nblacklist %s\\n\"\nend\n\n",
-			"/etc/modprobe.d/Pavois-"+mod+".conf", mod, mod)
+			"/etc/modprobe.d/pavois-"+mod+".conf", mod, mod)
 		n++
 	}
 	// Ownership remediations reference service users (e.g. syslog) that may be absent —
@@ -690,7 +714,7 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		// to the syslog user AND creates logs as syslog:adm, so the ownership the file resources
 		// just set STAYS after a log rotation (rsyslog-as-root would recreate them root-owned).
 		// :delayed restart fires after the chowns; guarded so it's a no-op without rsyslog.
-		b.WriteString("file \"/etc/rsyslog.d/00-Pavois-privdrop.conf\" do\n" +
+		b.WriteString("file \"/etc/rsyslog.d/00-pavois-privdrop.conf\" do\n" +
 			"  content \"# pavois: least privilege — drop to syslog, own logs as syslog:adm\\n" +
 			"\\$FileOwner syslog\\n\\$FileGroup adm\\n\\$FileCreateMode 0640\\n" +
 			"\\$PrivDropToUser syslog\\n\\$PrivDropToGroup syslog\\n\"\n" +
@@ -700,7 +724,7 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		// can't reopen the existing root-owned files and logging silently dies. chown the whole
 		// set; the not_if makes it idempotent (only runs while a log is still root-owned) and it
 		// restarts rsyslog so the now-syslog process reopens them.
-		b.WriteString("execute 'Pavois-chown-rsyslog-logs' do\n" +
+		b.WriteString("execute 'pavois-chown-rsyslog-logs' do\n" +
 			"  command 'for f in /var/log/syslog /var/log/messages /var/log/*.log; do [ -f \"$f\" ] && chown syslog:adm \"$f\"; done; true'\n" +
 			"  not_if 'test \"$(stat -c %U /var/log/syslog 2>/dev/null)\" = syslog'\n" +
 			"  notifies :restart, 'service[rsyslog]', :delayed\n" +
@@ -746,7 +770,7 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		if cl.reload != "" {
 			reload = fmt.Sprintf("; systemctl reload %s 2>/dev/null || true", cl.reload)
 		}
-		_, _ = fmt.Fprintf(&b, "execute 'Pavois-conf-%s' do\n  command 'sed -ri \"s|^[[:space:]]*%s%s.*|%s|\" %s; grep -qiE \"^[[:space:]]*%s%s\" %s || echo \"%s\" >> %s%s'\n  not_if 'grep -qiE \"^[[:space:]]*%s%s%s\\b\" %s'\nend\n\n",
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-conf-%s' do\n  command 'sed -ri \"s|^[[:space:]]*%s%s.*|%s|\" %s; grep -qiE \"^[[:space:]]*%s%s\" %s || echo \"%s\" >> %s%s'\n  not_if 'grep -qiE \"^[[:space:]]*%s%s%s\\b\" %s'\nend\n\n",
 			cl.key, cl.key, sepSed, line, cl.file, cl.key, sepExists, cl.file, line, cl.file, reload, cl.key, sepNot, cl.value, cl.file)
 		n++
 	}
@@ -770,7 +794,7 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			}
 			return '-'
 		}, pl.module)
-		_, _ = fmt.Fprintf(&b, "execute 'Pavois-pam-%s' do\n  command '%s'\n  only_if 'test -f %s'\n  not_if 'grep -qE \"%s\" %s'\nend\n\n",
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-pam-%s' do\n  command '%s'\n  only_if 'test -f %s'\n  not_if 'grep -qE \"%s\" %s'\nend\n\n",
 			name, apply, pl.file, pl.module, pl.file)
 		n++
 	}
@@ -781,7 +805,7 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			continue
 		}
 		execSeen[ex.name] = true
-		_, _ = fmt.Fprintf(&b, "execute 'Pavois-exec-%s' do\n  command %q\n", ex.name, ex.command)
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-exec-%s' do\n  command %q\n", ex.name, ex.command)
 		if ex.notIf != "" {
 			_, _ = fmt.Fprintf(&b, "  not_if %q\n", ex.notIf)
 		}
@@ -797,18 +821,18 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			content.WriteString(k + " " + sshd[k] + "\\n")
 		}
 		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\n  verify 'sshd -t -f %%{path}'\n  notifies :reload, 'service[ssh]'\nend\n\n",
-			"/etc/ssh/sshd_config.d/99-Pavois.conf", content.String())
+			"/etc/ssh/sshd_config.d/99-pavois.conf", content.String())
 		b.WriteString("service 'ssh' do\n  action :nothing\nend\n\n")
 		n += len(sshd)
 	}
 	if auditRuleset && auditRules != "" { // Pavois audit ruleset -> one file
 		_, _ = fmt.Fprintf(&b, "file %q do\n  content %q\nend\n\n",
-			"/etc/audit/rules.d/99-Pavois.rules", auditRules)
+			"/etc/audit/rules.d/99-pavois.rules", auditRules)
 		// Deploying the file is not enough: the rules only auto-load at the NEXT boot, so without
 		// this every audit control fails until a reboot. Load now with augenrules. The ruleset ends
 		// with `-e 2` (immutable) — once loaded you can't reload until reboot, so skip if already
 		// immutable (auditctl -s shows enabled 2). Full paths: augenrules/auditctl live in /sbin.
-		b.WriteString("execute 'Pavois-audit-load' do\n" +
+		b.WriteString("execute 'pavois-audit-load' do\n" +
 			"  command '/sbin/augenrules --load 2>/dev/null || augenrules --load'\n" +
 			"  not_if 'auditctl -s 2>/dev/null | grep -qE \"^enabled 2\"'\nend\n\n")
 		// syscall auditing is INERT without audit=1 on the kernel cmdline (revealed by the
@@ -824,11 +848,28 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		// Debian's /etc/default/grub does NOT source /etc/default/grub.d/ (that's an Ubuntu
 		// convention, and it varies between Debian images) — so our drop-in would be silently
 		// ignored. Guarantee the sourcing first, or the cmdline mitigations never reach grub.cfg.
-		b.WriteString("execute 'Pavois-grub-source-dropins' do\n" +
+		b.WriteString("execute 'pavois-grub-source-dropins' do\n" +
 			`  command 'printf "\nif [ -d /etc/default/grub.d ]; then for x in /etc/default/grub.d/*.cfg; do [ -e \"\$x\" ] && . \"\$x\"; done; fi\n" >> /etc/default/grub'` +
 			"\n  not_if 'grep -q /etc/default/grub.d /etc/default/grub'\nend\n\n")
-		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"GRUB_CMDLINE_LINUX=\\\"$GRUB_CMDLINE_LINUX %s\\\"\\n\"\n  notifies :run, 'execute[update-grub]', :immediately\nend\n\n",
-			"/etc/default/grub.d/99-Pavois-cmdline.cfg", strings.Join(sortedKeys(cmdline), " "))
+		// iommu=force forces the IOMMU and BRICKS virtualized guests (virtio disk/net vanish at
+		// boot, the VM never returns). Apply it ONLY on bare metal: a guarded append skipped when
+		// systemd-detect-virt sees a VM. Every other param is safe on both metal and guests.
+		cmdKeys := sortedKeys(cmdline)
+		safe := make([]string, 0, len(cmdKeys))
+		iommuForce := false
+		for _, k := range cmdKeys {
+			if k == "iommu=force" {
+				iommuForce = true
+				continue
+			}
+			safe = append(safe, k)
+		}
+		content := "GRUB_CMDLINE_LINUX=\"$GRUB_CMDLINE_LINUX " + strings.Join(safe, " ") + "\"\n"
+		if iommuForce {
+			content += "systemd-detect-virt -q -v || GRUB_CMDLINE_LINUX=\"$GRUB_CMDLINE_LINUX iommu=force\"\n"
+		}
+		_, _ = fmt.Fprintf(&b, "file %q do\n  content %q\n  notifies :run, 'execute[update-grub]', :immediately\nend\n\n",
+			"/etc/default/grub.d/99-pavois-cmdline.cfg", content)
 		b.WriteString("execute 'update-grub' do\n  command 'update-grub'\n  action :nothing\nend\n\n")
 		reboot = true
 		n++
@@ -841,13 +882,19 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		csv := strings.Join(sortedKeys(ma.opts), ",")
 		ssv := strings.Join(sortedKeys(ma.opts), " ")
 		if ma.bind {
-			// Self-bind a real directory (/home, /var, /boot…) so its mount carries nodev/nosuid/
-			// noexec WITHOUT a separate partition — the proven alternative when repartitioning a live
-			// system isn't possible. A plain bind ignores the options, so bind first then remount.
-			_, _ = fmt.Fprintf(&b, "mount %q do\n  device %q\n  fstype 'none'\n  options %q\n  action :enable\n  only_if { ::File.directory?(%q) }\nend\n\n",
-				mp, mp, "bind,"+csv, mp)
-			_, _ = fmt.Fprintf(&b, "execute 'Pavois-bind-%s' do\n  command 'mountpoint -q %s || mount --bind %s %s; mount -o remount,bind,%s %s'\n  only_if 'test -d %s'\n  not_if 'O=$(findmnt -no OPTIONS %s 2>/dev/null); for o in %s; do echo \"$O\" | grep -qw \"$o\" || exit 1; done'\nend\n\n",
-				mp, mp, mp, mp, csv, mp, mp, mp, ssv)
+			// This path is NOT a separate filesystem and there is no spare disk to make one. Auto
+			// self-binding it into fstab to carry nodev/nosuid/noexec is fragile (a self-bind can
+			// hang local-fs.target at boot, and it is not real persistence). Proper separation is a
+			// deliberate, offline operation: DELIVER it as a manual fix, never auto-apply it.
+			manualFixes = append(manualFixes, manualFix{
+				id:     "mount " + mp,
+				reason: mp + " is not a separate filesystem; carrying " + csv + " properly needs repartitioning (no spare disk to auto-create), and an auto self-bind can hang boot",
+				command: fmt.Sprintf("# Harden %s with mount options: %s\n"+
+					"# Recommended: give %s its OWN filesystem/partition, then set its /etc/fstab options to include %s.\n"+
+					"# Interim ONLY (review, and verify boot in a SECOND session first) — a bind mount with nofail:\n"+
+					"#   echo '%s %s none bind,%s,nofail 0 0' >> /etc/fstab && mount %s\n",
+					mp, csv, mp, csv, mp, mp, csv, mp),
+			})
 			n++
 			continue
 		}
@@ -855,9 +902,12 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		// action: Chef's :remount umounts first and that fails on a busy fs like /dev/shm. `mount -o
 		// remount` rewrites options in place; if the point isn't a separate mount yet (e.g. /tmp on /),
 		// `mount <mp>` mounts it from the fstab line we just wrote. Guarded idempotent on the options.
-		_, _ = fmt.Fprintf(&b, "mount %q do\n  device %q\n  fstype %q\n  options %q\n  action :enable\nend\n\n",
-			mp, ma.device, ma.fstype, csv)
-		_, _ = fmt.Fprintf(&b, "execute 'Pavois-mount-%s' do\n  command 'mountpoint -q %s && mount -o remount,%s %s || mount %s'\n  not_if 'O=$(findmnt -no OPTIONS %s 2>/dev/null); for o in %s; do echo \"$O\" | grep -qw \"$o\" || exit 1; done'\nend\n\n",
+		// pass 0 + dump 0: a tmpfs has NO device to fsck. Chef's mount resource defaults pass to 2,
+		// which makes systemd fsck the tmpfs at boot, fail, and drop to emergency mode (root locked
+		// = unrecoverable). Force pass 0. nofail is the extra belt: a failed mount never hangs boot.
+		_, _ = fmt.Fprintf(&b, "mount %q do\n  device %q\n  fstype %q\n  options %q\n  pass 0\n  dump 0\n  action :enable\nend\n\n",
+			mp, ma.device, ma.fstype, csv+",nofail")
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-mount-%s' do\n  command 'mountpoint -q %s && mount -o remount,%s %s || mount %s'\n  not_if 'O=$(findmnt -no OPTIONS %s 2>/dev/null); for o in %s; do echo \"$O\" | grep -qw \"$o\" || exit 1; done'\nend\n\n",
 			mp, mp, csv, mp, mp, mp, ssv)
 		n++
 	}
@@ -865,14 +915,14 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		// Pavois generated the password and vaulted it locally; here we hash it ON the target
 		// (grub-mkpasswd-pbkdf2 is salted) and write the superuser entry. The plaintext lands in
 		// a 0600 temp file, used then removed. Idempotent: skip if a grub password already exists.
-		_, _ = fmt.Fprintf(&b, "file '/tmp/Pavois-grub-pw' do\n  content %q\n  mode '0600'\nend\n\n", grubPassword)
+		_, _ = fmt.Fprintf(&b, "file '/tmp/pavois-grub-pw' do\n  content %q\n  mode '0600'\nend\n\n", grubPassword)
 		// A proper /etc/grub.d/ SCRIPT (shebang + heredoc) so update-grub EMITS the directives
 		// into grub.cfg; it reads the salted hash from a sibling dotfile (ignored by update-grub).
 		_, _ = fmt.Fprintf(&b, "file '/etc/grub.d/40_pavois_password' do\n  content %q\n  mode '0755'\nend\n\n",
-			"#!/bin/sh\ncat <<EOF\nset superusers=\"root\"\npassword_pbkdf2 root $(cat /etc/grub.d/.Pavois-grub-hash)\nEOF\n")
-		b.WriteString(`execute 'Pavois-grub-password' do
-  command 'H=$(printf "%s\n%s\n" "$(cat /tmp/Pavois-grub-pw)" "$(cat /tmp/Pavois-grub-pw)" | grub-mkpasswd-pbkdf2 2>/dev/null | grep -oE "grub\.pbkdf2\.[^ ]+"); [ -n "$H" ] && { printf "%s\n" "$H" > /etc/grub.d/.Pavois-grub-hash; chmod 0600 /etc/grub.d/.Pavois-grub-hash; grep -q -- "--unrestricted" /etc/grub.d/10_linux || sed -ri "/^CLASS=/ s/\"\$/ --unrestricted\"/" /etc/grub.d/10_linux; /usr/sbin/update-grub; }; rm -f /tmp/Pavois-grub-pw'
-  not_if 'test -s /etc/grub.d/.Pavois-grub-hash'
+			"#!/bin/sh\ncat <<EOF\nset superusers=\"root\"\npassword_pbkdf2 root $(cat /etc/grub.d/.pavois-grub-hash)\nEOF\n")
+		b.WriteString(`execute 'pavois-grub-password' do
+  command 'H=$(printf "%s\n%s\n" "$(cat /tmp/pavois-grub-pw)" "$(cat /tmp/pavois-grub-pw)" | grub-mkpasswd-pbkdf2 2>/dev/null | grep -oE "grub\.pbkdf2\.[^ ]+"); [ -n "$H" ] && { printf "%s\n" "$H" > /etc/grub.d/.pavois-grub-hash; chmod 0600 /etc/grub.d/.pavois-grub-hash; grep -q -- "--unrestricted" /etc/grub.d/10_linux || sed -ri "/^CLASS=/ s/\"\$/ --unrestricted\"/" /etc/grub.d/10_linux; /usr/sbin/update-grub; }; rm -f /tmp/pavois-grub-pw'
+  not_if 'test -s /etc/grub.d/.pavois-grub-hash'
 end
 
 `)
@@ -887,8 +937,8 @@ end
 		// stack stays correct; audit + even_deny_root satisfy the controls. SSH key auth bypasses
 		// the password stack, so a slip here can't lock out key login.
 		fl := "audit silent deny=5 unlock_time=900 even_deny_root"
-		_, _ = fmt.Fprintf(&b, "execute 'Pavois-faillock-preauth' do\n  command 'sed -ri \"/^auth.*pam_unix\\.so/i auth required pam_faillock.so preauth %s\" /etc/pam.d/common-auth'\n  only_if 'test -f /etc/pam.d/common-auth'\n  not_if 'grep -qE \"pam_faillock.so\" /etc/pam.d/common-auth'\nend\n\n", fl)
-		b.WriteString("execute 'Pavois-faillock-account' do\n  command 'printf \"account required pam_faillock.so\\n\" >> /etc/pam.d/common-account'\n  only_if 'test -f /etc/pam.d/common-account'\n  not_if 'grep -qE \"pam_faillock.so\" /etc/pam.d/common-account'\nend\n\n")
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-faillock-preauth' do\n  command 'sed -ri \"/^auth.*pam_unix\\.so/i auth required pam_faillock.so preauth %s\" /etc/pam.d/common-auth'\n  only_if 'test -f /etc/pam.d/common-auth'\n  not_if 'grep -qE \"pam_faillock.so\" /etc/pam.d/common-auth'\nend\n\n", fl)
+		b.WriteString("execute 'pavois-faillock-account' do\n  command 'printf \"account required pam_faillock.so\\n\" >> /etc/pam.d/common-account'\n  only_if 'test -f /etc/pam.d/common-account'\n  not_if 'grep -qE \"pam_faillock.so\" /etc/pam.d/common-account'\nend\n\n")
 		n++
 	}
 	if dconfWanted {
@@ -906,9 +956,9 @@ end
 			"/org/gnome/desktop/screensaver/lock-enabled\n/org/gnome/desktop/screensaver/lock-delay\n" +
 			"/org/gnome/desktop/session/idle-delay\n"
 		b.WriteString("directory '/etc/dconf/db/local.d/locks' do\n  recursive true\nend\n\n")
-		_, _ = fmt.Fprintf(&b, "file '/etc/dconf/db/local.d/00-Pavois-hardening' do\n  content %q\n  mode '0644'\nend\n\n", keyfile)
-		_, _ = fmt.Fprintf(&b, "file '/etc/dconf/db/local.d/locks/00-Pavois-locks' do\n  content %q\n  mode '0644'\nend\n\n", locks)
-		b.WriteString("execute 'Pavois-dconf-update' do\n  command 'dconf update 2>/dev/null || true'\nend\n\n")
+		_, _ = fmt.Fprintf(&b, "file '/etc/dconf/db/local.d/00-pavois-hardening' do\n  content %q\n  mode '0644'\nend\n\n", keyfile)
+		_, _ = fmt.Fprintf(&b, "file '/etc/dconf/db/local.d/locks/00-pavois-locks' do\n  content %q\n  mode '0644'\nend\n\n", locks)
+		b.WriteString("execute 'pavois-dconf-update' do\n  command 'dconf update 2>/dev/null || true'\nend\n\n")
 		n++
 	}
 	if kernelBuildWanted {
@@ -1065,7 +1115,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 			// handler a full chef-client run would), so issue it with an `execute` LAST —
 			// every change applies first, then the box reboots in-run (activates audit=1).
 			recipe += "# pavois: reboot in-run to activate kernel cmdline (audit=1) / modules / sysctl\n" +
-				"execute 'Pavois-reboot' do\n  command 'systemctl reboot'\nend\n"
+				"execute 'pavois-reboot' do\n  command 'systemctl reboot'\nend\n"
 			_, _ = fmt.Fprintln(out, "pavois: ⚠ changes need a REBOOT — Pavois will reboot the target via Chef at the end of the run.")
 		} else {
 			_, _ = fmt.Fprintln(out, "pavois: ⚠ some enabled changes need a REBOOT to take effect (kernel cmdline/module); re-run with --reboot, or reboot the target yourself.")
@@ -1093,7 +1143,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	tmp, err := os.CreateTemp("", "Pavois-harden-*.rb")
+	tmp, err := os.CreateTemp("", "pavois-harden-*.rb")
 	if err != nil {
 		return err
 	}
@@ -1116,13 +1166,13 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("install cinc-client: %w", err)
 	}
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: copying recipe…")
-	if err := run("scp", append(append(sshOpts(), tmp.Name()), target+":/tmp/Pavois-harden.rb")...); err != nil {
+	if err := run("scp", append(append(sshOpts(), tmp.Name()), target+":/tmp/pavois-harden.rb")...); err != nil {
 		return fmt.Errorf("copy recipe: %w", err)
 	}
 
 	// Terraform-style: show the REAL diff (why-run changes nothing) before asking.
 	_, _ = fmt.Fprintf(out, "\npavois: planned changes on %s (nothing applied yet):\n\n", target)
-	why := "sudo env CHEF_LICENSE=accept-silent cinc-apply /tmp/Pavois-harden.rb --why-run"
+	why := "sudo env CHEF_LICENSE=accept-silent cinc-apply /tmp/pavois-harden.rb --why-run"
 	if err := run("ssh", sshTTY(target, why)...); err != nil {
 		return fmt.Errorf("why-run: %w", err)
 	}
@@ -1137,7 +1187,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	}
 
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: converging (cinc-apply)…")
-	conv := "sudo env CHEF_LICENSE=accept-silent cinc-apply /tmp/Pavois-harden.rb"
+	conv := "sudo env CHEF_LICENSE=accept-silent cinc-apply /tmp/pavois-harden.rb"
 	if err := run("ssh", sshTTY(target, conv)...); err != nil {
 		// With --reboot the run ends by rebooting the box: the SSH session drops mid-run,
 		// which surfaces as a non-zero exit. That's expected — wait for the box to return.
@@ -1254,7 +1304,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// genPassword returns a strong random password (crypto/rand) for Pavois-managed secrets
+// genPassword returns a strong random password (crypto/rand) for pavois-managed secrets
 // (e.g. the grub bootloader password). Ambiguous characters are excluded.
 func genPassword(n int) string {
 	const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#%^*-_=+"
@@ -1268,7 +1318,7 @@ func genPassword(n int) string {
 	return string(b)
 }
 
-// vaultStore writes a generated secret to a local 0600 vault under <root>/.Pavois-vault
+// vaultStore writes a generated secret to a local 0600 vault under <root>/.pavois-vault
 // (gitignored). It's the admin's copy of secrets Pavois set on a target (it can't read them
 // back, e.g. the grub pbkdf2 hash). Returns the file path.
 func vaultStore(root, target, kind, secret string) (string, error) {
@@ -1276,7 +1326,7 @@ func vaultStore(root, target, kind, secret string) (string, error) {
 	if i := strings.Index(target, "@"); i >= 0 {
 		host = target[i+1:]
 	}
-	dir := filepath.Join(root, ".Pavois-vault")
+	dir := filepath.Join(root, ".pavois-vault")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
