@@ -19,7 +19,7 @@ var profilesCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		root := findRoot()
 		out := cmd.OutOrStdout()
-		fmt.Fprintln(out, "Bundled profiles:")
+		_, _ = fmt.Fprintln(out, "Bundled profiles:")
 		_ = filepath.WalkDir(filepath.Join(root, "profiles"), func(p string, d os.DirEntry, err error) error {
 			if err != nil || !d.IsDir() {
 				return nil
@@ -29,14 +29,14 @@ var profilesCmd = &cobra.Command{
 				return nil
 			}
 			rel, _ := filepath.Rel(filepath.Join(root, "profiles"), p)
-			fmt.Fprintf(out, "  %-26s %s\n", rel, titleOf(yml))
+			_, _ = fmt.Fprintf(out, "  %-26s %s\n", rel, titleOf(yml))
 			return nil
 		})
 		bin := engine.NativeBin()
 		if bin == "" {
 			bin = "absent (docker mode)"
 		}
-		fmt.Fprintf(out, "\nNative engine: %s\n", bin)
+		_, _ = fmt.Fprintf(out, "\nNative engine: %s\n", bin)
 		return nil
 	},
 }

@@ -47,10 +47,10 @@ func Execute() {
 	}
 	var ce *ComplianceError
 	if errors.As(err, &ce) {
-		fmt.Fprintln(os.Stderr, "pavois:", ce.Error())
+		_, _ = fmt.Fprintln(os.Stderr, "pavois:", ce.Error())
 		os.Exit(1)
 	}
-	fmt.Fprintln(os.Stderr, "erreur:", err)
+	_, _ = fmt.Fprintln(os.Stderr, "erreur:", err)
 	os.Exit(2)
 }
 

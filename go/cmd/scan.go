@@ -121,7 +121,7 @@ func latestFamilyProfile(root, fam string) string {
 			continue
 		}
 		n := 0
-		fmt.Sscanf(strings.TrimPrefix(e.Name(), fam), "%d", &n)
+		_, _ = fmt.Sscanf(strings.TrimPrefix(e.Name(), fam), "%d", &n) // parse failure leaves n=0 (intended fallback)
 		if n > bestN {
 			best, bestN = e.Name(), n
 		}
@@ -147,7 +147,7 @@ func detectProfile(root string, o engine.Options) (profile, detected string) {
 	}
 	if fam := familyOf(name); fam != "" {
 		if near := latestFamilyProfile(root, fam); near != "" {
-			fmt.Fprintf(os.Stderr, "pavois: no exact profile for %s — using closest %s\n", detected, near)
+			_, _ = fmt.Fprintf(os.Stderr, "pavois: no exact profile for %s — using closest %s\n", detected, near)
 			return "linux/" + near, detected
 		}
 	}
@@ -175,10 +175,10 @@ func runScan(cmd *cobra.Command, args []string) error {
 	// Détection de l'OS de la CIBLE (cinc detect, tout transport) pour choisir le
 	// bon profil sans demander à l'utilisateur — et signaler un profil qui ne
 	// correspond pas à la machine testée.
-	fmt.Fprint(os.Stderr, "  ⠿ detecting target OS…\r")
+	_, _ = fmt.Fprint(os.Stderr, "  ⠿ detecting target OS…\r")
 	detOpts := engine.Options{Target: target, Key: scKey, SSHPass: sshPass}
 	autoProf, detectedOS := detectProfile(root, detOpts)
-	fmt.Fprint(os.Stderr, "\033[K")
+	_, _ = fmt.Fprint(os.Stderr, "\033[K")
 	if !cmd.Flags().Changed("profile") {
 		// No --profile given: the per-OS profile is auto-selected from the detected OS.
 		// If detection finds nothing usable, fail clearly rather than fall back to a
@@ -191,11 +191,11 @@ func runScan(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("%s — pass --profile <path|url> (e.g. profiles/linux/debian12)", hint)
 		}
 		scProfile = autoProf
-		fmt.Fprintf(os.Stderr, "pavois: detected %s → profile %s\n", detectedOS, autoProf)
+		_, _ = fmt.Fprintf(os.Stderr, "pavois: detected %s → profile %s\n", detectedOS, autoProf)
 	} else if autoProf != "" && !strings.HasSuffix(scProfile, autoProf) {
 		// même profil sous une autre forme de chemin (profiles/linux/x, ./x) = OK ;
 		// on n'avertit que si le profil désigne vraiment un autre OS.
-		fmt.Fprintf(os.Stderr, "pavois: ⚠ profile %s may not match target OS %s (suggested: %s)\n",
+		_, _ = fmt.Fprintf(os.Stderr, "pavois: ⚠ profile %s may not match target OS %s (suggested: %s)\n",
 			scProfile, detectedOS, autoProf)
 	}
 
@@ -205,7 +205,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 		if out == "" {
 			out = filepath.Join(root, "reports")
 		}
-		_ = os.MkdirAll(out, 0o755)
+		_ = os.MkdirAll(out, 0o750)
 		ts := time.Now().Format("20060102-150405")
 		jsonPath = filepath.Join(out, fmt.Sprintf("rapport-%s-%s-%s.json",
 			slug(machine), strings.TrimSuffix(transport, "://"), ts))
@@ -233,8 +233,8 @@ func runScan(cmd *cobra.Command, args []string) error {
 		Timestamp: time.Now().Format("2006-01-02 15:04:05 MST"),
 		Engine:    "CINC Auditor (InSpec)",
 	})
-	if err := os.WriteFile(htmlPath, []byte(htmlStr), 0o644); err == nil {
-		fmt.Fprintf(os.Stderr, "pavois: report %s (%d controls, %d standards)\n", htmlPath, nctrl, nnorm)
+	if err := os.WriteFile(htmlPath, []byte(htmlStr), 0o600); err == nil {
+		_, _ = fmt.Fprintf(os.Stderr, "pavois: report %s (%d controls, %d standards)\n", htmlPath, nctrl, nnorm)
 	}
 
 	res := audit.Evaluate(rep, machine, scStandard, scLevel)
@@ -273,19 +273,19 @@ func runScan(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	case "html":
-		fmt.Fprint(out, htmlStr)
+		_, _ = fmt.Fprint(out, htmlStr)
 	default:
 		// Ordre aligné sur pitstop/plumber : bandeau → écarts → résumé, et la NOTE
 		// en GROSSE LETTRE tout EN BAS. Au terminal on ne montre que critical/high ;
 		// le détail complet (medium/low) est dans le rapport HTML.
 		if res.Total == 0 {
-			fmt.Fprintf(out, "  No controls evaluated — is standard %q present in profile %q?\n\n",
+			_, _ = fmt.Fprintf(out, "  No controls evaluated — is standard %q present in profile %q?\n\n",
 				scStandard, scProfile)
 			break
 		}
 		top := onlySeverities(res.Findings, "critical", "high", "medium")
 		screport.Terminal(out, opts, top, res.Summary)
-		fmt.Fprintf(os.Stderr,
+		_, _ = fmt.Fprintf(os.Stderr,
 			"  %d critical/high/medium deviation(s) shown · %d total · full report → %s\n",
 			len(top), len(res.Findings), htmlPath)
 		// On ne note (A→E) que les profils à NORMES (profiles/linux/*) ; un profil
@@ -294,7 +294,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 			letter, pts, _ := audit.GradeResult(res)
 			writeScorecard(out, letter, pts, res.Passed, res.Total, res.Qualified)
 		} else {
-			fmt.Fprintln(out, "  No standard mappings in this profile — grade applies to profiles/linux/* only.")
+			_, _ = fmt.Fprintln(out, "  No standard mappings in this profile — grade applies to profiles/linux/* only.")
 		}
 	}
 

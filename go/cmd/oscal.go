@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -133,8 +133,12 @@ func provesFor(method string) [3]string { return audit.Proves(method) }
 
 var urlNS = []byte{0x6b, 0xa7, 0xb8, 0x11, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8}
 
-func uuid5(name string) string {
-	h := sha1.New()
+// uuidName derives a deterministic, syntactically valid RFC 4122 UUID from a name,
+// hashing with SHA-256 (sha1 is weak — G401/G505). OSCAL only requires a well-formed
+// UUID for document identifiers, not a true name-based v5, so we keep the version/variant
+// bits well-formed and use the stronger digest. Output is stable across runs for a name.
+func uuidName(name string) string {
+	h := sha256.New()
 	h.Write(urlNS)
 	h.Write([]byte("https://pavois.dev/baseline:" + name))
 	b := h.Sum(nil)[:16]
@@ -282,7 +286,7 @@ func runOscal(_ *cobra.Command, _ []string) error {
 	bl := readBaseline(root)
 	oscalTS := bl.Released + "T00:00:00Z" // stamped from the release date: deterministic, reproducible
 	var cat oCatalog
-	cat.Catalog.UUID = uuid5("catalog")
+	cat.Catalog.UUID = uuidName("catalog")
 	cat.Catalog.Metadata = oMeta{
 		Title: bl.Name, LastModified: oscalTS, Version: bl.Version, OscalVersion: oscalVer,
 		Remarks: strings.TrimSpace(bl.Description),
@@ -296,11 +300,11 @@ func runOscal(_ *cobra.Command, _ []string) error {
 		fmt.Println(string(b))
 		return nil
 	}
-	if err := os.MkdirAll(filepath.Join(oscalOut, "profiles"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(oscalOut, "profiles"), 0o750); err != nil {
 		return err
 	}
 	cb, _ := json.MarshalIndent(cat, "", "  ")
-	if err := os.WriteFile(filepath.Join(oscalOut, "pavois-catalog.json"), cb, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(oscalOut, "pavois-catalog.json"), cb, 0o600); err != nil {
 		return err
 	}
 	for _, osn := range oses {
@@ -310,7 +314,7 @@ func runOscal(_ *cobra.Command, _ []string) error {
 		}
 		sort.Strings(pids)
 		var p oProfile
-		p.Profile.UUID = uuid5("profile:" + osn)
+		p.Profile.UUID = uuidName("profile:" + osn)
 		p.Profile.Metadata = oMeta{Title: "Pavois baseline — " + osn, LastModified: oscalTS, Version: bl.Version, OscalVersion: oscalVer}
 		p.Profile.Imports = append(p.Profile.Imports, struct {
 			Href            string `json:"href"`
@@ -321,10 +325,10 @@ func runOscal(_ *cobra.Command, _ []string) error {
 			WithIds []string `json:"with-ids"`
 		}{{WithIds: pids}}})
 		pb, _ := json.MarshalIndent(p, "", "  ")
-		if err := os.WriteFile(filepath.Join(oscalOut, "profiles", "pavois-"+osn+".json"), pb, 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(oscalOut, "profiles", "pavois-"+osn+".json"), pb, 0o600); err != nil {
 			return err
 		}
 	}
-	fmt.Fprintf(os.Stderr, "pavois: OSCAL catalog (%d controls) + %d profiles -> %s\n", len(ids), len(oses), oscalOut)
+	_, _ = fmt.Fprintf(os.Stderr, "pavois: OSCAL catalog (%d controls) + %d profiles -> %s\n", len(ids), len(oses), oscalOut)
 	return nil
 }

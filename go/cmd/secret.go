@@ -14,15 +14,15 @@ func promptSecret(label string) (string, error) {
 	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
 	if err != nil {
 		// no controlling tty (e.g. a pipe) — fall back to stdin, still no echo.
-		fmt.Fprint(os.Stderr, label)
+		_, _ = fmt.Fprint(os.Stderr, label)
 		b, err := term.ReadPassword(int(os.Stdin.Fd()))
-		fmt.Fprintln(os.Stderr)
+		_, _ = fmt.Fprintln(os.Stderr)
 		return string(b), err
 	}
-	defer tty.Close()
-	fmt.Fprint(tty, label)
+	defer func() { _ = tty.Close() }()
+	_, _ = fmt.Fprint(tty, label)
 	b, err := term.ReadPassword(int(tty.Fd()))
-	fmt.Fprintln(tty)
+	_, _ = fmt.Fprintln(tty)
 	return string(b), err
 }
 
@@ -34,7 +34,7 @@ func resolveSudoPass(prompt bool) (string, error) {
 		return promptSecret("[sudo] password for the target: ")
 	}
 	v := os.Getenv("PAVOIS_SUDO_PASSWORD")
-	os.Unsetenv("PAVOIS_SUDO_PASSWORD") // drop from our env so no child process inherits it
+	_ = os.Unsetenv("PAVOIS_SUDO_PASSWORD") // drop from our env so no child process inherits it
 	return v, nil
 }
 
@@ -45,7 +45,7 @@ func resolveSSHPass(inline string, prompt bool) (string, error) {
 		return promptSecret("SSH password for the target: ")
 	}
 	if v := os.Getenv("PAVOIS_SSH_PASSWORD"); v != "" {
-		os.Unsetenv("PAVOIS_SSH_PASSWORD") // drop from our env so no child process inherits it
+		_ = os.Unsetenv("PAVOIS_SSH_PASSWORD") // drop from our env so no child process inherits it
 		return v, nil
 	}
 	return inline, nil
