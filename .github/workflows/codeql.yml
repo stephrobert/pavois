@@ -1,0 +1,80 @@
+name: CodeQL
+
+# Static analysis (SAST) for the whole repo: Go binary, Python tooling, JS/TS site. Catches
+# injectable/unsafe patterns and dangerous APIs that lint alone misses — the gate against bad or
+# malicious code landing via a PR. Code Scanning needs GitHub Advanced Security (free on public
+# repos); skips while private.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '24 3 * * 1'
+
+permissions: {}
+
+jobs:
+  # Python and JS/TS are interpreted — no build needed (build-mode: none).
+  interpreted:
+    name: Analyze ${{ matrix.language }}
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    permissions:
+      security-events: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript-typescript]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4.35.5
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+      - name: Analyze
+        uses: github/codeql-action/analyze@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4.35.5
+        with:
+          category: '/language:${{ matrix.language }}'
+
+  # Go needs a build; autobuild compiles ./go, which has a replace on the private scankit module.
+  go:
+    name: Analyze go
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - name: Checkout pavois
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          path: pavois
+          persist-credentials: false
+      - name: Checkout scankit (private dependency)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: stephrobert/scankit
+          token: ${{ secrets.SCANKIT_TOKEN }}
+          path: scankit
+          persist-credentials: false
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: '1.26'
+          cache-dependency-path: pavois/go/go.sum
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4.35.5
+        with:
+          languages: go
+          build-mode: autobuild
+      - name: Analyze
+        uses: github/codeql-action/analyze@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4.35.5
+        with:
+          category: '/language:go'

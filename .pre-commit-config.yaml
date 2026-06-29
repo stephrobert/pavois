@@ -1,0 +1,69 @@
+# Pre-commit hooks for pavois. Install: `pre-commit install` (the `pre-commit` tool
+# ships via mise). Go hooks run against the ./go module and use the toolchain on PATH
+# (provided by `mise install`). Run on all files: `pre-commit run --all-files`.
+repos:
+  # General hygiene + a hard stop on accidentally committing secrets/keys (this repo
+  # ships public — see the publish-hygiene rules).
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.md$
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=2048']
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # Python tooling: ruff (lint + format) and bandit (security), config in pyproject.toml.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/PyCQA/bandit
+    rev: '1.9.2'
+    hooks:
+      - id: bandit
+        args: ['-c', 'pyproject.toml']
+        additional_dependencies: ['bandit[toml]']
+
+  # Go quality gate — mirrors the CI workflow and the go-production-engineer standard.
+  - repo: local
+    hooks:
+      - id: gofmt
+        name: gofmt
+        language: system
+        entry: bash -c 'cd go && test -z "$(gofmt -l .)" || { echo "gofmt needed:"; gofmt -l .; exit 1; }'
+        pass_filenames: false
+        files: ^go/.*\.go$
+      - id: go-vet
+        name: go vet
+        language: system
+        entry: bash -c 'cd go && go vet ./...'
+        pass_filenames: false
+        files: ^go/.*\.go$
+      - id: golangci-lint
+        name: golangci-lint
+        language: system
+        entry: bash -c 'cd go && golangci-lint run ./...'
+        pass_filenames: false
+        files: ^go/.*\.go$
+      - id: go-mod-tidy
+        name: go mod tidy
+        language: system
+        entry: bash -c 'cd go && go mod tidy && git diff --exit-code go.mod go.sum'
+        pass_filenames: false
+        files: ^go/go\.(mod|sum)$
+      - id: trufflehog
+        name: TruffleHog (secret scan)
+        # --no-update: never auto-fetch a new binary at hook time (LOTP supply-chain hardening).
+        entry: trufflehog git file://. --since-commit HEAD --results=verified --fail --no-update
+        language: system
+        pass_filenames: false

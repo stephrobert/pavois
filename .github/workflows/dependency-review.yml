@@ -1,0 +1,31 @@
+name: Dependency review
+
+# Blocks a PR that introduces a dependency with a known HIGH/CRITICAL vulnerability or a
+# disallowed license. Uses the GitHub dependency graph (free on public repos; needs GitHub
+# Advanced Security on private) — skips while private.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  review:
+    name: Review dependency changes
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          # AGPL/GPL copyleft would force-relicense the Apache-2.0 project — deny by default.
+          deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0
