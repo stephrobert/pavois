@@ -334,6 +334,112 @@ func GradeResult(res Result) (letter string, points int, runtimeQualified bool) 
 	return
 }
 
+// RemediationClass classe un contrôle par la NATURE de sa remédiation, pour distinguer ce
+// qui est corrigeable sur un hôte en cours d'exécution de ce qui ne l'est pas. Dérivé des
+// tags du rapport (domaine, type de preuve, id) :
+//   - kernel-build : exige un noyau recompilé (kconfig-*, domaine « Kernel build »)
+//   - install-time : exige une décision d'architecture/partitionnement (séparation de
+//     points de montage, domaine « Mounts », ids partition-*)
+//   - dangerous    : remédiation à fort risque opérationnel (verrou de modules, mot de
+//     passe GRUB, iommu=force) : jamais à appliquer sans plan + snapshot + test de reboot
+//   - manual       : pas de remédiation automatique (preuve « manual »)
+//   - auto         : remédiable automatiquement (le reste)
+func RemediationClass(c Control) string {
+	id := c.ID
+	switch {
+	case id == "kmod-loading-disabled",
+		strings.Contains(id, "modules-disabled"),
+		strings.HasPrefix(id, "cmdline-iommu"),
+		strings.Contains(id, "grub-password"):
+		return "dangerous"
+	case strings.EqualFold(tagStr(c, "domain"), "Kernel build"):
+		return "kernel-build"
+	case strings.EqualFold(tagStr(c, "domain"), "Mounts"), strings.HasPrefix(id, "partition-"):
+		return "install-time"
+	case tagStr(c, "evidence") == "manual":
+		return "manual"
+	default:
+		return "auto"
+	}
+}
+
+// ClassStat agrège les contrôles évalués d'une classe de remédiation.
+type ClassStat struct {
+	Class  string `json:"class"`
+	Passed int    `json:"passed"`
+	Failed int    `json:"failed"`
+	Total  int    `json:"total"`
+}
+
+// Posture est la ventilation par classe de remédiation + la note REMÉDIABLE : la note
+// recalculée sur les seuls contrôles corrigeables sur un hôte vivant (hors kernel-build et
+// install-time), pour qu'une architecture/un noyau non corrigeables ne masquent pas la
+// posture réellement atteignable. C'est la réponse à « pourquoi mon C inclut-il des choix
+// que je ne peux pas corriger sans réinstaller ? » (revue ChatGPT, sections 3-5).
+type Posture struct {
+	Classes          []ClassStat `json:"classes"`
+	RemediableGrade  string      `json:"remediable_grade"`
+	RemediablePoints int         `json:"remediable_points"`
+	RemediablePassed int         `json:"remediable_passed"`
+	RemediableTotal  int         `json:"remediable_total"`
+}
+
+// classOrder fixe l'ordre d'affichage des classes.
+var classOrder = []string{"auto", "manual", "dangerous", "install-time", "kernel-build"}
+
+// Breakdown calcule la ventilation par classe et la note remédiable, pour la même vue
+// (standard, level) qu'Evaluate.
+func Breakdown(r *Report, standard, level string) Posture {
+	stat := map[string]*ClassStat{}
+	for _, k := range classOrder {
+		stat[k] = &ClassStat{Class: k}
+	}
+	var remFindings []finding.Finding
+	remPassed, remTotal := 0, 0
+	for _, p := range r.Profiles {
+		for _, c := range p.Controls {
+			if !applicable(c, standard) || !inLevel(c, standard, level) {
+				continue
+			}
+			st := status(c)
+			if st != "passed" && st != "failed" {
+				continue
+			}
+			cls := RemediationClass(c)
+			s, ok := stat[cls]
+			if !ok {
+				s = &ClassStat{Class: cls}
+				stat[cls] = s
+			}
+			s.Total++
+			if st == "passed" {
+				s.Passed++
+			} else {
+				s.Failed++
+			}
+			if cls != "install-time" && cls != "kernel-build" { // périmètre remédiable
+				remTotal++
+				if st == "passed" {
+					remPassed++
+				} else {
+					remFindings = append(remFindings, toFinding(c, "", standard))
+				}
+			}
+		}
+	}
+	remLetter, remPts := Grade(scoring.Summarize(remFindings))
+	var classes []ClassStat
+	for _, k := range classOrder {
+		if stat[k].Total > 0 {
+			classes = append(classes, *stat[k])
+		}
+	}
+	return Posture{
+		Classes: classes, RemediableGrade: remLetter, RemediablePoints: remPts,
+		RemediablePassed: remPassed, RemediableTotal: remTotal,
+	}
+}
+
 // Headline construit la ligne de synthèse forte (note + points + échecs).
 func Headline(res Result) string {
 	letter, pts, rq := GradeResult(res)

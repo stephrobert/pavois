@@ -147,13 +147,16 @@ func runBundle(cmd *cobra.Command, args []string) error {
 	dSum, dN, _ := sha256File(filepath.Join(out, "campaign-delta.json"))
 	artifacts = append(artifacts, bundleArtifact{File: "campaign-delta.json", Role: "delta", SHA256: dSum, Bytes: dN})
 
-	// Target + ruleset version from the after report (best-effort).
+	// Target + ruleset version + posture breakdown from the after report (best-effort).
 	platform, release, ruleset := "", "", ""
+	var posture *audit.Posture
 	if rep, e := audit.Load(afterPath); e == nil {
 		platform, release = rep.Platform.Name, rep.Platform.Release
 		if len(rep.Profiles) > 0 {
 			ruleset = rep.Profiles[0].Version
 		}
+		p := audit.Breakdown(rep, "", "")
+		posture = &p
 	}
 
 	manifest := map[string]any{
@@ -166,6 +169,9 @@ func runBundle(cmd *cobra.Command, args []string) error {
 		"after":           map[string]any{"file": filepath.Base(afterPath), "grade": aGrade, "passed": aPass, "total": aTotal},
 		"campaign":        campaign,
 		"artifacts":       artifacts,
+	}
+	if posture != nil {
+		manifest["posture"] = posture
 	}
 	manBlob, _ := json.MarshalIndent(manifest, "", "  ")
 	if err := os.WriteFile(filepath.Join(out, "manifest.json"), manBlob, 0o600); err != nil {
