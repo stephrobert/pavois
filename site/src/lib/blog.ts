@@ -1,4 +1,4 @@
-// Blog helpers — modelled on devsecops-2026's src/lib/blog.ts, adapted to pavois (bilingual).
+// Blog helpers, modelled on devsecops-2026's src/lib/blog.ts, adapted to pavois (bilingual).
 import type { Lang } from '../i18n/ui';
 
 export const POSTS_PER_PAGE = 9;
