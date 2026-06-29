@@ -182,17 +182,9 @@ func gradeInfo(path string, isPlan bool) (letter string, passed, total int) {
 	return l, res.Passed, res.Total
 }
 
-func runDiff(cmd *cobra.Command, args []string) error {
-	before, beforePlan, err := statusesFor(args[0])
-	if err != nil {
-		return err
-	}
-	after, afterPlan, err := statusesFor(args[1])
-	if err != nil {
-		return err
-	}
-
-	// One bucket per transition "<from>><to>" over the union of control ids.
+// transitionBuckets groups every control id (over the union of both sides) by its
+// "<from>><to>" transition, e.g. "fail>pass". Shared by `diff` and `bundle`.
+func transitionBuckets(before, after map[string]string) map[string][]string {
 	buckets := map[string][]string{}
 	ids := map[string]bool{}
 	for id := range before {
@@ -210,6 +202,20 @@ func runDiff(cmd *cobra.Command, args []string) error {
 	for _, v := range buckets {
 		sort.Strings(v)
 	}
+	return buckets
+}
+
+func runDiff(cmd *cobra.Command, args []string) error {
+	before, beforePlan, err := statusesFor(args[0])
+	if err != nil {
+		return err
+	}
+	after, afterPlan, err := statusesFor(args[1])
+	if err != nil {
+		return err
+	}
+
+	buckets := transitionBuckets(before, after)
 
 	// Transition matrix rows (the "scope delta").
 	type rowDef struct{ key, label, kind string }
