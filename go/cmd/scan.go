@@ -259,6 +259,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 			"grade": letter, "points": pts, "passed": res.Passed, "total": res.Total,
 			"runtime_qualified": rq, "qualified_passes": res.Qualified,
 			"counts": res.Summary.Counts, "findings": res.Findings,
+			"posture": audit.Breakdown(rep, scStandard, scLevel),
 		})
 	case "sarif":
 		if err := screport.SARIF(out, opts, machine, res.Findings); err != nil {
@@ -293,6 +294,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 		if nnorm > 0 {
 			letter, pts, _ := audit.GradeResult(res)
 			writeScorecard(out, letter, pts, res.Passed, res.Total, res.Qualified)
+			writePosture(out, audit.Breakdown(rep, scStandard, scLevel))
 		} else {
 			_, _ = fmt.Fprintln(out, "  No standard mappings in this profile — grade applies to profiles/linux/* only.")
 		}
