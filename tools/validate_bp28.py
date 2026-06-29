@@ -14,16 +14,20 @@ cross-checks pavois's `bp28:` tags:
 
 Source: ANSSI BP-028 v2.0 (2022), under Licence Ouverte / Etalab — reuse with attribution.
 """
+
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 REF = ROOT / "docs" / "reference" / "pavois-content"
 URL = "https://messervices.cyber.gouv.fr/documents-guides/fr_np_linux_configuration-v2.0.pdf"
-PDF = Path("/tmp/anssi-bp028-v2.pdf")
-TXT = Path("/tmp/anssi-bp028-v2.txt")
+# Stable cache files (download once, reuse across runs); honor $TMPDIR rather than hardcode /tmp.
+_TMP = Path(tempfile.gettempdir())
+PDF = _TMP / "anssi-bp028-v2.pdf"
+TXT = _TMP / "anssi-bp028-v2.txt"
 
 
 def official_map() -> dict[str, str]:
@@ -40,7 +44,7 @@ def official_map() -> dict[str, str]:
             title = lines[i + 1]
             # strip leading hardening-level letters (M / I / E / R / ...) and spacing
             title = re.sub(r"^\s*([MIERmie]\s+)+", "", title).strip()
-            if title and rec not in out:           # first occurrence = the definition
+            if title and rec not in out:  # first occurrence = the definition
                 out[rec] = title
     return out
 
@@ -48,12 +52,13 @@ def official_map() -> dict[str, str]:
 def pavois_tags() -> dict[str, list[str]]:
     """R-number -> [control ids] that carry it (union across all OS references)."""
     import yaml
+
     used: dict[str, list[str]] = {}
     for f in REF.glob("*.yml"):
         rules = yaml.safe_load(f.read_text())["rules"]
         for cid, e in rules.items():
             v = (e.get("norms") or {}).get("bp28")
-            for x in (v if isinstance(v, list) else [v]):
+            for x in v if isinstance(v, list) else [v]:
                 if x and re.fullmatch(r"R\d+", str(x)):
                     used.setdefault(str(x), [])
                     if cid not in used[str(x)]:

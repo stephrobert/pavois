@@ -10,10 +10,12 @@ miner is dropped.
 
 Usage: tools/build_reference.py <os>
 """
+
 import re
 import sys
-import yaml
 from pathlib import Path
+
+import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 NORMS = ("bp28", "cis", "pci-dss", "nist", "stig")
@@ -30,28 +32,28 @@ def severity(impact):
 def parse_control(cid, body):
     lines = body.split("\n")
     impact, title, tags, check = "0.5", cid, {}, []
-    for l in lines:
-        if not l.strip():
+    for line in lines:
+        if not line.strip():
             continue
-        if l.strip().startswith("impact "):
-            impact = l.split()[1]
-        elif re.match(r"\s*title '", l):
-            title = re.search(r"title '(.*)'", l).group(1).replace("\\'", "'")
-        elif TAG_COLON.match(l):
-            k, v = TAG_COLON.match(l).groups()
+        if line.strip().startswith("impact "):
+            impact = line.split()[1]
+        elif re.match(r"\s*title '", line):
+            title = re.search(r"title '(.*)'", line).group(1).replace("\\'", "'")
+        elif TAG_COLON.match(line):
+            k, v = TAG_COLON.match(line).groups()
             tags[k] = v.replace("\\'", "'")
-        elif TAG_ARROW.match(l):
-            k, v = TAG_ARROW.match(l).groups()
+        elif TAG_ARROW.match(line):
+            k, v = TAG_ARROW.match(line).groups()
             tags[k] = v.replace("\\'", "'")
         else:
-            check.append(l[2:] if l.startswith("  ") else l)
+            check.append(line[2:] if line.startswith("  ") else line)
     entry = {
         "domain": tags.pop("domain", ""),
         "title": title,
         "impact": float(impact),
         "severity": severity(impact),
         "norms": {k: tags[k] for k in NORMS if k in tags},
-        "levels": {k[len("level_"):]: v for k, v in tags.items() if k.startswith("level_")},
+        "levels": {k[len("level_") :]: v for k, v in tags.items() if k.startswith("level_")},
         "check": [c for c in check if c.strip()],
         "ssg": tags.get("ssg", ""),
     }
@@ -77,12 +79,20 @@ def main(os_name):
     dest = out / f"{os_name}.yml"
     dest.write_text(
         f"# pavois compliance content (pavois-owned reference) — {os_name}.\n"
-        "# Per control: effective check (the test) + standards/levels/title/severity (the report).\n"
+        "# Per control: effective check (the test) + "
+        "standards/levels/title/severity (the report).\n"
         "# Source of truth: render_reference.py -> InSpec ; future doc API -> /content/<os>.\n"
-        + yaml.safe_dump({"os": os_name, "rules": ref}, sort_keys=True, allow_unicode=True,
-                         default_flow_style=False, width=400),
-        encoding="utf-8")
+        + yaml.safe_dump(
+            {"os": os_name, "rules": ref},
+            sort_keys=True,
+            allow_unicode=True,
+            default_flow_style=False,
+            width=400,
+        ),
+        encoding="utf-8",
+    )
     from collections import Counter
+
     nc = Counter(n for r in ref.values() for n in r["norms"])
     print(f"{os_name}: {len(ref)} controls -> {dest}  (standards: {dict(nc)})")
 

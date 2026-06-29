@@ -7,10 +7,12 @@ datastream involved.
 Usage: tools/render_reference.py <os> [<out_dir>]
   default out_dir = profiles/linux/<os>/controls
 """
+
 import re
 import sys
-import yaml
 from pathlib import Path
+
+import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 NORMS = ("bp28", "cis", "pci-dss", "nist", "stig")
@@ -28,7 +30,7 @@ EXCL = _excl_groups()  # mutually-exclusive "one of" groups (firewall/logging/ti
 
 def _rb(s):
     if isinstance(s, dict):
-        return "{" + ", ".join(_rb(k)+" => "+_rb(v) for k,v in s.items()) + "}"
+        return "{" + ", ".join(_rb(k) + " => " + _rb(v) for k, v in s.items()) + "}"
     if isinstance(s, (list, tuple)):  # merged rules keep distinct per-norm values as an array
         return "[" + ", ".join(_rb(x) for x in s) + "]"
     return "'" + str(s).replace("\\", "\\\\").replace("'", "\\'") + "'"
@@ -77,8 +79,11 @@ def render_control(cid, e):
         cond = " || ".join(f"service({_rb(s)}).running?" for s in svcs) or "false"
         out.append(
             f"  only_if({_rb('n/a: another option in the ' + grp + ' group is active')}) "
-            + "{ not (" + cond + ") }")
-    out += ["  " + l for l in e.get("check", [])]
+            + "{ not ("
+            + cond
+            + ") }"
+        )
+    out += ["  " + line for line in e.get("check", [])]
     out.append("end\n")
     return "\n".join(out)
 
@@ -100,8 +105,10 @@ def main(os_name, out_dir=None):
         f.unlink()
     for name, ctrls in sorted(groups.items()):
         (out / f"{name}.rb").write_text(
-            f"# Rendered from pavois reference (pavois-content/{os_name}.yml). Do not edit by hand.\n\n"
-            + "\n".join(ctrls), encoding="utf-8")
+            f"# Rendered from pavois reference (pavois-content/{os_name}.yml). "
+            "Do not edit by hand.\n\n" + "\n".join(ctrls),
+            encoding="utf-8",
+        )
     print(f"{os_name}: {len(ref)} controls -> {out}  ({len(groups)} files)")
 
 

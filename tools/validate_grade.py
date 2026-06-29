@@ -8,6 +8,7 @@ Go  : go/internal/audit/audit.go        (w / cap / switch des bandes)
 
 Sortie : 0 si les modèles coïncident, 1 sinon.
 """
+
 import re
 import sys
 from pathlib import Path
@@ -30,9 +31,11 @@ def js_model():
 
 
 def go_model():
-    gw = re.search(r'w := map\[string\]float64\{([^}]*)\}', GO).group(1)
-    gcap = re.search(r'cap := map\[string\]float64\{([^}]*)\}', GO).group(1).replace("math.Inf(1)", "")
-    bands = re.findall(r'case pts >= (\d+):', GO)
+    gw = re.search(r"w := map\[string\]float64\{([^}]*)\}", GO).group(1)
+    gcap = (
+        re.search(r"cap := map\[string\]float64\{([^}]*)\}", GO).group(1).replace("math.Inf(1)", "")
+    )
+    bands = re.findall(r"case pts >= (\d+):", GO)
     return nums(gw), nums(gcap), nums(" ".join(bands))
 
 
