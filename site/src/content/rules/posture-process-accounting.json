@@ -36,8 +36,8 @@
   },
   "needs_translation": [],
   "summary": {
-    "en": "Requires that **process accounting** is active — via `auditd`, or the `acct`/`psacct` service — so that command and process execution is recorded for audit and forensics.",
-    "fr": "Exige que la **comptabilité des processus** soit active — via `auditd` ou le service `acct`/`psacct` — afin que l'exécution des commandes et des processus soit enregistrée pour l'audit et l'investigation."
+    "en": "Requires that **process accounting** is active, via `auditd`, or the `acct`/`psacct` service, so that command and process execution is recorded for audit and forensics.",
+    "fr": "Exige que la **comptabilité des processus** soit active, via `auditd` ou le service `acct`/`psacct`, afin que l'exécution des commandes et des processus soit enregistrée pour l'audit et l'investigation."
   },
   "rationale": {
     "en": "Process accounting records **which commands ran, by whom, when, and for how long**. Without it, after an incident you have little visibility into what an attacker (or a misbehaving user) actually executed, crippling forensic investigation and accountability. An active accounting/audit subsystem provides the trail needed to reconstruct activity, attribute actions and detect abuse.",
@@ -48,16 +48,16 @@
     "fr": "Pavois lit l'**état d'exécution effectif** avec `systemctl is-active auditd acct psacct` et exige qu'au moins un soit `active`. Interroger l'état réel de l'unité systemd (et non la présence d'un paquet ou d'un fichier de configuration) confirme que le service tourne réellement et collecte des données en ce moment."
   },
   "verify": {
-    "en": "Run `systemctl is-active auditd acct psacct` — at least one should report `active`. With `auditd`, confirm with `auditctl -s` (enabled 1). With acct/psacct, `lastcomm` and `sa` should show recorded command activity.",
-    "fr": "Lancez `systemctl is-active auditd acct psacct` — au moins un doit indiquer `active`. Avec `auditd`, confirmez via `auditctl -s` (enabled 1). Avec acct/psacct, `lastcomm` et `sa` doivent montrer l'activité de commandes enregistrée."
+    "en": "Run `systemctl is-active auditd acct psacct`, at least one should report `active`. With `auditd`, confirm with `auditctl -s` (enabled 1). With acct/psacct, `lastcomm` and `sa` should show recorded command activity.",
+    "fr": "Lancez `systemctl is-active auditd acct psacct`, au moins un doit indiquer `active`. Avec `auditd`, confirmez via `auditctl -s` (enabled 1). Avec acct/psacct, `lastcomm` et `sa` doivent montrer l'activité de commandes enregistrée."
   },
   "logs": {
-    "en": "auditd writes to `/var/log/audit/audit.log` (query with care — see the project note that `ausearch` can give false negatives; grep the raw log). acct/psacct stores accounting in `/var/log/account/pacct`, read with `lastcomm`, `sa` and `ac`. Service status: `systemctl status auditd`.",
-    "fr": "auditd écrit dans `/var/log/audit/audit.log` (interrogez avec prudence — voir la note du projet selon laquelle `ausearch` peut donner des faux négatifs ; grep directement le journal brut). acct/psacct stocke la comptabilité dans `/var/log/account/pacct`, lue via `lastcomm`, `sa` et `ac`. État du service : `systemctl status auditd`."
+    "en": "auditd writes to `/var/log/audit/audit.log` (query with care, see the project note that `ausearch` can give false negatives; grep the raw log). acct/psacct stores accounting in `/var/log/account/pacct`, read with `lastcomm`, `sa` and `ac`. Service status: `systemctl status auditd`.",
+    "fr": "auditd écrit dans `/var/log/audit/audit.log` (interrogez avec prudence, voir la note du projet selon laquelle `ausearch` peut donner des faux négatifs ; grep directement le journal brut). acct/psacct stocke la comptabilité dans `/var/log/account/pacct`, lue via `lastcomm`, `sa` et `ac`. État du service : `systemctl status auditd`."
   },
   "remediation_note": {
-    "en": "No automated remediation is shipped, so apply it **manually**: install and enable an accounting subsystem — `apt install acct && systemctl enable --now acct` (Debian/Ubuntu) or `dnf install psacct && systemctl enable --now psacct` (RHEL family) — or ensure `auditd` is installed and `systemctl enable --now auditd`.",
-    "fr": "Aucune remédiation automatisée n'est fournie, appliquez-la donc **manuellement** : installez et activez un sous-système de comptabilité — `apt install acct && systemctl enable --now acct` (Debian/Ubuntu) ou `dnf install psacct && systemctl enable --now psacct` (famille RHEL) — ou assurez-vous qu'`auditd` est installé et `systemctl enable --now auditd`."
+    "en": "No automated remediation is shipped, so apply it **manually**: install and enable an accounting subsystem, `apt install acct && systemctl enable --now acct` (Debian/Ubuntu) or `dnf install psacct && systemctl enable --now psacct` (RHEL family), or ensure `auditd` is installed and `systemctl enable --now auditd`.",
+    "fr": "Aucune remédiation automatisée n'est fournie, appliquez-la donc **manuellement** : installez et activez un sous-système de comptabilité, `apt install acct && systemctl enable --now acct` (Debian/Ubuntu) ou `dnf install psacct && systemctl enable --now psacct` (famille RHEL), ou assurez-vous qu'`auditd` est installé et `systemctl enable --now auditd`."
   },
   "impact": {
     "en": "Enabling process accounting is low risk. The trade-offs are operational: accounting/audit logs **grow continuously and can fill `/var`** on busy systems, so configure log rotation and size limits (`auditd`'s `max_log_file`, `space_left_action`). `auditd` with verbose rules adds slight overhead under heavy syscall load. No services are interrupted by enabling it.",

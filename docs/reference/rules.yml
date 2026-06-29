@@ -55,10 +55,10 @@ account-accounts-no-uid-except-zero:
 
           awk -F: ''($3==0 && $1!="root"){print $1}'' /etc/passwd
 
-          # for a confirmed rogue account: userdel <name>   (irreversible — verify it is not legitimate)
+          # for a confirmed rogue account: userdel <name>   (irreversible, verify it is not legitimate)
 
           '
-        reason: deleting an account is irreversible — a human must confirm it is rogue
+        reason: deleting an account is irreversible, a human must confirm it is rogue
         resource: manual
   severity: critical
   socle: SOCLE-CLD-IAM-001
@@ -180,7 +180,7 @@ account-accounts-root-gid-zero:
           usermod -g 0 root   # set root''s primary GID to 0 (only if the audit flagged it)
 
           '
-        reason: changing root's primary group is sensitive — confirm before applying
+        reason: changing root's primary group is sensitive, confirm before applying
         resource: manual
   severity: high
   socle: SOCLE-CLD-IAM-003
@@ -264,7 +264,7 @@ account-gid-passwd-group-same:
           # groupadd -g <gid> <name> for each, or reassign the user''s primary group
 
           '
-        reason: a user's primary GID must exist in /etc/group — create the missing group deliberately
+        reason: a user's primary GID must exist in /etc/group, create the missing group deliberately
         resource: manual
   severity: low
   socle: SOCLE-CLD-IAM-005
@@ -354,7 +354,7 @@ account-no-empty-passwords:
           # passwd -l <user>   (lock) for each, after confirming it should not log in
 
           '
-        reason: locking an account is disruptive — confirm each empty-password account before locking
+        reason: locking an account is disruptive, confirm each empty-password account before locking
         resource: manual
   severity: critical
   socle: SOCLE-CLD-IAM-006
@@ -384,7 +384,7 @@ account-no-future-pw-change:
       # for each listed user: chage -d $(date +%F) <user>   (set last change to today)
 
       '
-    reason: a future last-change date is per-user — fix each with chage after review
+    reason: a future last-change date is per-user, fix each with chage after review
     resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-007
@@ -14372,7 +14372,7 @@ findloop-dir-system-commands:
           # fix each after review: chown root <path> ; chmod o-w <path>
 
           '
-        reason: tightening perms on system command dirs can break packaged tooling — review
+        reason: tightening perms on system command dirs can break packaged tooling, review
         resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-180
@@ -14732,7 +14732,7 @@ findloop-file-permissions-unauthorized-world-writable:
           # for each legitimate-to-fix: chmod o-w <file>
 
           '
-        reason: auto-chmod over a find risks breaking apps that rely on a world-writable path — review each
+        reason: auto-chmod over a find risks breaking apps that rely on a world-writable path, review each
         resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-187
@@ -14808,7 +14808,7 @@ findloop-file-permissions-ungroupowned:
           # chgrp <group> <path> per item after review
 
           '
-        reason: an ungroup-owned file signals a deleted group — assign a group deliberately
+        reason: an ungroup-owned file signals a deleted group, assign a group deliberately
         resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-188
@@ -14963,7 +14963,7 @@ findloop-no-files-unowned-by-user:
           # review each, then assign a real owner: chown <user> <file>  (or remove if orphaned)
 
           '
-        reason: an unowned file usually signals a deleted user — assign ownership deliberately, do not blindly chown
+        reason: an unowned file usually signals a deleted user, assign ownership deliberately, do not blindly chown
         resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-191
@@ -15530,7 +15530,7 @@ groupownerships-var-log-gdm:
           [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
 
           '
-        reason: recursive ownership fix under /var/log/gdm — verify the service is present and review
+        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
         resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-197
@@ -15566,7 +15566,7 @@ groupownerships-var-log-gdm3:
           [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
 
           '
-        reason: recursive ownership fix under /var/log/gdm — verify the service is present and review
+        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
         resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-198
@@ -15602,7 +15602,7 @@ groupownerships-var-log-sssd:
           [ -d /var/log/sssd ] && find /var/log/sssd -print0 | xargs -0 -r chown root: || echo ''no /var/log/sssd''
 
           '
-        reason: recursive ownership fix under /var/log/sssd — verify the service is present and review
+        reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
         resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-199
@@ -15751,7 +15751,7 @@ home-dot-group-ownership:
           # chgrp <user-group> per file after review
 
           '
-        reason: fixing dot-file group is per-user — verify before chgrp'ing a user's files
+        reason: fixing dot-file group is per-user, verify before chgrp'ing a user's files
         resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-011
@@ -15819,7 +15819,7 @@ home-dot-user-ownership:
           for d in $(awk -F: ''($3>=1000){print $6}'' /etc/passwd); do find "$d" -maxdepth 1 -name ''.*'' ! -user "$(stat -c %U "$d")" 2>/dev/null; done
 
           '
-        reason: fixing dot-file ownership is per-user — verify before chowning a user's files
+        reason: fixing dot-file ownership is per-user, verify before chowning a user's files
         resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-012
@@ -15854,7 +15854,7 @@ home-files-groupownership:
           # chgrp -R <group> <home> per user after review
 
           '
-        reason: re-grouping a user's whole home is per-user — verify before acting
+        reason: re-grouping a user's whole home is per-user, verify before acting
         resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-013
@@ -15889,7 +15889,7 @@ home-files-ownership:
           awk -F: ''($3>=1000){print $1" "$6}'' /etc/passwd
 
           '
-        reason: re-owning a user's whole home is per-user and risky — verify before acting
+        reason: re-owning a user's whole home is per-user and risky, verify before acting
         resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-014
@@ -20060,10 +20060,10 @@ misc-account-unique-id:
       debian12:
         command: 'cut -d: -f3 /etc/passwd | sort | uniq -d   # duplicate UIDs
 
-          # resolve by usermod -u <new-uid> <user> (and chown their files) — manual
+          # resolve by usermod -u <new-uid> <user> (and chown their files), manual
 
           '
-        reason: duplicate UIDs need a deliberate renumber/merge — never auto-change a UID
+        reason: duplicate UIDs need a deliberate renumber/merge, never auto-change a UID
         resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-029
@@ -20341,7 +20341,7 @@ misc-aide-periodic-checking-systemd-timer:
           # systemctl enable --now aidecheck.timer
 
           '
-        reason: scheduling AIDE checks is a policy choice (frequency, mail) — set it deliberately
+        reason: scheduling AIDE checks is a policy choice (frequency, mail), set it deliberately
         resource: manual
   requires_package: aide
   severity: medium
@@ -20416,7 +20416,7 @@ misc-all-apparmor-profiles-in-enforce-complain-mode:
           # set profiles to enforce: aa-enforce /etc/apparmor.d/*   (watch for app breakage, then aa-complain any that misbehave)
 
           '
-        reason: forcing all profiles to enforce can break apps with incomplete profiles — review
+        reason: forcing all profiles to enforce can break apps with incomplete profiles, review
         resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-034
@@ -20464,7 +20464,7 @@ misc-apparmor-configured:
           # then REBOOT for the cmdline to take effect, and: aa-enforce /etc/apparmor.d/*
 
           '
-        reason: enabling AppArmor needs a kernel cmdline change + reboot — do it deliberately
+        reason: enabling AppArmor needs a kernel cmdline change + reboot, do it deliberately
         resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-035
@@ -20570,7 +20570,7 @@ misc-ensure-pam-wheel-group-empty:
           # gpasswd -d <user> wheel   for each unexpected member
 
           '
-        reason: removing wheel members revokes their su access — confirm each
+        reason: removing wheel members revokes their su access, confirm each
         resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-037
@@ -20661,10 +20661,10 @@ misc-group-unique-id:
       debian12:
         command: 'cut -d: -f3 /etc/group | sort | uniq -d
 
-          # groupmod -g <new-gid> <group> (and fix file groups) — manual
+          # groupmod -g <new-gid> <group> (and fix file groups), manual
 
           '
-        reason: duplicate GIDs need a deliberate renumber — never auto-change a GID
+        reason: duplicate GIDs need a deliberate renumber, never auto-change a GID
         resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-039
@@ -20696,7 +20696,7 @@ misc-groups-no-zero-gid-except-root:
       debian12:
         command: 'awk -F: ''($3==0 && $1!="root"){print $1}'' /etc/group
 
-          # groupmod -g <new-gid> <group> for each — manual
+          # groupmod -g <new-gid> <group> for each, manual
 
           '
         reason: a non-root group with GID 0 needs a deliberate renumber
@@ -20806,7 +20806,7 @@ misc-no-forward-files:
           # rm -f <path> per file after confirming the forwarding is not required
 
           '
-        reason: deleting user .forward files can drop mail forwarding — review each before removing
+        reason: deleting user .forward files can drop mail forwarding, review each before removing
         resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-042
@@ -20856,7 +20856,7 @@ misc-no-netrc-files:
           # rm -f <path> per file (or chmod 600) after review
 
           '
-        reason: a .netrc holds credentials — review each before deleting
+        reason: a .netrc holds credentials, review each before deleting
         resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-043
@@ -20967,7 +20967,7 @@ misc-no-rsh-trust-files:
           # rm -f each after review
 
           '
-        reason: removing .rhosts/hosts.equiv kills rsh trust — review (rsh should not be used)
+        reason: removing .rhosts/hosts.equiv kills rsh trust, review (rsh should not be used)
         resource: manual
   severity: high
   socle: SOCLE-CLD-GEN-045
@@ -21190,7 +21190,7 @@ misc-prefer-64bit-os:
         command: 'uname -m   # if not x86_64/aarch64, a reinstall is required (audit-only finding)
 
           '
-        reason: the OS architecture cannot be changed in place — reinstall as 64-bit if needed
+        reason: the OS architecture cannot be changed in place, reinstall as 64-bit if needed
         resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-048
@@ -21258,7 +21258,7 @@ misc-set-password-hashing-algorithm:
           # line, add ''yescrypt'' to the pam_unix.so line in /etc/pam.d/common-password (via pam-auth-update).
 
           '
-        reason: changing the pam_unix hashing option edits the PAM stack — apply via pam-auth-update / review
+        reason: changing the pam_unix hashing option edits the PAM stack, apply via pam-auth-update / review
         resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-049
@@ -21341,7 +21341,7 @@ misc-sshd-limit-user-access:
           # and: systemctl reload ssh
 
           '
-        reason: which users/groups may SSH is SITE-SPECIFIC — pavois cannot guess it
+        reason: which users/groups may SSH is SITE-SPECIFIC, pavois cannot guess it
         resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-050
@@ -21411,7 +21411,7 @@ misc-sssd-ldap-configure-tls-reqcert:
           # then: systemctl restart sssd
 
           '
-        reason: only applies if SSSD/LDAP is in use — set tls_reqcert in sssd.conf deliberately
+        reason: only applies if SSSD/LDAP is in use, set tls_reqcert in sssd.conf deliberately
         resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-051
@@ -21453,7 +21453,7 @@ misc-sssd-ldap-start-tls:
           # then: systemctl restart sssd
 
           '
-        reason: only applies if SSSD/LDAP is in use — enable StartTLS in sssd.conf deliberately
+        reason: only applies if SSSD/LDAP is in use, enable StartTLS in sssd.conf deliberately
         resource: manual
   severity: high
   socle: SOCLE-CLD-GEN-052
@@ -21583,10 +21583,10 @@ misc-wireless-disable-interfaces:
       debian12:
         command: 'nmcli radio all 2>/dev/null || rfkill list
 
-          # nmcli radio all off   (or: rfkill block wifi) — only on hosts that must not use wireless
+          # nmcli radio all off   (or: rfkill block wifi), only on hosts that must not use wireless
 
           '
-        reason: disabling wireless can cut connectivity — confirm the host is wired
+        reason: disabling wireless can cut connectivity, confirm the host is wired
         resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-054
@@ -22904,7 +22904,7 @@ mount-var-noexec:
           # then:  mount -o remount /var
 
           '
-        reason: noexec on /var commonly breaks apt/dpkg maintainer scripts — verify /var layout first
+        reason: noexec on /var commonly breaks apt/dpkg maintainer scripts, verify /var layout first
         resource: manual
   severity: medium
   socle: SOCLE-CLD-MNT-023
@@ -23313,7 +23313,7 @@ ownerships-var-log-gdm:
           [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
 
           '
-        reason: recursive ownership fix under /var/log/gdm — verify the service is present and review
+        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
         resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-202
@@ -23349,7 +23349,7 @@ ownerships-var-log-gdm3:
           [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
 
           '
-        reason: recursive ownership fix under /var/log/gdm — verify the service is present and review
+        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
         resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-203
@@ -23385,7 +23385,7 @@ ownerships-var-log-sssd:
           [ -d /var/log/sssd ] && find /var/log/sssd -print0 | xargs -0 -r chown root: || echo ''no /var/log/sssd''
 
           '
-        reason: recursive ownership fix under /var/log/sssd — verify the service is present and review
+        reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
         resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-204
@@ -23688,7 +23688,7 @@ pam-pwquality-enabled:
           pam-auth-update --enable pwquality 2>/dev/null || pam-auth-update
 
           '
-        reason: installs + enables a PAM module — review which password profile you want
+        reason: installs + enables a PAM module, review which password profile you want
         resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-030
@@ -23726,7 +23726,7 @@ pam-remember-pwhistory-remember:
           # and ensure pam_pwhistory is enabled:  pam-auth-update --enable pwhistory
 
           '
-        reason: password-history policy choice — set the depth deliberately
+        reason: password-history policy choice, set the depth deliberately
         resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-031
@@ -23854,7 +23854,7 @@ pam-unix-authtok:
           # password). Manage the stack with: pam-auth-update   (do not hand-edit common-password)
 
           '
-        reason: PAM password-stack change — apply via pam-auth-update, not a hand edit
+        reason: PAM password-stack change, apply via pam-auth-update, not a hand edit
         resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-033
@@ -23893,7 +23893,7 @@ pam-unix-enabled:
           # pam_unix is part of debian''s default profiles; if missing, restore with: pam-auth-update
 
           '
-        reason: PAM stack changes go through pam-auth-update — review the profile set
+        reason: PAM stack changes go through pam-auth-update, review the profile set
         resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-034
@@ -23924,7 +23924,7 @@ pam-unix-no-nullok:
       # verify a normal login still works in another session
 
       '
-    reason: editing the PAM stack can lock you out — verify auth in a SECOND session before logout
+    reason: editing the PAM stack can lock you out, verify auth in a SECOND session before logout
     resource: manual
   severity: high
   socle: SOCLE-CLD-IAM-035
@@ -23959,7 +23959,7 @@ pam-unix-no-remember:
           # Manage via: pam-auth-update
 
           '
-        reason: moving history off pam_unix to pam_pwhistory is a stack change — use pam-auth-update
+        reason: moving history off pam_unix to pam_pwhistory is a stack change, use pam-auth-update
         resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-036
@@ -24037,7 +24037,7 @@ partition-boot:
   remediation:
     '@os':
       debian12:
-        command: '# /boot should be its OWN filesystem (isolation + mount options). This needs (re)partitioning —
+        command: '# /boot should be its OWN filesystem (isolation + mount options). This needs (re)partitioning , 
 
           # offline disk/LVM work, not a safe runtime change.
 
@@ -24046,7 +24046,7 @@ partition-boot:
           # Then: dedicate an LVM volume / disk to /boot and add it to /etc/fstab.
 
           '
-        reason: a separate /boot filesystem needs partitioning/LVM/tmpfs — not a safe runtime change
+        reason: a separate /boot filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
         resource: manual
   severity: medium
   socle: SOCLE-CLD-MNT-028
@@ -24077,7 +24077,7 @@ partition-dev-shm:
   remediation:
     '@os':
       debian12:
-        command: '# /dev/shm should be its OWN filesystem (isolation + mount options). This needs (re)partitioning —
+        command: '# /dev/shm should be its OWN filesystem (isolation + mount options). This needs (re)partitioning , 
 
           # offline disk/LVM work, not a safe runtime change.
 
@@ -24085,10 +24085,10 @@ partition-dev-shm:
 
           # Then: dedicate an LVM volume / disk to /dev/shm and add it to /etc/fstab.
 
-          # /dev/shm can instead be a tmpfs — add:  tmpfs /dev/shm tmpfs defaults,rw,nosuid,nodev,noexec 0 0
+          # /dev/shm can instead be a tmpfs, add:  tmpfs /dev/shm tmpfs defaults,rw,nosuid,nodev,noexec 0 0
 
           '
-        reason: a separate /dev/shm filesystem needs partitioning/LVM/tmpfs — not a safe runtime change
+        reason: a separate /dev/shm filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
         resource: manual
   severity: low
   socle: SOCLE-CLD-MNT-029
@@ -24154,7 +24154,7 @@ partition-home:
   remediation:
     '@os':
       debian12:
-        command: '# /home should be its OWN filesystem (isolation + mount options). This needs (re)partitioning —
+        command: '# /home should be its OWN filesystem (isolation + mount options). This needs (re)partitioning , 
 
           # offline disk/LVM work, not a safe runtime change.
 
@@ -24163,7 +24163,7 @@ partition-home:
           # Then: dedicate an LVM volume / disk to /home and add it to /etc/fstab.
 
           '
-        reason: a separate /home filesystem needs partitioning/LVM/tmpfs — not a safe runtime change
+        reason: a separate /home filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
         resource: manual
   severity: low
   socle: SOCLE-CLD-MNT-030
@@ -24192,7 +24192,7 @@ partition-opt:
   remediation:
     '@os':
       debian12:
-        command: '# /opt should be its OWN filesystem (isolation + mount options). This needs (re)partitioning —
+        command: '# /opt should be its OWN filesystem (isolation + mount options). This needs (re)partitioning , 
 
           # offline disk/LVM work, not a safe runtime change.
 
@@ -24201,7 +24201,7 @@ partition-opt:
           # Then: dedicate an LVM volume / disk to /opt and add it to /etc/fstab.
 
           '
-        reason: a separate /opt filesystem needs partitioning/LVM/tmpfs — not a safe runtime change
+        reason: a separate /opt filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
         resource: manual
   severity: medium
   socle: SOCLE-CLD-MNT-031
@@ -24231,7 +24231,7 @@ partition-srv:
   remediation:
     '@os':
       debian12:
-        command: '# /srv should be its OWN filesystem (isolation + mount options). This needs (re)partitioning —
+        command: '# /srv should be its OWN filesystem (isolation + mount options). This needs (re)partitioning , 
 
           # offline disk/LVM work, not a safe runtime change.
 
@@ -24240,7 +24240,7 @@ partition-srv:
           # Then: dedicate an LVM volume / disk to /srv and add it to /etc/fstab.
 
           '
-        reason: a separate /srv filesystem needs partitioning/LVM/tmpfs — not a safe runtime change
+        reason: a separate /srv filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
         resource: manual
   severity: medium
   socle: SOCLE-CLD-MNT-032
@@ -24324,7 +24324,7 @@ partition-tmp:
           # (review /usr/share/systemd/tmp.mount first). A real disk partition requires offline disk work.
 
           '
-        reason: a separate /tmp filesystem needs partitioning/tmpfs — not a safe runtime change
+        reason: a separate /tmp filesystem needs partitioning/tmpfs, not a safe runtime change
         resource: manual
   severity: low
   socle: SOCLE-CLD-MNT-033
@@ -24353,7 +24353,7 @@ partition-usr:
   remediation:
     '@os':
       debian12:
-        command: '# /usr should be its OWN filesystem (isolation + mount options). This needs (re)partitioning —
+        command: '# /usr should be its OWN filesystem (isolation + mount options). This needs (re)partitioning , 
 
           # offline disk/LVM work, not a safe runtime change.
 
@@ -24362,7 +24362,7 @@ partition-usr:
           # Then: dedicate an LVM volume / disk to /usr and add it to /etc/fstab.
 
           '
-        reason: a separate /usr filesystem needs partitioning/LVM/tmpfs — not a safe runtime change
+        reason: a separate /usr filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
         resource: manual
   severity: medium
   socle: SOCLE-CLD-MNT-034
@@ -24428,7 +24428,7 @@ partition-var:
   remediation:
     '@os':
       debian12:
-        command: '# /var should be its OWN filesystem (isolation + mount options). This needs (re)partitioning —
+        command: '# /var should be its OWN filesystem (isolation + mount options). This needs (re)partitioning , 
 
           # offline disk/LVM work, not a safe runtime change.
 
@@ -24437,7 +24437,7 @@ partition-var:
           # Then: dedicate an LVM volume / disk to /var and add it to /etc/fstab.
 
           '
-        reason: a separate /var filesystem needs partitioning/LVM/tmpfs — not a safe runtime change
+        reason: a separate /var filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
         resource: manual
   severity: low
   socle: SOCLE-CLD-MNT-035
@@ -24504,7 +24504,7 @@ partition-var-log:
   remediation:
     '@os':
       debian12:
-        command: '# /var/log should be its OWN filesystem (isolation + mount options). This needs (re)partitioning —
+        command: '# /var/log should be its OWN filesystem (isolation + mount options). This needs (re)partitioning , 
 
           # offline disk/LVM work, not a safe runtime change.
 
@@ -24513,7 +24513,7 @@ partition-var-log:
           # Then: dedicate an LVM volume / disk to /var/log and add it to /etc/fstab.
 
           '
-        reason: a separate /var/log filesystem needs partitioning/LVM/tmpfs — not a safe runtime change
+        reason: a separate /var/log filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
         resource: manual
   severity: low
   socle: SOCLE-CLD-MNT-036
@@ -24580,7 +24580,7 @@ partition-var-log-audit:
   remediation:
     '@os':
       debian12:
-        command: '# /var/log/audit should be its OWN filesystem (isolation + mount options). This needs (re)partitioning —
+        command: '# /var/log/audit should be its OWN filesystem (isolation + mount options). This needs (re)partitioning , 
 
           # offline disk/LVM work, not a safe runtime change.
 
@@ -24589,7 +24589,7 @@ partition-var-log-audit:
           # Then: dedicate an LVM volume / disk to /var/log/audit and add it to /etc/fstab.
 
           '
-        reason: a separate /var/log/audit filesystem needs partitioning/LVM/tmpfs — not a safe runtime change
+        reason: a separate /var/log/audit filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
         resource: manual
   severity: low
   socle: SOCLE-CLD-MNT-037
@@ -24652,7 +24652,7 @@ partition-var-tmp:
   remediation:
     '@os':
       debian12:
-        command: '# /var/tmp should be its OWN filesystem (isolation + mount options). This needs (re)partitioning —
+        command: '# /var/tmp should be its OWN filesystem (isolation + mount options). This needs (re)partitioning , 
 
           # offline disk/LVM work, not a safe runtime change.
 
@@ -24660,10 +24660,10 @@ partition-var-tmp:
 
           # Then: dedicate an LVM volume / disk to /var/tmp and add it to /etc/fstab.
 
-          # /var/tmp can instead be a tmpfs — add:  tmpfs /var/tmp tmpfs defaults,rw,nosuid,nodev,noexec 0 0
+          # /var/tmp can instead be a tmpfs, add:  tmpfs /var/tmp tmpfs defaults,rw,nosuid,nodev,noexec 0 0
 
           '
-        reason: a separate /var/tmp filesystem needs partitioning/LVM/tmpfs — not a safe runtime change
+        reason: a separate /var/tmp filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
         resource: manual
   severity: medium
   socle: SOCLE-CLD-MNT-038
@@ -29160,7 +29160,7 @@ posture-no-compilers:
           # then EITHER restrict each: chmod 750 <path> ; OR remove: apt-get remove -y gcc g++ clang tcc
 
           '
-        reason: removing compilers can break legitimate builds — decide per host
+        reason: removing compilers can break legitimate builds, decide per host
         resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-060
@@ -29448,7 +29448,7 @@ pwquality-enforcing:
       # delete the ''enforcing = 0'' line(s) so pwquality enforces (it does by default when absent)
 
       '
-    reason: removing enforcing=0 makes pwquality reject weak passwords — verify your policy first
+    reason: removing enforcing=0 makes pwquality reject weak passwords, verify your policy first
     resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-042
@@ -30339,7 +30339,7 @@ root-path:
           # ensure no empty entry, no ''.'', no world-writable dir; fix in the relevant file
 
           '
-        reason: fixing root's PATH may be in a shell profile or sudoers secure_path — review the source
+        reason: fixing root's PATH may be in a shell profile or sudoers secure_path, review the source
         resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-052
@@ -33703,7 +33703,7 @@ sudo-remove-no-authenticate:
           # remove the !authenticate directive from each with: visudo  (or visudo -f /etc/sudoers.d/<file>)
 
           '
-        reason: sudoers edits risk lockout — always edit via visudo
+        reason: sudoers edits risk lockout, always edit via visudo
         resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-058
@@ -33742,14 +33742,14 @@ sudo-require-authentication:
       debian12:
         command: '# Remove NOPASSWD so sudo always authenticates. WARNING: breaks any automation relying on passwordless
 
-          # sudo (including pavois''s own management user) — repoint it to a key/password FIRST.
+          # sudo (including pavois''s own management user), repoint it to a key/password FIRST.
 
           grep -rl ''NOPASSWD'' /etc/sudoers /etc/sudoers.d/ 2>/dev/null
 
           # then edit each with: visudo  (or visudo -f /etc/sudoers.d/<file>) and delete the NOPASSWD tag
 
           '
-        reason: dropping NOPASSWD breaks passwordless automation (incl. pavois) — repoint it first
+        reason: dropping NOPASSWD breaks passwordless automation (incl. pavois), repoint it first
         resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-059
@@ -33783,7 +33783,7 @@ sudo-require-reauthentication:
       # remove the ''timestamp_timeout=-1'' line from each with visudo (default is 15min re-auth)
 
       '
-    reason: sudoers edits risk lockout — always edit via visudo
+    reason: sudoers edits risk lockout, always edit via visudo
     resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-060
