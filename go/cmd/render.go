@@ -51,7 +51,7 @@ func runRender(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprint(cmd.OutOrStdout(), htmlStr)
 		return nil
 	}
-	if err := os.WriteFile(renderOut, []byte(htmlStr), 0o644); err != nil {
+	if err := os.WriteFile(renderOut, []byte(htmlStr), 0o600); err != nil {
 		return fmt.Errorf("write %s: %w", renderOut, err)
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "pavois: report %s (%d controls, %d standards)\n", renderOut, nctrl, nnorm)
