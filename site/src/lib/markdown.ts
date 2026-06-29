@@ -8,7 +8,7 @@ export interface Heading {
 }
 
 // Single dark Shiki theme: the site's code blocks always sit on a dark surface (--term), so dark
-// tokens on a light bg would be unreadable — one dark theme keeps light tokens on the dark block in
+// tokens on a light bg would be unreadable, one dark theme keeps light tokens on the dark block in
 // both site themes. Loaded once at module init (top-level await); codeToHtml is then sync.
 const THEME = 'github-dark-default';
 const LANGS = [
@@ -31,7 +31,7 @@ function slugify(s: string): string {
   return s
     .toLowerCase()
     .trim()
-    // single-char allowlist: keep only letters/numbers/space/hyphen — drops all of <>"/&, so no
+    // single-char allowlist: keep only letters/numbers/space/hyphen, drops all of <>"/&, so no
     // tag survives (no regex tag-strip needed, which avoids incomplete-sanitization pitfalls).
     .replace(/[^\p{L}\p{N}\s-]/gu, '')
     .replace(/\s+/g, '-')

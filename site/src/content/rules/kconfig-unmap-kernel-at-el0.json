@@ -37,16 +37,16 @@
   },
   "needs_translation": [],
   "rationale": {
-    "en": "`CONFIG_UNMAP_KERNEL_AT_EL0` enables the **KPTI/KAISER** mitigation on **arm64**: kernel page tables are unmapped while running at exception level 0 (userspace). Without it, an unprivileged process can mount the **Meltdown** (CVE-2017-5754) side-channel attack to read kernel memory — including credentials, keys and other processes' secrets — across the user/kernel boundary.",
-    "fr": "`CONFIG_UNMAP_KERNEL_AT_EL0` active la mitigation **KPTI/KAISER** sur **arm64** : les tables de pages du noyau sont démappées pendant l'exécution au niveau d'exception 0 (espace utilisateur). Sans elle, un processus non privilégié peut exploiter l'attaque par canal auxiliaire **Meltdown** (CVE-2017-5754) pour lire la mémoire noyau — identifiants, clés et secrets d'autres processus — en franchissant la frontière utilisateur/noyau."
+    "en": "`CONFIG_UNMAP_KERNEL_AT_EL0` enables the **KPTI/KAISER** mitigation on **arm64**: kernel page tables are unmapped while running at exception level 0 (userspace). Without it, an unprivileged process can mount the **Meltdown** (CVE-2017-5754) side-channel attack to read kernel memory, including credentials, keys and other processes' secrets, across the user/kernel boundary.",
+    "fr": "`CONFIG_UNMAP_KERNEL_AT_EL0` active la mitigation **KPTI/KAISER** sur **arm64** : les tables de pages du noyau sont démappées pendant l'exécution au niveau d'exception 0 (espace utilisateur). Sans elle, un processus non privilégié peut exploiter l'attaque par canal auxiliaire **Meltdown** (CVE-2017-5754) pour lire la mémoire noyau, identifiants, clés et secrets d'autres processus, en franchissant la frontière utilisateur/noyau."
   },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_UNMAP_KERNEL_AT_EL0=y`, enabling the KPTI/KAISER page-table isolation that mitigates Meltdown on arm64.",
     "fr": "Exige que le noyau soit compilé avec `CONFIG_UNMAP_KERNEL_AT_EL0=y`, activant l'isolation des tables de pages KPTI/KAISER qui mitige Meltdown sur arm64."
   },
   "check_note": {
-    "en": "Pavois reads the **build-time kernel config** of the **running** kernel — `/boot/config-$(uname -r)` or `/proc/config.gz` — and requires `CONFIG_UNMAP_KERNEL_AT_EL0=y`. This reflects the kernel actually booted, not a config file that may describe a different or not-yet-installed kernel: a file-based scanner reading a stale `/boot/config-*` could pass while the live kernel lacks the mitigation.",
-    "fr": "Pavois lit la **configuration de compilation** du noyau **en cours d'exécution** — `/boot/config-$(uname -r)` ou `/proc/config.gz` — et exige `CONFIG_UNMAP_KERNEL_AT_EL0=y`. Cela reflète le noyau réellement démarré, et non un fichier de config pouvant décrire un noyau différent ou non installé : un scanner basé fichiers lisant un `/boot/config-*` obsolète pourrait passer alors que le noyau vivant n'a pas la mitigation."
+    "en": "Pavois reads the **build-time kernel config** of the **running** kernel, `/boot/config-$(uname -r)` or `/proc/config.gz`, and requires `CONFIG_UNMAP_KERNEL_AT_EL0=y`. This reflects the kernel actually booted, not a config file that may describe a different or not-yet-installed kernel: a file-based scanner reading a stale `/boot/config-*` could pass while the live kernel lacks the mitigation.",
+    "fr": "Pavois lit la **configuration de compilation** du noyau **en cours d'exécution**, `/boot/config-$(uname -r)` ou `/proc/config.gz`, et exige `CONFIG_UNMAP_KERNEL_AT_EL0=y`. Cela reflète le noyau réellement démarré, et non un fichier de config pouvant décrire un noyau différent ou non installé : un scanner basé fichiers lisant un `/boot/config-*` obsolète pourrait passer alors que le noyau vivant n'a pas la mitigation."
   },
   "verify": {
     "en": "Run `grep '^CONFIG_UNMAP_KERNEL_AT_EL0=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep CONFIG_UNMAP_KERNEL_AT_EL0`). Expected output: `CONFIG_UNMAP_KERNEL_AT_EL0=y`. On arm64 you can also confirm the runtime state with `cat /sys/devices/system/cpu/vulnerabilities/meltdown` (expect `Mitigation: PTI`).",

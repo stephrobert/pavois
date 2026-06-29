@@ -45,12 +45,12 @@
     "fr": "Exige que le noyau soit compilé **sans** `CONFIG_MODIFY_LDT_SYSCALL=y`, supprimant l'appel système `modify_ldt()` et la prise en charge de la LDT par processus."
   },
   "check_note": {
-    "en": "Pavois reads the build configuration of the **running** kernel — `/boot/config-$(uname -r)` and the in-memory `/proc/config.gz` — and confirms `CONFIG_MODIFY_LDT_SYSCALL` is not set to `y`. Reading the booted kernel's real config (not a stale `/boot/config-*`) reflects whether the `modify_ldt()` syscall is actually compiled in.",
-    "fr": "Pavois lit la configuration de compilation du noyau **en cours d'exécution** — `/boot/config-$(uname -r)` et `/proc/config.gz` en mémoire — et confirme que `CONFIG_MODIFY_LDT_SYSCALL` n'est pas à `y`. Lire la config réelle du noyau démarré (et non un `/boot/config-*` obsolète) reflète si l'appel système `modify_ldt()` est réellement compilé."
+    "en": "Pavois reads the build configuration of the **running** kernel, `/boot/config-$(uname -r)` and the in-memory `/proc/config.gz`, and confirms `CONFIG_MODIFY_LDT_SYSCALL` is not set to `y`. Reading the booted kernel's real config (not a stale `/boot/config-*`) reflects whether the `modify_ldt()` syscall is actually compiled in.",
+    "fr": "Pavois lit la configuration de compilation du noyau **en cours d'exécution**, `/boot/config-$(uname -r)` et `/proc/config.gz` en mémoire, et confirme que `CONFIG_MODIFY_LDT_SYSCALL` n'est pas à `y`. Lire la config réelle du noyau démarré (et non un `/boot/config-*` obsolète) reflète si l'appel système `modify_ldt()` est réellement compilé."
   },
   "verify": {
-    "en": "Run `grep '^CONFIG_MODIFY_LDT_SYSCALL=' /boot/config-$(uname -r)`. Expected: no match, or `# CONFIG_MODIFY_LDT_SYSCALL is not set` — the line `CONFIG_MODIFY_LDT_SYSCALL=y` must be absent. On a kernel that compiled it in but disabled it at runtime, `sysctl kernel.modify_ldt` returns `0`.",
-    "fr": "Exécutez `grep '^CONFIG_MODIFY_LDT_SYSCALL=' /boot/config-$(uname -r)`. Attendu : aucune correspondance, ou `# CONFIG_MODIFY_LDT_SYSCALL is not set` — la ligne `CONFIG_MODIFY_LDT_SYSCALL=y` doit être absente. Sur un noyau qui l'a compilé mais désactivé à l'exécution, `sysctl kernel.modify_ldt` renvoie `0`."
+    "en": "Run `grep '^CONFIG_MODIFY_LDT_SYSCALL=' /boot/config-$(uname -r)`. Expected: no match, or `# CONFIG_MODIFY_LDT_SYSCALL is not set`, the line `CONFIG_MODIFY_LDT_SYSCALL=y` must be absent. On a kernel that compiled it in but disabled it at runtime, `sysctl kernel.modify_ldt` returns `0`.",
+    "fr": "Exécutez `grep '^CONFIG_MODIFY_LDT_SYSCALL=' /boot/config-$(uname -r)`. Attendu : aucune correspondance, ou `# CONFIG_MODIFY_LDT_SYSCALL is not set`, la ligne `CONFIG_MODIFY_LDT_SYSCALL=y` doit être absente. Sur un noyau qui l'a compilé mais désactivé à l'exécution, `sysctl kernel.modify_ldt` renvoie `0`."
   },
   "logs": {
     "en": "No dedicated log. When the syscall is unavailable, callers get `ENOSYS`. On kernels built with it, the runtime gate is `sysctl kernel.modify_ldt` (`0` = disabled). Programs attempting to use it can be traced with `strace -e trace=modify_ldt <cmd>`.",

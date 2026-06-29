@@ -37,16 +37,16 @@
   },
   "needs_translation": [],
   "rationale": {
-    "en": "`CONFIG_COMPAT_VDSO=y` maps the vDSO at a **fixed, predictable address** for compatibility with very old glibc versions. A fixed vDSO mapping defeats its randomization and gives attackers a reliable, known location of executable code in every process — a ready source of gadgets for ROP-style exploitation. It also hurts performance. Leaving it unset keeps the vDSO randomized (full ASLR) and removes that predictable code region.",
-    "fr": "`CONFIG_COMPAT_VDSO=y` mappe le vDSO à une **adresse fixe et prévisible** pour la compatibilité avec de très anciennes versions de glibc. Un mappage vDSO fixe déjoue sa randomisation et fournit aux attaquants un emplacement fiable et connu de code exécutable dans chaque processus — une source toute prête de gadgets pour l'exploitation de type ROP. Cela dégrade aussi les performances. Le laisser non défini garde le vDSO randomisé (ASLR complet) et supprime cette région de code prévisible."
+    "en": "`CONFIG_COMPAT_VDSO=y` maps the vDSO at a **fixed, predictable address** for compatibility with very old glibc versions. A fixed vDSO mapping defeats its randomization and gives attackers a reliable, known location of executable code in every process, a ready source of gadgets for ROP-style exploitation. It also hurts performance. Leaving it unset keeps the vDSO randomized (full ASLR) and removes that predictable code region.",
+    "fr": "`CONFIG_COMPAT_VDSO=y` mappe le vDSO à une **adresse fixe et prévisible** pour la compatibilité avec de très anciennes versions de glibc. Un mappage vDSO fixe déjoue sa randomisation et fournit aux attaquants un emplacement fiable et connu de code exécutable dans chaque processus, une source toute prête de gadgets pour l'exploitation de type ROP. Cela dégrade aussi les performances. Le laisser non défini garde le vDSO randomisé (ASLR complet) et supprime cette région de code prévisible."
   },
   "summary": {
     "en": "Ensures the running kernel is built **without** `CONFIG_COMPAT_VDSO`, so the vDSO is randomized instead of mapped at a fixed legacy address.",
     "fr": "Garantit que le noyau en cours d'exécution est compilé **sans** `CONFIG_COMPAT_VDSO`, afin que le vDSO soit randomisé plutôt que mappé à une adresse héritée fixe."
   },
   "check_note": {
-    "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)` (fallback `/proc/config.gz`) and asserts the line is **not** `CONFIG_COMPAT_VDSO=y`. Keying on `uname -r` matches the exact booted image — more reliable than reading a random `/boot/config-*`.",
-    "fr": "Pavois lit la config de compilation du noyau **en cours d'exécution** via `/boot/config-$(uname -r)` (repli `/proc/config.gz`) et vérifie que la ligne n'est **pas** `CONFIG_COMPAT_VDSO=y`. S'indexer sur `uname -r` correspond à l'image exacte démarrée — plus fiable que lire un `/boot/config-*` quelconque."
+    "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)` (fallback `/proc/config.gz`) and asserts the line is **not** `CONFIG_COMPAT_VDSO=y`. Keying on `uname -r` matches the exact booted image, more reliable than reading a random `/boot/config-*`.",
+    "fr": "Pavois lit la config de compilation du noyau **en cours d'exécution** via `/boot/config-$(uname -r)` (repli `/proc/config.gz`) et vérifie que la ligne n'est **pas** `CONFIG_COMPAT_VDSO=y`. S'indexer sur `uname -r` correspond à l'image exacte démarrée, plus fiable que lire un `/boot/config-*` quelconque."
   },
   "verify": {
     "en": "Run `grep -h '^CONFIG_COMPAT_VDSO=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep COMPAT_VDSO`). Expected: `# CONFIG_COMPAT_VDSO is not set` or no output. You can see the vDSO mapping per process in `cat /proc/self/maps` (look for `[vdso]`); its address should vary between runs when randomized.",

@@ -52,8 +52,8 @@
   },
   "needs_translation": [],
   "rationale": {
-    "en": "A core dump captures the full memory image of a process at the moment it crashes. For a setuid/setgid program — which runs with privileges higher than the invoking user — that image can contain secrets, keys, or other privileged data the user should never see. Setting `fs.suid_dumpable=0` forbids any setuid program from producing a core dump, preventing an attacker from deliberately crashing a privileged binary to harvest sensitive memory contents.",
-    "fr": "Un vidage mémoire (core dump) capture l'image mémoire complète d'un processus au moment où il plante. Pour un programme setuid/setgid — qui s'exécute avec des privilèges supérieurs à ceux de l'utilisateur appelant — cette image peut contenir des secrets, des clés ou d'autres données privilégiées que l'utilisateur ne devrait jamais voir. Définir `fs.suid_dumpable=0` interdit à tout programme setuid de produire un core dump, empêchant un attaquant de faire planter délibérément un binaire privilégié pour récupérer le contenu sensible de la mémoire."
+    "en": "A core dump captures the full memory image of a process at the moment it crashes. For a setuid/setgid program, which runs with privileges higher than the invoking user, that image can contain secrets, keys, or other privileged data the user should never see. Setting `fs.suid_dumpable=0` forbids any setuid program from producing a core dump, preventing an attacker from deliberately crashing a privileged binary to harvest sensitive memory contents.",
+    "fr": "Un vidage mémoire (core dump) capture l'image mémoire complète d'un processus au moment où il plante. Pour un programme setuid/setgid, qui s'exécute avec des privilèges supérieurs à ceux de l'utilisateur appelant, cette image peut contenir des secrets, des clés ou d'autres données privilégiées que l'utilisateur ne devrait jamais voir. Définir `fs.suid_dumpable=0` interdit à tout programme setuid de produire un core dump, empêchant un attaquant de faire planter délibérément un binaire privilégié pour récupérer le contenu sensible de la mémoire."
   },
   "summary": {
     "en": "Sets `fs.suid_dumpable=0` so setuid/setgid programs never write a core dump, preventing leakage of privileged memory contents.",
@@ -64,8 +64,8 @@
     "fr": "Pavois lit la **valeur effective du noyau** via la ressource `kernel_parameter` (équivalent à `sysctl fs.suid_dumpable`), et non `/etc/sysctl.conf` ou un drop-in `*.conf`. Un fichier peut déclarer `0` alors qu'un drop-in ultérieur ou une faute de frappe a laissé la valeur effective à `1` ou `2` ; lire le noyau en cours d'exécution reflète ce que les programmes setuid sont réellement autorisés à faire."
   },
   "verify": {
-    "en": "Run `sysctl fs.suid_dumpable` — expected output `fs.suid_dumpable = 0`.",
-    "fr": "Exécutez `sysctl fs.suid_dumpable` — sortie attendue `fs.suid_dumpable = 0`."
+    "en": "Run `sysctl fs.suid_dumpable`, expected output `fs.suid_dumpable = 0`.",
+    "fr": "Exécutez `sysctl fs.suid_dumpable`, sortie attendue `fs.suid_dumpable = 0`."
   },
   "logs": {
     "en": "Read the current value with `sysctl fs.suid_dumpable` or `cat /proc/sys/fs/suid_dumpable`. If a setuid program crashes with dumping disabled, the kernel logs a `coredump skipped` style message visible via `dmesg` or `journalctl -k`, and any core handler such as systemd-coredump (`journalctl -u systemd-coredump`) will record the suppression.",
@@ -76,7 +76,7 @@
     "fr": "Le plan de durcissement de Pavois définit la clé `sysctl` `fs.suid_dumpable` à `0`, la persiste dans un drop-in géré et l'applique à chaud, de sorte que le noyau en cours d'exécution comme les démarrages futurs l'utilisent. Appliqué avec `pavois harden apply`."
   },
   "impact": {
-    "en": "Very low operational risk. The only loss is the ability to debug crashes of setuid binaries via core dumps — which is precisely the goal. If you must debug a specific privileged binary, temporarily raise the value to `2` (root-only, restricted dumps) in a controlled environment, then reset to `0`. Reversible by changing the key.",
-    "fr": "Risque opérationnel très faible. La seule perte est la possibilité de déboguer les plantages de binaires setuid via les core dumps — ce qui est précisément l'objectif. Si vous devez déboguer un binaire privilégié précis, remontez temporairement la valeur à `2` (vidages restreints, root uniquement) dans un environnement contrôlé, puis remettez à `0`. Réversible en modifiant la clé."
+    "en": "Very low operational risk. The only loss is the ability to debug crashes of setuid binaries via core dumps, which is precisely the goal. If you must debug a specific privileged binary, temporarily raise the value to `2` (root-only, restricted dumps) in a controlled environment, then reset to `0`. Reversible by changing the key.",
+    "fr": "Risque opérationnel très faible. La seule perte est la possibilité de déboguer les plantages de binaires setuid via les core dumps, ce qui est précisément l'objectif. Si vous devez déboguer un binaire privilégié précis, remontez temporairement la valeur à `2` (vidages restreints, root uniquement) dans un environnement contrôlé, puis remettez à `0`. Réversible en modifiant la clé."
   }
 }

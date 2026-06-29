@@ -60,8 +60,8 @@
   },
   "needs_translation": [],
   "rationale": {
-    "en": "`/etc/crontab` is the system-wide crontab whose entries the cron daemon runs **as the user named in each line, typically root**. If it is writable by group or other, an attacker can append a line that executes any command as root — direct system compromise. If it is readable by group/other, the schedule and any embedded paths or credentials are exposed for reconnaissance. Restricting it to the owner prevents both unauthorized changes and disclosure.",
-    "fr": "`/etc/crontab` est la crontab système dont les entrées sont exécutées par le démon cron **en tant qu'utilisateur indiqué sur chaque ligne, généralement root**. S'il est modifiable par le groupe ou les autres, un attaquant peut y ajouter une ligne exécutant n'importe quelle commande en tant que root — compromission directe du système. S'il est lisible par le groupe/les autres, la planification ainsi que les chemins ou identifiants éventuellement présents sont exposés à la reconnaissance. Le restreindre au propriétaire empêche à la fois les modifications non autorisées et la divulgation."
+    "en": "`/etc/crontab` is the system-wide crontab whose entries the cron daemon runs **as the user named in each line, typically root**. If it is writable by group or other, an attacker can append a line that executes any command as root, direct system compromise. If it is readable by group/other, the schedule and any embedded paths or credentials are exposed for reconnaissance. Restricting it to the owner prevents both unauthorized changes and disclosure.",
+    "fr": "`/etc/crontab` est la crontab système dont les entrées sont exécutées par le démon cron **en tant qu'utilisateur indiqué sur chaque ligne, généralement root**. S'il est modifiable par le groupe ou les autres, un attaquant peut y ajouter une ligne exécutant n'importe quelle commande en tant que root, compromission directe du système. S'il est lisible par le groupe/les autres, la planification ainsi que les chemins ou identifiants éventuellement présents sont exposés à la reconnaissance. Le restreindre au propriétaire empêche à la fois les modifications non autorisées et la divulgation."
   },
   "summary": {
     "en": "Ensures `/etc/crontab` is owned by root and is **not writable or readable by group/other** and carries no setuid/setgid/sticky or execute bits, so only root can edit the system crontab.",
@@ -72,8 +72,8 @@
     "fr": "Pavois lit l'**inode réel** via `file('/etc/crontab')` et vérifie l'absence de lecture/écriture groupe/autres, de bit d'exécution et de setuid/setgid/sticky, avec une garde `only_if` qui l'ignore en cas d'absence. Inspecter les permissions effectives sur le disque détecte les dérives dues aux mises à jour de paquets, à un `chmod` manuel ou à des restaurations de sauvegarde, ce qu'une hypothèse sur un modèle de configuration manquerait."
   },
   "verify": {
-    "en": "Run `stat -c '%a %U %G' /etc/crontab`. Expected: mode `600` (or stricter), owner `root`, group `root` — no read/write for `group` or `other`, no execute bit, and no setuid/setgid/sticky bit.",
-    "fr": "Exécutez `stat -c '%a %U %G' /etc/crontab`. Attendu : mode `600` (ou plus strict), propriétaire `root`, groupe `root` — aucune lecture/écriture pour `group` ni `other`, aucun bit d'exécution, et aucun bit setuid/setgid/sticky."
+    "en": "Run `stat -c '%a %U %G' /etc/crontab`. Expected: mode `600` (or stricter), owner `root`, group `root`, no read/write for `group` or `other`, no execute bit, and no setuid/setgid/sticky bit.",
+    "fr": "Exécutez `stat -c '%a %U %G' /etc/crontab`. Attendu : mode `600` (ou plus strict), propriétaire `root`, groupe `root`, aucune lecture/écriture pour `group` ni `other`, aucun bit d'exécution, et aucun bit setuid/setgid/sticky."
   },
   "logs": {
     "en": "No service log applies; inspect with `stat /etc/crontab` or `ls -l /etc/crontab`. To detect tampering, add an auditd watch (`auditctl -w /etc/crontab -p wa -k cron`) and grep `/var/log/audit/audit.log` for `key=\"cron\"`.",
@@ -84,7 +84,7 @@
     "fr": "Aucune remédiation automatique n'est définie ; appliquez-la **manuellement** : `chown root:root /etc/crontab && chmod 600 /etc/crontab`. Relancez le scan pour confirmer que la règle passe."
   },
   "impact": {
-    "en": "**Risk if left misconfigured:** a group/other-writable `/etc/crontab` is a direct root-command-execution and persistence vector; readable, it leaks the schedule and any secrets embedded in job lines. **Precautions:** restricting to `root:root 600` is safe — the cron daemon reads it as root. The change is non-disruptive; just keep ownership `root:root` so root retains the ability to edit it.",
-    "fr": "**Risque si laissé mal configuré :** un `/etc/crontab` modifiable par le groupe/les autres est un vecteur direct d'exécution de commandes root et de persistance ; lisible, il divulgue la planification et tout secret présent dans les lignes de tâches. **Précautions :** restreindre à `root:root 600` est sans danger — le démon cron le lit en tant que root. Le changement est sans impact ; gardez simplement le propriétaire `root:root` pour que root puisse continuer à l'éditer."
+    "en": "**Risk if left misconfigured:** a group/other-writable `/etc/crontab` is a direct root-command-execution and persistence vector; readable, it leaks the schedule and any secrets embedded in job lines. **Precautions:** restricting to `root:root 600` is safe, the cron daemon reads it as root. The change is non-disruptive; just keep ownership `root:root` so root retains the ability to edit it.",
+    "fr": "**Risque si laissé mal configuré :** un `/etc/crontab` modifiable par le groupe/les autres est un vecteur direct d'exécution de commandes root et de persistance ; lisible, il divulgue la planification et tout secret présent dans les lignes de tâches. **Précautions :** restreindre à `root:root 600` est sans danger, le démon cron le lit en tant que root. Le changement est sans impact ; gardez simplement le propriétaire `root:root` pour que root puisse continuer à l'éditer."
   }
 }

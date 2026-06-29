@@ -30,7 +30,7 @@
   ],
   "remediation": {
     "command": "grep -rE 'pam_unix\\.so' /etc/pam.d/ || echo 'pam_unix MISSING'\n# pam_unix is part of debian's default profiles; if missing, restore with: pam-auth-update\n",
-    "reason": "PAM stack changes go through pam-auth-update — review the profile set",
+    "reason": "PAM stack changes go through pam-auth-update, review the profile set",
     "resource": "manual"
   },
   "title": {
@@ -47,8 +47,8 @@
     "fr": "Confirme que le module central **`pam_unix.so`** est present dans la pile PAM, afin que les verifications d'identifiants locaux face a `/etc/shadow` soient reellement effectuees."
   },
   "check_note": {
-    "en": "Pavois greps the **effective** PAM tree under `/etc/pam.d/` for a non-commented `pam_unix.so` line. Scanning the resolved configuration — including files pulled in by `@include`/`substack` — proves the module is wired into the live authentication path, not just present in some unreferenced file a file-by-file check might wrongly trust.",
-    "fr": "Pavois recherche dans l'arborescence PAM **effective** sous `/etc/pam.d/` une ligne `pam_unix.so` non commentee. Analyser la configuration resolue — y compris les fichiers tires par `@include`/`substack` — prouve que le module est cable dans le chemin d'authentification reel, et pas seulement present dans un fichier non reference auquel un controle fichier par fichier ferait a tort confiance."
+    "en": "Pavois greps the **effective** PAM tree under `/etc/pam.d/` for a non-commented `pam_unix.so` line. Scanning the resolved configuration, including files pulled in by `@include`/`substack`, proves the module is wired into the live authentication path, not just present in some unreferenced file a file-by-file check might wrongly trust.",
+    "fr": "Pavois recherche dans l'arborescence PAM **effective** sous `/etc/pam.d/` une ligne `pam_unix.so` non commentee. Analyser la configuration resolue, y compris les fichiers tires par `@include`/`substack`, prouve que le module est cable dans le chemin d'authentification reel, et pas seulement present dans un fichier non reference auquel un controle fichier par fichier ferait a tort confiance."
   },
   "verify": {
     "en": "Run:\n\n```bash\ngrep -rE '^[^#]*\\bpam_unix\\.so\\b' /etc/pam.d/\n```\n\nExpected: one or more active lines (in `common-auth`, `common-password`, `system-auth`…) reference `pam_unix.so`. No match means local PAM authentication is not configured.",
@@ -63,7 +63,7 @@
     "fr": "Aucun plan de durcissement automatise n'est fourni pour cette regle : elle doit etre appliquee **manuellement**. Sur un systeme installe normalement, `pam_unix.so` est present par defaut ; s'il a ete retire, restaurez-le dans les piles `auth`, `account`, `password` et `session` via `pam-auth-update` (Debian/Ubuntu) ou `authselect select` (RHEL/Fedora) plutot qu'en editant les fichiers PAM a la main."
   },
   "impact": {
-    "en": "A PAM stack missing `pam_unix.so` is severe — it can allow unauthenticated access or, conversely, lock everyone out depending on what replaced it. **Precautions:** keep a root shell open before touching PAM, make changes through `pam-auth-update`/`authselect` (which validate the stack), and confirm you can still log in from a separate session before closing your current one.",
+    "en": "A PAM stack missing `pam_unix.so` is severe, it can allow unauthenticated access or, conversely, lock everyone out depending on what replaced it. **Precautions:** keep a root shell open before touching PAM, make changes through `pam-auth-update`/`authselect` (which validate the stack), and confirm you can still log in from a separate session before closing your current one.",
     "fr": "Une pile PAM depourvue de `pam_unix.so` est grave : elle peut autoriser un acces non authentifie ou, a l'inverse, bloquer tout le monde selon ce qui l'a remplacee. **Precautions :** gardez un shell root ouvert avant de toucher a PAM, effectuez les changements via `pam-auth-update`/`authselect` (qui valident la pile), et verifiez que vous pouvez toujours vous connecter depuis une session distincte avant de fermer la session courante."
   }
 }

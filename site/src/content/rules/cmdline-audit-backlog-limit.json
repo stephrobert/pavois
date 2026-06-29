@@ -48,8 +48,8 @@
   },
   "needs_translation": [],
   "rationale": {
-    "en": "`audit_backlog_limit` sets the queue length for audit events awaiting transfer to the audit daemon. Until `auditd` is up, all kernel audit messages are buffered in this queue. With the default (small) limit the queue can **overflow during early boot**, triggering the audit failure action and, more importantly, **silently dropping audit records** of the earliest boot activity — exactly the window an attacker would target. Raising it to 8192 keeps that early evidence intact.",
-    "fr": "`audit_backlog_limit` definit la longueur de la file des evenements d'audit en attente de transfert vers le demon d'audit. Tant qu'`auditd` n'est pas demarre, tous les messages d'audit du noyau sont mis en tampon dans cette file. Avec la limite par defaut (faible), la file peut **deborder en debut de demarrage**, declenchant l'action d'echec d'audit et, surtout, **abandonnant silencieusement des enregistrements** de l'activite la plus precoce — precisement la fenetre que viserait un attaquant. La porter a 8192 preserve ces preuves precoces."
+    "en": "`audit_backlog_limit` sets the queue length for audit events awaiting transfer to the audit daemon. Until `auditd` is up, all kernel audit messages are buffered in this queue. With the default (small) limit the queue can **overflow during early boot**, triggering the audit failure action and, more importantly, **silently dropping audit records** of the earliest boot activity, exactly the window an attacker would target. Raising it to 8192 keeps that early evidence intact.",
+    "fr": "`audit_backlog_limit` definit la longueur de la file des evenements d'audit en attente de transfert vers le demon d'audit. Tant qu'`auditd` n'est pas demarre, tous les messages d'audit du noyau sont mis en tampon dans cette file. Avec la limite par defaut (faible), la file peut **deborder en debut de demarrage**, declenchant l'action d'echec d'audit et, surtout, **abandonnant silencieusement des enregistrements** de l'activite la plus precoce, precisement la fenetre que viserait un attaquant. La porter a 8192 preserve ces preuves precoces."
   },
   "summary": {
     "en": "Adds the kernel boot parameter `audit_backlog_limit=8192` so the audit event queue is large enough to hold messages generated before `auditd` starts.",
@@ -60,7 +60,7 @@
     "fr": "Pavois lit `/proc/cmdline`, la **ligne de commande reelle avec laquelle le noyau en cours a demarre**, et verifie la presence de `audit_backlog_limit=8192`. C'est superieur a l'analyse de `/etc/default/grub` ou `grub.cfg` : ceux-ci decrivent ce qui *devrait* demarrer la prochaine fois, alors que `/proc/cmdline` prouve que la valeur est **active maintenant**. Un `update-grub` rate ou un drop-in concurrent laisserait le fichier correct alors que le noyau tourne avec l'ancienne valeur."
   },
   "verify": {
-    "en": "Run `cat /proc/cmdline` and confirm it contains `audit_backlog_limit=8192`. You can also check `grep . /sys/kernel/...` is not needed — the live value is whatever booted. After a config change you must **reboot** for it to appear here.",
+    "en": "Run `cat /proc/cmdline` and confirm it contains `audit_backlog_limit=8192`. You can also check `grep . /sys/kernel/...` is not needed, the live value is whatever booted. After a config change you must **reboot** for it to appear here.",
     "fr": "Executez `cat /proc/cmdline` et confirmez qu'elle contient `audit_backlog_limit=8192`. La valeur active est celle du demarrage. Apres un changement de configuration, vous devez **redemarrer** pour qu'elle apparaisse ici."
   },
   "logs": {
@@ -68,7 +68,7 @@
     "fr": "Les debordements de file et l'action d'echec sont visibles dans le tampon noyau : `dmesg | grep -i audit` (cherchez \"audit: backlog limit exceeded\"). Les enregistrements d'audit eux-memes vont dans `/var/log/audit/audit.log` ; `auditctl -s` montre `backlog` et `backlog_limit` actuels."
   },
   "remediation_note": {
-    "en": "`pavois harden apply` uses the `kernel_cmdline` resource to add `audit_backlog_limit=8192` to the bootloader configuration (GRUB) and regenerate it. Because a kernel boot parameter only takes effect at boot, the change is flagged **reboot_required** — the value appears in `/proc/cmdline` only after the next restart.",
+    "en": "`pavois harden apply` uses the `kernel_cmdline` resource to add `audit_backlog_limit=8192` to the bootloader configuration (GRUB) and regenerate it. Because a kernel boot parameter only takes effect at boot, the change is flagged **reboot_required**, the value appears in `/proc/cmdline` only after the next restart.",
     "fr": "`pavois harden apply` utilise la ressource `kernel_cmdline` pour ajouter `audit_backlog_limit=8192` a la configuration du chargeur d'amorçage (GRUB) et la regenerer. Comme un parametre de demarrage du noyau ne prend effet qu'au demarrage, le changement est signale **reboot_required** : la valeur n'apparait dans `/proc/cmdline` qu'apres le redemarrage suivant."
   },
   "impact": {
