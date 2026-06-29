@@ -29,6 +29,37 @@ const intro = {
   en: 'Each control declares the evidence it gathers — resolved runtime state where a service exposes it (sshd -T, sysctl, systemctl, auditctl), otherwise persistent config, inventory or filesystem state. Filter by domain, severity, standard or OS — each row links to its check, evidence type, remediation and mappings.',
   fr: 'Chaque contrôle indique la preuve qu’il collecte — état résolu en cours d’exécution quand un service l’expose (sshd -T, sysctl, systemctl, auditctl), sinon config persistante, inventaire ou système de fichiers. Filtre par domaine, sévérité, norme ou OS — chaque ligne mène au check, au type de preuve, à la remédiation et aux mappings.',
 };
+// Windowed table: the first INITIAL rows are server-rendered (SEO + LCP + no-JS fallback); the full
+// dataset ships as JSON and the client renders a scroll/filter-driven window from it (small DOM).
+const INITIAL = 60;
+const covTitle = (cov: string): string =>
+  lang === 'fr'
+    ? cov === 'shallow'
+      ? 'Domaine peu couvert aujourd’hui — voir la page Couverture'
+      : 'Domaine partiellement couvert — voir la page Couverture'
+    : cov === 'shallow'
+      ? 'Shallow domain today — see the Coverage page'
+      : 'Partially covered today — see the Coverage page';
+const rowsData = rules.map((r) => {
+  const ks = normKeys(r.data.norms);
+  const cov = coverageLevel(r.data.domain);
+  return {
+    id: r.data.id,
+    socle: socleOf(r.data.id),
+    title: r.data.title[lang],
+    domain: r.data.domain || '',
+    cov: cov === 'deep' ? '' : cov,
+    covLabel: cov !== 'deep' ? coverageLabel[cov][lang] : '',
+    covTitle: cov !== 'deep' ? covTitle(cov) : '',
+    sev: r.data.severity,
+    sevClass: sevClass(r.data.severity),
+    sevLabel: sevLabel(r.data.severity),
+    os: r.data.supported_os.length,
+    osList: r.data.supported_os.join(' '),
+    std: ks,
+    search: `${r.data.title[lang]} ${r.data.domain} ${socleOf(r.data.id)} ${ks.join(' ')}`.toLowerCase(),
+  };
+});
 ---
 
 <Base title={`Pavois — ${t.rules}`} description={intro[lang]} lang={lang} breadcrumbs={[{ name: 'Pavois', path: `/${lang}/` }, { name: t.rules, path: `/${lang}/rules/` }]}>
@@ -45,28 +76,28 @@ const intro = {
       </div>
       <div class="fsel">
         <label>{t.domain}</label>
-        <select id="r-domain">
+        <select id="r-domain" aria-label={t.domain}>
           <option value="">{lang === 'fr' ? 'Tous les domaines' : 'All domains'}</option>
           {domains.map((d) => <option value={d}>{d}</option>)}
         </select>
       </div>
       <div class="fsel">
         <label>{t.severity}</label>
-        <select id="r-sev">
+        <select id="r-sev" aria-label={t.severity}>
           <option value="">{lang === 'fr' ? 'Toutes sévérités' : 'Any severity'}</option>
           {sevs.map((s) => <option value={s}>{sevLabel(s)}</option>)}
         </select>
       </div>
       <div class="fsel">
         <label>{t.standards}</label>
-        <select id="r-std">
+        <select id="r-std" aria-label={t.standards}>
           <option value="">{lang === 'fr' ? 'Toutes normes' : 'Any standard'}</option>
           {STD.map((s) => <option value={s}>{STD_LABEL[s]}</option>)}
         </select>
       </div>
       <div class="fsel">
         <label>{t.thOs}</label>
-        <select id="r-os">
+        <select id="r-os" aria-label={t.thOs}>
           <option value="">{t.allOs}</option>
           {oses.map((o) => <option value={o}>{o}</option>)}
         </select>
@@ -88,7 +119,7 @@ const intro = {
         </thead>
         <tbody id="r-body">
           {
-            rules.map((r) => {
+            rules.slice(0, INITIAL).map((r) => {
               const ks = normKeys(r.data.norms);
               return (
                 <tr
@@ -117,9 +148,12 @@ const intro = {
     </div>
     <p id="r-empty" hidden class="empty">{t.noResults}</p>
   </div>
+  <script id="r-data" type="application/json" is:inline set:html={JSON.stringify(rowsData)} />
 </Base>
 
 <script>
+  // Windowed table. The server renders the first rows for SEO/LCP/no-JS; on load we take over from
+  // the full JSON dataset, rendering a 60-row window that grows on scroll and re-renders on filter/sort.
   const $ = (id: string) => document.getElementById(id);
   const search = $('r-search') as HTMLInputElement | null;
   const domain = $('r-domain') as HTMLSelectElement | null;
@@ -129,49 +163,81 @@ const intro = {
   const tbody = $('r-body');
   const count = $('r-count');
   const empty = $('r-empty');
+  const dataEl = $('r-data');
 
-  if (tbody) {
-    const rows = Array.from(tbody.querySelectorAll('tr')) as HTMLElement[];
+  if (tbody && dataEl) {
+    const ALL = JSON.parse(dataEl.textContent || '[]') as any[];
+    const lang = document.documentElement.lang || 'en';
+    const CHUNK = 60;
+    const esc = (s: any) =>
+      String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
+    const rowHTML = (d: any) =>
+      `<tr data-domain="${esc(d.domain)}" data-sev="${esc(d.sev)}" data-std="${esc(d.std.join(' '))}" data-os="${esc(d.osList)}" data-search="${esc(d.search)}">` +
+      `<td><a class="ref" href="/${lang}/rules/${d.id}/">${esc(d.socle)}</a></td>` +
+      `<td><a class="rule-name" href="/${lang}/rules/${d.id}/">${esc(d.title)}</a></td>` +
+      `<td class="dom">${esc(d.domain)}${d.cov ? `<a class="covb covb-${d.cov}" href="/${lang}/handbook/coverage/" title="${esc(d.covTitle)}">${esc(d.covLabel)}</a>` : ''}</td>` +
+      `<td><span class="sev ${d.sevClass}">${esc(d.sevLabel)}</span></td>` +
+      `<td class="os">${d.os}</td>` +
+      `<td><div class="tags">${d.std.map((k: string) => `<span class="tag">${esc(k)}</span>`).join('')}</div></td>` +
+      `</tr>`;
+
+    let view: any[] = ALL;
+    let shown = 0;
+    let sortIdx = -1;
+    let sortAsc = true;
+    const key = (d: any, i: number) => [d.socle, d.title, d.domain, d.sevLabel, d.os, d.std.join(' ')][i];
+
+    const renderMore = () => {
+      const next = view.slice(shown, shown + CHUNK);
+      if (next.length) tbody.insertAdjacentHTML('beforeend', next.map(rowHTML).join(''));
+      shown += next.length;
+    };
     const apply = () => {
       const q = (search?.value || '').trim().toLowerCase();
       const d = domain?.value || '';
       const s = sev?.value || '';
       const st = std?.value || '';
       const o = os?.value || '';
-      let n = 0;
-      for (const tr of rows) {
-        const show =
-          (!q || (tr.dataset.search || '').includes(q)) &&
-          (!d || tr.dataset.domain === d) &&
-          (!s || tr.dataset.sev === s) &&
-          (!st || (tr.dataset.std || '').split(' ').includes(st)) &&
-          (!o || (tr.dataset.os || '').split(' ').includes(o));
-        tr.hidden = !show;
-        if (show) n++;
-      }
-      if (count) count.textContent = String(n);
-      if (empty) (empty as HTMLElement).hidden = n !== 0;
+      view = ALL.filter(
+        (r) =>
+          (!q || r.search.includes(q)) &&
+          (!d || r.domain === d) &&
+          (!s || r.sev === s) &&
+          (!st || r.std.includes(st)) &&
+          (!o || r.osList.split(' ').includes(o))
+      );
+      if (sortIdx >= 0)
+        view = [...view].sort(
+          (a, b) => (sortAsc ? 1 : -1) * String(key(a, sortIdx)).localeCompare(String(key(b, sortIdx)), undefined, { numeric: true })
+        );
+      tbody.innerHTML = '';
+      shown = 0;
+      renderMore();
+      if (count) count.textContent = String(view.length);
+      if (empty) (empty as HTMLElement).hidden = view.length !== 0;
     };
+
     [search, domain, sev, std, os].forEach((el) => {
       el?.addEventListener('input', apply);
       el?.addEventListener('change', apply);
     });
-
     const heads = Array.from(document.querySelectorAll('.rtable th[data-col]')) as HTMLElement[];
     heads.forEach((th, idx) => {
       th.addEventListener('click', () => {
-        const asc = th.dataset.dir !== 'asc';
+        sortAsc = sortIdx === idx ? !sortAsc : true;
+        sortIdx = idx;
         heads.forEach((o) => (o.dataset.dir = ''));
-        th.dataset.dir = asc ? 'asc' : 'desc';
-        rows.sort(
-          (a, b) =>
-            (asc ? 1 : -1) *
-            a.children[idx].textContent!.trim().localeCompare(b.children[idx].textContent!.trim(), undefined, {
-              numeric: true,
-            })
-        );
-        rows.forEach((r) => tbody.appendChild(r));
+        th.dataset.dir = sortAsc ? 'asc' : 'desc';
+        apply();
       });
     });
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (shown < view.length && window.innerHeight + window.scrollY >= document.body.offsetHeight - 700) renderMore();
+      },
+      { passive: true }
+    );
+    apply(); // take over the server-rendered rows with the windowed dataset
   }
 </script>

@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import Toc from '../../components/Toc.astro';
 import { languages, type Lang } from '../../i18n/ui';
+import { highlight } from '../../lib/markdown';
 
 export function getStaticPaths() {
   return Object.keys(languages).map((lang) => ({ params: { lang } }));
@@ -53,28 +54,28 @@ const crumbs = [
     <p>{fr
       ? 'Chaque release publie un binaire statique par plateforme et un fichier checksums.txt. Télécharge-le, vérifie son intégrité, et vérifie qu’il a bien été produit par la chaîne de release :'
       : 'Each release ships a static binary per platform plus a checksums.txt. Download it, check its integrity, and verify it was produced by the release pipeline:'}</p>
-    <pre><code>gh release download v0.1.0 --repo stephrobert/pavois \
+    <Fragment set:html={highlight(`gh release download v0.1.0 --repo stephrobert/pavois \\
   --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
 sha256sum --ignore-missing --check checksums.txt
 gh attestation verify pavois-linux-amd64 --repo stephrobert/pavois
-chmod +x pavois-linux-amd64 &amp;&amp; ./pavois-linux-amd64 version</code></pre>
+chmod +x pavois-linux-amd64 && ./pavois-linux-amd64 version`, 'bash')} />
     <p class="muted">{fr
       ? 'sha256sum confirme l’intégrité face aux empreintes publiées ; gh attestation verify confirme la provenance SLSA — que le fichier est exactement ce que le workflow de release a construit (disponible une fois le dépôt public).'
       : 'sha256sum confirms integrity against the published checksums; gh attestation verify confirms the SLSA provenance, that the file is exactly what the release workflow built (available once the repository is public).'}</p>
 
     <h2 id="build">{fr ? '1. Construire depuis les sources' : '1. Build from source'}</h2>
     <p>{fr ? 'Clone le dépôt, installe la chaîne épinglée, compile le binaire, régénère le corpus :' : 'Clone the repository, install the pinned toolchain, compile the binary, regenerate the corpus:'}</p>
-    <pre><code>git clone https://github.com/stephrobert/pavois.git
+    <Fragment set:html={highlight(`git clone https://github.com/stephrobert/pavois.git
 cd pavois
-mise trust &amp;&amp; mise install   # {fr ? 'Go, Node, Python épinglés' : 'pinned Go, Node, Python'}
-mise run build               # -&gt; go/pavois
-mise run regen               # {fr ? 'corpus .rb + OSCAL depuis la référence' : 'rule corpus + OSCAL from the reference'}</code></pre>
+mise trust && mise install   # ${fr ? 'Go, Node, Python épinglés' : 'pinned Go, Node, Python'}
+mise run build               # -> go/pavois
+mise run regen               # ${fr ? 'corpus .rb + OSCAL depuis la référence' : 'rule corpus + OSCAL from the reference'}`, 'bash')} />
     <p class="muted">{fr ? 'Détails et dépannage : ' : 'Details and troubleshooting: '}<a href={`/${lang}/installation/`}>Installation</a>.</p>
 
     <h2 id="scan">{fr ? '2. Premier scan (note A à E)' : '2. First scan (A to E grade)'}</h2>
     <p>{fr ? 'Audite une cible SSH avec sudo (la config effective exige root) :' : 'Audit an SSH target with sudo (effective config needs root):'}</p>
-    <pre><code>./go/pavois scan user@host --key ~/.ssh/id_ed25519 \
-  --sudo --profile profiles/linux/debian12</code></pre>
+    <Fragment set:html={highlight(`./go/pavois scan user@host --key ~/.ssh/id_ed25519 \\
+  --sudo --profile profiles/linux/debian12`, 'bash')} />
     <p>
       {fr
         ? 'La sortie liste les écarts par sévérité et affiche la note A à E en grosse lettre, plus le chemin du rapport HTML. Pour servir les rapports : '
@@ -85,9 +86,9 @@ mise run regen               # {fr ? 'corpus .rb + OSCAL depuis la référence' 
 
     <h2 id="harden">{fr ? '3. Durcir, puis prouver' : '3. Harden, then prove'}</h2>
     <p>{fr ? 'Planifie les correctifs, active ceux que tu veux, converge un run Chef natif, et re-scanne :' : 'Plan the fixes, opt into the ones you want, converge a native Chef run, and re-scan:'}</p>
-    <pre><code>./go/pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo
-# {fr ? 'édite le plan : passe des règles à apply: true' : 'edit the plan: flip rules to apply: true'}
-./go/pavois harden apply hardening-plan-debian12.yml --scan</code></pre>
+    <Fragment set:html={highlight(`./go/pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo
+# ${fr ? 'édite le plan : passe des règles à apply: true' : 'edit the plan: flip rules to apply: true'}
+./go/pavois harden apply hardening-plan-debian12.yml --scan`, 'bash')} />
     <p>
       {fr
         ? 'Ajoute --reboot pour redémarrer la cible et re-scanner après le boot : un PASS y est alors reboot-proven. '
