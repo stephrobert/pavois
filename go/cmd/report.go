@@ -8,6 +8,8 @@ import (
 
 	"github.com/stephrobert/scankit/finding"
 	screport "github.com/stephrobert/scankit/report"
+
+	"pavois/internal/audit"
 )
 
 // gradeArt : grande lettre A→E (style ANSI Shadow) pour la carte de score.
@@ -59,6 +61,33 @@ func writeScorecard(w io.Writer, letter string, points, passed, total, qualified
 		}
 		_, _ = fmt.Fprintln(w, "  "+col.Render(line)+extra)
 	}
+	_, _ = fmt.Fprintln(w)
+}
+
+// writePosture rend la ventilation par classe de remédiation + la note remédiable, pour
+// montrer ce qui est corrigeable sur un hôte vivant vs l'architecture / le noyau.
+func writePosture(w io.Writer, p audit.Posture) {
+	if len(p.Classes) == 0 {
+		return
+	}
+	mut := lipgloss.NewStyle().Foreground(lipgloss.Color("#64748b"))
+	hints := map[string]string{
+		"install-time": "architecture, e.g. a separate partition",
+		"kernel-build": "needs a kernel rebuild",
+		"dangerous":    "high-risk remediation",
+		"manual":       "no auto-remediation",
+	}
+	_, _ = fmt.Fprintln(w, "  Posture by remediation class:")
+	for _, c := range p.Classes {
+		line := fmt.Sprintf("    %-13s %d/%d passing", c.Class, c.Passed, c.Total)
+		if h := hints[c.Class]; h != "" {
+			line += "  " + mut.Render("("+h+")")
+		}
+		_, _ = fmt.Fprintln(w, line)
+	}
+	_, _ = fmt.Fprintln(w, "  "+mut.Render(fmt.Sprintf(
+		"Remediable posture: grade %s (%d/%d, excludes install-time + kernel-build)",
+		p.RemediableGrade, p.RemediablePassed, p.RemediableTotal)))
 	_, _ = fmt.Fprintln(w)
 }
 

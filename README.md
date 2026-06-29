@@ -117,6 +117,11 @@ The scan prints the deviations by severity and the **A–E grade**, and writes a
 `--reboot`, harden reboots the target and re-scans, so a pass in that report is **reboot-proven**.
 `--format sarif|junit|json|csv|html` and `--fail-under <points>` make the grade a CI gate.
 
+Every scan also prints a **posture breakdown** by remediation class (`auto`, `manual`, `dangerous`,
+`install-time`, `kernel-build`) and a **remediable posture grade**, the A–E formula recomputed over
+only the controls fixable on a running host (it excludes install-time and kernel-build), so an
+unfixable separate partition or a kernel `CONFIG_*` does not mask what you can actually remediate.
+
 `pavois diff` turns two scans into a **campaign report**: the grade delta plus the full transition
 matrix (failed → passed, newly-applicable, still-failing, and any **regressions**). It shows every
 control's before/after state, so a result cannot be dismissed as a moved denominator when the
