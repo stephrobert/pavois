@@ -12,6 +12,12 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"pavois/internal/audit"
+	"pavois/internal/render"
+)
+
+var (
+	diffHTMLOut string
+	diffJSONOut string
 )
 
 // diff compares two states — each is either a pavois hardening PLAN (.yml) or a scan
@@ -25,7 +31,11 @@ var diffCmd = &cobra.Command{
 	RunE:  runDiff,
 }
 
-func init() { rootCmd.AddCommand(diffCmd) }
+func init() {
+	diffCmd.Flags().StringVar(&diffHTMLOut, "html", "", "also write a self-contained campaign report to this path")
+	diffCmd.Flags().StringVar(&diffJSONOut, "json", "", "also write the structured campaign delta to this path")
+	rootCmd.AddCommand(diffCmd)
+}
 
 func scanStatuses(path string) (map[string]string, error) {
 	raw, err := os.ReadFile(path)
@@ -104,6 +114,74 @@ func gradeLine(path string) string {
 	return fmt.Sprintf("%s (%d/100 · %d/%d pass%s)", l, p, res.Passed, res.Total, q)
 }
 
+// normStatus maps the plan/scan vocabulary (gap | compliant | not_applicable) and the
+// "absent" case (control present on only one side) onto the four campaign states.
+func normStatus(s string, present bool) string {
+	if !present {
+		return "absent"
+	}
+	switch s {
+	case "compliant":
+		return "pass"
+	case "gap":
+		return "fail"
+	case "not_applicable":
+		return "na"
+	default:
+		return "na"
+	}
+}
+
+func sevFromImpact(impact float64) string {
+	switch {
+	case impact >= 0.9:
+		return "critical"
+	case impact >= 0.7:
+		return "high"
+	case impact >= 0.4:
+		return "medium"
+	default:
+		return "low"
+	}
+}
+
+// metaFor extracts per-control metadata (title, domain, severity) for the report. Plans
+// carry no severity/domain, so rich metadata comes from a scan report; ids are the fallback.
+func metaFor(path string) map[string]render.CampItem {
+	m := map[string]render.CampItem{}
+	if strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml") {
+		return m
+	}
+	rep, err := audit.Load(path)
+	if err != nil {
+		return m
+	}
+	for _, p := range rep.Profiles {
+		for _, c := range p.Controls {
+			dom := ""
+			if v, ok := c.Tags["domain"].(string); ok {
+				dom = v
+			}
+			m[c.ID] = render.CampItem{ID: c.ID, Title: c.Title, Domain: dom, Sev: sevFromImpact(c.Impact)}
+		}
+	}
+	return m
+}
+
+// gradeInfo returns the grade for a scan report (empty for a plan, which has no score).
+func gradeInfo(path string, isPlan bool) (letter string, passed, total int) {
+	if isPlan {
+		return "", 0, 0
+	}
+	rep, err := audit.Load(path)
+	if err != nil {
+		return "", 0, 0
+	}
+	res := audit.Evaluate(rep, "", "", "")
+	l, _, _ := audit.GradeResult(res)
+	return l, res.Passed, res.Total
+}
+
 func runDiff(cmd *cobra.Command, args []string) error {
 	before, beforePlan, err := statusesFor(args[0])
 	if err != nil {
@@ -114,49 +192,141 @@ func runDiff(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var fixed, regressed, activated, deactivated, added, removed []string
-	for cid, a := range after {
-		b, ok := before[cid]
-		switch {
-		case !ok:
-			added = append(added, cid)
-		case b == "gap" && a == "compliant":
-			fixed = append(fixed, cid)
-		case b == "compliant" && a == "gap":
-			regressed = append(regressed, cid)
-		case b == "not_applicable" && a != "not_applicable":
-			activated = append(activated, fmt.Sprintf("%s (%s)", cid, a))
-		case b != "not_applicable" && a == "not_applicable":
-			deactivated = append(deactivated, cid)
+	// One bucket per transition "<from>><to>" over the union of control ids.
+	buckets := map[string][]string{}
+	ids := map[string]bool{}
+	for id := range before {
+		ids[id] = true
+	}
+	for id := range after {
+		ids[id] = true
+	}
+	for id := range ids {
+		bs, bok := before[id]
+		as, aok := after[id]
+		key := normStatus(bs, bok) + ">" + normStatus(as, aok)
+		buckets[key] = append(buckets[key], id)
+	}
+	for _, v := range buckets {
+		sort.Strings(v)
+	}
+
+	// Transition matrix rows (the "scope delta").
+	type rowDef struct{ key, label, kind string }
+	defs := []rowDef{
+		{"fail>pass", "Failed -> passed (fixed)", "good"},
+		{"na>pass", "Newly applicable -> passed", "good"},
+		{"absent>pass", "New control -> passed", "good"},
+		{"pass>pass", "Passed -> passed (held)", "neutral"},
+		{"fail>fail", "Failed -> failed (still failing)", "neutral"},
+		{"na>fail", "Newly applicable -> failed", "bad"},
+		{"absent>fail", "New control -> failed", "bad"},
+		{"pass>fail", "Passed -> failed (regression)", "bad"},
+		{"fail>na", "Failed -> not applicable", "neutral"},
+		{"pass>na", "Passed -> not applicable", "neutral"},
+		{"fail>absent", "Removed (was failing)", "neutral"},
+		{"pass>absent", "Removed (was passing)", "neutral"},
+	}
+	var rows []render.CampRow
+	for _, d := range defs {
+		if n := len(buckets[d.key]); n > 0 {
+			rows = append(rows, render.CampRow{Label: d.label, Count: n, Kind: d.kind})
 		}
 	}
-	for cid := range before {
-		if _, ok := after[cid]; !ok {
-			removed = append(removed, cid)
+
+	// Enriched sections (metadata from whichever side is a scan).
+	meta := metaFor(args[1])
+	for id, it := range metaFor(args[0]) {
+		if _, ok := meta[id]; !ok {
+			meta[id] = it
 		}
 	}
+	mkSection := func(label, hint string, keys []string, bad, open bool) render.CampSection {
+		var items []render.CampItem
+		for _, k := range keys {
+			for _, id := range buckets[k] {
+				if it, ok := meta[id]; ok {
+					items = append(items, it)
+				} else {
+					items = append(items, render.CampItem{ID: id})
+				}
+			}
+		}
+		return render.CampSection{Label: label, Hint: hint, Items: items, Bad: bad, Open: open}
+	}
+	sections := []render.CampSection{
+		mkSection("Regressions (passed -> failed)", "Controls that were compliant before and broke after: review first.", []string{"pass>fail"}, true, true),
+		mkSection("Fixed (failed -> passed)", "Gaps the remediation closed.", []string{"fail>pass"}, false, false),
+		mkSection("Newly applicable, failing", "Controls the baseline made evaluable (a package/service now exists) that still fail.", []string{"na>fail", "absent>fail"}, false, false),
+		mkSection("Still failing (failed -> failed)", "Gaps the remediation did not close (manual, install-time or kernel-build).", []string{"fail>fail"}, false, false),
+		mkSection("Newly applicable, passing", "Controls the baseline made evaluable and that now pass.", []string{"na>pass", "absent>pass"}, false, false),
+	}
+
+	bGrade, bPass, bTotal := gradeInfo(args[0], beforePlan)
+	aGrade, aPass, aTotal := gradeInfo(args[1], afterPlan)
 
 	out := cmd.OutOrStdout()
 	_, _ = fmt.Fprintf(out, "before: %s\n after: %s\n\n",
 		summaryLine(args[0], before, beforePlan), summaryLine(args[1], after, afterPlan))
-	section := func(sym, label string, list []string) {
-		if len(list) == 0 {
-			return
-		}
-		sort.Strings(list)
-		_, _ = fmt.Fprintf(out, "%s %s (%d)\n", sym, label, len(list))
-		for _, c := range list {
-			_, _ = fmt.Fprintf(out, "    %s\n", c)
-		}
-	}
-	section("✔", "fixed (gap → pass)", fixed)
-	section("✗", "regressed (pass → gap)", regressed)
-	section("+", "activated (n/a → active)", activated)
-	section("·", "now not applicable", deactivated)
-	section("›", "new controls", added)
-	section("‹", "removed controls", removed)
-	if len(fixed)+len(regressed)+len(activated)+len(deactivated)+len(added)+len(removed) == 0 {
+	if len(rows) == 0 {
 		_, _ = fmt.Fprintln(out, "no change between the two states.")
 	}
+	for _, r := range rows {
+		mark := " "
+		if r.Kind == "good" {
+			mark = "+"
+		} else if r.Kind == "bad" {
+			mark = "!"
+		}
+		_, _ = fmt.Fprintf(out, " %s %-36s %4d\n", mark, r.Label, r.Count)
+	}
+	// Always surface regressions in the terminal, they are the risk signal.
+	if reg := buckets["pass>fail"]; len(reg) > 0 {
+		_, _ = fmt.Fprintf(out, "\n! regressions (%d):\n", len(reg))
+		for _, id := range reg {
+			_, _ = fmt.Fprintf(out, "    %s\n", id)
+		}
+	}
+
+	if diffHTMLOut != "" {
+		data := render.CampaignData{
+			BeforeLabel: filepath.Base(args[0]), AfterLabel: filepath.Base(args[1]),
+			BeforeGrade: orDash(bGrade), AfterGrade: orDash(aGrade),
+			BeforePass: bPass, BeforeTotal: bTotal, AfterPass: aPass, AfterTotal: aTotal,
+			Rows: rows, Sections: sections,
+		}
+		if err := os.WriteFile(diffHTMLOut, []byte(render.Campaign(data)), 0o644); err != nil {
+			return fmt.Errorf("write %s: %w", diffHTMLOut, err)
+		}
+		_, _ = fmt.Fprintf(out, "\ncampaign report -> %s\n", diffHTMLOut)
+	}
+	if diffJSONOut != "" {
+		payload := map[string]any{
+			"before":      map[string]any{"source": filepath.Base(args[0]), "grade": bGrade, "passed": bPass, "total": bTotal},
+			"after":       map[string]any{"source": filepath.Base(args[1]), "grade": aGrade, "passed": aPass, "total": aTotal},
+			"transitions": bucketCounts(buckets),
+			"controls":    buckets,
+		}
+		blob, _ := json.MarshalIndent(payload, "", "  ")
+		if err := os.WriteFile(diffJSONOut, blob, 0o644); err != nil {
+			return fmt.Errorf("write %s: %w", diffJSONOut, err)
+		}
+		_, _ = fmt.Fprintf(out, "campaign delta -> %s\n", diffJSONOut)
+	}
 	return nil
+}
+
+func orDash(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
+}
+
+func bucketCounts(buckets map[string][]string) map[string]int {
+	c := map[string]int{}
+	for k, v := range buckets {
+		c[k] = len(v)
+	}
+	return c
 }
