@@ -30,7 +30,7 @@
     "end"
   ],
   "remediation": {
-    "command": "awk -F: '($3==0 && $1!=\"root\"){print $1}' /etc/group\n# groupmod -g <new-gid> <group> for each — manual\n",
+    "command": "awk -F: '($3==0 && $1!=\"root\"){print $1}' /etc/group\n# groupmod -g <new-gid> <group> for each, manual\n",
     "reason": "a non-root group with GID 0 needs a deliberate renumber",
     "resource": "manual"
   },
@@ -40,8 +40,8 @@
   },
   "needs_translation": [],
   "rationale": {
-    "en": "**GID 0** is the privileged `root` group: files owned by it and many privileged operations are gated on group `root`. If a second group also carries GID 0, it becomes an alias for the root group — its members and any file group-owned by it are treated as root-group, granting access that was meant to be reserved. This is a common privilege-escalation and backdoor technique, hence the **high** severity. Only the canonical `root` group must hold GID 0.",
-    "fr": "Le **GID 0** est celui du groupe privilégié `root` : les fichiers qu'il possède et de nombreuses opérations privilégiées dépendent du groupe `root`. Si un second groupe porte aussi le GID 0, il devient un alias du groupe root — ses membres et tout fichier qu'il possède en groupe sont traités comme appartenant au groupe root, accordant un accès censé être réservé. C'est une technique répandue d'élévation de privilèges et de porte dérobée, d'où la sévérité **haute**. Seul le groupe canonique `root` doit détenir le GID 0."
+    "en": "**GID 0** is the privileged `root` group: files owned by it and many privileged operations are gated on group `root`. If a second group also carries GID 0, it becomes an alias for the root group, its members and any file group-owned by it are treated as root-group, granting access that was meant to be reserved. This is a common privilege-escalation and backdoor technique, hence the **high** severity. Only the canonical `root` group must hold GID 0.",
+    "fr": "Le **GID 0** est celui du groupe privilégié `root` : les fichiers qu'il possède et de nombreuses opérations privilégiées dépendent du groupe `root`. Si un second groupe porte aussi le GID 0, il devient un alias du groupe root, ses membres et tout fichier qu'il possède en groupe sont traités comme appartenant au groupe root, accordant un accès censé être réservé. C'est une technique répandue d'élévation de privilèges et de porte dérobée, d'où la sévérité **haute**. Seul le groupe canonique `root` doit détenir le GID 0."
   },
   "summary": {
     "en": "Ensures **no group other than `root`** has GID 0, preventing privileged-group aliasing.",
@@ -52,12 +52,12 @@
     "fr": "Pavois parcourt chaque entrée de groupe (nom + GID) et affirme que le seul portant le GID 0 est `root`. Évaluer les entrées résolues plutôt que de supposer que `/etc/group` est l'unique source maintient le contrôle valide même lorsque les données de groupe proviennent en partie d'un autre backend NSS."
   },
   "verify": {
-    "en": "List any non-root group sharing GID 0:\n\n- `awk -F: '($3==0 && $1!=\"root\"){print $1}' /etc/group` — expected output is **empty**.\n- `getent group 0` — expected to return only the single line `root:x:0:`.",
-    "fr": "Listez tout groupe non-root partageant le GID 0 :\n\n- `awk -F: '($3==0 && $1!=\"root\"){print $1}' /etc/group` — la sortie attendue est **vide**.\n- `getent group 0` — doit renvoyer uniquement la ligne `root:x:0:`."
+    "en": "List any non-root group sharing GID 0:\n\n- `awk -F: '($3==0 && $1!=\"root\"){print $1}' /etc/group`, expected output is **empty**.\n- `getent group 0`, expected to return only the single line `root:x:0:`.",
+    "fr": "Listez tout groupe non-root partageant le GID 0 :\n\n- `awk -F: '($3==0 && $1!=\"root\"){print $1}' /etc/group`, la sortie attendue est **vide**.\n- `getent group 0`, doit renvoyer uniquement la ligne `root:x:0:`."
   },
   "logs": {
-    "en": "Group creation/modification leaves a trail:\n\n- `grep -E 'groupadd|groupmod' /var/log/auth.log` (Debian/Ubuntu) / `/var/log/secure` (RHEL) — shows when a group was added or its GID changed.\n- `getent group 0` is the authoritative current-state probe.",
-    "fr": "La création/modification de groupes laisse une trace :\n\n- `grep -E 'groupadd|groupmod' /var/log/auth.log` (Debian/Ubuntu) / `/var/log/secure` (RHEL) — affiche l'ajout d'un groupe ou le changement de son GID.\n- `getent group 0` est la sonde de référence pour l'état courant."
+    "en": "Group creation/modification leaves a trail:\n\n- `grep -E 'groupadd|groupmod' /var/log/auth.log` (Debian/Ubuntu) / `/var/log/secure` (RHEL), shows when a group was added or its GID changed.\n- `getent group 0` is the authoritative current-state probe.",
+    "fr": "La création/modification de groupes laisse une trace :\n\n- `grep -E 'groupadd|groupmod' /var/log/auth.log` (Debian/Ubuntu) / `/var/log/secure` (RHEL), affiche l'ajout d'un groupe ou le changement de son GID.\n- `getent group 0` est la sonde de référence pour l'état courant."
   },
   "remediation_note": {
     "en": "No automated harden plan is defined for this rule yet, so it must be applied **manually**: identify the offending group with `getent group 0`, then reassign it a free, non-zero GID using `groupmod -g <newgid> <group>`, and update ownership of any files it group-owns with `find / -gid 0 -group <group> -exec chgrp <group> {} +` after the renumber.",

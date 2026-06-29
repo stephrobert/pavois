@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 
-// GEO: an llms.txt index (https://llmstxt.org) — a curated, link-rich map of the site for
+// GEO: an llms.txt index (https://llmstxt.org), a curated, link-rich map of the site for
 // generative engines. Generated from the collections so it stays current. English canonical.
 export const GET: APIRoute = async ({ site }) => {
   const origin = (site?.toString() ?? 'https://pavois.dev/').replace(/\/$/, '');

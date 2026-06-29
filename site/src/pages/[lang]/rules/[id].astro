@@ -31,44 +31,44 @@ const fmtVal = (v: any): string =>
       ? v.join(', ')
       : String(v);
 const hasRem = Object.keys(data.remediation || {}).length > 0;
-// Pavois is the executable Linux profile of the SOCLE norm — this is the control's citable reference.
+// Pavois is the executable Linux profile of the SOCLE norm, this is the control's citable reference.
 const socleRef = (socleRefs as Record<string, string>)[data.id];
 
-// Evidence type — what the check actually proves. Honest about "effective" not being universal.
+// Evidence type, what the check actually proves. Honest about "effective" not being universal.
 const EVIDENCE: Record<string, { label: Record<Lang, string>; blurb: Record<Lang, string> }> = {
   'effective-runtime': {
     label: { en: 'effective runtime', fr: 'runtime effectif' },
     blurb: {
-      en: 'Checked against the resolved running state (e.g. sshd -T, sysctl, systemctl show) — catches drop-ins and Includes a file read would miss. Caveat: runtime ≠ persistence; a value correct now may not survive a reboot.',
-      fr: 'Vérifié sur l’état résolu en cours d’exécution (ex. sshd -T, sysctl, systemctl show) — attrape les drop-ins et Include qu’une lecture de fichier raterait. Réserve : runtime ≠ persistance ; une valeur correcte maintenant peut ne pas survivre à un redémarrage.',
+      en: 'Checked against the resolved running state (e.g. sshd -T, sysctl, systemctl show), catches drop-ins and Includes a file read would miss. Caveat: runtime ≠ persistence; a value correct now may not survive a reboot.',
+      fr: 'Vérifié sur l’état résolu en cours d’exécution (ex. sshd -T, sysctl, systemctl show), attrape les drop-ins et Include qu’une lecture de fichier raterait. Réserve : runtime ≠ persistance ; une valeur correcte maintenant peut ne pas survivre à un redémarrage.',
     },
   },
   'persistent-config': {
     label: { en: 'persistent config', fr: 'config persistante' },
     blurb: {
-      en: 'Checked against the content of a persistent configuration file — the source of truth that survives reboots.',
-      fr: 'Vérifié sur le contenu d’un fichier de configuration persistant — la source de vérité qui survit aux redémarrages.',
+      en: 'Checked against the content of a persistent configuration file, the source of truth that survives reboots.',
+      fr: 'Vérifié sur le contenu d’un fichier de configuration persistant, la source de vérité qui survit aux redémarrages.',
     },
   },
   'inventory-state': {
     label: { en: 'inventory state', fr: 'état d’inventaire' },
     blurb: {
-      en: 'Checked against what is installed or registered — packages present/absent, account databases.',
-      fr: 'Vérifié sur ce qui est installé ou enregistré — paquets présents/absents, bases de comptes.',
+      en: 'Checked against what is installed or registered, packages present/absent, account databases.',
+      fr: 'Vérifié sur ce qui est installé ou enregistré, paquets présents/absents, bases de comptes.',
     },
   },
   'filesystem-state': {
     label: { en: 'filesystem state', fr: 'état du système de fichiers' },
     blurb: {
-      en: 'Checked against a path’s metadata — mode, owner, group, SUID/SGID.',
-      fr: 'Vérifié sur les métadonnées d’un chemin — mode, propriétaire, groupe, SUID/SGID.',
+      en: 'Checked against a path’s metadata, mode, owner, group, SUID/SGID.',
+      fr: 'Vérifié sur les métadonnées d’un chemin, mode, propriétaire, groupe, SUID/SGID.',
     },
   },
   manual: {
     label: { en: 'manual', fr: 'manuel' },
     blurb: {
-      en: 'No machine check — requires human judgement and business context.',
-      fr: 'Pas de vérification automatique — jugement humain et contexte métier requis.',
+      en: 'No machine check, requires human judgement and business context.',
+      fr: 'Pas de vérification automatique, jugement humain et contexte métier requis.',
     },
   },
   behavioral: {
@@ -81,7 +81,7 @@ const EVIDENCE: Record<string, { label: Record<Lang, string>; blurb: Record<Lang
 };
 const ev = data.evidence_type ? EVIDENCE[data.evidence_type] : null;
 
-// What a PASS proves — derived from the evidence type, not hand-authored. The qualified verdict:
+// What a PASS proves, derived from the evidence type, not hand-authored. The qualified verdict:
 // 'yes' proven · 'unk' not measured by this check · 'na' not applicable.
 const PROVES: Record<string, { running: string; disk: string; reboot: string }> = {
   'effective-runtime': { running: 'yes', disk: 'unk', reboot: 'unk' },
@@ -92,13 +92,13 @@ const PROVES: Record<string, { running: string; disk: string; reboot: string }> 
   manual: { running: 'na', disk: 'na', reboot: 'na' },
 };
 // reboot_survivable is the authoritative persistence axis (the check may fold a persistence
-// proof on top of a runtime read — e.g. a sysctl asserting /etc/sysctl.d). When it is 'yes',
+// proof on top of a runtime read, e.g. a sysctl asserting /etc/sysctl.d). When it is 'yes',
 // the pass proves on-disk + reboot-survivable even for an effective-runtime check. Copy the
 // derived row before overriding (PROVES is shared across pages).
 const pvBase = data.evidence_type ? PROVES[data.evidence_type] : null;
 const pv = pvBase ? { ...pvBase } : null;
 if (pv && data.reboot_survivable === 'yes') { pv.disk = 'yes'; pv.reboot = 'yes'; }
-// Domains the coverage page flags as not-deep — surface the honest caveat on those fiches only.
+// Domains the coverage page flags as not-deep, surface the honest caveat on those fiches only.
 const cov = coverageLevel(data.domain);
 const provesLabels = {
   head: { en: 'A pass proves', fr: 'Un PASS prouve' },
@@ -106,9 +106,9 @@ const provesLabels = {
   disk: { en: 'on disk', fr: 'sur disque' },
   reboot: { en: 'survives reboot', fr: 'survit au reboot' },
 };
-const pvMark: Record<string, string> = { yes: '✓', unk: '?', na: '—' };
+const pvMark: Record<string, string> = { yes: '✓', unk: '?', na: ', ' };
 
-// Compliance crosswalk: one effective-config check, proof for N standards (Pavois's unique angle —
+// Compliance crosswalk: one effective-config check, proof for N standards (Pavois's unique angle , 
 // no file-based norm publishes a unified, effective-config crosswalk). Drives the hero banner.
 const normMeta: Record<string, string> = {
   cis: 'CIS',
@@ -131,16 +131,16 @@ const cx = {
   standards: { en: 'standards', fr: 'normes' },
   standard: { en: 'standard', fr: 'norme' },
   mapnote: {
-    en: 'A mapping is a **cross-reference** to where each standard places this requirement — anchored and cross-validated, not a claim of equivalence. A passing check is *evidence toward* these references, [how to read it](/en/handbook/the-standards/).',
-    fr: 'Un mapping est une **référence croisée** vers l’endroit où chaque norme situe cette exigence — ancrée et recoupée, pas une affirmation d’équivalence. Un check réussi est une *preuve vers* ces références, [comment le lire](/fr/handbook/the-standards/).',
+    en: 'A mapping is a **cross-reference** to where each standard places this requirement, anchored and cross-validated, not a claim of equivalence. A passing check is *evidence toward* these references, [how to read it](/en/handbook/the-standards/).',
+    fr: 'Un mapping est une **référence croisée** vers l’endroit où chaque norme situe cette exigence, ancrée et recoupée, pas une affirmation d’équivalence. Un check réussi est une *preuve vers* ces références, [comment le lire](/fr/handbook/the-standards/).',
   },
   effective: {
-    en: 'Pavois asserts the **effective** configuration — the live, resolved state, not a file. File-based scanners (OVAL/SCAP, Lynis) miss `Include`s, drop-ins and runtime defaults; this check sees what is **actually applied**.',
-    fr: 'Pavois vérifie la configuration **effective** — l’état résolu et réellement appliqué, pas un fichier. Les scanners basés fichier (OVAL/SCAP, Lynis) ratent les `Include`, drop-ins et défauts runtime ; ce check voit ce qui est **réellement en vigueur**.',
+    en: 'Pavois asserts the **effective** configuration, the live, resolved state, not a file. File-based scanners (OVAL/SCAP, Lynis) miss `Include`s, drop-ins and runtime defaults; this check sees what is **actually applied**.',
+    fr: 'Pavois vérifie la configuration **effective**, l’état résolu et réellement appliqué, pas un fichier. Les scanners basés fichier (OVAL/SCAP, Lynis) ratent les `Include`, drop-ins et défauts runtime ; ce check voit ce qui est **réellement en vigueur**.',
   },
 };
 
-// Sources & references — make every claim traceable to an authority. NIST 800-53 controls deep-link
+// Sources & references, make every claim traceable to an authority. NIST 800-53 controls deep-link
 // to csf.tools; the norms link to their official page; the domain links to the Pavois handbook
 // guide (internal) + the author's hardening guide (blog.stephane-robert.info) + man pages; any CVE
 // named in the prose links to NVD. Built from the data (no regeneration). See docs/site-enrichment.md.
@@ -159,7 +159,7 @@ const normLandings = Object.keys(data.norms)
 // Auditable mapping table: per standard, the reference(s), the mapping TYPE (direct/supporting),
 // the standard VERSION (fixed for ANSSI/NIST/PCI; the per-OS benchmark for CIS), and a derived
 // CONFIDENCE. Provenance is corpus-level (cross-validated vs SSG + ansible-lockdown), stated in a
-// note below — we never fabricate per-mapping reviewer/date.
+// note below, we never fabricate per-mapping reviewer/date.
 const NORM_SHORT: Record<string, string> = {
   cis: 'CIS', bp28: 'ANSSI BP-028', nist: 'NIST', 'pci-dss': 'PCI DSS', stig: 'DISA STIG',
 };
@@ -168,7 +168,7 @@ const mapVersion = (n: string): string =>
   std[n]?.version ??
   (n === 'cis' && cisVers.length
     ? cisVers.length > 1 ? `${cisVers[0]}–${cisVers[cisVers.length - 1]}` : cisVers[0]
-    : '—');
+    : ', ');
 const mappingRows = cxNorms.map(([n, v]) => ({
   n,
   label: NORM_SHORT[n] ?? n,
@@ -188,8 +188,8 @@ const mapTable = {
   medium: { en: 'medium', fr: 'moyenne' },
   perOS: { en: 'per-OS benchmark', fr: 'benchmark par OS' },
   note: {
-    en: 'Each reference is a **cross-reference** anchored in the upstream benchmark and cross-validated against the SCAP Security Guide and ansible-lockdown — not a claim of equivalence. *Direct* = a prescriptive, line-level requirement; *supporting* = an abstract control family (NIST) the check provides evidence toward. [How to read a mapping](/' + lang + '/handbook/the-standards/).',
-    fr: 'Chaque référence est une **référence croisée** ancrée dans le benchmark amont et recoupée avec le SCAP Security Guide et ansible-lockdown — pas une affirmation d’équivalence. *Direct* = une exigence prescriptive au niveau de la ligne ; *support* = une famille de contrôle abstraite (NIST) vers laquelle le check apporte une preuve. [Comment lire un mapping](/' + lang + '/handbook/the-standards/).',
+    en: 'Each reference is a **cross-reference** anchored in the upstream benchmark and cross-validated against the SCAP Security Guide and ansible-lockdown, not a claim of equivalence. *Direct* = a prescriptive, line-level requirement; *supporting* = an abstract control family (NIST) the check provides evidence toward. [How to read a mapping](/' + lang + '/handbook/the-standards/).',
+    fr: 'Chaque référence est une **référence croisée** ancrée dans le benchmark amont et recoupée avec le SCAP Security Guide et ansible-lockdown, pas une affirmation d’équivalence. *Direct* = une exigence prescriptive au niveau de la ligne ; *support* = une famille de contrôle abstraite (NIST) vers laquelle le check apporte une preuve. [Comment lire un mapping](/' + lang + '/handbook/the-standards/).',
   },
 };
 const proseBlob = [data.rationale, data.impact, data.summary]
@@ -260,8 +260,8 @@ const srcT = {
     {cov !== 'deep' && (
       <p class="covnote">
         {lang === 'fr'
-          ? (cov === 'shallow' ? 'Domaine peu couvert par Pavois aujourd’hui — ' : 'Domaine partiellement couvert par Pavois aujourd’hui — ')
-          : (cov === 'shallow' ? 'This domain is thinly covered by Pavois today — ' : 'This domain is partially covered by Pavois today — ')}
+          ? (cov === 'shallow' ? 'Domaine peu couvert par Pavois aujourd’hui, ' : 'Domaine partiellement couvert par Pavois aujourd’hui, ')
+          : (cov === 'shallow' ? 'This domain is thinly covered by Pavois today, ' : 'This domain is partially covered by Pavois today, ')}
         <a href={`/${lang}/handbook/coverage/`}>{lang === 'fr' ? 'voir la couverture' : 'see coverage'}</a>.
       </p>
     )}
@@ -281,7 +281,7 @@ const srcT = {
       cxNorms.length > 0 && (
         <>
           <div class="proof">
-            <span class="t">✓</span> {tr(cx.oneCheck)} — {tr(cx.proves)}{' '}
+            <span class="t">✓</span> {tr(cx.oneCheck)}, {tr(cx.proves)}{' '}
             <b>{cxNorms.length} {cxNorms.length > 1 ? tr(cx.standards) : tr(cx.standard)}</b>
           </div>
           <div class="map5">
@@ -418,12 +418,12 @@ const srcT = {
                     <h3>{tr(srcT.guides)}</h3>
                     {dref.handbook && (
                       <a class="src-link" href={`/${lang}/handbook/${dref.handbook.id}/`}>
-                        {tr(srcT.handbookLink)} — {dref.handbook.title[lang]}
+                        {tr(srcT.handbookLink)}, {dref.handbook.title[lang]}
                       </a>
                     )}
                     {dref.blog && (
                       <a class="src-link ext" href={dref.blog.url} target="_blank" rel="noopener">
-                        {dref.blog.label} — blog.stephane-robert.info ↗
+                        {dref.blog.label}, blog.stephane-robert.info ↗
                       </a>
                     )}
                   </div>

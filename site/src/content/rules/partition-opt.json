@@ -29,8 +29,8 @@
     "end"
   ],
   "remediation": {
-    "command": "# /opt should be its OWN filesystem (isolation + mount options). This needs (re)partitioning —\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /opt >/dev/null 2>&1 && echo '/opt is already a mount point' || echo '/opt is NOT separate'\n# Then: dedicate an LVM volume / disk to /opt and add it to /etc/fstab.\n",
-    "reason": "a separate /opt filesystem needs partitioning/LVM/tmpfs — not a safe runtime change",
+    "command": "# /opt should be its OWN filesystem (isolation + mount options). This needs (re)partitioning , \n# offline disk/LVM work, not a safe runtime change.\nfindmnt /opt >/dev/null 2>&1 && echo '/opt is already a mount point' || echo '/opt is NOT separate'\n# Then: dedicate an LVM volume / disk to /opt and add it to /etc/fstab.\n",
+    "reason": "a separate /opt filesystem needs partitioning/LVM/tmpfs, not a safe runtime change",
     "resource": "manual"
   },
   "title": {
@@ -59,8 +59,8 @@
     "fr": "Verifiez le montage actif avec `findmnt /opt` ou `mount | grep ' /opt '` ; l'entree persistante est dans `/etc/fstab`. Les evenements d'unite de montage apparaissent via `journalctl -u opt.mount` et l'activite de montage du noyau via `journalctl -k`."
   },
   "remediation_note": {
-    "en": "No automated harden plan ships for this rule — relocating `/opt` to its own partition is a **manual** disk-layout change, best done at install time. On an existing host it requires a new filesystem, copying data with `rsync -aXS`, an `/etc/fstab` entry and a remount; Pavois will not perform this automatically.",
-    "fr": "Aucun plan de durcissement automatise n'est fourni pour cette regle — deplacer `/opt` sur sa propre partition est une modification **manuelle** de l'agencement disque, ideale a l'installation. Sur un hote existant, cela exige un nouveau systeme de fichiers, la copie des donnees avec `rsync -aXS`, une entree `/etc/fstab` et un remontage ; Pavois ne l'effectue pas automatiquement."
+    "en": "No automated harden plan ships for this rule, relocating `/opt` to its own partition is a **manual** disk-layout change, best done at install time. On an existing host it requires a new filesystem, copying data with `rsync -aXS`, an `/etc/fstab` entry and a remount; Pavois will not perform this automatically.",
+    "fr": "Aucun plan de durcissement automatise n'est fourni pour cette regle, deplacer `/opt` sur sa propre partition est une modification **manuelle** de l'agencement disque, ideale a l'installation. Sur un hote existant, cela exige un nouveau systeme de fichiers, la copie des donnees avec `rsync -aXS`, une entree `/etc/fstab` et un remontage ; Pavois ne l'effectue pas automatiquement."
   },
   "impact": {
     "en": "Moving `/opt` on a live system can disrupt software installed there (paths, running services), and `nosuid`/`noexec` may break vendor apps that ship setuid helpers or run scripts from `/opt`. **Precautions:** back up `/opt`, stop affected services during the migration, verify the new mount before removing old data, and test the third-party software before tightening mount options. The control only requires the mount to exist.",

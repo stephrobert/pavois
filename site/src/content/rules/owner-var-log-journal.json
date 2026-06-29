@@ -38,20 +38,20 @@
   },
   "needs_translation": [],
   "rationale": {
-    "en": "The `/var/log/*.journal(~)` files are the binary system logs managed by `systemd-journald`. They must be owned by **root** (with group `systemd-journal`) so that no unprivileged user can read or rewrite the journal — tampered or readable journals would let an attacker erase their tracks or harvest sensitive log data.",
-    "fr": "Les fichiers `/var/log/*.journal(~)` sont les journaux système binaires gérés par `systemd-journald`. Ils doivent appartenir à **root** (groupe `systemd-journal`) afin qu'aucun utilisateur non privilégié ne puisse lire ou réécrire le journal — des journaux altérés ou lisibles permettraient à un attaquant d'effacer ses traces ou de récolter des données sensibles."
+    "en": "The `/var/log/*.journal(~)` files are the binary system logs managed by `systemd-journald`. They must be owned by **root** (with group `systemd-journal`) so that no unprivileged user can read or rewrite the journal, tampered or readable journals would let an attacker erase their tracks or harvest sensitive log data.",
+    "fr": "Les fichiers `/var/log/*.journal(~)` sont les journaux système binaires gérés par `systemd-journald`. Ils doivent appartenir à **root** (groupe `systemd-journal`) afin qu'aucun utilisateur non privilégié ne puisse lire ou réécrire le journal, des journaux altérés ou lisibles permettraient à un attaquant d'effacer ses traces ou de récolter des données sensibles."
   },
   "summary": {
     "en": "Ensure all persistent journal files under `/var/log/journal` are **owned by root** (group `systemd-journal`).",
     "fr": "S'assurer que tous les fichiers de journal persistants sous `/var/log/journal` **appartiennent à root** (groupe `systemd-journal`)."
   },
   "check_note": {
-    "en": "Pavois runs `find -P /var/log/journal -type f ! -user root` (only if persistent journaling is enabled) and expects **no output**. It checks the real ownership of the live journal files on disk, catching drift introduced after install — not just packaging defaults.",
-    "fr": "Pavois exécute `find -P /var/log/journal -type f ! -user root` (uniquement si la journalisation persistante est activée) et attend **aucune sortie**. Il vérifie l'appartenance réelle des fichiers de journal présents sur disque, détectant les dérives apparues après l'installation — et non seulement les valeurs par défaut du paquet."
+    "en": "Pavois runs `find -P /var/log/journal -type f ! -user root` (only if persistent journaling is enabled) and expects **no output**. It checks the real ownership of the live journal files on disk, catching drift introduced after install, not just packaging defaults.",
+    "fr": "Pavois exécute `find -P /var/log/journal -type f ! -user root` (uniquement si la journalisation persistante est activée) et attend **aucune sortie**. Il vérifie l'appartenance réelle des fichiers de journal présents sur disque, détectant les dérives apparues après l'installation, et non seulement les valeurs par défaut du paquet."
   },
   "verify": {
-    "en": "Run `find -P /var/log/journal -type f ! -user root` — it should print **nothing**. You can also confirm ownership with `ls -l /var/log/journal/*/` (expect owner `root`, group `systemd-journal`).",
-    "fr": "Exécutez `find -P /var/log/journal -type f ! -user root` — il ne doit **rien** afficher. Vous pouvez aussi confirmer l'appartenance avec `ls -l /var/log/journal/*/` (propriétaire `root`, groupe `systemd-journal` attendus)."
+    "en": "Run `find -P /var/log/journal -type f ! -user root`, it should print **nothing**. You can also confirm ownership with `ls -l /var/log/journal/*/` (expect owner `root`, group `systemd-journal`).",
+    "fr": "Exécutez `find -P /var/log/journal -type f ! -user root`, il ne doit **rien** afficher. Vous pouvez aussi confirmer l'appartenance avec `ls -l /var/log/journal/*/` (propriétaire `root`, groupe `systemd-journal` attendus)."
   },
   "logs": {
     "en": "These files are the journal itself; read it with `journalctl`. Check journald health with `systemctl show systemd-journald` and `journalctl --verify`. List wrongly-owned files via `find -P /var/log/journal -type f ! -user root -printf '%u %p\\n'`.",
@@ -62,7 +62,7 @@
     "fr": "Le plan de durcissement de Pavois lance une ressource `exec` nommée **`chown-journal`** qui exécute `find /var/log/journal -exec chown root:systemd-journal {} +`, réinitialisant chaque fichier de journal au propriétaire **root** et au groupe **systemd-journal**. Une garde `not_if` l'ignore quand aucun fichier n'a déjà un mauvais groupe, ce qui le rend idempotent. Appliquez-le avec `pavois harden apply`."
   },
   "impact": {
-    "en": "**What can break:** essentially nothing — `root:systemd-journal` is exactly the ownership `systemd-journald` expects, so it keeps writing normally. Members of the `systemd-journal` group retain read access to the logs. **Precautions:** none significant; the change is idempotent and guarded. On systems with only volatile journaling (`/run/log/journal`), `/var/log/journal` is absent and the rule is skipped (`only_if`).",
-    "fr": "**Ce qui peut casser :** quasiment rien — `root:systemd-journal` est exactement l'appartenance attendue par `systemd-journald`, qui continue d'écrire normalement. Les membres du groupe `systemd-journal` conservent l'accès en lecture aux journaux. **Précautions :** aucune notable ; la modification est idempotente et gardée. Sur les systèmes à journalisation uniquement volatile (`/run/log/journal`), `/var/log/journal` est absent et la règle est ignorée (`only_if`)."
+    "en": "**What can break:** essentially nothing, `root:systemd-journal` is exactly the ownership `systemd-journald` expects, so it keeps writing normally. Members of the `systemd-journal` group retain read access to the logs. **Precautions:** none significant; the change is idempotent and guarded. On systems with only volatile journaling (`/run/log/journal`), `/var/log/journal` is absent and the rule is skipped (`only_if`).",
+    "fr": "**Ce qui peut casser :** quasiment rien, `root:systemd-journal` est exactement l'appartenance attendue par `systemd-journald`, qui continue d'écrire normalement. Les membres du groupe `systemd-journal` conservent l'accès en lecture aux journaux. **Précautions :** aucune notable ; la modification est idempotente et gardée. Sur les systèmes à journalisation uniquement volatile (`/run/log/journal`), `/var/log/journal` est absent et la règle est ignorée (`only_if`)."
   }
 }

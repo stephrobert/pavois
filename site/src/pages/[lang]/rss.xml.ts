@@ -10,7 +10,7 @@ const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 // RSS 2.0 for the blog, per language (hand-rolled, no @astrojs/rss dep). pubDate from the
-// hand-maintained datePublished (00:00 UTC, deterministic — no build-time clock).
+// hand-maintained datePublished (00:00 UTC, deterministic, no build-time clock).
 export const GET: APIRoute = async ({ params, site }) => {
   const lang = (params.lang as string) || 'en';
   const origin = (site?.toString() ?? 'https://pavois.dev/').replace(/\/$/, '');

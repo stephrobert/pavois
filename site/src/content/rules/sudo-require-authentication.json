@@ -32,20 +32,20 @@
   },
   "needs_translation": [],
   "rationale": {
-    "en": "An `!authenticate` (or `NOPASSWD`) rule allows privilege escalation **without re-authentication**. If a session is left unlocked or hijacked, anyone present — or a malicious process within that session — can run root commands silently. Requiring re-authentication confirms the escalating user is the legitimate, authorised one and produces an authentication record for accountability.",
-    "fr": "Une règle `!authenticate` (ou `NOPASSWD`) autorise l'élévation de privilèges **sans ré-authentification**. Si une session reste déverrouillée ou est détournée, toute personne présente — ou un processus malveillant dans cette session — peut exécuter des commandes root en silence. Exiger la ré-authentification confirme que l'utilisateur qui élève ses droits est bien le légitime et l'autorisé, et produit un enregistrement d'authentification pour la traçabilité."
+    "en": "An `!authenticate` (or `NOPASSWD`) rule allows privilege escalation **without re-authentication**. If a session is left unlocked or hijacked, anyone present, or a malicious process within that session, can run root commands silently. Requiring re-authentication confirms the escalating user is the legitimate, authorised one and produces an authentication record for accountability.",
+    "fr": "Une règle `!authenticate` (ou `NOPASSWD`) autorise l'élévation de privilèges **sans ré-authentification**. Si une session reste déverrouillée ou est détournée, toute personne présente, ou un processus malveillant dans cette session, peut exécuter des commandes root en silence. Exiger la ré-authentification confirme que l'utilisateur qui élève ses droits est bien le légitime et l'autorisé, et produit un enregistrement d'authentification pour la traçabilité."
   },
   "summary": {
     "en": "Ensure no `!authenticate` directive appears in the sudoers policy, so every `sudo` privilege escalation requires the user to re-enter their password.",
     "fr": "S'assure qu'aucune directive `!authenticate` ne figure dans la politique sudoers, afin que chaque élévation de privilèges via `sudo` exige que l'utilisateur ressaisisse son mot de passe."
   },
   "check_note": {
-    "en": "Pavois greps the **active sudoers tree** — `/etc/sudoers` and every file under `/etc/sudoers.d/` — and the rule passes only when **no** uncommented `!authenticate` is present. Because `sudo` merges the main file with all drop-ins, scanning the whole tree catches an exemption hidden in any drop-in, reflecting the **effective** policy rather than one file.",
-    "fr": "Pavois recherche dans l'**arborescence sudoers active** — `/etc/sudoers` et chaque fichier sous `/etc/sudoers.d/` — et la règle ne passe que si **aucune** directive `!authenticate` non commentée n'est présente. Comme `sudo` fusionne le fichier principal avec tous les drop-ins, parcourir toute l'arborescence détecte une exemption cachée dans n'importe quel drop-in, reflétant la politique **effective** et non un seul fichier."
+    "en": "Pavois greps the **active sudoers tree**, `/etc/sudoers` and every file under `/etc/sudoers.d/`, and the rule passes only when **no** uncommented `!authenticate` is present. Because `sudo` merges the main file with all drop-ins, scanning the whole tree catches an exemption hidden in any drop-in, reflecting the **effective** policy rather than one file.",
+    "fr": "Pavois recherche dans l'**arborescence sudoers active**, `/etc/sudoers` et chaque fichier sous `/etc/sudoers.d/`, et la règle ne passe que si **aucune** directive `!authenticate` non commentée n'est présente. Comme `sudo` fusionne le fichier principal avec tous les drop-ins, parcourir toute l'arborescence détecte une exemption cachée dans n'importe quel drop-in, reflétant la politique **effective** et non un seul fichier."
   },
   "verify": {
-    "en": "Run `sudo grep -rE '^[^#]*!authenticate' /etc/sudoers /etc/sudoers.d/`. The expected result is **no output** — any matching line bypasses re-authentication and must be removed.",
-    "fr": "Exécutez `sudo grep -rE '^[^#]*!authenticate' /etc/sudoers /etc/sudoers.d/`. Le résultat attendu est **aucune sortie** — toute ligne correspondante contourne la ré-authentification et doit être supprimée."
+    "en": "Run `sudo grep -rE '^[^#]*!authenticate' /etc/sudoers /etc/sudoers.d/`. The expected result is **no output**, any matching line bypasses re-authentication and must be removed.",
+    "fr": "Exécutez `sudo grep -rE '^[^#]*!authenticate' /etc/sudoers /etc/sudoers.d/`. Le résultat attendu est **aucune sortie**, toute ligne correspondante contourne la ré-authentification et doit être supprimée."
   },
   "logs": {
     "en": "On AlmaLinux, `sudo` authentication events are logged to `/var/log/secure` and via `journalctl -t sudo`. With re-authentication enforced, each escalation produces an authentication record; a `NOPASSWD`/`!authenticate` rule would leave the command logged but with no authentication event.",
@@ -56,7 +56,7 @@
     "fr": "Cette règle n'a **pas de plan de durcissement automatisé** dans Pavois ; elle doit donc être corrigée **manuellement** : trouvez le fichier fautif avec le grep ci-dessus, puis supprimez ou commentez la directive `!authenticate` / `NOPASSWD` (édition via `visudo` ou `visudo -f /etc/sudoers.d/<fichier>` afin que la modification soit validée syntaxiquement avant l'enregistrement)."
   },
   "impact": {
-    "en": "Requiring a password for previously passwordless commands **breaks unattended automation** (cron jobs, CI runners, scripts) that depended on `NOPASSWD` sudo. **Before applying**, locate those automated callers and migrate them to a dedicated service account with a narrowly scoped, command-specific `NOPASSWD` rule — rather than leaving a blanket exemption for interactive users.",
-    "fr": "Exiger un mot de passe pour des commandes auparavant sans mot de passe **casse les automatisations sans surveillance** (tâches cron, runners CI, scripts) qui dépendaient d'un sudo `NOPASSWD`. **Avant d'appliquer**, localisez ces appelants automatisés et migrez-les vers un compte de service dédié avec une règle `NOPASSWD` strictement limitée à une commande précise — plutôt que de laisser une exemption globale pour les utilisateurs interactifs."
+    "en": "Requiring a password for previously passwordless commands **breaks unattended automation** (cron jobs, CI runners, scripts) that depended on `NOPASSWD` sudo. **Before applying**, locate those automated callers and migrate them to a dedicated service account with a narrowly scoped, command-specific `NOPASSWD` rule, rather than leaving a blanket exemption for interactive users.",
+    "fr": "Exiger un mot de passe pour des commandes auparavant sans mot de passe **casse les automatisations sans surveillance** (tâches cron, runners CI, scripts) qui dépendaient d'un sudo `NOPASSWD`. **Avant d'appliquer**, localisez ces appelants automatisés et migrez-les vers un compte de service dédié avec une règle `NOPASSWD` strictement limitée à une commande précise, plutôt que de laisser une exemption globale pour les utilisateurs interactifs."
   }
 }

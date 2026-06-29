@@ -61,8 +61,8 @@
     "fr": "Pavois interroge le paramètre Postfix **effectif** avec `postconf -h inet_interfaces`, qui renvoie la valeur réellement résolue par Postfix après l'analyse de `main.cf` et de tout réglage inclus. Lire directement `/etc/postfix/main.cf` manquerait les surcharges, les configurations multi-instances et la valeur par défaut compilée, donnant des résultats erronés ; `postconf` indique ce que le démon utilise réellement."
   },
   "verify": {
-    "en": "Run `postconf -h inet_interfaces`. The expected output is `loopback-only` (or `localhost`). You can also confirm no external listener with `ss -ltnp | grep ':25'` — port 25 should bind only to `127.0.0.1`/`::1`.",
-    "fr": "Exécutez `postconf -h inet_interfaces`. La sortie attendue est `loopback-only` (ou `localhost`). Vous pouvez aussi vérifier l'absence d'écoute externe avec `ss -ltnp | grep ':25'` — le port 25 ne doit être lié qu'à `127.0.0.1`/`::1`."
+    "en": "Run `postconf -h inet_interfaces`. The expected output is `loopback-only` (or `localhost`). You can also confirm no external listener with `ss -ltnp | grep ':25'`, port 25 should bind only to `127.0.0.1`/`::1`.",
+    "fr": "Exécutez `postconf -h inet_interfaces`. La sortie attendue est `loopback-only` (ou `localhost`). Vous pouvez aussi vérifier l'absence d'écoute externe avec `ss -ltnp | grep ':25'`, le port 25 ne doit être lié qu'à `127.0.0.1`/`::1`."
   },
   "logs": {
     "en": "Postfix activity is logged via `journalctl -u postfix` (or `/var/log/mail.log`). After applying the change, the restart and the new bind appear there; connection attempts from the network will no longer be accepted.",
@@ -73,7 +73,7 @@
     "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit donc être appliquée **manuellement** : définissez `inet_interfaces = loopback-only` dans `/etc/postfix/main.cf` (par ex. `postconf -e 'inet_interfaces = loopback-only'`) puis rechargez Postfix avec `systemctl restart postfix`."
   },
   "impact": {
-    "en": "If the host is an **intended mail server** (MX, smarthost receiving network mail), restricting Postfix to loopback will break inbound delivery — apply this only to hosts that send local mail only. Before applying, confirm no remote system relies on this SMTP listener (`ss -ltnp | grep ':25'` and review firewall rules). After the change, test local delivery with `echo test | mail -s test root` and check `journalctl -u postfix`.",
-    "fr": "Si l'hôte est un **serveur de messagerie volontaire** (MX, smarthost recevant du courrier réseau), restreindre Postfix au bouclage cassera la réception entrante — n'appliquez ceci qu'aux hôtes n'envoyant que du courrier local. Avant d'appliquer, vérifiez qu'aucun système distant ne dépend de cette écoute SMTP (`ss -ltnp | grep ':25'` et revue des règles pare-feu). Après le changement, testez la distribution locale avec `echo test | mail -s test root` et consultez `journalctl -u postfix`."
+    "en": "If the host is an **intended mail server** (MX, smarthost receiving network mail), restricting Postfix to loopback will break inbound delivery, apply this only to hosts that send local mail only. Before applying, confirm no remote system relies on this SMTP listener (`ss -ltnp | grep ':25'` and review firewall rules). After the change, test local delivery with `echo test | mail -s test root` and check `journalctl -u postfix`.",
+    "fr": "Si l'hôte est un **serveur de messagerie volontaire** (MX, smarthost recevant du courrier réseau), restreindre Postfix au bouclage cassera la réception entrante, n'appliquez ceci qu'aux hôtes n'envoyant que du courrier local. Avant d'appliquer, vérifiez qu'aucun système distant ne dépend de cette écoute SMTP (`ss -ltnp | grep ':25'` et revue des règles pare-feu). Après le changement, testez la distribution locale avec `echo test | mail -s test root` et consultez `journalctl -u postfix`."
   }
 }

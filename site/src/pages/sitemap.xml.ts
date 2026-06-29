@@ -4,7 +4,7 @@ import { languages } from '../i18n/ui';
 
 // Custom sitemap (no @astrojs/sitemap, to keep the pinned dep set untouched). Enumerates the
 // content collections + static routes for both languages. `lastmod` is emitted ONLY from a real,
-// hand-maintained data date (never the build date) — omitted otherwise, per the SEO ruleset.
+// hand-maintained data date (never the build date), omitted otherwise, per the SEO ruleset.
 const LANGS = Object.keys(languages);
 const STATIC = [
   '', 'start/', 'docs/', 'docs/tools/', 'handbook/', 'rules/', 'blog/', 'glossary/', 'about/', 'downloads/', 'attribution/',
