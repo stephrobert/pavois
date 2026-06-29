@@ -87,6 +87,37 @@ mise install          # pinned toolchain: Go, Node, Python, gh, golangci-lint, r
 pre-commit install    # quality + secret hooks on every commit
 ```
 
+## Debugging a hardened test VM
+
+`harden apply --reboot` against a throwaway VM can leave it unbootable (a remediation that breaks an
+early-boot mount drops the guest to **emergency mode**, and a locked root makes the console useless).
+When you test remediations on an Incus VM:
+
+- **Snapshot before applying**, so you can roll back: `incus snapshot create <vm> preharden` /
+  `incus snapshot restore <vm> preharden`.
+- **Diagnose without blind reboots.** `harden apply <plan> --dry-run` prints the full Chef recipe;
+  or apply **without** `--reboot` and inspect the converged state (`/etc/fstab`,
+  `/boot/grub/grub.cfg`, `systemctl --failed`) before rebooting.
+- **VM up but unreachable?** `incus exec <vm> -- …` runs commands without SSH. If it fails with
+  `VM agent isn't currently running`, the OS never finished booting (a brick), not just SSH.
+- **See the boot.** `incus console --show-log` is container-only; for a VM, capture the live serial
+  console with a pseudo-TTY: `timeout 14 script -qec 'incus console <vm>' /dev/null </dev/null`
+  (detach with `<ctrl>+a q`). It shows emergency mode, a panic, or a hanging start job.
+- **Read the failed boot's journal offline** (the reliable way: no scrollback or sulogin needed; the
+  harden sets journald `Storage=persistent`, so `/var/log/journal` survives). For a ZFS pool:
+  ```bash
+  incus stop <vm> --force
+  Z=<pool>/virtual-machines/<vm>.block      # incus storage list; zfs list -t volume
+  sudo zfs set volmode=dev "$Z"             # a stopped VM's zvol is volmode=none
+  sudo kpartx -av /dev/zd0                  # maps /dev/mapper/zd0p2 (the ext4 root; p1 = EFI)
+  sudo mount -o ro /dev/mapper/zd0p2 /mnt/vm
+  sudo journalctl -D /mnt/vm/var/log/journal -b 0 -p err | grep -iE 'Dependency failed|Failed to mount|emergency'
+  sudo umount /mnt/vm; sudo kpartx -d /dev/zd0; sudo zfs set volmode=none "$Z"   # cleanup
+  ```
+  (A `dir` pool: `losetup -fP <root.img>`; qcow2: `qemu-nbd`.) **Lesson:** a one-way "disable" sysctl
+  like `kernel.modules_disabled=1` must be applied late (a systemd oneshot ordered
+  `After=local-fs.target`), never in a boot-time `sysctl.d` drop-in, or it bricks the EFI mount.
+
 ## Quality gates (run before opening a PR)
 
 CI enforces all of these; run them locally first.
