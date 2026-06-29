@@ -106,7 +106,10 @@ pavois harden apply hardening-plan-debian12.yml --reboot --scan
 # 3. Build a before/after campaign report (grade delta + transition matrix)
 pavois diff before.json after.json --html campaign.html --json campaign.json
 
-# 4. Serve the HTML reports
+# 4. Package audit-ready evidence (before/after, plan, reports, manifest + checksums)
+pavois bundle before.json after.json --plan hardening-plan-debian12.yml --report campaign.html
+
+# 5. Serve the HTML reports
 pavois serve   # http://localhost:8098
 ```
 
@@ -120,11 +123,17 @@ control's before/after state, so a result cannot be dismissed as a moved denomin
 baseline widens the applicable set. `--html` writes a self-contained report; `--json` the structured
 delta for an evidence bundle.
 
+`pavois bundle` packages a campaign into a tamper-evident **evidence bundle**: the before/after scans,
+the plan that was applied, the reports, the transition delta, plus a `manifest.json` (tool + ruleset
+version, target, grade delta) and a `checksums.txt`. The manifest's own SHA-256 is the single digest to
+sign and publish (minisign/cosign/gpg), turning a strong technical result into audit-ready evidence.
+
 | Command | Does |
 |---------|------|
 | `scan` | Audit a target's effective config, grade A–E |
 | `harden plan` / `apply` | State-aware Chef hardening, opt-in per rule, `--reboot --scan` |
 | `diff` | Before/after campaign report: transition matrix, regressions, grade delta (`--html` / `--json`) |
+| `bundle` | Package audit-ready evidence: scans + plan + reports + manifest + checksums (sign-ready) |
 | `verify` | Behavioral check: attempt the forbidden action, confirm the protection holds |
 | `oscal` | Publish the baseline as OSCAL (catalog + per-OS profiles) |
 | `serve` | Browse the HTML reports |
