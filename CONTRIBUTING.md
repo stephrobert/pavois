@@ -127,8 +127,8 @@ CI enforces all of these; run them locally first.
 cd go && gofmt -l . && go vet ./... && go build ./... && go test -race ./... && golangci-lint run ./...
 govulncheck ./...
 
-# Python tooling (tools/, test-vms/)
-ruff check tools/ test-vms/ && ruff format --check tools/ test-vms/ && bandit -r tools/ test-vms/ -c pyproject.toml
+# Python tooling (tools/) — test-vms/ is local-only (gitignored), lint it yourself if you touch it
+ruff check tools/ && ruff format --check tools/ && bandit -r tools/ -c pyproject.toml
 
 # the actual tool, on a real target (effective config needs --sudo)
 mise run build && ./go/pavois scan local --profile linux/ubuntu2404
