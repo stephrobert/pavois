@@ -103,7 +103,10 @@ pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo
 #    edit the plan: flip rules to `apply: true`
 pavois harden apply hardening-plan-debian12.yml --reboot --scan
 
-# 3. Serve the HTML reports
+# 3. Build a before/after campaign report (grade delta + transition matrix)
+pavois diff before.json after.json --html campaign.html --json campaign.json
+
+# 4. Serve the HTML reports
 pavois serve   # http://localhost:8098
 ```
 
@@ -111,11 +114,17 @@ The scan prints the deviations by severity and the **A–E grade**, and writes a
 `--reboot`, harden reboots the target and re-scans, so a pass in that report is **reboot-proven**.
 `--format sarif|junit|json|csv|html` and `--fail-under <points>` make the grade a CI gate.
 
+`pavois diff` turns two scans into a **campaign report**: the grade delta plus the full transition
+matrix (failed → passed, newly-applicable, still-failing, and any **regressions**). It shows every
+control's before/after state, so a result cannot be dismissed as a moved denominator when the
+baseline widens the applicable set. `--html` writes a self-contained report; `--json` the structured
+delta for an evidence bundle.
+
 | Command | Does |
 |---------|------|
 | `scan` | Audit a target's effective config, grade A–E |
 | `harden plan` / `apply` | State-aware Chef hardening, opt-in per rule, `--reboot --scan` |
-| `diff` | Compare two states: fixed, regressed, grade delta |
+| `diff` | Before/after campaign report: transition matrix, regressions, grade delta (`--html` / `--json`) |
 | `verify` | Behavioral check: attempt the forbidden action, confirm the protection holds |
 | `oscal` | Publish the baseline as OSCAL (catalog + per-OS profiles) |
 | `serve` | Browse the HTML reports |
