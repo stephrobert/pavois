@@ -36,6 +36,21 @@ function extractFaq(md: string): { q: string; a: string }[] {
     .map((m) => ({ q: stripMd(m[1]), a: stripMd(m[2]) }))
     .filter((qa) => qa.q && qa.a);
 }
+// The lede (page.summary) is rendered as a bare string, so any **bold** / `code` markdown showed
+// literally. Render the inline markdown for the visible lede, and strip it for the meta description
+// (a meta tag must be plain text, never carry `**` or backticks into search snippets).
+const inlineMd = (s: string) =>
+  s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>');
+const ledeHtml = inlineMd(page.summary?.[lang] ?? '');
+const metaDesc = (page.summary?.[lang] ?? '')
+  .replace(/\*\*(.+?)\*\*/g, '$1')
+  .replace(/`([^`]+)`/g, '$1');
+
 const faq = extractFaq(page.body[lang]);
 const faqLd =
   faq.length >= 2
@@ -76,7 +91,7 @@ const crumbs = [
 
 <Base
   title={`${page.title[lang]} · Pavois`}
-  description={page.summary?.[lang] ?? ''}
+  description={metaDesc}
   lang={lang}
   ogType="article"
   schema="TechArticle"
@@ -130,7 +145,7 @@ const crumbs = [
       </details>
 
       <h1 class="book-h1">{page.title[lang]}</h1>
-      {page.summary && <p class="book-lede">{page.summary[lang]}</p>}
+      {page.summary && <p class="book-lede" set:html={ledeHtml} />}
 
       <div class="prose" set:html={bodyHtml} />
 
