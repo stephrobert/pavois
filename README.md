@@ -114,7 +114,9 @@ pavois serve   # http://localhost:8098
 ```
 
 The scan prints the deviations by severity and the **A–E grade**, and writes an HTML report. With
-`--reboot`, harden reboots the target and re-scans, so a pass in that report is **reboot-proven**.
+`--reboot`, harden reboots the target and re-scans, so a pass in that report is **reboot-proven**; it
+also writes a **reboot-proof artifact** (the boot_id before and after, proving the re-scan ran on a
+fresh boot) that you can fold into the evidence bundle (`bundle --reboot-proof`).
 `--format sarif|junit|json|csv|html` and `--fail-under <points>` make the grade a CI gate.
 
 Every scan also prints a **posture breakdown** by remediation class (`auto`, `manual`, `dangerous`,
