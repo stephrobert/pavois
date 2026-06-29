@@ -247,6 +247,7 @@ func HTML(rep *audit.Report, m Meta) (string, int, int) {
 </div>
 
 <div class="card"><h2>Conformité et score</h2><div id="cf-score"></div></div>
+<div class="card" id="cf-exec-card"><h2>Résumé exécutif</h2><div id="cf-exec"></div></div>
 <div class="legend">
   <b>Deux axes distincts</b> :
   <b>Niveau</b> = palier de durcissement de la <i>réglementation choisie</i>
