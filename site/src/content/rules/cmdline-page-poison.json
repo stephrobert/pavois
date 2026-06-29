@@ -51,23 +51,23 @@
     "fr": "Exige le paramètre de démarrage noyau **`page_poison=1`** afin que les pages mémoire libérées soient écrasées par un motif d'empoisonnement, détectant les use-after-free et effaçant les données résiduelles."
   },
   "check_note": {
-    "en": "Pavois reads the **live kernel command line** from `/proc/cmdline` and checks for `page_poison=1`. It reflects what the running kernel parsed, not `/etc/default/grub` — a file edit that was never turned into a rebuilt bootloader config would falsely pass a file-based scan while the mitigation is still inactive.",
-    "fr": "Pavois lit la **ligne de commande noyau active** depuis `/proc/cmdline` et vérifie la présence de `page_poison=1`. Elle reflète ce que le noyau en cours a analysé, et non `/etc/default/grub` — une modification de fichier jamais transformée en config bootloader régénérée passerait à tort un scan basé fichier alors que la mitigation reste inactive."
+    "en": "Pavois reads the **live kernel command line** from `/proc/cmdline` and checks for `page_poison=1`. It reflects what the running kernel parsed, not `/etc/default/grub`, a file edit that was never turned into a rebuilt bootloader config would falsely pass a file-based scan while the mitigation is still inactive.",
+    "fr": "Pavois lit la **ligne de commande noyau active** depuis `/proc/cmdline` et vérifie la présence de `page_poison=1`. Elle reflète ce que le noyau en cours a analysé, et non `/etc/default/grub`, une modification de fichier jamais transformée en config bootloader régénérée passerait à tort un scan basé fichier alors que la mitigation reste inactive."
   },
   "verify": {
     "en": "Run `cat /proc/cmdline` and confirm it contains `page_poison=1`. Where exposed, the runtime state can be read at `/sys/module/page_poison/parameters/...` depending on kernel version; the boot line is the canonical proof.",
     "fr": "Lancez `cat /proc/cmdline` et confirmez la présence de `page_poison=1`. Lorsqu'il est exposé, l'état d'exécution est lisible dans `/sys/module/page_poison/parameters/...` selon la version du noyau ; la ligne de boot reste la preuve canonique."
   },
   "logs": {
-    "en": "A poison violation surfaces in the kernel ring buffer as a **bad page state / corruption** report — inspect `dmesg | grep -iE 'poison|bad page'` or `journalctl -k | grep -iE 'poison|bad page'`.",
-    "fr": "Une violation d'empoisonnement apparaît dans le ring buffer noyau comme un rapport de **bad page state / corruption** — inspectez `dmesg | grep -iE 'poison|bad page'` ou `journalctl -k | grep -iE 'poison|bad page'`."
+    "en": "A poison violation surfaces in the kernel ring buffer as a **bad page state / corruption** report, inspect `dmesg | grep -iE 'poison|bad page'` or `journalctl -k | grep -iE 'poison|bad page'`.",
+    "fr": "Une violation d'empoisonnement apparaît dans le ring buffer noyau comme un rapport de **bad page state / corruption**, inspectez `dmesg | grep -iE 'poison|bad page'` ou `journalctl -k | grep -iE 'poison|bad page'`."
   },
   "remediation_note": {
     "en": "`pavois harden apply` uses the **`kernel_cmdline`** resource to add `page_poison=1` to the bootloader configuration and regenerate it, so the option is present on next boot. A **reboot is required** to take effect.",
     "fr": "`pavois harden apply` utilise la ressource **`kernel_cmdline`** pour ajouter `page_poison=1` à la configuration du bootloader et la régénérer, afin que l'option soit présente au prochain démarrage. Un **redémarrage est requis** pour qu'il prenne effet."
   },
   "impact": {
-    "en": "Page poisoning carries a **small, usually negligible CPU cost** for the overwrite on free. Precautions:\n\n- On extremely **memory-churn-heavy** workloads, benchmark to confirm the overhead is acceptable.\n- It can make latent **buggy drivers** panic when they touch freed pages — surfacing pre-existing corruption rather than causing it; validate on a non-critical node first.\n- Applies **after reboot** only — schedule a maintenance window.",
-    "fr": "L'empoisonnement de pages a un **faible coût CPU, généralement négligeable**, pour l'écrasement à la libération. Précautions :\n\n- Sur des charges à **très fort renouvellement mémoire**, mesurez pour confirmer que le surcoût est acceptable.\n- Il peut faire planter des **pilotes bogués** latents lorsqu'ils touchent des pages libérées — révélant une corruption préexistante plutôt que la causant ; validez d'abord sur un nœud non critique.\n- S'applique uniquement **après redémarrage** — planifiez une fenêtre de maintenance."
+    "en": "Page poisoning carries a **small, usually negligible CPU cost** for the overwrite on free. Precautions:\n\n- On extremely **memory-churn-heavy** workloads, benchmark to confirm the overhead is acceptable.\n- It can make latent **buggy drivers** panic when they touch freed pages, surfacing pre-existing corruption rather than causing it; validate on a non-critical node first.\n- Applies **after reboot** only, schedule a maintenance window.",
+    "fr": "L'empoisonnement de pages a un **faible coût CPU, généralement négligeable**, pour l'écrasement à la libération. Précautions :\n\n- Sur des charges à **très fort renouvellement mémoire**, mesurez pour confirmer que le surcoût est acceptable.\n- Il peut faire planter des **pilotes bogués** latents lorsqu'ils touchent des pages libérées, révélant une corruption préexistante plutôt que la causant ; validez d'abord sur un nœud non critique.\n- S'applique uniquement **après redémarrage**, planifiez une fenêtre de maintenance."
   }
 }

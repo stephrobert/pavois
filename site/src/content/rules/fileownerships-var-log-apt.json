@@ -37,8 +37,8 @@
   },
   "needs_translation": [],
   "rationale": {
-    "en": "The `/var/log/apt` directory records what packages were installed, upgraded or removed (`history.log`, `term.log`). These logs reveal the exact software inventory and patch level of the host — valuable reconnaissance for an attacker — and form an audit trail of administrative actions. If a non-root user owns this directory, they can read it to map vulnerabilities or rewrite it to erase evidence of a malicious package install. Keeping it owned by **root** (uid 0) restricts access to authorized personnel.",
-    "fr": "Le répertoire `/var/log/apt` enregistre les paquets installés, mis à jour ou supprimés (`history.log`, `term.log`). Ces journaux révèlent l'inventaire logiciel exact et le niveau de correctifs de l'hôte — un renseignement précieux pour un attaquant — et constituent une piste d'audit des actions d'administration. Si un utilisateur non-root possède ce répertoire, il peut le lire pour cartographier les vulnérabilités ou le réécrire pour effacer les preuves d'une installation de paquet malveillante. Le conserver sous la propriété de **root** (uid 0) en restreint l'accès au personnel autorisé."
+    "en": "The `/var/log/apt` directory records what packages were installed, upgraded or removed (`history.log`, `term.log`). These logs reveal the exact software inventory and patch level of the host, valuable reconnaissance for an attacker, and form an audit trail of administrative actions. If a non-root user owns this directory, they can read it to map vulnerabilities or rewrite it to erase evidence of a malicious package install. Keeping it owned by **root** (uid 0) restricts access to authorized personnel.",
+    "fr": "Le répertoire `/var/log/apt` enregistre les paquets installés, mis à jour ou supprimés (`history.log`, `term.log`). Ces journaux révèlent l'inventaire logiciel exact et le niveau de correctifs de l'hôte, un renseignement précieux pour un attaquant, et constituent une piste d'audit des actions d'administration. Si un utilisateur non-root possède ce répertoire, il peut le lire pour cartographier les vulnérabilités ou le réécrire pour effacer les preuves d'une installation de paquet malveillante. Le conserver sous la propriété de **root** (uid 0) en restreint l'accès au personnel autorisé."
   },
   "summary": {
     "en": "Ensures the APT log directory `/var/log/apt` is owned by **root** (uid 0).",
@@ -49,8 +49,8 @@
     "fr": "Pavois vérifie que le répertoire réel `/var/log/apt` a l'uid de propriétaire `0`, ignoré via `only_if` lorsqu'il n'existe pas. Il lit le propriétaire **effectif** depuis le système de fichiers (`stat`), de sorte qu'une dérive introduite par un `chown` manuel, un script de rotation de journaux ou un paquet défectueux est détectée quel que soit le contenu d'un manifeste."
   },
   "verify": {
-    "en": "Run `stat -c '%U %u' /var/log/apt`. Expected output: `root 0`. To include the log files, run `find /var/log/apt -not -user root` — it should print nothing.",
-    "fr": "Exécutez `stat -c '%U %u' /var/log/apt`. Sortie attendue : `root 0`. Pour inclure les fichiers de journaux, exécutez `find /var/log/apt -not -user root` — il ne doit rien afficher."
+    "en": "Run `stat -c '%U %u' /var/log/apt`. Expected output: `root 0`. To include the log files, run `find /var/log/apt -not -user root`, it should print nothing.",
+    "fr": "Exécutez `stat -c '%U %u' /var/log/apt`. Sortie attendue : `root 0`. Pour inclure les fichiers de journaux, exécutez `find /var/log/apt -not -user root`, il ne doit rien afficher."
   },
   "logs": {
     "en": "The directory itself contains the relevant package history: `cat /var/log/apt/history.log`. Ownership has no separate log; query it with `stat /var/log/apt`. If `/var/log/apt` is watched by auditd, ownership changes appear in `/var/log/audit/audit.log`.",
@@ -61,7 +61,7 @@
     "fr": "Aucun plan de durcissement automatisé n'est défini, appliquez-la donc manuellement : `chown root:root /var/log/apt` et, pour couvrir les fichiers existants, `chown -R root:root /var/log/apt`."
   },
   "impact": {
-    "en": "A non-root owner can read the host's full package history (a reconnaissance gift) or tamper with the install audit trail. Restoring root ownership is safe — APT runs as root and is unaffected. **Precaution:** keep these logs group-readable only as your policy allows (commonly `root:adm`, mode 0640); when recursing, avoid widening permissions so non-privileged users cannot read the package inventory.",
-    "fr": "Un propriétaire non-root peut lire l'historique complet des paquets de l'hôte (un cadeau pour la reconnaissance) ou falsifier la piste d'audit des installations. Restaurer la propriété root est sans danger — APT s'exécute en root et n'est pas affecté. **Précaution :** maintenez ces journaux lisibles par groupe seulement selon votre politique (souvent `root:adm`, mode 0640) ; en récursant, évitez d'élargir les permissions afin que les utilisateurs non privilégiés ne puissent pas lire l'inventaire des paquets."
+    "en": "A non-root owner can read the host's full package history (a reconnaissance gift) or tamper with the install audit trail. Restoring root ownership is safe, APT runs as root and is unaffected. **Precaution:** keep these logs group-readable only as your policy allows (commonly `root:adm`, mode 0640); when recursing, avoid widening permissions so non-privileged users cannot read the package inventory.",
+    "fr": "Un propriétaire non-root peut lire l'historique complet des paquets de l'hôte (un cadeau pour la reconnaissance) ou falsifier la piste d'audit des installations. Restaurer la propriété root est sans danger, APT s'exécute en root et n'est pas affecté. **Précaution :** maintenez ces journaux lisibles par groupe seulement selon votre politique (souvent `root:adm`, mode 0640) ; en récursant, évitez d'élargir les permissions afin que les utilisateurs non privilégiés ne puissent pas lire l'inventaire des paquets."
   }
 }

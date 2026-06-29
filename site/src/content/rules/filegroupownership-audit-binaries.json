@@ -55,23 +55,23 @@
     "fr": "Garantit que les outils d'audit (ici `/sbin/auditctl`) appartiennent au groupe **root** (gid `0`)."
   },
   "check_note": {
-    "en": "Pavois reads the real group id of `/sbin/auditctl` via InSpec's `file` resource and asserts `gid == 0`. It inspects the **effective** ownership of the binary on disk, catching a tampered or repackaged audit tool with a loosened group — something a check that trusts the package database would miss.",
-    "fr": "Pavois lit l'identifiant de groupe réel de `/sbin/auditctl` via la ressource InSpec `file` et vérifie `gid == 0`. Il inspecte la propriété **effective** du binaire sur le disque, détectant un outil d'audit falsifié ou reconditionné au groupe assoupli — ce qu'une vérification se fiant à la base de données des paquets manquerait."
+    "en": "Pavois reads the real group id of `/sbin/auditctl` via InSpec's `file` resource and asserts `gid == 0`. It inspects the **effective** ownership of the binary on disk, catching a tampered or repackaged audit tool with a loosened group, something a check that trusts the package database would miss.",
+    "fr": "Pavois lit l'identifiant de groupe réel de `/sbin/auditctl` via la ressource InSpec `file` et vérifie `gid == 0`. Il inspecte la propriété **effective** du binaire sur le disque, détectant un outil d'audit falsifié ou reconditionné au groupe assoupli, ce qu'une vérification se fiant à la base de données des paquets manquerait."
   },
   "verify": {
     "en": "Run `stat -c '%G %g' /sbin/auditctl`. Expected output: `root 0`. Check the whole set with `for b in auditctl auditd ausearch aureport autrace augenrules; do stat -c '%n %G' $(command -v $b 2>/dev/null) 2>/dev/null; done`.",
     "fr": "Exécutez `stat -c '%G %g' /sbin/auditctl`. Sortie attendue : `root 0`. Vérifiez l'ensemble avec `for b in auditctl auditd ausearch aureport autrace augenrules; do stat -c '%n %G' $(command -v $b 2>/dev/null) 2>/dev/null; done`."
   },
   "logs": {
-    "en": "Confirm package-provided ownership with `dpkg -V auditd | grep auditctl` (Debian/Ubuntu) or `rpm -V audit` (RHEL family) — empty output means no integrity drift. An auditd watch (`auditctl -w /sbin/auditctl -p wa -k audit_tools`) records changes in `/var/log/audit/audit.log`.",
-    "fr": "Confirmez la propriété fournie par le paquet avec `dpkg -V auditd | grep auditctl` (Debian/Ubuntu) ou `rpm -V audit` (famille RHEL) — une sortie vide signifie aucune dérive d'intégrité. Une surveillance auditd (`auditctl -w /sbin/auditctl -p wa -k audit_tools`) enregistre les modifications dans `/var/log/audit/audit.log`."
+    "en": "Confirm package-provided ownership with `dpkg -V auditd | grep auditctl` (Debian/Ubuntu) or `rpm -V audit` (RHEL family), empty output means no integrity drift. An auditd watch (`auditctl -w /sbin/auditctl -p wa -k audit_tools`) records changes in `/var/log/audit/audit.log`.",
+    "fr": "Confirmez la propriété fournie par le paquet avec `dpkg -V auditd | grep auditctl` (Debian/Ubuntu) ou `rpm -V audit` (famille RHEL), une sortie vide signifie aucune dérive d'intégrité. Une surveillance auditd (`auditctl -w /sbin/auditctl -p wa -k audit_tools`) enregistre les modifications dans `/var/log/audit/audit.log`."
   },
   "remediation_note": {
     "en": "No automated remediation is wired for this rule, so it must be applied **manually**: `chgrp 0 /sbin/auditctl` (and the other audit binaries). Re-run `pavois harden verify` afterwards.",
     "fr": "Aucune remédiation automatique n'est câblée pour cette règle ; elle doit être appliquée **manuellement** : `chgrp 0 /sbin/auditctl` (et les autres binaires d'audit). Relancez ensuite `pavois harden verify`."
   },
   "impact": {
-    "en": "A loosely-owned audit binary could be swapped for a trojaned version that silences the audit trail. Resetting the group to **root** is safe — these tools require root to talk to the kernel audit subsystem anyway, so non-privileged users lose nothing. No service interruption. Precaution: keep the binaries' mode at `0755` and do not stop `auditd` while changing ownership.",
-    "fr": "Un binaire d'audit au groupe trop permissif pourrait être remplacé par une version piégée qui réduit au silence la piste d'audit. Remettre le groupe à **root** est sans danger — ces outils nécessitent de toute façon root pour dialoguer avec le sous-système d'audit du noyau, les utilisateurs non privilégiés ne perdent donc rien. Aucune interruption de service. Précaution : conservez le mode `0755` des binaires et n'arrêtez pas `auditd` pendant la modification de propriété."
+    "en": "A loosely-owned audit binary could be swapped for a trojaned version that silences the audit trail. Resetting the group to **root** is safe, these tools require root to talk to the kernel audit subsystem anyway, so non-privileged users lose nothing. No service interruption. Precaution: keep the binaries' mode at `0755` and do not stop `auditd` while changing ownership.",
+    "fr": "Un binaire d'audit au groupe trop permissif pourrait être remplacé par une version piégée qui réduit au silence la piste d'audit. Remettre le groupe à **root** est sans danger, ces outils nécessitent de toute façon root pour dialoguer avec le sous-système d'audit du noyau, les utilisateurs non privilégiés ne perdent donc rien. Aucune interruption de service. Précaution : conservez le mode `0755` des binaires et n'arrêtez pas `auditd` pendant la modification de propriété."
   }
 }

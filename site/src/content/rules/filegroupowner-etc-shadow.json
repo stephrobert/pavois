@@ -60,12 +60,12 @@
     "fr": "Garantit que le fichier d'empreintes `/etc/shadow` appartient au groupe **root** (gid `0`)."
   },
   "check_note": {
-    "en": "Pavois resolves the file's actual group id with InSpec's `file('/etc/shadow')` resource and asserts `gid == 0`. It reads the **effective** ownership recorded by the filesystem (the real `stat` value applied right now), not a packaging manifest or a hardening script that may have drifted — so a manual `chgrp` or a misbehaving package post-install that changed the group is caught immediately.",
-    "fr": "Pavois lit l'identifiant de groupe réel du fichier via la ressource InSpec `file('/etc/shadow')` et vérifie `gid == 0`. Il s'appuie sur la propriété **effective** enregistrée par le système de fichiers (la valeur `stat` réellement appliquée), et non sur un manifeste de paquet ou un script de durcissement qui pourrait avoir dérivé — un `chgrp` manuel ou un post-install de paquet fautif est donc détecté immédiatement."
+    "en": "Pavois resolves the file's actual group id with InSpec's `file('/etc/shadow')` resource and asserts `gid == 0`. It reads the **effective** ownership recorded by the filesystem (the real `stat` value applied right now), not a packaging manifest or a hardening script that may have drifted, so a manual `chgrp` or a misbehaving package post-install that changed the group is caught immediately.",
+    "fr": "Pavois lit l'identifiant de groupe réel du fichier via la ressource InSpec `file('/etc/shadow')` et vérifie `gid == 0`. Il s'appuie sur la propriété **effective** enregistrée par le système de fichiers (la valeur `stat` réellement appliquée), et non sur un manifeste de paquet ou un script de durcissement qui pourrait avoir dérivé, un `chgrp` manuel ou un post-install de paquet fautif est donc détecté immédiatement."
   },
   "verify": {
-    "en": "Run `stat -c '%G %g' /etc/shadow`. Expected output: `root 0` (the group name may be `shadow` on some Debian/Ubuntu installs — in that case confirm with `getent group shadow`, but this rule mandates gid `0`).",
-    "fr": "Exécutez `stat -c '%G %g' /etc/shadow`. Sortie attendue : `root 0` (le nom de groupe peut être `shadow` sur certaines installations Debian/Ubuntu — vérifiez alors avec `getent group shadow`, mais cette règle impose le gid `0`)."
+    "en": "Run `stat -c '%G %g' /etc/shadow`. Expected output: `root 0` (the group name may be `shadow` on some Debian/Ubuntu installs, in that case confirm with `getent group shadow`, but this rule mandates gid `0`).",
+    "fr": "Exécutez `stat -c '%G %g' /etc/shadow`. Sortie attendue : `root 0` (le nom de groupe peut être `shadow` sur certaines installations Debian/Ubuntu, vérifiez alors avec `getent group shadow`, mais cette règle impose le gid `0`)."
   },
   "logs": {
     "en": "Ownership changes are not logged by default. With the auditd watch enabled (`auditctl -w /etc/shadow -p wa -k identity`), every write or attribute change appears in `/var/log/audit/audit.log`; filter with `grep 'key=\"identity\"' /var/log/audit/audit.log`.",
@@ -76,7 +76,7 @@
     "fr": "Aucune remédiation automatique n'est câblée pour cette règle ; elle doit être appliquée **manuellement** : `chgrp 0 /etc/shadow` (ou `chgrp shadow /etc/shadow` sur les systèmes utilisant le groupe shadow, en confirmant que le gid `0` est bien voulu). Relancez ensuite `pavois harden verify`."
   },
   "impact": {
-    "en": "If the group is too permissive, password hashes can leak to non-root accounts and be cracked offline. Setting the group back to **root** has essentially **no operational risk** — `passwd`, `login`, PAM and `sudo` access `/etc/shadow` as root. Precautions: keep the matching strict mode (`0640`/`0000`) and, on Debian/Ubuntu, do not break the `shadow` group convention used by some tools; verify with `getent group shadow` before changing.",
-    "fr": "Si le groupe est trop permissif, les empreintes de mots de passe peuvent fuir vers des comptes non-root et être cassées hors-ligne. Remettre le groupe à **root** ne présente quasiment **aucun risque opérationnel** — `passwd`, `login`, PAM et `sudo` accèdent à `/etc/shadow` en tant que root. Précautions : conservez le mode strict associé (`0640`/`0000`) et, sur Debian/Ubuntu, ne cassez pas la convention du groupe `shadow` utilisée par certains outils ; vérifiez avec `getent group shadow` avant toute modification."
+    "en": "If the group is too permissive, password hashes can leak to non-root accounts and be cracked offline. Setting the group back to **root** has essentially **no operational risk**, `passwd`, `login`, PAM and `sudo` access `/etc/shadow` as root. Precautions: keep the matching strict mode (`0640`/`0000`) and, on Debian/Ubuntu, do not break the `shadow` group convention used by some tools; verify with `getent group shadow` before changing.",
+    "fr": "Si le groupe est trop permissif, les empreintes de mots de passe peuvent fuir vers des comptes non-root et être cassées hors-ligne. Remettre le groupe à **root** ne présente quasiment **aucun risque opérationnel**, `passwd`, `login`, PAM et `sudo` accèdent à `/etc/shadow` en tant que root. Précautions : conservez le mode strict associé (`0640`/`0000`) et, sur Debian/Ubuntu, ne cassez pas la convention du groupe `shadow` utilisée par certains outils ; vérifiez avec `getent group shadow` avant toute modification."
   }
 }

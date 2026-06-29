@@ -60,8 +60,8 @@
     "fr": "Fixe `net.ipv6.conf.all.forwarding` à `0` afin que le noyau ne transfère pas les paquets IPv6 entre interfaces (l'hôte n'est pas un routeur)."
   },
   "check_note": {
-    "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.all.forwarding`) and asserts it is `0`. The live value is authoritative: forwarding is frequently toggled at runtime by containers, VPNs or `NetworkManager`, so a value declared in `/etc/sysctl.d/*` may be **overridden** in the running kernel — only reading the live parameter catches that.",
-    "fr": "Pavois lit la valeur **effective** au runtime via la ressource `kernel_parameter` (équivalent à `sysctl net.ipv6.conf.all.forwarding`) et vérifie qu'elle vaut `0`. La valeur active fait foi : le transfert est souvent basculé au runtime par des conteneurs, des VPN ou `NetworkManager` ; une valeur déclarée dans `/etc/sysctl.d/*` peut donc être **écrasée** dans le noyau en cours d'exécution — seule la lecture du paramètre actif le détecte."
+    "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.all.forwarding`) and asserts it is `0`. The live value is authoritative: forwarding is frequently toggled at runtime by containers, VPNs or `NetworkManager`, so a value declared in `/etc/sysctl.d/*` may be **overridden** in the running kernel, only reading the live parameter catches that.",
+    "fr": "Pavois lit la valeur **effective** au runtime via la ressource `kernel_parameter` (équivalent à `sysctl net.ipv6.conf.all.forwarding`) et vérifie qu'elle vaut `0`. La valeur active fait foi : le transfert est souvent basculé au runtime par des conteneurs, des VPN ou `NetworkManager` ; une valeur déclarée dans `/etc/sysctl.d/*` peut donc être **écrasée** dans le noyau en cours d'exécution, seule la lecture du paramètre actif le détecte."
   },
   "verify": {
     "en": "Run `sysctl net.ipv6.conf.all.forwarding` (or `cat /proc/sys/net/ipv6/conf/all/forwarding`). Expected output:\n\n- `net.ipv6.conf.all.forwarding = 0`",
@@ -76,7 +76,7 @@
     "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour fixer `net.ipv6.conf.all.forwarding` à `0`, le rend persistant via un drop-in `/etc/sysctl.d/` géré par Pavois et l'applique à chaud (sans redémarrage). Appliquez-le avec `pavois harden apply`."
   },
   "impact": {
-    "en": "Disabling forwarding **breaks any role that routes IPv6 traffic**: routers, gateways, NAT boxes, VPN concentrators, and container/Kubernetes hosts that route pod traffic over IPv6. Before applying, confirm the system is a plain end host or server. Enforcing this on a forwarding node will cut off downstream IPv6 connectivity — exclude such hosts from the rule. No risk on non-routing systems.",
-    "fr": "Désactiver le transfert **casse tout rôle qui route du trafic IPv6** : routeurs, passerelles, boîtiers NAT, concentrateurs VPN et hôtes conteneurs/Kubernetes qui routent le trafic des pods en IPv6. Avant d'appliquer, confirmez que le système est un simple hôte terminal ou serveur. Appliquer cette règle sur un nœud de transfert coupera la connectivité IPv6 en aval — excluez ces hôtes de la règle. Aucun risque sur les systèmes non routeurs."
+    "en": "Disabling forwarding **breaks any role that routes IPv6 traffic**: routers, gateways, NAT boxes, VPN concentrators, and container/Kubernetes hosts that route pod traffic over IPv6. Before applying, confirm the system is a plain end host or server. Enforcing this on a forwarding node will cut off downstream IPv6 connectivity, exclude such hosts from the rule. No risk on non-routing systems.",
+    "fr": "Désactiver le transfert **casse tout rôle qui route du trafic IPv6** : routeurs, passerelles, boîtiers NAT, concentrateurs VPN et hôtes conteneurs/Kubernetes qui routent le trafic des pods en IPv6. Avant d'appliquer, confirmez que le système est un simple hôte terminal ou serveur. Appliquer cette règle sur un nœud de transfert coupera la connectivité IPv6 en aval, excluez ces hôtes de la règle. Aucun risque sur les systèmes non routeurs."
   }
 }

@@ -60,8 +60,8 @@
   },
   "needs_translation": [],
   "rationale": {
-    "en": "`/etc/cron.d` holds drop-in crontab fragments that the cron daemon parses and runs, typically **as root and on arbitrary schedules**. If the directory is writable by group or other, an attacker can drop a crontab fragment that executes any command as root — immediate compromise. If it is readable by group/other, the scheduled jobs can be enumerated for reconnaissance. Limiting access to the owner blocks both.",
-    "fr": "`/etc/cron.d` contient des fragments de crontab déposés que le démon cron analyse et exécute, généralement **en tant que root et selon des planifications arbitraires**. Si le répertoire est modifiable par le groupe ou les autres, un attaquant peut y déposer un fragment de crontab exécutant n'importe quelle commande en tant que root — compromission immédiate. S'il est lisible par le groupe/les autres, les tâches planifiées peuvent être énumérées à des fins de reconnaissance. Restreindre l'accès au propriétaire bloque les deux."
+    "en": "`/etc/cron.d` holds drop-in crontab fragments that the cron daemon parses and runs, typically **as root and on arbitrary schedules**. If the directory is writable by group or other, an attacker can drop a crontab fragment that executes any command as root, immediate compromise. If it is readable by group/other, the scheduled jobs can be enumerated for reconnaissance. Limiting access to the owner blocks both.",
+    "fr": "`/etc/cron.d` contient des fragments de crontab déposés que le démon cron analyse et exécute, généralement **en tant que root et selon des planifications arbitraires**. Si le répertoire est modifiable par le groupe ou les autres, un attaquant peut y déposer un fragment de crontab exécutant n'importe quelle commande en tant que root, compromission immédiate. S'il est lisible par le groupe/les autres, les tâches planifiées peuvent être énumérées à des fins de reconnaissance. Restreindre l'accès au propriétaire bloque les deux."
   },
   "summary": {
     "en": "Ensures the `/etc/cron.d` directory is owned by root and is **not readable, writable or executable by group or other**, with no setuid/setgid/sticky bits, so only root can install cron drop-in fragments.",
@@ -72,8 +72,8 @@
     "fr": "Pavois lit l'**inode réel** via `file('/etc/cron.d')` et vérifie l'absence d'accès groupe/autres et de bits spéciaux, avec une garde `only_if` qui l'ignore en cas d'absence. Inspecter les permissions effectives sur le disque révèle les dérives dues aux mises à jour de paquets, à un `chmod` manuel ou à des restaurations de sauvegarde, ce qu'une hypothèse sur un modèle de configuration ne détecterait pas."
   },
   "verify": {
-    "en": "Run `stat -c '%a %U %G' /etc/cron.d`. Expected: mode `700` (or stricter), owner `root`, group `root` — no read/write/execute for `group` or `other`, and no setuid/setgid/sticky bit.",
-    "fr": "Exécutez `stat -c '%a %U %G' /etc/cron.d`. Attendu : mode `700` (ou plus strict), propriétaire `root`, groupe `root` — aucune lecture/écriture/exécution pour `group` ni `other`, et aucun bit setuid/setgid/sticky."
+    "en": "Run `stat -c '%a %U %G' /etc/cron.d`. Expected: mode `700` (or stricter), owner `root`, group `root`, no read/write/execute for `group` or `other`, and no setuid/setgid/sticky bit.",
+    "fr": "Exécutez `stat -c '%a %U %G' /etc/cron.d`. Attendu : mode `700` (ou plus strict), propriétaire `root`, groupe `root`, aucune lecture/écriture/exécution pour `group` ni `other`, et aucun bit setuid/setgid/sticky."
   },
   "logs": {
     "en": "No service log applies; inspect with `stat /etc/cron.d` or `ls -ld /etc/cron.d`. To detect tampering, add an auditd watch (`auditctl -w /etc/cron.d -p wa -k cron`) and grep `/var/log/audit/audit.log` for `key=\"cron\"`.",
@@ -84,7 +84,7 @@
     "fr": "Aucune remédiation automatique n'est définie ; appliquez-la **manuellement** : `chown root:root /etc/cron.d && chmod 700 /etc/cron.d`. Relancez le scan pour confirmer que la règle passe."
   },
   "impact": {
-    "en": "**Risk if left misconfigured:** a group/other-writable `cron.d` lets any local user schedule root commands — a top-tier privilege-escalation and persistence vector; readable, it leaks the job schedule. **Precautions:** tightening to `root:root 700` is safe for the cron daemon (it runs as root). Before applying, confirm no monitoring agent or config-management tool legitimately writes here as a non-root user; if one does, fix that integration rather than loosening the directory.",
-    "fr": "**Risque si laissé mal configuré :** un `cron.d` modifiable par le groupe/les autres permet à tout utilisateur local de planifier des commandes root — un vecteur d'élévation de privilèges et de persistance de premier ordre ; lisible, il divulgue la planification. **Précautions :** durcir à `root:root 700` est sans danger pour le démon cron (qui s'exécute en tant que root). Avant d'appliquer, vérifiez qu'aucun agent de supervision ou outil de gestion de configuration n'écrit ici en tant qu'utilisateur non-root ; le cas échéant, corrigez cette intégration plutôt que d'assouplir le répertoire."
+    "en": "**Risk if left misconfigured:** a group/other-writable `cron.d` lets any local user schedule root commands, a top-tier privilege-escalation and persistence vector; readable, it leaks the job schedule. **Precautions:** tightening to `root:root 700` is safe for the cron daemon (it runs as root). Before applying, confirm no monitoring agent or config-management tool legitimately writes here as a non-root user; if one does, fix that integration rather than loosening the directory.",
+    "fr": "**Risque si laissé mal configuré :** un `cron.d` modifiable par le groupe/les autres permet à tout utilisateur local de planifier des commandes root, un vecteur d'élévation de privilèges et de persistance de premier ordre ; lisible, il divulgue la planification. **Précautions :** durcir à `root:root 700` est sans danger pour le démon cron (qui s'exécute en tant que root). Avant d'appliquer, vérifiez qu'aucun agent de supervision ou outil de gestion de configuration n'écrit ici en tant qu'utilisateur non-root ; le cas échéant, corrigez cette intégration plutôt que d'assouplir le répertoire."
   }
 }

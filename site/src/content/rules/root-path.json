@@ -40,7 +40,7 @@
   ],
   "remediation": {
     "command": "sudo -l 2>/dev/null | grep -i secure_path; grep -rE 'PATH=' /root/.bashrc /root/.profile /etc/profile 2>/dev/null\n# ensure no empty entry, no '.', no world-writable dir; fix in the relevant file\n",
-    "reason": "fixing root's PATH may be in a shell profile or sudoers secure_path — review the source",
+    "reason": "fixing root's PATH may be in a shell profile or sudoers secure_path, review the source",
     "resource": "manual"
   },
   "title": {
@@ -49,20 +49,20 @@
   },
   "needs_translation": [],
   "rationale": {
-    "en": "root's `PATH` must contain only secure directories. An empty entry, a relative `.` entry, or a directory writable by `group`/`other` lets an unprivileged user plant a malicious binary that root then runs with full privileges — a classic **PATH-hijacking privilege escalation**. Removing empty/`.` entries and tightening directory permissions keeps every command root executes coming from a trusted location.",
-    "fr": "Le `PATH` de root ne doit contenir que des répertoires sûrs. Une entrée vide, une entrée relative `.` ou un répertoire accessible en écriture par `group`/`other` permet à un utilisateur non privilégié de déposer un binaire malveillant que root exécutera ensuite avec tous les privilèges — une **élévation de privilèges par détournement du PATH** classique. Supprimer les entrées vides/`.` et restreindre les permissions des répertoires garantit que chaque commande exécutée par root provient d'un emplacement de confiance."
+    "en": "root's `PATH` must contain only secure directories. An empty entry, a relative `.` entry, or a directory writable by `group`/`other` lets an unprivileged user plant a malicious binary that root then runs with full privileges, a classic **PATH-hijacking privilege escalation**. Removing empty/`.` entries and tightening directory permissions keeps every command root executes coming from a trusted location.",
+    "fr": "Le `PATH` de root ne doit contenir que des répertoires sûrs. Une entrée vide, une entrée relative `.` ou un répertoire accessible en écriture par `group`/`other` permet à un utilisateur non privilégié de déposer un binaire malveillant que root exécutera ensuite avec tous les privilèges, une **élévation de privilèges par détournement du PATH** classique. Supprimer les entrées vides/`.` et restreindre les permissions des répertoires garantit que chaque commande exécutée par root provient d'un emplacement de confiance."
   },
   "summary": {
     "en": "Ensures root's `PATH` has no empty or `.` entries and that every directory in it is not writable by **group** or **other**.",
     "fr": "Garantit que le `PATH` de root ne contient ni entrée vide ni `.` et qu'aucun de ses répertoires n'est accessible en écriture par **group** ou **other**."
   },
   "check_note": {
-    "en": "Pavois reads the **effective** `PATH` from the environment (`os_env('PATH')`) and then `stat`s each directory, so it audits the value root actually resolves commands against — not a static line in `/etc/profile` or `/etc/environment`. A file-based scan would miss a `PATH` mutated by a shell rc, a drop-in, or a profile snippet; the resolved environment is the only source of truth.",
-    "fr": "Pavois lit le `PATH` **effectif** depuis l'environnement (`os_env('PATH')`) puis fait un `stat` sur chaque répertoire, auditant ainsi la valeur que root utilise réellement pour résoudre les commandes — et non une ligne statique de `/etc/profile` ou `/etc/environment`. Un scan basé sur les fichiers raterait un `PATH` modifié par un fichier rc shell, un drop-in ou un extrait de profil ; l'environnement résolu est la seule source de vérité."
+    "en": "Pavois reads the **effective** `PATH` from the environment (`os_env('PATH')`) and then `stat`s each directory, so it audits the value root actually resolves commands against, not a static line in `/etc/profile` or `/etc/environment`. A file-based scan would miss a `PATH` mutated by a shell rc, a drop-in, or a profile snippet; the resolved environment is the only source of truth.",
+    "fr": "Pavois lit le `PATH` **effectif** depuis l'environnement (`os_env('PATH')`) puis fait un `stat` sur chaque répertoire, auditant ainsi la valeur que root utilise réellement pour résoudre les commandes, et non une ligne statique de `/etc/profile` ou `/etc/environment`. Un scan basé sur les fichiers raterait un `PATH` modifié par un fichier rc shell, un drop-in ou un extrait de profil ; l'environnement résolu est la seule source de vérité."
   },
   "verify": {
-    "en": "As root, run `echo \"$PATH\"` — it must contain no empty segment (no `::`, no leading/trailing `:`) and no `.`. Then check each entry's permissions, e.g. `ls -ld /usr/local/sbin /usr/local/bin /usr/sbin /usr/bin`: none should show write bits for group or other (no `w` in positions 6 or 9).",
-    "fr": "En tant que root, exécutez `echo \"$PATH\"` — il ne doit contenir aucun segment vide (pas de `::`, pas de `:` en début/fin) ni `.`. Vérifiez ensuite les permissions de chaque entrée, par ex. `ls -ld /usr/local/sbin /usr/local/bin /usr/sbin /usr/bin` : aucun ne doit montrer de bit d'écriture pour group ou other (pas de `w` en position 6 ou 9)."
+    "en": "As root, run `echo \"$PATH\"`, it must contain no empty segment (no `::`, no leading/trailing `:`) and no `.`. Then check each entry's permissions, e.g. `ls -ld /usr/local/sbin /usr/local/bin /usr/sbin /usr/bin`: none should show write bits for group or other (no `w` in positions 6 or 9).",
+    "fr": "En tant que root, exécutez `echo \"$PATH\"`, il ne doit contenir aucun segment vide (pas de `::`, pas de `:` en début/fin) ni `.`. Vérifiez ensuite les permissions de chaque entrée, par ex. `ls -ld /usr/local/sbin /usr/local/bin /usr/sbin /usr/bin` : aucun ne doit montrer de bit d'écriture pour group ou other (pas de `w` en position 6 ou 9)."
   },
   "logs": {
     "en": "There is no dedicated log for this rule. Inspect the live state with `echo \"$PATH\"` and `ls -ld <each directory>`. If auditd watches the affected directories, file-creation or permission-change events appear in `/var/log/audit/audit.log`.",
@@ -73,7 +73,7 @@
     "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit donc être appliquée manuellement. Supprimez toute entrée vide ou `.` du `PATH` de root (modifiez le profil shell / `/etc/environment` qui le définit), et restreignez tout répertoire trop permissif avec par ex. `chmod g-w,o-w <rép>` (ou `chown root <rép>` s'il appartient à un utilisateur non-root). Relancez `pavois harden verify` pour confirmer."
   },
   "impact": {
-    "en": "Removing a `.` or empty entry from `PATH` can break scripts that implicitly rely on running commands from the current directory — audit such scripts and call binaries by absolute path instead. Tightening directory permissions with `chmod g-w`/`o-w` could disrupt tooling that legitimately writes there; confirm the directory is a system bin path before changing it. None of these changes risk a lockout, but test in a shell before persisting them to root's profile.",
-    "fr": "Supprimer une entrée `.` ou vide du `PATH` peut casser des scripts qui s'appuient implicitement sur l'exécution de commandes depuis le répertoire courant — auditez ces scripts et appelez plutôt les binaires par chemin absolu. Restreindre les permissions des répertoires avec `chmod g-w`/`o-w` pourrait perturber un outillage qui y écrit légitimement ; confirmez que le répertoire est un chemin bin système avant de le modifier. Aucun de ces changements ne risque un verrouillage, mais testez dans un shell avant de les rendre persistants dans le profil de root."
+    "en": "Removing a `.` or empty entry from `PATH` can break scripts that implicitly rely on running commands from the current directory, audit such scripts and call binaries by absolute path instead. Tightening directory permissions with `chmod g-w`/`o-w` could disrupt tooling that legitimately writes there; confirm the directory is a system bin path before changing it. None of these changes risk a lockout, but test in a shell before persisting them to root's profile.",
+    "fr": "Supprimer une entrée `.` ou vide du `PATH` peut casser des scripts qui s'appuient implicitement sur l'exécution de commandes depuis le répertoire courant, auditez ces scripts et appelez plutôt les binaires par chemin absolu. Restreindre les permissions des répertoires avec `chmod g-w`/`o-w` pourrait perturber un outillage qui y écrit légitimement ; confirmez que le répertoire est un chemin bin système avant de le modifier. Aucun de ces changements ne risque un verrouillage, mais testez dans un shell avant de les rendre persistants dans le profil de root."
   }
 }

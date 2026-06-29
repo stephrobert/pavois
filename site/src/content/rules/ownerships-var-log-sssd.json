@@ -28,7 +28,7 @@
   ],
   "remediation": {
     "command": "# Set root ownership recursively under the sssd log dir (only if it exists):\n[ -d /var/log/sssd ] && find /var/log/sssd -print0 | xargs -0 -r chown root: || echo 'no /var/log/sssd'\n",
-    "reason": "recursive ownership fix under /var/log/sssd — verify the service is present and review",
+    "reason": "recursive ownership fix under /var/log/sssd, verify the service is present and review",
     "resource": "manual"
   },
   "title": {
@@ -45,12 +45,12 @@
     "fr": "S'assurer que chaque fichier sous `/var/log/sssd` **appartient à `sssd` ou `root`** et à aucun autre utilisateur."
   },
   "check_note": {
-    "en": "Pavois runs `find -P /var/log/sssd -type f ! -user sssd ! -user root` (only if the directory exists) and expects **no output** — any file owned by something other than `sssd` or `root` is a finding. It checks the real inodes' effective ownership, catching files re-owned at runtime that a static config check would miss.",
-    "fr": "Pavois exécute `find -P /var/log/sssd -type f ! -user sssd ! -user root` (uniquement si le répertoire existe) et attend **aucune sortie** — tout fichier appartenant à autre chose que `sssd` ou `root` constitue une non-conformité. Il vérifie l'appartenance effective des inodes réels, détectant les fichiers ré-attribués à l'exécution qu'un contrôle de configuration statique manquerait."
+    "en": "Pavois runs `find -P /var/log/sssd -type f ! -user sssd ! -user root` (only if the directory exists) and expects **no output**, any file owned by something other than `sssd` or `root` is a finding. It checks the real inodes' effective ownership, catching files re-owned at runtime that a static config check would miss.",
+    "fr": "Pavois exécute `find -P /var/log/sssd -type f ! -user sssd ! -user root` (uniquement si le répertoire existe) et attend **aucune sortie**, tout fichier appartenant à autre chose que `sssd` ou `root` constitue une non-conformité. Il vérifie l'appartenance effective des inodes réels, détectant les fichiers ré-attribués à l'exécution qu'un contrôle de configuration statique manquerait."
   },
   "verify": {
-    "en": "Run `find -P /var/log/sssd -type f ! -user sssd ! -user root` — it should print **nothing**. Any printed line is a wrongly-owned SSSD log file to fix.",
-    "fr": "Exécutez `find -P /var/log/sssd -type f ! -user sssd ! -user root` — il ne doit **rien** afficher. Toute ligne affichée correspond à un fichier de journal SSSD mal attribué à corriger."
+    "en": "Run `find -P /var/log/sssd -type f ! -user sssd ! -user root`, it should print **nothing**. Any printed line is a wrongly-owned SSSD log file to fix.",
+    "fr": "Exécutez `find -P /var/log/sssd -type f ! -user sssd ! -user root`, il ne doit **rien** afficher. Toute ligne affichée correspond à un fichier de journal SSSD mal attribué à corriger."
   },
   "logs": {
     "en": "List offending files with `find -P /var/log/sssd -type f ! -user sssd ! -user root -printf '%u %p\\n'`. SSSD's own logs live here (e.g. `sssd_*.log`); the daemon's service events can be reviewed with `journalctl -u sssd`.",
@@ -61,7 +61,7 @@
     "fr": "Il n'existe **aucun plan de durcissement automatisé** pour cette règle. Appliquez-la manuellement après examen : ré-attribuez les fautifs à root ou sssd, par ex. `find -P /var/log/sssd -type f ! -user sssd ! -user root -exec chown root {} +`. (Ne concerne que les systèmes où SSSD est installé.)"
   },
   "impact": {
-    "en": "**What can break:** very little — SSSD writes its logs as its own service user and is unaffected by fixing stray owners. **Precautions:** prefer re-owning to `sssd` (the daemon's user) rather than `root` so SSSD can keep appending; review each file first, as an unexpected owner may signal a debugging session left running with elevated logging. Where SSSD is not installed the directory is absent and the rule is skipped (`only_if`).",
-    "fr": "**Ce qui peut casser :** très peu — SSSD écrit ses journaux sous son propre utilisateur de service et n'est pas affecté par la correction des propriétaires égarés. **Précautions :** préférez ré-attribuer à `sssd` (l'utilisateur du démon) plutôt qu'à `root` pour que SSSD puisse continuer à écrire ; examinez d'abord chaque fichier, car un propriétaire inattendu peut signaler une session de débogage laissée active avec journalisation élevée. Là où SSSD n'est pas installé, le répertoire est absent et la règle est ignorée (`only_if`)."
+    "en": "**What can break:** very little, SSSD writes its logs as its own service user and is unaffected by fixing stray owners. **Precautions:** prefer re-owning to `sssd` (the daemon's user) rather than `root` so SSSD can keep appending; review each file first, as an unexpected owner may signal a debugging session left running with elevated logging. Where SSSD is not installed the directory is absent and the rule is skipped (`only_if`).",
+    "fr": "**Ce qui peut casser :** très peu, SSSD écrit ses journaux sous son propre utilisateur de service et n'est pas affecté par la correction des propriétaires égarés. **Précautions :** préférez ré-attribuer à `sssd` (l'utilisateur du démon) plutôt qu'à `root` pour que SSSD puisse continuer à écrire ; examinez d'abord chaque fichier, car un propriétaire inattendu peut signaler une session de débogage laissée active avec journalisation élevée. Là où SSSD n'est pas installé, le répertoire est absent et la règle est ignorée (`only_if`)."
   }
 }

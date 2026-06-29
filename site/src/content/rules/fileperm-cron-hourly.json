@@ -59,8 +59,8 @@
   },
   "needs_translation": [],
   "rationale": {
-    "en": "`/etc/cron.hourly` holds scripts the cron daemon runs **every hour as root**. If the directory is writable by group or other, an unauthorized user can plant or modify a script that then runs with root privileges — full compromise, repeated hourly. If it is readable by group/other, attackers can enumerate the jobs. Restricting it to the owner prevents both unauthorized changes and reconnaissance.",
-    "fr": "`/etc/cron.hourly` contient les scripts que le démon cron exécute **toutes les heures en tant que root**. Si le répertoire est modifiable par le groupe ou les autres, un utilisateur non autorisé peut y déposer ou y modifier un script qui s'exécutera alors avec les privilèges root — compromission totale, répétée chaque heure. S'il est lisible par le groupe/les autres, un attaquant peut énumérer les tâches. Le restreindre au propriétaire empêche à la fois les modifications non autorisées et la reconnaissance."
+    "en": "`/etc/cron.hourly` holds scripts the cron daemon runs **every hour as root**. If the directory is writable by group or other, an unauthorized user can plant or modify a script that then runs with root privileges, full compromise, repeated hourly. If it is readable by group/other, attackers can enumerate the jobs. Restricting it to the owner prevents both unauthorized changes and reconnaissance.",
+    "fr": "`/etc/cron.hourly` contient les scripts que le démon cron exécute **toutes les heures en tant que root**. Si le répertoire est modifiable par le groupe ou les autres, un utilisateur non autorisé peut y déposer ou y modifier un script qui s'exécutera alors avec les privilèges root, compromission totale, répétée chaque heure. S'il est lisible par le groupe/les autres, un attaquant peut énumérer les tâches. Le restreindre au propriétaire empêche à la fois les modifications non autorisées et la reconnaissance."
   },
   "summary": {
     "en": "Ensures the `/etc/cron.hourly` directory is owned by root and is **not readable, writable or executable by group or other**, with no setuid/setgid/sticky bits, so only root can add or change hourly cron scripts.",
@@ -71,8 +71,8 @@
     "fr": "Pavois lit l'**inode réel** via `file('/etc/cron.hourly')` et vérifie l'absence d'accès groupe/autres et de bits spéciaux, avec une garde `only_if` qui l'ignore en cas d'absence. Inspecter les permissions effectives sur le disque détecte les dérives dues aux mises à jour de paquets, à un `chmod` manuel ou à des restaurations de sauvegarde, ce qu'une hypothèse sur un modèle de configuration manquerait."
   },
   "verify": {
-    "en": "Run `stat -c '%a %U %G' /etc/cron.hourly`. Expected: mode `700` (or stricter), owner `root`, group `root` — no read/write/execute for `group` or `other`, and no setuid/setgid/sticky bit.",
-    "fr": "Exécutez `stat -c '%a %U %G' /etc/cron.hourly`. Attendu : mode `700` (ou plus strict), propriétaire `root`, groupe `root` — aucune lecture/écriture/exécution pour `group` ni `other`, et aucun bit setuid/setgid/sticky."
+    "en": "Run `stat -c '%a %U %G' /etc/cron.hourly`. Expected: mode `700` (or stricter), owner `root`, group `root`, no read/write/execute for `group` or `other`, and no setuid/setgid/sticky bit.",
+    "fr": "Exécutez `stat -c '%a %U %G' /etc/cron.hourly`. Attendu : mode `700` (ou plus strict), propriétaire `root`, groupe `root`, aucune lecture/écriture/exécution pour `group` ni `other`, et aucun bit setuid/setgid/sticky."
   },
   "logs": {
     "en": "No service log applies; inspect with `stat /etc/cron.hourly` or `ls -ld /etc/cron.hourly`. To detect tampering, add an auditd watch (`auditctl -w /etc/cron.hourly -p wa -k cron`) and grep `/var/log/audit/audit.log` for `key=\"cron\"`.",
@@ -83,7 +83,7 @@
     "fr": "Aucune remédiation automatique n'est définie ; appliquez-la **manuellement** : `chown root:root /etc/cron.hourly && chmod 700 /etc/cron.hourly`. Relancez le scan pour confirmer que la règle passe."
   },
   "impact": {
-    "en": "**Risk if left misconfigured:** a group/other-writable `cron.hourly` is a root-code-execution and persistence vector that fires every hour; a readable one leaks the schedule. **Precautions:** restricting to `root:root 700` is safe — the cron daemon runs as root. Confirm no non-root tooling legitimately writes here before tightening, and keep ownership at `root:root`.",
-    "fr": "**Risque si laissé mal configuré :** un `cron.hourly` modifiable par le groupe/les autres est un vecteur d'exécution de code root et de persistance qui se déclenche chaque heure ; lisible, il divulgue la planification. **Précautions :** restreindre à `root:root 700` est sans danger — le démon cron s'exécute en tant que root. Vérifiez qu'aucun outillage non-root n'y écrit légitimement avant de durcir, et gardez le propriétaire à `root:root`."
+    "en": "**Risk if left misconfigured:** a group/other-writable `cron.hourly` is a root-code-execution and persistence vector that fires every hour; a readable one leaks the schedule. **Precautions:** restricting to `root:root 700` is safe, the cron daemon runs as root. Confirm no non-root tooling legitimately writes here before tightening, and keep ownership at `root:root`.",
+    "fr": "**Risque si laissé mal configuré :** un `cron.hourly` modifiable par le groupe/les autres est un vecteur d'exécution de code root et de persistance qui se déclenche chaque heure ; lisible, il divulgue la planification. **Précautions :** restreindre à `root:root 700` est sans danger, le démon cron s'exécute en tant que root. Vérifiez qu'aucun outillage non-root n'y écrit légitimement avant de durcir, et gardez le propriétaire à `root:root`."
   }
 }

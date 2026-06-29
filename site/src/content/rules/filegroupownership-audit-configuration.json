@@ -50,8 +50,8 @@
   },
   "needs_translation": [],
   "rationale": {
-    "en": "The `/etc/audit` directory holds `auditd.conf` and the rule files (`audit.rules`, `rules.d/*.rules`) that decide which events are recorded. Without restricting who can change them, unauthorized personnel could disable the auditing of critical events, or misconfigure the rules so the log fills up and degrades performance — making it harder to correlate and investigate an incident. Group ownership by **root** (gid `0`) keeps control of the audit policy with privileged users only.",
-    "fr": "Le répertoire `/etc/audit` contient `auditd.conf` et les fichiers de règles (`audit.rules`, `rules.d/*.rules`) qui déterminent quels événements sont enregistrés. Sans restriction sur qui peut les modifier, du personnel non autorisé pourrait désactiver l'audit d'événements critiques, ou mal configurer les règles au point de saturer le journal et de dégrader les performances — rendant plus difficile la corrélation et l'investigation d'un incident. La propriété par le groupe **root** (gid `0`) réserve le contrôle de la politique d'audit aux seuls utilisateurs privilégiés."
+    "en": "The `/etc/audit` directory holds `auditd.conf` and the rule files (`audit.rules`, `rules.d/*.rules`) that decide which events are recorded. Without restricting who can change them, unauthorized personnel could disable the auditing of critical events, or misconfigure the rules so the log fills up and degrades performance, making it harder to correlate and investigate an incident. Group ownership by **root** (gid `0`) keeps control of the audit policy with privileged users only.",
+    "fr": "Le répertoire `/etc/audit` contient `auditd.conf` et les fichiers de règles (`audit.rules`, `rules.d/*.rules`) qui déterminent quels événements sont enregistrés. Sans restriction sur qui peut les modifier, du personnel non autorisé pourrait désactiver l'audit d'événements critiques, ou mal configurer les règles au point de saturer le journal et de dégrader les performances, rendant plus difficile la corrélation et l'investigation d'un incident. La propriété par le groupe **root** (gid `0`) réserve le contrôle de la politique d'audit aux seuls utilisateurs privilégiés."
   },
   "summary": {
     "en": "Ensures the audit configuration directory `/etc/audit` is owned by group **root** (gid `0`).",
@@ -66,15 +66,15 @@
     "fr": "Exécutez `stat -c '%G %g' /etc/audit`. Sortie attendue : `root 0`. Vérifiez aussi les fichiers : `find /etc/audit -printf '%g %p\\n' | grep -v '^0 '` ne doit rien afficher."
   },
   "logs": {
-    "en": "Add an auditd watch — `auditctl -w /etc/audit -p wa -k auditconfig` — and changes to the directory or its rule files appear in `/var/log/audit/audit.log` (`grep 'key=\"auditconfig\"' /var/log/audit/audit.log`). Rule reloads are also reported by `journalctl -u auditd`.",
-    "fr": "Ajoutez une surveillance auditd — `auditctl -w /etc/audit -p wa -k auditconfig` — les modifications du répertoire ou de ses fichiers de règles apparaissent dans `/var/log/audit/audit.log` (`grep 'key=\"auditconfig\"' /var/log/audit/audit.log`). Les rechargements de règles sont aussi rapportés par `journalctl -u auditd`."
+    "en": "Add an auditd watch, `auditctl -w /etc/audit -p wa -k auditconfig`, and changes to the directory or its rule files appear in `/var/log/audit/audit.log` (`grep 'key=\"auditconfig\"' /var/log/audit/audit.log`). Rule reloads are also reported by `journalctl -u auditd`.",
+    "fr": "Ajoutez une surveillance auditd, `auditctl -w /etc/audit -p wa -k auditconfig`, les modifications du répertoire ou de ses fichiers de règles apparaissent dans `/var/log/audit/audit.log` (`grep 'key=\"auditconfig\"' /var/log/audit/audit.log`). Les rechargements de règles sont aussi rapportés par `journalctl -u auditd`."
   },
   "remediation_note": {
     "en": "No automated remediation is wired for this rule, so it must be applied **manually**: `chgrp -R 0 /etc/audit`. Re-run `pavois harden verify` afterwards.",
     "fr": "Aucune remédiation automatique n'est câblée pour cette règle ; elle doit être appliquée **manuellement** : `chgrp -R 0 /etc/audit`. Relancez ensuite `pavois harden verify`."
   },
   "impact": {
-    "en": "A non-root group on the audit config could let an attacker silently disable rules. Resetting the group to **root** is safe — `auditd` runs as root and reads these files at start-up. No service breaks. Precaution: keep the directory mode at `0750` and the rule files at `0640`; reload rules with `augenrules --load` (or `systemctl reload auditd`) after any legitimate change so the running policy matches the files.",
-    "fr": "Un groupe non-root sur la configuration d'audit pourrait permettre à un attaquant de désactiver discrètement des règles. Remettre le groupe à **root** est sans danger — `auditd` s'exécute en root et lit ces fichiers au démarrage. Aucun service n'est cassé. Précaution : conservez le mode `0750` du répertoire et `0640` des fichiers de règles ; rechargez les règles avec `augenrules --load` (ou `systemctl reload auditd`) après toute modification légitime pour que la politique active corresponde aux fichiers."
+    "en": "A non-root group on the audit config could let an attacker silently disable rules. Resetting the group to **root** is safe, `auditd` runs as root and reads these files at start-up. No service breaks. Precaution: keep the directory mode at `0750` and the rule files at `0640`; reload rules with `augenrules --load` (or `systemctl reload auditd`) after any legitimate change so the running policy matches the files.",
+    "fr": "Un groupe non-root sur la configuration d'audit pourrait permettre à un attaquant de désactiver discrètement des règles. Remettre le groupe à **root** est sans danger, `auditd` s'exécute en root et lit ces fichiers au démarrage. Aucun service n'est cassé. Précaution : conservez le mode `0750` du répertoire et `0640` des fichiers de règles ; rechargez les règles avec `augenrules --load` (ou `systemctl reload auditd`) après toute modification légitime pour que la politique active corresponde aux fichiers."
   }
 }

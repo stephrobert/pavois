@@ -55,8 +55,8 @@
     "fr": "Monte `/tmp` avec l'option **`nosuid`** afin que le noyau ignore les bits set-UID/set-GID des binaires de ce répertoire."
   },
   "check_note": {
-    "en": "Pavois inspects the **effective** mount with `mount('/tmp')` and asserts that its resolved options include `nosuid`. It reads the live kernel mount table — the options actually enforced — instead of `/etc/fstab`, so it catches a partition remounted without the flag, an override by a `systemd` mount unit, or an fstab entry that never applied, which a file-based scanner would wrongly pass.",
-    "fr": "Pavois inspecte le montage **effectif** via `mount('/tmp')` et vérifie que ses options résolues incluent `nosuid`. Il lit la table de montage active du noyau — les options réellement appliquées — au lieu de `/etc/fstab` ; il détecte donc une partition remontée sans le drapeau, un écrasement par une unité `systemd`, ou une entrée fstab jamais appliquée, ce qu'un scanner basé sur les fichiers validerait à tort."
+    "en": "Pavois inspects the **effective** mount with `mount('/tmp')` and asserts that its resolved options include `nosuid`. It reads the live kernel mount table, the options actually enforced, instead of `/etc/fstab`, so it catches a partition remounted without the flag, an override by a `systemd` mount unit, or an fstab entry that never applied, which a file-based scanner would wrongly pass.",
+    "fr": "Pavois inspecte le montage **effectif** via `mount('/tmp')` et vérifie que ses options résolues incluent `nosuid`. Il lit la table de montage active du noyau, les options réellement appliquées, au lieu de `/etc/fstab` ; il détecte donc une partition remontée sans le drapeau, un écrasement par une unité `systemd`, ou une entrée fstab jamais appliquée, ce qu'un scanner basé sur les fichiers validerait à tort."
   },
   "verify": {
     "en": "Run `findmnt /tmp` (or `findmnt -no OPTIONS /tmp`) and confirm `nosuid` is in the option list. Expected output contains `nosuid`, e.g. `/tmp ... rw,nosuid,nodev,noexec,relatime`.",
@@ -67,11 +67,11 @@
     "fr": "L'état du montage s'interroge en direct avec `findmnt /tmp` ou `cat /proc/mounts`, pas depuis un log. Les événements de démarrage et de remontage apparaissent via `journalctl -b | grep -i tmp` ou `journalctl -u tmp.mount`."
   },
   "remediation_note": {
-    "en": "No automated harden plan ships for this rule yet, so it must be applied **manually**: add `nosuid` to the `/tmp` entry's options in `/etc/fstab` (or to the relevant `systemd` mount unit), then `mount -o remount /tmp` — or reboot — and re-scan to confirm.",
-    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle ; elle doit donc être appliquée **manuellement** : ajoutez `nosuid` aux options de l'entrée `/tmp` dans `/etc/fstab` (ou à l'unité de montage `systemd` concernée), puis `mount -o remount /tmp` — ou redémarrez — et relancez le scan pour confirmer."
+    "en": "No automated harden plan ships for this rule yet, so it must be applied **manually**: add `nosuid` to the `/tmp` entry's options in `/etc/fstab` (or to the relevant `systemd` mount unit), then `mount -o remount /tmp`, or reboot, and re-scan to confirm.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle ; elle doit donc être appliquée **manuellement** : ajoutez `nosuid` aux options de l'entrée `/tmp` dans `/etc/fstab` (ou à l'unité de montage `systemd` concernée), puis `mount -o remount /tmp`, ou redémarrez, et relancez le scan pour confirmer."
   },
   "impact": {
-    "en": "Functional impact is low: legitimate workloads do not place SUID/SGID binaries in `/tmp`. **Precautions:** confirm `/tmp` is a dedicated mount before applying; apply with `mount -o remount /tmp`. The risk is negligible compared with `noexec`, since only the privilege bits are stripped — normal (non-SUID) programs are unaffected.",
-    "fr": "L'impact fonctionnel est faible : les charges légitimes ne placent pas de binaires SUID/SGID dans `/tmp`. **Précautions :** confirmez que `/tmp` est un montage dédié avant d'appliquer ; appliquez avec `mount -o remount /tmp`. Le risque est négligeable face à `noexec`, car seuls les bits de privilège sont neutralisés — les programmes normaux (non SUID) ne sont pas affectés."
+    "en": "Functional impact is low: legitimate workloads do not place SUID/SGID binaries in `/tmp`. **Precautions:** confirm `/tmp` is a dedicated mount before applying; apply with `mount -o remount /tmp`. The risk is negligible compared with `noexec`, since only the privilege bits are stripped, normal (non-SUID) programs are unaffected.",
+    "fr": "L'impact fonctionnel est faible : les charges légitimes ne placent pas de binaires SUID/SGID dans `/tmp`. **Précautions :** confirmez que `/tmp` est un montage dédié avant d'appliquer ; appliquez avec `mount -o remount /tmp`. Le risque est négligeable face à `noexec`, car seuls les bits de privilège sont neutralisés, les programmes normaux (non SUID) ne sont pas affectés."
   }
 }
