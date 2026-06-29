@@ -11,6 +11,8 @@
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/stephrobert/pavois"><img src="https://img.shields.io/ossf-scorecard/github.com/stephrobert/pavois?label=OpenSSF%20Scorecard&style=for-the-badge&labelColor=2b2d42&color=dc2626" alt="OpenSSF Scorecard"></a>
   &nbsp;&nbsp;
   <a href="https://slsa.dev/spec/v1.0/levels"><img src="https://img.shields.io/badge/SLSA-build%20provenance-dc2626?style=for-the-badge&logo=slsa&logoColor=white&labelColor=2b2d42" alt="SLSA build provenance"></a>
+  &nbsp;&nbsp;
+  <a href="https://score.getplumber.io/github.com/stephrobert/pavois"><img src="https://score.getplumber.io/github.com/stephrobert/pavois.svg" alt="Plumber compliance score"></a>
 </p>
 
 <p align="center">
