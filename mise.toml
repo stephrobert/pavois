@@ -78,6 +78,14 @@ run = "uv run --with pyyaml python3 tools/gen_evidence_type.py"
 description = "Classify each control by reboot_survivable (yes/no/unknown) — the persistence axis of the qualified verdict; run after gen:evidence"
 run = "uv run --with pyyaml python3 tools/gen_reboot_survivable.py"
 
+[tasks."gen:example"]
+description = "Regenerate the site's sample scan + campaign reports from the anonymized fixtures (docs/examples/) — keeps them current and leak-free by construction"
+depends = ["build"]
+run = [
+  "{{config_root}}/go/pavois render {{config_root}}/docs/examples/after.json --machine 203.0.113.10 --transport ssh --timestamp '2026-06-28 10:00:00 UTC' --out {{config_root}}/site/public/sample-report.html",
+  "{{config_root}}/go/pavois diff {{config_root}}/docs/examples/before.json {{config_root}}/docs/examples/after.json --html {{config_root}}/site/public/sample-campaign.html --json {{config_root}}/site/public/sample-campaign.json",
+]
+
 [tasks."gen:domain-refs"]
 description = "Generate site/src/data/domain-refs.json (handbook + blog guides + man pages per domain)"
 run = "uv run --with pyyaml python3 tools/gen_domain_refs.py"

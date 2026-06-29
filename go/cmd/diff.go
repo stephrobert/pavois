@@ -273,9 +273,10 @@ func runDiff(cmd *cobra.Command, args []string) error {
 	}
 	for _, r := range rows {
 		mark := " "
-		if r.Kind == "good" {
+		switch r.Kind {
+		case "good":
 			mark = "+"
-		} else if r.Kind == "bad" {
+		case "bad":
 			mark = "!"
 		}
 		_, _ = fmt.Fprintf(out, " %s %-36s %4d\n", mark, r.Label, r.Count)
@@ -295,7 +296,7 @@ func runDiff(cmd *cobra.Command, args []string) error {
 			BeforePass: bPass, BeforeTotal: bTotal, AfterPass: aPass, AfterTotal: aTotal,
 			Rows: rows, Sections: sections,
 		}
-		if err := os.WriteFile(diffHTMLOut, []byte(render.Campaign(data)), 0o644); err != nil {
+		if err := os.WriteFile(diffHTMLOut, []byte(render.Campaign(data)), 0o600); err != nil {
 			return fmt.Errorf("write %s: %w", diffHTMLOut, err)
 		}
 		_, _ = fmt.Fprintf(out, "\ncampaign report -> %s\n", diffHTMLOut)
@@ -308,7 +309,7 @@ func runDiff(cmd *cobra.Command, args []string) error {
 			"controls":    buckets,
 		}
 		blob, _ := json.MarshalIndent(payload, "", "  ")
-		if err := os.WriteFile(diffJSONOut, blob, 0o644); err != nil {
+		if err := os.WriteFile(diffJSONOut, blob, 0o600); err != nil {
 			return fmt.Errorf("write %s: %w", diffJSONOut, err)
 		}
 		_, _ = fmt.Fprintf(out, "campaign delta -> %s\n", diffJSONOut)
