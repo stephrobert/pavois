@@ -9,6 +9,7 @@ are merged (union). Uses the norm-studio's draft_rule_page (mines reference + SS
 Wipes and regenerates site/src/content/rules/ (then the gold hand-authored fiches are re-applied
 separately). FR fields echo EN until a translation pass.
 """
+
 import json
 import sys
 from collections import defaultdict
@@ -38,6 +39,7 @@ def _is_enriched(path: Path) -> bool:
     except Exception:
         return False
 
+
 oses = sorted(p.stem for p in REF.glob("*.yml"))
 print(f"OSes: {', '.join(oses)}", flush=True)
 by_id: dict[str, list] = defaultdict(list)
@@ -47,10 +49,11 @@ for os_name in oses:
     for rid in rules:
         try:
             d = server._draft_rule_page(os_name, rid)
-        except Exception:
+        except (KeyError, TypeError, AttributeError, ValueError):
+            # a malformed/incomplete control entry: skip it, keep generating the rest of the batch
             continue
         if "error" not in d:
-            # the server draft drops/mis-defaults these; carry them straight from the authoritative OS file
+            # the server draft drops/mis-defaults these; carry them from the authoritative OS file
             d["evidence_type"] = rules[rid].get("evidence_type")
             d["reboot_survivable"] = rules[rid].get("reboot_survivable")
             d["severity"] = rules[rid].get("severity")
@@ -101,17 +104,28 @@ for rid, items in sorted(by_id.items()):
     if base.get("rationale"):
         entry["rationale"] = base["rationale"]
     out = OUT / f"{rid}.json"
-    if out.exists():                       # refresh technical fields, PRESERVE authored bilingual prose
+    if out.exists():  # refresh technical fields, PRESERVE authored bilingual prose
         try:
             ex = json.loads(out.read_text(encoding="utf-8"))
-            for k in ("title", "summary", "rationale", "check_note", "verify", "logs",
-                      "remediation_note", "impact", "needs_translation",
-                      "datePublished", "dateModified"):  # hand-maintained editorial dates
+            for k in (
+                "title",
+                "summary",
+                "rationale",
+                "check_note",
+                "verify",
+                "logs",
+                "remediation_note",
+                "impact",
+                "needs_translation",
+                "datePublished",
+                "dateModified",
+            ):  # hand-maintained editorial dates
                 if k in ex:
                     entry[k] = ex[k]
             if _is_enriched(out):
                 kept += 1
-        except Exception:
+        except (OSError, json.JSONDecodeError):
+            # no prior file or it isn't valid JSON: nothing to carry over, just (re)write below
             pass
     out.write_text(json.dumps(entry, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     gen += 1

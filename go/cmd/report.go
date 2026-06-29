@@ -51,15 +51,15 @@ func writeScorecard(w io.Writer, letter string, points, passed, total, qualified
 	if qualified > 0 {
 		info[4] = mut.Render(fmt.Sprintf("%d runtime-only pass(es) — persistence unproven", qualified))
 	}
-	fmt.Fprintln(w)
+	_, _ = fmt.Fprintln(w)
 	for i, line := range art {
 		extra := ""
 		if i < len(info) {
 			extra = "   " + info[i]
 		}
-		fmt.Fprintln(w, "  "+col.Render(line)+extra)
+		_, _ = fmt.Fprintln(w, "  "+col.Render(line)+extra)
 	}
-	fmt.Fprintln(w)
+	_, _ = fmt.Fprintln(w)
 }
 
 // onlySeverities filtre les findings sur un jeu de sévérités (terminal concis :

@@ -17,6 +17,7 @@ finer than the framework's nodes).
 Source: intuitem/ciso-assistant-community (frameworks fetched raw). pavois ships nothing
 from it; this is offline QA tooling only.
 """
+
 import re
 import subprocess
 import sys
@@ -34,21 +35,31 @@ def framework(norm: str) -> dict:
     f = FW_FILE[norm]
     if f not in _FW:
         raw = subprocess.run(
-            ["curl", "-sL", "-m", "40",
-             "https://raw.githubusercontent.com/intuitem/ciso-assistant-community/main/"
-             f"backend/library/libraries/{f}"], capture_output=True, text=True).stdout
+            [
+                "curl",
+                "-sL",
+                "-m",
+                "40",
+                "https://raw.githubusercontent.com/intuitem/ciso-assistant-community/main/"
+                f"backend/library/libraries/{f}",
+            ],
+            capture_output=True,
+            text=True,
+        ).stdout
         d = yaml.safe_load(raw) if raw else {}
         fw = (d.get("objects") or {}).get("framework") or {}
         nodes = fw.get("requirement_nodes") or []
-        _FW[f] = {"name": fw.get("name"),
-                  "refs": {str(n["ref_id"]).lower() for n in nodes if n.get("ref_id")}}
+        _FW[f] = {
+            "name": fw.get("name"),
+            "refs": {str(n["ref_id"]).lower() for n in nodes if n.get("ref_id")},
+        }
     return _FW[f]
 
 
 def normalize(norm: str, tag: str) -> str:
     if norm == "pci-dss":
         return re.sub(r"^req-?", "", tag.strip().lower())
-    return re.sub(r"[ (].*", "", tag).strip().lower()          # nist base control
+    return re.sub(r"[ (].*", "", tag).strip().lower()  # nist base control
 
 
 def tags(os_name: str, norm: str) -> set:
@@ -56,7 +67,7 @@ def tags(os_name: str, norm: str) -> set:
     out = set()
     for e in rules.values():
         v = (e.get("norms") or {}).get(norm)
-        for x in (v if isinstance(v, list) else [v]):
+        for x in v if isinstance(v, list) else [v]:
             if x:
                 out.add(str(x))
     return out
@@ -70,7 +81,8 @@ def main() -> int:
     for norm in norms:
         fw = framework(norm)
         if not fw["refs"]:
-            print(f"!! could not fetch the {norm} framework"); return 2
+            print(f"!! could not fetch the {norm} framework")
+            return 2
         print(f"\n=== {norm} — vs {fw['name']} ({len(fw['refs'])} requirements) ===")
         for os_name in oses:
             raw = tags(os_name, norm)
@@ -85,7 +97,10 @@ def main() -> int:
                 continue
             extra = f"  (+{other} in 800-171)" if other else ""
             tail = f"  SUSPECT {suspect}" if suspect else ""
-            print(f"  {os_name:11} {len(considered):3} tags  {len(considered)-len(suspect):3} valid{extra}{tail}")
+            print(
+                f"  {os_name:11} {len(considered):3} tags  "
+                f"{len(considered) - len(suspect):3} valid{extra}{tail}"
+            )
     print(f"\nTOTAL suspect tags: {total_suspect}")
     return 1 if total_suspect else 0
 

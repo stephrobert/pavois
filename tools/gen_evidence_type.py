@@ -23,7 +23,7 @@ Types (and what they honestly assert):
 Run after editing checks. The mapping is conservative: anything we cannot classify stays
 `unclassified` and is reported (never silently bucketed), so a human resolves it.
 """
-import re
+
 import sys
 from pathlib import Path
 
@@ -35,51 +35,145 @@ SRC = ROOT / "docs" / "reference" / "rules.yml"
 # template name -> evidence type. Each template is ONE recurring check pattern, so its evidence
 # kind is fixed (see tools/templates.py for what each expands to).
 TEMPLATE_EVIDENCE = {
-    "sysctl": "effective-runtime",          # `sysctl <key>` reads the live kernel value
-    "kconfig": "effective-runtime",         # /boot/config-$(uname -r): the running kernel's build
+    "sysctl": "effective-runtime",  # `sysctl <key>` reads the live kernel value
+    "kconfig": "effective-runtime",  # /boot/config-$(uname -r): the running kernel's build
     "service_disabled": "effective-runtime",  # systemctl is-enabled/is-active: resolved unit state
-    "mount_option": "effective-runtime",    # parses the actually-mounted options
-    "kmod_disabled": "effective-runtime",   # modprobe resolution + lsmod: the live module state
-    "package": "inventory-state",           # package(...).installed?: what is registered
-    "file_owner": "filesystem-state",       # file(...).mode/owner/group: path metadata
-    "cmdline": "effective-runtime",         # /proc/cmdline: the booted kernel's command line
-    "audit_rule": "effective-runtime",      # auditctl -l: the rules loaded in the live kernel
+    "mount_option": "effective-runtime",  # parses the actually-mounted options
+    "kmod_disabled": "effective-runtime",  # modprobe resolution + lsmod: the live module state
+    "package": "inventory-state",  # package(...).installed?: what is registered
+    "file_owner": "filesystem-state",  # file(...).mode/owner/group: path metadata
+    "cmdline": "effective-runtime",  # /proc/cmdline: the booted kernel's command line
+    "audit_rule": "effective-runtime",  # auditctl -l: the rules loaded in the live kernel
 }
 
 # Ordered signal table for verbatim checks. FIRST match wins, so order encodes precedence:
 # runtime-resolved state is the strongest claim; file metadata beats file content; account
 # databases are inventory; everything else that reads a config file is persistent-config.
 SIGNALS = [
-    ("effective-runtime", [
-        "sshd -t", "sysctl", "auditctl", "systemctl show", "systemctl is", "is-enabled",
-        "is-active", "aa-status", "getenforce", "sestatus", "lsmod", "nginx -t", "apachectl",
-        "/proc/mounts", "/proc/cmdline", "chronyc", "timedatectl", "firewall-cmd", "ufw status",
-        "nft list", "iptables", "ip6tables", "modprobe -c", "modprobe --showconfig",
-        "authselect current", "grub2-editenv", "uname", "runtime", "mount(", "be_mounted",
-        "service(", "be_enabled", "be_running", "kernel_parameter", "nmcli", "postconf",
-    ]),
-    ("filesystem-state", [
-        ".mode", ".owner", ".group", "be_owned_by", "grouped_into", "-perm", "suid", "sgid",
-        "find /", "find -p", "! -user", "-user 0", "-user root", "-group ", "stat -c",
-        "directory(", "be_directory", "have_mode",
-    ]),
-    ("inventory-state", [
-        "package(", "dpkg -l", "dpkg-query", "rpm -q", "/etc/passwd", "/etc/shadow",
-        "/etc/group", "/etc/gshadow", "getent ", ".installed?", "command -v",
-    ]),
-    ("persistent-config", [
-        "login.defs", "login_defs", "/etc/default/", "pwquality", "faillock", "/etc/security",
-        "modprobe.d", "/etc/ssh/sshd_config", "/etc/audit", "auditd.conf", "audit/rules", "grub",
-        "parse_config", "/etc/pam", "/etc/sysctl", "limits.conf", "/etc/issue", "/etc/motd",
-        "crontab", "/etc/cron", "dconf", "/etc/profile", "umask", "bashrc", "/etc/login",
-        "journald.conf", "/etc/systemd/", "securetty", "sudoers", "/etc/shells", "gdm",
-        "lightdm", "/etc/sssd", "file(",
-    ]),
+    (
+        "effective-runtime",
+        [
+            "sshd -t",
+            "sysctl",
+            "auditctl",
+            "systemctl show",
+            "systemctl is",
+            "is-enabled",
+            "is-active",
+            "aa-status",
+            "getenforce",
+            "sestatus",
+            "lsmod",
+            "nginx -t",
+            "apachectl",
+            "/proc/mounts",
+            "/proc/cmdline",
+            "chronyc",
+            "timedatectl",
+            "firewall-cmd",
+            "ufw status",
+            "nft list",
+            "iptables",
+            "ip6tables",
+            "modprobe -c",
+            "modprobe --showconfig",
+            "authselect current",
+            "grub2-editenv",
+            "uname",
+            "runtime",
+            "mount(",
+            "be_mounted",
+            "service(",
+            "be_enabled",
+            "be_running",
+            "kernel_parameter",
+            "nmcli",
+            "postconf",
+        ],
+    ),
+    (
+        "filesystem-state",
+        [
+            ".mode",
+            ".owner",
+            ".group",
+            "be_owned_by",
+            "grouped_into",
+            "-perm",
+            "suid",
+            "sgid",
+            "find /",
+            "find -p",
+            "! -user",
+            "-user 0",
+            "-user root",
+            "-group ",
+            "stat -c",
+            "directory(",
+            "be_directory",
+            "have_mode",
+        ],
+    ),
+    (
+        "inventory-state",
+        [
+            "package(",
+            "dpkg -l",
+            "dpkg-query",
+            "rpm -q",
+            "/etc/passwd",
+            "/etc/shadow",
+            "/etc/group",
+            "/etc/gshadow",
+            "getent ",
+            ".installed?",
+            "command -v",
+        ],
+    ),
+    (
+        "persistent-config",
+        [
+            "login.defs",
+            "login_defs",
+            "/etc/default/",
+            "pwquality",
+            "faillock",
+            "/etc/security",
+            "modprobe.d",
+            "/etc/ssh/sshd_config",
+            "/etc/audit",
+            "auditd.conf",
+            "audit/rules",
+            "grub",
+            "parse_config",
+            "/etc/pam",
+            "/etc/sysctl",
+            "limits.conf",
+            "/etc/issue",
+            "/etc/motd",
+            "crontab",
+            "/etc/cron",
+            "dconf",
+            "/etc/profile",
+            "umask",
+            "bashrc",
+            "/etc/login",
+            "journald.conf",
+            "/etc/systemd/",
+            "securetty",
+            "sudoers",
+            "/etc/shells",
+            "gdm",
+            "lightdm",
+            "/etc/sssd",
+            "file(",
+        ],
+    ),
 ]
 
 
 def _pick(v):
-    """Resolve an @os-keyed value to a representative concrete value (classification is OS-stable)."""
+    """Resolve an @os-keyed value to a representative concrete value (OS-stable classification)."""
     if isinstance(v, dict) and "@os" in v:
         for x in v["@os"].values():
             if x is not None:
@@ -120,6 +214,7 @@ def main():
     dry = "--dry-run" in sys.argv
     lib = yaml.safe_load(SRC.read_text())
     from collections import Counter
+
     dist = Counter()
     unclassified = []
     for cid, e in lib.items():
@@ -143,8 +238,11 @@ def main():
         print("\n(dry-run: rules.yml unchanged)")
         return 0
     SRC.write_text(yaml.safe_dump(lib, sort_keys=True, allow_unicode=True, width=4096))
-    print(f"\nwrote evidence_type into {SRC.relative_to(ROOT)} "
-          f"({sum(v for k, v in dist.items() if k != 'unclassified')}/{sum(dist.values())} classified)")
+    print(
+        f"\nwrote evidence_type into {SRC.relative_to(ROOT)} "
+        f"({sum(v for k, v in dist.items() if k != 'unclassified')}/{sum(dist.values())} "
+        "classified)"
+    )
     return 0
 
 

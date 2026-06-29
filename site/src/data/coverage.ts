@@ -1,21 +1,31 @@
-// Per-domain coverage depth — the honest edges, mirrored from /handbook/coverage. A `shallow`
-// domain exists in the base but is not deep enough to lean on alone (e.g. firewall presence only,
-// no ruleset audit); everything else is audited in depth. Single source for the /rules badge, the
-// fiche caveat and the standards pages.
-export type Coverage = 'deep' | 'shallow';
+// Per-domain coverage depth — the honest edges, mirrored from /handbook/coverage. Three levels:
+//   deep    — audited thoroughly, lean on it alone.
+//   partial — audited beyond mere presence, but with named gaps (e.g. journald flags, no remote
+//             log integrity); usable, read the caveat.
+//   shallow — presence / default only, not enough to lean on alone (e.g. firewall presence, no
+//             ruleset audit; time sync present, no source/drift policy).
+// Single source for the /rules badge, the fiche caveat and the standards pages.
+export type Coverage = 'deep' | 'partial' | 'shallow';
 
 export const SHALLOW_DOMAINS = new Set<string>([
   'Firewall',
-  'Logging (journald)',
-  'Logging',
   'Time synchronization',
 ]);
 
+export const PARTIAL_DOMAINS = new Set<string>([
+  'Logging (journald)',
+  'Logging',
+]);
+
 export function coverageLevel(domain: string | null | undefined): Coverage {
-  return domain && SHALLOW_DOMAINS.has(domain) ? 'shallow' : 'deep';
+  if (!domain) return 'deep';
+  if (SHALLOW_DOMAINS.has(domain)) return 'shallow';
+  if (PARTIAL_DOMAINS.has(domain)) return 'partial';
+  return 'deep';
 }
 
 export const coverageLabel: Record<Coverage, { en: string; fr: string }> = {
   deep: { en: 'in depth', fr: 'en profondeur' },
-  shallow: { en: 'shallow', fr: 'superficiel' },
+  partial: { en: 'partial', fr: 'partielle' },
+  shallow: { en: 'shallow', fr: 'superficielle' },
 };

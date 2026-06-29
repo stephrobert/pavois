@@ -34,21 +34,21 @@ type chk struct {
 }
 
 type ctrl struct {
-	ID     string            `json:"id"`
-	Title  string            `json:"title"`
-	Desc   string            `json:"desc"`
-	Impact float64           `json:"impact"`
-	Sev    string            `json:"sev"`
-	Status string            `json:"status"`
-	Domain   string            `json:"domain"`
-	Evidence string            `json:"evidence,omitempty"` // type de preuve réellement collectée
-	Reboot   string            `json:"reboot,omitempty"`   // reboot_survivable: yes|no|unknown (axe persistance)
-	Companion string           `json:"companion,omitempty"` // contrôle persistant compagnon (companion-aware)
-	Norms    map[string]string `json:"norms"`
-	Levels   map[string]string `json:"levels"`
-	Refs     []string          `json:"refs"`
-	Checks   []chk             `json:"checks"`
-	Merge    string            `json:"merge,omitempty"` // frères à fusionner en vue « toutes normes »
+	ID        string            `json:"id"`
+	Title     string            `json:"title"`
+	Desc      string            `json:"desc"`
+	Impact    float64           `json:"impact"`
+	Sev       string            `json:"sev"`
+	Status    string            `json:"status"`
+	Domain    string            `json:"domain"`
+	Evidence  string            `json:"evidence,omitempty"`  // type de preuve réellement collectée
+	Reboot    string            `json:"reboot,omitempty"`    // reboot_survivable: yes|no|unknown (axe persistance)
+	Companion string            `json:"companion,omitempty"` // contrôle persistant compagnon (companion-aware)
+	Norms     map[string]string `json:"norms"`
+	Levels    map[string]string `json:"levels"`
+	Refs      []string          `json:"refs"`
+	Checks    []chk             `json:"checks"`
+	Merge     string            `json:"merge,omitempty"` // frères à fusionner en vue « toutes normes »
 }
 
 func tagStr(c audit.Control, k string) string {

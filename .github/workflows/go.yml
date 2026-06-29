@@ -1,0 +1,76 @@
+name: Go
+
+# Quality gate for the pavois Go binary (module in ./go): formatting, vet, build, race-tested
+# units, golangci-lint and govulncheck. Mirrors .pre-commit-config.yaml and the
+# go-production-engineer standard. Actions pinned by commit SHA; tools pinned by version.
+
+on:
+  push:
+    branches: [main]
+    paths: ['go/**', '.github/workflows/go.yml', '.golangci.yml']
+  pull_request:
+    paths: ['go/**', '.github/workflows/go.yml', '.golangci.yml']
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  quality:
+    name: Build, test, lint, vuln-scan
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout pavois
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          path: pavois
+          persist-credentials: false
+
+      # go.mod has `replace github.com/stephrobert/scankit => ../../scankit`; check it out as a
+      # sibling so the build resolves. SCANKIT_TOKEN is a read-only repo secret.
+      - name: Checkout scankit (private dependency)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: stephrobert/scankit
+          token: ${{ secrets.SCANKIT_TOKEN }}
+          path: scankit
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: '1.26'
+          cache-dependency-path: pavois/go/go.sum
+
+      - name: gofmt
+        working-directory: pavois/go
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: go vet
+        working-directory: pavois/go
+        run: go vet ./...
+
+      - name: go build
+        working-directory: pavois/go
+        run: go build ./...
+
+      - name: go test (race)
+        working-directory: pavois/go
+        run: go test -race ./...
+
+      - name: golangci-lint
+        working-directory: pavois/go
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+          "$(go env GOPATH)/bin/golangci-lint" run ./...
+
+      - name: govulncheck
+        working-directory: pavois/go
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.3.0
+          "$(go env GOPATH)/bin/govulncheck" ./...

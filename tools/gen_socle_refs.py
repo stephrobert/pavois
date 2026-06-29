@@ -4,11 +4,12 @@ SOCLE norm (framework-scsl). A control becomes a leaf requirement under SOCLE's 
 ability) and CLD (host/infra posture) domains, with a pavois technical family. Format, the SOCLE
 scheme verbatim: SOCLE-<DOMAIN>-<FAMILY>-<NNN>.
 
-Writes `socle:` into docs/reference/rules.yml (the DRY source) and emits a {control_id: socle} map to
-site/src/data/socle-refs.json for the site. Sequences are stable (deterministic by id within a family);
-new controls append. Servers, not workstations -> WKS is unused; everything lands on RUN or CLD.
+Writes `socle:` into docs/reference/rules.yml (the DRY source) and emits a {control_id: socle} map
+to site/src/data/socle-refs.json for the site. Sequences are stable (deterministic by id within a
+family); new controls append. Servers, not workstations -> WKS is unused; everything lands RUN/CLD.
 Run once, then on every new control. See docs/site-enrichment.md and framework-scsl/source/.
 """
+
 import json
 from pathlib import Path
 
@@ -85,6 +86,7 @@ def main():
     MAP_OUT.write_text(json.dumps(refmap, ensure_ascii=False, indent=0, sort_keys=True) + "\n")
 
     from collections import Counter
+
     fam = Counter(r.rsplit("-", 1)[0] for r in refmap.values())
     print(f"socle: {len(refmap)} controls -> {len(fam)} families")
     for f, n in sorted(fam.items()):

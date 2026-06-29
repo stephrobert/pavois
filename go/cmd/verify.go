@@ -55,7 +55,7 @@ func runVerify(cmd *cobra.Command, args []string) error {
 	}
 
 	out := cmd.OutOrStdout()
-	fmt.Fprintf(out, "pavois: behavioral validation of %s — does the hardening actually block the threat?\n\n", target)
+	_, _ = fmt.Fprintf(out, "pavois: behavioral validation of %s — does the hardening actually block the threat?\n\n", target)
 	pass, fail := 0, 0
 	for _, p := range doc.Probes {
 		c := strings.ReplaceAll(strings.ReplaceAll(p.Cmd, "{host}", host), "{target}", target)
@@ -77,7 +77,7 @@ func runVerify(cmd *cobra.Command, args []string) error {
 		}
 		if ok {
 			pass++
-			fmt.Fprintf(out, "  \033[32m✔\033[0m %s\n", p.Title)
+			_, _ = fmt.Fprintf(out, "  \033[32m✔\033[0m %s\n", p.Title)
 		} else {
 			fail++
 			detail := strings.TrimSpace(string(stdout))
@@ -86,10 +86,10 @@ func runVerify(cmd *cobra.Command, args []string) error {
 			} else {
 				detail = ""
 			}
-			fmt.Fprintf(out, "  \033[31m✗\033[0m %s%s\n", p.Title, detail)
+			_, _ = fmt.Fprintf(out, "  \033[31m✗\033[0m %s%s\n", p.Title, detail)
 		}
 	}
-	fmt.Fprintf(out, "\npavois: %d/%d behavioral probes confirm the protection holds.\n", pass, pass+fail)
+	_, _ = fmt.Fprintf(out, "\npavois: %d/%d behavioral probes confirm the protection holds.\n", pass, pass+fail)
 	if fail > 0 {
 		return fmt.Errorf("%d behavioral probe(s) failed — the hardening is NOT operational", fail)
 	}

@@ -137,16 +137,16 @@ func runDiff(cmd *cobra.Command, args []string) error {
 	}
 
 	out := cmd.OutOrStdout()
-	fmt.Fprintf(out, "before: %s\n after: %s\n\n",
+	_, _ = fmt.Fprintf(out, "before: %s\n after: %s\n\n",
 		summaryLine(args[0], before, beforePlan), summaryLine(args[1], after, afterPlan))
 	section := func(sym, label string, list []string) {
 		if len(list) == 0 {
 			return
 		}
 		sort.Strings(list)
-		fmt.Fprintf(out, "%s %s (%d)\n", sym, label, len(list))
+		_, _ = fmt.Fprintf(out, "%s %s (%d)\n", sym, label, len(list))
 		for _, c := range list {
-			fmt.Fprintf(out, "    %s\n", c)
+			_, _ = fmt.Fprintf(out, "    %s\n", c)
 		}
 	}
 	section("✔", "fixed (gap → pass)", fixed)
@@ -156,7 +156,7 @@ func runDiff(cmd *cobra.Command, args []string) error {
 	section("›", "new controls", added)
 	section("‹", "removed controls", removed)
 	if len(fixed)+len(regressed)+len(activated)+len(deactivated)+len(added)+len(removed) == 0 {
-		fmt.Fprintln(out, "no change between the two states.")
+		_, _ = fmt.Fprintln(out, "no change between the two states.")
 	}
 	return nil
 }

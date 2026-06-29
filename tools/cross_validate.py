@@ -12,6 +12,7 @@ Ubuntu 26), so it can validate pavois where SSG is silent.
 
   tools/cross_validate.py <os>
 """
+
 import json
 import re
 import subprocess
@@ -23,15 +24,25 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 OS = sys.argv[1]
 AL_REPO = {
-    "debian12": "DEBIAN12-CIS", "debian13": "DEBIAN13-CIS",
-    "ubuntu2204": "UBUNTU22-CIS", "ubuntu2404": "UBUNTU24-CIS", "ubuntu2604": "UBUNTU26-CIS",
-    "rhel8": "RHEL8-CIS", "rhel9": "RHEL9-CIS", "almalinux9": "RHEL9-CIS",
+    "debian12": "DEBIAN12-CIS",
+    "debian13": "DEBIAN13-CIS",
+    "ubuntu2204": "UBUNTU22-CIS",
+    "ubuntu2404": "UBUNTU24-CIS",
+    "ubuntu2604": "UBUNTU26-CIS",
+    "rhel8": "RHEL8-CIS",
+    "rhel9": "RHEL9-CIS",
+    "almalinux9": "RHEL9-CIS",
 }.get(OS)
 
 
 def ssg_cis():
-    for c in (f"/tmp/oscap-analysis/ssg/ssg-{OS}-ds.xml", f"/tmp/oscap-analysis/ssg-{OS}-ds.xml",
-              f"/tmp/ssgwork/ssg-{OS}-ds.xml"):
+    # Fixed, read-only locations where the SSG datastreams already live (fetched by fetch
+    # tooling, documented in CLAUDE.md); we only read them, never create a temp file here.
+    for c in (
+        f"/tmp/oscap-analysis/ssg/ssg-{OS}-ds.xml",  # nosec B108
+        f"/tmp/oscap-analysis/ssg-{OS}-ds.xml",  # nosec B108
+        f"/tmp/ssgwork/ssg-{OS}-ds.xml",  # nosec B108
+    ):
         if Path(c).exists():
             xml = Path(c).read_text(encoding="utf-8")
             secs = set(re.findall(r"cisecurity[^>]*>(\d+(?:\.\d+)+)<", xml))
@@ -42,39 +53,62 @@ def ssg_cis():
 def al_cis():
     if not AL_REPO:
         return set()
-    out = subprocess.run(["gh", "api", f"repos/ansible-lockdown/{AL_REPO}/contents/defaults/main.yml",
-                          "--jq", ".content"], capture_output=True, text=True).stdout.strip()
+    out = subprocess.run(
+        [
+            "gh",
+            "api",
+            f"repos/ansible-lockdown/{AL_REPO}/contents/defaults/main.yml",
+            "--jq",
+            ".content",
+        ],
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
     if not out:
         return set()
     import base64
+
     body = base64.b64decode(out).decode("utf-8", "ignore")
-    return {m.replace("rule_", "").replace("_", ".") for m in re.findall(r"rule_\d+(?:_\d+)+", body)}
+    return {
+        m.replace("rule_", "").replace("_", ".") for m in re.findall(r"rule_\d+(?:_\d+)+", body)
+    }
 
 
 def pavois_cis():
-    ref = yaml.safe_load((ROOT / "docs/reference/pavois-content" / f"{OS}.yml").read_text())["rules"]
+    ref = yaml.safe_load((ROOT / "docs/reference/pavois-content" / f"{OS}.yml").read_text())[
+        "rules"
+    ]
     out = set()
     for e in ref.values():
         v = (e.get("norms") or {}).get("cis")
-        for x in (v if isinstance(v, list) else [v]):
+        for x in v if isinstance(v, list) else [v]:
             if x:
                 out.add(str(x))
     return out
 
 
 ssg, al, ck = ssg_cis(), al_cis(), pavois_cis()
-consensus = ssg & al                       # both external authorities agree
+consensus = ssg & al  # both external authorities agree
 only_ssg, only_al = ssg - al, al - ssg
 ck_of_consensus = consensus & ck
 union = ssg | al
 
-import json as _j
 if "--json" in sys.argv:
-    print(_j.dumps({"os":OS,"sources":{"ssg":len(ssg),"ansible_lockdown":len(al)},
-        "consensus":len(consensus),"pavois_covered":len(ck_of_consensus),
-        "coverage_pct":round(100*len(ck_of_consensus)/len(consensus),1) if consensus else None,
-        "gaps":sorted(consensus-ck,key=lambda s:[int(x) for x in s.split(".")]),
-        "suspect_mappings":sorted(ck-union-{""})}))
+    print(
+        json.dumps(
+            {
+                "os": OS,
+                "sources": {"ssg": len(ssg), "ansible_lockdown": len(al)},
+                "consensus": len(consensus),
+                "pavois_covered": len(ck_of_consensus),
+                "coverage_pct": round(100 * len(ck_of_consensus) / len(consensus), 1)
+                if consensus
+                else None,
+                "gaps": sorted(consensus - ck, key=lambda s: [int(x) for x in s.split(".")]),
+                "suspect_mappings": sorted(ck - union - {""}),
+            }
+        )
+    )
     sys.exit(0)
 print(f"CIS cross-validation — {OS}\n")
 print(f"  Sources:  SSG={len(ssg)}  ansible-lockdown({AL_REPO})={len(al)}")
@@ -82,14 +116,29 @@ if not al:
     print("  (ansible-lockdown not reachable; showing SSG only)")
 print(f"  Consensus (both agree): {len(consensus)} rules")
 if consensus:
-    print(f"    pavois covers: {len(ck_of_consensus)}/{len(consensus)} "
-          f"({round(100*len(ck_of_consensus)/len(consensus),1)}%)  <-- the auditor-credible number")
-print(f"  Divergence between sources: SSG-only {len(only_ssg)}, AL-only {len(only_al)} "
-      f"(benchmark version/scope drift)")
+    print(
+        f"    pavois covers: {len(ck_of_consensus)}/{len(consensus)} "
+        f"({round(100 * len(ck_of_consensus) / len(consensus), 1)}%)  "
+        "<-- the auditor-credible number"
+    )
+print(
+    f"  Divergence between sources: SSG-only {len(only_ssg)}, AL-only {len(only_al)} "
+    f"(benchmark version/scope drift)"
+)
 gaps = sorted(consensus - ck, key=lambda s: [int(x) for x in s.split(".")])
-print(f"  pavois gaps vs consensus ({len(gaps)}): " + ", ".join(gaps[:30]) + (" …" if len(gaps) > 30 else ""))
+print(
+    f"  pavois gaps vs consensus ({len(gaps)}): "
+    + ", ".join(gaps[:30])
+    + (" …" if len(gaps) > 30 else "")
+)
 # rules pavois has that NEITHER source lists -> suspicious mappings to review
-suspicious = sorted(ck - union - {""}, key=lambda s: ([int(x) for x in s.split(".")] if re.match(r"^\d", s) else [999]))
+suspicious = sorted(
+    ck - union - {""},
+    key=lambda s: ([int(x) for x in s.split(".")] if re.match(r"^\d", s) else [999]),
+)
 if suspicious:
-    print(f"  pavois cis NOT in either source ({len(suspicious)} — verify these): "
-          + ", ".join(suspicious[:20]) + (" …" if len(suspicious) > 20 else ""))
+    print(
+        f"  pavois cis NOT in either source ({len(suspicious)} — verify these): "
+        + ", ".join(suspicious[:20])
+        + (" …" if len(suspicious) > 20 else "")
+    )

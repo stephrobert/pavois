@@ -1,120 +1,124 @@
-# Contribuer à pavois
+# Contributing to Pavois
 
-pavois est un **scanner de conformité communautaire**. Le cœur du projet est sa
-**bibliothèque de règles** : des contrôles InSpec qui auditent la **configuration
-effective** d'un système (pas les fichiers), mappés aux normes (CIS, ANSSI BP-028,
-STIG) et taggés par **niveau**. C'est là qu'on a besoin de la communauté.
+Pavois is a community **compliance scanner**. Its heart is the **rule library**: InSpec controls
+that audit a system's **effective configuration** (not its files), mapped to standards (CIS, ANSSI
+BP-028, NIST, PCI-DSS, STIG) and tagged by level. That is where the project most needs the community.
 
-Pourquoi pas OpenSCAP : oscap lit des fichiers de configuration fixes et **rate
-les `Include`, les drop-ins et la config appliquée**. pavois interroge l'état
-**résolu**. Une règle qui ne respecte pas ce principe n'a pas sa place ici.
+Why not just read config files: a fixed file misses `Include` directives, drop-ins and the applied
+state. Pavois queries the **resolved** state (`sshd -T`, `sysctl`, `systemctl show`, `nginx -T`). A
+rule that reads a service's file instead of its effective config does not belong here.
 
-## Une règle = un contrôle, N normes
+## Ground rules (non-negotiable)
 
-Un même contrôle technique appartient souvent à plusieurs réglementations
-(CIS, ANSSI BP-028, PCI-DSS, NIST…). On ne le duplique pas par norme : il porte
-un **identifiant interne stable et neutre** (slug `domaine-objet`) et tous ses
-**mappings normatifs en tags**. La « norme » est une *vue* : le rapport HTML
-laisse choisir la réglementation et recompose chapitres et score (tout est
-embarqué côté client).
+1. **Effective configuration, always.** For anything a service exposes, audit the resolved state.
+2. **100% CINC/InSpec.** Pavois never uses OpenSCAP as an engine.
+3. **One check, N standards.** Never duplicate a control per standard (see below).
+4. **Tested before merge.** Every change runs the real quality gates locally (see below).
+5. **Pinned + reproducible.** Tool versions pinned via `mise`; CI Actions pinned by commit SHA; no
+   dependency lifecycle scripts run on install.
+
+## Where to help — how to improve the tool
+
+Pick the track that fits you. Each control's gaps are honest and published: see
+[What Pavois covers](https://pavois.dev/en/handbook/coverage/) and
+[Feature status](https://pavois.dev/en/handbook/feature-status/) (delivered / partial / roadmap).
+
+| You want to… | Do this | Impact |
+|---|---|---|
+| **Add or deepen a rule** *(most needed)* | add a control to `docs/reference/rules.yml` that audits **effective** state, with its standard mappings + level | grows the library — the core value |
+| **Fill a thin domain** | the partial domains today are **firewall** (ruleset/zones), **logging** (remote forwarding, integrity), **time-sync**, **MAC** (custom SELinux/AppArmor). Deepen one. | turns "partial" into "delivered" |
+| **Add an OS** | extend `rules.yml` `@os` keys + a `profiles/linux/<os>/` target | wider reach |
+| **Fix / source a mapping** | cross-check a CIS/ANSSI/NIST/PCI/STIG ref against an authoritative source; correct it in `rules.yml` | accuracy, trust |
+| **Enrich the site** | bilingual rule fiches, glossary terms, handbook pages under `site/src/content/` | the reference experience |
+| **Improve the engine/CLI** | Go work under `go/` — see the roadmap items in Feature status | capability |
+
+**A good rule contribution** audits effective config, has a neutral slug id, `impact`/`title`/`desc`,
+a `tag domain:`, at least one **sourced** standard mapping, and per-standard level tags. It must be
+**tested on a real target** and stay portable (`os.family`/`only_if` where needed).
+
+## One check = one control, N standards
+
+A single technical control usually belongs to several regulations. We do **not** duplicate it per
+standard: it carries one **stable, standard-neutral id** (a `domain-object` slug) and all its
+normative mappings as **tags**. A "standard" is a *view* — the HTML report lets the reader pick the
+regulation and recomposes chapters and score client-side.
 
 ```ruby
-control "ssh-permitrootlogin" do        # ID pavois, neutre vis-à-vis des normes
+control "ssh-permitrootlogin" do        # pavois id, neutral wrt standards
   impact 1.0
-  title "SSH : connexion root désactivée"
-  desc  "Un drop-in dans sshd_config.d peut réactiver root ; on audite l'état " \
-        "effectif via sshd -T, pas le fichier."
-  tag domain: "SSH"          # chapitrage neutre (vue « Toutes » / ANSSI)
-  tag cis:       "5.2.10"    # mappings de normes (autant que pertinent)
+  title "SSH: root login disabled"
+  desc  "A drop-in in sshd_config.d can re-enable root; we audit the effective " \
+        "state via `sshd -T`, not the file."
+  tag domain: "SSH"          # neutral chaptering
+  tag cis:       "5.2.10"    # standard mappings (as many as apply)
   tag bp28:      "R36"
   tag 'pci-dss': "2.2.4"
-  tag ssg: "sshd_disable_root_login"   # traçabilité vers la source de référence
-
-  describe command("sshd -T") do
-    its("stdout") { should match(/^permitrootlogin no$/i) }
-  end
+  tag level_cis: "1"         # level per standard
+  tag level_bp28: "minimal"
 end
 ```
 
-**Aucune référence inventée** : les numéros de norme proviennent de la **référence
-pavois** (`docs/reference/pavois-content/`), jamais de mémoire.
+## The source of truth — how to add a rule
 
-### Règles d'or
+Controls are **not** edited as `.rb` files directly. The single DRY source is
+[`docs/reference/rules.yml`](docs/reference/rules.yml) — one entry per control id, fields keyed `@os`
+only where they differ. Everything downstream is generated:
 
-1. **Config effective, jamais le fichier** pour un service :
-   `command("sshd -T")`, `command("sysctl -a")`, `command("systemctl show u")`,
-   `command("nginx -T")`... Interdit : `file("/etc/ssh/sshd_config")` pour vérifier
-   une directive de service.
-2. **Métadonnées obligatoires** : `impact`, `title`, `desc`, `tag domain:`, et
-   **au moins un mapping de norme** (`cis:`/`bp28:`/`pci-dss:`/`nist:`/`stig:`).
-   Niveau **par norme** quand il existe (`tag level_bp28:` minimal..high,
-   `tag level_cis:` 1/2) — il alimente le sélecteur de niveau (cumulatif) du
-   rapport. Ces tags alimentent les vues, chapitres et filtres.
-3. **Portabilité** : garder par `os.family` / `only_if` ce qui est spécifique à
-   une distribution ou à un init (systemd vs OpenRC).
-4. **Tester pour de vrai** avant la PR (conteneur jetable ou VM), pas en théorie.
-5. **Versions épinglées** (`@sha256:` pour les images, tags pour les profils).
-
-## Structure : corpus par domaine, normes en tags
-
-On range les contrôles **par domaine technique**, pas par norme (la norme est une
-vue, cf. ci-dessus) :
-
-```text
-profiles/linux/<cible>/
-├── inspec.yml            # name, title, version, supports, input 'level'
-└── controls/
-    ├── services.rb       # un fichier par domaine (services, ssh, sysctl, comptes…)
-    ├── ssh.rb
-    └── sysctl.rb
+```
+docs/reference/rules.yml ──gen──▶ docs/reference/pavois-content/<os>.yml ──render──▶ profiles/linux/<os>/controls/*.rb
 ```
 
-Exemple en place : `profiles/linux/debian12/controls/services.rb` (famille de
-services réseau hérités, mappée ANSSI R62 / CIS / PCI-DSS / NIST).
-
-### La référence pavois (source des contrôles)
-
-Tous les contrôles, mappings de normes, niveaux et valeurs vivent dans **la
-référence pavois** : `docs/reference/pavois-content/<os>.yml` (une entrée par
-contrôle : check effectif + normes + niveaux + titre + sévérité + domaine).
-Elle est **pavois-owned** et maintenue directement — on ne mine plus le SSG.
-
-> **Artefacts dérivés, non versionnés.** Le dépôt ne livre que la **source**
-> (`docs/reference/rules.yml` + le contenu enrichi du site). Le corpus `.rb`, les 8 fichiers
-> `docs/reference/pavois-content/<os>.yml` et le paquet OSCAL sont **régénérés**, jamais committés.
-> Après un clone, reconstruis-les en une commande : `mise run regen`
-> (= `gen` → `render` → `oscal`). Un build `mise run build` n'embarque aucun de ces fichiers.
-
-Le corpus InSpec exécuté par le scanner est **rendu** depuis la référence :
+To add or change a control: edit `rules.yml` (effective check + standard mappings + level), then:
 
 ```bash
-mise run regen            # tout reconstruire : rules.yml -> pavois-content -> .rb + OSCAL
-tools/render.sh <os>      # (ciblé) docs/reference/pavois-content/<os>.yml -> profiles/linux/<os>/controls
-tools/validate.sh         # intégrité + fidélité référence==corpus, ruby/cinc/go, note
+mise run gen          # render the 8 per-OS reference files from rules.yml
+mise run regen        # rebuild the .rb corpus + OSCAL from the reference
+mise run gen:verify   # CI guard: OS files match render(rules.yml)
+mise run validate     # cross-validate CIS coverage against >= 2 authoritative sources
 ```
 
-Pour ajouter/modifier un contrôle : éditer son entrée dans la référence (check
-**effectif** `kernel_parameter`/`sshd -T`, mappings de normes, niveau), puis
-`tools/render.sh <os>`. Le `describe` effectif reste relu/validé domaine par domaine.
+The `.rb` corpus and the OSCAL bundle are **derived artifacts** — git-ignored, rebuilt from source;
+never commit them. After a fresh clone, run `mise run regen` once before scanning.
 
-## Tester sa contribution
+## Development setup
 
 ```bash
-bin/pavois scan pavois@<ip> --key ~/.ssh/id_ed25519 --sudo \
-  --profile profiles/linux/debian12
-bin/pavois serve                                 # rapport multi-normes
+mise install          # pinned toolchain: Go, Node, Python, gh, golangci-lint, ruff, trufflehog
+pre-commit install    # quality + secret hooks on every commit
 ```
 
-Dans le rapport : changer la **réglementation** dans la liste ; le contrôle doit
-apparaître dans le **bon chapitre** de chaque norme où il est mappé, avec sa
-**sévérité**, ses **mappings**, et le **détail** (vérification effective) au clic.
-Le `--sudo` est requis dès qu'un contrôle interroge un service (`sshd -T`…).
+## Quality gates (run before opening a PR)
 
-## Checklist de PR
+CI enforces all of these; run them locally first.
 
-- [ ] Audit de la config **effective** (pas de lecture de fichier de service).
-- [ ] ID slug neutre, `impact`, `title`, `desc`, `tag domain:`, ≥ 1 mapping de norme.
-- [ ] Numéros de norme **sourcés** (référence pavois `docs/reference/pavois-content/`), pas de mémoire.
-- [ ] Testé sur une cible réelle (préciser laquelle).
-- [ ] Portabilité gardée (`os.family` / `only_if`) si nécessaire.
-- [ ] Pas de secret en dur ; versions épinglées.
+```bash
+# Go binary (go/)
+cd go && gofmt -l . && go vet ./... && go build ./... && go test -race ./... && golangci-lint run ./...
+govulncheck ./...
+
+# Python tooling (tools/, test-vms/)
+ruff check tools/ test-vms/ && ruff format --check tools/ test-vms/ && bandit -r tools/ test-vms/ -c pyproject.toml
+
+# the actual tool, on a real target (effective config needs --sudo)
+mise run build && ./go/pavois scan local --profile linux/ubuntu2404
+```
+
+Go follows the **go-production-engineer** standard: simple, idiomatic, explicit error handling (wrap
+with `%w`), no needless abstraction, tests for meaningful behavior, documented public symbols.
+
+In the HTML report, switch the **regulation** in the dropdown: your control must appear in the right
+chapter of every standard it maps to, with its severity, mappings and effective-check detail.
+
+## Pull-request workflow
+
+- `main` is protected — work on a **feature branch** and open a PR.
+- Commits follow **[Conventional Commits](https://www.conventionalcommits.org/)**
+  (`feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`, `build`; optional scope; imperative).
+- The PR must pass every check: Go + Python quality, **CodeQL** (Go/Python/JS SAST),
+  **dependency-review**, **secret scan** (TruffleHog), Trivy, OpenSSF Scorecard, Plumber.
+- Keep changes focused; update tests and docs with the code; remove dead code.
+
+## More
+
+- Security issues: **do not** open a public issue — see [SECURITY.md](SECURITY.md).
+- How the code fits together: [ARCHITECTURE.md](ARCHITECTURE.md).
