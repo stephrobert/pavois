@@ -1,0 +1,74 @@
+---
+import Base from '../../layouts/Base.astro';
+import { languages, type Lang } from '../../i18n/ui';
+
+export function getStaticPaths() {
+  return Object.keys(languages).map((lang) => ({ params: { lang } }));
+}
+const { lang } = Astro.params as { lang: Lang };
+const fr = lang === 'fr';
+
+const title = fr ? 'Rapport d’exemple' : 'Sample report';
+const lede = fr
+  ? 'Un vrai rapport Pavois sur une VM Debian 12 (données anonymisées). En bas : le rapport de campagne avant/après un durcissement complet, avec la matrice de transition.'
+  : 'A real Pavois report on a Debian 12 VM (data anonymized). Below: the before/after hardening campaign report, with the transition matrix.';
+---
+
+<Base
+  title={`Pavois, ${title}`}
+  description={fr
+    ? 'Exemple de rapport Pavois (scan réel, anonymisé) et rapport de campagne avant/après durcissement avec matrice de transition.'
+    : 'Sample Pavois report (real scan, anonymized) and before/after hardening campaign report with transition matrix.'}
+  lang={lang}
+  breadcrumbs={[{ name: 'Pavois', path: `/${lang}/` }, { name: title, path: `/${lang}/sample-report/` }]}
+>
+  <div class="wrap page-head">
+    <h1>{title}</h1>
+    <p class="lede">{lede}</p>
+  </div>
+
+  <div class="wrap sample-wrap">
+    <div class="sample-head">
+      <h2 id="scan">{fr ? 'Rapport de scan' : 'Scan report'}</h2>
+      <a class="btn btn-ghost" href="/sample-report.html" target="_blank" rel="noopener">
+        {fr ? 'Ouvrir en plein écran ↗' : 'Open full screen ↗'}
+      </a>
+    </div>
+    <iframe class="sample-frame" src="/sample-report.html" loading="lazy"
+      title={fr ? 'Rapport de scan Pavois' : 'Pavois scan report'}></iframe>
+
+    <div class="sample-head">
+      <h2 id="campaign">{fr ? 'Rapport de campagne (avant / après)' : 'Campaign report (before / after)'}</h2>
+      <a class="btn btn-ghost" href="/sample-campaign.html" target="_blank" rel="noopener">
+        {fr ? 'Ouvrir en plein écran ↗' : 'Open full screen ↗'}
+      </a>
+    </div>
+    <iframe class="sample-frame" src="/sample-campaign.html" loading="lazy"
+      title={fr ? 'Rapport de campagne Pavois' : 'Pavois campaign report'}></iframe>
+  </div>
+</Base>
+
+<style>
+  .sample-wrap {
+    margin-bottom: 4rem;
+  }
+  .sample-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin: 2rem 0 0.75rem;
+  }
+  .sample-head h2 {
+    margin: 0;
+  }
+  .sample-frame {
+    width: 100%;
+    height: 85vh;
+    min-height: 520px;
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 12px;
+    background: #fff;
+  }
+</style>
