@@ -11,6 +11,8 @@
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/stephrobert/pavois"><img src="https://img.shields.io/ossf-scorecard/github.com/stephrobert/pavois?label=OpenSSF%20Scorecard&style=for-the-badge&labelColor=2b2d42&color=dc2626" alt="OpenSSF Scorecard"></a>
   &nbsp;&nbsp;
   <a href="https://slsa.dev/spec/v1.0/levels"><img src="https://img.shields.io/badge/SLSA-build%20provenance-dc2626?style=for-the-badge&logo=slsa&logoColor=white&labelColor=2b2d42" alt="SLSA build provenance"></a>
+  &nbsp;&nbsp;
+  <a href="https://score.getplumber.io/github.com/stephrobert/pavois"><img src="https://score.getplumber.io/github.com/stephrobert/pavois.svg" alt="Plumber compliance score"></a>
 </p>
 
 <p align="center">
@@ -154,6 +156,14 @@ Pavois audits the effective configuration of a running Linux host across 8 OS fa
 explicit about its edges: some domains (firewall ruleset, log forwarding, MAC policy depth) are
 shallow today. The honest [coverage matrix](https://pavois.dev/en/handbook/coverage/) names what is
 deep and what is not.
+
+## 🤝 Contributing
+
+The **rule library** is where the project most needs help — **[CONTRIBUTING.md](CONTRIBUTING.md)**
+has a "Where to help" table mapping each intent (add a rule, deepen a thin domain, add an OS, source
+a mapping…) to a concrete action. How the code fits together: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+By participating you agree to the **[Code of Conduct](CODE_OF_CONDUCT.md)**. Report security issues
+privately via **[SECURITY.md](SECURITY.md)**.
 
 ## 📄 License & attribution
 

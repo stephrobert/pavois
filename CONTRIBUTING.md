@@ -122,3 +122,4 @@ chapter of every standard it maps to, with its severity, mappings and effective-
 
 - Security issues: **do not** open a public issue — see [SECURITY.md](SECURITY.md).
 - How the code fits together: [ARCHITECTURE.md](ARCHITECTURE.md).
+- By participating you agree to our [Code of Conduct](CODE_OF_CONDUCT.md).
