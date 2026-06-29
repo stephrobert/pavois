@@ -6,11 +6,13 @@
                 (so the corpus is never edited out of band — the reference rules).
 Exit non-zero on any failure.
 """
+
+import shutil
 import sys
 import tempfile
-import shutil
-import yaml
 from pathlib import Path
+
+import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
@@ -21,8 +23,21 @@ import render_reference as R
 # provenance only — a pavois-owned rule (e.g. for a distro SSG hasn't covered, like Ubuntu 26)
 # needs none. Required is the rule's own contract: what it checks and where it belongs.
 REQUIRED = ("domain", "title", "check")
-FIELDS = ("domain", "title", "norms", "levels", "check", "ssg", "source", "impact",
-          "remediation", "thresholds", "note", "requires_package", "exclusive_group")
+FIELDS = (
+    "domain",
+    "title",
+    "norms",
+    "levels",
+    "check",
+    "ssg",
+    "source",
+    "impact",
+    "remediation",
+    "thresholds",
+    "note",
+    "requires_package",
+    "exclusive_group",
+)
 NORM_IN_ID = __import__("re").compile(r"(?:^|-)(cis|bp28|nist|pci-dss|pci|stig)(?:-|$)")
 fail = 0
 

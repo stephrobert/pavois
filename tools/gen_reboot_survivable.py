@@ -23,6 +23,7 @@ Values (and what they mean for grading):
 The mapping is CONSERVATIVE: when in doubt we say `no`/`unknown`, never `yes`. Over-claiming
 persistence is exactly the dishonesty this axis exists to kill.
 """
+
 import sys
 from collections import Counter
 from pathlib import Path
@@ -34,38 +35,62 @@ SRC = ROOT / "docs" / "reference" / "rules.yml"
 
 # template name -> reboot-survivability. See tools/templates.py for what each expands to.
 TEMPLATE_REBOOT = {
-    "package": "yes",            # installed/absent: registered state, survives reboot
-    "file_owner": "yes",         # path mode/owner/group: on-disk metadata, survives reboot
-    "kconfig": "yes",            # /boot/config-$(uname -r): the kernel binary's build — same after reboot
-    "service_disabled": "yes",   # is-enabled: persistent unit enablement (masked/disabled survives)
-    "sysctl": "yes",             # folded: asserts the LIVE value AND that it is pinned in /etc/sysctl.d → persists
-    "mount_option": "yes",       # folded: asserts the live option AND that it is pinned in fstab/systemd → persists
-    "kmod_disabled": "yes",      # not-loaded (live) AND be_disabled reads the persistent modprobe.d config → won't load on boot
-    "cmdline": "yes",            # folded: asserts /proc/cmdline (live) AND the param pinned in grub → persists across reboot
-    "audit_rule": "yes",         # folded: asserts the rule loaded live (auditctl -l) AND present in /etc/audit/rules.d → persists
+    "package": "yes",  # installed/absent: registered state, survives reboot
+    "file_owner": "yes",  # path mode/owner/group: on-disk metadata, survives reboot
+    "kconfig": "yes",  # /boot/config-$(uname -r): the kernel binary's build — same after reboot
+    "service_disabled": "yes",  # is-enabled: persistent unit enablement (masked/disabled survives)
+    "sysctl": "yes",  # folded: live value AND pinned in /etc/sysctl.d → persists
+    "mount_option": "yes",  # folded: live option AND pinned in fstab/systemd → persists
+    "kmod_disabled": "yes",  # not-loaded live AND be_disabled reads modprobe.d → won't load on boot
+    "cmdline": "yes",  # folded: /proc/cmdline (live) AND param pinned in grub → persists
+    "audit_rule": "yes",  # folded: loaded live (auditctl -l) AND in /etc/audit/rules.d → persists
 }
 
 # evidence_type -> reboot-survivability, for verbatim (non-template) checks. The durable-artifact
 # types are reboot-proof by construction; effective-runtime is split by signal below.
 EVIDENCE_REBOOT = {
     "persistent-config": "yes",  # reads a persistent config file on disk
-    "inventory-state": "yes",    # installed/registered
-    "filesystem-state": "yes",   # path metadata on disk
+    "inventory-state": "yes",  # installed/registered
+    "filesystem-state": "yes",  # path metadata on disk
     "manual": "unknown",
-    "behavioral": "no",          # proves the action is blocked NOW, not that it stays blocked after reboot
+    "behavioral": "no",  # proves the action is blocked NOW, not that it stays blocked after reboot
 }
 
 # Within effective-runtime, a check is reboot-proof only if it re-derives from a persistent source
 # (config re-parse, the booted kernel's own build). FIRST match wins; live signals win ties so we
 # never over-claim.
 RUNTIME_LIVE = [
-    "sysctl", "auditctl", "/proc/cmdline", "/proc/mounts", "mount(", "be_mounted", "getenforce",
-    "aa-status", "sestatus", "lsmod", "is-active", "be_running", "firewall-cmd", "ufw status",
-    "nft list", "iptables", "ip6tables", "kernel_parameter", "chronyc", "timedatectl", "nmcli",
-    "modprobe -c", "modprobe --showconfig",
+    "sysctl",
+    "auditctl",
+    "/proc/cmdline",
+    "/proc/mounts",
+    "mount(",
+    "be_mounted",
+    "getenforce",
+    "aa-status",
+    "sestatus",
+    "lsmod",
+    "is-active",
+    "be_running",
+    "firewall-cmd",
+    "ufw status",
+    "nft list",
+    "iptables",
+    "ip6tables",
+    "kernel_parameter",
+    "chronyc",
+    "timedatectl",
+    "nmcli",
+    "modprobe -c",
+    "modprobe --showconfig",
 ]
 RUNTIME_PERSISTENT = [
-    "sshd -t", "nginx -t", "apachectl", "/boot/config", "is-enabled", "be_enabled",
+    "sshd -t",
+    "nginx -t",
+    "apachectl",
+    "/boot/config",
+    "is-enabled",
+    "be_enabled",
 ]
 
 
@@ -123,7 +148,9 @@ def main():
     print("reboot_survivable distribution:")
     for rs, n in dist.most_common():
         print(f"  {rs:8} {n}")
-    print(f"\n  live set ({len(live)}) — these need a persistent companion to count as a full pass:")
+    print(
+        f"\n  live set ({len(live)}) — these need a persistent companion to count as a full pass:"
+    )
     for cid in live[:30]:
         print(f"    {cid}")
     if len(live) > 30:

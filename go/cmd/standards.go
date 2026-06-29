@@ -42,16 +42,16 @@ var standardsCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		out := cmd.OutOrStdout()
-		fmt.Fprintln(out, "Auditable standards (--standard option):")
-		fmt.Fprintln(out)
+		_, _ = fmt.Fprintln(out, "Auditable standards (--standard option):")
+		_, _ = fmt.Fprintln(out)
 		for _, n := range standards {
-			fmt.Fprintf(out, "  %-9s %s\n", n.Key, n.Name)
-			fmt.Fprintf(out, "    %s\n", n.Desc)
-			fmt.Fprintf(out, "    Levels: %s\n\n", n.Levels)
+			_, _ = fmt.Fprintf(out, "  %-9s %s\n", n.Key, n.Name)
+			_, _ = fmt.Fprintf(out, "    %s\n", n.Desc)
+			_, _ = fmt.Fprintf(out, "    Levels: %s\n\n", n.Levels)
 		}
-		fmt.Fprintln(out, "A control = one neutral internal ID + N standard mappings (per-standard view).")
-		fmt.Fprintln(out, `Without --standard: "all standards" view (the strictest of each).`)
-		fmt.Fprintln(out, "E.g.: pavois scan local --standard bp28 --level high")
+		_, _ = fmt.Fprintln(out, "A control = one neutral internal ID + N standard mappings (per-standard view).")
+		_, _ = fmt.Fprintln(out, `Without --standard: "all standards" view (the strictest of each).`)
+		_, _ = fmt.Fprintln(out, "E.g.: pavois scan local --standard bp28 --level high")
 		return nil
 	},
 }

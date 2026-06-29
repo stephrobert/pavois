@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -18,12 +19,20 @@ var serveCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		dir := filepath.Join(findRoot(), "reports")
 		if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
-			return fmt.Errorf("no report yet. Run first: pavois scan ...")
+			return fmt.Errorf("no report yet — run a scan first (pavois scan)")
 		}
 		addr := fmt.Sprintf(":%d", servePort)
-		fmt.Fprintf(cmd.OutOrStdout(),
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(),
 			"pavois: reports at http://localhost%s/  (Ctrl+C to stop)\n", addr)
-		return http.ListenAndServe(addr, http.FileServer(http.Dir(dir)))
+		srv := &http.Server{
+			Addr:              addr,
+			Handler:           http.FileServer(http.Dir(dir)),
+			ReadHeaderTimeout: 10 * time.Second, // mitigate slowloris (gosec G114)
+			ReadTimeout:       30 * time.Second,
+			WriteTimeout:      60 * time.Second,
+			IdleTimeout:       120 * time.Second,
+		}
+		return srv.ListenAndServe()
 	},
 }
 

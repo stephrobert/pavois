@@ -14,7 +14,7 @@ var versionCmd = &cobra.Command{
 	Short: "Print pavois version",
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		fmt.Fprintln(cmd.OutOrStdout(), "Pavois", version)
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Pavois", version)
 		return nil
 	},
 }

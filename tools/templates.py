@@ -8,6 +8,7 @@ VERBATIM ruby token for the variable parts (e.g. value: "0" or "'root'"), so typ
 
 Used by tools/gen.py (render expands template -> check) and tools/migrate_templates.py.
 """
+
 import re
 
 # name -> (expand(params)->lines, extract(lines)->params|None)
@@ -15,16 +16,25 @@ import re
 # sysctl: reboot-proof by construction — assert the LIVE kernel value (kernel_parameter) AND that
 # the value is PINNED in a persistent sysctl config file, so it survives a reboot. Without the
 # second block a `sysctl -w` (live only) would pass and silently regress on the next boot.
-_SYSCTL_PATHS = "/etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf"
+_SYSCTL_PATHS = (
+    "/etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf "
+    "/usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf"
+)
+
 
 def _sysctl_exp(p):
     k, v = p["key"], p["value"]
     vtok = str(v).strip("\"'")
     pat = f"^[[:space:]]*{k}[[:space:]]*=[[:space:]]*{vtok}([[:space:]]|$)"
-    return [f"describe kernel_parameter('{k}') do",
-            f"  its('value') {{ should cmp {v} }}", "end",
-            f"describe command(\"grep -hsE '{pat}' {_SYSCTL_PATHS} 2>/dev/null\") do",
-            "  its('stdout') { should match(/\\S/) }", "end"]
+    return [
+        f"describe kernel_parameter('{k}') do",
+        f"  its('value') {{ should cmp {v} }}",
+        "end",
+        f"describe command(\"grep -hsE '{pat}' {_SYSCTL_PATHS} 2>/dev/null\") do",
+        "  its('stdout') { should match(/\\S/) }",
+        "end",
+    ]
+
 
 def _sysctl_ext(L):
     if len(L) != 6 or L[2] != "end" or L[5] != "end":
@@ -41,6 +51,7 @@ def _pkg_exp(p):
     neg = "" if p["installed"] else "_not"
     return [f"describe package('{p['package']}') do", f"  it {{ should{neg} be_installed }}", "end"]
 
+
 def _pkg_ext(L):
     if len(L) != 3 or L[2] != "end":
         return None
@@ -52,9 +63,13 @@ def _pkg_ext(L):
 
 
 def _owner_exp(p):
-    return [f"only_if {{ file('{p['path']}').exist? }}",
-            f"describe file('{p['path']}') do",
-            f"  its('{p['attr']}') {{ should eq {p['value']} }}", "end"]
+    return [
+        f"only_if {{ file('{p['path']}').exist? }}",
+        f"describe file('{p['path']}') do",
+        f"  its('{p['attr']}') {{ should eq {p['value']} }}",
+        "end",
+    ]
+
 
 def _owner_ext(L):
     if len(L) != 4 or L[3] != "end":
@@ -63,19 +78,34 @@ def _owner_ext(L):
     m1 = re.fullmatch(r"describe file\('([^']+)'\) do", L[1])
     m2 = re.fullmatch(r"  its\('(uid|gid|owner|group)'\) \{ should eq (.+) \}", L[2])
     if m0 and m1 and m2 and m0.group(1) == m1.group(1):
-        return {"name": "file_owner", "path": m1.group(1), "attr": m2.group(1), "value": m2.group(2)}
+        return {
+            "name": "file_owner",
+            "path": m1.group(1),
+            "attr": m2.group(1),
+            "value": m2.group(2),
+        }
     return None
 
 
 def _svc_exp(p):
-    return [f"describe service('{p['service']}') do",
-            "  it { should_not be_enabled }", "  it { should_not be_running }", "end"]
+    return [
+        f"describe service('{p['service']}') do",
+        "  it { should_not be_enabled }",
+        "  it { should_not be_running }",
+        "end",
+    ]
+
 
 def _svc_ext(L):
     if len(L) != 4:
         return None
     m = re.fullmatch(r"describe service\('([^']+)'\) do", L[0])
-    if m and L[1] == "  it { should_not be_enabled }" and L[2] == "  it { should_not be_running }" and L[3] == "end":
+    if (
+        m
+        and L[1] == "  it { should_not be_enabled }"
+        and L[2] == "  it { should_not be_running }"
+        and L[3] == "end"
+    ):
         return {"name": "service_disabled", "service": m.group(1)}
     return None
 
@@ -85,14 +115,24 @@ def _svc_ext(L):
 # `mount -o remount` (live only) would otherwise pass and silently regress on the next boot.
 def _mount_exp(p):
     mp, opt = p["mount_point"], p["option"]
-    persist = ("{ findmnt --fstab -no OPTIONS " + mp + " 2>/dev/null; "
-               "grep -hsE '[[:space:]]" + mp + "[[:space:]]' /etc/fstab 2>/dev/null; "
-               "systemctl show -p Options -- $(systemd-escape -p --suffix=mount " + mp
-               + " 2>/dev/null) 2>/dev/null; } | grep -ow '" + opt + "'")
-    return [f"describe mount('{mp}') do",
-            f"  its('options') {{ should include '{opt}' }}", "end",
-            f"describe command(\"{persist}\") do",
-            "  its('stdout') { should match(/\\S/) }", "end"]
+    persist = (
+        "{ findmnt --fstab -no OPTIONS " + mp + " 2>/dev/null; "
+        "grep -hsE '[[:space:]]" + mp + "[[:space:]]' /etc/fstab 2>/dev/null; "
+        "systemctl show -p Options -- $(systemd-escape -p --suffix=mount "
+        + mp
+        + " 2>/dev/null) 2>/dev/null; } | grep -ow '"
+        + opt
+        + "'"
+    )
+    return [
+        f"describe mount('{mp}') do",
+        f"  its('options') {{ should include '{opt}' }}",
+        "end",
+        f'describe command("{persist}") do',
+        "  its('stdout') { should match(/\\S/) }",
+        "end",
+    ]
+
 
 def _mount_ext(L):
     if len(L) != 6 or L[2] != "end" or L[5] != "end":
@@ -106,50 +146,91 @@ def _mount_ext(L):
 
 
 def _kmod_exp(p):
-    return [f"describe kernel_module('{p['module']}') do",
-            "  it { should_not be_loaded }", "  it { should be_disabled }", "end"]
+    return [
+        f"describe kernel_module('{p['module']}') do",
+        "  it { should_not be_loaded }",
+        "  it { should be_disabled }",
+        "end",
+    ]
+
 
 def _kmod_ext(L):
     if len(L) != 4:
         return None
     m = re.fullmatch(r"describe kernel_module\('([^']+)'\) do", L[0])
-    if m and L[1] == "  it { should_not be_loaded }" and L[2] == "  it { should be_disabled }" and L[3] == "end":
+    if (
+        m
+        and L[1] == "  it { should_not be_loaded }"
+        and L[2] == "  it { should be_disabled }"
+        and L[3] == "end"
+    ):
         return {"name": "kmod_disabled", "module": m.group(1)}
     return None
 
 
 def _kconfig_exp(p):
     opt = p["option"]
-    grep = f"grep -h '^{opt}=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^{opt}='"
+    grep = (
+        f"grep -h '^{opt}=' /boot/config-$(uname -r) 2>/dev/null; "
+        f"zcat /proc/config.gz 2>/dev/null | grep '^{opt}='"
+    )
     neg = "" if p["set"] else "_not"
-    return [f'describe command("{grep}") do',
-            f"  its('stdout') {{ should{neg} match(/^{opt}={p['value']}$/) }}", "end"]
+    return [
+        f'describe command("{grep}") do',
+        f"  its('stdout') {{ should{neg} match(/^{opt}={p['value']}$/) }}",
+        "end",
+    ]
+
 
 def _kconfig_ext(L):
     if len(L) != 3 or L[2] != "end":
         return None
-    m0 = re.fullmatch(r"""describe command\("grep -h '\^(CONFIG_\w+)=' /boot/config-\$\(uname -r\) """
-                      r"""2>/dev/null; zcat /proc/config\.gz 2>/dev/null \| grep '\^(CONFIG_\w+)='"\) do""", L[0])
-    m1 = re.fullmatch(r"  its\('stdout'\) \{ should(_not)? match\(/\^(CONFIG_\w+)=(.*?)\$/\) \}", L[1])
+    m0 = re.fullmatch(
+        r"""describe command\("grep -h '\^(CONFIG_\w+)=' /boot/config-\$\(uname -r\) """
+        r"""2>/dev/null; zcat /proc/config\.gz 2>/dev/null \| grep '\^(CONFIG_\w+)='"\) do""",
+        L[0],
+    )
+    m1 = re.fullmatch(
+        r"  its\('stdout'\) \{ should(_not)? match\(/\^(CONFIG_\w+)=(.*?)\$/\) \}", L[1]
+    )
     if m0 and m1 and m0.group(1) == m0.group(2) == m1.group(2):
-        return {"name": "kconfig", "option": m1.group(2), "value": m1.group(3), "set": m1.group(1) is None}
+        return {
+            "name": "kconfig",
+            "option": m1.group(2),
+            "value": m1.group(3),
+            "set": m1.group(1) is None,
+        }
     return None
 
 
 # cmdline: reboot-proof by construction — assert the param is on the LIVE booted kernel
 # (/proc/cmdline) AND pinned in a persistent boot source (grub / kernel cmdline), so it survives
 # a reboot. A param injected at boot but absent from grub would otherwise pass and regress.
-_GRUB_SRC = "/etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg"
+_GRUB_SRC = (
+    "/etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg "
+    "/boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg"
+)
+
 
 def _cmdline_exp(p):
     tok = p["param"]
-    return [f"describe command('cat /proc/cmdline') do",
-            f"  its('stdout') {{ should match(/(^| ){tok}( |$)/) }}", "end",
-            f"describe command(\"grep -hwsF '{tok}' {_GRUB_SRC} 2>/dev/null\") do",
-            "  its('stdout') { should match(/\\S/) }", "end"]
+    return [
+        "describe command('cat /proc/cmdline') do",
+        f"  its('stdout') {{ should match(/(^| ){tok}( |$)/) }}",
+        "end",
+        f"describe command(\"grep -hwsF '{tok}' {_GRUB_SRC} 2>/dev/null\") do",
+        "  its('stdout') { should match(/\\S/) }",
+        "end",
+    ]
+
 
 def _cmdline_ext(L):
-    if len(L) != 6 or L[2] != "end" or L[5] != "end" or L[0] != "describe command('cat /proc/cmdline') do":
+    if (
+        len(L) != 6
+        or L[2] != "end"
+        or L[5] != "end"
+        or L[0] != "describe command('cat /proc/cmdline') do"
+    ):
         return None
     m = re.fullmatch(r"  its\('stdout'\) \{ should match\(/\(\^\| \)(.+)\( \|\$\)/\) \}", L[1])
     m3 = re.fullmatch(r"describe command\(\"grep -hwsF '.+' .*2>/dev/null\"\) do", L[3])
@@ -163,16 +244,27 @@ def _cmdline_ext(L):
 # audit.rules). A rule loaded with `auditctl` but absent from disk would regress on reboot.
 _AUDIT_RULES = "/etc/audit/rules.d/*.rules /etc/audit/audit.rules"
 
+
 def _audit_exp(p):
-    key = p["key"]              # regex token as authored, e.g. perm_mod or user\-modify
+    key = p["key"]  # regex token as authored, e.g. perm_mod or user\-modify
     lit = key.replace("\\", "")  # literal key for the fixed-string on-disk grep (\- -> -)
-    return [f"describe command('auditctl -l') do",
-            f"  its('stdout') {{ should match(/(-k +|key=){key}\\b/) }}", "end",
-            f"describe command(\"grep -rhwsF '{lit}' {_AUDIT_RULES} 2>/dev/null\") do",
-            "  its('stdout') { should match(/\\S/) }", "end"]
+    return [
+        "describe command('auditctl -l') do",
+        f"  its('stdout') {{ should match(/(-k +|key=){key}\\b/) }}",
+        "end",
+        f"describe command(\"grep -rhwsF '{lit}' {_AUDIT_RULES} 2>/dev/null\") do",
+        "  its('stdout') { should match(/\\S/) }",
+        "end",
+    ]
+
 
 def _audit_ext(L):
-    if len(L) != 6 or L[2] != "end" or L[5] != "end" or L[0] != "describe command('auditctl -l') do":
+    if (
+        len(L) != 6
+        or L[2] != "end"
+        or L[5] != "end"
+        or L[0] != "describe command('auditctl -l') do"
+    ):
         return None
     m = re.fullmatch(r"  its\('stdout'\) \{ should match\(/\(-k \+\|key=\)(.+)\\b/\) \}", L[1])
     m3 = re.fullmatch(r"describe command\(\"grep -rhwsF '.+' .*2>/dev/null\"\) do", L[3])
@@ -181,11 +273,28 @@ def _audit_ext(L):
     return None
 
 
-EXPAND = {"sysctl": _sysctl_exp, "package": _pkg_exp, "file_owner": _owner_exp, "kconfig": _kconfig_exp,
-          "service_disabled": _svc_exp, "mount_option": _mount_exp, "kmod_disabled": _kmod_exp,
-          "cmdline": _cmdline_exp, "audit_rule": _audit_exp}
-_EXTRACT = [_sysctl_ext, _pkg_ext, _owner_ext, _svc_ext, _mount_ext, _kmod_ext, _kconfig_ext,
-            _cmdline_ext, _audit_ext]
+EXPAND = {
+    "sysctl": _sysctl_exp,
+    "package": _pkg_exp,
+    "file_owner": _owner_exp,
+    "kconfig": _kconfig_exp,
+    "service_disabled": _svc_exp,
+    "mount_option": _mount_exp,
+    "kmod_disabled": _kmod_exp,
+    "cmdline": _cmdline_exp,
+    "audit_rule": _audit_exp,
+}
+_EXTRACT = [
+    _sysctl_ext,
+    _pkg_ext,
+    _owner_ext,
+    _svc_ext,
+    _mount_ext,
+    _kmod_ext,
+    _kconfig_ext,
+    _cmdline_ext,
+    _audit_ext,
+]
 
 
 def expand(tpl):

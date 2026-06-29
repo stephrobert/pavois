@@ -6,6 +6,10 @@ go = "1.26.4"        # the pavois binary (go/)
 node = "22.22.0"     # the bilingual Astro hardening site (site/)
 python = "3.12.11"   # offline tooling: validation, reference render, norm-studio
 gh = "2.92.0"        # benchmark sources (ansible-lockdown, SSG releases)
+# Quality + supply-chain tooling (mirrors the CI workflows + pre-commit hooks; pinned).
+golangci-lint = "2.12.2"  # Go linters (errcheck, gosec, staticcheck, errorlint, …)
+ruff = "0.14.9"           # Python lint + format
+trufflehog = "3.95.6"     # secret scanning (pre-commit + CI)
 
 [env]
 CHEF_LICENSE = "accept-silent"   # CINC/InSpec runs non-interactively
@@ -114,6 +118,16 @@ run = "npm install && npm run build"
 description = "Preview the built site locally"
 dir = "{{config_root}}/site"
 run = "npm run preview"
+
+[tasks."site:perf"]
+description = "Lighthouse on every page (unlighthouse, headless). Start `mise run site:preview` in another shell first, then run this; report lands in site/.unlighthouse/."
+dir = "{{config_root}}/site"
+run = "npx unlighthouse-ci --site http://localhost:4321/en/ --build-static"
+
+[tasks."site:lint-css"]
+description = "Lint the stylesheet: flag duplicate selectors + hardcoded colors (must use tokens). Guards against CSS debt."
+dir = "{{config_root}}/site"
+run = "npx stylelint 'src/styles/*.css'"
 
 [tasks."site:validate-seo"]
 description = "Validate every JSON-LD block in the built site against the Rich Results Test rules (run after site:build)"

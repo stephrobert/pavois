@@ -50,10 +50,10 @@ var hardenPlanCmd = &cobra.Command{
 }
 
 var (
-	haKey    string
-	haTarget string
-	haDryRun bool
-	haYes    bool
+	haKey      string
+	haTarget   string
+	haDryRun   bool
+	haYes      bool
 	haScan     bool
 	haReboot   bool
 	haStandard string
@@ -115,12 +115,12 @@ type refDoc struct {
 }
 
 type planRule struct {
-	Title       string         `yaml:"title"`
-	Domain      string         `yaml:"domain"`
-	Severity    string         `yaml:"severity"`
-	Status      string         `yaml:"status"`
-	Apply       *bool          `yaml:"apply,omitempty"`
-	Choose      *string        `yaml:"choose,omitempty"`
+	Title           string         `yaml:"title"`
+	Domain          string         `yaml:"domain"`
+	Severity        string         `yaml:"severity"`
+	Status          string         `yaml:"status"`
+	Apply           *bool          `yaml:"apply,omitempty"`
+	Choose          *string        `yaml:"choose,omitempty"`
 	Remediation     map[string]any `yaml:"remediation,omitempty"`
 	ActivatedBy     string         `yaml:"activated_by,omitempty"`
 	RequiresPackage string         `yaml:"requires_package,omitempty"`
@@ -170,19 +170,19 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 	}
 
 	// Detect the target OS to pick the right reference (no asking the user).
-	fmt.Fprint(os.Stderr, "  ⠿ detecting target OS…\r")
+	_, _ = fmt.Fprint(os.Stderr, "  ⠿ detecting target OS…\r")
 	prof, detected := detectProfile(root, engine.Options{Target: target, Key: hdKey, SSHPass: sshPass})
-	fmt.Fprint(os.Stderr, "\033[K")
+	_, _ = fmt.Fprint(os.Stderr, "\033[K")
 	if prof == "" {
 		return fmt.Errorf("could not detect a Pavois profile for target %q (%s)", target, detected)
 	}
 	osName := strings.TrimPrefix(prof, "linux/")
-	fmt.Fprintf(os.Stderr, "pavois: detected %s → reference %s\n", detected, osName)
+	_, _ = fmt.Fprintf(os.Stderr, "pavois: detected %s → reference %s\n", detected, osName)
 
 	// Scan (or reuse an existing JSON).
 	jsonPath := hdFrom
 	if jsonPath == "" {
-		_ = os.MkdirAll(filepath.Join(root, "reports"), 0o755)
+		_ = os.MkdirAll(filepath.Join(root, "reports"), 0o750)
 		jsonPath = filepath.Join(root, "reports", fmt.Sprintf("harden-scan-%s-%s.json",
 			osName, time.Now().Format("20060102-150405")))
 		if _, err := engine.Run(engine.Options{
@@ -277,10 +277,10 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 	}
 	header := "# pavois hardening plan (state-aware). Flip `apply: true` on the gaps you want fixed.\n" +
 		"# compliant rules are shown for context and are never applied.\n"
-	if err := os.WriteFile(outPath, append([]byte(header), body...), 0o644); err != nil {
+	if err := os.WriteFile(outPath, append([]byte(header), body...), 0o600); err != nil {
 		return err
 	}
-	fmt.Fprintf(cmd.OutOrStdout(),
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(),
 		"pavois: plan → %s  (compliant %d · gaps %d · n/a %d · baseline installs %d)\n",
 		outPath, counts["compliant"], counts["gap"], counts["not_applicable"], len(pkgs))
 	_ = transport
@@ -382,18 +382,18 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	files := map[string]map[string]string{}   // path -> attr -> value
 	dirs := map[string]map[string]string{}    // directory path -> attr -> value (mode/owner/group)
 	keyvals := map[string]map[string]string{} // config file -> key -> value (drop-in, whole-file)
-	confLines := []confLine{}                  // in-place key=value edits in a shared file (auditd.conf)
-	pamLines := []pamLine{}                     // PAM stack lines inserted before an anchor (idempotent)
-	execs := []execRem{}                        // arbitrary guarded command (e.g. chmod on a glob)
+	confLines := []confLine{}                 // in-place key=value edits in a shared file (auditd.conf)
+	pamLines := []pamLine{}                   // PAM stack lines inserted before an anchor (idempotent)
+	execs := []execRem{}                      // arbitrary guarded command (e.g. chmod on a glob)
 	kmods := map[string]bool{}
 	cmdline := map[string]bool{}     // kernel cmdline params -> one grub drop-in
 	mounts := map[string]*mountAgg{} // mount point -> aggregated tmpfs options (all-or-nothing)
-	fwEnableCmd := ""            // firewall: open SSH then enable (no lockout), emitted once
-	grubPwWanted := false        // a grub_password remediation was enabled
-	dconfWanted := false         // a dconf (GNOME) remediation was enabled
-	faillockWanted := false      // a pam_faillock remediation was enabled
-	kernelBuildWanted := false   // a kernel_build remediation was enabled (deliver the recipe)
-	manualFixes := []manualFix{} // `manual` remediations — delivered as a script, never auto-run
+	fwEnableCmd := ""                // firewall: open SSH then enable (no lockout), emitted once
+	grubPwWanted := false            // a grub_password remediation was enabled
+	dconfWanted := false             // a dconf (GNOME) remediation was enabled
+	faillockWanted := false          // a pam_faillock remediation was enabled
+	kernelBuildWanted := false       // a kernel_build remediation was enabled (deliver the recipe)
+	manualFixes := []manualFix{}     // `manual` remediations — delivered as a script, never auto-run
 
 	setKV := func(m map[string]string, k, v, kind string) {
 		if old, ok := m[k]; ok && old != v {
@@ -569,11 +569,12 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		// management user exec under sudo so Pavois keeps running cinc. Must precede the
 		// noexec drop-in so a mid-converge abort can never leave noexec WITHOUT the exemption
 		// (which would sever Pavois). Per-user override wins; visudo-verified.
-		b.WriteString(fmt.Sprintf("file %q do\n  content %q\n  owner 'root'\n  group 'root'\n  mode '0440'\n  verify 'visudo -cf %%{path}'\nend\n\n",
+		// strings.Builder.Write never errors, so the Fprintf return is safely discarded.
+		_, _ = fmt.Fprintf(&b, "file %q do\n  content %q\n  owner 'root'\n  group 'root'\n  mode '0440'\n  verify 'visudo -cf %%{path}'\nend\n\n",
 			"/etc/sudoers.d/zz-Pavois-mgmt-exec",
 			"# pavois: the management user runs cinc (which execs programs), so it must be\n"+
 				"# exempt from Defaults noexec. noexec still applies to every other user.\n"+
-				"Defaults:"+noexecUser+" !noexec\n"))
+				"Defaults:"+noexecUser+" !noexec\n")
 		n++
 	}
 	// One resource per package, each ignore_failure: cross-OS lists carry names absent here (RHEL
@@ -581,17 +582,17 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	// on the first, and the real packages would never be installed/removed. Individual keeps them
 	// independent — the present ones apply, the rest report failed without breaking the converge.
 	for _, name := range sortedKeys(inst) {
-		b.WriteString(fmt.Sprintf("package %q do\n  action :install\n  ignore_failure true\nend\n\n", name))
+		_, _ = fmt.Fprintf(&b, "package %q do\n  action :install\n  ignore_failure true\nend\n\n", name)
 		n++
 	}
 	if k := sortedKeys(rm); len(k) > 0 {
 		for _, name := range k {
-			b.WriteString(fmt.Sprintf("package %q do\n  action :remove\n  ignore_failure true\nend\n\n", name))
+			_, _ = fmt.Fprintf(&b, "package %q do\n  action :remove\n  ignore_failure true\nend\n\n", name)
 		}
 		n += len(k)
 	}
 	if fwEnableCmd != "" { // AFTER the package batch so ufw is installed; open SSH then enable
-		b.WriteString(fmt.Sprintf("execute 'Pavois-firewall-enable' do\n  command %q\n  not_if 'systemctl is-active --quiet ufw'\nend\n\n", fwEnableCmd))
+		_, _ = fmt.Fprintf(&b, "execute 'Pavois-firewall-enable' do\n  command %q\n  not_if 'systemctl is-active --quiet ufw'\nend\n\n", fwEnableCmd)
 		n++
 	}
 	if len(sysctl) > 0 {
@@ -603,8 +604,8 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		for _, k := range sortedKeysS(sysctl) {
 			c.WriteString(k + " = " + sysctl[k] + "\\n")
 		}
-		b.WriteString(fmt.Sprintf("file %q do\n  content \"%s\"\n  notifies :run, 'execute[Pavois-sysctl-reload]', :immediately\nend\n\n",
-			"/etc/sysctl.d/zz-Pavois.conf", c.String()))
+		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\n  notifies :run, 'execute[Pavois-sysctl-reload]', :immediately\nend\n\n",
+			"/etc/sysctl.d/zz-Pavois.conf", c.String())
 		b.WriteString("execute 'Pavois-sysctl-reload' do\n  command 'sysctl --system'\n  action :nothing\nend\n\n")
 		n += len(sysctl)
 	}
@@ -613,12 +614,12 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		// (e.g. a mutually-exclusive alternative like syslogng when rsyslog is chosen)
 		// must be SKIPPED, not abort the whole run. Packages install earlier in the recipe,
 		// so a service we DO want is present by the time this runs.
-		b.WriteString(fmt.Sprintf("service %q do\n  action [%s]\n  only_if \"systemctl cat %s.service >/dev/null 2>&1\"\nend\n\n", k, svc[k], k))
+		_, _ = fmt.Fprintf(&b, "service %q do\n  action [%s]\n  only_if \"systemctl cat %s.service >/dev/null 2>&1\"\nend\n\n", k, svc[k], k)
 		n++
 	}
 	for _, mod := range sortedKeys(kmods) {
-		b.WriteString(fmt.Sprintf("file %q do\n  content \"install %s /bin/true\\nblacklist %s\\n\"\nend\n\n",
-			"/etc/modprobe.d/Pavois-"+mod+".conf", mod, mod))
+		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"install %s /bin/true\\nblacklist %s\\n\"\nend\n\n",
+			"/etc/modprobe.d/Pavois-"+mod+".conf", mod, mod)
 		n++
 	}
 	// Ownership remediations reference service users (e.g. syslog) that may be absent —
@@ -631,7 +632,7 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		}
 	}
 	for _, o := range sortedKeys(owners) {
-		b.WriteString(fmt.Sprintf("user %q do\n  system true\n  action :create\nend\n\n", o))
+		_, _ = fmt.Fprintf(&b, "user %q do\n  system true\n  action :create\nend\n\n", o)
 	}
 	// A content file may live in a drop-in dir that doesn't exist yet (e.g.
 	// /etc/systemd/journald.conf.d) — create parents first or the file resource aborts the run.
@@ -642,46 +643,46 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		}
 	}
 	for _, d := range sortedKeys(fileDirs) {
-		b.WriteString(fmt.Sprintf("directory %q do\n  recursive true\nend\n\n", d))
+		_, _ = fmt.Fprintf(&b, "directory %q do\n  recursive true\nend\n\n", d)
 	}
 	for _, path := range sortedFileKeys(dirs) {
 		da := dirs[path]
-		b.WriteString(fmt.Sprintf("directory %q do\n", path))
+		_, _ = fmt.Fprintf(&b, "directory %q do\n", path)
 		for _, k := range []string{"owner", "group", "mode"} {
 			if v, ok := da[k]; ok {
-				b.WriteString(fmt.Sprintf("  %s %q\n", k, v))
+				_, _ = fmt.Fprintf(&b, "  %s %q\n", k, v)
 			}
 		}
-		b.WriteString(fmt.Sprintf("  only_if { ::File.directory?(%q) }\nend\n\n", path))
+		_, _ = fmt.Fprintf(&b, "  only_if { ::File.directory?(%q) }\nend\n\n", path)
 		n++
 	}
 	for _, path := range sortedFileKeys(files) {
 		fa := files[path]
 		_, hasContent := fa["content"]
-		b.WriteString(fmt.Sprintf("file %q do\n", path))
+		_, _ = fmt.Fprintf(&b, "file %q do\n", path)
 		for _, k := range []string{"content", "owner", "group", "mode"} {
 			if v, ok := fa[k]; ok {
-				b.WriteString(fmt.Sprintf("  %s %q\n", k, v))
+				_, _ = fmt.Fprintf(&b, "  %s %q\n", k, v)
 			}
 		}
 		if v, ok := fa["verify"]; ok { // e.g. visudo -cf %{path} — never ship an invalid file
-			b.WriteString(fmt.Sprintf("  verify '%s'\n", v))
+			_, _ = fmt.Fprintf(&b, "  verify '%s'\n", v)
 		}
 		if !hasContent { // pure owner/perm fix: the `file` resource fails on a DIRECTORY or a
 			// missing path (cross-OS noise like /var/log/apt). Guard so it SKIPS instead of
 			// aborting the whole run; a real file gets fixed, anything else is left alone.
-			b.WriteString(fmt.Sprintf("  only_if { ::File.file?(%q) }\n", path))
+			_, _ = fmt.Fprintf(&b, "  only_if { ::File.file?(%q) }\n", path)
 		}
 		b.WriteString("end\n\n")
 		if !hasContent { // the path may be a DIRECTORY (e.g. /var/log/apt) — the file resource
 			// above skipped it, so set owner/group/mode via a `directory` resource when it is one.
-			b.WriteString(fmt.Sprintf("directory %q do\n", path))
+			_, _ = fmt.Fprintf(&b, "directory %q do\n", path)
 			for _, k := range []string{"owner", "group", "mode"} {
 				if v, ok := fa[k]; ok {
-					b.WriteString(fmt.Sprintf("  %s %q\n", k, v))
+					_, _ = fmt.Fprintf(&b, "  %s %q\n", k, v)
 				}
 			}
-			b.WriteString(fmt.Sprintf("  only_if { ::File.directory?(%q) }\nend\n\n", path))
+			_, _ = fmt.Fprintf(&b, "  only_if { ::File.directory?(%q) }\nend\n\n", path)
 		}
 		n++
 	}
@@ -715,14 +716,14 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		kvDirs[filepath.Dir(f)] = true
 	}
 	for _, d := range sortedKeys(kvDirs) {
-		b.WriteString(fmt.Sprintf("directory %q do\n  recursive true\nend\n\n", d))
+		_, _ = fmt.Fprintf(&b, "directory %q do\n  recursive true\nend\n\n", d)
 	}
 	for _, f := range sortedFileKeys(keyvals) {
 		var content strings.Builder
 		for _, k := range sortedKeysS(keyvals[f]) {
 			content.WriteString(k + " = " + keyvals[f][k] + "\\n")
 		}
-		b.WriteString(fmt.Sprintf("file %q do\n  content \"%s\"\nend\n\n", f, content.String()))
+		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\nend\n\n", f, content.String())
 		n++
 	}
 
@@ -736,17 +737,17 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		}
 		confSeen[cl.file+cl.key] = true
 		// Separator differs by file: auditd.conf uses `key = value`, login.defs uses `KEY VALUE`.
-		sepWrite, sepSed, sepExists, sepNot := " = ", "[[:space:]]*=", "[[:space:]]*=", "[[:space:]]*=[[:space:]]*"
+		sepWrite, sepSed, sepExists, sepNot := " = ", "[[:space:]]*=", "[[:space:]]*=", "[[:space:]]*=[[:space:]]*" //nolint:gosec // G101 false positive: key/value separators (regex fragments), not credentials
 		if cl.sep == "space" {
-			sepWrite, sepSed, sepExists, sepNot = " ", "[[:space:]]", "[[:space:]]", "[[:space:]]+"
+			sepWrite, sepSed, sepExists, sepNot = " ", "[[:space:]]", "[[:space:]]", "[[:space:]]+" //nolint:gosec // G101 false positive: whitespace separators for KEY VALUE config files, not credentials
 		}
 		line := cl.key + sepWrite + cl.value
 		reload := ""
 		if cl.reload != "" {
 			reload = fmt.Sprintf("; systemctl reload %s 2>/dev/null || true", cl.reload)
 		}
-		b.WriteString(fmt.Sprintf("execute 'Pavois-conf-%s' do\n  command 'sed -ri \"s|^[[:space:]]*%s%s.*|%s|\" %s; grep -qiE \"^[[:space:]]*%s%s\" %s || echo \"%s\" >> %s%s'\n  not_if 'grep -qiE \"^[[:space:]]*%s%s%s\\b\" %s'\nend\n\n",
-			cl.key, cl.key, sepSed, line, cl.file, cl.key, sepExists, cl.file, line, cl.file, reload, cl.key, sepNot, cl.value, cl.file))
+		_, _ = fmt.Fprintf(&b, "execute 'Pavois-conf-%s' do\n  command 'sed -ri \"s|^[[:space:]]*%s%s.*|%s|\" %s; grep -qiE \"^[[:space:]]*%s%s\" %s || echo \"%s\" >> %s%s'\n  not_if 'grep -qiE \"^[[:space:]]*%s%s%s\\b\" %s'\nend\n\n",
+			cl.key, cl.key, sepSed, line, cl.file, cl.key, sepExists, cl.file, line, cl.file, reload, cl.key, sepNot, cl.value, cl.file)
 		n++
 	}
 
@@ -769,8 +770,8 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			}
 			return '-'
 		}, pl.module)
-		b.WriteString(fmt.Sprintf("execute 'Pavois-pam-%s' do\n  command '%s'\n  only_if 'test -f %s'\n  not_if 'grep -qE \"%s\" %s'\nend\n\n",
-			name, apply, pl.file, pl.module, pl.file))
+		_, _ = fmt.Fprintf(&b, "execute 'Pavois-pam-%s' do\n  command '%s'\n  only_if 'test -f %s'\n  not_if 'grep -qE \"%s\" %s'\nend\n\n",
+			name, apply, pl.file, pl.module, pl.file)
 		n++
 	}
 
@@ -780,9 +781,9 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			continue
 		}
 		execSeen[ex.name] = true
-		b.WriteString(fmt.Sprintf("execute 'Pavois-exec-%s' do\n  command %q\n", ex.name, ex.command))
+		_, _ = fmt.Fprintf(&b, "execute 'Pavois-exec-%s' do\n  command %q\n", ex.name, ex.command)
 		if ex.notIf != "" {
-			b.WriteString(fmt.Sprintf("  not_if %q\n", ex.notIf))
+			_, _ = fmt.Fprintf(&b, "  not_if %q\n", ex.notIf)
 		}
 		b.WriteString("end\n\n")
 		n++
@@ -795,14 +796,14 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		for _, k := range sortedKeysS(sshd) {
 			content.WriteString(k + " " + sshd[k] + "\\n")
 		}
-		b.WriteString(fmt.Sprintf("file %q do\n  content \"%s\"\n  verify 'sshd -t -f %%{path}'\n  notifies :reload, 'service[ssh]'\nend\n\n",
-			"/etc/ssh/sshd_config.d/99-Pavois.conf", content.String()))
+		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\n  verify 'sshd -t -f %%{path}'\n  notifies :reload, 'service[ssh]'\nend\n\n",
+			"/etc/ssh/sshd_config.d/99-Pavois.conf", content.String())
 		b.WriteString("service 'ssh' do\n  action :nothing\nend\n\n")
 		n += len(sshd)
 	}
 	if auditRuleset && auditRules != "" { // Pavois audit ruleset -> one file
-		b.WriteString(fmt.Sprintf("file %q do\n  content %q\nend\n\n",
-			"/etc/audit/rules.d/99-Pavois.rules", auditRules))
+		_, _ = fmt.Fprintf(&b, "file %q do\n  content %q\nend\n\n",
+			"/etc/audit/rules.d/99-Pavois.rules", auditRules)
 		// Deploying the file is not enough: the rules only auto-load at the NEXT boot, so without
 		// this every audit control fails until a reboot. Load now with augenrules. The ruleset ends
 		// with `-e 2` (immutable) — once loaded you can't reload until reboot, so skip if already
@@ -826,8 +827,8 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		b.WriteString("execute 'Pavois-grub-source-dropins' do\n" +
 			`  command 'printf "\nif [ -d /etc/default/grub.d ]; then for x in /etc/default/grub.d/*.cfg; do [ -e \"\$x\" ] && . \"\$x\"; done; fi\n" >> /etc/default/grub'` +
 			"\n  not_if 'grep -q /etc/default/grub.d /etc/default/grub'\nend\n\n")
-		b.WriteString(fmt.Sprintf("file %q do\n  content \"GRUB_CMDLINE_LINUX=\\\"$GRUB_CMDLINE_LINUX %s\\\"\\n\"\n  notifies :run, 'execute[update-grub]', :immediately\nend\n\n",
-			"/etc/default/grub.d/99-Pavois-cmdline.cfg", strings.Join(sortedKeys(cmdline), " ")))
+		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"GRUB_CMDLINE_LINUX=\\\"$GRUB_CMDLINE_LINUX %s\\\"\\n\"\n  notifies :run, 'execute[update-grub]', :immediately\nend\n\n",
+			"/etc/default/grub.d/99-Pavois-cmdline.cfg", strings.Join(sortedKeys(cmdline), " "))
 		b.WriteString("execute 'update-grub' do\n  command 'update-grub'\n  action :nothing\nend\n\n")
 		reboot = true
 		n++
@@ -843,10 +844,10 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			// Self-bind a real directory (/home, /var, /boot…) so its mount carries nodev/nosuid/
 			// noexec WITHOUT a separate partition — the proven alternative when repartitioning a live
 			// system isn't possible. A plain bind ignores the options, so bind first then remount.
-			b.WriteString(fmt.Sprintf("mount %q do\n  device %q\n  fstype 'none'\n  options %q\n  action :enable\n  only_if { ::File.directory?(%q) }\nend\n\n",
-				mp, mp, "bind,"+csv, mp))
-			b.WriteString(fmt.Sprintf("execute 'Pavois-bind-%s' do\n  command 'mountpoint -q %s || mount --bind %s %s; mount -o remount,bind,%s %s'\n  only_if 'test -d %s'\n  not_if 'O=$(findmnt -no OPTIONS %s 2>/dev/null); for o in %s; do echo \"$O\" | grep -qw \"$o\" || exit 1; done'\nend\n\n",
-				mp, mp, mp, mp, csv, mp, mp, mp, ssv))
+			_, _ = fmt.Fprintf(&b, "mount %q do\n  device %q\n  fstype 'none'\n  options %q\n  action :enable\n  only_if { ::File.directory?(%q) }\nend\n\n",
+				mp, mp, "bind,"+csv, mp)
+			_, _ = fmt.Fprintf(&b, "execute 'Pavois-bind-%s' do\n  command 'mountpoint -q %s || mount --bind %s %s; mount -o remount,bind,%s %s'\n  only_if 'test -d %s'\n  not_if 'O=$(findmnt -no OPTIONS %s 2>/dev/null); for o in %s; do echo \"$O\" | grep -qw \"$o\" || exit 1; done'\nend\n\n",
+				mp, mp, mp, mp, csv, mp, mp, mp, ssv)
 			n++
 			continue
 		}
@@ -854,21 +855,21 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		// action: Chef's :remount umounts first and that fails on a busy fs like /dev/shm. `mount -o
 		// remount` rewrites options in place; if the point isn't a separate mount yet (e.g. /tmp on /),
 		// `mount <mp>` mounts it from the fstab line we just wrote. Guarded idempotent on the options.
-		b.WriteString(fmt.Sprintf("mount %q do\n  device %q\n  fstype %q\n  options %q\n  action :enable\nend\n\n",
-			mp, ma.device, ma.fstype, csv))
-		b.WriteString(fmt.Sprintf("execute 'Pavois-mount-%s' do\n  command 'mountpoint -q %s && mount -o remount,%s %s || mount %s'\n  not_if 'O=$(findmnt -no OPTIONS %s 2>/dev/null); for o in %s; do echo \"$O\" | grep -qw \"$o\" || exit 1; done'\nend\n\n",
-			mp, mp, csv, mp, mp, mp, ssv))
+		_, _ = fmt.Fprintf(&b, "mount %q do\n  device %q\n  fstype %q\n  options %q\n  action :enable\nend\n\n",
+			mp, ma.device, ma.fstype, csv)
+		_, _ = fmt.Fprintf(&b, "execute 'Pavois-mount-%s' do\n  command 'mountpoint -q %s && mount -o remount,%s %s || mount %s'\n  not_if 'O=$(findmnt -no OPTIONS %s 2>/dev/null); for o in %s; do echo \"$O\" | grep -qw \"$o\" || exit 1; done'\nend\n\n",
+			mp, mp, csv, mp, mp, mp, ssv)
 		n++
 	}
 	if grubPwWanted && grubPassword != "" {
 		// Pavois generated the password and vaulted it locally; here we hash it ON the target
 		// (grub-mkpasswd-pbkdf2 is salted) and write the superuser entry. The plaintext lands in
 		// a 0600 temp file, used then removed. Idempotent: skip if a grub password already exists.
-		b.WriteString(fmt.Sprintf("file '/tmp/Pavois-grub-pw' do\n  content %q\n  mode '0600'\nend\n\n", grubPassword))
+		_, _ = fmt.Fprintf(&b, "file '/tmp/Pavois-grub-pw' do\n  content %q\n  mode '0600'\nend\n\n", grubPassword)
 		// A proper /etc/grub.d/ SCRIPT (shebang + heredoc) so update-grub EMITS the directives
 		// into grub.cfg; it reads the salted hash from a sibling dotfile (ignored by update-grub).
-		b.WriteString(fmt.Sprintf("file '/etc/grub.d/40_pavois_password' do\n  content %q\n  mode '0755'\nend\n\n",
-			"#!/bin/sh\ncat <<EOF\nset superusers=\"root\"\npassword_pbkdf2 root $(cat /etc/grub.d/.Pavois-grub-hash)\nEOF\n"))
+		_, _ = fmt.Fprintf(&b, "file '/etc/grub.d/40_pavois_password' do\n  content %q\n  mode '0755'\nend\n\n",
+			"#!/bin/sh\ncat <<EOF\nset superusers=\"root\"\npassword_pbkdf2 root $(cat /etc/grub.d/.Pavois-grub-hash)\nEOF\n")
 		b.WriteString(`execute 'Pavois-grub-password' do
   command 'H=$(printf "%s\n%s\n" "$(cat /tmp/Pavois-grub-pw)" "$(cat /tmp/Pavois-grub-pw)" | grub-mkpasswd-pbkdf2 2>/dev/null | grep -oE "grub\.pbkdf2\.[^ ]+"); [ -n "$H" ] && { printf "%s\n" "$H" > /etc/grub.d/.Pavois-grub-hash; chmod 0600 /etc/grub.d/.Pavois-grub-hash; grep -q -- "--unrestricted" /etc/grub.d/10_linux || sed -ri "/^CLASS=/ s/\"\$/ --unrestricted\"/" /etc/grub.d/10_linux; /usr/sbin/update-grub; }; rm -f /tmp/Pavois-grub-pw'
   not_if 'test -s /etc/grub.d/.Pavois-grub-hash'
@@ -886,7 +887,7 @@ end
 		// stack stays correct; audit + even_deny_root satisfy the controls. SSH key auth bypasses
 		// the password stack, so a slip here can't lock out key login.
 		fl := "audit silent deny=5 unlock_time=900 even_deny_root"
-		b.WriteString(fmt.Sprintf("execute 'Pavois-faillock-preauth' do\n  command 'sed -ri \"/^auth.*pam_unix\\.so/i auth required pam_faillock.so preauth %s\" /etc/pam.d/common-auth'\n  only_if 'test -f /etc/pam.d/common-auth'\n  not_if 'grep -qE \"pam_faillock.so\" /etc/pam.d/common-auth'\nend\n\n", fl))
+		_, _ = fmt.Fprintf(&b, "execute 'Pavois-faillock-preauth' do\n  command 'sed -ri \"/^auth.*pam_unix\\.so/i auth required pam_faillock.so preauth %s\" /etc/pam.d/common-auth'\n  only_if 'test -f /etc/pam.d/common-auth'\n  not_if 'grep -qE \"pam_faillock.so\" /etc/pam.d/common-auth'\nend\n\n", fl)
 		b.WriteString("execute 'Pavois-faillock-account' do\n  command 'printf \"account required pam_faillock.so\\n\" >> /etc/pam.d/common-account'\n  only_if 'test -f /etc/pam.d/common-account'\n  not_if 'grep -qE \"pam_faillock.so\" /etc/pam.d/common-account'\nend\n\n")
 		n++
 	}
@@ -905,8 +906,8 @@ end
 			"/org/gnome/desktop/screensaver/lock-enabled\n/org/gnome/desktop/screensaver/lock-delay\n" +
 			"/org/gnome/desktop/session/idle-delay\n"
 		b.WriteString("directory '/etc/dconf/db/local.d/locks' do\n  recursive true\nend\n\n")
-		b.WriteString(fmt.Sprintf("file '/etc/dconf/db/local.d/00-Pavois-hardening' do\n  content %q\n  mode '0644'\nend\n\n", keyfile))
-		b.WriteString(fmt.Sprintf("file '/etc/dconf/db/local.d/locks/00-Pavois-locks' do\n  content %q\n  mode '0644'\nend\n\n", locks))
+		_, _ = fmt.Fprintf(&b, "file '/etc/dconf/db/local.d/00-Pavois-hardening' do\n  content %q\n  mode '0644'\nend\n\n", keyfile)
+		_, _ = fmt.Fprintf(&b, "file '/etc/dconf/db/local.d/locks/00-Pavois-locks' do\n  content %q\n  mode '0644'\nend\n\n", locks)
 		b.WriteString("execute 'Pavois-dconf-update' do\n  command 'dconf update 2>/dev/null || true'\nend\n\n")
 		n++
 	}
@@ -948,7 +949,7 @@ echo "==> installing"; dpkg -i ../linux-image-*.deb
 update-grub
 echo "==> DONE — reboot into the hardened kernel, then re-scan with Pavois."
 `
-		b.WriteString(fmt.Sprintf("file '/usr/local/sbin/pavois-harden-kernel.sh' do\n  content %q\n  owner 'root'\n  group 'root'\n  mode '0750'\nend\n\n", script))
+		_, _ = fmt.Fprintf(&b, "file '/usr/local/sbin/pavois-harden-kernel.sh' do\n  content %q\n  owner 'root'\n  group 'root'\n  mode '0750'\nend\n\n", script)
 		b.WriteString("log 'Pavois: KSPP kernel-build recipe DELIVERED at /usr/local/sbin/pavois-harden-kernel.sh — review and run it manually (heavy: ~20GB disk, 30-60min, reboot). Pavois does not run it for you; kconfig controls pass once you boot the rebuilt kernel.' do\n  level :warn\nend\n\n")
 		n++
 	}
@@ -967,8 +968,8 @@ echo "==> DONE — reboot into the hardened kernel, then re-scan with Pavois."
 			}
 			sb.WriteString(strings.TrimRight(mf.command, "\n") + "\n\n")
 		}
-		b.WriteString(fmt.Sprintf("file '/usr/local/sbin/pavois-manual-fixes.sh' do\n  content %q\n  owner 'root'\n  group 'root'\n  mode '0750'\nend\n\n", sb.String()))
-		b.WriteString(fmt.Sprintf("log 'Pavois: %d MANUAL fix(es) DELIVERED at /usr/local/sbin/pavois-manual-fixes.sh — review and run them yourself; Pavois will not (they need judgement or are risky).' do\n  level :warn\nend\n\n", len(manualFixes)))
+		_, _ = fmt.Fprintf(&b, "file '/usr/local/sbin/pavois-manual-fixes.sh' do\n  content %q\n  owner 'root'\n  group 'root'\n  mode '0750'\nend\n\n", sb.String())
+		_, _ = fmt.Fprintf(&b, "log 'Pavois: %d MANUAL fix(es) DELIVERED at /usr/local/sbin/pavois-manual-fixes.sh — review and run them yourself; Pavois will not (they need judgement or are risky).' do\n  level :warn\nend\n\n", len(manualFixes))
 		n++
 	}
 	return b.String(), n, reboot, pendingEnabled, conflicts
@@ -1037,7 +1038,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 			grubPassword = genPassword(24)
 			if !haDryRun { // only persist the secret on a real apply, never on a preview
 				if path, err := vaultStore(findRoot(), p.Target, "grub", grubPassword); err == nil {
-					fmt.Fprintf(out, "pavois: 🔐 grub password generated and vaulted at %s (keep it safe)\n", path)
+					_, _ = fmt.Fprintf(out, "pavois: 🔐 grub password generated and vaulted at %s (keep it safe)\n", path)
 				} else {
 					return fmt.Errorf("vault grub password: %w", err)
 				}
@@ -1047,16 +1048,16 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	}
 	recipe, count, reboot, pending, conflicts := compileRecipe(p, string(auditRules), grubPassword, haStandard)
 	if len(conflicts) > 0 {
-		fmt.Fprintln(out, "pavois: ✗ conflicting remediations — refusing to apply:")
+		_, _ = fmt.Fprintln(out, "pavois: ✗ conflicting remediations — refusing to apply:")
 		for _, c := range conflicts {
-			fmt.Fprintf(out, "    - %s\n", c)
+			_, _ = fmt.Fprintf(out, "    - %s\n", c)
 		}
 		return fmt.Errorf("%d remediation conflict(s); resolve them in the plan (disable one side, or set a choice) and retry", len(conflicts))
 	}
 	if pending > 0 {
-		fmt.Fprintf(out, "pavois: ⚠ %d enabled rule(s) have no remediation yet (pending) — they are skipped, nothing is generated for them.\n", pending)
+		_, _ = fmt.Fprintf(out, "pavois: ⚠ %d enabled rule(s) have no remediation yet (pending) — they are skipped, nothing is generated for them.\n", pending)
 	}
-	fmt.Fprintf(out, "pavois: compiled %d enabled item(s) into native Chef resources:\n\n%s\n", count, recipe)
+	_, _ = fmt.Fprintf(out, "pavois: compiled %d enabled item(s) into native Chef resources:\n\n%s\n", count, recipe)
 	if reboot {
 		if haReboot {
 			// Reboot is a Chef action, not an out-of-band step. NB: the `reboot` resource's
@@ -1065,17 +1066,17 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 			// every change applies first, then the box reboots in-run (activates audit=1).
 			recipe += "# pavois: reboot in-run to activate kernel cmdline (audit=1) / modules / sysctl\n" +
 				"execute 'Pavois-reboot' do\n  command 'systemctl reboot'\nend\n"
-			fmt.Fprintln(out, "pavois: ⚠ changes need a REBOOT — Pavois will reboot the target via Chef at the end of the run.")
+			_, _ = fmt.Fprintln(out, "pavois: ⚠ changes need a REBOOT — Pavois will reboot the target via Chef at the end of the run.")
 		} else {
-			fmt.Fprintln(out, "pavois: ⚠ some enabled changes need a REBOOT to take effect (kernel cmdline/module); re-run with --reboot, or reboot the target yourself.")
+			_, _ = fmt.Fprintln(out, "pavois: ⚠ some enabled changes need a REBOOT to take effect (kernel cmdline/module); re-run with --reboot, or reboot the target yourself.")
 		}
 	}
 	if count == 0 {
-		fmt.Fprintln(out, "pavois: nothing enabled (no apply: true). Edit the plan and retry.")
+		_, _ = fmt.Fprintln(out, "pavois: nothing enabled (no apply: true). Edit the plan and retry.")
 		return nil
 	}
 	if haDryRun {
-		fmt.Fprintln(out, "pavois: --dry-run, not converging.")
+		_, _ = fmt.Fprintln(out, "pavois: --dry-run, not converging.")
 		return nil
 	}
 	target := p.Target
@@ -1096,49 +1097,51 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(tmp.Name())
+	defer func() { _ = os.Remove(tmp.Name()) }()
 	if _, err := tmp.WriteString(recipe); err != nil {
 		return err
 	}
-	tmp.Close()
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close temp recipe: %w", err)
+	}
 
 	run := func(name string, a ...string) error {
 		c := exec.Command(name, a...)
 		c.Stdout, c.Stderr = os.Stderr, os.Stderr
 		return c.Run()
 	}
-	fmt.Fprintf(os.Stderr, "pavois: ensuring cinc-client on %s…\n", target)
+	_, _ = fmt.Fprintf(os.Stderr, "pavois: ensuring cinc-client on %s…\n", target)
 	ensure := "command -v cinc-apply >/dev/null || curl -L https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc"
 	if err := run("ssh", sshTTY(target, ensure)...); err != nil {
 		return fmt.Errorf("install cinc-client: %w", err)
 	}
-	fmt.Fprintln(os.Stderr, "pavois: copying recipe…")
+	_, _ = fmt.Fprintln(os.Stderr, "pavois: copying recipe…")
 	if err := run("scp", append(append(sshOpts(), tmp.Name()), target+":/tmp/Pavois-harden.rb")...); err != nil {
 		return fmt.Errorf("copy recipe: %w", err)
 	}
 
 	// Terraform-style: show the REAL diff (why-run changes nothing) before asking.
-	fmt.Fprintf(out, "\npavois: planned changes on %s (nothing applied yet):\n\n", target)
+	_, _ = fmt.Fprintf(out, "\npavois: planned changes on %s (nothing applied yet):\n\n", target)
 	why := "sudo env CHEF_LICENSE=accept-silent cinc-apply /tmp/Pavois-harden.rb --why-run"
 	if err := run("ssh", sshTTY(target, why)...); err != nil {
 		return fmt.Errorf("why-run: %w", err)
 	}
 
 	if !haYes {
-		fmt.Fprint(out, "\nApply these changes? [y/N]: ")
+		_, _ = fmt.Fprint(out, "\nApply these changes? [y/N]: ")
 		ans, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 		if a := strings.ToLower(strings.TrimSpace(ans)); a != "y" && a != "yes" {
-			fmt.Fprintln(out, "pavois: aborted — nothing applied.")
+			_, _ = fmt.Fprintln(out, "pavois: aborted — nothing applied.")
 			return nil
 		}
 	}
 
-	fmt.Fprintln(os.Stderr, "pavois: converging (cinc-apply)…")
+	_, _ = fmt.Fprintln(os.Stderr, "pavois: converging (cinc-apply)…")
 	conv := "sudo env CHEF_LICENSE=accept-silent cinc-apply /tmp/Pavois-harden.rb"
 	if err := run("ssh", sshTTY(target, conv)...); err != nil {
 		// With --reboot the run ends by rebooting the box: the SSH session drops mid-run,
 		// which surfaces as a non-zero exit. That's expected — wait for the box to return.
-		if !(reboot && haReboot) {
+		if !reboot || !haReboot {
 			return fmt.Errorf("converge: %w", err)
 		}
 	}
@@ -1150,7 +1153,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 			c := exec.Command("ssh", append(append(sshOpts(), target), "true")...) // quiet
 			return c.Run() == nil
 		}
-		fmt.Fprintln(os.Stderr, "pavois: waiting for the target to reboot…")
+		_, _ = fmt.Fprintln(os.Stderr, "pavois: waiting for the target to reboot…")
 		for i := 0; i < 24 && ping(); i++ { // wait until it goes down (~2min max)
 			time.Sleep(5 * time.Second)
 		}
@@ -1165,21 +1168,21 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		if !up {
 			return fmt.Errorf("target did not come back after reboot within ~4min")
 		}
-		fmt.Fprintln(os.Stderr, "pavois: target back up after reboot.")
+		_, _ = fmt.Fprintln(os.Stderr, "pavois: target back up after reboot.")
 	}
-	fmt.Fprintln(out, "\npavois: converged.")
+	_, _ = fmt.Fprintln(out, "\npavois: converged.")
 	if !haScan {
-		fmt.Fprintf(out, "Pavois: re-scan to confirm: bin/pavois scan %s --key … --sudo\n", target)
+		_, _ = fmt.Fprintf(out, "Pavois: re-scan to confirm: bin/pavois scan %s --key … --sudo\n", target)
 		return nil
 	}
 
 	// --scan: close the loop — re-scan, fresh report, new grade.
 	root := findRoot()
 	machine, transport := machineTransport(target)
-	_ = os.MkdirAll(filepath.Join(root, "reports"), 0o755)
+	_ = os.MkdirAll(filepath.Join(root, "reports"), 0o750)
 	jsonPath := filepath.Join(root, "reports", fmt.Sprintf("rapport-%s-%s-%s.json",
 		slug(machine), strings.TrimSuffix(transport, "://"), time.Now().Format("20060102-150405")))
-	fmt.Fprintln(os.Stderr, "Pavois: re-scanning…")
+	_, _ = fmt.Fprintln(os.Stderr, "Pavois: re-scanning…")
 	if _, err := engine.Run(engine.Options{
 		Root: root, Target: target, Profile: "linux/" + p.OS, Engine: "auto",
 		Key: haKey, Sudo: true, JSONOut: jsonPath,
@@ -1200,9 +1203,9 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		Timestamp: time.Now().Format("2006-01-02 15:04:05 MST"),
 		Engine:    "CINC Auditor (InSpec)",
 	})
-	_ = os.WriteFile(htmlPath, []byte(htmlStr), 0o644)
+	_ = os.WriteFile(htmlPath, []byte(htmlStr), 0o600)
 	res := audit.Evaluate(rep, machine, "", "")
-	fmt.Fprintf(out, "pavois: report %s (%d controls, %d standards)\n", htmlPath, nctrl, nnorm)
+	_, _ = fmt.Fprintf(out, "pavois: report %s (%d controls, %d standards)\n", htmlPath, nctrl, nnorm)
 	if nnorm > 0 {
 		letter, pts, _ := audit.GradeResult(res)
 		writeScorecard(out, letter, pts, res.Passed, res.Total, res.Qualified)
@@ -1239,12 +1242,12 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		if reboot && haReboot {
 			proven = " — re-scanned after a real reboot, so these passes are reboot-proven"
 		}
-		fmt.Fprintf(out, "\npavois: remediation check — %d/%d applied controls now PASS%s.\n", passed, applied, proven)
+		_, _ = fmt.Fprintf(out, "\npavois: remediation check — %d/%d applied controls now PASS%s.\n", passed, applied, proven)
 		if len(failed) > 0 {
 			sort.Strings(failed)
-			fmt.Fprintf(out, "pavois: ⚠ %d did NOT pass (broken remediation, or needs reboot/config — investigate):\n", len(failed))
+			_, _ = fmt.Fprintf(out, "pavois: ⚠ %d did NOT pass (broken remediation, or needs reboot/config — investigate):\n", len(failed))
 			for _, c := range failed {
-				fmt.Fprintf(out, "    - %s\n", c)
+				_, _ = fmt.Fprintf(out, "    - %s\n", c)
 			}
 		}
 	}

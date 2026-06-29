@@ -1,6 +1,5 @@
 ---
-import '../styles/global.css';
-import '../styles/pavois.css'; // maquette design system (loaded after global.css; its components win)
+import '../styles/global.css'; // the single stylesheet: Tailwind + tokens + design system + pages
 import { ui, type Lang } from '../i18n/ui';
 import { INDEXABLE } from '../config/site';
 
@@ -170,9 +169,16 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
       rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=optional"
+      media="print"
+      onload="this.media='all'"
     />
+    <noscript
+      ><link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=optional"
+      /></noscript>
   </head>
   <body class="bg-grid">
     <header class="nav">
@@ -188,6 +194,7 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
             <summary>{ui[lang].navDocs}</summary>
             <div class="std-menu">
               <a href={`/${lang}/start/`}>{lang === 'fr' ? 'Démarrer' : 'Get started'}</a>
+              <a href={`/${lang}/installation/`}>Installation</a>
               <a href={`/${lang}/docs/`}>{lang === 'fr' ? 'Comment ça marche' : 'How it works'}</a>
               <a href={`/${lang}/docs/tools/`}>{lang === 'fr' ? 'Comparaison d’outils' : 'Tool comparison'}</a>
               <a href={`/${lang}/downloads/`}>{lang === 'fr' ? 'Téléchargements (OSCAL)' : 'Downloads (OSCAL)'}</a>
@@ -223,7 +230,7 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
       </div>
     </header>
     <div class="nav-overlay" id="navOverlay"></div>
-    <aside class="nav-drawer" id="navdrawer" aria-hidden="true">
+    <aside class="nav-drawer" id="navdrawer" aria-hidden="true" inert>
       <div class="drawer-head">
         <a class="brand" href={`/${lang}/`}>
           <svg class="brand-logo sm" viewBox="0 0 32 32" fill="none" aria-hidden="true"
@@ -235,6 +242,7 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
       </div>
       <nav class="drawer-links">
         <a href={`/${lang}/start/`}>{lang === 'fr' ? 'Démarrer' : 'Get started'}</a>
+        <a href={`/${lang}/installation/`}>Installation</a>
         <a href={`/${lang}/docs/`}>{lang === 'fr' ? 'Docs — Comment ça marche' : 'Docs — How it works'}</a>
         <a href={`/${lang}/docs/tools/`}>{lang === 'fr' ? 'Docs — Comparaison d’outils' : 'Docs — Tool comparison'}</a>
         <a href={`/${lang}/downloads/`}>{lang === 'fr' ? 'Téléchargements (OSCAL)' : 'Downloads (OSCAL)'}</a>
@@ -252,7 +260,21 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
         <a class="lang" href={otherPath}>{other.toUpperCase()}</a>
       </div>
     </aside>
-    <main><slot /></main>
+    <main>
+      {breadcrumbs.length > 0 && (
+        <nav class="wrap breadcrumb" aria-label="Breadcrumb">
+          {breadcrumbs.map((b, i) => (
+            <Fragment>
+              {i > 0 && <span class="bc-sep">/</span>}
+              {i < breadcrumbs.length - 1
+                ? <a href={b.path}>{b.name}</a>
+                : <span class="bc-cur" aria-current="page">{b.name}</span>}
+            </Fragment>
+          ))}
+        </nav>
+      )}
+      <slot />
+    </main>
     <footer class="site-foot">
       <div class="wrap">
         <p class="mono">
@@ -312,6 +334,7 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
           nb.classList.add('open');
           nb.setAttribute('aria-expanded', 'true');
           nd.setAttribute('aria-hidden', 'false');
+          nd.removeAttribute('inert');
           document.body.style.overflow = 'hidden';
         };
         const close = () => {
@@ -320,6 +343,7 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
           nb.classList.remove('open');
           nb.setAttribute('aria-expanded', 'false');
           nd.setAttribute('aria-hidden', 'true');
+          nd.setAttribute('inert', '');
           document.body.style.overflow = '';
         };
         nb.addEventListener('click', () => (nd.classList.contains('open') ? close() : open()));
@@ -434,228 +458,30 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
         if (html.dataset.glossaryTooltips === 'enabled') enrichGloss();
       })();
     </script>
-
-    <style>
-      .site-head {
-        border-bottom: 1px solid var(--color-border);
-        position: sticky;
-        top: 0;
-        background: color-mix(in srgb, var(--color-bg) 88%, transparent);
-        backdrop-filter: blur(8px);
-        z-index: 10;
-      }
-      .head-in {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        height: 64px;
-      }
-      .brand {
-        font-family: var(--font-display);
-        font-weight: 700;
-        font-size: 1.2rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .brand-mark {
-        color: var(--color-accent);
-      }
-      .brand-logo {
-        width: 36px;
-        height: 36px;
-        flex: none;
-        margin: -4px 0;
-      }
-      .brand-logo.sm {
-        width: 22px;
-        height: 22px;
-        margin: 0;
-      }
-      .head-nav {
-        display: flex;
-        align-items: center;
-        gap: 18px;
-        font-family: var(--font-mono);
-        font-size: 0.82rem;
-      }
-      .head-nav a:hover {
-        color: var(--color-accent);
-      }
-      .head-nav .lang {
-        color: var(--color-dim);
-      }
-      /* dropdowns sit inside pavois .nav-links — match its <a> metrics exactly so
-         the summaries align with the flat links (same padding / font / centering). */
-      .nav-links {
-        align-items: center;
-      }
-      .std-dd {
-        position: relative;
-        display: flex;
-      }
-      .std-dd summary {
-        cursor: pointer;
-        list-style: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 3px;
-        padding: 7px 11px;
-        border-radius: 7px;
-        font-family: var(--font-body);
-        font-size: 14px;
-        font-weight: 500;
-        line-height: 1;
-        color: var(--tx-2);
-        transition: color 0.15s, background 0.15s;
-      }
-      .std-dd summary:hover {
-        color: var(--tx);
-        background: var(--panel);
-      }
-      .std-dd summary::-webkit-details-marker {
-        display: none;
-      }
-      .std-dd summary::after {
-        content: '▾';
-        font-size: 0.7em;
-        opacity: 0.7;
-      }
-      .std-dd[open] summary {
-        color: var(--red);
-      }
-      .std-menu {
-        position: absolute;
-        top: calc(100% + 12px);
-        left: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        min-width: 168px;
-        padding: 8px;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: 12px;
-        box-shadow: 0 14px 34px -14px rgba(15, 23, 42, 0.28);
-        z-index: 30;
-      }
-      .std-menu a {
-        padding: 7px 11px;
-        border-radius: 8px;
-        font-family: var(--font-sans);
-        font-size: 0.85rem;
-        color: var(--color-text);
-      }
-      .std-menu a:hover {
-        background: var(--color-bg-2);
-        color: var(--color-accent);
-      }
-      #theme-toggle,
-      #gloss-toggle {
-        padding: 6px 10px;
-        font-size: 0.9rem;
-        line-height: 1;
-      }
-      .site-foot {
-        border-top: 1px solid var(--color-border);
-        padding: 30px 0;
-        margin-top: 60px;
-        color: var(--color-faint);
-        font-size: 0.8rem;
-      }
-      .foot-link {
-        display: inline-block;
-        margin-top: 12px;
-        font-family: var(--font-mono);
-        font-size: 0.74rem;
-        color: var(--color-accent);
-      }
-      .foot-legal {
-        margin-top: 10px;
-        max-width: 80ch;
-        font-size: 0.72rem;
-        line-height: 1.55;
-        color: var(--color-faint);
-        opacity: 0.85;
-      }
-      @media (max-width: 600px) {
-        .head-in {
-          height: 56px;
-        }
-        .head-nav {
-          gap: 11px;
-          font-size: 0.73rem;
-        }
-        .brand {
-          font-size: 1.05rem;
-        }
-        .brand-mark {
-          font-size: 0.9rem;
-        }
-        #theme-toggle,
-        #gloss-toggle {
-          padding: 4px 7px;
-        }
-      }
-      #to-top {
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        width: 44px;
-        height: 44px;
-        display: grid;
-        place-items: center;
-        border-radius: 50%;
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        color: var(--color-accent);
-        font-size: 1.15rem;
-        cursor: pointer;
-        box-shadow: 0 8px 24px -10px rgba(15, 23, 42, 0.3);
-        z-index: 20;
-        transition:
-          transform 0.18s,
-          border-color 0.18s;
-      }
-      #to-top:hover {
-        border-color: var(--color-accent);
-        transform: translateY(-3px);
-      }
-      #to-top[hidden] {
-        display: none;
-      }
-      html[data-glossary-tooltips='enabled'] #gloss-toggle {
-        color: var(--color-accent);
-        border-color: var(--color-accent);
-      }
-      /* :global — these elements are created in JS, so they don't carry the scoped cid. */
-      :global(.gloss-hl) {
-        border-bottom: 1px dotted var(--color-accent);
-        background: var(--color-accent-soft);
-        border-radius: 3px;
-        cursor: help;
-      }
-      :global(#gloss-tip) {
-        position: absolute;
-        z-index: 50;
-        max-width: 300px;
-        padding: 10px 13px;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: 10px;
-        box-shadow: 0 12px 30px -12px rgba(15, 23, 42, 0.3);
-        font-size: 0.82rem;
-        color: var(--color-text);
-        line-height: 1.5;
-      }
-      :global(#gloss-tip[hidden]) {
-        display: none;
-      }
-      :global(#gloss-tip a) {
-        color: var(--color-accent);
-        font-family: var(--font-mono);
-        font-size: 0.74rem;
-      }
-    </style>
+    <!-- Copy button on every prose code block — one source for docs, handbook, blog, start, install. -->
+    <script is:inline>
+      (function () {
+        var fr = document.documentElement.lang === 'fr';
+        var labelCopy = fr ? 'Copier' : 'Copy';
+        var labelDone = fr ? 'Copié' : 'Copied';
+        document.querySelectorAll('.prose pre, pre.code, pre.shiki').forEach(function (pre) {
+          if (pre.querySelector('.copy-btn')) return;
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'copy-btn';
+          btn.textContent = labelCopy;
+          btn.setAttribute('aria-label', labelCopy);
+          btn.addEventListener('click', function () {
+            var code = pre.querySelector('code') || pre;
+            navigator.clipboard.writeText(code.innerText).then(function () {
+              btn.textContent = labelDone;
+              btn.classList.add('ok');
+              setTimeout(function () { btn.textContent = labelCopy; btn.classList.remove('ok'); }, 1500);
+            });
+          });
+          pre.appendChild(btn);
+        });
+      })();
+    </script>
   </body>
 </html>

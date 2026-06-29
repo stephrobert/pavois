@@ -7,6 +7,7 @@ A shared check -> `template: {name, ...}`. A check keyed @os (per-OS values) -> 
 {os: {name, ...}}}` when every OS variant matches the same template. Run once; thereafter author
 new controls with `template:` directly.
 """
+
 import sys
 from pathlib import Path
 
@@ -42,8 +43,10 @@ def main():
                 del e["check"]
                 keyed += 1
     SRC.write_text(yaml.safe_dump(lib, sort_keys=True, allow_unicode=True, width=4096))
-    print(f"templated: {shared} shared + {keyed} keyed = {shared + keyed} controls "
-          f"({100 * (shared + keyed) // len(lib)}% of {len(lib)})")
+    print(
+        f"templated: {shared} shared + {keyed} keyed = {shared + keyed} controls "
+        f"({100 * (shared + keyed) // len(lib)}% of {len(lib)})"
+    )
     return 0
 
 

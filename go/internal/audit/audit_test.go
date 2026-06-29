@@ -20,13 +20,13 @@ func TestGrade(t *testing.T) {
 		{"parfait", 0, 0, 0, 0, "A", 100},
 		{"une haute", 0, 1, 0, 0, "B", 85},
 		{"deux hautes (bord C)", 0, 2, 0, 0, "C", 70},
-		{"plafond haute", 0, 5, 0, 0, "D", 40},      // min(75,60)=60 -> 40
-		{"moyennes plafonnées", 0, 0, 10, 0, "B", 80}, // min(60,20)=20 -> 80
-		{"basses plafonnées", 0, 0, 0, 10, "A", 90},   // min(30,10)=10 -> 90
-		{"tout au tapis", 0, 10, 10, 10, "E", 10},     // 60+20+10=90 -> 10
-		{"un critical -> malus E", 1, 0, 0, 0, "E", 30}, // 100-25=75, malus -> 30
+		{"plafond haute", 0, 5, 0, 0, "D", 40},                    // min(75,60)=60 -> 40
+		{"moyennes plafonnées", 0, 0, 10, 0, "B", 80},             // min(60,20)=20 -> 80
+		{"basses plafonnées", 0, 0, 0, 10, "A", 90},               // min(30,10)=10 -> 90
+		{"tout au tapis", 0, 10, 10, 10, "E", 10},                 // 60+20+10=90 -> 10
+		{"un critical -> malus E", 1, 0, 0, 0, "E", 30},           // 100-25=75, malus -> 30
 		{"critical + haute, malus plafonne", 1, 1, 0, 0, "E", 30}, // 100-40=60, malus -> 30
-		{"critical lourd", 2, 3, 0, 0, "E", 5},          // 50+45=95 -> 5 (déjà < 30)
+		{"critical lourd", 2, 3, 0, 0, "E", 5},                    // 50+45=95 -> 5 (déjà < 30)
 	}
 	for _, c := range cases {
 		sum := scoring.Summary{Counts: map[string]int{
@@ -75,8 +75,8 @@ func TestFullPassFor(t *testing.T) {
 		reboot, evidence, companion string
 		want                        bool
 	}{
-		{"yes", "effective-runtime", "", true},               // auto-prouvant (kconfig, sshd -T)
-		{"no", "effective-runtime", "", false},               // live, sans compagnon -> qualifié
+		{"yes", "effective-runtime", "", true},                  // auto-prouvant (kconfig, sshd -T)
+		{"no", "effective-runtime", "", false},                  // live, sans compagnon -> qualifié
 		{"no", "effective-runtime", "sysctl-x-persisted", true}, // compagnon persistant passe -> plein
 		{"no", "effective-runtime", "absent-companion", false},  // compagnon absent/échoue -> qualifié
 		{"unknown", "manual", "", false},

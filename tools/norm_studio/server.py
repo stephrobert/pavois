@@ -10,6 +10,7 @@ ansible-lockdown <OS>-CIS, cyber.gouv.fr, NIST OSCAL, Wazuh SCA), diffs their CU
 against pavois's recorded baseline (docs/reference/norms.yml), and extracts structured rules from
 a source document on demand. Run:  uv run --with fastmcp tools/norm_studio/server.py
 """
+
 import base64
 import html
 import re
@@ -21,17 +22,23 @@ from fastmcp import FastMCP
 
 ROOT = Path(__file__).resolve().parents[2]
 CATALOGUE = ROOT / "docs" / "reference" / "norms.yml"
-SSG_CACHE = Path("/tmp/oscap-analysis/ssg")
+# Fixed, read-only location where the SSG datastreams already live (documented in CLAUDE.md);
+# only read here, never created as a temp file.
+SSG_CACHE = Path("/tmp/oscap-analysis/ssg")  # nosec B108
 
 # CIS implementation repos per OS (the authority that declares the implemented benchmark version).
 AL_REPO = {
-    "debian12": "DEBIAN12-CIS", "debian13": "DEBIAN13-CIS",
-    "ubuntu2204": "UBUNTU22-CIS", "ubuntu2404": "UBUNTU24-CIS",
-    "rhel8": "RHEL8-CIS", "rhel9": "RHEL9-CIS", "almalinux9": "RHEL9-CIS",
+    "debian12": "DEBIAN12-CIS",
+    "debian13": "DEBIAN13-CIS",
+    "ubuntu2204": "UBUNTU22-CIS",
+    "ubuntu2404": "UBUNTU24-CIS",
+    "rhel8": "RHEL8-CIS",
+    "rhel9": "RHEL9-CIS",
+    "almalinux9": "RHEL9-CIS",
 }
 
-_REF_CACHE: dict = {}   # os -> parsed reference rules (read once, not per rule)
-_DS_CACHE: dict = {}    # os -> SSG datastream XML (multi-MB; read once, not per rule)
+_REF_CACHE: dict = {}  # os -> parsed reference rules (read once, not per rule)
+_DS_CACHE: dict = {}  # os -> SSG datastream XML (multi-MB; read once, not per rule)
 
 mcp = FastMCP("pavois-norm-studio")
 
@@ -42,8 +49,9 @@ def _catalogue() -> dict:
 
 
 def _gh_content(path: str) -> str:
-    out = subprocess.run(["gh", "api", path, "--jq", ".content"],
-                         capture_output=True, text=True).stdout.strip()
+    out = subprocess.run(
+        ["gh", "api", path, "--jq", ".content"], capture_output=True, text=True
+    ).stdout.strip()
     return base64.b64decode(out).decode("utf-8", "ignore") if out else ""
 
 
@@ -55,8 +63,9 @@ def _al_benchmark_version(repo: str) -> str | None:
 
 def _al_rules(repo: str) -> set[str]:
     body = _gh_content(f"repos/ansible-lockdown/{repo}/contents/defaults/main.yml")
-    return {m.replace("rule_", "").replace("_", ".")
-            for m in re.findall(r"rule_\d+(?:_\d+)+", body)}
+    return {
+        m.replace("rule_", "").replace("_", ".") for m in re.findall(r"rule_\d+(?:_\d+)+", body)
+    }
 
 
 def _ssg_cis(os_name: str) -> set[str]:
@@ -79,11 +88,30 @@ def _check_updates(os_filter: str = "") -> dict:
             continue
         recorded = (bv.get(o) or {}).get("version")
         live = _al_benchmark_version(repo)
-        drift.append({"os": o, "norm": "cis", "recorded": recorded, "live": live,
-                      "update_available": bool(live and recorded and live != recorded)})
+        drift.append(
+            {
+                "os": o,
+                "norm": "cis",
+                "recorded": recorded,
+                "live": live,
+                "update_available": bool(live and recorded and live != recorded),
+            }
+        )
     ssg_latest = subprocess.run(
-        ["gh", "release", "view", "--repo", "ComplianceAsCode/content", "--json", "tagName",
-         "--jq", ".tagName"], capture_output=True, text=True).stdout.strip()
+        [
+            "gh",
+            "release",
+            "view",
+            "--repo",
+            "ComplianceAsCode/content",
+            "--json",
+            "tagName",
+            "--jq",
+            ".tagName",
+        ],
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
     return {"cis_per_os": drift, "ssg_latest_release": ssg_latest, "norms": _check_norm_versions()}
 
 
@@ -97,29 +125,55 @@ def _check_norm_versions() -> list:
     anssi = _gh_content("repos/ComplianceAsCode/content/contents/controls/anssi.yml")
     m = re.search(r"^version:\s*'?\"?([\d.]+)", anssi, re.M)
     rec = cat["bp28"]["version"]
-    out.append({"norm": "bp28", "recorded": rec, "live": m.group(1) if m else None,
-                "source": "ComplianceAsCode/controls/anssi.yml",
-                "update_available": bool(m and m.group(1) != rec)})
+    out.append(
+        {
+            "norm": "bp28",
+            "recorded": rec,
+            "live": m.group(1) if m else None,
+            "source": "ComplianceAsCode/controls/anssi.yml",
+            "update_available": bool(m and m.group(1) != rec),
+        }
+    )
 
     # NIST SP 800-53 — highest revision directory published in the NIST OSCAL content repo.
     names = subprocess.run(
-        ["gh", "api", "repos/usnistgov/oscal-content/contents/nist.gov/SP800-53", "--jq", ".[].name"],
-        capture_output=True, text=True).stdout
+        [
+            "gh",
+            "api",
+            "repos/usnistgov/oscal-content/contents/nist.gov/SP800-53",
+            "--jq",
+            ".[].name",
+        ],
+        capture_output=True,
+        text=True,
+    ).stdout
     revs = sorted(int(x[3:]) for x in re.findall(r"rev\d+", names))
     live = f"Rev {revs[-1]}" if revs else None
     recn = cat["nist-800-53"]["version"]
-    out.append({"norm": "nist-800-53", "recorded": recn, "live": live,
-                "source": "usnistgov/oscal-content SP800-53",
-                "update_available": bool(live and live != recn)})
+    out.append(
+        {
+            "norm": "nist-800-53",
+            "recorded": recn,
+            "live": live,
+            "source": "usnistgov/oscal-content SP800-53",
+            "update_available": bool(live and live != recn),
+        }
+    )
 
     # PCI-DSS — ComplianceAsCode controls/pcidss_4.yml tracks the implemented PCI-DSS version
     # (machine-readable; cyber.gouv/pcisecuritystandards.org are not).
     pci = _gh_content("repos/ComplianceAsCode/content/contents/controls/pcidss_4.yml")
     mp = re.search(r"^version:\s*'?\"?([\d.]+)", pci, re.M)
     recp = cat["pci-dss"]["version"]
-    out.append({"norm": "pci-dss", "recorded": recp, "live": mp.group(1) if mp else None,
-                "source": "ComplianceAsCode/controls/pcidss_4.yml",
-                "update_available": bool(mp and mp.group(1) != recp)})
+    out.append(
+        {
+            "norm": "pci-dss",
+            "recorded": recp,
+            "live": mp.group(1) if mp else None,
+            "source": "ComplianceAsCode/controls/pcidss_4.yml",
+            "update_available": bool(mp and mp.group(1) != recp),
+        }
+    )
     return out
 
 
@@ -136,7 +190,9 @@ def _ssg_rule_detail(os_name: str, ssg_id: str) -> dict | None:
     if os_name not in _DS_CACHE:
         _DS_CACHE[os_name] = ds.read_text(encoding="utf-8")
     xml = _DS_CACHE[os_name]
-    m = re.search(rf'<[\w.:-]*Rule[^>]*id="[^"]*_rule_{re.escape(ssg_id)}"[\s\S]*?</[\w.:-]*Rule>', xml)
+    m = re.search(
+        rf'<[\w.:-]*Rule[^>]*id="[^"]*_rule_{re.escape(ssg_id)}"[\s\S]*?</[\w.:-]*Rule>', xml
+    )
     if not m:
         return None
     blk = m.group(0)
@@ -161,27 +217,38 @@ def _ssg_rule_detail(os_name: str, ssg_id: str) -> dict | None:
     refs = {k: sorted(set(v)) for k, v in refs.items()}
 
     fixes: dict[str, str] = {}
-    for sysid, body in re.findall(r'<[\w.:-]*fix\b[^>]*system="([^"]+)"[^>]*>([\s\S]*?)</[\w.:-]*fix>', blk):
+    for sysid, body in re.findall(
+        r'<[\w.:-]*fix\b[^>]*system="([^"]+)"[^>]*>([\s\S]*?)</[\w.:-]*fix>', blk
+    ):
         kind = "ansible" if "ansible" in sysid else "bash" if sysid.endswith(":sh") else sysid
         fixes[kind] = html.unescape(re.sub(r"<[^>]+>", "", body)).strip()[:6000]
 
     sev = re.search(r'<[\w.:-]*Rule[^>]*\bseverity="([^"]+)"', blk)
-    warns = [_txt(w) for w in re.findall(r"<[\w.:-]*warning[^>]*>([\s\S]*?)</[\w.:-]*warning>", blk)]
+    warns = [
+        _txt(w) for w in re.findall(r"<[\w.:-]*warning[^>]*>([\s\S]*?)</[\w.:-]*warning>", blk)
+    ]
 
-    return {"title": tag("title"), "description": tag("description"), "rationale": tag("rationale"),
-            "severity": sev.group(1) if sev else None, "warnings": warns,
-            "references": refs, "remediation": fixes}
+    return {
+        "title": tag("title"),
+        "description": tag("description"),
+        "rationale": tag("rationale"),
+        "severity": sev.group(1) if sev else None,
+        "warnings": warns,
+        "references": refs,
+        "remediation": fixes,
+    }
 
 
 def _control_detail(os_name: str, rule: str) -> dict:
     if os_name not in _REF_CACHE:
         _REF_CACHE[os_name] = yaml.safe_load(
-            (ROOT / "docs" / "reference" / "pavois-content" / f"{os_name}.yml").read_text())["rules"]
+            (ROOT / "docs" / "reference" / "pavois-content" / f"{os_name}.yml").read_text()
+        )["rules"]
     ref = _REF_CACHE[os_name]
     cid, ctrl = None, None
     if rule in ref:
         cid, ctrl = rule, ref[rule]
-    else:                                              # resolve a CIS number -> pavois control
+    else:  # resolve a CIS number -> pavois control
         for k, e in ref.items():
             cv = (e.get("norms") or {}).get("cis")
             if rule in [str(x) for x in (cv if isinstance(cv, list) else [cv]) if x]:
@@ -191,10 +258,17 @@ def _control_detail(os_name: str, rule: str) -> dict:
         return {"error": f"no pavois control matches {rule!r} for {os_name}"}
     ssg_id = ctrl.get("ssg")
     return {
-        "os": os_name, "control_id": cid, "ssg_id": ssg_id,
-        "pavois": {"title": ctrl.get("title"), "domain": ctrl.get("domain"),
-                    "severity": ctrl.get("severity"), "check": ctrl.get("check"),
-                    "norms": ctrl.get("norms"), "remediation": ctrl.get("remediation")},
+        "os": os_name,
+        "control_id": cid,
+        "ssg_id": ssg_id,
+        "pavois": {
+            "title": ctrl.get("title"),
+            "domain": ctrl.get("domain"),
+            "severity": ctrl.get("severity"),
+            "check": ctrl.get("check"),
+            "norms": ctrl.get("norms"),
+            "remediation": ctrl.get("remediation"),
+        },
         "authoritative_content": _ssg_rule_detail(os_name, ssg_id),
     }
 
@@ -215,11 +289,17 @@ def list_sources() -> dict:
     return {
         "cis": ["ComplianceAsCode SSG datastream", "ansible-lockdown <OS>-CIS"],
         "bp28": ["cyber.gouv.fr (ANSSI-BP-028)", "ComplianceAsCode controls/anssi.yml"],
-        "nist-800-53": ["NIST OSCAL (usnistgov/oscal-content)", "ComplianceAsCode SSG",
-                        "intuitem/ciso-assistant (nist-sp-800-53-rev5 framework — validate_mappings)"],
+        "nist-800-53": [
+            "NIST OSCAL (usnistgov/oscal-content)",
+            "ComplianceAsCode SSG",
+            "intuitem/ciso-assistant (nist-sp-800-53-rev5 framework — validate_mappings)",
+        ],
         "nist-800-171": ["NIST SP 800-171", "Wazuh SCA (nist_800_171)"],
-        "pci-dss": ["intuitem/ciso-assistant (pcidss-4_0 framework — canonical requirements)",
-                    "ComplianceAsCode pcidss_4.yml (version)", "Wazuh SCA (pci_dss)"],
+        "pci-dss": [
+            "intuitem/ciso-assistant (pcidss-4_0 framework — canonical requirements)",
+            "ComplianceAsCode pcidss_4.yml (version)",
+            "Wazuh SCA (pci_dss)",
+        ],
         "multi_framework": ["Wazuh SCA — iso_27001/hipaa/gdpr/nis2/cmmc/fedramp"],
     }
 
@@ -229,7 +309,8 @@ def check_updates(os: str = "") -> dict:
     """Check what drifted vs pavois's recorded baseline (norms.yml): the CURRENT CIS benchmark
     version per OS (ansible-lockdown) + the latest SSG release, AND the non-CIS standards under
     `norms` — ANSSI-BP-028 (ComplianceAsCode anssi.yml), NIST 800-53 (the OSCAL revision dirs),
-    PCI-DSS (manual). Each entry carries recorded vs live + update_available. The norm-watcher core."""
+    PCI-DSS (manual). Each entry carries recorded vs live + update_available. The norm-watcher
+    core."""
     return _check_updates(os)
 
 
@@ -246,11 +327,12 @@ def _ssg_cis(os_name: str) -> set:
 def _pavois_cis(os_name: str) -> set:
     if os_name not in _REF_CACHE:
         _REF_CACHE[os_name] = yaml.safe_load(
-            (ROOT / "docs" / "reference" / "pavois-content" / f"{os_name}.yml").read_text())["rules"]
+            (ROOT / "docs" / "reference" / "pavois-content" / f"{os_name}.yml").read_text()
+        )["rules"]
     out = set()
     for e in _REF_CACHE[os_name].values():
         v = (e.get("norms") or {}).get("cis")
-        for x in (v if isinstance(v, list) else [v]):
+        for x in v if isinstance(v, list) else [v]:
             if x:
                 out.add(str(x))
     return out
@@ -264,7 +346,9 @@ def _scrape_diff(os_name: str) -> dict:
     consensus = (ssg & al) if (ssg and al) else union
     return {
         "os": os_name,
-        "benchmark_version": (_catalogue()["standards"]["cis"]["benchmark_version"].get(os_name) or {}).get("version"),
+        "benchmark_version": (
+            _catalogue()["standards"]["cis"]["benchmark_version"].get(os_name) or {}
+        ).get("version"),
         "sources": {"ssg": len(ssg), "ansible_lockdown": len(al)},
         "consensus": len(consensus),
         "pavois_covers": len(consensus & ck),
@@ -309,17 +393,24 @@ def _propose_enrichment(os_name: str, limit: int = 12) -> dict:
     for cis in diff["missing_in_pavois"][:limit]:
         ssg_id = idx.get(cis)
         d = _ssg_rule_detail(os_name, ssg_id) if ssg_id else None
-        out.append({
-            "cis": cis,
-            "ssg_id": ssg_id,
-            "title": d.get("title") if d else None,
-            "severity": d.get("severity") if d else None,
-            "rationale": ((d.get("rationale") or "")[:240]) if d else None,
-            "references": d.get("references") if d else {},
-            "needs": "a neutral pavois id + an EFFECTIVE-config check + a harden remediation plan",
-        })
-    return {"os": os_name, "missing_total": len(diff["missing_in_pavois"]),
-            "benchmark_version": diff["benchmark_version"], "proposals": out}
+        out.append(
+            {
+                "cis": cis,
+                "ssg_id": ssg_id,
+                "title": d.get("title") if d else None,
+                "severity": d.get("severity") if d else None,
+                "rationale": ((d.get("rationale") or "")[:240]) if d else None,
+                "references": d.get("references") if d else {},
+                "needs": "a neutral pavois id + an EFFECTIVE-config check "
+                "+ a harden remediation plan",
+            }
+        )
+    return {
+        "os": os_name,
+        "missing_total": len(diff["missing_in_pavois"]),
+        "benchmark_version": diff["benchmark_version"],
+        "proposals": out,
+    }
 
 
 @mcp.tool()
@@ -337,7 +428,8 @@ _CISO_PCI: dict = {}
 def _ciso_pci_reqs() -> dict:
     if not _CISO_PCI:
         body = _gh_content(
-            "repos/intuitem/ciso-assistant-community/contents/backend/library/libraries/pcidss-4_0.yaml")
+            "repos/intuitem/ciso-assistant-community/contents/backend/library/libraries/pcidss-4_0.yaml"
+        )
         d = yaml.safe_load(body) if body else {}
         fw = (d.get("objects") or {}).get("framework") or {}
         nodes = fw.get("requirement_nodes") or []
@@ -351,11 +443,12 @@ def _ciso_pci_reqs() -> dict:
 def _pavois_pci(os_name: str) -> set:
     if os_name not in _REF_CACHE:
         _REF_CACHE[os_name] = yaml.safe_load(
-            (ROOT / "docs" / "reference" / "pavois-content" / f"{os_name}.yml").read_text())["rules"]
+            (ROOT / "docs" / "reference" / "pavois-content" / f"{os_name}.yml").read_text()
+        )["rules"]
     out = set()
     for e in _REF_CACHE[os_name].values():
         v = (e.get("norms") or {}).get("pci-dss")
-        for x in (v if isinstance(v, list) else [v]):
+        for x in v if isinstance(v, list) else [v]:
             if x:
                 out.add(re.sub(r"^req-?", "", str(x).strip().lower()))
     return out
@@ -396,26 +489,37 @@ def _ciso_framework(file: str) -> dict:
     too large for the GitHub contents API)."""
     if file not in _CISO_FW:
         raw = subprocess.run(
-            ["curl", "-sL", "-m", "40",
-             "https://raw.githubusercontent.com/intuitem/ciso-assistant-community/main/"
-             f"backend/library/libraries/{file}"], capture_output=True, text=True).stdout
+            [
+                "curl",
+                "-sL",
+                "-m",
+                "40",
+                "https://raw.githubusercontent.com/intuitem/ciso-assistant-community/main/"
+                f"backend/library/libraries/{file}",
+            ],
+            capture_output=True,
+            text=True,
+        ).stdout
         d = yaml.safe_load(raw) if raw else {}
         fw = (d.get("objects") or {}).get("framework") or {}
         nodes = fw.get("requirement_nodes") or []
-        _CISO_FW[file] = {"name": fw.get("name"),
-                          "refs": {str(n["ref_id"]).lower() for n in nodes if n.get("ref_id")},
-                          "assessable": sum(1 for n in nodes if n.get("assessable"))}
+        _CISO_FW[file] = {
+            "name": fw.get("name"),
+            "refs": {str(n["ref_id"]).lower() for n in nodes if n.get("ref_id")},
+            "assessable": sum(1 for n in nodes if n.get("assessable")),
+        }
     return _CISO_FW[file]
 
 
 def _pavois_norm_tags(os_name: str, norm: str) -> set:
     if os_name not in _REF_CACHE:
         _REF_CACHE[os_name] = yaml.safe_load(
-            (ROOT / "docs" / "reference" / "pavois-content" / f"{os_name}.yml").read_text())["rules"]
+            (ROOT / "docs" / "reference" / "pavois-content" / f"{os_name}.yml").read_text()
+        )["rules"]
     out = set()
     for e in _REF_CACHE[os_name].values():
         v = (e.get("norms") or {}).get(norm)
-        for x in (v if isinstance(v, list) else [v]):
+        for x in v if isinstance(v, list) else [v]:
             if x:
                 out.add(str(x))
     return out
@@ -425,7 +529,7 @@ def _normalize_ref(norm: str, tag: str) -> str:
     if norm == "pci-dss":
         return re.sub(r"^req-?", "", tag.strip().lower())
     if norm == "nist":
-        return re.sub(r"[ (].*", "", tag).strip().lower()   # base control: AC-17(a) -> ac-17
+        return re.sub(r"[ (].*", "", tag).strip().lower()  # base control: AC-17(a) -> ac-17
     return tag.strip().lower()
 
 
@@ -436,17 +540,28 @@ def _framework_validate(os_name: str, norm: str) -> dict:
     fw = _ciso_framework(file)
     raw = _pavois_norm_tags(os_name, norm)
     if norm == "nist":
-        considered = {t for t in raw if re.match(r"^[A-Z]{2}-\d", t)}   # 800-53 form only
-        other = sorted(raw - considered)                                # 800-171 etc.
+        considered = {t for t in raw if re.match(r"^[A-Z]{2}-\d", t)}  # 800-53 form only
+        other = sorted(raw - considered)  # 800-171 etc.
     else:
         considered, other = raw, []
     suspect = sorted(t for t in considered if _normalize_ref(norm, t) not in fw["refs"])
-    res = {"os": os_name, "norm": norm, "source": f"intuitem/ciso-assistant {file}",
-           "framework": fw["name"], "requirements": len(fw["refs"]), "assessable": fw["assessable"],
-           "pavois_tags": len(considered), "valid": len(considered) - len(suspect), "suspect": suspect}
+    res = {
+        "os": os_name,
+        "norm": norm,
+        "source": f"intuitem/ciso-assistant {file}",
+        "framework": fw["name"],
+        "requirements": len(fw["refs"]),
+        "assessable": fw["assessable"],
+        "pavois_tags": len(considered),
+        "valid": len(considered) - len(suspect),
+        "suspect": suspect,
+    }
     if other:
-        res["other_publication"] = {"count": len(other),
-                                    "note": "different NIST publication (e.g. 800-171)", "examples": other[:8]}
+        res["other_publication"] = {
+            "count": len(other),
+            "note": "different NIST publication (e.g. 800-171)",
+            "examples": other[:8],
+        }
     return res
 
 
@@ -469,8 +584,14 @@ def get_benchmark_rules(os: str, source: str = "ansible_lockdown") -> dict:
     else:
         repo = AL_REPO.get(os)
         rules = _al_rules(repo) if repo else set()
-    return {"os": os, "source": source, "count": len(rules),
-            "rules": sorted(rules, key=lambda s: [int(x) for x in s.split(".")] if re.match(r"^\d", s) else [9999])}
+    return {
+        "os": os,
+        "source": source,
+        "count": len(rules),
+        "rules": sorted(
+            rules, key=lambda s: [int(x) for x in s.split(".")] if re.match(r"^\d", s) else [9999]
+        ),
+    }
 
 
 def _draft_rule_page(os_name: str, rule: str) -> dict:
@@ -482,8 +603,10 @@ def _draft_rule_page(os_name: str, rule: str) -> dict:
     title_en = ac.get("title") or d["pavois"]["title"] or d["control_id"]
     rationale_en = (ac.get("rationale") or "").strip()
     sev = ac.get("severity")
-    entry = {                                          # content-collection entry for the Astro site
-        "id": d["control_id"], "os": os_name, "domain": d["pavois"].get("domain"),
+    entry = {  # content-collection entry for the Astro site
+        "id": d["control_id"],
+        "os": os_name,
+        "domain": d["pavois"].get("domain"),
         "severity": sev if sev in ("low", "medium", "high") else "unknown",
         "norms": d["pavois"]["norms"] or {},
         "norm_versions": {"cis": cisv} if cisv else {},
@@ -491,7 +614,7 @@ def _draft_rule_page(os_name: str, rule: str) -> dict:
         "references": ac.get("references", {}),
         # pavois's OWN remediation (its `harden` engine plan) — NOT SSG's bash/ansible fixes.
         "remediation": d["pavois"].get("remediation") or {},
-        "title": {"en": title_en, "fr": title_en},     # fr to be filled by a translation pass
+        "title": {"en": title_en, "fr": title_en},  # fr to be filled by a translation pass
         "needs_translation": ["title.fr"],
     }
     if rationale_en:

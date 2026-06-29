@@ -4,13 +4,13 @@
 DERIVED build artifacts.
 
   tools/gen.py invert   # 8 OS files  -> rules.yml          (one-time, to seed the source)
-  tools/gen.py render   # rules.yml   -> 8 OS files          (the build step after editing rules.yml)
+  tools/gen.py render   # rules.yml   -> 8 OS files          (build step after editing rules.yml)
   tools/gen.py verify   # render(rules.yml) == committed 8 OS files, semantically (CI guard)
 
 Editing model: change rules.yml ONCE, run `render`, then the existing renderers (render.sh,
 generate_rule_pages.py, `pavois oscal`) produce the corpus, site fiches and OSCAL.
 """
-import glob
+
 import json
 import sys
 from pathlib import Path
@@ -24,11 +24,29 @@ ROOT = Path(__file__).resolve().parent.parent
 REF = ROOT / "docs" / "reference" / "pavois-content"
 SRC = ROOT / "docs" / "reference" / "rules.yml"
 OSES = sorted(p.stem for p in REF.glob("*.yml"))
-# every per-control field except `norms` (handled separately). MUST be exhaustive or render drops data.
-SCALAR = ["check", "domain", "severity", "impact", "title", "remediation", "ssg", "levels", "socle",
-          "evidence_type", "reboot_survivable", "requires_companion_control",
-          "requires_package", "posture", "replaces", "merge_group", "thresholds",
-          "note", "exclusive_group"]
+# every per-control field except `norms` (handled separately).
+# MUST be exhaustive or render drops data.
+SCALAR = [
+    "check",
+    "domain",
+    "severity",
+    "impact",
+    "title",
+    "remediation",
+    "ssg",
+    "levels",
+    "socle",
+    "evidence_type",
+    "reboot_survivable",
+    "requires_companion_control",
+    "requires_package",
+    "posture",
+    "replaces",
+    "merge_group",
+    "thresholds",
+    "note",
+    "exclusive_group",
+]
 NORMS = ["bp28", "nist", "pci-dss", "cis", "stig"]
 
 
@@ -58,8 +76,11 @@ def invert(data):
                 entry[f] = {"@os": vals}
         norms = {}
         for nm in NORMS:
-            vals = {os: (data[os][cid].get("norms") or {}).get(nm) for os in present
-                    if (data[os][cid].get("norms") or {}).get(nm) is not None}
+            vals = {
+                os: (data[os][cid].get("norms") or {}).get(nm)
+                for os in present
+                if (data[os][cid].get("norms") or {}).get(nm) is not None
+            }
             if not vals:
                 continue
             if len(vals) == len(present) and len({canon(v) for v in vals.values()}) == 1:
@@ -120,7 +141,11 @@ def main():
     if mode == "invert":
         lib = invert(load_os())
         SRC.write_text(yaml.safe_dump(lib, sort_keys=True, allow_unicode=True, width=4096))
-        shared = sum(1 for e in lib.values() if "check" in e and not (isinstance(e["check"], dict) and "@os" in e["check"]))
+        shared = sum(
+            1
+            for e in lib.values()
+            if "check" in e and not (isinstance(e["check"], dict) and "@os" in e["check"])
+        )
         print(f"invert: {len(lib)} controls -> {SRC.relative_to(ROOT)}  (shared check: {shared})")
         return 0
     lib = yaml.safe_load(SRC.read_text())
@@ -128,7 +153,9 @@ def main():
     if mode == "render":
         REF.mkdir(parents=True, exist_ok=True)
         for os in gen:
-            (REF / f"{os}.yml").write_text(yaml.safe_dump({"rules": gen[os]}, sort_keys=True, allow_unicode=True, width=80))
+            (REF / f"{os}.yml").write_text(
+                yaml.safe_dump({"rules": gen[os]}, sort_keys=True, allow_unicode=True, width=80)
+            )
         print(f"render: {SRC.relative_to(ROOT)} -> {len(gen)} OS files")
         return 0
     # verify
@@ -141,7 +168,7 @@ def main():
                 bad += 1
                 if bad <= 5:
                     print(f"  MISMATCH {os} {cid}")
-    print(f"verify: {total-bad}/{total} controls in sync ({100*(total-bad)//total}%)")
+    print(f"verify: {total - bad}/{total} controls in sync ({100 * (total - bad) // total}%)")
     return 1 if bad else 0
 
 

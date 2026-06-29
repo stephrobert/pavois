@@ -1,0 +1,128 @@
+---
+import Base from '../../layouts/Base.astro';
+import Toc from '../../components/Toc.astro';
+import { languages, type Lang } from '../../i18n/ui';
+import { highlight } from '../../lib/markdown';
+
+export function getStaticPaths() {
+  return Object.keys(languages).map((lang) => ({ params: { lang } }));
+}
+const { lang } = Astro.params as { lang: Lang };
+const fr = lang === 'fr';
+
+const sections = [
+  { slug: 'prerequisites', en: 'Prerequisites', fr: 'Prérequis' },
+  { slug: 'build', en: 'Build from source', fr: 'Construire depuis les sources' },
+  { slug: 'engine', en: 'The scan engine (CINC)', fr: 'Le moteur de scan (CINC)' },
+  { slug: 'targets', en: 'Targets and transports', fr: 'Cibles et transports' },
+  { slug: 'os', en: 'Supported systems', fr: 'Systèmes supportés' },
+  { slug: 'errors', en: 'Common errors', fr: 'Erreurs courantes' },
+  { slug: 'next', en: 'Next steps', fr: 'Prochaines étapes' },
+];
+const toc = sections.map((s) => ({ depth: 2, slug: s.slug, text: fr ? s.fr : s.en }));
+
+const title = fr ? 'Installation · Pavois' : 'Installation · Pavois';
+const desc = fr
+  ? 'Installer Pavois : construire le binaire Go depuis les sources avec mise, le moteur CINC Auditor (natif ou Docker), les prérequis sudo/SSH, les OS supportés et les erreurs courantes.'
+  : 'Install Pavois: build the Go binary from source with mise, the CINC Auditor engine (native or Docker), the sudo/SSH prerequisites, supported systems and common errors.';
+const crumbs = [
+  { name: 'Pavois', path: `/${lang}/` },
+  { name: 'Installation', path: `/${lang}/installation/` },
+];
+---
+
+<Base title={title} description={desc} lang={lang} breadcrumbs={crumbs}>
+  <div class="wrap page-head">
+    <h1>{fr ? 'Installer Pavois' : 'Install Pavois'}</h1>
+    <p class="lede">{desc}</p>
+  </div>
+  <div class="wrap layout-doc">
+   <main>
+    <div class="prose">
+    <p class="muted">{fr
+      ? 'Pour un premier scan en trois commandes, vois plutôt '
+      : 'For a first scan in three commands, see '}<a href={`/${lang}/start/`}>{fr ? 'Démarrer' : 'Get started'}</a>{fr ? '. Cette page détaille l’installation complète.' : ' instead. This page covers the full install.'}</p>
+    <h2 id="prerequisites">{fr ? 'Prérequis' : 'Prerequisites'}</h2>
+    <ul>
+      <li><b>{fr ? 'Poste de contrôle' : 'Control host'}</b> {fr
+        ? ': Linux ou macOS. Pavois est un binaire Go ; il scanne une cible locale, SSH ou Docker depuis ce poste — aucun agent sur la cible.'
+        : ': Linux or macOS. Pavois is a Go binary; it scans a local, SSH or Docker target from this host — no agent on the target.'}</li>
+      <li><b><a href="https://mise.jdx.dev" target="_blank" rel="noopener">mise</a></b> {fr
+        ? ': la chaîne d’outils est épinglée (Go, Node, Python). Première fois : '
+        : ': the toolchain is pinned (Go, Node, Python). First time: '}<code>mise trust &amp;&amp; mise install</code>.</li>
+      <li><b>sudo</b> {fr
+        ? ': la config effective d’un service exige root (sshd -T, sysctl, auditctl). Scanne avec '
+        : ': effective service config needs root (sshd -T, sysctl, auditctl). Scan with '}<code>--sudo</code>.</li>
+      <li><b>SSH</b> {fr
+        ? ': pour une cible distante, Pavois utilise ton ~/.ssh/config et ta clé, comme oscap ou lynis.'
+        : ': for a remote target, Pavois uses your ~/.ssh/config and key, like oscap or lynis.'}</li>
+    </ul>
+
+    <h2 id="build">{fr ? 'Construire depuis les sources' : 'Build from source'}</h2>
+    <p>{fr
+      ? 'Le dépôt ne livre que la source de vérité. Le corpus InSpec (.rb) et le paquet OSCAL sont des artefacts dérivés, régénérés depuis la référence. L’installation est donc : construire, puis régénérer.'
+      : 'The repository ships only the source of truth. The InSpec corpus (.rb) and the OSCAL bundle are derived artifacts, regenerated from the reference. So the install is: build, then regen.'}</p>
+    <Fragment set:html={highlight(`git clone https://github.com/stephrobert/pavois.git
+cd pavois
+mise trust && mise install   # ${fr ? 'Go, Node, Python épinglés' : 'pinned Go, Node, Python'}
+mise run build               # -> go/pavois
+mise run regen               # ${fr ? 'corpus .rb + OSCAL depuis docs/reference/' : 'rule corpus + OSCAL from docs/reference/'}`, 'bash')} />
+    <p class="muted">{fr ? 'Vérifie : ' : 'Verify: '}<code>./go/pavois version</code>.</p>
+
+    <h2 id="engine">{fr ? 'Le moteur de scan (CINC Auditor)' : 'The scan engine (CINC Auditor)'}</h2>
+    <p>{fr
+      ? 'Pavois exécute ses contrôles avec CINC Auditor (le build open-source de Chef InSpec). Deux modes, choisis par --engine (défaut : auto) :'
+      : 'Pavois runs its controls with CINC Auditor (the open-source build of Chef InSpec). Two modes, picked by --engine (default: auto):'}</p>
+    <ul>
+      <li><b>{fr ? 'natif (recommandé)' : 'native (recommended)'}</b> {fr
+        ? ': cinc-auditor s’installe en binaire natif via omnitruck au premier scan. Indispensable pour auditer l’hôte courant (local) et pour le SSH (il respecte ton ~/.ssh/config).'
+        : ': cinc-auditor installs as a native binary via omnitruck on the first scan. Required to audit the current host (local) and for SSH (it honors your ~/.ssh/config).'}</li>
+      <li><b>{fr ? 'Docker (repli)' : 'Docker (fallback)'}</b> {fr
+        ? ': zéro-install, pratique pour scanner un conteneur. Un conteneur ne peut pas auditer son hôte — réserve-le aux cibles docker://.'
+        : ': zero-install, handy to scan a container. A container cannot audit its host — keep it for docker:// targets.'}</li>
+    </ul>
+
+    <h2 id="targets">{fr ? 'Cibles et transports' : 'Targets and transports'}</h2>
+    <Fragment set:html={highlight(`./go/pavois scan local --sudo                 # ${fr ? 'hôte courant (natif)' : 'current host (native)'}
+./go/pavois scan user@host --key ~/.ssh/id_ed25519 --sudo   # ${fr ? 'distant via SSH' : 'remote over SSH'}
+./go/pavois scan my-container                 # ${fr ? 'conteneur via docker://' : 'container over docker://'}`, 'bash')} />
+
+    <h2 id="os">{fr ? 'Systèmes supportés' : 'Supported systems'}</h2>
+    <p>{fr
+      ? 'Le contrôle (poste de scan) tourne sous Linux ou macOS. Les cibles auditées couvrent 8 familles, avec un profil par OS :'
+      : 'The control host runs on Linux or macOS. Audited targets cover 8 families, one profile per OS:'}</p>
+    <ul class="oslist">
+      <li>Debian 12, Debian 13</li>
+      <li>Ubuntu 22.04, Ubuntu 24.04</li>
+      <li>RHEL 8, RHEL 9</li>
+      <li>AlmaLinux 9</li>
+      <li>Fedora</li>
+    </ul>
+    <p class="muted">{fr
+      ? 'Choisis le profil de la cible, ex. '
+      : 'Pick the target profile, e.g. '}<code>--profile profiles/linux/debian12</code>.</p>
+
+    <h2 id="errors">{fr ? 'Erreurs courantes' : 'Common errors'}</h2>
+    <ul>
+      <li><b>sudo: a terminal is required / requires a TTY</b> {fr
+        ? ': certaines cibles (ex. Debian 12 avec Defaults use_pty) refusent sudo via SSH non-interactif. Utilise '
+        : ': some targets (e.g. Debian 12 with Defaults use_pty) reject sudo over non-interactive SSH. Use '}<code>--on-target</code>{fr ? ' pour exécuter le moteur sur la cible.' : ' to run the engine on the target.'}</li>
+      <li><b>{fr ? 'connexion SSH qui échoue malgré une bonne clé' : 'SSH connection fails despite a valid key'}</b> {fr
+        ? ': un ProxyJump global (Host *) dans ~/.ssh/config peut casser les connexions directes. Pavois neutralise ça en interne.'
+        : ': a global ProxyJump (Host *) in ~/.ssh/config can break direct connections. Pavois neutralizes this internally.'}</li>
+      <li><b>{fr ? 'corpus vide / profil introuvable' : 'empty corpus / profile not found'}</b> {fr
+        ? ': sur un clone neuf, lance d’abord '
+        : ': on a fresh clone, run '}<code>mise run regen</code>{fr ? ' (le corpus .rb est régénéré, pas versionné).' : ' first (the .rb corpus is regenerated, not committed).'}</li>
+    </ul>
+
+    <h2 id="next">{fr ? 'Prochaines étapes' : 'Next steps'}</h2>
+    <ul>
+      <li><a href={`/${lang}/start/`}>{fr ? 'Démarrer : premier scan en trois commandes' : 'Get started: first scan in three commands'}</a></li>
+      <li><a href={`/${lang}/handbook/ci-integration/`}>{fr ? 'Lancer Pavois en CI (GitHub Actions)' : 'Run Pavois in CI (GitHub Actions)'}</a></li>
+      <li><a href={`/${lang}/docs/`}>{fr ? 'Référence des commandes' : 'Command reference'}</a></li>
+    </ul>
+    </div>
+   </main>
+   <Toc headings={toc} lang={lang} />
+  </div>
+</Base>

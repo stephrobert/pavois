@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -64,13 +65,14 @@ func truncShort(s string, n int) string {
 func runCinc(cmd *exec.Cmd, label string, dmap map[string]string) error {
 	fi, _ := os.Stderr.Stat()
 	if fi == nil || fi.Mode()&os.ModeCharDevice == 0 {
-		fmt.Fprintf(os.Stderr, "  %s…\n", label) // non-TTY (CI/pipe) : une ligne, sortie cinc capturée
+		_, _ = fmt.Fprintf(os.Stderr, "  %s…\n", label) // non-TTY (CI/pipe) : une ligne, sortie cinc capturée
 		var buf bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &buf, &buf
 		err := cmd.Run()
 		if err != nil {
-			if ee, ok := err.(*exec.ExitError); !ok || (ee.ExitCode() != 100 && ee.ExitCode() != 101) {
-				os.Stderr.Write(buf.Bytes())
+			var ee *exec.ExitError
+			if !errors.As(err, &ee) || (ee.ExitCode() != 100 && ee.ExitCode() != 101) {
+				_, _ = os.Stderr.Write(buf.Bytes())
 			}
 		}
 		return err
@@ -144,27 +146,28 @@ spin:
 			}
 			i++
 			if mm > 0 {
-				fmt.Fprintf(os.Stderr, "\r\033[K  %c %s  %d/%d (%d%%)  %s",
+				_, _ = fmt.Fprintf(os.Stderr, "\r\033[K  %c %s  %d/%d (%d%%)  %s",
 					frames[i%len(frames)], label, nn, mm, pct, truncShort(cc, 46))
 			} else {
-				fmt.Fprintf(os.Stderr, "\r\033[K  %c %s  %s",
+				_, _ = fmt.Fprintf(os.Stderr, "\r\033[K  %c %s  %s",
 					frames[i%len(frames)], label, cc)
 			}
 		}
 	}
 	tk.Stop()
 	werr := cmd.Wait()
-	fmt.Fprint(os.Stderr, "\r\033[K")
+	_, _ = fmt.Fprint(os.Stderr, "\r\033[K")
 	// exit 100/101 = des contrôles échouent (normal) ; sinon vraie erreur -> on
 	// remonte la sortie d'erreur capturée de cinc.
 	if werr != nil {
 		code := -1
-		if ee, ok := werr.(*exec.ExitError); ok {
+		var ee *exec.ExitError
+		if errors.As(werr, &ee) {
 			code = ee.ExitCode()
 		}
 		if code != 100 && code != 101 {
-			os.Stderr.Write(errBuf.Bytes())
-			os.Stderr.Write(outBuf.Bytes())
+			_, _ = os.Stderr.Write(errBuf.Bytes())
+			_, _ = os.Stderr.Write(outBuf.Bytes())
 		}
 	}
 	return werr
@@ -239,7 +242,7 @@ func sshAliases() map[string]bool {
 			return
 		}
 		seen[path] = true
-		b, err := os.ReadFile(path)
+		b, err := os.ReadFile(path) //nolint:gosec // G703: reads ~/.ssh/config and its operator-owned Include paths, not untrusted input (same rationale as the G304 exclusion)
 		if err != nil {
 			return
 		}
@@ -309,11 +312,11 @@ func ResolveProfile(root, profile string) (string, error) {
 
 // Options porte les paramètres d'un scan.
 type Options struct {
-	Root    string // racine du dépôt (résolution des profils embarqués)
-	Target  string // local | user@hôte | conteneur
-	Profile string
-	Engine  string // auto | native | docker
-	SSHPass string
+	Root     string // racine du dépôt (résolution des profils embarqués)
+	Target   string // local | user@hôte | conteneur
+	Profile  string
+	Engine   string // auto | native | docker
+	SSHPass  string
 	SudoPass string // mot de passe sudo — transmis à cinc via --config (stdin), JAMAIS en argv
 	Key      string
 	Sudo     bool
@@ -546,7 +549,8 @@ func Run(o Options) (int, error) {
 	}
 	runErr := runCinc(cmd, "scanning "+o.Target, dmap) // progression riche sur stderr
 	if runErr != nil {
-		if ee, ok := runErr.(*exec.ExitError); ok {
+		var ee *exec.ExitError
+		if errors.As(runErr, &ee) {
 			return ee.ExitCode(), nil // 100/101 = des contrôles échouent, exploitable en CI
 		}
 		return 2, runErr
@@ -581,7 +585,7 @@ func RunOnTarget(o Options) (int, error) {
 		return run("ssh", append(append([]string{"-tt"}, base...), o.Target, remote)...)
 	}
 
-	fmt.Fprintf(os.Stderr, "  ensuring cinc-auditor on %s…\n", o.Target)
+	_, _ = fmt.Fprintf(os.Stderr, "  ensuring cinc-auditor on %s…\n", o.Target)
 	ensure := "command -v cinc-auditor >/dev/null 2>&1 || command -v inspec >/dev/null 2>&1 || " +
 		"curl -L https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc-auditor"
 	if err := ssh(ensure); err != nil {
@@ -604,10 +608,11 @@ func RunOnTarget(o Options) (int, error) {
 	}
 	exe := fmt.Sprintf("%senv CHEF_LICENSE=accept-silent $(command -v cinc-auditor || command -v inspec) "+
 		"exec %s -t local:// --no-create-lockfile --input pavois_standard=%s --reporter json:%s", sudo, remoteProf, std, remoteJSON)
-	fmt.Fprintf(os.Stderr, "  scanning %s on the target (local, fast)…\n", o.Target)
+	_, _ = fmt.Fprintf(os.Stderr, "  scanning %s on the target (local, fast)…\n", o.Target)
 	rc := 0
 	if err := ssh(exe); err != nil {
-		if ee, ok := err.(*exec.ExitError); ok {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
 			rc = ee.ExitCode() // 100/101 = failing controls, fine
 		} else {
 			return 2, err

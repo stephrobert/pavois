@@ -46,18 +46,31 @@ const runtimeOnly = rules.length - rebootProof;
 const rbPct = rules.length ? Math.round((100 * rebootProof) / rules.length) : 0;
 // coverage: how many controls map to this norm, and how many ALSO cross another standard.
 const sectionLabel = norm === 'nist' ? 'NIST control' : norm === 'bp28' ? 'ANSSI ref' : `${meta.name.split(' ')[0]} ref`;
+// Windowed table: server-render the first INITIAL rows (SEO + LCP + no-JS), ship the rest as JSON,
+// let the client render a scroll/filter-driven window from it.
+const INITIAL = 60;
+const rowsData = rules.map((r: any) => ({
+  id: r.id,
+  socle: r.socle,
+  title: r.title[lang],
+  os: r.supported_os.length,
+  osList: r.supported_os.join(' '),
+  domain: r.domain,
+  sev: r.severity,
+  sevClass: sevClass(r.severity),
+  sevLabel: sevLabel(r.severity),
+  secs: sectionOf(r.value),
+  search: `${r.title[lang]} ${r.socle} ${r.domain} ${sectionOf(r.value)}`.toLowerCase(),
+}));
 ---
 
 <Base title={`${meta.name} — Pavois`} description={meta.blurb?.[lang] ?? meta.name} lang={lang} breadcrumbs={[{ name: 'Pavois', path: `/${lang}/` }, { name: lang === 'fr' ? 'Normes' : 'Standards', path: `/${lang}/rules/` }, { name: meta.name, path: `/${lang}/standards/${norm}/` }]}>
   <div class="wrap page-head">
-    <div class="crumb">
-      <a href={`/${lang}/`}>Pavois</a> / <a href={`/${lang}/rules/`}>{lang === 'fr' ? 'normes' : 'standards'}</a> / {norm}
-    </div>
-    <span class="eyebrow">{lang === 'fr' ? 'norme' : 'standard'}</span>
     <h1>{meta.name}</h1>
     {meta.fullname && <p class="full mono">{meta.fullname}</p>}
     {meta.blurb && <p class="lede">{meta.blurb[lang]}</p>}
 
+    <div class="norm-meta">
     <div class="meta-row">
       <span class="mtag"><b>{t.authority}</b> {meta.authority}</span>
       {meta.version && <span class="mtag"><b>{t.version}</b> {meta.version}</span>}
@@ -85,6 +98,7 @@ const sectionLabel = norm === 'nist' ? 'NIST control' : norm === 'bp28' ? 'ANSSI
         ><b>{rbPct}%</b> {lang === 'fr' ? 'reboot-proof' : 'reboot-proof'}</span
       >
     </div>
+    </div>
 
     {
       meta.notation && (
@@ -106,7 +120,7 @@ const sectionLabel = norm === 'nist' ? 'NIST control' : norm === 'bp28' ? 'ANSSI
         oses.length > 1 && (
           <div class="fsel">
             <label>{t.thOs}</label>
-            <select id="r-os">
+            <select id="r-os" aria-label={t.thOs}>
               <option value="">{t.allOs}</option>
               {oses.map((o: string) => <option value={o}>{o}</option>)}
             </select>
@@ -117,7 +131,7 @@ const sectionLabel = norm === 'nist' ? 'NIST control' : norm === 'bp28' ? 'ANSSI
         sevs.length > 1 && (
           <div class="fsel">
             <label>{t.severity}</label>
-            <select id="r-sev">
+            <select id="r-sev" aria-label={t.severity}>
               <option value="">{lang === 'fr' ? 'Toutes sévérités' : 'Any severity'}</option>
               {sevs.map((s: string) => <option value={s}>{sevLabel(s)}</option>)}
             </select>
@@ -141,7 +155,7 @@ const sectionLabel = norm === 'nist' ? 'NIST control' : norm === 'bp28' ? 'ANSSI
         </thead>
         <tbody id="r-body">
           {
-            rules.map((r: any) => (
+            rules.slice(0, INITIAL).map((r: any) => (
               <tr
                 data-os={r.supported_os.join(' ')}
                 data-sev={r.severity}
@@ -161,9 +175,12 @@ const sectionLabel = norm === 'nist' ? 'NIST control' : norm === 'bp28' ? 'ANSSI
     </div>
     <p id="r-empty" hidden class="empty">{t.noResults}</p>
   </div>
+  <script id="r-data" type="application/json" is:inline set:html={JSON.stringify(rowsData)} />
 </Base>
 
 <script>
+  // Windowed table — see the comment on rules/index.astro. Server renders the first rows; the client
+  // takes over from the full JSON dataset, windowing on scroll and re-rendering on filter/sort.
   const $ = (id: string) => document.getElementById(id);
   const search = $('r-search') as HTMLInputElement | null;
   const osf = $('r-os') as HTMLSelectElement | null;
@@ -171,24 +188,52 @@ const sectionLabel = norm === 'nist' ? 'NIST control' : norm === 'bp28' ? 'ANSSI
   const tbody = $('r-body');
   const count = $('r-count');
   const empty = $('r-empty');
-  if (tbody) {
-    const rows = Array.from(tbody.querySelectorAll('tr')) as HTMLElement[];
+  const dataEl = $('r-data');
+  if (tbody && dataEl) {
+    const ALL = JSON.parse(dataEl.textContent || '[]') as any[];
+    const lang = document.documentElement.lang || 'en';
+    const CHUNK = 60;
+    const esc = (s: any) =>
+      String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
+    const rowHTML = (d: any) =>
+      `<tr data-os="${esc(d.osList)}" data-sev="${esc(d.sev)}" data-search="${esc(d.search)}">` +
+      `<td><a class="ref" href="/${lang}/rules/${d.id}/">${esc(d.socle)}</a></td>` +
+      `<td><a class="rule-name" href="/${lang}/rules/${d.id}/">${esc(d.title)}</a></td>` +
+      `<td class="os">${d.os}</td>` +
+      `<td class="dom">${esc(d.domain)}</td>` +
+      `<td><span class="sev ${d.sevClass}">${esc(d.sevLabel)}</span></td>` +
+      `<td class="secs">${esc(d.secs)}</td>` +
+      `</tr>`;
+
+    let view: any[] = ALL;
+    let shown = 0;
+    let sortIdx = -1;
+    let sortAsc = true;
+    const key = (d: any, i: number) => [d.socle, d.title, d.os, d.domain, d.sevLabel, d.secs][i];
+
+    const renderMore = () => {
+      const next = view.slice(shown, shown + CHUNK);
+      if (next.length) tbody.insertAdjacentHTML('beforeend', next.map(rowHTML).join(''));
+      shown += next.length;
+    };
     const apply = () => {
       const q = (search?.value || '').trim().toLowerCase();
       const o = osf?.value || '';
       const s = sevf?.value || '';
-      let n = 0;
-      for (const tr of rows) {
-        const show =
-          (!q || (tr.dataset.search || '').includes(q)) &&
-          (!o || (tr.dataset.os || '').split(' ').includes(o)) &&
-          (!s || tr.dataset.sev === s);
-        tr.hidden = !show;
-        if (show) n++;
-      }
-      if (count) count.textContent = String(n);
-      if (empty) (empty as HTMLElement).hidden = n !== 0;
+      view = ALL.filter(
+        (r) => (!q || r.search.includes(q)) && (!o || r.osList.split(' ').includes(o)) && (!s || r.sev === s)
+      );
+      if (sortIdx >= 0)
+        view = [...view].sort(
+          (a, b) => (sortAsc ? 1 : -1) * String(key(a, sortIdx)).localeCompare(String(key(b, sortIdx)), undefined, { numeric: true })
+        );
+      tbody.innerHTML = '';
+      shown = 0;
+      renderMore();
+      if (count) count.textContent = String(view.length);
+      if (empty) (empty as HTMLElement).hidden = view.length !== 0;
     };
+
     [search, osf, sevf].forEach((el) => {
       el?.addEventListener('input', apply);
       el?.addEventListener('change', apply);
@@ -196,171 +241,20 @@ const sectionLabel = norm === 'nist' ? 'NIST control' : norm === 'bp28' ? 'ANSSI
     const heads = Array.from(document.querySelectorAll('.rtable th[data-col]')) as HTMLElement[];
     heads.forEach((th, idx) => {
       th.addEventListener('click', () => {
-        const asc = th.dataset.dir !== 'asc';
+        sortAsc = sortIdx === idx ? !sortAsc : true;
+        sortIdx = idx;
         heads.forEach((o) => (o.dataset.dir = ''));
-        th.dataset.dir = asc ? 'asc' : 'desc';
-        rows.sort(
-          (a, b) =>
-            (asc ? 1 : -1) *
-            a.children[idx].textContent!.trim().localeCompare(b.children[idx].textContent!.trim(), undefined, { numeric: true })
-        );
-        rows.forEach((r) => tbody.appendChild(r));
+        th.dataset.dir = sortAsc ? 'asc' : 'desc';
+        apply();
       });
     });
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (shown < view.length && window.innerHeight + window.scrollY >= document.body.offsetHeight - 700) renderMore();
+      },
+      { passive: true }
+    );
+    apply();
   }
 </script>
-
-<style>
-  .page-head {
-    padding: 54px 28px 8px; /* keep the .wrap side padding so the head aligns with the table below */
-  }
-  .full {
-    color: var(--tx-3);
-    font-size: 13px;
-    margin-top: 8px;
-  }
-  .meta-row {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin: 20px 0 6px;
-  }
-  .mtag {
-    flex: 1;
-    min-width: 160px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--tx-2);
-    border: 1px solid var(--line);
-    background: var(--panel);
-    border-radius: 8px;
-    padding: 9px 13px;
-  }
-  .mtag b {
-    color: var(--tx-3);
-    font-weight: 500;
-    text-transform: uppercase;
-    font-size: 10px;
-    letter-spacing: 0.05em;
-    margin-right: 5px;
-  }
-  .mtag.link {
-    color: var(--red);
-  }
-  .cov-row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin: 4px 0 2px;
-  }
-  .cov {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    padding: 6px 11px;
-    border-radius: 8px;
-    border: 1px solid var(--line);
-    color: var(--tx-2);
-  }
-  .cov b {
-    color: var(--tx);
-    font-weight: 700;
-  }
-  .cov.high {
-    color: var(--red-br);
-    border-color: rgba(220, 38, 38, 0.4);
-  }
-  .cov.med {
-    color: var(--warn-br);
-    border-color: rgba(217, 119, 6, 0.35);
-  }
-  .cov.rbproof {
-    color: #047857;
-    border-color: rgba(5, 150, 105, 0.4);
-    cursor: help;
-  }
-  .guide {
-    margin-top: 16px;
-    border: 1px solid var(--line);
-    border-radius: 11px;
-    background: var(--panel);
-    padding: 4px 16px;
-  }
-  .guide summary {
-    cursor: pointer;
-    font-family: var(--font-mono);
-    font-size: 13px;
-    color: var(--tx-2);
-    padding: 12px 0;
-  }
-  .guide summary:hover {
-    color: var(--red);
-  }
-  .guide-body {
-    font-size: 14.5px;
-    color: var(--tx-2);
-    line-height: 1.6;
-    padding: 4px 0 16px;
-  }
-  .guide-body :global(code) {
-    font-family: var(--font-mono);
-    font-size: 12.5px;
-    color: var(--tx);
-    background: var(--bg-2);
-    border: 1px solid var(--line);
-    border-radius: 5px;
-    padding: 1px 6px;
-  }
-  .guide-body :global(strong) {
-    color: var(--tx);
-  }
-  .guide-body :global(table) {
-    border-collapse: collapse;
-    margin: 10px 0;
-  }
-  .guide-body :global(td) {
-    border: 1px solid var(--line);
-    padding: 6px 10px;
-  }
-  .filterbar {
-    align-items: flex-end; /* all controls share a clean bottom baseline, labels above */
-  }
-  .filterbar .fcount {
-    padding-bottom: 9px;
-  }
-  .fsearch-wrap {
-    flex: 1;
-    min-width: 180px;
-  }
-  .fsearch {
-    width: 100%;
-    font-family: var(--font-mono);
-    font-size: 12.5px;
-    color: var(--tx);
-    background: var(--bg-2);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 9px 13px;
-  }
-  .fsearch:focus {
-    outline: none;
-    border-color: var(--red);
-  }
-  .rtable thead th {
-    cursor: pointer;
-    user-select: none;
-    position: static; /* override pavois sticky (glitches in border-collapse under the 64px nav) */
-  }
-  .rtable thead th[data-dir='asc']::after {
-    content: ' ↑';
-  }
-  .rtable thead th[data-dir='desc']::after {
-    content: ' ↓';
-  }
-  .empty {
-    color: var(--tx-3);
-    padding: 24px 0;
-  }
-</style>

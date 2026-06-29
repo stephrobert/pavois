@@ -1,5 +1,5 @@
 ---
-import { marked } from 'marked';
+import { renderMarkdown } from '../../../lib/markdown';
 import Base from '../../../layouts/Base.astro';
 import { ui, languages, type Lang } from '../../../i18n/ui';
 
@@ -8,7 +8,7 @@ export function getStaticPaths() {
 }
 const { lang } = Astro.params as { lang: Lang };
 const t = ui[lang];
-const md = (s: string): string => marked.parse(s, { async: false, gfm: true }) as string;
+const md = (s: string): string => renderMarkdown(s).html;
 
 type Sec = { id: string; t: { en: string; fr: string }; b: { en: string; fr: string } };
 const sections: Sec[] = [
@@ -97,8 +97,6 @@ const sections: Sec[] = [
 
 <Base title={`Pavois — ${t.navDocs}`} description={t.docsIntro} lang={lang} breadcrumbs={[{ name: 'Pavois', path: `/${lang}/` }, { name: t.navDocs, path: `/${lang}/docs/` }]}>
   <div class="wrap page-head">
-    <div class="crumb"><a href={`/${lang}/`}>Pavois</a> / {lang === 'fr' ? 'docs' : 'docs'}</div>
-    <span class="eyebrow">{lang === 'fr' ? 'docs' : 'docs'}</span>
     <h1>{lang === 'fr' ? 'Comment fonctionne Pavois' : 'How Pavois works'}</h1>
     <p class="lede">{t.docsIntro}</p>
     <nav class="docnav">
@@ -142,192 +140,3 @@ const sections: Sec[] = [
   );
   document.querySelectorAll('.doc-block').forEach((b) => obs.observe(b));
 </script>
-
-<style>
-  .page-head { padding: 54px 28px 8px; }
-  .layout-doc { padding: 8px 28px 88px; }
-  .prose :global(table) { width:100%; border-collapse:collapse; font-size:13.5px; margin:0 0 22px; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
-  .prose :global(th) { font-family:var(--font-mono); font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--tx-3); text-align:left; padding:11px 14px; background:var(--bg-2); border-bottom:1px solid var(--line); }
-  .prose :global(td) { padding:11px 14px; border-bottom:1px solid var(--line); color:var(--tx-2); vertical-align:top; }
-  .docs-layout {
-    display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
-    gap: 48px;
-    padding-top: 40px;
-    padding-bottom: 90px;
-    align-items: start;
-  }
-  .docs-nav {
-    position: sticky;
-    top: 88px;
-  }
-  .docs-nav-title {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--color-faint);
-    margin-bottom: 12px;
-  }
-  .docs-nav nav {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    border-left: 1px solid var(--color-border);
-  }
-  .docs-nav a {
-    font-size: 0.85rem;
-    color: var(--color-dim);
-    padding: 5px 0 5px 14px;
-    margin-left: -1px;
-    border-left: 2px solid transparent;
-    transition: 0.14s;
-  }
-  .docs-nav a:hover {
-    color: var(--color-text);
-  }
-  .docs-nav a.on {
-    color: var(--color-accent);
-    border-left-color: var(--color-accent);
-    font-weight: 600;
-  }
-  .docs-nav a :global(code) {
-    font-family: var(--font-mono);
-    font-size: 0.92em;
-  }
-
-  .docs-content {
-    max-width: 760px;
-  }
-  .docs-content h1 {
-    font-size: clamp(2rem, 4.4vw, 2.9rem);
-    margin: 14px 0 12px;
-  }
-  .docs-content .lead {
-    color: var(--color-dim);
-    font-size: 1.12rem;
-    margin-bottom: 8px;
-  }
-  .doc-block {
-    scroll-margin-top: 84px;
-    padding-top: 30px;
-    margin-top: 26px;
-    border-top: 1px solid var(--color-border-soft);
-  }
-  .doc-block h2 {
-    font-size: 1.6rem;
-    font-weight: 700;
-    margin: 0 0 16px;
-  }
-  .doc-block h2 :global(code),
-  .prose :global(code) {
-    font-family: var(--font-mono);
-    font-size: 0.86em;
-    background: var(--color-surface-2);
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    padding: 1px 6px;
-    color: var(--color-accent);
-  }
-
-  /* Polished content */
-  .prose {
-    color: var(--color-text);
-    line-height: 1.72;
-    font-size: 1rem;
-  }
-  .prose :global(p) {
-    margin: 0 0 14px;
-  }
-  .prose :global(strong) {
-    color: var(--color-text);
-    font-weight: 700;
-  }
-  .prose :global(a) {
-    color: var(--color-accent);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  .prose :global(ul) {
-    margin: 0 0 14px;
-    padding-left: 22px;
-  }
-  .prose :global(li) {
-    margin: 6px 0;
-  }
-  .prose :global(li code) {
-    color: var(--color-accent);
-  }
-
-  /* Code blocks — terminal look */
-  .prose :global(pre) {
-    background: var(--color-surface-2);
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    padding: 16px 18px;
-    margin: 0 0 16px;
-    overflow-x: auto;
-    font-size: 0.83rem;
-    line-height: 1.6;
-  }
-  .prose :global(pre code) {
-    background: none;
-    border: none;
-    padding: 0;
-    color: var(--color-dim);
-    font-size: inherit;
-  }
-
-  /* Blockquote → note callout */
-  .prose :global(blockquote) {
-    margin: 0 0 16px;
-    padding: 14px 18px;
-    background: var(--color-accent-soft);
-    border: 1px solid var(--color-accent-line);
-    border-radius: 12px;
-    color: var(--color-text);
-  }
-  .prose :global(blockquote p) {
-    margin: 0;
-  }
-
-  /* Tables — option references */
-  .prose :global(table) {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 0 0 18px;
-    font-size: 0.9rem;
-  }
-  .prose :global(th) {
-    text-align: left;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--color-faint);
-    padding: 9px 12px;
-    border-bottom: 1px solid var(--color-border);
-  }
-  .prose :global(td) {
-    padding: 9px 12px;
-    border-bottom: 1px solid var(--color-border-soft);
-    vertical-align: top;
-  }
-  .prose :global(tr:hover td) {
-    background: var(--color-bg-2);
-  }
-
-  @media (max-width: 860px) {
-    .docs-layout {
-      grid-template-columns: 1fr;
-      gap: 0;
-    }
-    .docs-nav {
-      display: none;
-    }
-  }
-  .docnav { display:flex; gap:8px; margin-top:18px; }
-  .docnav a { font-family:var(--font-mono); font-size:12.5px; color:var(--tx-2); border:1px solid var(--line); background:var(--panel); border-radius:8px; padding:8px 13px; }
-  .docnav a:hover { border-color:var(--red); color:var(--red); }
-  .docnav a.on { color:var(--red); border-color:var(--red); background:var(--red-dim); }
-</style>

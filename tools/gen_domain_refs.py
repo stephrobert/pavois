@@ -8,6 +8,7 @@ Handbook id per domain is read from the handbook content; blog slugs + man pages
 kernel-modules, sudoers — which the older handbook cites didn't have). Run after adding a domain or
 a new guide. See docs/site-enrichment.md.
 """
+
 import glob
 import json
 from pathlib import Path
@@ -80,10 +81,12 @@ def main():
         out[dom] = entry
 
     OUT.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"domain-refs: {len(out)} domains -> {OUT.relative_to(ROOT)} "
-          f"({sum('blog' in v for v in out.values())} blog, "
-          f"{sum('handbook' in v for v in out.values())} handbook, "
-          f"{sum('man' in v for v in out.values())} man)")
+    print(
+        f"domain-refs: {len(out)} domains -> {OUT.relative_to(ROOT)} "
+        f"({sum('blog' in v for v in out.values())} blog, "
+        f"{sum('handbook' in v for v in out.values())} handbook, "
+        f"{sum('man' in v for v in out.values())} man)"
+    )
 
 
 if __name__ == "__main__":
