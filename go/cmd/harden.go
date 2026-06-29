@@ -5,6 +5,7 @@ import (
 	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1160,6 +1161,13 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		c.Stdout, c.Stderr = os.Stderr, os.Stderr
 		return c.Run()
 	}
+	// capture runs a read-only command on the target over raw ssh and returns its trimmed
+	// stdout (used for the reboot proof: boot_id is world-readable, no sudo needed).
+	capture := func(remote string) string {
+		c := exec.Command("ssh", append(append(sshOpts(), target), remote)...) //nolint:gosec // fixed args, operator target
+		o, _ := c.Output()
+		return strings.TrimSpace(string(o))
+	}
 	_, _ = fmt.Fprintf(os.Stderr, "pavois: ensuring cinc-client on %s…\n", target)
 	ensure := "command -v cinc-apply >/dev/null || curl -L https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc"
 	if err := run("ssh", sshTTY(target, ensure)...); err != nil {
@@ -1184,6 +1192,13 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 			_, _ = fmt.Fprintln(out, "pavois: aborted — nothing applied.")
 			return nil
 		}
+	}
+
+	// Reboot proof: snapshot the boot_id BEFORE the run reboots the box, so we can later
+	// show the post-reboot boot_id differs (the re-scan really ran on a fresh boot).
+	bootBefore := ""
+	if reboot && haReboot {
+		bootBefore = capture("cat /proc/sys/kernel/random/boot_id")
 	}
 
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: converging (cinc-apply)…")
@@ -1219,6 +1234,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("target did not come back after reboot within ~4min")
 		}
 		_, _ = fmt.Fprintln(os.Stderr, "pavois: target back up after reboot.")
+		writeRebootProof(out, target, bootBefore, capture)
 	}
 	_, _ = fmt.Fprintln(out, "\npavois: converged.")
 	if !haScan {
@@ -1302,6 +1318,49 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
+}
+
+// writeRebootProof captures the post-reboot boot_id + uptime and writes a reboot-proof
+// artifact: evidence that the re-scan really ran on a fresh boot (boot_id changed), so a
+// PASS after `--reboot --scan` is empirically reboot-survivable. Feed it to `pavois bundle
+// --reboot-proof`. boot_id is world-readable, so no sudo is needed.
+func writeRebootProof(out io.Writer, target, bootBefore string, capture func(string) string) {
+	bootAfter := capture("cat /proc/sys/kernel/random/boot_id")
+	uptime := capture("cat /proc/uptime")
+	if i := strings.IndexByte(uptime, ' '); i > 0 {
+		uptime = uptime[:i]
+	}
+	rebooted := bootBefore != "" && bootAfter != "" && bootBefore != bootAfter
+	proof := map[string]any{
+		"format":         "pavois-reboot-proof/v1",
+		"target":         target,
+		"captured_at":    time.Now().UTC().Format(time.RFC3339),
+		"boot_id_before": bootBefore,
+		"boot_id_after":  bootAfter,
+		"rebooted":       rebooted,
+		"uptime_seconds": uptime,
+		"boot_time":      capture("uptime -s"),
+	}
+	root := findRoot()
+	machine, transport := machineTransport(target)
+	_ = os.MkdirAll(filepath.Join(root, "reports"), 0o750)
+	path := filepath.Join(root, "reports", fmt.Sprintf("reboot-proof-%s-%s-%s.json",
+		slug(machine), strings.TrimSuffix(transport, "://"), time.Now().Format("20060102-150405")))
+	blob, _ := json.MarshalIndent(proof, "", "  ")
+	if err := os.WriteFile(path, blob, 0o600); err != nil {
+		return
+	}
+	short := func(s string) string {
+		if len(s) > 8 {
+			return s[:8]
+		}
+		return s
+	}
+	if rebooted {
+		_, _ = fmt.Fprintf(out, "pavois: reboot proven (boot_id %s → %s) → %s\n", short(bootBefore), short(bootAfter), path)
+	} else {
+		_, _ = fmt.Fprintf(out, "pavois: reboot proof written (boot_id unchanged — verify) → %s\n", path)
+	}
 }
 
 // genPassword returns a strong random password (crypto/rand) for pavois-managed secrets
