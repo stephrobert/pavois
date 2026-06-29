@@ -1,8 +1,8 @@
-// Per-domain coverage depth — the honest edges, mirrored from /handbook/coverage. Three levels:
-//   deep    — audited thoroughly, lean on it alone.
-//   partial — audited beyond mere presence, but with named gaps (e.g. journald flags, no remote
+// Per-domain coverage depth, the honest edges, mirrored from /handbook/coverage. Three levels:
+//   deep   , audited thoroughly, lean on it alone.
+//   partial, audited beyond mere presence, but with named gaps (e.g. journald flags, no remote
 //             log integrity); usable, read the caveat.
-//   shallow — presence / default only, not enough to lean on alone (e.g. firewall presence, no
+//   shallow, presence / default only, not enough to lean on alone (e.g. firewall presence, no
 //             ruleset audit; time sync present, no source/drift policy).
 // Single source for the /rules badge, the fiche caveat and the standards pages.
 export type Coverage = 'deep' | 'partial' | 'shallow';

@@ -5,7 +5,7 @@ export const ui = {
   en: {
     tagline: 'Effective Linux Compliance',
     intro:
-      'Pavois checks the Linux configuration that actually runs — not just the files that claim to configure it. Executable SOCLE Linux controls mapped to CIS, ANSSI BP-028, NIST, PCI-DSS and STIG. Most controls map to several standards at once; single-standard and source-only controls stay explicitly visible.',
+      'Pavois checks the Linux configuration that actually runs, not just the files that claim to configure it. Executable SOCLE Linux controls mapped to CIS, ANSSI BP-028, NIST, PCI-DSS and STIG. Most controls map to several standards at once; single-standard and source-only controls stay explicitly visible.',
     rules: 'Rules',
     allRules: 'All rules',
     domain: 'Domain',
@@ -18,8 +18,8 @@ export const ui = {
     secRemediation: 'Remediation',
     secImpact: 'Impact & precautions',
     references: 'References',
-    hardenNote: 'Pavois applies this with its own harden engine — the plan below, not a shell script:',
-    noRemediation: 'No automated remediation for this rule — apply it manually following the standard.',
+    hardenNote: 'Pavois applies this with its own harden engine, the plan below, not a shell script:',
+    noRemediation: 'No automated remediation for this rule, apply it manually following the standard.',
     authority: 'Authority',
     version: 'Version',
     officialDoc: 'Official documentation →',
@@ -39,8 +39,8 @@ export const ui = {
       'What Pavois is, how it audits the effective configuration, what a target is, and how the harden engine applies remediations.',
     navHandbook: 'Handbook',
     handbookIntro:
-      'The whole hardening subject — from understanding the threats and the defense principles to why and how you harden each Linux component, and what Pavois audits.',
-    targetHint: 'where the target is local, a user@host SSH alias, or a container —',
+      'The whole hardening subject, from understanding the threats and the defense principles to why and how you harden each Linux component, and what Pavois audits.',
+    targetHint: 'where the target is local, a user@host SSH alias, or a container , ',
     glossaryTitle: 'DevSecOps & hardening glossary',
     glossaryIntro:
       'Clear, bilingual definitions of the security, Linux and compliance concepts behind Pavois’s rules.',
@@ -52,7 +52,7 @@ export const ui = {
   fr: {
     tagline: 'Conformité Linux effective',
     intro:
-      'Pavois vérifie la configuration Linux réellement appliquée — pas seulement les fichiers censés la configurer. Des contrôles SOCLE Linux exécutables, mappés à CIS, ANSSI BP-028, NIST, PCI-DSS et STIG. La plupart des contrôles couvrent plusieurs normes à la fois ; les contrôles mono-norme ou source-only restent explicitement visibles.',
+      'Pavois vérifie la configuration Linux réellement appliquée, pas seulement les fichiers censés la configurer. Des contrôles SOCLE Linux exécutables, mappés à CIS, ANSSI BP-028, NIST, PCI-DSS et STIG. La plupart des contrôles couvrent plusieurs normes à la fois ; les contrôles mono-norme ou source-only restent explicitement visibles.',
     rules: 'Règles',
     allRules: 'Toutes les règles',
     domain: 'Domaine',
@@ -65,8 +65,8 @@ export const ui = {
     secRemediation: 'Remédiation',
     secImpact: 'Impact & précautions',
     references: 'Références',
-    hardenNote: 'Pavois applique ceci avec son propre moteur harden — le plan ci-dessous, pas un script shell :',
-    noRemediation: 'Pas de remédiation automatique pour cette règle — à appliquer manuellement selon la norme.',
+    hardenNote: 'Pavois applique ceci avec son propre moteur harden, le plan ci-dessous, pas un script shell :',
+    noRemediation: 'Pas de remédiation automatique pour cette règle, à appliquer manuellement selon la norme.',
     authority: 'Autorité',
     version: 'Version',
     officialDoc: 'Documentation officielle →',
@@ -86,8 +86,8 @@ export const ui = {
       "Ce qu'est Pavois, comment il audite la configuration effective, ce qu'est une cible, et comment le moteur harden applique les remédiations.",
     navHandbook: 'Manuel',
     handbookIntro:
-      'Tout le sujet du durcissement — des menaces et des principes de défense au pourquoi/comment durcir chaque composant Linux, et ce que Pavois audite.',
-    targetHint: 'où la cible est local, un alias SSH user@hôte, ou un conteneur —',
+      'Tout le sujet du durcissement, des menaces et des principes de défense au pourquoi/comment durcir chaque composant Linux, et ce que Pavois audite.',
+    targetHint: 'où la cible est local, un alias SSH user@hôte, ou un conteneur , ',
     glossaryTitle: 'Glossaire DevSecOps & durcissement',
     glossaryIntro:
       'Définitions claires et bilingues des concepts de sécurité, Linux et conformité derrière les règles de Pavois.',
