@@ -10,6 +10,7 @@ link in one locale). Exit non-zero if any file is out of parity.
 Usage: python3 tools/validate_i18n_parity.py [content-dir ...]
 Default dir: site/src/content/handbook
 """
+
 import json
 import re
 import sys
