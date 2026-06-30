@@ -4,7 +4,7 @@
 
 <p align="center">
   <b>Effective Linux compliance &amp; hardening, over CINC / InSpec</b><br/>
-  <sub>Audits the configuration your services <i>actually run</i> (<code>sshd -T</code>, <code>sysctl</code>, <code>systemctl</code>, <code>auditctl</code>), not just the files on disk. Maps each control to every standard that covers it (CIS, ANSSI BP-028, NIST, PCI-DSS, STIG), grades it <b>A–E</b>, and hardens it as code.</sub>
+  <sub>Audits the configuration your services <i>actually run</i> (<code>sshd -T</code>, <code>sysctl</code>, <code>systemctl</code>, <code>auditctl</code>), not just the files on disk. Maps each control to every applicable standard (CIS, ANSSI BP-028, NIST, PCI-DSS, STIG), grades it <b>A–E</b>, and hardens it as code.</sub>
 </p>
 
 <p align="center">
@@ -42,10 +42,10 @@ difference: it audits the **effective configuration** of a running host, not the
 - **Effective, not file-based.** A control on a service reads the resolved state: `sshd -T`,
   `sysctl`, `systemctl show`, `auditctl -l`. It catches the `Include`s and drop-ins a file read
   misses, where a permissive override silently defeats a stricter main config.
-- **One check, every standard.** A single effective-config assertion carries all its mappings:
+- **One control, every applicable mapping.** A single effective-config assertion carries all its standard mappings:
   **CIS**, **ANSSI BP-028**, **NIST** (800-53 / 800-171), **PCI-DSS** and **DISA STIG**. One
   neutral control, every applicable mapping, never a duplicated rule.
-- **A–E grade, opposable.** A published scoring formula (failure-weighted, critical-capped),
+- **A–E grade, transparent.** A published scoring formula (failure-weighted, critical-capped),
   computed identically in the CLI and the HTML report.
 - **Harden as code.** `pavois harden` plans the fixes, you opt in per rule, and a native Chef run
   converges them. No blind shell script.
@@ -145,7 +145,7 @@ the plan that was applied, the reports, the reboot proof, the transition delta, 
 **sign `checksums.txt` with your own identity** (`cosign sign-blob` or `gpg --detach-sign`) — pavois does
 not own the signing key, the auditor's trust is in your KMS/OIDC identity. **`pavois bundle verify <dir>`**
 re-checks every artifact's SHA-256, the manifest digest, and the signature if present (exit non-zero on
-any tampering; `--require-signature` to also fail when unsigned), turning the package into opposable,
+any tampering; `--require-signature` to also fail when unsigned), turning the package into tamper-evident evidence, opposable once signed under an accepted trust policy,
 audit-ready evidence.
 
 | Command | Does |
@@ -158,9 +158,9 @@ audit-ready evidence.
 | `oscal` | Publish the baseline as OSCAL (catalog + per-OS profiles) |
 | `serve` | Browse the HTML reports |
 
-## 📐 One check, every standard
+## 📐 One control, every applicable mapping
 
-Each control declares the evidence it gathers and maps to where every standard places the
+Each control declares the evidence it gathers and maps to where each applicable standard places the
 requirement. A mapping is an anchored, cross-validated **cross-reference**, not a claim of
 equivalence. Browse the [control explorer](https://pavois.dev/en/rules/) and the per-standard
 views: [CIS](https://pavois.dev/en/standards/cis/) · [ANSSI BP-028](https://pavois.dev/en/standards/bp28/)
@@ -190,7 +190,7 @@ any OSCAL-aware GRC tool. Each control carries its evidence type and the qualifi
 
 ## 🗺️ Coverage
 
-Pavois audits the effective configuration of a running Linux host across 8 OS families, and is
+Pavois audits the effective configuration of a running Linux host across 8 OS targets, and is
 explicit about its edges: some domains (firewall ruleset, log forwarding, MAC policy depth) are
 shallow today. The honest [coverage matrix](https://pavois.dev/en/handbook/coverage/) names what is
 deep and what is not.
