@@ -369,6 +369,7 @@ type ClassStat struct {
 	Passed int    `json:"passed"`
 	Failed int    `json:"failed"`
 	Total  int    `json:"total"`
+	Grade  string `json:"grade"` // note A->E calculée sur les seuls contrôles de la classe
 }
 
 // Posture est la ventilation par classe de remédiation + la note REMÉDIABLE : la note
@@ -395,6 +396,7 @@ func Breakdown(r *Report, standard, level string) Posture {
 		stat[k] = &ClassStat{Class: k}
 	}
 	var remFindings []finding.Finding
+	clsFindings := map[string][]finding.Finding{} // échecs par classe, pour la note par classe
 	remPassed, remTotal := 0, 0
 	for _, p := range r.Profiles {
 		for _, c := range p.Controls {
@@ -416,6 +418,7 @@ func Breakdown(r *Report, standard, level string) Posture {
 				s.Passed++
 			} else {
 				s.Failed++
+				clsFindings[cls] = append(clsFindings[cls], toFinding(c, "", standard))
 			}
 			if cls != "install-time" && cls != "kernel-build" { // périmètre remédiable
 				remTotal++
@@ -431,6 +434,7 @@ func Breakdown(r *Report, standard, level string) Posture {
 	var classes []ClassStat
 	for _, k := range classOrder {
 		if stat[k].Total > 0 {
+			stat[k].Grade, _ = Grade(scoring.Summarize(clsFindings[k]))
 			classes = append(classes, *stat[k])
 		}
 	}
