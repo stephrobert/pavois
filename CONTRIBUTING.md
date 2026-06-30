@@ -1,16 +1,16 @@
 # Contributing to Pavois
 
 Pavois is a community **compliance scanner**. Its heart is the **rule library**: InSpec controls
-that audit a system's **effective configuration** (not its files), mapped to standards (CIS, ANSSI
+that audit a system's **effective configuration** (not just its files), mapped to standards (CIS, ANSSI
 BP-028, NIST, PCI-DSS, STIG) and tagged by level. That is where the project most needs the community.
 
 Why not just read config files: a fixed file misses `Include` directives, drop-ins and the applied
 state. Pavois queries the **resolved** state (`sshd -T`, `sysctl`, `systemctl show`, `nginx -T`). A
-rule that reads a service's file instead of its effective config does not belong here.
+rule should read a service's resolved view (`sshd -T`, `sysctl`...) when it exposes one; otherwise declare the right evidence type (persistent-config, inventory-state, filesystem-state).
 
 ## Ground rules (non-negotiable)
 
-1. **Effective configuration, always.** For anything a service exposes, audit the resolved state.
+1. **Effective configuration first.** When a service exposes a resolved view, audit that; otherwise declare the correct evidence type (persistent-config, inventory-state, filesystem-state).
 2. **100% CINC/InSpec.** Pavois never uses OpenSCAP as an engine.
 3. **One check, N standards.** Never duplicate a control per standard (see below).
 4. **Tested before merge.** Every change runs the real quality gates locally (see below).
