@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -16,11 +18,12 @@ import (
 )
 
 var (
-	bundlePlan      string
-	bundleReports   []string
-	bundleReboot    string
-	bundleException string
-	bundleOut       string
+	bundlePlan       string
+	bundleReports    []string
+	bundleReboot     string
+	bundleException  string
+	bundleOut        string
+	bundleRequireSig bool
 )
 
 // bundle assembles a tamper-evident **evidence package** from a hardening campaign:
@@ -36,12 +39,21 @@ var bundleCmd = &cobra.Command{
 	RunE:  runBundle,
 }
 
+var bundleVerifyCmd = &cobra.Command{
+	Use:   "verify <bundle-dir>",
+	Short: "Verify an evidence bundle: every checksum, the manifest digest, and a signature if present",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runBundleVerify,
+}
+
 func init() {
 	bundleCmd.Flags().StringVar(&bundlePlan, "plan", "", "hardening plan that was applied (.yml)")
 	bundleCmd.Flags().StringArrayVar(&bundleReports, "report", nil, "report file to include (HTML/JSON/...), repeatable")
 	bundleCmd.Flags().StringVar(&bundleReboot, "reboot-proof", "", "reboot-proof artifact (boot_id / uptime captured post-reboot)")
 	bundleCmd.Flags().StringVar(&bundleException, "exceptions", "", "formal exceptions file (who excluded what, why, until when)")
 	bundleCmd.Flags().StringVarP(&bundleOut, "out", "o", "", "output directory (default: evidence-bundle-<timestamp>)")
+	bundleVerifyCmd.Flags().BoolVar(&bundleRequireSig, "require-signature", false, "fail if no valid signature is present")
+	bundleCmd.AddCommand(bundleVerifyCmd)
 	rootCmd.AddCommand(bundleCmd)
 }
 
@@ -159,16 +171,23 @@ func runBundle(cmd *cobra.Command, args []string) error {
 		posture = &p
 	}
 
+	binDigest := ""
+	if exe, e := os.Executable(); e == nil {
+		if s, _, e2 := sha256File(exe); e2 == nil {
+			binDigest = s
+		}
+	}
 	manifest := map[string]any{
-		"format":          "pavois-evidence-bundle/v1",
-		"pavois_version":  version,
-		"ruleset_version": ruleset,
-		"generated":       time.Now().UTC().Format(time.RFC3339),
-		"target":          map[string]string{"platform": platform, "release": release},
-		"before":          map[string]any{"file": filepath.Base(beforePath), "grade": bGrade, "passed": bPass, "total": bTotal},
-		"after":           map[string]any{"file": filepath.Base(afterPath), "grade": aGrade, "passed": aPass, "total": aTotal},
-		"campaign":        campaign,
-		"artifacts":       artifacts,
+		"format":               "pavois-evidence-bundle/v1",
+		"pavois_version":       version,
+		"pavois_binary_sha256": binDigest,
+		"ruleset_version":      ruleset,
+		"generated":            time.Now().UTC().Format(time.RFC3339),
+		"target":               map[string]string{"platform": platform, "release": release},
+		"before":               map[string]any{"file": filepath.Base(beforePath), "grade": bGrade, "passed": bPass, "total": bTotal},
+		"after":                map[string]any{"file": filepath.Base(afterPath), "grade": aGrade, "passed": aPass, "total": aTotal},
+		"campaign":             campaign,
+		"artifacts":            artifacts,
 	}
 	if posture != nil {
 		manifest["posture"] = posture
@@ -194,6 +213,116 @@ func runBundle(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintf(o, "  %d artifacts · before %s -> after %s · %d fixed, %d regressions\n",
 		len(artifacts), orDash(bGrade), orDash(aGrade), len(buckets["fail>pass"]), len(buckets["pass>fail"]))
 	_, _ = fmt.Fprintf(o, "  manifest sha256: %s\n", manSum)
-	_, _ = fmt.Fprintln(o, "  sign/publish that digest to make the bundle opposable (e.g. minisign/cosign/gpg on checksums.txt).")
+	_, _ = fmt.Fprintln(o, "  sign checksums.txt to make the bundle opposable (your identity, not pavois'), e.g.:")
+	_, _ = fmt.Fprintf(o, "    cosign sign-blob --yes --bundle %s/checksums.txt.cosign.bundle %s/checksums.txt\n", out, out)
+	_, _ = fmt.Fprintf(o, "    gpg --armor --detach-sign %s/checksums.txt\n", out)
+	_, _ = fmt.Fprintf(o, "  then verify the whole bundle with: pavois bundle verify %s\n", out)
 	return nil
+}
+
+// runBundleVerify re-checks an evidence bundle end to end: every artifact's SHA-256 against
+// checksums.txt, the manifest's own digest, and a detached signature if one was added
+// (cosign bundle or a gpg/PEM detached sig). Integrity failures exit non-zero; a missing
+// signature is reported, and only fails with --require-signature.
+func runBundleVerify(cmd *cobra.Command, args []string) error {
+	dir := args[0]
+	out := cmd.OutOrStdout()
+	ckPath := filepath.Join(dir, "checksums.txt")
+	raw, err := os.ReadFile(ckPath) //nolint:gosec // operator-supplied bundle dir
+	if err != nil {
+		return fmt.Errorf("read checksums.txt: %w (is %q a pavois bundle?)", err, dir)
+	}
+
+	ok := true
+	nfiles := 0
+	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+		f := strings.Fields(line)
+		if len(f) != 2 {
+			continue
+		}
+		want, name := f[0], f[1]
+		nfiles++
+		got, _, e := sha256File(filepath.Join(dir, name))
+		mark := "OK"
+		if e != nil || got != want {
+			mark, ok = "FAIL", false
+		}
+		_, _ = fmt.Fprintf(out, "  [%-4s] %s\n", mark, name)
+	}
+
+	// Manifest summary (so verify also reads back the headline facts).
+	if mb, e := os.ReadFile(filepath.Join(dir, "manifest.json")); e == nil { //nolint:gosec // bundle dir
+		var m struct {
+			Format    string                  `json:"format"`
+			Before    struct{ Grade string }  `json:"before"`
+			After     struct{ Grade string }  `json:"after"`
+			Artifacts []struct{ Role string } `json:"artifacts"`
+		}
+		if json.Unmarshal(mb, &m) == nil {
+			roles := make([]string, 0, len(m.Artifacts))
+			for _, a := range m.Artifacts {
+				roles = append(roles, a.Role)
+			}
+			_, _ = fmt.Fprintf(out, "  manifest: %s · %s -> %s · [%s]\n",
+				m.Format, orDash(m.Before.Grade), orDash(m.After.Grade), strings.Join(roles, ", "))
+		}
+	}
+
+	// Signature (optional): detect a detached signature next to checksums.txt and verify it.
+	sig := verifyBundleSignature(out, dir)
+	if !sig && bundleRequireSig {
+		_, _ = fmt.Fprintln(out, "  [FAIL] signature required but none verified")
+		ok = false
+	}
+
+	if !ok {
+		return fmt.Errorf("bundle verification FAILED (%d files checked)", nfiles)
+	}
+	_, _ = fmt.Fprintf(out, "OK — %d files intact%s\n", nfiles, map[bool]string{true: ", signature verified", false: " (unsigned)"}[sig])
+	return nil
+}
+
+// verifyBundleSignature verifies a detached signature over checksums.txt if present, using
+// whichever tool matches the companion files (cosign bundle, or gpg/PEM detached sig).
+// Returns true only if a signature was found AND verified.
+func verifyBundleSignature(out io.Writer, dir string) bool {
+	ck := filepath.Join(dir, "checksums.txt")
+	// cosign: <dir>/checksums.txt.cosign.bundle (keyless) or a cosign.pub key.
+	cb := ck + ".cosign.bundle"
+	if _, err := os.Stat(cb); err == nil && commandExists("cosign") {
+		a := []string{"verify-blob", "--bundle", cb}
+		if pub := filepath.Join(dir, "cosign.pub"); fileExists(pub) {
+			a = append(a, "--key", pub)
+		} else {
+			a = append(a, "--certificate-identity-regexp", ".*", "--certificate-oidc-issuer-regexp", ".*")
+		}
+		a = append(a, ck)
+		if runQuiet("cosign", a...) {
+			_, _ = fmt.Fprintln(out, "  [OK  ] signature (cosign verify-blob)")
+			return true
+		}
+		_, _ = fmt.Fprintln(out, "  [FAIL] signature (cosign verify-blob)")
+		return false
+	}
+	// gpg: <dir>/checksums.txt.asc or .sig
+	for _, ext := range []string{".asc", ".sig"} {
+		s := ck + ext
+		if fileExists(s) && commandExists("gpg") {
+			if runQuiet("gpg", "--verify", s, ck) {
+				_, _ = fmt.Fprintln(out, "  [OK  ] signature (gpg --verify)")
+				return true
+			}
+			_, _ = fmt.Fprintln(out, "  [FAIL] signature (gpg --verify)")
+			return false
+		}
+	}
+	_, _ = fmt.Fprintln(out, "  [ -- ] signature: none present (sign checksums.txt to make it opposable)")
+	return false
+}
+
+func commandExists(c string) bool { _, err := exec.LookPath(c); return err == nil }
+func fileExists(p string) bool    { _, err := os.Stat(p); return err == nil }
+func runQuiet(name string, a ...string) bool {
+	c := exec.Command(name, a...) //nolint:gosec // fixed verifier args, operator-supplied bundle
+	return c.Run() == nil
 }
