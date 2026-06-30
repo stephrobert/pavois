@@ -79,7 +79,11 @@ func writePosture(w io.Writer, p audit.Posture) {
 	}
 	_, _ = fmt.Fprintln(w, "  Posture by remediation class:")
 	for _, c := range p.Classes {
-		line := fmt.Sprintf("    %-13s %d/%d passing", c.Class, c.Passed, c.Total)
+		grade := c.Grade
+		if grade == "" {
+			grade = "-"
+		}
+		line := fmt.Sprintf("    %-13s %s  %d/%d passing", c.Class, grade, c.Passed, c.Total)
 		if h := hints[c.Class]; h != "" {
 			line += "  " + mut.Render("("+h+")")
 		}

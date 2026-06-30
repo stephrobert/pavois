@@ -197,12 +197,12 @@ function render(){
   (function(){
     var CL=['auto','manual','dangerous','install-time','kernel-build'];
     var HINT={'install-time':'partition séparée requise','kernel-build':'noyau à recompiler','dangerous':'remédiation à risque','manual':'remédiation manuelle'};
-    var stat={};CL.forEach(function(k){stat[k]={p:0,t:0};});
+    var stat={},byCls={};CL.forEach(function(k){stat[k]={p:0,t:0};byCls[k]=[];});
     var rem=[];
     set.forEach(function(c){
       if(c.status!=='passed'&&c.status!=='failed')return;
-      var k=remClass(c);if(!stat[k])stat[k]={p:0,t:0};
-      stat[k].t++;if(c.status==='passed')stat[k].p++;
+      var k=remClass(c);if(!stat[k]){stat[k]={p:0,t:0};byCls[k]=[];}
+      stat[k].t++;if(c.status==='passed')stat[k].p++;byCls[k].push(c);
       if(k!=='install-time'&&k!=='kernel-build')rem.push(c);
     });
     var rg=grade(rem),remp=rem.filter(function(c){return c.status==='passed';}).length;
@@ -213,7 +213,8 @@ function render(){
       ?'<ol class="exec-gaps">'+topN.map(function(c){return '<li>'+sevBadge(c.sev)+' <span class="cid">'+esc(c.id)+'</span> '+esc(c.title)+'</li>';}).join('')+'</ol>'+(gaps.length>topN.length?'<div class="muted">+ '+(gaps.length-topN.length)+' autres écarts</div>':'')
       :'<p class="muted">Aucun écart sur cette vue.</p>';
     var posHtml=CL.filter(function(k){return stat[k].t;}).map(function(k){
-      return '<div class="exec-cls"><span>'+k+'</span> <b>'+stat[k].p+'/'+stat[k].t+'</b>'+(HINT[k]?' <span class="muted">'+HINT[k]+'</span>':'')+'</div>';
+      var gk=grade(byCls[k]).letter;
+      return '<div class="exec-cls"><span>'+k+'</span> <b class="g-'+gk+'">'+gk+'</b> <b>'+stat[k].p+'/'+stat[k].t+'</b>'+(HINT[k]?' <span class="muted">'+HINT[k]+'</span>':'')+'</div>';
     }).join('');
     document.getElementById('cf-exec').innerHTML=
       '<div class="exec-grid">'
