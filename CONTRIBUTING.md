@@ -49,7 +49,7 @@ You edit **YAML** in `docs/reference/rules.yml` (never the `.rb`, which is gener
 ssh-disable-root-login:               # neutral pavois id, standard-agnostic
   title: Disable SSH Root Login
   domain: SSH                         # neutral chaptering
-  evidence_type: effective-runtime    # what a PASS proves (one of the 4 types)
+  evidence_type: effective-runtime    # 1 of 4 types — auto-filled by `gen:evidence`, omit to let it classify
   severity: critical                  # impact 1.0
   impact: 1.0
   applicable_os: [debian12, ubuntu2404, rhel9]   # ... and the rest
@@ -82,6 +82,20 @@ control "ssh-disable-root-login" do
 end
 ```
 
+**Conventions for a new control:**
+
+- **`domain`** — reuse an existing neutral domain, do not invent one. The canonical list (33) is
+  [`site/src/data/domain-labels.ts`](site/src/data/domain-labels.ts) (e.g. `SSH`, `Sudo`,
+  `Kernel & network (sysctl)`, `Audit (auditd)`, `Packages`, `Mounts`...).
+- **`ssg`** — the SSG rule short id you map. To find what that rule actually checks (so your
+  effective check matches its intent), read the datastream and the gap tooling:
+  ```bash
+  mise run coverage:gap -- --os debian12 --datastream ssg-debian12-ds.xml   # lists unmapped SSG rules + titles
+  mise run rule:show -- --os debian12 --id <existing-id>                     # a similar control's check + mappings
+  ```
+  The SSG datastream (`ComplianceAsCode/content` release) holds the rule's description, rationale and
+  OVAL, the source of truth for what to assert.
+
 ## The source of truth — how to add a rule
 
 Controls are **not** edited as `.rb` files directly. The single DRY source is
@@ -95,11 +109,21 @@ docs/reference/rules.yml ──gen──▶ docs/reference/pavois-content/<os>.y
 To add or change a control: edit `rules.yml` (effective check + standard mappings + level), then:
 
 ```bash
-mise run gen          # render the 8 per-OS reference files from rules.yml
-mise run regen        # rebuild the .rb corpus + OSCAL from the reference
-mise run gen:verify   # CI guard: OS files match render(rules.yml)
-mise run validate     # cross-validate CIS coverage against >= 2 authoritative sources
+mise run gen           # render the 8 per-OS reference files from rules.yml
+mise run gen:evidence  # (re)classify evidence_type from the check, written back into rules.yml
+mise run gen:reboot    # (re)classify reboot_survivable (the persistence axis of the verdict)
+mise run gen:socle     # assign the SOCLE-<DOM>-<FAM>-<N> ref to new controls
+mise run regen         # rebuild the .rb corpus + OSCAL from the reference
+mise run gen:verify    # CI guard: the 8 OS files match render(rules.yml)
+mise run validate          # cross-validate CIS coverage against >= 2 authoritative sources
+mise run validate:mappings # cross-validate NIST + PCI-DSS tags vs ciso-assistant
+mise run validate:bp28     # validate ANSSI-BP-028 tags against the official v2.0 PDF
 ```
+
+`evidence_type` and `reboot_survivable` are **derived**, not hand-written: `gen:evidence` reads the
+check (the InSpec code never lies about what it reads) and writes `evidence_type` into `rules.yml`,
+`gen:reboot` does the same for `reboot_survivable`. Set them by hand only to override the classifier.
+`regen` does **not** run these passes, run them yourself after editing a check.
 
 The `.rb` corpus and the OSCAL bundle are **derived artifacts** — git-ignored, rebuilt from source;
 never commit them. After a fresh clone, run `mise run regen` once before scanning.
