@@ -19,6 +19,7 @@ var (
 	ruOS       string
 	ruStandard string
 	ruDomain   string
+	ruID       string
 	ruPretty   bool
 )
 
@@ -36,6 +37,7 @@ func init() {
 	rulesCmd.Flags().StringVar(&ruOS, "os", "debian12", "OS reference to read (e.g. debian12, ubuntu2404)")
 	rulesCmd.Flags().StringVar(&ruStandard, "standard", "", "only rules mapped to this standard: bp28|cis|nist|pci-dss|stig")
 	rulesCmd.Flags().StringVar(&ruDomain, "domain", "", "only rules in this domain")
+	rulesCmd.Flags().StringVar(&ruID, "id", "", "only this control id (e.g. ssh-disable-root-login)")
 	rulesCmd.Flags().BoolVar(&ruPretty, "pretty", true, "pretty-print the JSON")
 	rootCmd.AddCommand(rulesCmd)
 }
@@ -61,6 +63,9 @@ func runRules(cmd *cobra.Command, _ []string) error {
 
 	out := make([]map[string]any, 0, len(ids))
 	for _, id := range ids {
+		if ruID != "" && id != ruID {
+			continue
+		}
 		e := doc.Rules[id]
 		norms, _ := e["norms"].(map[string]any)
 		if ruStandard != "" {
