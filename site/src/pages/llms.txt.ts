@@ -31,7 +31,7 @@ export const GET: APIRoute = async ({ site }) => {
   }
   lines.push('');
 
-  lines.push('## Standards (one check, every standard)');
+  lines.push('## Standards (one control, every applicable mapping)');
   for (const [k, name] of [
     ['cis', 'CIS Benchmarks'],
     ['bp28', 'ANSSI BP-028'],

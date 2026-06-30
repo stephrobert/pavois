@@ -5,7 +5,7 @@ that audit a system's **effective configuration** (not just its files), mapped t
 BP-028, NIST, PCI-DSS, STIG) and tagged by level. That is where the project most needs the community.
 
 Why not just read config files: a fixed file misses `Include` directives, drop-ins and the applied
-state. Pavois queries the **resolved** state (`sshd -T`, `sysctl`, `systemctl show`, `nginx -T`). A
+state. Pavois queries the **resolved** state (`sshd -T`, `sysctl`, `systemctl show`, `auditctl -l`). A
 rule should read a service's resolved view (`sshd -T`, `sysctl`...) when it exposes one; otherwise declare the right evidence type (persistent-config, inventory-state, filesystem-state).
 
 ## Ground rules (non-negotiable)
@@ -25,14 +25,14 @@ Pick the track that fits you. Each control's gaps are honest and published: see
 
 | You want to… | Do this | Impact |
 |---|---|---|
-| **Add or deepen a rule** *(most needed)* | add a control to `docs/reference/rules.yml` that audits **effective** state, with its standard mappings + level | grows the library — the core value |
+| **Add or deepen a rule** *(most needed)* | add a control to `docs/reference/rules.yml` that audits the **strongest available evidence** (and declares its evidence type), with its standard mappings + level | grows the library — the core value |
 | **Fill a thin domain** | the partial domains today are **firewall** (ruleset/zones), **logging** (remote forwarding, integrity), **time-sync**, **MAC** (custom SELinux/AppArmor). Deepen one. | turns "partial" into "delivered" |
 | **Add an OS** | extend `rules.yml` `@os` keys + a `profiles/linux/<os>/` target | wider reach |
 | **Fix / source a mapping** | cross-check a CIS/ANSSI/NIST/PCI/STIG ref against an authoritative source; correct it in `rules.yml` | accuracy, trust |
 | **Enrich the site** | bilingual rule fiches, glossary terms, handbook pages under `site/src/content/` | the reference experience |
 | **Improve the engine/CLI** | Go work under `go/` — see the roadmap items in Feature status | capability |
 
-**A good rule contribution** audits effective config, has a neutral slug id, `impact`/`title`/`desc`,
+**A good rule contribution** audits the strongest available evidence and declares the correct evidence type (effective-runtime, persistent-config, inventory-state or filesystem-state), has a neutral slug id, `impact`/`title`/`desc`,
 a `tag domain:`, at least one **sourced** standard mapping, and per-standard level tags. It must be
 **tested on a real target** and stay portable (`os.family`/`only_if` where needed).
 
@@ -106,22 +106,27 @@ never commit them. After a fresh clone, run `mise run regen` once before scannin
 
 ### Fix a rule in minutes
 
-Three common contributions, each a quick loop:
+Pick the smallest loop for your change. The `rule:*` tasks wrap `pavois rules --id <id>` and
+`pavois scan <target> --controls <id>` so you iterate on **one** control, never the full corpus.
+
+**1. Mapping fix only** (a wrong/missing `cis:`/`bp28:`/`ssg:` reference): no scan needed.
 
 ```bash
 mise run rule:show -- --os debian12 --id ssh-disable-root-login   # see the entry + its mappings
-# edit docs/reference/rules.yml (the fix)
-mise run gen                                                      # re-render the per-OS reference
-mise run render                                                   # re-render the .rb corpus
-mise run rule:test -- pavois@vm --key ~/.ssh/id_ed25519 --sudo --controls ssh-disable-root-login
+# edit norms:/ssg: in docs/reference/rules.yml
+mise run gen && mise run validate:mappings                        # regenerate + cross-check the mapping
 ```
 
-- **Mapping fix** (a wrong/missing `cis:`/`bp28:`/`ssg:` reference): edit `norms:`/`ssg:`, then
-  `mise run gen && mise run validate:mappings`. No target needed.
-- **Threshold / check fix**: edit `check:` (and `remediation:` if any), then `mise run rule:test`
-  against a throwaway target to confirm the control flips.
-- **New control**: add a new id with `domain`, `evidence_type`, `severity`, `check`, `norms`,
-  `ssg`, then `mise run gen:verify` and `mise run coverage:gap` to confirm it closes an SSG gap.
+**2. Threshold / check fix**: render, then run just this control against any target (`local` is fastest).
+
+```bash
+# edit check:/remediation: in docs/reference/rules.yml
+mise run gen && mise run render                                   # per-OS reference + .rb corpus
+mise run rule:test -- local --sudo --controls ssh-disable-root-login   # one control, one target
+```
+
+**3. New control**: add an id with `domain`, `evidence_type`, `severity`, `check`, `norms`, `ssg`,
+then `mise run gen:verify` and `mise run coverage:gap` to confirm it closes an SSG gap.
 
 ## Development setup
 
