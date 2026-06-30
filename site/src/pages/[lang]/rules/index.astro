@@ -138,7 +138,7 @@ const rowsData = rules.map((r) => {
                   )}</td>
                   <td><span class={`sev ${sevClass(r.data.severity)}`}>{sevLabel(r.data.severity)}</span></td>
                   <td class="os">{r.data.supported_os.length}</td>
-                  <td><div class="tags">{ks.map((k) => <span class="tag">{k}</span>)}</div></td>
+                  <td><div class="tags">{ks.map((k, i) => <Fragment>{i > 0 ? ' ' : ''}<span class="tag">{k}</span></Fragment>)}</div></td>
                 </tr>
               );
             })
@@ -146,7 +146,7 @@ const rowsData = rules.map((r) => {
         </tbody>
       </table>
     </div>
-    <p id="r-empty" hidden class="empty">{t.noResults}</p>
+    <p id="r-empty" hidden class="empty" data-msg={t.noResults}></p>
   </div>
   <script id="r-data" type="application/json" is:inline set:html={JSON.stringify(rowsData)} />
 </Base>
@@ -178,7 +178,7 @@ const rowsData = rules.map((r) => {
       `<td class="dom">${esc(d.domain)}${d.cov ? `<a class="covb covb-${d.cov}" href="/${lang}/handbook/coverage/" title="${esc(d.covTitle)}">${esc(d.covLabel)}</a>` : ''}</td>` +
       `<td><span class="sev ${d.sevClass}">${esc(d.sevLabel)}</span></td>` +
       `<td class="os">${d.os}</td>` +
-      `<td><div class="tags">${d.std.map((k: string) => `<span class="tag">${esc(k)}</span>`).join('')}</div></td>` +
+      `<td><div class="tags">${d.std.map((k: string) => `<span class="tag">${esc(k)}</span>`).join(' ')}</div></td>` +
       `</tr>`;
 
     let view: any[] = ALL;
@@ -214,7 +214,12 @@ const rowsData = rules.map((r) => {
       shown = 0;
       renderMore();
       if (count) count.textContent = String(view.length);
-      if (empty) (empty as HTMLElement).hidden = view.length !== 0;
+      if (empty) {
+        const show = view.length === 0;
+        (empty as HTMLElement).hidden = !show;
+        // The message lives in data-msg, never in the static body, so the no-JS export stays clean.
+        if (show && !empty.textContent) empty.textContent = (empty as HTMLElement).dataset.msg || '';
+      }
     };
 
     [search, domain, sev, std, os].forEach((el) => {
