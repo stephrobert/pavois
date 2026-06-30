@@ -39,7 +39,7 @@ With `--reboot`, Pavois converges the fixes, reboots the host, waits for it to r
 
 ## Key takeaways
 
-- A PASS now states **running now** versus **reboot-survivable**, on the fiche, in the report and in the OSCAL export.
+- A PASS now states **running now** versus **reboot-survivable**, on the fiche, in the report, in the JSON export and the OSCAL catalog.
 - A grade only reaches a clean **A** when the passing controls prove persistence, not just live state.
 - `pavois harden apply --reboot --scan` turns that claim into an empirical, reboot-proven result.
 
