@@ -4,7 +4,7 @@
 
 <p align="center">
   <b>Effective Linux compliance &amp; hardening, over CINC / InSpec</b><br/>
-  <sub>Audits the configuration your services <i>actually run</i> (<code>sshd -T</code>, <code>sysctl</code>, <code>systemctl</code>, <code>auditctl</code>) — not the files on disk. Maps every control to CIS, ANSSI BP-028, NIST, PCI-DSS and STIG at once, grades it <b>A–E</b>, and hardens it as code.</sub>
+  <sub>Audits the configuration your services <i>actually run</i> (<code>sshd -T</code>, <code>sysctl</code>, <code>systemctl</code>, <code>auditctl</code>), not just the files on disk. Maps each control to every standard that covers it (CIS, ANSSI BP-028, NIST, PCI-DSS, STIG), grades it <b>A–E</b>, and hardens it as code.</sub>
 </p>
 
 <p align="center">
@@ -44,7 +44,7 @@ difference: it audits the **effective configuration** of a running host, not the
   misses, where a permissive override silently defeats a stricter main config.
 - **One check, every standard.** A single effective-config assertion carries all its mappings:
   **CIS**, **ANSSI BP-028**, **NIST** (800-53 / 800-171), **PCI-DSS** and **DISA STIG**. One
-  control, five authorities, never a duplicated rule.
+  neutral control, every applicable mapping, never a duplicated rule.
 - **A–E grade, opposable.** A published scoring formula (failure-weighted, critical-capped),
   computed identically in the CLI and the HTML report.
 - **Harden as code.** `pavois harden` plans the fixes, you opt in per rule, and a native Chef run
@@ -61,10 +61,13 @@ difference: it audits the **effective configuration** of a running host, not the
 
 ## 🚀 Quick start
 
-### Option A — a verified release binary
+**Today, build from source (Option B).** The verified release binary (Option A) ships with the
+first public release; until then there is no downloadable artifact (see `feature-status`).
 
-Each release ships a static binary per platform plus `checksums.txt`. Download it, check
-integrity, and verify it was built by the release pipeline:
+### Option A — a verified release binary (planned: first release)
+
+Once the first release is published, each release will ship a static binary per platform plus
+`checksums.txt`. Download it, check integrity, and verify it was built by the release pipeline:
 
 ```bash
 gh release download v0.1.0 --repo stephrobert/pavois \
