@@ -28,6 +28,7 @@ var (
 	scSudoPrompt bool
 	scOnTarget   bool
 	scStandard   string
+	scControls   []string
 	scLevel      string
 	scFailUnder  int
 	scFormat     string
@@ -57,6 +58,7 @@ func init() {
 	f.IntVar(&scFailUnder, "fail-under", -1, "exit code 1 if grade < PCT/100")
 	f.StringVarP(&scFormat, "format", "f", "table", "format: table | json | sarif | junit | csv | html")
 	f.StringVar(&scFrom, "from", "", "evaluate an existing InSpec JSON report (no scan)")
+	f.StringArrayVar(&scControls, "controls", nil, "run ONLY these control ids (fast single-rule iteration, e.g. --controls ssh-disable-root-login)")
 	rootCmd.AddCommand(scanCmd)
 }
 
@@ -213,7 +215,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 			Root: root, Target: target, Profile: scProfile, Engine: scEngine,
 			SSHPass: sshPass, SudoPass: sudoPass, Key: scKey, Sudo: sudo, JSONOut: jsonPath,
 			Standard: scStandard, Level: scLevel, // n'exécute que la norme demandée
-			OnTarget: scOnTarget,
+			OnTarget: scOnTarget, Controls: scControls,
 		})
 		if err != nil {
 			return err

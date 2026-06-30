@@ -104,6 +104,25 @@ mise run validate     # cross-validate CIS coverage against >= 2 authoritative s
 The `.rb` corpus and the OSCAL bundle are **derived artifacts** — git-ignored, rebuilt from source;
 never commit them. After a fresh clone, run `mise run regen` once before scanning.
 
+### Fix a rule in minutes
+
+Three common contributions, each a quick loop:
+
+```bash
+mise run rule:show -- --os debian12 --id ssh-disable-root-login   # see the entry + its mappings
+# edit docs/reference/rules.yml (the fix)
+mise run gen                                                      # re-render the per-OS reference
+mise run render                                                   # re-render the .rb corpus
+mise run rule:test -- pavois@vm --key ~/.ssh/id_ed25519 --sudo --controls ssh-disable-root-login
+```
+
+- **Mapping fix** (a wrong/missing `cis:`/`bp28:`/`ssg:` reference): edit `norms:`/`ssg:`, then
+  `mise run gen && mise run validate:mappings`. No target needed.
+- **Threshold / check fix**: edit `check:` (and `remediation:` if any), then `mise run rule:test`
+  against a throwaway target to confirm the control flips.
+- **New control**: add a new id with `domain`, `evidence_type`, `severity`, `check`, `norms`,
+  `ssg`, then `mise run gen:verify` and `mise run coverage:gap` to confirm it closes an SSG gap.
+
 ## Development setup
 
 ```bash
