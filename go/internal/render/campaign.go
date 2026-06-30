@@ -74,6 +74,25 @@ func Campaign(d CampaignData) string {
 	gradeCard("after", d.AfterLabel, d.AfterGrade, d.AfterPass, d.AfterTotal)
 	b.WriteString("</section>\n")
 
+	// Regressions banner: the risk signal, surfaced at the very top in red so it is the first
+	// thing a reviewer sees, not buried in the matrix (ChatGPT review, section 4).
+	for _, s := range d.Sections {
+		if !s.Bad || len(s.Items) == 0 {
+			continue
+		}
+		fmt.Fprintf(&b, "<section class=\"camp-regress\"><h2>&#9888; %s</h2>\n", esc(s.Label))
+		b.WriteString("<p>Compliant before, broken after. Triage each: a remediation bug, an acceptable trade-off, or a gap to fix.</p>\n<ul>\n")
+		for _, it := range s.Items {
+			t := it.Title
+			if t == "" {
+				t = it.ID
+			}
+			fmt.Fprintf(&b, "<li><span class=\"cid\">%s</span> %s</li>\n", esc(it.ID), esc(t))
+		}
+		b.WriteString("</ul></section>\n")
+		break
+	}
+
 	// Transition matrix.
 	b.WriteString("<h2>Scope delta</h2>\n")
 	b.WriteString("<p class=\"camp-note\">Every control's state before and after. ")
@@ -86,15 +105,12 @@ func Campaign(d CampaignData) string {
 	}
 	b.WriteString("</tbody></table>\n")
 
-	// Per-transition control lists.
+	// Per-transition control lists (the Bad/regressions section is already in the top banner).
 	for _, s := range d.Sections {
-		if len(s.Items) == 0 {
+		if len(s.Items) == 0 || s.Bad {
 			continue
 		}
 		cls := "camp-sec"
-		if s.Bad {
-			cls += " bad"
-		}
 		openAttr := ""
 		if s.Open {
 			openAttr = " open"
@@ -132,6 +148,11 @@ func Campaign(d CampaignData) string {
 const campaignCSS = `
 .camp{max-width:980px;margin:0 auto;padding:2rem 1.25rem}
 .camp h1{margin:0 0 .25rem}
+.camp-regress{border:2px solid #dc2626;background:#fef2f2;border-radius:12px;padding:1rem 1.25rem;margin:0 0 2rem}
+.camp-regress h2{margin:.1rem 0 .4rem;color:#b91c1c}
+.camp-regress ul{margin:.3rem 0 0;padding-left:1.2rem}
+.camp-regress li{margin:.2rem 0}
+.camp-regress .cid{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
 .camp-gen{color:#6b7280;font-size:.85rem;margin:0 0 1.5rem}
 .camp-delta{display:flex;align-items:stretch;gap:1rem;margin:1rem 0 2rem;flex-wrap:wrap}
 .gcard{flex:1 1 220px;display:flex;flex-direction:column;gap:.2rem;padding:1rem 1.25rem;border:1px solid #e5e7eb;border-radius:12px;background:#fff}
