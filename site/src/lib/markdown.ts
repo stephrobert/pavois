@@ -78,5 +78,8 @@ export function renderMarkdown(
   if (opts.lang && opts.internal) {
     html = html.replace(new RegExp(`href="/(${opts.internal})/`, 'g'), `href="/${opts.lang}/$1/`);
   }
+  // Wrap every table in a horizontally-scrollable container so wide comparison tables stay
+  // readable (they scroll instead of cramming columns); styled by `.md-table` in global.css.
+  html = html.replace(/<table>/g, '<div class="md-table"><table>').replace(/<\/table>/g, '</table></div>');
   return { html, headings };
 }
