@@ -55,4 +55,18 @@ func TestBundle(t *testing.T) {
 			t.Errorf("missing bundle file %s", f)
 		}
 	}
+
+	// verify passes on the intact bundle, and fails once a covered artifact is tampered.
+	var vbuf bytes.Buffer
+	bundleVerifyCmd.SetOut(&vbuf)
+	bundleRequireSig = false
+	if err := runBundleVerify(bundleVerifyCmd, []string{out}); err != nil {
+		t.Fatalf("verify intact bundle: %v\n%s", err, vbuf.String())
+	}
+	if err := os.WriteFile(filepath.Join(out, "after.json"), []byte("tampered"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := runBundleVerify(bundleVerifyCmd, []string{out}); err == nil {
+		t.Error("verify should FAIL after tampering with a covered artifact")
+	}
 }
