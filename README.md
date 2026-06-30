@@ -131,16 +131,20 @@ baseline widens the applicable set. `--html` writes a self-contained report; `--
 delta for an evidence bundle.
 
 `pavois bundle` packages a campaign into a tamper-evident **evidence bundle**: the before/after scans,
-the plan that was applied, the reports, the transition delta, plus a `manifest.json` (tool + ruleset
-version, target, grade delta) and a `checksums.txt`. The manifest's own SHA-256 is the single digest to
-sign and publish (minisign/cosign/gpg), turning a strong technical result into audit-ready evidence.
+the plan that was applied, the reports, the reboot proof, the transition delta, plus a `manifest.json`
+(tool + ruleset version, **pavois binary digest**, target, grade delta) and a `checksums.txt`. You then
+**sign `checksums.txt` with your own identity** (`cosign sign-blob` or `gpg --detach-sign`) — pavois does
+not own the signing key, the auditor's trust is in your KMS/OIDC identity. **`pavois bundle verify <dir>`**
+re-checks every artifact's SHA-256, the manifest digest, and the signature if present (exit non-zero on
+any tampering; `--require-signature` to also fail when unsigned), turning the package into opposable,
+audit-ready evidence.
 
 | Command | Does |
 |---------|------|
 | `scan` | Audit a target's effective config, grade A–E |
 | `harden plan` / `apply` | State-aware Chef hardening, opt-in per rule, `--reboot --scan` |
 | `diff` | Before/after campaign report: transition matrix, regressions, grade delta (`--html` / `--json`) |
-| `bundle` | Package audit-ready evidence: scans + plan + reports + manifest + checksums (sign-ready) |
+| `bundle` / `bundle verify` | Package audit-ready evidence (scans + plan + reports + manifest + checksums), then verify integrity + signature |
 | `verify` | Behavioral check: attempt the forbidden action, confirm the protection holds |
 | `oscal` | Publish the baseline as OSCAL (catalog + per-OS profiles) |
 | `serve` | Browse the HTML reports |
