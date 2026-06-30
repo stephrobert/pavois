@@ -46,6 +46,23 @@ sudo lynis audit system --quick --quiet                     # SSH-7408 suggestio
 | OpenSCAP 1.3.7 + SSG | OVAL on the file | **PASS** (false negative) |
 | Lynis 3.0.8 | `sshd -T` | warns (SSH-7408), caught but heuristic, unmapped |
 
+## Scenario 2 — sysctl runtime vs file (tested: NO edge, kept for honesty)
+
+We tested a second case to check how far the effective-config edge goes: set
+`kernel.kptr_restrict = 2` in `/etc/sysctl.d/` (secure on disk) but `sysctl -w
+kernel.kptr_restrict=0` at runtime (insecure live).
+
+| Scanner | Result | Why |
+|---|---|---|
+| Pavois | **FAIL** | reads the runtime value (`sysctl`) |
+| OpenSCAP + SSG | **fail** | SSG's sysctl OVAL also reads `/proc/sys` (the runtime), not just the file |
+
+So **this is not a Pavois differentiator**: both catch it. The edge is therefore
+narrow and specific: it is about **drop-in / `Include` file precedence** where an OVAL
+probe points at a single main file (the SSH case), not "runtime reads" in general, since
+SSG does read the runtime for sysctl. We state this rather than dress up a non-difference
+as a win.
+
 ## Coverage gap (auditable)
 
 `tools/coverage_gap.py` maps Pavois controls to SSG rules (via `ssg:` tags) and triages with
