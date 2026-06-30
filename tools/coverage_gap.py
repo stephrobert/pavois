@@ -291,14 +291,36 @@ def main() -> int:
 
         w = csv.writer(sys.stdout)
         w.writerow(
-            ["severity", "ssg_rule", "title", "oscap_verdict", "triage",
-             "pavois_equivalent", "decision", "reason", "issue_url", "owner", "status"]
+            [
+                "severity",
+                "ssg_rule",
+                "title",
+                "oscap_verdict",
+                "triage",
+                "pavois_equivalent",
+                "decision",
+                "reason",
+                "issue_url",
+                "owner",
+                "status",
+            ]
         )
         for short, v in items:
             tr = _triage(v["verdict"]) if verdicts else ""
             w.writerow(
-                [v["severity"], short, v["title"], v["verdict"] or "", tr,
-                 "", "", "", "", "", "todo" if tr == "backlog" else ""]
+                [
+                    v["severity"],
+                    short,
+                    v["title"],
+                    v["verdict"] or "",
+                    tr,
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "todo" if tr == "backlog" else "",
+                ]
             )
         return 0
 
