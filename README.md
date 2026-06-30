@@ -148,6 +148,15 @@ re-checks every artifact's SHA-256, the manifest digest, and the signature if pr
 any tampering; `--require-signature` to also fail when unsigned), turning the package into tamper-evident evidence, opposable once signed under an accepted trust policy,
 audit-ready evidence.
 
+```console
+$ pavois bundle verify evidence/ --require-signature
+  manifest.json        digest OK
+  checksums.txt        12/12 artifacts match
+  signature            verified (cosign, identity bob@example.org)
+bundle OK — tamper-evident and signed
+# exit 0; non-zero on any checksum/manifest mismatch or (with --require-signature) a missing signature
+```
+
 | Command | Does |
 |---------|------|
 | `scan` | Audit a target's effective config, grade A–E |
