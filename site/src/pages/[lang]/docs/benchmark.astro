@@ -1,0 +1,91 @@
+---
+import { renderMarkdown } from '../../../lib/markdown';
+import Base from '../../../layouts/Base.astro';
+import { languages, type Lang } from '../../../i18n/ui';
+
+export function getStaticPaths() {
+  return Object.keys(languages).map((lang) => ({ params: { lang } }));
+}
+const { lang } = Astro.params as { lang: Lang };
+const md = (s: string): string => renderMarkdown(s).html;
+
+const intro = {
+  en: 'A reproducible benchmark of Pavois against OpenSCAP and Lynis on a fresh Debian 12 VM. Everything here is rebuilt from a clean snapshot; nothing is hand-asserted. The scripts live in the repo (`tools/benchmark/effective-config-bench.sh`, `tools/coverage_gap.py`).',
+  fr: 'Un benchmark reproductible de Pavois face à OpenSCAP et Lynis sur une VM Debian 12 neuve. Tout ici est reconstruit depuis un snapshot propre ; rien n’est affirmé à la main. Les scripts sont dans le repo (`tools/benchmark/effective-config-bench.sh`, `tools/coverage_gap.py`).',
+};
+
+const answerFirst = {
+  en: '**In short:** on the SSH drop-in scenario, Pavois **FAILs** (caught, standard-mapped), OpenSCAP/SSG **passes** (a file-probed false negative), Lynis **warns** (it also reads `sshd -T`, but heuristically). The edge is narrow and honest: it is about drop-in / `Include` precedence, not runtime reads in general (for sysctl, SSG reads `/proc/sys` too, so both catch it).',
+  fr: '**En bref :** sur le scénario drop-in SSH, Pavois **FAIL** (attrapé, mappé à une norme), OpenSCAP/SSG **passe** (faux négatif sondé sur fichier), Lynis **avertit** (il lit aussi `sshd -T`, mais en heuristique). L’edge est étroit et honnête : il porte sur la précédence drop-in / `Include`, pas sur les lectures runtime en général (pour sysctl, SSG lit aussi `/proc/sys`, donc les deux l’attrapent).',
+};
+
+type Sec = { id: string; t: { en: string; fr: string }; b: { en: string; fr: string } };
+const sections: Sec[] = [
+  {
+    id: 'method',
+    t: { en: 'Method', fr: 'Méthode' },
+    b: {
+      en: "A fresh Debian 12 VM is provisioned, the scanners + CINC are installed once, a clean baseline snapshot is taken, and **every run restores that identical snapshot first** so the starting state never drifts.\n\n- `tools/benchmark/effective-config-bench.sh <user@host> <key> <ssg-debian12-ds.xml>` sets up the scenario and runs all three scanners.\n- `test-vms/bench.sh` is the lab wrapper (provision → snapshot → restore → run); it is not published because it references the local lab.\n\n| Component | Version |\n|---|---|\n| Pavois | CINC Auditor 7.1.7 |\n| OpenSCAP | oscap 1.3.7 |\n| SCAP Security Guide | `ssg-debian12-ds.xml` (0.1.x) |\n| Lynis | 3.0.8 (462 tests) |\n| Target | Debian 12, fresh Incus VM |",
+      fr: "Une VM Debian 12 neuve est provisionnée, les scanners + CINC sont installés une fois, un snapshot de base propre est pris, et **chaque run restaure ce snapshot identique d’abord**, donc l’état de départ ne dérive jamais.\n\n- `tools/benchmark/effective-config-bench.sh <user@host> <clé> <ssg-debian12-ds.xml>` met en place le scénario et lance les trois scanners.\n- `test-vms/bench.sh` est le wrapper lab (provision → snapshot → restore → run) ; non publié car il référence le lab local.\n\n| Composant | Version |\n|---|---|\n| Pavois | CINC Auditor 7.1.7 |\n| OpenSCAP | oscap 1.3.7 |\n| SCAP Security Guide | `ssg-debian12-ds.xml` (0.1.x) |\n| Lynis | 3.0.8 (462 tests) |\n| Cible | Debian 12, VM Incus neuve |",
+    },
+  },
+  {
+    id: 'ssh-dropin',
+    t: { en: 'Scenario 1 — sshd drop-in overrides PermitRootLogin', fr: 'Scénario 1 — un drop-in sshd surcharge PermitRootLogin' },
+    b: {
+      en: "The main `/etc/ssh/sshd_config` says `PermitRootLogin no`; a drop-in in `/etc/ssh/sshd_config.d/` says `yes` (the value `sshd -T` resolves).\n\n```bash\ngrep -iE '^\\s*PermitRootLogin' /etc/ssh/sshd_config    # -> PermitRootLogin no (what a file probe reads)\nsudo sshd -T | grep -i '^permitrootlogin'             # -> permitrootlogin yes (the effective value)\n```\n\n| Scanner | Reads | Result |\n|---|---|---|\n| **Pavois** | `sshd -T` | **FAIL**, caught and mapped `ssh-disable-root-login` (CIS / BP-028 / STIG) |\n| OpenSCAP 1.3.7 + SSG | OVAL on the file | **PASS**, a false negative: it reads the main file's `no` and misses the drop-in |\n| Lynis 3.0.8 | `sshd -T` | warns (SSH-7408 suggestion), caught but heuristic, not standard-mapped |\n\nLynis resolves the drop-in like Pavois; its limit is being heuristic, not this blind spot. OpenSCAP/SSG's file-probed rule misses it outright. Pavois resolves it **and** maps it to every standard.",
+      fr: "Le `/etc/ssh/sshd_config` principal dit `PermitRootLogin no` ; un drop-in dans `/etc/ssh/sshd_config.d/` dit `yes` (la valeur que `sshd -T` résout).\n\n```bash\ngrep -iE '^\\s*PermitRootLogin' /etc/ssh/sshd_config    # -> PermitRootLogin no (ce qu’une sonde fichier lit)\nsudo sshd -T | grep -i '^permitrootlogin'             # -> permitrootlogin yes (la valeur effective)\n```\n\n| Scanner | Lit | Résultat |\n|---|---|---|\n| **Pavois** | `sshd -T` | **FAIL**, attrapé et mappé `ssh-disable-root-login` (CIS / BP-028 / STIG) |\n| OpenSCAP 1.3.7 + SSG | OVAL sur le fichier | **PASS**, faux négatif : il lit le `no` du fichier principal et rate le drop-in |\n| Lynis 3.0.8 | `sshd -T` | avertit (suggestion SSH-7408), attrapé mais heuristique, non mappé |\n\nLynis résout le drop-in comme Pavois ; sa limite est d’être heuristique, pas cet angle mort. La règle d’OpenSCAP/SSG sondée sur le fichier le rate complètement. Pavois le résout **et** le mappe à chaque norme.",
+    },
+  },
+  {
+    id: 'sysctl',
+    t: { en: 'Scenario 2 — sysctl runtime vs file (no edge, kept for honesty)', fr: 'Scénario 2 — sysctl runtime vs fichier (pas d’edge, gardé par honnêteté)' },
+    b: {
+      en: "We tested a second case to bound the claim: `kernel.kptr_restrict = 2` on disk (`/etc/sysctl.d/`) but `sysctl -w kernel.kptr_restrict=0` at runtime.\n\n| Scanner | Result | Why |\n|---|---|---|\n| Pavois | **FAIL** | reads the runtime value |\n| OpenSCAP + SSG | **fail** | SSG's sysctl OVAL also reads `/proc/sys` (the runtime) |\n\n**This is not a Pavois differentiator**: both catch it. So the effective-config edge is specific to **drop-in / `Include` file precedence** (the SSH case), not runtime reads in general. We state this rather than dress up a non-difference as a win.",
+      fr: "On a testé un second cas pour borner le claim : `kernel.kptr_restrict = 2` sur disque (`/etc/sysctl.d/`) mais `sysctl -w kernel.kptr_restrict=0` au runtime.\n\n| Scanner | Résultat | Pourquoi |\n|---|---|---|\n| Pavois | **FAIL** | lit la valeur runtime |\n| OpenSCAP + SSG | **fail** | l’OVAL sysctl du SSG lit aussi `/proc/sys` (le runtime) |\n\n**Ce n’est PAS un différenciateur Pavois** : les deux l’attrapent. L’edge effective-config est donc spécifique à la **précédence drop-in / `Include`** (le cas SSH), pas aux lectures runtime en général. On le dit, plutôt que de maquiller une non-différence en victoire.",
+    },
+  },
+  {
+    id: 'coverage-gap',
+    t: { en: 'Coverage gap (auditable)', fr: 'Coverage gap (auditable)' },
+    b: {
+      en: "`tools/coverage_gap.py` maps Pavois controls to SSG rules (via `ssg:` tags) and triages the gap with **oscap's own verdicts on the real target**, so N/A rules never inflate it.\n\n- raw gap: **315** SSG rules Pavois does not map\n- triaged: **87 applicable & failing** (the real backlog), 74 applicable & already passing, **139 notapplicable** on Debian (e.g. SELinux under AppArmor), 15 not auto-checked\n- symmetric: Pavois applies to **523 of its 607** Debian 12 controls on a fresh host (84 N/A)\n\nFull per-rule data with each oscap verdict: **[coverage-gap-debian12.csv](/benchmark/coverage-gap-debian12.csv)** (315 rows).\n\n```bash\noscap xccdf eval --results gap-res.xml ssg-debian12-ds.xml   # on the target, for applicability\npython3 tools/coverage_gap.py --os debian12 \\\n  --datastream ssg-debian12-ds.xml --oscap-results gap-res.xml --format json\n```\n\nThe high-severity gap entries are mostly arbitration cases on Debian (SELinux is N/A under AppArmor; ntp/timesyncd are alternatives to chrony), not clear missing controls. `--create-issues` files the applicable-failing gap as backlog, and broken controls become `bug` issues.",
+      fr: "`tools/coverage_gap.py` mappe les contrôles Pavois aux règles SSG (via les tags `ssg:`) et trie le gap avec **les verdicts d’oscap sur la cible réelle**, donc les N/A ne le gonflent jamais.\n\n- gap brut : **315** règles SSG que Pavois ne mappe pas\n- trié : **87 applicables et en échec** (le vrai backlog), 74 applicables et déjà conformes, **139 notapplicable** sur Debian (ex. SELinux sous AppArmor), 15 non auto-vérifiées\n- symétrique : Pavois s’applique à **523 de ses 607** contrôles Debian 12 sur un hôte frais (84 N/A)\n\nDonnées complètes par règle avec chaque verdict oscap : **[coverage-gap-debian12.csv](/benchmark/coverage-gap-debian12.csv)** (315 lignes).\n\n```bash\noscap xccdf eval --results gap-res.xml ssg-debian12-ds.xml   # sur la cible, pour l’applicabilité\npython3 tools/coverage_gap.py --os debian12 \\\n  --datastream ssg-debian12-ds.xml --oscap-results gap-res.xml --format json\n```\n\nLes entrées high du gap sont surtout des cas d’arbitrage sur Debian (SELinux N/A sous AppArmor ; ntp/timesyncd alternatives de chrony), pas des contrôles clairement manquants. `--create-issues` verse le gap applicable-en-échec en backlog, et les contrôles cassés deviennent des issues `bug`.",
+    },
+  },
+];
+
+const docNav = [
+  { href: `/${lang}/docs/`, label: { en: 'How it works', fr: 'Comment ça marche' }, on: false },
+  { href: `/${lang}/docs/tools/`, label: { en: 'Tool comparison', fr: 'Comparaison d’outils' }, on: false },
+  { href: `/${lang}/docs/benchmark/`, label: { en: 'Benchmark', fr: 'Benchmark' }, on: true },
+];
+---
+
+<Base title={lang === 'fr' ? 'Benchmark Pavois vs OpenSCAP / Lynis (reproductible, Debian 12)' : 'Pavois vs OpenSCAP / Lynis benchmark (reproducible, Debian 12)'} description={intro[lang].replace(/[`*]/g, '')} lang={lang} breadcrumbs={[{ name: 'Pavois', path: `/${lang}/` }, { name: 'Docs', path: `/${lang}/docs/` }, { name: 'Benchmark', path: `/${lang}/docs/benchmark/` }]}>
+  <div class="wrap page-head">
+    <h1>{lang === 'fr' ? 'Benchmark : Pavois vs OpenSCAP / Lynis (reproductible)' : 'Benchmark: Pavois vs OpenSCAP / Lynis (reproducible)'}</h1>
+    <p class="lede" set:html={md(intro[lang])} />
+    <div class="answer-first" set:html={md(answerFirst[lang])} />
+    <nav class="docnav">
+      {docNav.map((d) => <a href={d.href} class:list={{ on: d.on }}>{d.label[lang]}</a>)}
+    </nav>
+  </div>
+
+  <div class="wrap layout-doc">
+    <div class="prose">
+      {
+        sections.map((s) => (
+          <>
+            <h2 id={s.id} set:html={md(s.t[lang]).replace(/<\/?p>/g, '')} />
+            <Fragment set:html={md(s.b[lang])} />
+          </>
+        ))
+      }
+    </div>
+    <nav class="toc">
+      <h4>{lang === 'fr' ? 'Sur cette page' : 'On this page'}</h4>
+      {sections.map((s) => <a href={`#${s.id}`} set:html={md(s.t[lang]).replace(/<\/?p>/g, '')} />)}
+    </nav>
+  </div>
+</Base>
