@@ -39,7 +39,7 @@ Avec `--reboot`, Pavois converge les correctifs, redémarre l'hôte, attend son 
 
 ## À retenir
 
-- Un PASS indique désormais **actif maintenant** versus **survit au reboot**, sur la fiche, dans le rapport et dans l'export OSCAL.
+- Un PASS indique désormais **actif maintenant** versus **survit au reboot**, sur la fiche, dans le rapport, dans l'export JSON et le catalogue OSCAL.
 - Une note n'atteint un **A** net que si les contrôles conformes prouvent la persistance, pas seulement l'état vivant.
 - `pavois harden apply --reboot --scan` transforme cette affirmation en résultat empirique, reboot-proven.
 
