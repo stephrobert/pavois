@@ -325,6 +325,7 @@ type Options struct {
 	Level    string // niveau (cumulatif) au sein de la norme, ex. cis:1
 	OnTarget bool   // exécuter cinc-auditor SUR la cible (local://) — bien moins
 	//                 d'aller-retours SSH, scan beaucoup plus rapide
+	Controls []string // si défini : n'exécute QUE ces contrôles (par id), via cinc --controls
 }
 
 // niveaux ordonnés par norme (cumulatif : un niveau inclut les inférieurs).
@@ -453,7 +454,11 @@ func Run(o Options) (int, error) {
 	// Filtre d'EXÉCUTION par norme : ne lancer que les contrôles taggés (et au
 	// niveau demandé) via `cinc --controls <ids…>`. Profil local uniquement.
 	var ctlArgs []string
-	if fi, err := os.Stat(prof); err == nil && fi.IsDir() {
+	if len(o.Controls) > 0 {
+		// Explicit control ids (e.g. `pavois scan --controls ssh-disable-root-login`):
+		// run ONLY those, for a fast single-rule iteration loop.
+		ctlArgs = append([]string{"--controls"}, o.Controls...)
+	} else if fi, err := os.Stat(prof); err == nil && fi.IsDir() {
 		if ids := controlsForNorm(prof, o.Standard, o.Level); len(ids) > 0 {
 			ctlArgs = append([]string{"--controls"}, ids...)
 		}
@@ -608,6 +613,9 @@ func RunOnTarget(o Options) (int, error) {
 	}
 	exe := fmt.Sprintf("%senv CHEF_LICENSE=accept-silent $(command -v cinc-auditor || command -v inspec) "+
 		"exec %s -t local:// --no-create-lockfile --input pavois_standard=%s --reporter json:%s", sudo, remoteProf, std, remoteJSON)
+	if len(o.Controls) > 0 { // single-rule iteration: run only these controls
+		exe += " --controls " + strings.Join(o.Controls, " ")
+	}
 	_, _ = fmt.Fprintf(os.Stderr, "  scanning %s on the target (local, fast)…\n", o.Target)
 	rc := 0
 	if err := ssh(exe); err != nil {
