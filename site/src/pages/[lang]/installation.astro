@@ -12,6 +12,7 @@ const fr = lang === 'fr';
 
 const sections = [
   { slug: 'prerequisites', en: 'Prerequisites', fr: 'Prérequis' },
+  { slug: 'binary', en: 'Download a verified binary', fr: 'Télécharger un binaire vérifié' },
   { slug: 'build', en: 'Build from source', fr: 'Construire depuis les sources' },
   { slug: 'engine', en: 'The scan engine (CINC)', fr: 'Le moteur de scan (CINC)' },
   { slug: 'targets', en: 'Targets and transports', fr: 'Cibles et transports' },
@@ -23,8 +24,8 @@ const toc = sections.map((s) => ({ depth: 2, slug: s.slug, text: fr ? s.fr : s.e
 
 const title = fr ? 'Installation · Pavois' : 'Installation · Pavois';
 const desc = fr
-  ? 'Installer Pavois : construire le binaire Go depuis les sources avec mise, le moteur CINC Auditor (natif ou Docker), les prérequis sudo/SSH, les OS supportés et les erreurs courantes.'
-  : 'Install Pavois: build the Go binary from source with mise, the CINC Auditor engine (native or Docker), the sudo/SSH prerequisites, supported systems and common errors.';
+  ? 'Installer Pavois : télécharger un binaire signé (checksum + provenance SLSA) ou construire depuis les sources avec mise, le moteur CINC Auditor (natif ou Docker), les prérequis sudo/SSH, les OS supportés et les erreurs courantes.'
+  : 'Install Pavois: download a signed binary (checksum + SLSA provenance) or build from source with mise, the CINC Auditor engine (native or Docker), the sudo/SSH prerequisites, supported systems and common errors.';
 const crumbs = [
   { name: 'Pavois', path: `/${lang}/` },
   { name: 'Installation', path: `/${lang}/installation/` },
@@ -40,8 +41,8 @@ const crumbs = [
    <main>
     <div class="prose">
     <p class="muted">{fr
-      ? 'Pour un premier scan en trois commandes, vois plutôt '
-      : 'For a first scan in three commands, see '}<a href={`/${lang}/start/`}>{fr ? 'Démarrer' : 'Get started'}</a>{fr ? '. Cette page détaille l’installation complète.' : ' instead. This page covers the full install.'}</p>
+      ? 'Cette page couvre l’installation complète (binaire vérifié ou depuis les sources). Déjà installé ? Va directement au premier scan : '
+      : 'This page covers the full install (verified binary or from source). Already installed? Jump straight to your first scan: '}<a href={`/${lang}/start/`}>{fr ? 'Démarrer' : 'Get started'}</a>.</p>
     <h2 id="prerequisites">{fr ? 'Prérequis' : 'Prerequisites'}</h2>
     <ul>
       <li><b>{fr ? 'Poste de contrôle' : 'Control host'}</b> {fr
@@ -57,6 +58,20 @@ const crumbs = [
         ? ': pour une cible distante, Pavois utilise ton ~/.ssh/config et ta clé, comme oscap ou lynis.'
         : ': for a remote target, Pavois uses your ~/.ssh/config and key, like oscap or lynis.'}</li>
     </ul>
+
+    <h2 id="binary">{fr ? 'Télécharger un binaire vérifié (recommandé)' : 'Download a verified binary (recommended)'}</h2>
+    <p>{fr
+      ? 'Une fois la première release publiée, chaque release fournit un binaire statique par plateforme et un checksums.txt. Le binaire est autoporté (le corpus de règles est embarqué) : télécharge, vérifie l’intégrité et la provenance, puis scanne.'
+      : 'Once the first release is published, each release ships a static binary per platform plus a checksums.txt. The binary is self-contained (the rule corpus is embedded): download, verify integrity and provenance, then scan.'}</p>
+    <Fragment set:html={highlight(`gh release download v0.1.0 --repo stephrobert/pavois \\
+  --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
+sha256sum --ignore-missing --check checksums.txt                     # ${fr ? 'intégrité' : 'integrity'}
+gh attestation verify pavois-linux-amd64 --repo stephrobert/pavois   # ${fr ? 'provenance SLSA' : 'SLSA provenance'}
+chmod +x pavois-linux-amd64
+./pavois-linux-amd64 doctor                                          # ${fr ? 'corpus embarqué, prêt à scanner' : 'corpus embedded, ready to scan'}`, 'bash')} />
+    <p class="muted">{fr
+      ? 'sha256sum confirme l’intégrité face aux empreintes publiées ; gh attestation verify confirme la provenance SLSA, que le fichier est exactement ce que la chaîne de release a construit (disponible une fois le dépôt public). Pas encore de release ? Construis depuis les sources ci-dessous.'
+      : 'sha256sum confirms integrity against the published checksums; gh attestation verify confirms the SLSA provenance, that the file is exactly what the release pipeline built (available once the repository is public). No release yet? Build from source below.'}</p>
 
     <h2 id="build">{fr ? 'Construire depuis les sources' : 'Build from source'}</h2>
     <p>{fr
