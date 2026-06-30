@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import re
 import subprocess
@@ -171,7 +172,7 @@ def main() -> int:
         default=None,
         help="a pavois scan JSON; broken controls (errors/exceptions) become `bug` issues",
     )
-    ap.add_argument("--format", default="md", choices=["md", "json"])
+    ap.add_argument("--format", default="md", choices=["md", "json", "csv"])
     ap.add_argument("--create-issues", action="store_true")
     ap.add_argument("--limit", type=int, default=0, help="cap issues created (0 = no cap)")
     ap.add_argument("--label", default="coverage-gap")
@@ -274,6 +275,31 @@ def main() -> int:
                 indent=2,
             )
         )
+        return 0
+
+    if args.format == "csv":
+        # Workflow-ready backlog: auto triage from oscap + empty manual columns so each
+        # applicable-failing row can become an issue without manual investigation.
+        def _triage(r: str) -> str:
+            if r in ("fail", "error"):
+                return "backlog"
+            if r == "pass":
+                return "already-pass"
+            if r == "notapplicable":
+                return "n/a"
+            return "notchecked" if r == "" or r == "notchecked" else r
+
+        w = csv.writer(sys.stdout)
+        w.writerow(
+            ["severity", "ssg_rule", "title", "oscap_verdict", "triage",
+             "pavois_equivalent", "decision", "reason", "issue_url", "owner", "status"]
+        )
+        for short, v in items:
+            tr = _triage(v["verdict"]) if verdicts else ""
+            w.writerow(
+                [v["severity"], short, v["title"], v["verdict"] or "", tr,
+                 "", "", "", "", "", "todo" if tr == "backlog" else ""]
+            )
         return 0
 
     scope = f" (profile {args.profile})" if args.profile else ""
