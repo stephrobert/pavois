@@ -67,14 +67,17 @@ first public release; until then there is no downloadable artifact (see `feature
 ### Option A — a verified release binary (planned: first release)
 
 Once the first release is published, each release will ship a static binary per platform plus
-`checksums.txt`. Download it, check integrity, and verify it was built by the release pipeline:
+`checksums.txt`. The binary is **self-contained** — the rule corpus is embedded (`go:embed`), so
+there is nothing to generate: download, verify, scan.
 
 ```bash
 gh release download v0.1.0 --repo stephrobert/pavois \
   --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
 sha256sum --ignore-missing --check checksums.txt
 gh attestation verify pavois-linux-amd64 --repo stephrobert/pavois   # SLSA build provenance
-chmod +x pavois-linux-amd64 && ./pavois-linux-amd64 version
+chmod +x pavois-linux-amd64
+./pavois-linux-amd64 doctor          # rule corpus: embedded in this binary
+./pavois-linux-amd64 scan local --sudo
 ```
 
 ### Option B — build from source

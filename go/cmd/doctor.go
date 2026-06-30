@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"pavois/internal/corpus"
 	"pavois/internal/engine"
 )
 
@@ -67,9 +68,12 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	// Rule corpus: the .rb the scanner executes are generated from the reference.
 	root := findRoot()
 	rb, _ := filepath.Glob(filepath.Join(root, "profiles", "linux", "*", "controls", "*.rb"))
-	if len(rb) > 0 {
+	switch {
+	case len(rb) > 0:
 		line("OK", "rule corpus", fmt.Sprintf("%d controls rendered under profiles/linux/", len(rb)))
-	} else {
+	case corpus.Available():
+		line("OK", "rule corpus", "embedded in this binary (self-contained release build)")
+	default:
 		line("WARN", "rule corpus", "not generated; run `mise run regen` (renders the .rb corpus + OSCAL from the reference)")
 	}
 
