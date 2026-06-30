@@ -98,6 +98,21 @@ mise run regen               # rebuild the rule corpus + OSCAL from docs/referen
 scanner executes) → `oscal` (→ the OSCAL bundle). CINC Auditor itself installs natively on the
 first scan (via omnitruck); a Docker container is the fallback.
 
+### First scan in 5 minutes
+
+The shortest path, auditing the current host (effective config needs root):
+
+```bash
+git clone https://github.com/stephrobert/pavois.git && cd pavois
+mise trust && mise install && mise run build && mise run regen
+./go/pavois doctor                           # is everything ready?
+./go/pavois scan local --sudo --format html  # audit this host, A–E grade
+./go/pavois serve                            # browse reports at http://localhost:8098
+```
+
+Once the first release ships, swap the build for the signed binary (Option A). For a remote
+target: `scan user@host --key ~/.ssh/id_ed25519 --sudo`.
+
 ## ⚙️ How it works
 
 ```bash
