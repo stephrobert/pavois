@@ -3,6 +3,13 @@
 Pavois is a security tool; we hold its own supply chain and disclosure process to
 the standard it audits for.
 
+## Scope
+
+In scope: the `pavois` binary and Go code, the rule corpus and its generators, the
+release/signing pipeline, and the site. Out of scope: vulnerabilities in CINC Auditor,
+the OS under audit, or third-party datastreams (report those upstream); findings that
+require an already-compromised host or physical access.
+
 ## Reporting a vulnerability
 
 **Do not open a public issue for security problems.**
