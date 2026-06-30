@@ -17,6 +17,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"pavois/internal/corpus"
 )
 
 var (
@@ -306,6 +308,10 @@ func ResolveProfile(root, profile string) (string, error) {
 	}
 	if _, err := os.Stat(profile); err == nil {
 		return profile, nil
+	}
+	// Fallback: a standalone released binary has no profiles/ on disk but embeds the corpus.
+	if dir, ok := corpus.Extract(filepath.Join(os.TempDir(), "pavois-corpus"), profile); ok {
+		return dir, nil
 	}
 	return "", fmt.Errorf("unknown profile: %s (see: pavois profiles)", profile)
 }
