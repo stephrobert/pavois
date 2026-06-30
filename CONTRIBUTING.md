@@ -43,18 +43,42 @@ standard: it carries one **stable, standard-neutral id** (a `domain-object` slug
 normative mappings as **tags**. A "standard" is a *view* — the HTML report lets the reader pick the
 regulation and recomposes chapters and score client-side.
 
+You edit **YAML** in `docs/reference/rules.yml` (never the `.rb`, which is generated):
+
+```yaml
+ssh-disable-root-login:               # neutral pavois id, standard-agnostic
+  title: Disable SSH Root Login
+  domain: SSH                         # neutral chaptering
+  evidence_type: effective-runtime    # what a PASS proves (one of the 4 types)
+  severity: critical                  # impact 1.0
+  impact: 1.0
+  applicable_os: [debian12, ubuntu2404, rhel9]   # ... and the rest
+  check:                              # the EFFECTIVE check: sshd -T, never the file
+    - describe command('sshd -T') do
+    - "  its('stdout') { should match(/^permitrootlogin\\s+no$/i) }"
+    - end
+  norms:                              # every standard that applies (value can be keyed @os)
+    bp28: R33
+    cis: "5.1.20"
+    nist: [AC-17(a), IA-2(5)]
+  ssg: sshd_disable_root_login        # SSG cross-reference (drives tools/coverage_gap.py)
+  levels: { cis: "1", bp28: intermediary }   # level per standard
+```
+
+`mise run gen && mise run render` turn this single entry into the per-OS reference and the InSpec
+`.rb` the scanner runs. Fields that differ per OS are keyed `@os` (e.g. a CIS number that changed
+between releases). The generated `.rb` for the control above looks like this (do **not** edit it):
+
 ```ruby
-control "ssh-permitrootlogin" do        # pavois id, neutral wrt standards
+control "ssh-disable-root-login" do
   impact 1.0
-  title "SSH: root login disabled"
-  desc  "A drop-in in sshd_config.d can re-enable root; we audit the effective " \
-        "state via `sshd -T`, not the file."
-  tag domain: "SSH"          # neutral chaptering
-  tag cis:       "5.2.10"    # standard mappings (as many as apply)
-  tag bp28:      "R36"
-  tag 'pci-dss': "2.2.4"
-  tag level_cis: "1"         # level per standard
-  tag level_bp28: "minimal"
+  title "Disable SSH Root Login"
+  tag domain: "SSH"
+  tag cis: "5.1.20"
+  tag bp28: "R33"
+  describe command("sshd -T") do
+    its("stdout") { should match(/^permitrootlogin\s+no$/i) }
+  end
 end
 ```
 
