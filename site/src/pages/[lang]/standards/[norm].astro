@@ -4,6 +4,7 @@ import Base from '../../../layouts/Base.astro';
 import { ui, languages, type Lang } from '../../../i18n/ui';
 import standards from '../../../data/standards.json';
 import socleRefs from '../../../data/socle-refs.json';
+import { domainLabel } from '../../../data/domain-labels';
 
 export async function getStaticPaths() {
   const allRules = await getCollection('rules');
@@ -56,6 +57,7 @@ const rowsData = rules.map((r: any) => ({
   os: r.supported_os.length,
   osList: r.supported_os.join(' '),
   domain: r.domain,
+  domainLabel: domainLabel(r.domain, lang),
   sev: r.severity,
   sevClass: sevClass(r.severity),
   sevLabel: sevLabel(r.severity),
@@ -164,7 +166,7 @@ const rowsData = rules.map((r: any) => ({
                 <td><a class="ref" href={`/${lang}/rules/${r.id}/`}>{r.socle}</a></td>
                 <td><a class="rule-name" href={`/${lang}/rules/${r.id}/`}>{r.title[lang]}</a></td>
                 <td class="os">{r.supported_os.length}</td>
-                <td class="dom">{r.domain}</td>
+                <td class="dom">{domainLabel(r.domain, lang)}</td>
                 <td><span class={`sev ${sevClass(r.severity)}`}>{sevLabel(r.severity)}</span></td>
                 <td class="secs">{sectionOf(r.value)}</td>
               </tr>
@@ -200,7 +202,7 @@ const rowsData = rules.map((r: any) => ({
       `<td><a class="ref" href="/${lang}/rules/${d.id}/">${esc(d.socle)}</a></td>` +
       `<td><a class="rule-name" href="/${lang}/rules/${d.id}/">${esc(d.title)}</a></td>` +
       `<td class="os">${d.os}</td>` +
-      `<td class="dom">${esc(d.domain)}</td>` +
+      `<td class="dom">${esc(d.domainLabel)}</td>` +
       `<td><span class="sev ${d.sevClass}">${esc(d.sevLabel)}</span></td>` +
       `<td class="secs">${esc(d.secs)}</td>` +
       `</tr>`;
