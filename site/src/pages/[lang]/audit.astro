@@ -1,0 +1,145 @@
+---
+import Base from '../../layouts/Base.astro';
+import { languages, type Lang } from '../../i18n/ui';
+
+export function getStaticPaths() {
+  return Object.keys(languages).map((lang) => ({ params: { lang } }));
+}
+const { lang } = Astro.params as { lang: Lang };
+const fr = lang === 'fr';
+
+const title = fr ? 'Parcours auditeur · Pavois' : 'Audit journey · Pavois';
+const desc = fr
+  ? 'Tout ce qu’un auditeur attend de Pavois en un seul parcours : la preuve, la méthode de notation, le bundle signé, le modèle de confiance, la preuve de reboot, l’export OSCAL, le benchmark et les limites assumées.'
+  : 'Everything an auditor needs from Pavois in one path: the evidence, the scoring method, the signed bundle, the trust model, the reboot proof, the OSCAL export, the benchmark and the stated limits.';
+
+// Each step of the auditor journey -> the page that proves it.
+const steps = [
+  {
+    h: { en: '1. See a real report', fr: '1. Voir un rapport réel' },
+    href: `/${lang}/sample-report/`,
+    d: {
+      en: 'A real scan on a Debian 12 VM (anonymized): grade, per-severity counts, rules grouped by chapter, filters, plus the before/after campaign report with its transition matrix.',
+      fr: 'Un scan réel sur une VM Debian 12 (anonymisé) : note, comptes par sévérité, règles groupées par chapitre, filtres, plus le rapport de campagne avant/après avec sa matrice de transition.',
+    },
+  },
+  {
+    h: { en: '2. Understand the verdict', fr: '2. Comprendre le verdict' },
+    href: `/${lang}/handbook/qualified-verdict/`,
+    d: {
+      en: 'Every control declares its evidence type (effective-runtime, persistent-config, inventory-state, filesystem-state) and whether it is reboot-survivable, so a PASS states exactly what was measured and how durable it is.',
+      fr: 'Chaque contrôle déclare son type de preuve (effective-runtime, persistent-config, inventory-state, filesystem-state) et sa survivabilité au reboot : un PASS dit exactement ce qui a été mesuré et sa durabilité.',
+    },
+  },
+  {
+    h: { en: '3. Read the score', fr: '3. Lire le score' },
+    href: `/${lang}/handbook/scoring-methodology/`,
+    d: {
+      en: 'A published formula: failure-weighted by severity, capped per severity, a single critical caps the grade, runtime-only passes cap A to B. No black box, the grade is reproducible.',
+      fr: 'Une formule publiée : pondérée par sévérité, plafonnée par sévérité, un seul critique plafonne la note, les PASS runtime-only plafonnent A à B. Pas de boîte noire, la note est reproductible.',
+    },
+  },
+  {
+    h: { en: '4. Take the evidence bundle', fr: '4. Prendre le bundle de preuve' },
+    href: `/${lang}/handbook/evidence-and-exports/`,
+    d: {
+      en: 'The bundle command packages the before/after scans, the applied plan, the reports, the reboot proof and a manifest + checksums into a tamper-evident bundle, verified offline.',
+      fr: 'La commande bundle empaquette les scans avant/après, le plan appliqué, les rapports, la preuve de reboot et un manifeste + checksums en un bundle inviolable, vérifié hors ligne.',
+    },
+  },
+  {
+    h: { en: '5. Check the trust model', fr: '5. Vérifier le modèle de confiance' },
+    href: `/${lang}/handbook/trust-model/`,
+    d: {
+      en: 'Tamper-evident vs signed: who signs, which identity is accepted, key rotation and revocation, offline verification and retention. A bundle is opposable only once signed under a policy you accept.',
+      fr: 'Inviolable vs signé : qui signe, quelle identité est acceptée, rotation et révocation des clés, vérification hors ligne et rétention. Un bundle n’est opposable qu’une fois signé sous une politique que vous acceptez.',
+    },
+  },
+  {
+    h: { en: '6. Export to OSCAL', fr: '6. Exporter en OSCAL' },
+    href: `/${lang}/downloads/`,
+    d: {
+      en: 'The neutral rule corpus publishes as an OSCAL catalog + profiles (the NIST machine-readable format) for your GRC tooling, so the same controls flow into your compliance stack.',
+      fr: 'Le corpus de règles neutre se publie en catalogue + profils OSCAL (le format machine-readable du NIST) pour votre outillage GRC : les mêmes contrôles alimentent votre pile de conformité.',
+    },
+  },
+  {
+    h: { en: '7. Trust the comparison', fr: '7. Vérifier la comparaison' },
+    href: `/${lang}/docs/benchmark/`,
+    d: {
+      en: 'A reproducible benchmark vs OpenSCAP and Lynis on a fresh Debian 12 VM: exact versions, the drop-in scenario, an honest no-edge case, and the coverage gap with oscap’s own verdicts.',
+      fr: 'Un benchmark reproductible vs OpenSCAP et Lynis sur une VM Debian 12 neuve : versions exactes, le scénario drop-in, un cas sans avantage assumé, et l’écart de couverture avec les verdicts d’oscap.',
+    },
+  },
+];
+---
+
+<Base title={title} description={desc} lang={lang}
+  breadcrumbs={[{ name: 'Pavois', path: `/${lang}/` }, { name: fr ? 'Parcours auditeur' : 'Audit journey', path: `/${lang}/audit/` }]}>
+  <div class="wrap page-head">
+    <h1>{fr ? 'Parcours auditeur' : 'Audit journey'}</h1>
+    <p class="lede">{desc}</p>
+  </div>
+
+  <div class="wrap">
+    <div class="audit-grid">
+      {steps.map((s) => (
+        <a class="audit-card" href={s.href}>
+          <h2>{fr ? s.h.fr : s.h.en}</h2>
+          <p>{fr ? s.d.fr : s.d.en}</p>
+          <span class="audit-go">{fr ? 'Ouvrir →' : 'Open →'}</span>
+        </a>
+      ))}
+    </div>
+
+    <div class="prose audit-limits">
+      <h2>{fr ? 'Ce que Pavois ne prouve pas' : 'What Pavois does not prove'}</h2>
+      <p>{fr
+        ? 'Pavois note une posture de configuration effective, pas le comportement à l’exécution. Une note verte est une configuration durcie, pas un scan d’intrusion : un implant en mémoire, un zero-day, une intrusion réseau ou un abus d’accès légitime restent hors périmètre. À coupler avec les logs auditd livrés et un EDR/IDS. '
+        : 'Pavois grades an effective-configuration posture, not runtime behaviour. A green grade is a hardened configuration, not an intrusion scan: an in-memory implant, a zero-day, live network intrusion or abuse of legitimate access stay out of scope. Pair it with the shipped auditd logs and an EDR/IDS. '}
+        <a href={`/${lang}/handbook/understanding-threats/`}>{fr ? 'Détail des limites' : 'Full limits'}</a>.</p>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .audit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+  .audit-card {
+    display: block;
+    border: 1px solid var(--line, #e5e7eb);
+    border-radius: 12px;
+    padding: 1.1rem 1.2rem;
+    text-decoration: none;
+    color: inherit;
+    background: var(--bg-2, #fff);
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .audit-card:hover {
+    border-color: var(--red, #c1121f);
+    transform: translateY(-2px);
+  }
+  .audit-card h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.05rem;
+  }
+  .audit-card p {
+    margin: 0 0 0.7rem;
+    font-size: 0.92rem;
+    color: var(--tx-2, #4b5563);
+    line-height: 1.55;
+  }
+  .audit-go {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--red, #c1121f);
+  }
+  .audit-limits {
+    max-width: 75ch;
+    margin-bottom: 3.5rem;
+  }
+</style>
