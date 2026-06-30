@@ -74,12 +74,17 @@ oscap's own verdicts on the real target. Full data: **[`coverage-gap-debian12.cs
   **139 notapplicable** on Debian (e.g. SELinux), 15 not auto-checked
 - symmetric: Pavois applies to **523 of its 607** Debian 12 controls on a fresh host (84 N/A)
 
+The CSV is a **workflow-ready backlog**: alongside `severity`, `ssg_rule`, `title` and
+`oscap_verdict` it carries a derived `triage` (`backlog` = applicable & failing, `n/a`,
+`already-pass`, `notchecked`) plus empty `decision`, `reason`, `issue_url`, `owner` and
+`status` columns, so each `backlog` row becomes a tracked issue without re-investigation.
+
 Reproduce:
 
 ```bash
 oscap xccdf eval --results gap-res.xml ssg-debian12-ds.xml   # on the target, for applicability
 python3 tools/coverage_gap.py --os debian12 \
-  --datastream ssg-debian12-ds.xml --oscap-results gap-res.xml --format json
+  --datastream ssg-debian12-ds.xml --oscap-results gap-res.xml --format csv > coverage-gap-debian12.csv
 ```
 
 ## Honesty notes
