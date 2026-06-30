@@ -4,6 +4,7 @@ import Base from '../../../layouts/Base.astro';
 import { ui, languages, type Lang } from '../../../i18n/ui';
 import socleRefs from '../../../data/socle-refs.json';
 import { coverageLevel, coverageLabel } from '../../../data/coverage';
+import { domainLabel } from '../../../data/domain-labels';
 
 export function getStaticPaths() {
   return Object.keys(languages).map((lang) => ({ params: { lang } }));
@@ -48,6 +49,7 @@ const rowsData = rules.map((r) => {
     socle: socleOf(r.data.id),
     title: r.data.title[lang],
     domain: r.data.domain || '',
+    domainLabel: domainLabel(r.data.domain || '', lang),
     cov: cov === 'deep' ? '' : cov,
     covLabel: cov !== 'deep' ? coverageLabel[cov][lang] : '',
     covTitle: cov !== 'deep' ? covTitle(cov) : '',
@@ -78,7 +80,7 @@ const rowsData = rules.map((r) => {
         <label>{t.domain}</label>
         <select id="r-domain" aria-label={t.domain}>
           <option value="">{lang === 'fr' ? 'Tous les domaines' : 'All domains'}</option>
-          {domains.map((d) => <option value={d}>{d}</option>)}
+          {domains.map((d) => <option value={d}>{domainLabel(d, lang)}</option>)}
         </select>
       </div>
       <div class="fsel">
@@ -131,7 +133,7 @@ const rowsData = rules.map((r) => {
                 >
                   <td><a class="ref" href={`/${lang}/rules/${r.data.id}/`}>{socleOf(r.data.id)}</a></td>
                   <td><a class="rule-name" href={`/${lang}/rules/${r.data.id}/`}>{r.data.title[lang]}</a></td>
-                  <td class="dom">{r.data.domain}{coverageLevel(r.data.domain) !== 'deep' && (
+                  <td class="dom">{domainLabel(r.data.domain || '', lang)}{coverageLevel(r.data.domain) !== 'deep' && (
                     <a class={`covb covb-${coverageLevel(r.data.domain)}`} href={`/${lang}/handbook/coverage/`} title={lang === 'fr'
                       ? (coverageLevel(r.data.domain) === 'shallow' ? 'Domaine peu couvert aujourd’hui, voir la page Couverture' : 'Domaine partiellement couvert, voir la page Couverture')
                       : (coverageLevel(r.data.domain) === 'shallow' ? 'Shallow domain today, see the Coverage page' : 'Partially covered today, see the Coverage page')}>{coverageLabel[coverageLevel(r.data.domain)][lang]}</a>
@@ -175,7 +177,7 @@ const rowsData = rules.map((r) => {
       `<tr data-domain="${esc(d.domain)}" data-sev="${esc(d.sev)}" data-std="${esc(d.std.join(' '))}" data-os="${esc(d.osList)}" data-search="${esc(d.search)}">` +
       `<td><a class="ref" href="/${lang}/rules/${d.id}/">${esc(d.socle)}</a></td>` +
       `<td><a class="rule-name" href="/${lang}/rules/${d.id}/">${esc(d.title)}</a></td>` +
-      `<td class="dom">${esc(d.domain)}${d.cov ? `<a class="covb covb-${d.cov}" href="/${lang}/handbook/coverage/" title="${esc(d.covTitle)}">${esc(d.covLabel)}</a>` : ''}</td>` +
+      `<td class="dom">${esc(d.domainLabel)}${d.cov ? `<a class="covb covb-${d.cov}" href="/${lang}/handbook/coverage/" title="${esc(d.covTitle)}">${esc(d.covLabel)}</a>` : ''}</td>` +
       `<td><span class="sev ${d.sevClass}">${esc(d.sevLabel)}</span></td>` +
       `<td class="os">${d.os}</td>` +
       `<td><div class="tags">${d.std.map((k: string) => `<span class="tag">${esc(k)}</span>`).join(' ')}</div></td>` +
