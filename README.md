@@ -130,7 +130,7 @@ pavois harden apply hardening-plan-debian12.yml --reboot --scan
 # 3. Build a before/after campaign report (grade delta + transition matrix)
 pavois diff before.json after.json --html campaign.html --json campaign.json
 
-# 4. Package audit-ready evidence (before/after, plan, reports, manifest + checksums)
+# 4. Package tamper-evident evidence, audit-ready once signed (before/after, plan, reports, manifest + checksums)
 pavois bundle before.json after.json --plan hardening-plan-debian12.yml --report campaign.html
 
 # 5. Serve the HTML reports
@@ -177,7 +177,7 @@ bundle OK — tamper-evident and signed
 | `scan` | Audit a target's effective config, grade A–E |
 | `harden plan` / `apply` | State-aware Chef hardening, opt-in per rule, `--reboot --scan` |
 | `diff` | Before/after campaign report: transition matrix, regressions, grade delta (`--html` / `--json`) |
-| `bundle` / `bundle verify` | Package audit-ready evidence (scans + plan + reports + manifest + checksums), then verify integrity + signature |
+| `bundle` / `bundle verify` | Package tamper-evident evidence (scans + plan + reports + manifest + checksums), audit-ready once signed, then verify integrity + signature |
 | `verify` | Behavioral check: attempt the forbidden action, confirm the protection holds |
 | `oscal` | Publish the baseline as OSCAL (catalog + per-OS profiles) |
 | `serve` | Browse the HTML reports |

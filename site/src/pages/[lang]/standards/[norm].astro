@@ -173,7 +173,7 @@ const rowsData = rules.map((r: any) => ({
         </tbody>
       </table>
     </div>
-    <p id="r-empty" hidden class="empty">{t.noResults}</p>
+    <p id="r-empty" hidden class="empty" data-msg={t.noResults}></p>
   </div>
   <script id="r-data" type="application/json" is:inline set:html={JSON.stringify(rowsData)} />
 </Base>
@@ -231,7 +231,11 @@ const rowsData = rules.map((r: any) => ({
       shown = 0;
       renderMore();
       if (count) count.textContent = String(view.length);
-      if (empty) (empty as HTMLElement).hidden = view.length !== 0;
+      if (empty) {
+        const show = view.length === 0;
+        (empty as HTMLElement).hidden = !show;
+        if (show && !empty.textContent) empty.textContent = (empty as HTMLElement).dataset.msg || '';
+      }
     };
 
     [search, osf, sevf].forEach((el) => {
