@@ -98,8 +98,11 @@ first scan (via omnitruck); a Docker container is the fallback.
 ## ⚙️ How it works
 
 ```bash
-# 1. Audit a host (effective config needs sudo)
-pavois scan user@host --key ~/.ssh/id_ed25519 --sudo --profile profiles/linux/debian12
+# 0. Check the environment is ready (CINC engine, sudo, SSH, OS, rule corpus)
+pavois doctor
+
+# 1. Audit a host (effective config needs sudo; the OS profile is auto-detected)
+pavois scan user@host --key ~/.ssh/id_ed25519 --sudo
 
 # 2. Plan the fixes, opt in per rule, converge a native Chef run, re-scan
 pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo
