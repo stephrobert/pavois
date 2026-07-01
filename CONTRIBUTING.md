@@ -263,6 +263,23 @@ and `harden plan` writes it on the item next to `acknowledged: false`.
 acknowledged: either per item (`acknowledged: true` in the plan) or run-wide (`--i-understand-danger`).
 Never ship a brick-prone auto remediation without a `danger:` line — the gate depends on it.
 
+### Firewall and SSH access are plan-configurable
+
+`firewall-default-deny` defaults to a **native nftables** ruleset (`choose: nftables`), not ufw.
+On a **hardened kernel** (`kernel.modules_disabled=1`, e.g. the [KSPP build](docs/remediation/hardened-kernel-debian12.md))
+this is the only firewall that reliably comes up: nftables needs only the built-in `nf_tables`
+inet path, whereas ufw/iptables-restore pulls in a long tail of legacy `xt_*` match modules and a
+single missing one makes the restore fail atomically → empty chains under `policy DROP` → **instant
+SSH lockout** (learned the hard way; recover offline with `virt-customize -a <disk> --run-command 'ufw --force disable'`).
+
+Because a default-deny firewall and a user/group SSH restriction can lock you out, both are **scoped
+from the plan** (they default to open so a plan without them never bricks access):
+
+- `ssh_allow_from: [cidr, …]` on `firewall-default-deny` — restrict SSH to those sources.
+- `ssh_allow_users: [name, …]` / `ssh_allow_groups: [name, …]` on `misc-sshd-limit-user-access` —
+  enforce sshd `AllowUsers`/`AllowGroups` (otherwise the control stays a manual, site-specific stub).
+  **The list must include the account you connect as**, or you lock yourself out.
+
 ## Pull-request workflow
 
 - `main` is protected — work on a **feature branch** and open a PR.

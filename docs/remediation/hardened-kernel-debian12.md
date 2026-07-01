@@ -69,25 +69,43 @@ CONFIG_PANIC_ON_OOPS=y
 # CONFIG_X86_VSYSCALL_EMULATION is not set
 
 # Netfilter — MUST be built-in (=y), never modules. The hardened profile applies
-# kernel.modules_disabled=1, so any =m firewall module can never load post-hardening;
-# and `make localmodconfig` (step 2) DROPS these entirely if they weren't loaded at
-# build time. Without them ufw/nft/iptables fail ("Table filter does not exist" /
-# "Protocol not supported") and firewall-default-deny can never pass (Lynis FIRE-4512).
+# kernel.modules_disabled=1, so any =m firewall feature can never load post-hardening;
+# and `make localmodconfig` (step 2) DROPS these if they weren't loaded at build time.
+# Without them the firewall can't come up and firewall-default-deny fails (Lynis FIRE-4512).
+#
+# USE nftables, NOT ufw/iptables, on this kernel. `pavois harden` defaults
+# firewall-default-deny to a native nftables ruleset, which needs ONLY the nf_tables
+# inet path below. ufw goes through iptables-restore and pulls in a long tail of legacy
+# xt_* match/target modules (addrtype, limit, recent, multiport, comment, LOG, rt, hl…);
+# under modules_disabled a single missing one makes iptables-restore fail atomically ->
+# empty chains + policy DROP -> instant SSH lockout. Verified the hard way.
+#
+# Required for the native nftables ruleset:
 CONFIG_NETFILTER=y
 CONFIG_NF_CONNTRACK=y
 CONFIG_NF_TABLES=y
 CONFIG_NF_TABLES_INET=y
 CONFIG_NFT_CT=y
+# Only if you insist on ufw/iptables too (not recommended here — fragile, see above):
 CONFIG_NFT_COMPAT=y
 CONFIG_NETFILTER_XTABLES=y
 CONFIG_NETFILTER_XT_MATCH_CONNTRACK=y
 CONFIG_NETFILTER_XT_MATCH_STATE=y
+CONFIG_NETFILTER_XT_MATCH_ADDRTYPE=y
+CONFIG_NETFILTER_XT_MATCH_LIMIT=y
+CONFIG_NETFILTER_XT_MATCH_RECENT=y
+CONFIG_NETFILTER_XT_MATCH_MULTIPORT=y
+CONFIG_NETFILTER_XT_MATCH_COMMENT=y
+CONFIG_NETFILTER_XT_TARGET_LOG=y
 CONFIG_NETFILTER_XT_TARGET_REJECT=y
+CONFIG_NF_LOG_SYSLOG=y
 CONFIG_IP_NF_IPTABLES=y
 CONFIG_IP_NF_FILTER=y
+CONFIG_IP_NF_MANGLE=y
 CONFIG_IP_NF_TARGET_REJECT=y
 CONFIG_IP6_NF_IPTABLES=y
 CONFIG_IP6_NF_FILTER=y
+CONFIG_IP6_NF_MANGLE=y
 CONFIG_IP6_NF_TARGET_REJECT=y
 ```
 

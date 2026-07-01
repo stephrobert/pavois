@@ -292,7 +292,11 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 	header := "# pavois hardening plan (state-aware). Flip `apply: true` on the gaps you want fixed.\n" +
 		"# compliant rules are shown for context and are never applied.\n" +
 		"# items with a `danger:` line can brick or lock out the host: read it, then set\n" +
-		"# `acknowledged: true` to allow apply (or pass --i-understand-danger to apply).\n"
+		"# `acknowledged: true` to allow apply (or pass --i-understand-danger to apply).\n" +
+		"# SSH access can be scoped from the plan: add `ssh_allow_from: [cidr, ...]` on\n" +
+		"# firewall-default-deny to restrict SSH to those sources, and `ssh_allow_users:`/\n" +
+		"# `ssh_allow_groups:` on misc-sshd-limit-user-access (must include the account you\n" +
+		"# connect as, or you lock yourself out).\n"
 	if err := os.WriteFile(outPath, append([]byte(header), body...), 0o600); err != nil {
 		return err
 	}
@@ -318,6 +322,9 @@ type planFile struct {
 		Danger          string         `yaml:"danger"`
 		Status          string         `yaml:"status"`
 		Choose          string         `yaml:"choose"`
+		SSHAllowFrom    []string       `yaml:"ssh_allow_from"`
+		SSHAllowUsers   []string       `yaml:"ssh_allow_users"`
+		SSHAllowGroups  []string       `yaml:"ssh_allow_groups"`
 		Remediation     map[string]any `yaml:"remediation"`
 		RequiresPackage string         `yaml:"requires_package"`
 	} `yaml:"rules"`
@@ -407,6 +414,7 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	cmdline := map[string]bool{}     // kernel cmdline params -> one grub drop-in
 	mounts := map[string]*mountAgg{} // mount point -> aggregated tmpfs options (all-or-nothing)
 	fwEnableCmd := ""                // firewall: open SSH then enable (no lockout), emitted once
+	fwNftConfig := ""                // native nftables ruleset (hardened-kernel friendly), emitted once
 	grubPwWanted := false            // a grub_password remediation was enabled
 	dconfWanted := false             // a dconf (GNOME) remediation was enabled
 	faillockWanted := false          // a pam_faillock remediation was enabled
@@ -468,6 +476,19 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 				reboot = true
 			}
 		}
+		// misc-sshd-limit-user-access is manual by default (which users/groups may SSH is
+		// site-specific, Pavois cannot guess it). If the operator listed them in the plan,
+		// enforce AllowUsers/AllowGroups as an sshd drop-in instead of a manual script.
+		// NB: the list MUST include the account Pavois connects as, or SSH locks out.
+		if enabled && cid == "misc-sshd-limit-user-access" && (len(r.SSHAllowUsers) > 0 || len(r.SSHAllowGroups) > 0) {
+			if len(r.SSHAllowUsers) > 0 {
+				setKV(sshd, "allowusers", strings.Join(r.SSHAllowUsers, " "), "sshd")
+			}
+			if len(r.SSHAllowGroups) > 0 {
+				setKV(sshd, "allowgroups", strings.Join(r.SSHAllowGroups, " "), "sshd")
+			}
+			continue
+		}
 		switch res {
 		case "choose":
 			// "<group>-present" gap: the admin picked a technology to set up
@@ -482,7 +503,46 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 					// Rules BEFORE enable (sous-chefs/firewall provider order) so SSH stays up;
 					// then `ufw enable` loads the default-deny ruleset (the pavois check looks for
 					// an INPUT drop policy), and enable+start keeps the unit up across reboots.
-					fwEnableCmd = "/usr/sbin/ufw allow OpenSSH 2>/dev/null; /usr/sbin/ufw allow 22/tcp 2>/dev/null; /usr/sbin/ufw --force enable; systemctl enable --now ufw"
+					// `ssh_allow_from` in the plan restricts SSH to those sources; empty = open to
+					// all (the safe default so a plan without it never locks the admin out).
+					allow := "/usr/sbin/ufw allow OpenSSH 2>/dev/null; /usr/sbin/ufw allow 22/tcp 2>/dev/null"
+					if len(r.SSHAllowFrom) > 0 {
+						var parts []string
+						for _, src := range r.SSHAllowFrom {
+							if src = strings.TrimSpace(src); src != "" {
+								parts = append(parts, fmt.Sprintf("/usr/sbin/ufw allow from %s to any port 22 proto tcp 2>/dev/null", src))
+							}
+						}
+						if len(parts) > 0 {
+							allow = strings.Join(parts, "; ")
+						}
+					}
+					fwEnableCmd = allow + "; /usr/sbin/ufw --force enable; systemctl enable --now ufw"
+				} else if s(o["service"]) == "nftables" {
+					// Native nftables ruleset (robust on a hardened/modules_disabled kernel:
+					// uses only the built-in nf_tables inet path, none of the legacy xt_*
+					// match modules ufw/iptables-restore need). Default-deny input, allow
+					// loopback + established + icmp, and SSH from `ssh_allow_from` (or anywhere
+					// if unset, so a plan without it never locks the admin out).
+					sshRule := "tcp dport 22 accept"
+					if len(r.SSHAllowFrom) > 0 {
+						var cidrs []string
+						for _, src := range r.SSHAllowFrom {
+							if src = strings.TrimSpace(src); src != "" {
+								cidrs = append(cidrs, src)
+							}
+						}
+						if len(cidrs) > 0 {
+							sshRule = fmt.Sprintf("ip saddr { %s } tcp dport 22 accept", strings.Join(cidrs, ", "))
+						}
+					}
+					fwNftConfig = "#!/usr/sbin/nft -f\nflush ruleset\ntable inet filter {\n" +
+						"  chain input {\n    type filter hook input priority 0; policy drop;\n" +
+						"    iif \"lo\" accept\n    ct state established,related accept\n" +
+						"    ct state invalid drop\n    ip protocol icmp accept\n    ip6 nexthdr ipv6-icmp accept\n" +
+						"    " + sshRule + "\n  }\n" +
+						"  chain forward { type filter hook forward priority 0; policy drop; }\n" +
+						"  chain output { type filter hook output priority 0; policy accept; }\n}\n"
 				} else {
 					setKV(svc, s(o["service"]), ":enable, :start", "service")
 				}
@@ -614,6 +674,12 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		// package leaves the unit active-by-default while the firewall itself is disabled
 		// (ENABLED=no, no ruleset), so a systemd guard skips `ufw enable` and we ship no rules.
 		_, _ = fmt.Fprintf(&b, "execute 'pavois-firewall-enable' do\n  command %q\n  not_if '/usr/sbin/ufw status 2>/dev/null | grep -q \"Status: active\"'\nend\n\n", fwEnableCmd)
+		n++
+	}
+	if fwNftConfig != "" { // native nftables: write the ruleset, load it, enable the unit
+		_, _ = fmt.Fprintf(&b, "file '/etc/nftables.conf' do\n  content %q\n  mode '0600'\nend\n\n", fwNftConfig)
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-nft-load' do\n  command 'nft -f /etc/nftables.conf'\n  subscribes :run, 'file[/etc/nftables.conf]', :immediately\nend\n\n")
+		_, _ = fmt.Fprintf(&b, "service 'nftables' do\n  action [:enable, :start]\nend\n\n")
 		n++
 	}
 	if _, ok := sysctl["kernel.modules_disabled"]; ok {
