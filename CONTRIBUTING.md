@@ -209,6 +209,16 @@ mise run build && ./go/pavois scan local --profile linux/ubuntu2404
 Go follows the **go-production-engineer** standard: simple, idiomatic, explicit error handling (wrap
 with `%w`), no needless abstraction, tests for meaningful behavior, documented public symbols.
 
+### No rule change ships without a real scan
+
+**Non-negotiable.** Any change to `rules.yml` that affects what a target audits, a **new control**,
+a **remediation**, **or extending `applicable_os`** to a new OS, must be verified by a **real
+`pavois scan`** on the concerned VM before the PR is mergeable. The control must come out **PASS**,
+or its `harden apply` must make it PASS. `validate` / `validate:mappings` are **static** checks and
+**never** substitute for the scan: an `applicable_os` extension without a working remediation
+silently adds a permanent FAIL (a regression against "0 failing"). No PR merged on static validation
+alone.
+
 ### Remediation changes: full-apply, zero regression
 
 Any change to a **remediation** (or a check it interacts with) must pass a full hardening campaign
