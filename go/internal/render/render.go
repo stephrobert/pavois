@@ -44,6 +44,7 @@ type ctrl struct {
 	Evidence  string            `json:"evidence,omitempty"`  // type de preuve réellement collectée
 	Reboot    string            `json:"reboot,omitempty"`    // reboot_survivable: yes|no|unknown (axe persistance)
 	Companion string            `json:"companion,omitempty"` // contrôle persistant compagnon (companion-aware)
+	Danger    string            `json:"danger,omitempty"`    // risque de brick/lockout si la remédiation est appliquée
 	Norms     map[string]string `json:"norms"`
 	Levels    map[string]string `json:"levels"`
 	Refs      []string          `json:"refs"`
@@ -151,8 +152,8 @@ func controlData(c audit.Control) ctrl {
 		ID: c.ID, Title: title, Desc: strings.TrimSpace(c.Desc),
 		Impact: c.Impact, Sev: severity(c.Impact), Status: status(c),
 		Domain: domain(c), Evidence: tagStr(c, "evidence"), Reboot: tagStr(c, "reboot"),
-		Companion: tagStr(c, "companion"),
-		Norms:     norms, Levels: levels, Refs: refs, Checks: checks,
+		Companion: tagStr(c, "companion"), Danger: tagStr(c, "danger"),
+		Norms: norms, Levels: levels, Refs: refs, Checks: checks,
 		Merge: tagStr(c, "merge_group"),
 	}
 }

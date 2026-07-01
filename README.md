@@ -125,6 +125,8 @@ pavois scan user@host --key ~/.ssh/id_ed25519 --sudo
 # 2. Plan the fixes, opt in per rule, converge a native Chef run, re-scan
 pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo
 #    edit the plan: flip rules to `apply: true`
+#    a rule with a `danger:` line can brick/lock out the host — read it, then set
+#    `acknowledged: true` on that item (or pass --i-understand-danger) or apply refuses it
 pavois harden apply hardening-plan-debian12.yml --reboot --scan
 
 # 3. Build a before/after campaign report (grade delta + transition matrix)
