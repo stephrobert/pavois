@@ -2808,6 +2808,9 @@ cmdline-init-on-alloc:
     param: init_on_alloc=1
   title: Configure kernel to zero out memory before allocation
 cmdline-iommu-force:
+  danger: 'iommu=force removes virtio devices on virtualized guests: the VM loses
+    its disk and network at the next boot and will not come back. Apply only on
+    bare-metal hosts.'
   applicable_os:
   - almalinux9
   - debian12
@@ -15609,6 +15612,9 @@ groupownerships-var-log-sssd:
   ssg: file_groupownerships_var_log_sssd
   title: Verify Grouponwership of Files in /var/log/sssd
 grub-password:
+  danger: 'A GRUB superuser password without --unrestricted stops every boot at the
+    GRUB prompt and bricks headless/remote hosts. Pavois appends --unrestricted;
+    still verify serial/console access before applying.'
   applicable_os:
   - almalinux9
   - debian12
@@ -18967,6 +18973,10 @@ kmod-jffs2-disabled:
     name: kmod_disabled
   title: Disable Mounting of jffs2
 kmod-loading-disabled:
+  danger: 'kernel.modules_disabled=1 permanently blocks loading ANY kernel module
+    until the next reboot: if a needed module (storage, network) is not yet loaded,
+    the host can lose its disk or network. Pavois applies it late (after local-fs);
+    ensure every required module is already loaded.'
   applicable_os:
   - almalinux9
   - debian12
@@ -22861,6 +22871,9 @@ mount-var-nodev:
     option: nodev
   title: Add nodev Option to /var
 mount-var-noexec:
+  danger: 'noexec on /var breaks apt/dpkg (maintainer scripts execute under /var)
+    and can leave the package manager unusable. CIS recommends only nodev,nosuid
+    for /var; this control is delivered as a manual fix, never auto-applied.'
   applicable_os:
   - almalinux9
   - debian12
@@ -33627,6 +33640,9 @@ sudo-noexec:
   ssg: sudo_add_noexec
   title: Ensure Privileged Escalated Commands Cannot Execute Other Commands - sudo NOEXEC
 sudo-remove-no-authenticate:
+  danger: 'Removing !authenticate/NOPASSWD makes sudo always prompt for a password:
+    any passwordless automation (including Pavois''s own management user) breaks.
+    Repoint automation to a key or password FIRST.'
   applicable_os:
   - debian12
   - debian13
@@ -33707,6 +33723,9 @@ sudo-remove-no-authenticate:
   ssg: sudo_remove_no_authenticate
   title: Ensure Users Re-Authenticate for Privilege Escalation - sudo !authenticate
 sudo-require-authentication:
+  danger: 'Removing NOPASSWD makes sudo always prompt for a password: any passwordless
+    automation (including Pavois''s own management user) breaks. Repoint automation
+    to a key or password FIRST.'
   applicable_os:
   - almalinux9
   - debian12
@@ -33756,6 +33775,9 @@ sudo-require-authentication:
       almalinux9: Ensure Users Re-Authenticate for Privilege Escalation - sudo
       debian12: Ensure Users Re-Authenticate for Privilege Escalation - sudo NOPASSWD
 sudo-require-reauthentication:
+  danger: 'Setting a finite timestamp_timeout forces periodic re-authentication; a
+    broken sudoers edit can lock you out of privilege escalation entirely. Always
+    edit via visudo and keep a root session open while applying.'
   applicable_os:
   - debian12
   check:

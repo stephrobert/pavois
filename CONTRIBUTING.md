@@ -247,6 +247,22 @@ documented **manual** remediation, never left silently failing.
 In the HTML report, switch the **regulation** in the dropdown: your control must appear in the right
 chapter of every standard it maps to, with its severity, mappings and effective-check detail.
 
+### Dangerous remediations: explain the brick, gate the apply
+
+A remediation that can **brick or lock out** the host (loses boot, disk, network, or privilege
+escalation) must carry a `danger:` field in `docs/reference/rules.yml` — a short, specific English
+sentence stating *what* breaks and *the precondition* to avoid it. Examples already in the corpus:
+`cmdline-iommu-force`, `grub-password`, `kmod-loading-disabled`, `sudo-require-authentication`,
+`sudo-remove-no-authenticate`, `sudo-require-reauthentication`, `mount-var-noexec`.
+
+The field flows everywhere automatically: `gen.py` propagates it to the per-OS files, the corpus
+renders it as `tag danger:`, the scan report shows it as a red **⚠ Danger** banner on the control,
+and `harden plan` writes it on the item next to `acknowledged: false`.
+
+`harden apply` **refuses to converge** any enabled item that has a `danger:` unless the risk is
+acknowledged: either per item (`acknowledged: true` in the plan) or run-wide (`--i-understand-danger`).
+Never ship a brick-prone auto remediation without a `danger:` line — the gate depends on it.
+
 ## Pull-request workflow
 
 - `main` is protected — work on a **feature branch** and open a PR.

@@ -46,6 +46,7 @@ SCALAR = [
     "thresholds",
     "note",
     "exclusive_group",
+    "danger",
 ]
 NORMS = ["bp28", "nist", "pci-dss", "cis", "stig"]
 
