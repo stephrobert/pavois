@@ -2808,9 +2808,6 @@ cmdline-init-on-alloc:
     param: init_on_alloc=1
   title: Configure kernel to zero out memory before allocation
 cmdline-iommu-force:
-  danger: 'iommu=force removes virtio devices on virtualized guests: the VM loses
-    its disk and network at the next boot and will not come back. Apply only on
-    bare-metal hosts.'
   applicable_os:
   - almalinux9
   - debian12
@@ -2819,6 +2816,7 @@ cmdline-iommu-force:
   - rhel9
   - ubuntu2204
   - ubuntu2404
+  danger: 'iommu=force removes virtio devices on virtualized guests: the VM loses its disk and network at the next boot and will not come back. Apply only on bare-metal hosts.'
   domain: Kernel command line
   evidence_type: effective-runtime
   impact: 0.5
@@ -15612,9 +15610,6 @@ groupownerships-var-log-sssd:
   ssg: file_groupownerships_var_log_sssd
   title: Verify Grouponwership of Files in /var/log/sssd
 grub-password:
-  danger: 'A GRUB superuser password without --unrestricted stops every boot at the
-    GRUB prompt and bricks headless/remote hosts. Pavois appends --unrestricted;
-    still verify serial/console access before applying.'
   applicable_os:
   - almalinux9
   - debian12
@@ -15628,6 +15623,7 @@ grub-password:
   - describe command('grep -rqsE \'^[[:space:]]*(set[[:space:]]+superusers|password_pbkdf2|password)\' /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg /etc/grub.d/ 2>/dev/null && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
+  danger: A GRUB superuser password without --unrestricted stops every boot at the GRUB prompt and bricks headless/remote hosts. Pavois appends --unrestricted; still verify serial/console access before applying.
   domain: Bootloader (grub)
   evidence_type: persistent-config
   impact: 0.7
@@ -18973,10 +18969,6 @@ kmod-jffs2-disabled:
     name: kmod_disabled
   title: Disable Mounting of jffs2
 kmod-loading-disabled:
-  danger: 'kernel.modules_disabled=1 permanently blocks loading ANY kernel module
-    until the next reboot: if a needed module (storage, network) is not yet loaded,
-    the host can lose its disk or network. Pavois applies it late (after local-fs);
-    ensure every required module is already loaded.'
   applicable_os:
   - almalinux9
   - debian12
@@ -18986,6 +18978,7 @@ kmod-loading-disabled:
   - rhel9
   - ubuntu2204
   - ubuntu2404
+  danger: 'kernel.modules_disabled=1 permanently blocks loading ANY kernel module until the next reboot: if a needed module (storage, network) is not yet loaded, the host can lose its disk or network. Pavois applies it late (after local-fs); ensure every required module is already loaded.'
   domain: Kernel modules
   evidence_type: effective-runtime
   impact: 0.5
@@ -22871,9 +22864,6 @@ mount-var-nodev:
     option: nodev
   title: Add nodev Option to /var
 mount-var-noexec:
-  danger: 'noexec on /var breaks apt/dpkg (maintainer scripts execute under /var)
-    and can leave the package manager unusable. CIS recommends only nodev,nosuid
-    for /var; this control is delivered as a manual fix, never auto-applied.'
   applicable_os:
   - almalinux9
   - debian12
@@ -22882,6 +22872,7 @@ mount-var-noexec:
   - rhel9
   - ubuntu2204
   - ubuntu2404
+  danger: noexec on /var breaks apt/dpkg (maintainer scripts execute under /var) and can leave the package manager unusable. CIS recommends only nodev,nosuid for /var; this control is delivered as a manual fix, never auto-applied.
   domain: Mounts
   evidence_type: effective-runtime
   impact: 0.5
@@ -32342,6 +32333,30 @@ ssh-disable-user-known-hosts:
   socle: SOCLE-CLD-SSH-010
   ssg: sshd_disable_user_known_hosts
   title: Disable SSH Support for User Known Hosts
+ssh-disable-x11-forwarding:
+  applicable_os:
+  - debian12
+  check:
+  - describe command('sshd -T') do
+  - '  its(''stdout'') { should match(/^x11forwarding\s+no$/i) }'
+  - end
+  domain: SSH
+  evidence_type: effective-runtime
+  impact: 0.5
+  levels: {}
+  reboot_survivable: 'yes'
+  remediation:
+    directive: x11forwarding
+    notify:
+      action: reload
+      service: ssh
+    resource: sshd_setting
+    value: 'no'
+    verify: sshd -t -f %{path}
+  severity: medium
+  socle: SOCLE-CLD-SSH-011
+  ssg: sshd_disable_x11_forwarding
+  title: Disable SSH X11 Forwarding
 ssh-do-not-permit-user-env:
   applicable_os:
   - almalinux9
@@ -32406,7 +32421,7 @@ ssh-do-not-permit-user-env:
     value: 'no'
     verify: sshd -t -f %{path}
   severity: medium
-  socle: SOCLE-CLD-SSH-011
+  socle: SOCLE-CLD-SSH-012
   ssg: sshd_do_not_permit_user_env
   title: Do Not Allow SSH Environment Options
 ssh-enable-pam:
@@ -32458,7 +32473,7 @@ ssh-enable-pam:
     value: 'yes'
     verify: sshd -t -f %{path}
   severity: medium
-  socle: SOCLE-CLD-SSH-012
+  socle: SOCLE-CLD-SSH-013
   ssg: sshd_enable_pam
   title: Enable PAM
 ssh-enable-pubkey-auth:
@@ -32490,7 +32505,7 @@ ssh-enable-pubkey-auth:
     value: 'yes'
     verify: sshd -t -f %{path}
   severity: medium
-  socle: SOCLE-CLD-SSH-013
+  socle: SOCLE-CLD-SSH-014
   ssg: sshd_enable_pubkey_auth
   title: Enable Public Key Authentication
 ssh-enable-strictmodes:
@@ -32520,7 +32535,7 @@ ssh-enable-strictmodes:
     value: 'yes'
     verify: sshd -t -f %{path}
   severity: medium
-  socle: SOCLE-CLD-SSH-014
+  socle: SOCLE-CLD-SSH-015
   ssg: sshd_enable_strictmodes
   title: Enable Use of Strict Mode Checking
 ssh-enable-warning-banner:
@@ -32541,7 +32556,7 @@ ssh-enable-warning-banner:
     nist: 3.1.9
   reboot_survivable: 'yes'
   severity: medium
-  socle: SOCLE-CLD-SSH-015
+  socle: SOCLE-CLD-SSH-016
   ssg: sshd_enable_warning_banner
   title: Enable SSH Warning Banner
 ssh-enable-warning-banner-net:
@@ -32604,7 +32619,7 @@ ssh-enable-warning-banner-net:
         resource: sshd_setting
         value: /etc/issue.net
   severity: medium
-  socle: SOCLE-CLD-SSH-016
+  socle: SOCLE-CLD-SSH-017
   ssg: sshd_enable_warning_banner_net
   title: Enable SSH Warning Banner
 ssh-print-last-log:
@@ -32630,7 +32645,7 @@ ssh-print-last-log:
     value: 'yes'
     verify: sshd -t -f %{path}
   severity: medium
-  socle: SOCLE-CLD-SSH-017
+  socle: SOCLE-CLD-SSH-018
   ssg: sshd_print_last_log
   title: Enable SSH Print Last Log
 ssh-set-idle-timeout:
@@ -32791,7 +32806,7 @@ ssh-set-idle-timeout:
         value: '600'
         verify: sshd -t -f %{path}
   severity: medium
-  socle: SOCLE-CLD-SSH-018
+  socle: SOCLE-CLD-SSH-019
   ssg: sshd_set_idle_timeout
   title: Set SSH Client Alive Interval
 ssh-set-keepalive:
@@ -32864,7 +32879,7 @@ ssh-set-keepalive:
     value: '0'
     verify: sshd -t -f %{path}
   severity: medium
-  socle: SOCLE-CLD-SSH-019
+  socle: SOCLE-CLD-SSH-020
   ssg: sshd_set_keepalive
   title: Set SSH Client Alive Count Max
 ssh-set-login-grace-time:
@@ -32912,7 +32927,7 @@ ssh-set-login-grace-time:
     value: '60'
     verify: sshd -t -f %{path}
   severity: medium
-  socle: SOCLE-CLD-SSH-020
+  socle: SOCLE-CLD-SSH-021
   ssg: sshd_set_login_grace_time
   title: Ensure SSH LoginGraceTime is configured
 ssh-set-loglevel-info:
@@ -32966,7 +32981,7 @@ ssh-set-loglevel-info:
     value: verbose
     verify: sshd -t -f %{path}
   severity: low
-  socle: SOCLE-CLD-SSH-021
+  socle: SOCLE-CLD-SSH-022
   ssg: sshd_set_loglevel_info
   title: Set LogLevel to INFO
 ssh-set-loglevel-verbose:
@@ -33023,7 +33038,7 @@ ssh-set-loglevel-verbose:
     value: verbose
     verify: sshd -t -f %{path}
   severity: medium
-  socle: SOCLE-CLD-SSH-022
+  socle: SOCLE-CLD-SSH-023
   ssg: sshd_set_loglevel_verbose
   title: Set SSH Daemon LogLevel to VERBOSE
 ssh-set-max-auth-tries:
@@ -33159,7 +33174,7 @@ ssh-set-max-auth-tries:
         value: '4'
         verify: sshd -t -f %{path}
   severity: medium
-  socle: SOCLE-CLD-SSH-023
+  socle: SOCLE-CLD-SSH-024
   ssg: sshd_set_max_auth_tries
   title: Set SSH authentication attempt limit
 ssh-set-max-sessions:
@@ -33207,7 +33222,7 @@ ssh-set-max-sessions:
     value: '10'
     verify: sshd -t -f %{path}
   severity: medium
-  socle: SOCLE-CLD-SSH-024
+  socle: SOCLE-CLD-SSH-025
   ssg: sshd_set_max_sessions
   title: Set SSH MaxSessions limit
 ssh-set-maxstartups:
@@ -33255,9 +33270,33 @@ ssh-set-maxstartups:
     value: 10:30:60
     verify: sshd -t -f %{path}
   severity: medium
-  socle: SOCLE-CLD-SSH-025
+  socle: SOCLE-CLD-SSH-026
   ssg: sshd_set_maxstartups
   title: Ensure SSH MaxStartups is configured
+ssh-set-rekey-limit:
+  applicable_os:
+  - debian12
+  check:
+  - describe command('sshd -T') do
+  - '  its(''stdout'') { should match(/^rekeylimit\s+536870912\s+3600$/i) }'
+  - end
+  domain: SSH
+  evidence_type: effective-runtime
+  impact: 0.5
+  levels: {}
+  reboot_survivable: 'yes'
+  remediation:
+    directive: rekeylimit
+    notify:
+      action: reload
+      service: ssh
+    resource: sshd_setting
+    value: 512M 1h
+    verify: sshd -t -f %{path}
+  severity: medium
+  socle: SOCLE-CLD-SSH-027
+  ssg: sshd_rekey_limit
+  title: Force Frequent SSH Session Key Renegotiation
 ssh-use:
   applicable_os:
   - ubuntu2404
@@ -33279,7 +33318,7 @@ ssh-use:
     resource: sshd_setting
     value: hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256
   severity: medium
-  socle: SOCLE-CLD-SSH-026
+  socle: SOCLE-CLD-SSH-028
   ssg: sshd_use_approved_macs_ordered_stig
   title: Use Only FIPS 140-2 Validated MACs
 ssh-use-approved-ciphers-ordered:
@@ -33307,7 +33346,7 @@ ssh-use-approved-ciphers-ordered:
         ubuntu2404: UBTU-24-100820
   reboot_survivable: 'yes'
   severity: medium
-  socle: SOCLE-CLD-SSH-027
+  socle: SOCLE-CLD-SSH-029
   ssg: sshd_use_approved_ciphers_ordered_stig
   title: Use Only FIPS 140-2 Validated Ciphers
 ssh-use-approved-kex-ordered:
@@ -33336,7 +33375,7 @@ ssh-use-approved-kex-ordered:
         ubuntu2404: UBTU-24-100840
   reboot_survivable: 'yes'
   severity: medium
-  socle: SOCLE-CLD-SSH-028
+  socle: SOCLE-CLD-SSH-030
   ssg: sshd_use_approved_kex_ordered_stig
   title: Use Only FIPS 140-2 Validated Key Exchange Algorithms
 ssh-use-approved-macs-ordered:
@@ -33354,7 +33393,7 @@ ssh-use-approved-macs-ordered:
     stig: UBTU-22-255055
   reboot_survivable: 'yes'
   severity: medium
-  socle: SOCLE-CLD-SSH-029
+  socle: SOCLE-CLD-SSH-031
   ssg: sshd_use_approved_macs_ordered_stig
   title: Use Only FIPS 140-2 Validated MACs
 ssh-use-directory-configuration:
@@ -33371,7 +33410,7 @@ ssh-use-directory-configuration:
   levels: {}
   reboot_survivable: 'yes'
   severity: medium
-  socle: SOCLE-CLD-SSH-030
+  socle: SOCLE-CLD-SSH-032
   ssg: sshd_use_directory_configuration
   title: Distribute the SSH Server configuration to multiple files in a config directory.
 ssh-use-strong-ciphers:
@@ -33396,7 +33435,7 @@ ssh-use-strong-ciphers:
     resource: sshd_setting
     value: aes128-ctr,aes192-ctr,aes256-ctr,chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
   severity: medium
-  socle: SOCLE-CLD-SSH-031
+  socle: SOCLE-CLD-SSH-033
   ssg: sshd_use_strong_ciphers
   title: Use Only Strong Ciphers
 ssh-use-strong-kex:
@@ -33461,7 +33500,7 @@ ssh-use-strong-kex:
         resource: sshd_setting
         value: sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256
   severity: medium
-  socle: SOCLE-CLD-SSH-032
+  socle: SOCLE-CLD-SSH-034
   ssg: sshd_use_strong_kex
   title: Use Only Strong Key Exchange algorithms
 ssh-use-strong-macs:
@@ -33507,7 +33546,7 @@ ssh-use-strong-macs:
         resource: sshd_setting
         value: hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256
   severity: medium
-  socle: SOCLE-CLD-SSH-033
+  socle: SOCLE-CLD-SSH-035
   ssg: sshd_use_strong_macs
   title: Use Only Strong MACs
 sudo-custom-logfile:
@@ -33640,9 +33679,6 @@ sudo-noexec:
   ssg: sudo_add_noexec
   title: Ensure Privileged Escalated Commands Cannot Execute Other Commands - sudo NOEXEC
 sudo-remove-no-authenticate:
-  danger: 'Removing !authenticate/NOPASSWD makes sudo always prompt for a password:
-    any passwordless automation (including Pavois''s own management user) breaks.
-    Repoint automation to a key or password FIRST.'
   applicable_os:
   - debian12
   - debian13
@@ -33655,6 +33691,7 @@ sudo-remove-no-authenticate:
   - describe command('grep -rqE \'^[^#]*!authenticate\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
+  danger: 'Removing !authenticate/NOPASSWD makes sudo always prompt for a password: any passwordless automation (including Pavois''s own management user) breaks. Repoint automation to a key or password FIRST.'
   domain: Sudo
   evidence_type: persistent-config
   impact: 0.5
@@ -33723,9 +33760,6 @@ sudo-remove-no-authenticate:
   ssg: sudo_remove_no_authenticate
   title: Ensure Users Re-Authenticate for Privilege Escalation - sudo !authenticate
 sudo-require-authentication:
-  danger: 'Removing NOPASSWD makes sudo always prompt for a password: any passwordless
-    automation (including Pavois''s own management user) breaks. Repoint automation
-    to a key or password FIRST.'
   applicable_os:
   - almalinux9
   - debian12
@@ -33739,6 +33773,7 @@ sudo-require-authentication:
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
+  danger: 'Removing NOPASSWD makes sudo always prompt for a password: any passwordless automation (including Pavois''s own management user) breaks. Repoint automation to a key or password FIRST.'
   domain: Sudo
   evidence_type: persistent-config
   impact: 0.5
@@ -33775,15 +33810,13 @@ sudo-require-authentication:
       almalinux9: Ensure Users Re-Authenticate for Privilege Escalation - sudo
       debian12: Ensure Users Re-Authenticate for Privilege Escalation - sudo NOPASSWD
 sudo-require-reauthentication:
-  danger: 'Setting a finite timestamp_timeout forces periodic re-authentication; a
-    broken sudoers edit can lock you out of privilege escalation entirely. Always
-    edit via visudo and keep a root session open while applying.'
   applicable_os:
   - debian12
   check:
   - describe command('grep -rqE \'timestamp_timeout[[:space:]]*=[[:space:]]*-1\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
+  danger: Setting a finite timestamp_timeout forces periodic re-authentication; a broken sudoers edit can lock you out of privilege escalation entirely. Always edit via visudo and keep a root session open while applying.
   domain: Sudo
   evidence_type: persistent-config
   impact: 0.5
