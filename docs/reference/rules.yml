@@ -14822,7 +14822,7 @@ findloop-file-permissions-var-log:
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('timeout 90 find /var/log -type f -perm /037 2>/dev/null') do
+  - describe command('timeout 90 find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null') do
   - '  its(''stdout.strip'') { should eq '''' }'
   - end
   domain: Filesystem (scan)
@@ -14852,14 +14852,14 @@ findloop-file-permissions-var-log:
   remediation:
     '@os':
       ubuntu2204:
-        command: find /var/log -type f -perm /037 -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
+        command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
         name: fix-varlog-perms
-        not_if: test -z "$(find /var/log -type f -perm /037 2>/dev/null | head -1)"
+        not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
         resource: exec
       ubuntu2404:
-        command: find /var/log -type f -perm /037 -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
+        command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
         name: fix-varlog-perms
-        not_if: test -z "$(find /var/log -type f -perm /037 2>/dev/null | head -1)"
+        not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
         resource: exec
   severity: medium
   socle: SOCLE-CLD-FSP-189
@@ -14974,7 +14974,7 @@ findloop-permissions-local-var-log:
   applicable_os:
   - debian12
   check:
-  - describe command('timeout 90 find /var/log -type f -perm /037 2>/dev/null') do
+  - describe command('timeout 90 find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null') do
   - '  its(''stdout.strip'') { should eq '''' }'
   - end
   domain: Filesystem (scan)
@@ -14995,9 +14995,9 @@ findloop-permissions-local-var-log:
     pci-dss: 10.3.1
   reboot_survivable: 'yes'
   remediation:
-    command: find /var/log -type f -perm /037 -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
+    command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
     name: fix-varlog-perms
-    not_if: test -z "$(find /var/log -type f -perm /037 2>/dev/null | head -1)"
+    not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
     resource: exec
   severity: medium
   socle: SOCLE-CLD-FSP-192
@@ -15091,7 +15091,7 @@ findloop-rsyslog-files-permissions:
   - debian13
   - fedora
   check:
-  - describe command('timeout 90 find /var/log -type f -perm /037 2>/dev/null') do
+  - describe command('timeout 90 find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null') do
   - '  its(''stdout.strip'') { should eq '''' }'
   - end
   domain: Filesystem (scan)
@@ -15118,9 +15118,9 @@ findloop-rsyslog-files-permissions:
   remediation:
     '@os':
       debian13:
-        command: find /var/log -type f -perm /037 -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
+        command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
         name: fix-varlog-perms
-        not_if: test -z "$(find /var/log -type f -perm /037 2>/dev/null | head -1)"
+        not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
         resource: exec
   severity: medium
   socle: SOCLE-CLD-FSP-195
