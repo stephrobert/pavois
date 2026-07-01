@@ -480,8 +480,8 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 					// ufw` doesn't activate it; `ufw enable` does, hence an execute.
 					// full path: ufw lives in /usr/sbin, often absent from the converge PATH.
 					// Rules BEFORE enable (sous-chefs/firewall provider order) so SSH stays up;
-					// then enable+start the service so it's active THIS boot (the check is
-					// `systemctl is-active ufw`, and `ufw enable` alone doesn't start the unit).
+					// then `ufw enable` loads the default-deny ruleset (the pavois check looks for
+					// an INPUT drop policy), and enable+start keeps the unit up across reboots.
 					fwEnableCmd = "/usr/sbin/ufw allow OpenSSH 2>/dev/null; /usr/sbin/ufw allow 22/tcp 2>/dev/null; /usr/sbin/ufw --force enable; systemctl enable --now ufw"
 				} else {
 					setKV(svc, s(o["service"]), ":enable, :start", "service")
@@ -610,7 +610,10 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		n += len(k)
 	}
 	if fwEnableCmd != "" { // AFTER the package batch so ufw is installed; open SSH then enable
-		_, _ = fmt.Fprintf(&b, "execute 'pavois-firewall-enable' do\n  command %q\n  not_if 'systemctl is-active --quiet ufw'\nend\n\n", fwEnableCmd)
+		// Guard on ufw's OWN active state, NOT `systemctl is-active ufw`: installing the ufw
+		// package leaves the unit active-by-default while the firewall itself is disabled
+		// (ENABLED=no, no ruleset), so a systemd guard skips `ufw enable` and we ship no rules.
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-firewall-enable' do\n  command %q\n  not_if '/usr/sbin/ufw status 2>/dev/null | grep -q \"Status: active\"'\nend\n\n", fwEnableCmd)
 		n++
 	}
 	if _, ok := sysctl["kernel.modules_disabled"]; ok {
