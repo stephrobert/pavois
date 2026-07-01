@@ -67,6 +67,28 @@ CONFIG_PANIC_ON_OOPS=y
 # CONFIG_PROC_KCORE is not set
 # CONFIG_SLAB_MERGE_DEFAULT is not set
 # CONFIG_X86_VSYSCALL_EMULATION is not set
+
+# Netfilter — MUST be built-in (=y), never modules. The hardened profile applies
+# kernel.modules_disabled=1, so any =m firewall module can never load post-hardening;
+# and `make localmodconfig` (step 2) DROPS these entirely if they weren't loaded at
+# build time. Without them ufw/nft/iptables fail ("Table filter does not exist" /
+# "Protocol not supported") and firewall-default-deny can never pass (Lynis FIRE-4512).
+CONFIG_NETFILTER=y
+CONFIG_NF_CONNTRACK=y
+CONFIG_NF_TABLES=y
+CONFIG_NF_TABLES_INET=y
+CONFIG_NFT_CT=y
+CONFIG_NFT_COMPAT=y
+CONFIG_NETFILTER_XTABLES=y
+CONFIG_NETFILTER_XT_MATCH_CONNTRACK=y
+CONFIG_NETFILTER_XT_MATCH_STATE=y
+CONFIG_NETFILTER_XT_TARGET_REJECT=y
+CONFIG_IP_NF_IPTABLES=y
+CONFIG_IP_NF_FILTER=y
+CONFIG_IP_NF_TARGET_REJECT=y
+CONFIG_IP6_NF_IPTABLES=y
+CONFIG_IP6_NF_FILTER=y
+CONFIG_IP6_NF_TARGET_REJECT=y
 ```
 
 Then fix the **Debian signing keys** (the classic rebuild gotcha) and re-sync:
@@ -94,8 +116,14 @@ sudo reboot
 
 A VM/build host with **>= 12 cores, >= 12 GB RAM, >= 40 GB disk** builds comfortably.
 `MODULE_SIG_FORCE=y` means only modules built here (and signed) will load: if you used
-`localmodconfig`, make sure every module the host needs at boot (virtio, filesystem, network) was
-loaded when you ran it, or the VM may not come back. Snapshot first if your storage supports it.
+`localmodconfig`, make sure every module the host needs at boot (virtio, filesystem, network, **and
+netfilter** — see the fragment) was loaded when you ran it, or the VM may not come back / the
+firewall will not work. Snapshot first if your storage supports it.
+
+> **Netfilter is the classic `localmodconfig` casualty.** If the build host had no firewall active,
+> `localmodconfig` sets `NF_TABLES`/`IP_NF_FILTER` to `n` and the resulting kernel cannot run ufw,
+> nft or iptables at all. The netfilter block in the fragment forces them **built-in** so they
+> survive both `localmodconfig` and the hardened profile's `kernel.modules_disabled=1`.
 
 ## 4. Verify
 
