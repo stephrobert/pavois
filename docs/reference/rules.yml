@@ -20205,10 +20205,6 @@ misc-aide-build-database:
   domain: Hardening (misc)
   evidence_type: inventory-state
   impact: 0.5
-  note: 'Building the AIDE baseline (aideinit) hashes every file on the system: it is
-    resource-heavy (sustained I/O + CPU and several GB of RAM on a full host) and can
-    take minutes. harden apply runs it once, guarded so it is not rebuilt; give the
-    target enough RAM or the converge can stall.'
   levels:
     '@os':
       almalinux9:
@@ -20264,6 +20260,7 @@ misc-aide-build-database:
       '@os':
         ubuntu2204: UBTU-22-651015
         ubuntu2404: UBTU-24-100110
+  note: 'Building the AIDE baseline (aideinit) hashes every file on the system: it is resource-heavy (sustained I/O + CPU and several GB of RAM on a full host) and can take minutes. harden apply runs it once, guarded so it is not rebuilt; give the target enough RAM or the converge can stall.'
   reboot_survivable: 'yes'
   remediation:
     '@os':
@@ -21031,6 +21028,27 @@ misc-no-shelllogin-for-systemaccounts:
   socle: SOCLE-CLD-GEN-046
   ssg: no_shelllogin_for_systemaccounts
   title: Ensure that System Accounts Do Not Run a Shell Upon Login
+misc-postfix-anti-vrfy:
+  applicable_os:
+  - debian12
+  check:
+  - only_if { file('/usr/sbin/postconf').exist? }
+  - describe command('/usr/sbin/postconf -h disable_vrfy_command 2>/dev/null') do
+  - '  its(''stdout.strip'') { should cmp ''yes'' }'
+  - end
+  domain: Hardening (misc)
+  evidence_type: effective-runtime
+  impact: 0.5
+  levels: {}
+  reboot_survivable: 'no'
+  remediation:
+    command: postconf -e 'disable_vrfy_command = yes' 2>/dev/null && systemctl reload postfix 2>/dev/null; true
+    name: postfix-anti-vrfy
+    not_if: postconf -h disable_vrfy_command 2>/dev/null | grep -qi '^yes'
+    resource: exec
+  severity: medium
+  socle: SOCLE-CLD-GEN-047
+  title: Disable Postfix SMTP VRFY Command
 misc-postfix-banner:
   applicable_os:
   - debian12
@@ -21050,7 +21068,7 @@ misc-postfix-banner:
     not_if: '! postconf -h smtpd_banner 2>/dev/null | grep -qi mail_name'
     resource: exec
   severity: medium
-  socle: SOCLE-CLD-GEN-047
+  socle: SOCLE-CLD-GEN-048
   title: Hide Postfix SMTP Banner Software Name
 misc-postfix-network-listening-disabled:
   applicable_os:
@@ -21172,7 +21190,7 @@ misc-postfix-network-listening-disabled:
         not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
         resource: exec
   severity: medium
-  socle: SOCLE-CLD-GEN-048
+  socle: SOCLE-CLD-GEN-049
   ssg: postfix_network_listening_disabled
   title: Disable Postfix Network Listening
 misc-prefer-64bit-os:
@@ -21205,7 +21223,7 @@ misc-prefer-64bit-os:
         reason: the OS architecture cannot be changed in place, reinstall as 64-bit if needed
         resource: manual
   severity: medium
-  socle: SOCLE-CLD-GEN-049
+  socle: SOCLE-CLD-GEN-050
   ssg: prefer_64bit_os
   title: Prefer to use a 64-bit Operating System when supported
 misc-set-password-hashing-algorithm:
@@ -21273,7 +21291,7 @@ misc-set-password-hashing-algorithm:
         reason: changing the pam_unix hashing option edits the PAM stack, apply via pam-auth-update / review
         resource: manual
   severity: medium
-  socle: SOCLE-CLD-GEN-050
+  socle: SOCLE-CLD-GEN-051
   ssg:
     '@os':
       almalinux9: set_password_hashing_algorithm_passwordauth
@@ -21356,7 +21374,7 @@ misc-sshd-limit-user-access:
         reason: which users/groups may SSH is SITE-SPECIFIC, pavois cannot guess it
         resource: manual
   severity: medium
-  socle: SOCLE-CLD-GEN-051
+  socle: SOCLE-CLD-GEN-052
   ssg: sshd_limit_user_access
   title: Limit Users' SSH Access
 misc-sssd-ldap-configure-tls-reqcert:
@@ -21426,7 +21444,7 @@ misc-sssd-ldap-configure-tls-reqcert:
         reason: only applies if SSSD/LDAP is in use, set tls_reqcert in sssd.conf deliberately
         resource: manual
   severity: medium
-  socle: SOCLE-CLD-GEN-052
+  socle: SOCLE-CLD-GEN-053
   ssg: sssd_ldap_configure_tls_reqcert
   title: Configure SSSD LDAP Backend Client to Demand a Valid Certificate from the Server
 misc-sssd-ldap-start-tls:
@@ -21468,7 +21486,7 @@ misc-sssd-ldap-start-tls:
         reason: only applies if SSSD/LDAP is in use, enable StartTLS in sssd.conf deliberately
         resource: manual
   severity: high
-  socle: SOCLE-CLD-GEN-053
+  socle: SOCLE-CLD-GEN-054
   ssg: sssd_ldap_start_tls
   title: Configure SSSD LDAP Backend to Use TLS For All Transactions
 misc-use-pam-wheel-group-for-su:
@@ -21530,7 +21548,7 @@ misc-use-pam-wheel-group-for-su:
         not_if: grep -qE '^[^#]*pam_wheel\.so.*use_uid' /etc/pam.d/su
         resource: exec
   severity: medium
-  socle: SOCLE-CLD-GEN-054
+  socle: SOCLE-CLD-GEN-055
   ssg: use_pam_wheel_group_for_su
   title: Enforce Usage of pam_wheel with Group Parameter for su Authentication
 misc-wireless-disable-interfaces:
@@ -21601,7 +21619,7 @@ misc-wireless-disable-interfaces:
         reason: disabling wireless can cut connectivity, confirm the host is wired
         resource: manual
   severity: medium
-  socle: SOCLE-CLD-GEN-055
+  socle: SOCLE-CLD-GEN-056
   ssg: wireless_disable_interfaces
   title: Deactivate Wireless Network Interfaces
 mount-boot-efi-nosuid:
@@ -28964,7 +28982,7 @@ posture-aslr:
     resource: sysctl
     value: '2'
   severity: high
-  socle: SOCLE-CLD-GEN-056
+  socle: SOCLE-CLD-GEN-057
   ssg: posture-aslr
   title: Address space layout randomization (ASLR) maximized
 posture-core-dumps-limits:
@@ -29026,7 +29044,7 @@ posture-core-dumps-limits:
         path: /etc/security/limits.d/99-pavois-core.conf
         resource: file
   severity: medium
-  socle: SOCLE-CLD-GEN-057
+  socle: SOCLE-CLD-GEN-058
   ssg: posture-core-dumps-limits
   title: Core dumps disabled (limits hard core 0)
 posture-file-integrity:
@@ -29063,7 +29081,7 @@ posture-file-integrity:
         resource: manual
   requires_package: aide
   severity: medium
-  socle: SOCLE-CLD-GEN-058
+  socle: SOCLE-CLD-GEN-059
   ssg: posture-file-integrity
   title: A file integrity tool is installed
 posture-malware-scanner:
@@ -29101,7 +29119,7 @@ posture-malware-scanner:
         name: chkrootkit
         resource: package
   severity: medium
-  socle: SOCLE-CLD-GEN-059
+  socle: SOCLE-CLD-GEN-060
   ssg: posture-malware-scanner
   title: An anti-malware tool is installed
 posture-no-autologin:
@@ -29135,7 +29153,7 @@ posture-no-autologin:
         reason: disabling autologin is safe but verify no kiosk/appliance relies on it
         resource: manual
   severity: high
-  socle: SOCLE-CLD-GEN-060
+  socle: SOCLE-CLD-GEN-061
   ssg: posture-no-autologin
   title: No automatic login configured
 posture-no-compilers:
@@ -29171,7 +29189,7 @@ posture-no-compilers:
         reason: removing compilers can break legitimate builds, decide per host
         resource: manual
   severity: medium
-  socle: SOCLE-CLD-GEN-061
+  socle: SOCLE-CLD-GEN-062
   ssg: posture-no-compilers
   title: No compiler available (attack surface)
 posture-process-accounting:
@@ -29203,7 +29221,7 @@ posture-process-accounting:
         resource: exec
   requires_package: auditd
   severity: low
-  socle: SOCLE-CLD-GEN-062
+  socle: SOCLE-CLD-GEN-063
   ssg: posture-process-accounting
   title: Process accounting enabled
 posture-sysstat:
@@ -29229,8 +29247,10 @@ posture-sysstat:
   remediation:
     '@os':
       debian12:
-        name: sysstat
-        resource: package
+        command: DEBIAN_FRONTEND=noninteractive apt-get install -y sysstat >/dev/null 2>&1; sed -ri 's/^ENABLED=.*/ENABLED="true"/' /etc/default/sysstat 2>/dev/null; systemctl enable --now sysstat sysstat.service 2>/dev/null; true
+        name: enable-sysstat-collection
+        not_if: grep -q '^ENABLED="true"' /etc/default/sysstat 2>/dev/null
+        resource: exec
       debian13:
         name: sysstat
         resource: package
@@ -29241,7 +29261,7 @@ posture-sysstat:
         name: sysstat
         resource: package
   severity: low
-  socle: SOCLE-CLD-GEN-063
+  socle: SOCLE-CLD-GEN-064
   ssg: posture-sysstat
   title: System statistics collection (sysstat)
 pwquality-dcredit:
