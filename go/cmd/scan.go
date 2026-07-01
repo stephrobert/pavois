@@ -202,15 +202,15 @@ func runScan(cmd *cobra.Command, args []string) error {
 	}
 
 	jsonPath := scFrom
+	reportsDir := scOut
+	if reportsDir == "" {
+		reportsDir = filepath.Join(root, "reports")
+	}
+	ts := time.Now().Format("20060102-150405")
 	if jsonPath == "" {
-		out := scOut
-		if out == "" {
-			out = filepath.Join(root, "reports")
-		}
-		_ = os.MkdirAll(out, 0o750)
-		ts := time.Now().Format("20060102-150405")
-		jsonPath = filepath.Join(out, fmt.Sprintf("rapport-%s-%s-%s.json",
-			slug(machine), strings.TrimSuffix(transport, "://"), ts))
+		_ = os.MkdirAll(reportsDir, 0o750)
+		// Interim name; renamed to <date>_<os>_<target>_<grade> once the scan is graded.
+		jsonPath = filepath.Join(reportsDir, ".pavois-scanning-"+ts+".json")
 		rc, err := engine.Run(engine.Options{
 			Root: root, Target: target, Profile: scProfile, Engine: scEngine,
 			SSHPass: sshPass, SudoPass: sudoPass, Key: scKey, Sudo: sudo, JSONOut: jsonPath,
@@ -228,6 +228,27 @@ func runScan(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	res := audit.Evaluate(rep, machine, scStandard, scLevel)
+
+	// Name the report so a directory listing is self-describing and chronologically sortable:
+	//   <YYYYMMDD-HHMM>_<os>_<target>_<grade>.{json,html}   e.g. 20260701-1405_debian12_example-host_B
+	// Only when we produced the scan (not with --from, which points at the user's own file).
+	if scFrom == "" {
+		letter, _, _ := audit.GradeResult(res)
+		stamp := ts
+		if len(stamp) >= 13 {
+			stamp = stamp[:13] // YYYYMMDD-HHMM (drop the seconds)
+		}
+		osSlug := slug(strings.ReplaceAll(strings.TrimSpace(res.OS), " ", ""))
+		if osSlug == "" {
+			osSlug = "os"
+		}
+		final := filepath.Join(reportsDir, fmt.Sprintf("%s_%s_%s_%s.json", stamp, osSlug, slug(machine), letter))
+		if err := os.Rename(jsonPath, final); err == nil {
+			jsonPath = final
+		}
+	}
+
 	// Rapport HTML autoporté multi-normes (note A->E côté client), à côté du JSON.
 	htmlPath := strings.TrimSuffix(jsonPath, ".json") + ".html"
 	htmlStr, nctrl, nnorm := render.HTML(rep, render.Meta{
@@ -238,8 +259,6 @@ func runScan(cmd *cobra.Command, args []string) error {
 	if err := os.WriteFile(htmlPath, []byte(htmlStr), 0o600); err == nil {
 		_, _ = fmt.Fprintf(os.Stderr, "pavois: report %s (%d controls, %d standards)\n", htmlPath, nctrl, nnorm)
 	}
-
-	res := audit.Evaluate(rep, machine, scStandard, scLevel)
 	scope := scStandard
 	if scope == "" {
 		scope = "all standards"
