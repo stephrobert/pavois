@@ -655,6 +655,15 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 				"Defaults:"+noexecUser+" !noexec\n")
 		n++
 	}
+	// Refresh the apt cache ONCE before any install: on a stale cache apt reports "no
+	// installation candidate" and, with ignore_failure below, the package silently never
+	// installs (the control then fails forever). only_if apt-get so RHEL/dnf is unaffected.
+	if len(inst) > 0 {
+		// self-guarded command (no Chef guard: the string guard interpreter can trip a
+		// cinc-apply ChefPowerShell load bug); no-op on non-apt systems.
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-apt-update' do\n  command 'if command -v apt-get >/dev/null 2>&1; then apt-get update; fi'\n  ignore_failure true\nend\n\n")
+		n++
+	}
 	// One resource per package, each ignore_failure: cross-OS lists carry names absent here (RHEL
 	// httpd/bind...) or virtual packages (telnet/ftp) that error; a batch would abort the whole run
 	// on the first, and the real packages would never be installed/removed. Individual keeps them
