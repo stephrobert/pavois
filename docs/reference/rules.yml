@@ -23910,15 +23910,11 @@ pam-unix-no-nullok:
     cis: 5.3.3.4.1
   reboot_survivable: 'yes'
   remediation:
-    command: '# Remove ''nullok'' (allow empty passwords) from pam_unix. Keep a root session open while testing.
-
-      sed -ri ''s/\bnullok\b//g'' /etc/pam.d/common-auth /etc/pam.d/common-password
-
-      # verify a normal login still works in another session
-
-      '
-    reason: editing the PAM stack can lock you out, verify auth in a SECOND session before logout
-    resource: manual
+    command: grep -rlE '^[^#]*pam_unix\.so.*nullok' /etc/pam.d/ | while read -r f;
+      do sed -ri '/pam_unix\.so/ s/[[:space:]]*\bnullok\b//g' "$f"; done; true
+    not_if: '! grep -rqE ''^[^#]*pam_unix\.so.*nullok'' /etc/pam.d/'
+    resource: exec
+    name: pam-unix-remove-nullok
   severity: high
   socle: SOCLE-CLD-IAM-035
   ssg: no_empty_passwords_unix
