@@ -269,13 +269,15 @@ _AUDIT_RULES = "/etc/audit/rules.d/*.rules /etc/audit/audit.rules"
 
 
 def _audit_exp(p):
-    key = p["key"]  # regex token as authored, e.g. perm_mod or user\-modify
-    lit = key.replace("\\", "")  # literal key for the fixed-string on-disk grep (\- -> -)
+    key = p["key"]  # regex token as authored, e.g. perm_mod, user\-modify or (a|b)
+    # Extended-regex (-E) grep so an alternation key like (a|b) is honoured; -F would
+    # take the parentheses/pipe literally and never match. For a plain single key -E
+    # and -F are equivalent, so single-key controls are unaffected.
     return [
         "describe command('auditctl -l') do",
         f"  its('stdout') {{ should match(/(-k +|key=){key}\\b/) }}",
         "end",
-        f"describe command(\"grep -rhwsF '{lit}' {_AUDIT_RULES} 2>/dev/null\") do",
+        f"describe command(\"grep -rhwsE '{key}' {_AUDIT_RULES} 2>/dev/null\") do",
         "  its('stdout') { should match(/\\S/) }",
         "end",
     ]
@@ -290,7 +292,7 @@ def _audit_ext(L):
     ):
         return None
     m = re.fullmatch(r"  its\('stdout'\) \{ should match\(/\(-k \+\|key=\)(.+)\\b/\) \}", L[1])
-    m3 = re.fullmatch(r"describe command\(\"grep -rhwsF '.+' .*2>/dev/null\"\) do", L[3])
+    m3 = re.fullmatch(r"describe command\(\"grep -rhwsE '.+' .*2>/dev/null\"\) do", L[3])
     if m and m3 and L[4] == "  its('stdout') { should match(/\\S/) }":
         return {"name": "audit_rule", "key": m.group(1)}
     return None
