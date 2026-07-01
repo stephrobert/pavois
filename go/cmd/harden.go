@@ -617,6 +617,10 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			if files[path] == nil {
 				files[path] = map[string]string{}
 			}
+			if s(m["action"]) == "delete" { // ensure-absent: native `file ... action :delete`
+				files[path]["action"] = "delete"
+				break
+			}
 			for _, k := range []string{"owner", "group", "mode", "content", "verify"} {
 				if v, ok := m[k]; ok {
 					setKV(files[path], path+"#"+k, s(v), "file "+k)
@@ -653,6 +657,15 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			"# pavois: the management user runs cinc (which execs programs), so it must be\n"+
 				"# exempt from Defaults noexec. noexec still applies to every other user.\n"+
 				"Defaults:"+noexecUser+" !noexec\n")
+		n++
+	}
+	// Refresh the apt cache ONCE before any install: on a stale cache apt reports "no
+	// installation candidate" and, with ignore_failure below, the package silently never
+	// installs (the control then fails forever). only_if apt-get so RHEL/dnf is unaffected.
+	if len(inst) > 0 {
+		// self-guarded command (no Chef guard: the string guard interpreter can trip a
+		// cinc-apply ChefPowerShell load bug); no-op on non-apt systems.
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-apt-update' do\n  command 'if command -v apt-get >/dev/null 2>&1; then apt-get update; fi'\n  ignore_failure true\nend\n\n")
 		n++
 	}
 	// One resource per package, each ignore_failure: cross-OS lists carry names absent here (RHEL
@@ -769,6 +782,11 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	}
 	for _, path := range sortedFileKeys(files) {
 		fa := files[path]
+		if fa["action"] == "delete" { // ensure-absent (idempotent, no-op if already gone)
+			_, _ = fmt.Fprintf(&b, "file %q do\n  action :delete\nend\n\n", path)
+			n++
+			continue
+		}
 		_, hasContent := fa["content"]
 		_, _ = fmt.Fprintf(&b, "file %q do\n", path)
 		for _, k := range []string{"content", "owner", "group", "mode"} {
