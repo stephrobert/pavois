@@ -827,7 +827,9 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		n += len(sshd)
 	}
 	if auditRuleset && auditRules != "" { // Pavois audit ruleset -> one file
-		_, _ = fmt.Fprintf(&b, "file %q do\n  content %q\nend\n\n",
+		// mode 0640: audit rules must not be group/other-readable (fileperm-etc-audit-rulesd
+		// checks `find -perm /0137`); a default 0644 file is world-readable and fails it.
+		_, _ = fmt.Fprintf(&b, "file %q do\n  content %q\n  mode '0640'\nend\n\n",
 			"/etc/audit/rules.d/99-pavois.rules", auditRules)
 		// Deploying the file is not enough: the rules only auto-load at the NEXT boot, so without
 		// this every audit control fails until a reboot. Load now with augenrules. The ruleset ends
