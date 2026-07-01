@@ -4119,27 +4119,9 @@ file-at-deny-absent:
     pci-dss: 2.2.6
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: rm -f /etc/at.deny
-        name: rm-at-deny
-        not_if: test ! -e /etc/at.deny
-        resource: exec
-      debian13:
-        command: rm -f /etc/at.deny
-        name: rm-at-deny
-        not_if: test ! -e /etc/at.deny
-        resource: exec
-      ubuntu2204:
-        command: rm -f /etc/at.deny
-        name: rm-at-deny
-        not_if: test ! -e /etc/at.deny
-        resource: exec
-      ubuntu2404:
-        command: rm -f /etc/at.deny
-        name: rm-at-deny
-        not_if: test ! -e /etc/at.deny
-        resource: exec
+    action: delete
+    path: /etc/at.deny
+    resource: file
   requires_package: at
   severity: medium
   socle: SOCLE-CLD-GEN-026
@@ -4276,12 +4258,9 @@ file-cron-deny-absent:
     pci-dss: 2.2.6
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: rm -f /etc/cron.deny
-        name: remove-cron-deny
-        not_if: test ! -e /etc/cron.deny
-        resource: exec
+    action: delete
+    path: /etc/cron.deny
+    resource: file
   requires_package: cron
   severity: medium
   socle: SOCLE-CLD-GEN-028
@@ -20002,6 +19981,26 @@ logindefs-pass_warn_age:
   socle: SOCLE-CLD-IAM-021
   ssg: accounts_password_warn_age_login_defs
   title: Set Password Warning Age
+logindefs-sha-crypt-rounds:
+  applicable_os:
+  - debian12
+  check:
+  - describe login_defs do
+  - '  its(''SHA_CRYPT_MIN_ROUNDS'') { should cmp >= 10000 }'
+  - end
+  domain: Accounts (login.defs)
+  evidence_type: persistent-config
+  impact: 0.5
+  levels: {}
+  reboot_survivable: 'yes'
+  remediation:
+    file: /etc/login.defs
+    key: SHA_CRYPT_MIN_ROUNDS
+    resource: conf_line
+    sep: space
+    value: '65536'
+  socle: SOCLE-CLD-IAM-022
+  title: Set SHA_CRYPT minimum rounds in login.defs
 misc-account-unique-id:
   applicable_os:
   - almalinux9
@@ -23458,7 +23457,7 @@ pam-faillock-audit:
       ubuntu2404:
         resource: pam_faillock
   severity: medium
-  socle: SOCLE-CLD-IAM-022
+  socle: SOCLE-CLD-IAM-023
   ssg: accounts_passwords_pam_faillock_audit
   title: Account Lockouts Must Be Logged
 pam-faillock-deny-root:
@@ -23518,7 +23517,7 @@ pam-faillock-deny-root:
       ubuntu2404:
         resource: pam_faillock
   severity: medium
-  socle: SOCLE-CLD-IAM-023
+  socle: SOCLE-CLD-IAM-024
   ssg: accounts_passwords_pam_faillock_deny_root
   title: Configure the root Account for Failed Password Attempts
 pam-faillock-enabled:
@@ -23541,7 +23540,7 @@ pam-faillock-enabled:
   remediation:
     resource: pam_faillock
   severity: medium
-  socle: SOCLE-CLD-IAM-024
+  socle: SOCLE-CLD-IAM-025
   ssg: accounts_passwords_pam_faillock_enabled
   title: Ensure pam_faillock module is enabled
 pam-faillock-root-unlock-time:
@@ -23565,7 +23564,7 @@ pam-faillock-root-unlock-time:
     resource: keyval
     value: '60'
   severity: medium
-  socle: SOCLE-CLD-IAM-025
+  socle: SOCLE-CLD-IAM-026
   ssg: accounts_passwords_pam_faillock_root_unlock_time
   title: Set the faillock Root Account Unlock Time
 pam-pwhistory-enabled:
@@ -23592,7 +23591,7 @@ pam-pwhistory-enabled:
     module: pam_pwhistory.so
     resource: pam_line
   severity: medium
-  socle: SOCLE-CLD-IAM-026
+  socle: SOCLE-CLD-IAM-027
   ssg: accounts_password_pam_pwhistory_enabled
   title: Verify pam_pwhistory module is activated
 pam-pwhistory-enforce:
@@ -23619,7 +23618,7 @@ pam-pwhistory-enforce:
     module: pam_pwhistory.so
     resource: pam_line
   severity: medium
-  socle: SOCLE-CLD-IAM-027
+  socle: SOCLE-CLD-IAM-028
   ssg: accounts_password_pam_pwhistory_enforce_root
   title: Limit Password Reuse
 pam-pwhistory-enforce-for-root:
@@ -23648,7 +23647,7 @@ pam-pwhistory-enforce-for-root:
         module: pam_pwhistory.so
         resource: pam_line
   severity: medium
-  socle: SOCLE-CLD-IAM-028
+  socle: SOCLE-CLD-IAM-029
   ssg: accounts_password_pam_pwhistory_enforce_for_root
   title: Ensure Password History Is Enforced for the Root User
 pam-pwhistory-use-authtok:
@@ -23691,7 +23690,7 @@ pam-pwhistory-use-authtok:
         module: pam_pwhistory.so
         resource: pam_line
   severity: medium
-  socle: SOCLE-CLD-IAM-029
+  socle: SOCLE-CLD-IAM-030
   ssg: accounts_password_pam_pwhistory_use_authtok
   title: Enforce Password History with use_authtok
 pam-pwquality-enabled:
@@ -23722,7 +23721,7 @@ pam-pwquality-enabled:
         reason: installs + enables a PAM module, review which password profile you want
         resource: manual
   severity: medium
-  socle: SOCLE-CLD-IAM-030
+  socle: SOCLE-CLD-IAM-031
   ssg: accounts_password_pam_pwquality_enabled
   title: Verify pam_pwquality module is activated
 pam-remember-pwhistory-remember:
@@ -23760,7 +23759,7 @@ pam-remember-pwhistory-remember:
         reason: password-history policy choice, set the depth deliberately
         resource: manual
   severity: medium
-  socle: SOCLE-CLD-IAM-031
+  socle: SOCLE-CLD-IAM-032
   ssg:
     '@os':
       almalinux9: accounts_password_pam_pwhistory_remember_password_auth
@@ -23855,7 +23854,7 @@ pam-remember-unix-remember:
         reason: prefer pam_pwhistory for history; if using pam_unix remember, set it deliberately
         resource: manual
   severity: medium
-  socle: SOCLE-CLD-IAM-032
+  socle: SOCLE-CLD-IAM-033
   ssg: accounts_password_pam_unix_remember
   title: Limit Password Reuse
 pam-unix-authtok:
@@ -23888,7 +23887,7 @@ pam-unix-authtok:
         reason: PAM password-stack change, apply via pam-auth-update, not a hand edit
         resource: manual
   severity: medium
-  socle: SOCLE-CLD-IAM-033
+  socle: SOCLE-CLD-IAM-034
   ssg: accounts_password_pam_unix_authtok
   title: Require use_authtok for pam_unix.so
 pam-unix-enabled:
@@ -23927,7 +23926,7 @@ pam-unix-enabled:
         reason: PAM stack changes go through pam-auth-update, review the profile set
         resource: manual
   severity: medium
-  socle: SOCLE-CLD-IAM-034
+  socle: SOCLE-CLD-IAM-035
   ssg: accounts_password_pam_unix_enabled
   title: Verify pam_unix module is activated
 pam-unix-no-nullok:
@@ -23953,7 +23952,7 @@ pam-unix-no-nullok:
     not_if: '! grep -rqE ''^[^#]*pam_unix\.so.*nullok'' /etc/pam.d/'
     resource: exec
   severity: high
-  socle: SOCLE-CLD-IAM-035
+  socle: SOCLE-CLD-IAM-036
   ssg: no_empty_passwords_unix
   title: Disallow Empty Passwords in pam_unix (no nullok)
 pam-unix-no-remember:
@@ -23988,7 +23987,7 @@ pam-unix-no-remember:
         reason: moving history off pam_unix to pam_pwhistory is a stack change, use pam-auth-update
         resource: manual
   severity: medium
-  socle: SOCLE-CLD-IAM-036
+  socle: SOCLE-CLD-IAM-037
   ssg: accounts_password_pam_unix_no_remember
   title: Avoid using remember in pam_unix module
 pam-unix-rounds-password-auth:
@@ -24040,7 +24039,7 @@ pam-unix-rounds-password-auth:
         not_if: grep -qE "pam_unix\.so.*rounds=" /etc/pam.d/common-password
         resource: exec
   severity: medium
-  socle: SOCLE-CLD-IAM-037
+  socle: SOCLE-CLD-IAM-038
   ssg: accounts_password_pam_unix_rounds_password_auth
   title: Set number of Password Hashing Rounds - password-auth
 partition-boot:
@@ -24949,6 +24948,34 @@ pkg-apparmor-utils-installed:
     name: package
     package: apparmor-utils
   title: Ensure AppArmor Utils is installed
+pkg-apt-listbugs-installed:
+  applicable_os:
+  - debian12
+  domain: Packages
+  evidence_type: inventory-state
+  impact: 0.5
+  levels: {}
+  reboot_survivable: 'yes'
+  socle: SOCLE-CLD-PKG-009
+  template:
+    installed: true
+    name: package
+    package: apt-listbugs
+  title: Install apt-listbugs (critical-bug warnings before APT)
+pkg-apt-show-versions-installed:
+  applicable_os:
+  - debian12
+  domain: Packages
+  evidence_type: inventory-state
+  impact: 0.5
+  levels: {}
+  reboot_survivable: 'yes'
+  socle: SOCLE-CLD-PKG-010
+  template:
+    installed: true
+    name: package
+    package: apt-show-versions
+  title: Install apt-show-versions (patch management)
 pkg-audispd-plugins-installed:
   applicable_os:
   - debian12
@@ -24988,7 +25015,7 @@ pkg-audispd-plugins-installed:
     name: audispd-plugins
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-009
+  socle: SOCLE-CLD-PKG-011
   ssg:
     '@os':
       debian12: package_audit-audispd-plugins_installed
@@ -25095,7 +25122,7 @@ pkg-audit-installed:
         name: auditd
         resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-010
+  socle: SOCLE-CLD-PKG-012
   ssg: package_audit_installed
   template:
     '@os':
@@ -25185,7 +25212,7 @@ pkg-audit-libs-installed:
         name: auditd
         resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-011
+  socle: SOCLE-CLD-PKG-013
   ssg: package_audit-libs_installed
   template:
     '@os':
@@ -25238,7 +25265,7 @@ pkg-authselect-installed:
     name: authselect
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-012
+  socle: SOCLE-CLD-PKG-014
   ssg: package_authselect_installed
   template:
     installed: true
@@ -25263,7 +25290,7 @@ pkg-autofs-removed:
     name: autofs
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-013
+  socle: SOCLE-CLD-PKG-015
   ssg: package_autofs_removed
   template:
     installed: false
@@ -25292,7 +25319,7 @@ pkg-avahi-daemon-removed:
     name: avahi-daemon
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-014
+  socle: SOCLE-CLD-PKG-016
   ssg: package_avahi_removed
   template:
     installed: false
@@ -25335,7 +25362,7 @@ pkg-bind-removed:
     name: bind
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-015
+  socle: SOCLE-CLD-PKG-017
   ssg: package_bind_removed
   template:
     '@os':
@@ -25424,7 +25451,7 @@ pkg-cron-installed:
     name: cron
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-016
+  socle: SOCLE-CLD-PKG-018
   ssg: package_cron_installed
   template:
     '@os':
@@ -25475,7 +25502,7 @@ pkg-crypto-policies-installed:
     name: crypto-policies
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-017
+  socle: SOCLE-CLD-PKG-019
   ssg: package_crypto-policies_installed
   template:
     installed: true
@@ -25497,7 +25524,7 @@ pkg-cryptsetup-luks-installed:
     name: cryptsetup-luks
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-018
+  socle: SOCLE-CLD-PKG-020
   ssg: package_cryptsetup-luks_installed
   template:
     installed: true
@@ -25526,7 +25553,7 @@ pkg-cups-removed:
     name: cups
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-019
+  socle: SOCLE-CLD-PKG-021
   ssg: package_cups_removed
   template:
     installed: false
@@ -25556,13 +25583,27 @@ pkg-cyrus-imapd-removed:
     name: cyrus-imapd
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-020
+  socle: SOCLE-CLD-PKG-022
   ssg: package_cyrus-imapd_removed
   template:
     installed: false
     name: package
     package: cyrus-imapd
   title: Uninstall cyrus-imapd Package
+pkg-debsums-installed:
+  applicable_os:
+  - debian12
+  domain: Packages
+  evidence_type: inventory-state
+  impact: 0.5
+  levels: {}
+  reboot_survivable: 'yes'
+  socle: SOCLE-CLD-PKG-023
+  template:
+    installed: true
+    name: package
+    package: debsums
+  title: Install debsums (verify installed package files)
 pkg-dhcp-removed:
   applicable_os:
   - almalinux9
@@ -25625,7 +25666,7 @@ pkg-dhcp-removed:
     name: dhcp
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-021
+  socle: SOCLE-CLD-PKG-024
   ssg: package_dhcp_removed
   template:
     '@os':
@@ -25681,7 +25722,7 @@ pkg-dnf-automatic-installed:
     name: dnf-automatic
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-022
+  socle: SOCLE-CLD-PKG-025
   ssg: package_dnf-automatic_installed
   template:
     installed: true
@@ -25701,7 +25742,7 @@ pkg-dnf-plugin-subscription-manager-installed:
     name: dnf-plugin-subscription-manager
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-023
+  socle: SOCLE-CLD-PKG-026
   ssg: package_dnf-plugin-subscription-manager_installed
   template:
     installed: true
@@ -25734,7 +25775,7 @@ pkg-dnsmasq-removed:
     name: dnsmasq
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-024
+  socle: SOCLE-CLD-PKG-027
   ssg: package_dnsmasq_removed
   template:
     installed: false
@@ -25764,7 +25805,7 @@ pkg-dovecot-removed:
     name: dovecot
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-025
+  socle: SOCLE-CLD-PKG-028
   ssg: package_dovecot_removed
   template:
     '@os':
@@ -25801,6 +25842,20 @@ pkg-dovecot-removed:
         name: package
         package: dovecot-core
   title: Uninstall dovecot Package
+pkg-fail2ban-installed:
+  applicable_os:
+  - debian12
+  domain: Packages
+  evidence_type: inventory-state
+  impact: 0.5
+  levels: {}
+  reboot_survivable: 'yes'
+  socle: SOCLE-CLD-PKG-029
+  template:
+    installed: true
+    name: package
+    package: fail2ban
+  title: Install fail2ban (brute-force protection)
 pkg-fapolicyd-installed:
   applicable_os:
   - fedora
@@ -25816,7 +25871,7 @@ pkg-fapolicyd-installed:
     name: fapolicyd
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-026
+  socle: SOCLE-CLD-PKG-030
   ssg: package_fapolicyd_installed
   template:
     installed: true
@@ -25848,7 +25903,7 @@ pkg-firewalld-installed:
     name: firewalld
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-027
+  socle: SOCLE-CLD-PKG-031
   ssg: package_firewalld_installed
   template:
     installed: true
@@ -25892,7 +25947,7 @@ pkg-ftp-removed:
     name: ftp
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-028
+  socle: SOCLE-CLD-PKG-032
   ssg: package_ftp_removed
   template:
     installed: false
@@ -25935,7 +25990,7 @@ pkg-gdm-removed:
     name: gdm
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-029
+  socle: SOCLE-CLD-PKG-033
   ssg: package_gdm_removed
   template:
     '@os':
@@ -25985,7 +26040,7 @@ pkg-gnome-software-installed:
     name: gnome-software
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-030
+  socle: SOCLE-CLD-PKG-034
   ssg: package_gnome_software_installed
   template:
     installed: true
@@ -26006,7 +26061,7 @@ pkg-gnutls-utils-installed:
     name: gnutls-utils
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-031
+  socle: SOCLE-CLD-PKG-035
   ssg: package_gnutls-utils_installed
   template:
     installed: true
@@ -26027,7 +26082,7 @@ pkg-gssproxy-removed:
     name: gssproxy
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-032
+  socle: SOCLE-CLD-PKG-036
   ssg: package_gssproxy_removed
   template:
     installed: false
@@ -26070,7 +26125,7 @@ pkg-httpd-removed:
     name: httpd
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-033
+  socle: SOCLE-CLD-PKG-037
   ssg: package_httpd_removed
   template:
     '@os':
@@ -26133,7 +26188,7 @@ pkg-inetutils-telnet-removed:
     name: inetutils-telnet
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-034
+  socle: SOCLE-CLD-PKG-038
   ssg: package_inetutils-telnet_removed
   template:
     installed: false
@@ -26162,7 +26217,7 @@ pkg-inetutils-telnetd-removed:
     name: inetutils-telnetd
     resource: package
   severity: high
-  socle: SOCLE-CLD-PKG-035
+  socle: SOCLE-CLD-PKG-039
   ssg: package_inetutils-telnetd_removed
   template:
     installed: false
@@ -26183,7 +26238,7 @@ pkg-iprutils-removed:
     name: iprutils
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-036
+  socle: SOCLE-CLD-PKG-040
   ssg: package_iprutils_removed
   template:
     installed: false
@@ -26218,7 +26273,7 @@ pkg-kea-removed:
     name: kea
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-037
+  socle: SOCLE-CLD-PKG-041
   ssg: package_kea_removed
   template:
     installed: false
@@ -26238,7 +26293,7 @@ pkg-krb5-server-removed:
     name: krb5-server
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-038
+  socle: SOCLE-CLD-PKG-042
   ssg: package_krb5-server_removed
   template:
     installed: false
@@ -26258,7 +26313,7 @@ pkg-krb5-workstation-removed:
     name: krb5-workstation
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-039
+  socle: SOCLE-CLD-PKG-043
   ssg: package_krb5-workstation_removed
   template:
     installed: false
@@ -26283,7 +26338,7 @@ pkg-ldap-utils-removed:
     name: ldap-utils
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-040
+  socle: SOCLE-CLD-PKG-044
   ssg: package_openldap-clients_removed
   template:
     installed: false
@@ -26315,7 +26370,7 @@ pkg-libpam-apparmor-installed:
     name: libpam-apparmor
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-041
+  socle: SOCLE-CLD-PKG-045
   ssg: package_pam_apparmor_installed
   template:
     installed: true
@@ -26340,7 +26395,7 @@ pkg-libpam-modules-installed:
     name: libpam-modules
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-042
+  socle: SOCLE-CLD-PKG-046
   ssg: package_pam_modules_installed
   template:
     installed: true
@@ -26365,13 +26420,27 @@ pkg-libpam-runtime-installed:
     name: libpam-runtime
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-043
+  socle: SOCLE-CLD-PKG-047
   ssg: package_pam_runtime_installed
   template:
     installed: true
     name: package
     package: libpam-runtime
   title: Install pam-runtime Package
+pkg-libpam-tmpdir-installed:
+  applicable_os:
+  - debian12
+  domain: Packages
+  evidence_type: inventory-state
+  impact: 0.5
+  levels: {}
+  reboot_survivable: 'yes'
+  socle: SOCLE-CLD-PKG-048
+  template:
+    installed: true
+    name: package
+    package: libpam-tmpdir
+  title: Install libpam-tmpdir (per-session TMPDIR)
 pkg-libreport-plugin-logger-removed:
   applicable_os:
   - rhel8
@@ -26385,7 +26454,7 @@ pkg-libreport-plugin-logger-removed:
     name: libreport-plugin-logger
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-044
+  socle: SOCLE-CLD-PKG-049
   ssg: package_libreport-plugin-logger_removed
   template:
     installed: false
@@ -26405,7 +26474,7 @@ pkg-libreport-plugin-rhtsupport-removed:
     name: libreport-plugin-rhtsupport
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-045
+  socle: SOCLE-CLD-PKG-050
   ssg: package_libreport-plugin-rhtsupport_removed
   template:
     installed: false
@@ -26425,7 +26494,7 @@ pkg-libreswan-installed:
     name: libreswan
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-046
+  socle: SOCLE-CLD-PKG-051
   ssg: package_libreswan_installed
   template:
     installed: true
@@ -26452,7 +26521,7 @@ pkg-libselinux-installed:
     name: libselinux
     resource: package
   severity: high
-  socle: SOCLE-CLD-PKG-047
+  socle: SOCLE-CLD-PKG-052
   ssg: package_libselinux_installed
   template:
     installed: true
@@ -26494,7 +26563,7 @@ pkg-logrotate-installed:
     name: logrotate
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-048
+  socle: SOCLE-CLD-PKG-053
   ssg: package_logrotate_installed
   template:
     installed: true
@@ -26514,7 +26583,7 @@ pkg-mailx-installed:
     name: mailx
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-049
+  socle: SOCLE-CLD-PKG-054
   ssg: package_mailx_installed
   template:
     installed: true
@@ -26544,13 +26613,27 @@ pkg-mcstrans-removed:
     name: mcstrans
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-050
+  socle: SOCLE-CLD-PKG-055
   ssg: package_mcstrans_removed
   template:
     installed: false
     name: package
     package: mcstrans
   title: Uninstall mcstrans Package
+pkg-needrestart-installed:
+  applicable_os:
+  - debian12
+  domain: Packages
+  evidence_type: inventory-state
+  impact: 0.5
+  levels: {}
+  reboot_survivable: 'yes'
+  socle: SOCLE-CLD-PKG-056
+  template:
+    installed: true
+    name: package
+    package: needrestart
+  title: Install needrestart (detect stale libraries after upgrades)
 pkg-net-snmp-removed:
   applicable_os:
   - almalinux9
@@ -26588,7 +26671,7 @@ pkg-net-snmp-removed:
     name: net-snmp
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-051
+  socle: SOCLE-CLD-PKG-057
   ssg: package_net-snmp_removed
   template:
     installed: false
@@ -26610,7 +26693,7 @@ pkg-nfs-common-removed:
     name: nfs-common
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-052
+  socle: SOCLE-CLD-PKG-058
   ssg: package_nfs-common_removed
   template:
     installed: false
@@ -26639,7 +26722,7 @@ pkg-nfs-kernel-server-removed:
     name: nfs-kernel-server
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-053
+  socle: SOCLE-CLD-PKG-059
   ssg: package_nfs-kernel-server_removed
   template:
     installed: false
@@ -26660,7 +26743,7 @@ pkg-nfs-utils-removed:
     name: nfs-utils
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-054
+  socle: SOCLE-CLD-PKG-060
   ssg: package_nfs-utils_removed
   template:
     installed: false
@@ -26703,7 +26786,7 @@ pkg-nginx-removed:
     name: nginx
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-055
+  socle: SOCLE-CLD-PKG-061
   ssg: package_nginx_removed
   template:
     installed: false
@@ -26740,7 +26823,7 @@ pkg-nis-removed:
     name: nis
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-056
+  socle: SOCLE-CLD-PKG-062
   ssg: package_nis_removed
   template:
     installed: false
@@ -26766,7 +26849,7 @@ pkg-nss-sss-installed:
     name: nss-sss
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-057
+  socle: SOCLE-CLD-PKG-063
   ssg: package_nss_sss_installed
   template:
     installed: true
@@ -26786,7 +26869,7 @@ pkg-nss-tools-installed:
     name: nss-tools
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-058
+  socle: SOCLE-CLD-PKG-064
   ssg: package_nss-tools_installed
   template:
     installed: true
@@ -26825,7 +26908,7 @@ pkg-openldap-clients-removed:
     name: openldap-clients
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-059
+  socle: SOCLE-CLD-PKG-065
   ssg: package_openldap-clients_removed
   template:
     installed: false
@@ -26857,7 +26940,7 @@ pkg-opensc-installed:
     name: opensc
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-060
+  socle: SOCLE-CLD-PKG-066
   ssg: package_opensc_installed
   template:
     '@os':
@@ -26897,7 +26980,7 @@ pkg-openscap-scanner-installed:
     name: openscap-scanner
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-061
+  socle: SOCLE-CLD-PKG-067
   ssg: package_openscap-scanner_installed
   template:
     installed: true
@@ -26918,7 +27001,7 @@ pkg-openssh-clients-installed:
     name: openssh-clients
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-062
+  socle: SOCLE-CLD-PKG-068
   ssg: package_openssh-clients_installed
   template:
     installed: true
@@ -26950,7 +27033,7 @@ pkg-openssh-server-installed:
     name: openssh-server
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-063
+  socle: SOCLE-CLD-PKG-069
   ssg: package_openssh-server_installed
   template:
     installed: true
@@ -26973,7 +27056,7 @@ pkg-pam-installed:
     name: pam
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-064
+  socle: SOCLE-CLD-PKG-070
   ssg: package_pam_installed
   template:
     installed: true
@@ -27064,7 +27147,7 @@ pkg-pam-pwquality-installed:
         name: libpam-pwquality
         resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-065
+  socle: SOCLE-CLD-PKG-071
   ssg: package_pam_pwquality_installed
   template:
     '@os':
@@ -27120,7 +27203,7 @@ pkg-pam-sss-installed:
     name: pam-sss
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-066
+  socle: SOCLE-CLD-PKG-072
   ssg: package_pam_sss_installed
   template:
     installed: true
@@ -27140,7 +27223,7 @@ pkg-pcsc-lite-installed:
     name: pcsc-lite
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-067
+  socle: SOCLE-CLD-PKG-073
   ssg: package_pcsc-lite_installed
   template:
     installed: true
@@ -27161,7 +27244,7 @@ pkg-policycoreutils-installed:
     name: policycoreutils
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-068
+  socle: SOCLE-CLD-PKG-074
   ssg: package_policycoreutils_installed
   template:
     installed: true
@@ -27182,7 +27265,7 @@ pkg-policycoreutils-python-utils-installed:
     name: policycoreutils-python-utils
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-069
+  socle: SOCLE-CLD-PKG-075
   ssg: package_policycoreutils-python-utils_installed
   template:
     installed: true
@@ -27228,7 +27311,7 @@ pkg-postfix-installed:
     name: postfix
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-070
+  socle: SOCLE-CLD-PKG-076
   ssg: package_postfix_installed
   template:
     installed: true
@@ -27252,7 +27335,7 @@ pkg-prelink-removed:
     name: prelink
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-071
+  socle: SOCLE-CLD-PKG-077
   ssg: package_prelink_removed
   template:
     installed: false
@@ -27272,7 +27355,7 @@ pkg-python3-abrt-addon-removed:
     name: python3-abrt-addon
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-072
+  socle: SOCLE-CLD-PKG-078
   ssg: package_python3-abrt-addon_removed
   template:
     installed: false
@@ -27293,7 +27376,7 @@ pkg-rear-installed:
     name: rear
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-073
+  socle: SOCLE-CLD-PKG-079
   ssg: package_rear_installed
   template:
     installed: true
@@ -27315,7 +27398,7 @@ pkg-rng-tools-installed:
     name: rng-tools
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-074
+  socle: SOCLE-CLD-PKG-080
   ssg: package_rng-tools_installed
   template:
     installed: true
@@ -27340,7 +27423,7 @@ pkg-rpcbind-removed:
     name: rpcbind
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-075
+  socle: SOCLE-CLD-PKG-081
   ssg: package_rpcbind_removed
   template:
     installed: false
@@ -27388,7 +27471,7 @@ pkg-rsh-client-removed:
     name: rsh-client
     resource: package
   severity: critical
-  socle: SOCLE-CLD-PKG-076
+  socle: SOCLE-CLD-PKG-082
   ssg: package_rsh_removed
   template:
     installed: false
@@ -27414,7 +27497,7 @@ pkg-rsh-removed:
     name: rsh
     resource: package
   severity: critical
-  socle: SOCLE-CLD-PKG-077
+  socle: SOCLE-CLD-PKG-083
   ssg: package_rsh_removed
   template:
     installed: false
@@ -27456,7 +27539,7 @@ pkg-rsh-server-removed:
     name: rsh-server
     resource: package
   severity: critical
-  socle: SOCLE-CLD-PKG-078
+  socle: SOCLE-CLD-PKG-084
   ssg: package_rsh-server_removed
   template:
     installed: false
@@ -27486,7 +27569,7 @@ pkg-rsync-removed:
     name: rsync
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-079
+  socle: SOCLE-CLD-PKG-085
   ssg: package_rsync_removed
   template:
     '@os':
@@ -27536,7 +27619,7 @@ pkg-s-nail-installed:
     name: s-nail
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-080
+  socle: SOCLE-CLD-PKG-086
   ssg: package_s-nail_installed
   template:
     installed: true
@@ -27575,7 +27658,7 @@ pkg-samba-removed:
     name: samba
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-081
+  socle: SOCLE-CLD-PKG-087
   ssg: package_samba_removed
   template:
     installed: false
@@ -27596,7 +27679,7 @@ pkg-scap-security-guide-installed:
     name: scap-security-guide
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-082
+  socle: SOCLE-CLD-PKG-088
   ssg: package_scap-security-guide_installed
   template:
     installed: true
@@ -27618,7 +27701,7 @@ pkg-screen-installed:
     name: screen
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-083
+  socle: SOCLE-CLD-PKG-089
   ssg: package_screen_installed
   template:
     installed: true
@@ -27652,7 +27735,7 @@ pkg-sendmail-removed:
     name: sendmail
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-084
+  socle: SOCLE-CLD-PKG-090
   ssg: package_sendmail_removed
   template:
     installed: false
@@ -27681,7 +27764,7 @@ pkg-setroubleshoot-plugins-removed:
     name: setroubleshoot-plugins
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-085
+  socle: SOCLE-CLD-PKG-091
   ssg: package_setroubleshoot-plugins_removed
   template:
     installed: false
@@ -27713,7 +27796,7 @@ pkg-setroubleshoot-removed:
     name: setroubleshoot
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-086
+  socle: SOCLE-CLD-PKG-092
   ssg: package_setroubleshoot_removed
   template:
     installed: false
@@ -27742,7 +27825,7 @@ pkg-setroubleshoot-server-removed:
     name: setroubleshoot-server
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-087
+  socle: SOCLE-CLD-PKG-093
   ssg: package_setroubleshoot-server_removed
   template:
     installed: false
@@ -27771,7 +27854,7 @@ pkg-slapd-removed:
     name: slapd
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-088
+  socle: SOCLE-CLD-PKG-094
   ssg: package_openldap-servers_removed
   template:
     installed: false
@@ -27805,7 +27888,7 @@ pkg-snmpd-removed:
     name: snmpd
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-089
+  socle: SOCLE-CLD-PKG-095
   ssg: package_net-snmp_removed
   template:
     '@os':
@@ -27854,7 +27937,7 @@ pkg-squid-removed:
     name: squid
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-090
+  socle: SOCLE-CLD-PKG-096
   ssg: package_squid_removed
   template:
     installed: false
@@ -27888,7 +27971,7 @@ pkg-sssd-installed:
     name: sssd
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-091
+  socle: SOCLE-CLD-PKG-097
   ssg: package_sssd_installed
   template:
     installed: true
@@ -27909,7 +27992,7 @@ pkg-subscription-manager-installed:
     name: subscription-manager
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-092
+  socle: SOCLE-CLD-PKG-098
   ssg: package_subscription-manager_installed
   template:
     installed: true
@@ -27977,7 +28060,7 @@ pkg-sudo-installed:
     name: sudo
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-093
+  socle: SOCLE-CLD-PKG-099
   ssg: package_sudo_installed
   template:
     installed: true
@@ -28016,7 +28099,7 @@ pkg-systemd-journal-remote-installed:
     name: systemd-journal-remote
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-094
+  socle: SOCLE-CLD-PKG-100
   ssg: package_systemd-journal-remote_installed
   template:
     installed: true
@@ -28069,7 +28152,7 @@ pkg-talk-removed:
     name: talk
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-095
+  socle: SOCLE-CLD-PKG-101
   ssg: package_talk_removed
   template:
     installed: false
@@ -28094,7 +28177,7 @@ pkg-talk-server-removed:
     name: talk-server
     resource: package
   severity: critical
-  socle: SOCLE-CLD-PKG-096
+  socle: SOCLE-CLD-PKG-102
   ssg: package_talk-server_removed
   template:
     installed: false
@@ -28122,7 +28205,7 @@ pkg-talkd-removed:
     name: talkd
     resource: package
   severity: critical
-  socle: SOCLE-CLD-PKG-097
+  socle: SOCLE-CLD-PKG-103
   ssg: package_talk-server_removed
   template:
     installed: false
@@ -28186,7 +28269,7 @@ pkg-telnet-removed:
     name: telnet
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-098
+  socle: SOCLE-CLD-PKG-104
   ssg: package_telnet_removed
   template:
     installed: false
@@ -28261,7 +28344,7 @@ pkg-telnet-server-removed:
     name: telnet-server
     resource: package
   severity: critical
-  socle: SOCLE-CLD-PKG-099
+  socle: SOCLE-CLD-PKG-105
   ssg: package_telnet-server_removed
   template:
     installed: false
@@ -28303,7 +28386,7 @@ pkg-telnetd-removed:
     name: telnetd
     resource: package
   severity: high
-  socle: SOCLE-CLD-PKG-100
+  socle: SOCLE-CLD-PKG-106
   ssg: package_telnetd_removed
   template:
     installed: false
@@ -28332,7 +28415,7 @@ pkg-telnetd-ssl-removed:
     name: telnetd-ssl
     resource: package
   severity: high
-  socle: SOCLE-CLD-PKG-101
+  socle: SOCLE-CLD-PKG-107
   ssg: package_telnetd-ssl_removed
   template:
     installed: false
@@ -28394,7 +28477,7 @@ pkg-tftp-removed:
     name: tftp
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-102
+  socle: SOCLE-CLD-PKG-108
   ssg: package_tftp_removed
   template:
     installed: false
@@ -28465,7 +28548,7 @@ pkg-tftp-server-removed:
     name: tftp-server
     resource: package
   severity: critical
-  socle: SOCLE-CLD-PKG-103
+  socle: SOCLE-CLD-PKG-109
   ssg: package_tftp-server_removed
   template:
     '@os':
@@ -28526,7 +28609,7 @@ pkg-tmux-installed:
     name: tmux
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-104
+  socle: SOCLE-CLD-PKG-110
   ssg: package_tmux_installed
   template:
     installed: true
@@ -28550,7 +28633,7 @@ pkg-tnftp-removed:
     name: tnftp
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-105
+  socle: SOCLE-CLD-PKG-111
   ssg: package_tnftp_removed
   template:
     installed: false
@@ -28571,7 +28654,7 @@ pkg-tuned-removed:
     name: tuned
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-106
+  socle: SOCLE-CLD-PKG-112
   ssg: package_tuned_removed
   template:
     installed: false
@@ -28592,7 +28675,7 @@ pkg-usbguard-installed:
     name: usbguard
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-107
+  socle: SOCLE-CLD-PKG-113
   ssg: package_usbguard_installed
   template:
     installed: true
@@ -28638,7 +28721,7 @@ pkg-vsftpd-removed:
     name: vsftpd
     resource: package
   severity: high
-  socle: SOCLE-CLD-PKG-108
+  socle: SOCLE-CLD-PKG-114
   ssg: package_vsftpd_removed
   template:
     installed: false
@@ -28702,7 +28785,7 @@ pkg-xinetd-removed:
     name: xinetd
     resource: package
   severity: low
-  socle: SOCLE-CLD-PKG-109
+  socle: SOCLE-CLD-PKG-115
   ssg: package_xinetd_removed
   template:
     installed: false
@@ -28726,7 +28809,7 @@ pkg-xorg-x11-server-Xwayland-removed:
     name: xorg-x11-server-Xwayland
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-110
+  socle: SOCLE-CLD-PKG-116
   ssg: package_xorg-x11-server-Xwayland_removed
   template:
     installed: false
@@ -28782,7 +28865,7 @@ pkg-xorg-x11-server-common-removed:
     name: xorg-x11-server-common
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-111
+  socle: SOCLE-CLD-PKG-117
   ssg: package_xorg-x11-server-common_removed
   template:
     installed: false
@@ -28829,7 +28912,7 @@ pkg-xserver-xorg-core-removed:
     name: xserver-xorg-core
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-112
+  socle: SOCLE-CLD-PKG-118
   ssg: package_xorg-x11-server-common_removed
   template:
     '@os':
@@ -28877,7 +28960,7 @@ pkg-ypbind-removed:
     name: ypbind
     resource: package
   severity: medium
-  socle: SOCLE-CLD-PKG-113
+  socle: SOCLE-CLD-PKG-119
   ssg: package_ypbind_removed
   template:
     installed: false
@@ -28950,7 +29033,7 @@ pkg-ypserv-removed:
     name: ypserv
     resource: package
   severity: critical
-  socle: SOCLE-CLD-PKG-114
+  socle: SOCLE-CLD-PKG-120
   ssg: package_ypserv_removed
   template:
     installed: false
@@ -29339,7 +29422,7 @@ pwquality-dcredit:
     resource: keyval
     value: '-1'
   severity: medium
-  socle: SOCLE-CLD-IAM-038
+  socle: SOCLE-CLD-IAM-039
   ssg: accounts_password_pam_dcredit
   title: Ensure PAM Enforces Password Requirements - Minimum Digit Characters
 pwquality-dictcheck:
@@ -29379,7 +29462,7 @@ pwquality-dictcheck:
     resource: keyval
     value: '1'
   severity: medium
-  socle: SOCLE-CLD-IAM-039
+  socle: SOCLE-CLD-IAM-040
   ssg: accounts_password_pam_dictcheck
   title: Ensure PAM Enforces Password Requirements - Prevent the Use of Dictionary Words
 pwquality-difok:
@@ -29419,7 +29502,7 @@ pwquality-difok:
     resource: keyval
     value: '2'
   severity: medium
-  socle: SOCLE-CLD-IAM-040
+  socle: SOCLE-CLD-IAM-041
   ssg: accounts_password_pam_difok
   title: Ensure PAM Enforces Password Requirements - Minimum Different Characters
 pwquality-enforce-root:
@@ -29450,7 +29533,7 @@ pwquality-enforce-root:
     resource: keyval
     value: '1'
   severity: medium
-  socle: SOCLE-CLD-IAM-041
+  socle: SOCLE-CLD-IAM-042
   ssg: accounts_password_pam_enforce_root
   title: Enforce Password Quality for the root User
 pwquality-enforcing:
@@ -29479,7 +29562,7 @@ pwquality-enforcing:
     reason: removing enforcing=0 makes pwquality reject weak passwords, verify your policy first
     resource: manual
   severity: medium
-  socle: SOCLE-CLD-IAM-042
+  socle: SOCLE-CLD-IAM-043
   ssg: accounts_password_pam_enforcing
   title: Ensure pwquality Enforces Password Complexity (not warn-only)
 pwquality-lcredit:
@@ -29557,7 +29640,7 @@ pwquality-lcredit:
     resource: keyval
     value: '-1'
   severity: medium
-  socle: SOCLE-CLD-IAM-043
+  socle: SOCLE-CLD-IAM-044
   ssg: accounts_password_pam_lcredit
   title: Ensure PAM Enforces Password Requirements - Minimum Lowercase Characters
 pwquality-maxclassrepeat:
@@ -29579,7 +29662,7 @@ pwquality-maxclassrepeat:
     resource: keyval
     value: '4'
   severity: medium
-  socle: SOCLE-CLD-IAM-044
+  socle: SOCLE-CLD-IAM-045
   ssg: accounts_password_pam_maxclassrepeat
   title: Ensure PAM Enforces Password Requirements - Maximum Consecutive Repeating Characters from Same Character Class
 pwquality-maxrepeat:
@@ -29614,7 +29697,7 @@ pwquality-maxrepeat:
     resource: keyval
     value: '3'
   severity: medium
-  socle: SOCLE-CLD-IAM-045
+  socle: SOCLE-CLD-IAM-046
   ssg: accounts_password_pam_maxrepeat
   title: Set Password Maximum Consecutive Repeating Characters
 pwquality-maxsequence:
@@ -29644,7 +29727,7 @@ pwquality-maxsequence:
     resource: keyval
     value: '3'
   severity: medium
-  socle: SOCLE-CLD-IAM-046
+  socle: SOCLE-CLD-IAM-047
   ssg: accounts_password_pam_maxsequence
   title: Limit the maximum number of sequential characters in passwords
 pwquality-minclass:
@@ -29710,7 +29793,7 @@ pwquality-minclass:
     resource: keyval
     value: '4'
   severity: medium
-  socle: SOCLE-CLD-IAM-047
+  socle: SOCLE-CLD-IAM-048
   ssg: accounts_password_pam_minclass
   title: Ensure PAM Enforces Password Requirements - Minimum Different Categories
 pwquality-minlen:
@@ -29863,7 +29946,7 @@ pwquality-minlen:
         resource: keyval
         value: '15'
   severity: medium
-  socle: SOCLE-CLD-IAM-048
+  socle: SOCLE-CLD-IAM-049
   ssg: accounts_password_pam_minlen
   title: Ensure PAM Enforces Password Requirements - Minimum Length
 pwquality-ocredit:
@@ -29927,7 +30010,7 @@ pwquality-ocredit:
     resource: keyval
     value: '-1'
   severity: medium
-  socle: SOCLE-CLD-IAM-049
+  socle: SOCLE-CLD-IAM-050
   ssg: accounts_password_pam_ocredit
   title: Ensure PAM Enforces Password Requirements - Minimum Special Characters
 pwquality-retry:
@@ -29966,7 +30049,7 @@ pwquality-retry:
     resource: keyval
     value: '3'
   severity: medium
-  socle: SOCLE-CLD-IAM-050
+  socle: SOCLE-CLD-IAM-051
   ssg: accounts_password_pam_retry
   title: Ensure PAM Enforces Password Requirements - Authentication Retry Prompts Permitted Per-Session
 pwquality-ucredit:
@@ -30034,7 +30117,7 @@ pwquality-ucredit:
     resource: keyval
     value: '-1'
   severity: medium
-  socle: SOCLE-CLD-IAM-051
+  socle: SOCLE-CLD-IAM-052
   ssg: accounts_password_pam_ucredit
   title: Ensure PAM Enforces Password Requirements - Minimum Uppercase Characters
 repgroupowner-etc-ipsecd:
@@ -30370,7 +30453,7 @@ root-path:
         reason: fixing root's PATH may be in a shell profile or sudoers secure_path, review the source
         resource: manual
   severity: medium
-  socle: SOCLE-CLD-IAM-052
+  socle: SOCLE-CLD-IAM-053
   ssg:
     '@os':
       debian12: root_path_all_dirs
@@ -30414,7 +30497,7 @@ root-path-no-dot:
     cis: 5.4.2.5
   reboot_survivable: 'yes'
   severity: medium
-  socle: SOCLE-CLD-IAM-053
+  socle: SOCLE-CLD-IAM-054
   ssg: root_path_no_dot
   title: Ensure that Root's Path Does Not Include Relative Paths or Null Directories
 service-apport-disabled:
@@ -33657,7 +33740,7 @@ sudo-custom-logfile:
     resource: file
     verify: visudo -cf %{path}
   severity: low
-  socle: SOCLE-CLD-IAM-054
+  socle: SOCLE-CLD-IAM-055
   ssg: sudo_custom_logfile
   title: Ensure Sudo Logfile Exists - sudo logfile
 sudo-env-reset:
@@ -33688,7 +33771,7 @@ sudo-env-reset:
     resource: file
     verify: visudo -cf %{path}
   severity: medium
-  socle: SOCLE-CLD-IAM-055
+  socle: SOCLE-CLD-IAM-056
   ssg: sudo_add_env_reset
   title: Ensure sudo Runs In A Minimal Environment - sudo env_reset
 sudo-ignore-dot:
@@ -33719,7 +33802,7 @@ sudo-ignore-dot:
     resource: file
     verify: visudo -cf %{path}
   severity: medium
-  socle: SOCLE-CLD-IAM-056
+  socle: SOCLE-CLD-IAM-057
   ssg: sudo_add_ignore_dot
   title: Ensure sudo Ignores Commands In Current Dir - sudo ignore_dot
 sudo-noexec:
@@ -33754,7 +33837,7 @@ sudo-noexec:
     resource: file
     verify: visudo -cf %{path}
   severity: high
-  socle: SOCLE-CLD-IAM-057
+  socle: SOCLE-CLD-IAM-058
   ssg: sudo_add_noexec
   title: Ensure Privileged Escalated Commands Cannot Execute Other Commands - sudo NOEXEC
 sudo-remove-no-authenticate:
@@ -33835,7 +33918,7 @@ sudo-remove-no-authenticate:
         reason: sudoers edits risk lockout, always edit via visudo
         resource: manual
   severity: medium
-  socle: SOCLE-CLD-IAM-058
+  socle: SOCLE-CLD-IAM-059
   ssg: sudo_remove_no_authenticate
   title: Ensure Users Re-Authenticate for Privilege Escalation - sudo !authenticate
 sudo-require-authentication:
@@ -33882,7 +33965,7 @@ sudo-require-authentication:
         reason: dropping NOPASSWD breaks passwordless automation (incl. pavois), repoint it first
         resource: manual
   severity: medium
-  socle: SOCLE-CLD-IAM-059
+  socle: SOCLE-CLD-IAM-060
   ssg: sudo_require_authentication
   title:
     '@os':
@@ -33917,7 +34000,7 @@ sudo-require-reauthentication:
     reason: sudoers edits risk lockout, always edit via visudo
     resource: manual
   severity: medium
-  socle: SOCLE-CLD-IAM-060
+  socle: SOCLE-CLD-IAM-061
   ssg: sudo_require_reauthentication
   title: Require Re-Authentication When Using the sudo Command - timestamp_timeout
 sudo-requiretty:
@@ -33952,7 +34035,7 @@ sudo-requiretty:
     resource: file
     verify: visudo -cf %{path}
   severity: medium
-  socle: SOCLE-CLD-IAM-061
+  socle: SOCLE-CLD-IAM-062
   ssg: sudo_add_requiretty
   title: Ensure Only Users Logged In To Real tty Can Execute Sudo - sudo requiretty
 sudo-umask:
@@ -33985,7 +34068,7 @@ sudo-umask:
     resource: file
     verify: visudo -cf %{path}
   severity: medium
-  socle: SOCLE-CLD-IAM-062
+  socle: SOCLE-CLD-IAM-063
   ssg: sudo_add_umask
   title: Ensure sudo umask is appropriate - sudo umask
 sudo-use-pty:
@@ -34058,7 +34141,7 @@ sudo-use-pty:
     resource: file
     verify: visudo -cf %{path}
   severity: medium
-  socle: SOCLE-CLD-IAM-063
+  socle: SOCLE-CLD-IAM-064
   ssg: sudo_add_use_pty
   title: Ensure Only Users Logged In To Real tty Can Execute Sudo - sudo use_pty
 sysctl-dev-tty-ldisc-autoload:
@@ -34069,6 +34152,10 @@ sysctl-dev-tty-ldisc-autoload:
   impact: 0.5
   levels: {}
   reboot_survivable: 'yes'
+  remediation:
+    key: dev.tty.ldisc_autoload
+    resource: sysctl
+    value: '0'
   severity: medium
   socle: SOCLE-CLD-SYS-001
   template:
@@ -37551,7 +37638,7 @@ umask-etc-bashrc:
         module: umask 077
         resource: pam_line
   severity: medium
-  socle: SOCLE-CLD-IAM-064
+  socle: SOCLE-CLD-IAM-065
   ssg: accounts_umask_etc_bashrc
   thresholds:
     '@os':
@@ -37597,7 +37684,7 @@ umask-etc-csh-cshrc:
   levels: {}
   reboot_survivable: 'yes'
   severity: medium
-  socle: SOCLE-CLD-IAM-065
+  socle: SOCLE-CLD-IAM-066
   ssg: accounts_umask_etc_csh_cshrc
   title: Ensure the Default C Shell Umask is Set Correctly
 umask-etc-login-defs:
@@ -37730,7 +37817,7 @@ umask-etc-login-defs:
         sep: space
         value: '077'
   severity: medium
-  socle: SOCLE-CLD-IAM-066
+  socle: SOCLE-CLD-IAM-067
   ssg: accounts_umask_etc_login_defs
   thresholds:
     '@os':
@@ -37900,7 +37987,7 @@ umask-etc-profile:
         path: /etc/profile.d/99-pavois-umask.sh
         resource: file
   severity: medium
-  socle: SOCLE-CLD-IAM-067
+  socle: SOCLE-CLD-IAM-068
   ssg: accounts_umask_etc_profile
   thresholds:
     '@os':
