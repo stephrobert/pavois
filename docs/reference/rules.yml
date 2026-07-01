@@ -16894,11 +16894,10 @@ kconfig-gcc-plugin-structleak:
   severity: medium
   socle: SOCLE-CLD-KRN-037
   ssg: kernel_config_gcc_plugin_structleak
-  template:
-    name: kconfig
-    option: CONFIG_GCC_PLUGIN_STRUCTLEAK
-    set: true
-    value: y
+  check:
+  - describe command("grep -hE '^(CONFIG_GCC_PLUGIN_STRUCTLEAK|CONFIG_INIT_STACK_ALL_ZERO)=y' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep -E '^(CONFIG_GCC_PLUGIN_STRUCTLEAK|CONFIG_INIT_STACK_ALL_ZERO)=y'") do
+  - '  its(''stdout'') { should match(/=y$/) }'
+  - end
   title: Force initialization of variables containing userspace addresses
 kconfig-gcc-plugin-structleak-byref-all:
   applicable_os:
@@ -16929,11 +16928,10 @@ kconfig-gcc-plugin-structleak-byref-all:
   severity: medium
   socle: SOCLE-CLD-KRN-038
   ssg: kernel_config_gcc_plugin_structleak_byref_all
-  template:
-    name: kconfig
-    option: CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL
-    set: true
-    value: y
+  check:
+  - describe command("grep -hE '^(CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL|CONFIG_INIT_STACK_ALL_ZERO)=y' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep -E '^(CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL|CONFIG_INIT_STACK_ALL_ZERO)=y'") do
+  - '  its(''stdout'') { should match(/=y$/) }'
+  - end
   title: zero-init everything passed by reference
 kconfig-hardened-usercopy:
   applicable_os:
@@ -29262,15 +29260,13 @@ posture-no-compilers:
   remediation:
     '@os':
       debian12:
-        command: '# Restrict (chmod 750) or remove compilers so non-root users cannot build. Removing may break dev needs.
-
-          for c in gcc cc g++ clang tcc cpp; do p=$(command -v "$c" 2>/dev/null) && echo "$p"; done
-
-          # then EITHER restrict each: chmod 750 <path> ; OR remove: apt-get remove -y gcc g++ clang tcc
-
-          '
-        reason: removing compilers can break legitimate builds, decide per host
-        resource: manual
+        command: for p in gcc cpp g++ gcc-12 g++-12 cpp-12 clang tcc tcc-dev;
+          do dpkg -l "$p" 2>/dev/null | grep -q '^ii' && DEBIAN_FRONTEND=noninteractive
+          apt-get purge -y "$p" >/dev/null 2>&1; done; true
+        name: purge-compilers
+        not_if: 'for c in gcc cc g++ clang tcc; do command -v "$c" >/dev/null 2>&1
+          && exit 1; done; exit 0'
+        resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-062
   ssg: posture-no-compilers
