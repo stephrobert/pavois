@@ -617,6 +617,10 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			if files[path] == nil {
 				files[path] = map[string]string{}
 			}
+			if s(m["action"]) == "delete" { // ensure-absent: native `file ... action :delete`
+				files[path]["action"] = "delete"
+				break
+			}
 			for _, k := range []string{"owner", "group", "mode", "content", "verify"} {
 				if v, ok := m[k]; ok {
 					setKV(files[path], path+"#"+k, s(v), "file "+k)
@@ -778,6 +782,11 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	}
 	for _, path := range sortedFileKeys(files) {
 		fa := files[path]
+		if fa["action"] == "delete" { // ensure-absent (idempotent, no-op if already gone)
+			_, _ = fmt.Fprintf(&b, "file %q do\n  action :delete\nend\n\n", path)
+			n++
+			continue
+		}
 		_, hasContent := fa["content"]
 		_, _ = fmt.Fprintf(&b, "file %q do\n", path)
 		for _, k := range []string{"content", "owner", "group", "mode"} {
