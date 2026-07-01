@@ -28,8 +28,8 @@ def _sysctl_exp(p):
     pat = f"^[[:space:]]*{k}[[:space:]]*=[[:space:]]*{vtok}([[:space:]]|$)"
     paths = _SYSCTL_PATHS
     # kernel.modules_disabled is a one-way switch applied LATE via a systemd oneshot (a boot-time
-    # sysctl.d drop-in would lock module loading before /boot/efi mounts -> brick). So its persistent
-    # source is the oneshot's `sysctl -w key=value`, not a sysctl.d file: accept both.
+    # sysctl.d drop-in would lock module loading before /boot/efi mounts -> brick). Its persistent
+    # source is then the oneshot's `sysctl -w key=value`, not a sysctl.d file: accept both.
     if k == "kernel.modules_disabled":
         pat = f"{k}[[:space:]]*=[[:space:]]*{vtok}"
         paths = _SYSCTL_PATHS + " /etc/systemd/system/*.service"
