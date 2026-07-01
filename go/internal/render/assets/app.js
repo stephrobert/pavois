@@ -108,6 +108,9 @@ function detail(c,norm){
     var ev=EVIDENCE[c.evidence];
     h+='<p class="evid evid-'+c.evidence+'"><span class="evid-k">Preuve</span> <b>'+esc(ev.l)+'</b> — '+esc(ev.n)+'</p>';
   }
+  if(c.danger){
+    h+='<p class="danger"><span class="danger-k">⚠ Danger</span> '+esc(c.danger)+'</p>';
+  }
   // mappings normatifs : la norme active est mise en avant
   var tags='';
   for(var k in c.norms){tags+='<span class="tag'+(k===norm?' on':'')+'">'+esc(LABELS[k]||k)+' '+esc(c.norms[k])+'</span>';}

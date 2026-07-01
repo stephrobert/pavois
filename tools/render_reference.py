@@ -51,6 +51,8 @@ def render_control(cid, e):
         out.append(f"  tag evidence: {_rb(e['evidence_type'])}")
     if e.get("reboot_survivable"):
         out.append(f"  tag reboot: {_rb(e['reboot_survivable'])}")
+    if e.get("danger"):
+        out.append(f"  tag danger: {_rb(e['danger'])}")
     if e.get("requires_companion_control"):
         out.append(f"  tag companion: {_rb(e['requires_companion_control'])}")
     for k in NORMS:

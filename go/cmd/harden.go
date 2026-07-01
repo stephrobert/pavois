@@ -58,6 +58,8 @@ var (
 	haScan     bool
 	haReboot   bool
 	haStandard string
+
+	haIUnderstandDanger bool
 )
 
 var hardenApplyCmd = &cobra.Command{
@@ -85,6 +87,7 @@ func init() {
 	hardenApplyCmd.Flags().BoolVar(&haScan, "scan", false, "after converging, re-scan and generate a fresh report + grade")
 	hardenApplyCmd.Flags().BoolVar(&haReboot, "reboot", false, "when changes need it, reboot the target via a Chef `reboot` resource at the end of the run")
 	hardenApplyCmd.Flags().StringVar(&haStandard, "standard", "", "apply each rule's value for THIS standard (bp28|cis|nist|…); default = the most-secure value")
+	hardenApplyCmd.Flags().BoolVar(&haIUnderstandDanger, "i-understand-danger", false, "acknowledge ALL `danger:` items at once (brick/lockout risk); otherwise set `acknowledged: true` per item in the plan")
 	hardenCmd.AddCommand(hardenApplyCmd)
 
 	rootCmd.AddCommand(hardenCmd)
@@ -110,6 +113,7 @@ type refControl struct {
 	Severity        string         `yaml:"severity"`
 	Remediation     map[string]any `yaml:"remediation"`
 	RequiresPackage string         `yaml:"requires_package"`
+	Danger          string         `yaml:"danger"`
 }
 type refDoc struct {
 	Rules map[string]refControl `yaml:"rules"`
@@ -120,6 +124,8 @@ type planRule struct {
 	Domain          string         `yaml:"domain"`
 	Severity        string         `yaml:"severity"`
 	Status          string         `yaml:"status"`
+	Danger          string         `yaml:"danger,omitempty"`       // brick/lockout risk, shown before apply
+	Acknowledged    *bool          `yaml:"acknowledged,omitempty"` // must be flipped true (or --i-understand-danger) to apply a danger item
 	Apply           *bool          `yaml:"apply,omitempty"`
 	Choose          *string        `yaml:"choose,omitempty"`
 	Remediation     map[string]any `yaml:"remediation,omitempty"`
@@ -231,6 +237,7 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 				pr.Title = c.Title
 			}
 			pr.RequiresPackage = e.RequiresPackage // dependency: install this prereq when applied
+			pr.Danger = e.Danger                   // brick/lockout risk surfaced before the operator opts in
 			switch st {
 			case "gap", "compliant":
 				// Carry the remediation for BOTH: gaps need fixing, and a control that's
@@ -238,6 +245,12 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 				// re-assert it if it drifts. apply defaults to false (opt-in) either way.
 				f := false
 				pr.Apply = &f
+				// A dangerous remediation also starts un-acknowledged: apply refuses to
+				// converge it until this is flipped true (or --i-understand-danger is passed).
+				if e.Danger != "" {
+					ack := false
+					pr.Acknowledged = &ack
+				}
 				pr.Remediation = e.Remediation
 				if e.Remediation != nil && e.Remediation["resource"] == "choose" {
 					def, _ := e.Remediation["default"].(string) // platform default, overridable
@@ -277,7 +290,9 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	header := "# pavois hardening plan (state-aware). Flip `apply: true` on the gaps you want fixed.\n" +
-		"# compliant rules are shown for context and are never applied.\n"
+		"# compliant rules are shown for context and are never applied.\n" +
+		"# items with a `danger:` line can brick or lock out the host: read it, then set\n" +
+		"# `acknowledged: true` to allow apply (or pass --i-understand-danger to apply).\n"
 	if err := os.WriteFile(outPath, append([]byte(header), body...), 0o600); err != nil {
 		return err
 	}
@@ -299,6 +314,8 @@ type planFile struct {
 	} `yaml:"baseline_packages"`
 	Rules map[string]struct {
 		Apply           *bool          `yaml:"apply"`
+		Acknowledged    *bool          `yaml:"acknowledged"`
+		Danger          string         `yaml:"danger"`
 		Status          string         `yaml:"status"`
 		Choose          string         `yaml:"choose"`
 		Remediation     map[string]any `yaml:"remediation"`
@@ -1083,6 +1100,26 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	}
 	auditRules, _ := os.ReadFile(filepath.Join(findRoot(), "docs", "reference", "audit.rules"))
 	out := cmd.OutOrStdout()
+
+	// Danger gate: an enabled remediation flagged `danger:` can brick or lock out the
+	// host. Refuse to converge it unless the operator acknowledged the risk — either
+	// per-item (`acknowledged: true` in the plan) or run-wide (--i-understand-danger).
+	var unacked []string
+	for id, r := range p.Rules {
+		enabled := r.Apply != nil && *r.Apply
+		acked := haIUnderstandDanger || (r.Acknowledged != nil && *r.Acknowledged)
+		if enabled && r.Danger != "" && !acked {
+			unacked = append(unacked, fmt.Sprintf("    - %s\n        ⚠ %s", id, r.Danger))
+		}
+	}
+	if len(unacked) > 0 {
+		sort.Strings(unacked)
+		_, _ = fmt.Fprintln(out, "pavois: ✗ refusing to apply — dangerous remediation(s) not acknowledged:")
+		for _, u := range unacked {
+			_, _ = fmt.Fprintln(out, u)
+		}
+		return fmt.Errorf("%d dangerous item(s) enabled without acknowledgement; set `acknowledged: true` on each in the plan, or re-run with --i-understand-danger", len(unacked))
+	}
 	// If a grub_password remediation is enabled, generate a strong secret and store it in a
 	// local 0600 vault BEFORE compiling — the recipe sets the (salted) hash on the target.
 	grubPassword := ""
