@@ -209,6 +209,31 @@ mise run build && ./go/pavois scan local --profile linux/ubuntu2404
 Go follows the **go-production-engineer** standard: simple, idiomatic, explicit error handling (wrap
 with `%w`), no needless abstraction, tests for meaningful behavior, documented public symbols.
 
+### Remediation changes: full-apply, zero regression
+
+Any change to a **remediation** (or a check it interacts with) must pass a full hardening campaign
+on a throwaway VM (Incus or Proxmox), with **every rule enabled**:
+
+```bash
+pavois scan <vm> --sudo --on-target                 # baseline report (before)
+pavois harden plan <vm> --sudo                       # then flip EVERY `apply:` to true in the plan
+pavois harden apply hardening-plan-<os>.yml --reboot --scan
+pavois diff <before>.json <after>.json               # transition matrix
+```
+
+Two hard rules:
+
+- **Enable all rules** (`apply: true` everywhere). A remediation must never break another control:
+  applying everything at once is the only way to catch cross-control damage.
+- **Zero regression.** No control may transition **passed → failed**. Example this exists to catch:
+  a remediation wrote `/etc/audit/rules.d/99-pavois.rules` world-readable and failed the *separate*
+  `fileperm-etc-audit-rulesd` control. If your change regresses any control, it is not ready.
+
+The target is **0 failing** on a fresh host. A control that legitimately cannot converge must be made
+**N/A** (topology: separate partitions; virtualized: `iommu=force`; build-time: `kconfig-*` on a
+stock kernel, see the [hardened-kernel recipe](docs/remediation/hardened-kernel-debian12.md)) or a
+documented **manual** remediation, never left silently failing.
+
 In the HTML report, switch the **regulation** in the dropdown: your control must appear in the right
 chapter of every standard it maps to, with its severity, mappings and effective-check detail.
 
