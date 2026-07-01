@@ -235,6 +235,16 @@ Two hard rules:
 
 - **Enable all rules** (`apply: true` everywhere). A remediation must never break another control:
   applying everything at once is the only way to catch cross-control damage.
+
+> **Always apply a FULL plan (the whole `harden plan` output), never a hand-made subset.**
+> Aggregated remediations — sshd (`/etc/ssh/sshd_config.d/99-pavois.conf`), sysctl
+> (`zz-pavois.conf`), kernel cmdline, keyval drop-ins — are rewritten **wholesale** on every
+> apply. `harden apply` keeps them complete only by re-emitting the *compliant* sibling controls
+> too — which requires those controls to be **present in the plan**. Apply a plan that contains
+> only a subset (e.g. a quick test plan with 3 rules) and the drop-in is regenerated **without the
+> missing controls**, silently regressing dozens of them (a subset sysctl plan wiped ~55 sysctls;
+> a subset sshd plan re-enabled root login). For iteration use `scan --controls <id>` to check one
+> control, but any real `harden apply` must run the full generated plan.
 - **Zero regression.** No control may transition **passed → failed**. Example this exists to catch:
   a remediation wrote `/etc/audit/rules.d/99-pavois.rules` world-readable and failed the *separate*
   `fileperm-etc-audit-rulesd` control. If your change regresses any control, it is not ready.

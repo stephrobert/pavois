@@ -1207,6 +1207,25 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("%d dangerous item(s) enabled without acknowledgement; set `acknowledged: true` on each in the plan, or re-run with --i-understand-danger", len(unacked))
 	}
+	// Subset-plan guard: aggregated drop-ins (sshd/sysctl/cmdline/keyval) are rewritten
+	// wholesale and stay complete only by re-emitting the COMPLIANT siblings present in the
+	// plan. A hand-made partial plan (only a few rules) regenerates the drop-in WITHOUT the
+	// missing controls, silently regressing dozens. Warn loudly if the plan looks like a subset.
+	aggEnabled := 0
+	for _, r := range p.Rules {
+		if r.Apply != nil && *r.Apply && r.Remediation != nil {
+			switch s(r.Remediation["resource"]) {
+			case "sshd_setting", "sysctl", "kernel_cmdline", "keyval":
+				aggEnabled++
+			}
+		}
+	}
+	if aggEnabled > 0 && len(p.Rules) < 100 {
+		_, _ = fmt.Fprintf(out, "pavois: ⚠ this plan has only %d rules and enables aggregated remediations "+
+			"(sshd/sysctl/cmdline/keyval). Those drop-ins are rewritten in full — applying a SUBSET "+
+			"plan wipes the sibling controls not listed here (e.g. re-enables root SSH, drops sysctls). "+
+			"Apply the FULL `harden plan` output, or use `scan --controls` to test one control.\n", len(p.Rules))
+	}
 	// If a grub_password remediation is enabled, generate a strong secret and store it in a
 	// local 0600 vault BEFORE compiling — the recipe sets the (salted) hash on the target.
 	grubPassword := ""
