@@ -212,9 +212,22 @@ _GRUB_SRC = (
 )
 
 
+# cmdline params that are unsafe or ineffective inside a virtualized guest: the harden
+# remediation skips them under systemd-detect-virt, so the check must be N/A there too (else it
+# fails forever on a VM). Keep in sync with the remediation gate in go/cmd/harden.go.
+_CMDLINE_VIRT_UNSAFE = {"iommu=force"}
+_VIRT_ONLY_IF = (
+    "only_if('n/a in a virtualized guest: applied only on bare metal') "
+    "{ command('systemd-detect-virt -q').exit_status != 0 }"
+)
+
+
 def _cmdline_exp(p):
     tok = p["param"]
-    return [
+    lines = []
+    if tok in _CMDLINE_VIRT_UNSAFE:
+        lines.append(_VIRT_ONLY_IF)
+    lines += [
         "describe command('cat /proc/cmdline') do",
         f"  its('stdout') {{ should match(/(^| ){tok}( |$)/) }}",
         "end",
@@ -222,9 +235,12 @@ def _cmdline_exp(p):
         "  its('stdout') { should match(/\\S/) }",
         "end",
     ]
+    return lines
 
 
 def _cmdline_ext(L):
+    if L and L[0] == _VIRT_ONLY_IF:  # strip the optional virt guard, re-added by _cmdline_exp
+        L = L[1:]
     if (
         len(L) != 6
         or L[2] != "end"
