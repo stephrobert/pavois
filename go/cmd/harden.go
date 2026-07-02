@@ -411,15 +411,16 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	pamLines := []pamLine{}                   // PAM stack lines inserted before an anchor (idempotent)
 	execs := []execRem{}                      // arbitrary guarded command (e.g. chmod on a glob)
 	kmods := map[string]bool{}
-	cmdline := map[string]bool{}     // kernel cmdline params -> one grub drop-in
-	mounts := map[string]*mountAgg{} // mount point -> aggregated tmpfs options (all-or-nothing)
-	fwEnableCmd := ""                // firewall: open SSH then enable (no lockout), emitted once
-	fwNftConfig := ""                // native nftables ruleset (hardened-kernel friendly), emitted once
-	grubPwWanted := false            // a grub_password remediation was enabled
-	dconfWanted := false             // a dconf (GNOME) remediation was enabled
-	faillockWanted := false          // a pam_faillock remediation was enabled
-	kernelBuildWanted := false       // a kernel_build remediation was enabled (deliver the recipe)
-	manualFixes := []manualFix{}     // `manual` remediations — delivered as a script, never auto-run
+	cmdline := map[string]bool{}        // kernel cmdline params -> one grub drop-in
+	mounts := map[string]*mountAgg{}    // mount point -> aggregated tmpfs options (all-or-nothing)
+	fwEnableCmd := ""                   // firewall: open SSH then enable (no lockout), emitted once
+	fwNftConfig := ""                   // native nftables ruleset (hardened-kernel friendly), emitted once
+	grubPwWanted := false               // a grub_password remediation was enabled
+	dconfEntries := map[string]string{} // dconf key -> value, aggregated from the rule data
+	faillockWanted := false             // a pam_faillock remediation was enabled
+	faillockParams := ""                // pam_faillock module args (from the rule data)
+	kernelBuildWanted := false          // a kernel_build remediation was enabled (deliver the recipe)
+	manualFixes := []manualFix{}        // `manual` remediations — delivered as a script, never auto-run
 
 	setKV := func(m map[string]string, k, v, kind string) {
 		if old, ok := m[k]; ok && old != v {
@@ -444,7 +445,7 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		// (e.g. wipe /etc/sysctl.d/zz-pavois.conf down to the one gap, re-enable root SSH). So also
 		// pull in COMPLIANT aggregated controls — the drop-in then holds the complete desired
 		// state. They contribute their setting only (no pkg/reboot side effects).
-		aggregated := res == "sysctl" || res == "sshd_setting" || res == "kernel_cmdline" || res == "keyval" || res == "mount"
+		aggregated := res == "sysctl" || res == "sshd_setting" || res == "kernel_cmdline" || res == "keyval" || res == "mount" || res == "dconf"
 		keepCompliant := aggregated && !enabled && r.Status == "compliant"
 		if !enabled && !keepCompliant {
 			continue
@@ -496,54 +497,35 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			opts, _ := m["options"].(map[string]any)
 			if o, ok := opts[r.Choose].(map[string]any); ok {
 				inst[s(o["package"])] = true
-				if s(o["service"]) == "ufw" {
-					// Open SSH BEFORE enabling the firewall so Pavois (and the admin) aren't cut
-					// off — same self-preservation as the sudo noexec exemption. `systemctl enable
-					// ufw` doesn't activate it; `ufw enable` does, hence an execute.
-					// full path: ufw lives in /usr/sbin, often absent from the converge PATH.
-					// Rules BEFORE enable (sous-chefs/firewall provider order) so SSH stays up;
-					// then `ufw enable` loads the default-deny ruleset (the pavois check looks for
-					// an INPUT drop policy), and enable+start keeps the unit up across reboots.
-					// `ssh_allow_from` in the plan restricts SSH to those sources; empty = open to
-					// all (the safe default so a plan without it never locks the admin out).
-					allow := "/usr/sbin/ufw allow OpenSSH 2>/dev/null; /usr/sbin/ufw allow 22/tcp 2>/dev/null"
-					if len(r.SSHAllowFrom) > 0 {
+				// Firewall policy (the nftables ruleset, the ufw command sequence) lives in the
+				// rule as DATA — see the `ruleset`/`enable_cmd` fields on the option. Here we only
+				// substitute the dynamic SSH allow-list: `ssh_allow_from` in the plan restricts SSH
+				// to those sources; empty = open to all (the safe default so a plan without it never
+				// locks the admin out). A firewall stays up first so Pavois isn't cut off.
+				var srcs []string
+				for _, src := range r.SSHAllowFrom {
+					if src = strings.TrimSpace(src); src != "" {
+						srcs = append(srcs, src)
+					}
+				}
+				if ruleset := s(o["ruleset"]); ruleset != "" {
+					// nftables-style: a ruleset template with a %SSH_RULE% placeholder.
+					sshRule := s(o["ssh_rule"])
+					if len(srcs) > 0 && s(o["ssh_rule_from"]) != "" {
+						sshRule = strings.ReplaceAll(s(o["ssh_rule_from"]), "%CIDRS%", strings.Join(srcs, ", "))
+					}
+					fwNftConfig = strings.ReplaceAll(ruleset, "%SSH_RULE%", sshRule)
+				} else if enableCmd := s(o["enable_cmd"]); enableCmd != "" {
+					// ufw-style: an enable command with a %SSH_ALLOW% placeholder.
+					allow := s(o["ssh_allow"])
+					if len(srcs) > 0 && s(o["ssh_allow_from"]) != "" {
 						var parts []string
-						for _, src := range r.SSHAllowFrom {
-							if src = strings.TrimSpace(src); src != "" {
-								parts = append(parts, fmt.Sprintf("/usr/sbin/ufw allow from %s to any port 22 proto tcp 2>/dev/null", src))
-							}
+						for _, src := range srcs {
+							parts = append(parts, strings.ReplaceAll(s(o["ssh_allow_from"]), "%SRC%", src))
 						}
-						if len(parts) > 0 {
-							allow = strings.Join(parts, "; ")
-						}
+						allow = strings.Join(parts, "; ")
 					}
-					fwEnableCmd = allow + "; /usr/sbin/ufw --force enable; systemctl enable --now ufw"
-				} else if s(o["service"]) == "nftables" {
-					// Native nftables ruleset (robust on a hardened/modules_disabled kernel:
-					// uses only the built-in nf_tables inet path, none of the legacy xt_*
-					// match modules ufw/iptables-restore need). Default-deny input, allow
-					// loopback + established + icmp, and SSH from `ssh_allow_from` (or anywhere
-					// if unset, so a plan without it never locks the admin out).
-					sshRule := "tcp dport 22 accept"
-					if len(r.SSHAllowFrom) > 0 {
-						var cidrs []string
-						for _, src := range r.SSHAllowFrom {
-							if src = strings.TrimSpace(src); src != "" {
-								cidrs = append(cidrs, src)
-							}
-						}
-						if len(cidrs) > 0 {
-							sshRule = fmt.Sprintf("ip saddr { %s } tcp dport 22 accept", strings.Join(cidrs, ", "))
-						}
-					}
-					fwNftConfig = "#!/usr/sbin/nft -f\nflush ruleset\ntable inet filter {\n" +
-						"  chain input {\n    type filter hook input priority 0; policy drop;\n" +
-						"    iif \"lo\" accept\n    ct state established,related accept\n" +
-						"    ct state invalid drop\n    ip protocol icmp accept\n    ip6 nexthdr ipv6-icmp accept\n" +
-						"    " + sshRule + "\n  }\n" +
-						"  chain forward { type filter hook forward priority 0; policy drop; }\n" +
-						"  chain output { type filter hook output priority 0; policy accept; }\n}\n"
+					fwEnableCmd = strings.ReplaceAll(enableCmd, "%SSH_ALLOW%", allow)
 				} else {
 					setKV(svc, s(o["service"]), ":enable, :start", "service")
 				}
@@ -589,9 +571,14 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			// not auto-run: collected into a single delivered script the admin reviews and runs.
 			manualFixes = append(manualFixes, manualFix{id: cid, command: s(m["command"]), reason: s(m["reason"])})
 		case "dconf":
-			dconfWanted = true // deploy the GNOME dconf hardening db (keyfile + locks) once, below
+			if k := s(m["key"]); k != "" { // GNOME dconf key=value, aggregated into the db below
+				dconfEntries[k] = s(m["value"])
+			}
 		case "pam_faillock":
-			faillockWanted = true // enable account lockout via pam-auth-update profile, below
+			faillockWanted = true // enable account lockout, emitted below
+			if p := s(m["params"]); p != "" {
+				faillockParams = p // module args (deny/unlock_time/…) come from the rule data
+			}
 		case "kernel_build":
 			kernelBuildWanted = true // deliver (not run) the KSPP kernel-build recipe, below
 		case "audit_ruleset":
@@ -1067,28 +1054,49 @@ end
 		// the account line — neither shifts the post-pam_unix jump offsets (success=N), so the auth
 		// stack stays correct; audit + even_deny_root satisfy the controls. SSH key auth bypasses
 		// the password stack, so a slip here can't lock out key login.
-		fl := "audit silent deny=5 unlock_time=900 even_deny_root"
+		// The module args (deny/unlock_time/audit/even_deny_root) are policy: they come from the
+		// rule data (params), with a safe default if the rule omits them.
+		fl := faillockParams
+		if fl == "" {
+			fl = "audit silent deny=5 unlock_time=900 even_deny_root"
+		}
 		_, _ = fmt.Fprintf(&b, "execute 'pavois-faillock-preauth' do\n  command 'sed -ri \"/^auth.*pam_unix\\.so/i auth required pam_faillock.so preauth %s\" /etc/pam.d/common-auth'\n  only_if 'test -f /etc/pam.d/common-auth'\n  not_if 'grep -qE \"pam_faillock.so\" /etc/pam.d/common-auth'\nend\n\n", fl)
 		b.WriteString("execute 'pavois-faillock-account' do\n  command 'printf \"account required pam_faillock.so\\n\" >> /etc/pam.d/common-account'\n  only_if 'test -f /etc/pam.d/common-account'\n  not_if 'grep -qE \"pam_faillock.so\" /etc/pam.d/common-account'\nend\n\n")
 		n++
 	}
-	if dconfWanted {
-		// GNOME dconf hardening, full CIS pattern: a keyfile (the settings) AND a locks file (so
-		// users can't override them) under /etc/dconf/db/local.d, then `dconf update` to compile
-		// the binary db. The checks grep BOTH the .d keyfile and the locks/ file, hence both.
-		keyfile := "[org/gnome/login-screen]\nbanner-message-enable=true\n" +
-			"banner-message-text='Authorized access only. All activity is monitored and recorded.'\n" +
-			"disable-user-list=true\n\n[org/gnome/desktop/media-handling]\nautomount=false\n" +
-			"automount-open=false\nautorun-never=true\n\n[org/gnome/desktop/screensaver]\n" +
-			"lock-enabled=true\nlock-delay=uint32 5\n\n[org/gnome/desktop/session]\nidle-delay=uint32 900\n"
-		locks := "/org/gnome/login-screen/banner-message-enable\n/org/gnome/login-screen/banner-message-text\n" +
-			"/org/gnome/login-screen/disable-user-list\n/org/gnome/desktop/media-handling/automount\n" +
-			"/org/gnome/desktop/media-handling/automount-open\n/org/gnome/desktop/media-handling/autorun-never\n" +
-			"/org/gnome/desktop/screensaver/lock-enabled\n/org/gnome/desktop/screensaver/lock-delay\n" +
-			"/org/gnome/desktop/session/idle-delay\n"
+	if len(dconfEntries) > 0 {
+		// GNOME dconf hardening: aggregate every enabled/compliant dconf control's key=value into
+		// ONE keyfile (grouped by [section]) plus a locks file (so users can't override them) under
+		// /etc/dconf/db/local.d, then `dconf update` to compile the binary db. The settings AND
+		// their locks are RULE DATA — nothing GNOME-specific is hardcoded here, the engine only
+		// groups keys by section. The checks grep BOTH the .d keyfile and the locks/ file.
+		sections := map[string][]string{}
+		var locks []string
+		for _, key := range sortedKeysS(dconfEntries) {
+			i := strings.LastIndex(key, "/")
+			section, name := key[:i], key[i+1:]
+			sections[section] = append(sections[section], name+"="+dconfEntries[key])
+			locks = append(locks, "/"+key)
+		}
+		var secNames []string
+		for sec := range sections {
+			secNames = append(secNames, sec)
+		}
+		sort.Strings(secNames)
+		var kf strings.Builder
+		for i, sec := range secNames {
+			if i > 0 {
+				kf.WriteString("\n")
+			}
+			kf.WriteString("[" + sec + "]\n")
+			for _, line := range sections[sec] {
+				kf.WriteString(line + "\n")
+			}
+		}
+		sort.Strings(locks)
 		b.WriteString("directory '/etc/dconf/db/local.d/locks' do\n  recursive true\nend\n\n")
-		_, _ = fmt.Fprintf(&b, "file '/etc/dconf/db/local.d/00-pavois-hardening' do\n  content %q\n  mode '0644'\nend\n\n", keyfile)
-		_, _ = fmt.Fprintf(&b, "file '/etc/dconf/db/local.d/locks/00-pavois-locks' do\n  content %q\n  mode '0644'\nend\n\n", locks)
+		_, _ = fmt.Fprintf(&b, "file '/etc/dconf/db/local.d/00-pavois-hardening' do\n  content %q\n  mode '0644'\nend\n\n", kf.String())
+		_, _ = fmt.Fprintf(&b, "file '/etc/dconf/db/local.d/locks/00-pavois-locks' do\n  content %q\n  mode '0644'\nend\n\n", strings.Join(locks, "\n")+"\n")
 		b.WriteString("execute 'pavois-dconf-update' do\n  command 'dconf update 2>/dev/null || true'\nend\n\n")
 		n++
 	}
