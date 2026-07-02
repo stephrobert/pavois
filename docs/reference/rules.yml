@@ -15250,10 +15250,16 @@ firewall-default-deny:
         service: firewalld
       nftables:
         package: nftables
+        ruleset: "#!/usr/sbin/nft -f\nflush ruleset\ntable inet filter {\n  chain input {\n    type filter hook input priority 0; policy drop;\n    iif \"lo\" accept\n    ct state established,related accept\n    ct state invalid drop\n    ip protocol icmp accept\n    ip6 nexthdr ipv6-icmp accept\n    %SSH_RULE%\n  }\n  chain forward { type filter hook forward priority 0; policy drop; }\n  chain output { type filter hook output priority 0; policy accept; }\n}\n"
         service: nftables
+        ssh_rule: tcp dport 22 accept
+        ssh_rule_from: ip saddr { %CIDRS% } tcp dport 22 accept
       ufw:
+        enable_cmd: '%SSH_ALLOW%; /usr/sbin/ufw --force enable; systemctl enable --now ufw'
         package: ufw
         service: ufw
+        ssh_allow: /usr/sbin/ufw allow OpenSSH 2>/dev/null; /usr/sbin/ufw allow 22/tcp 2>/dev/null
+        ssh_allow_from: /usr/sbin/ufw allow from %SRC% to any port 22 proto tcp 2>/dev/null
     resource: choose
   severity: medium
   socle: SOCLE-CLD-NET-001
