@@ -1,6 +1,6 @@
-// Package render produit le rapport HTML autoporté et MULTI-NORMES (note A->E,
-// filtres, sous-chapitres). Port de pavois/render.py : le CSS et le JS
-// interactifs sont EMBARQUÉS à l'identique ; seules les données changent.
+// Package render produces the self-contained, MULTI-STANDARD HTML report (grade A->E,
+// filters, sub-sections). Port of pavois/render.py: the interactive CSS and JS
+// are EMBEDDED identically; only the data changes.
 package render
 
 import (
@@ -24,7 +24,7 @@ var normLabels = map[string]string{
 	"nist": "NIST 800-171", "stig": "STIG",
 }
 
-// Meta : caractéristiques de l'évaluation pour l'en-tête.
+// Meta: assessment characteristics for the header.
 type Meta struct{ Machine, Transport, Timestamp, Engine string }
 
 type chk struct {
@@ -41,15 +41,15 @@ type ctrl struct {
 	Sev       string            `json:"sev"`
 	Status    string            `json:"status"`
 	Domain    string            `json:"domain"`
-	Evidence  string            `json:"evidence,omitempty"`  // type de preuve réellement collectée
-	Reboot    string            `json:"reboot,omitempty"`    // reboot_survivable: yes|no|unknown (axe persistance)
-	Companion string            `json:"companion,omitempty"` // contrôle persistant compagnon (companion-aware)
-	Danger    string            `json:"danger,omitempty"`    // risque de brick/lockout si la remédiation est appliquée
+	Evidence  string            `json:"evidence,omitempty"`  // type of evidence actually collected
+	Reboot    string            `json:"reboot,omitempty"`    // reboot_survivable: yes|no|unknown (persistence axis)
+	Companion string            `json:"companion,omitempty"` // companion persistent control (companion-aware)
+	Danger    string            `json:"danger,omitempty"`    // brick/lockout risk if the remediation is applied
 	Norms     map[string]string `json:"norms"`
 	Levels    map[string]string `json:"levels"`
 	Refs      []string          `json:"refs"`
 	Checks    []chk             `json:"checks"`
-	Merge     string            `json:"merge,omitempty"` // frères à fusionner en vue « toutes normes »
+	Merge     string            `json:"merge,omitempty"` // siblings to merge in the "all standards" view
 }
 
 func tagStr(c audit.Control, k string) string {
@@ -160,7 +160,7 @@ func controlData(c audit.Control) ctrl {
 
 func e(s string) string { return html.EscapeString(s) }
 
-// HTML rend le rapport complet. Retourne (html, nbContrôles, nbNormes).
+// HTML renders the full report. Returns (html, controlCount, standardCount).
 func HTML(rep *audit.Report, m Meta) (string, int, int) {
 	var cdata []ctrl
 	for _, p := range rep.Profiles {
@@ -168,7 +168,7 @@ func HTML(rep *audit.Report, m Meta) (string, int, int) {
 			cdata = append(cdata, controlData(c))
 		}
 	}
-	// normes présentes (ordre fixe)
+	// standards present (fixed order)
 	var present []string
 	for _, n := range normOrder {
 		for _, c := range cdata {
