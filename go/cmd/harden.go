@@ -1323,6 +1323,14 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("copy recipe: %w", err)
 	}
 
+	// Refresh the apt cache on the target BEFORE cinc-apply compiles the recipe. Chef's
+	// apt_package reads the candidate version at compile time (load_current_resource); on a
+	// stale cache that is "no candidate" and, with ignore_failure, the package silently never
+	// installs. An in-recipe `apt-get update` execute runs too late (converge, after compile).
+	// Self-guarded so it is a no-op on dnf/zypper hosts.
+	_, _ = fmt.Fprintln(os.Stderr, "pavois: refreshing apt cache…")
+	_ = run("ssh", sshTTY(target, "if command -v apt-get >/dev/null 2>&1; then sudo apt-get update -qq || true; fi")...)
+
 	// Terraform-style: show the REAL diff (why-run changes nothing) before asking.
 	_, _ = fmt.Fprintf(out, "\npavois: planned changes on %s (nothing applied yet):\n\n", target)
 	why := "sudo env CHEF_LICENSE=accept-silent cinc-apply /tmp/pavois-harden.rb --why-run"
