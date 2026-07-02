@@ -151,10 +151,10 @@ func TestEvaluateAndHeadline(t *testing.T) {
 	}
 
 	headline := Headline(res)
-	if !strings.HasPrefix(headline, "Note ") {
-		t.Errorf("Headline should start with \"Note \": %q", headline)
+	if !strings.HasPrefix(headline, "Grade ") {
+		t.Errorf("Headline should start with \"Grade \": %q", headline)
 	}
-	if !strings.Contains(headline, "1/2 conformes") {
+	if !strings.Contains(headline, "1/2 compliant") {
 		t.Errorf("Headline should report passed/total: %q", headline)
 	}
 }

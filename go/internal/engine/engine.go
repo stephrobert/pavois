@@ -1,6 +1,6 @@
-// Package engine exécute CINC Auditor (build open source d'InSpec) en natif de
-// préférence, conteneur en repli. Port de pavois/engine.py — le moteur reste
-// 100% CINC/InSpec (jamais oscap), audit de la config EFFECTIVE.
+// Package engine runs CINC Auditor (the open source build of InSpec), natively by
+// preference, with a container as fallback. Port of pavois/engine.py — the engine
+// stays 100% CINC/InSpec (never oscap), auditing the EFFECTIVE config.
 package engine
 
 import (
@@ -22,15 +22,15 @@ import (
 )
 
 var (
-	reProgCount = regexp.MustCompile(`\[\s*(\d+)\s*/\s*(\d+)\s*\]`) // tolère le padding [  1/359]
+	reProgCount = regexp.MustCompile(`\[\s*(\d+)\s*/\s*(\d+)\s*\]`) // tolerates padding [  1/359]
 	reProgCtrl  = regexp.MustCompile(`\[(?:PASSED|FAILED|SKIPPED)\]\s+(\S+)\s*(.*)`)
 )
 
 var reDomain = regexp.MustCompile(`tag domain: '([^']+)'`)
 
-// domainMap lit le profil et associe chaque ID de contrôle à son domaine
-// (`tag domain:`) — pour afficher une progression LISIBLE (par domaine) plutôt
-// que l'ID brut. Vide si le profil n'est pas un dossier local (URL).
+// domainMap reads the profile and maps each control ID to its domain
+// (`tag domain:`) — to display a READABLE progress (by domain) rather
+// than the raw ID. Empty if the profile is not a local directory (URL).
 func domainMap(profDir string) map[string]string {
 	m := map[string]string{}
 	files, _ := filepath.Glob(filepath.Join(profDir, "controls", "*.rb"))
@@ -61,13 +61,13 @@ func truncShort(s string, n int) string {
 	return s[:n-1] + "…"
 }
 
-// runCinc exécute cinc et rend une PROGRESSION riche sur stderr (N/M, %, contrôle
-// courant) en parsant le reporter `progress-bar` — sans déverser les centaines de
-// lignes PASSED/FAILED. stdout reste propre. En non-TTY (CI/pipe), une ligne simple.
+// runCinc runs cinc and renders a rich PROGRESS on stderr (N/M, %, current
+// control) by parsing the `progress-bar` reporter — without dumping the hundreds of
+// PASSED/FAILED lines. stdout stays clean. In non-TTY (CI/pipe), a single line.
 func runCinc(cmd *exec.Cmd, label string, dmap map[string]string) error {
 	fi, _ := os.Stderr.Stat()
 	if fi == nil || fi.Mode()&os.ModeCharDevice == 0 {
-		_, _ = fmt.Fprintf(os.Stderr, "  %s…\n", label) // non-TTY (CI/pipe) : une ligne, sortie cinc capturée
+		_, _ = fmt.Fprintf(os.Stderr, "  %s…\n", label) // non-TTY (CI/pipe): one line, cinc output captured
 		var buf bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &buf, &buf
 		err := cmd.Run()
@@ -79,9 +79,9 @@ func runCinc(cmd *exec.Cmd, label string, dmap map[string]string) error {
 		}
 		return err
 	}
-	// La PROGRESSION de cinc (reporter progress-bar : [N/M], PASSED/FAILED) sort sur
-	// STDERR. On la PARSE pour rendre notre ligne propre, et on capture le brut pour
-	// le montrer en cas de vraie erreur. stdout (json -> fichier) est capturé à part.
+	// cinc's PROGRESS (progress-bar reporter: [N/M], PASSED/FAILED) goes to
+	// STDERR. We PARSE it to render our own clean line, and capture the raw output
+	// to show it on a real error. stdout (json -> file) is captured separately.
 	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
 		return err
@@ -91,8 +91,8 @@ func runCinc(cmd *exec.Cmd, label string, dmap map[string]string) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	// Un goroutine lit la progression ; un ticker anime le spinner en CONTINU (même
-	// pendant la connexion / le chargement, avant le 1er contrôle) -> jamais bloqué.
+	// A goroutine reads the progress; a ticker animates the spinner CONTINUOUSLY (even
+	// during connection / loading, before the 1st control) -> never stuck.
 	var mu sync.Mutex
 	n, m, cur := 0, 0, "connecting…"
 	done := make(chan struct{})
@@ -159,8 +159,8 @@ spin:
 	tk.Stop()
 	werr := cmd.Wait()
 	_, _ = fmt.Fprint(os.Stderr, "\r\033[K")
-	// exit 100/101 = des contrôles échouent (normal) ; sinon vraie erreur -> on
-	// remonte la sortie d'erreur capturée de cinc.
+	// exit 100/101 = controls are failing (normal); otherwise a real error -> we
+	// surface cinc's captured error output.
 	if werr != nil {
 		code := -1
 		var ee *exec.ExitError
@@ -175,9 +175,9 @@ spin:
 	return werr
 }
 
-// Detect interroge la CIBLE (local/ssh/docker) via `cinc-auditor detect` et
-// retourne le nom d'OS et la release (ex. "ubuntu","24.04") — pour choisir
-// automatiquement le bon profil. Vide si indéterminable.
+// Detect queries the TARGET (local/ssh/docker) via `cinc-auditor detect` and
+// returns the OS name and release (e.g. "ubuntu","24.04") — to automatically
+// choose the right profile. Empty if undeterminable.
 func Detect(o Options) (name, release string) {
 	bin := NativeBin()
 	if bin == "" {
@@ -216,10 +216,10 @@ func Detect(o Options) (name, release string) {
 	return d.Name, d.Release
 }
 
-// AuditorImage : image CINC épinglée par digest (repli docker).
+// AuditorImage: CINC image pinned by digest (docker fallback).
 const AuditorImage = "cincproject/auditor@sha256:14b1a2efb89ab141adb58e93c6c1bdcf196c9623498a292cbfaee28c46603568"
 
-// NativeBin retourne le binaire CINC natif (cinc-auditor de préférence, sinon inspec).
+// NativeBin returns the native CINC binary (cinc-auditor by preference, otherwise inspec).
 func NativeBin() string {
 	for _, b := range []string{"cinc-auditor", "inspec"} {
 		if p, err := exec.LookPath(b); err == nil {
@@ -229,8 +229,8 @@ func NativeBin() string {
 	return ""
 }
 
-// sshAliases lit ~/.ssh/config (et ses Include) et renvoie les alias Host
-// explicites (sans joker) — pour reconnaître une cible comme hôte SSH.
+// sshAliases reads ~/.ssh/config (and its Include) and returns the explicit
+// Host aliases (without wildcards) — to recognize a target as an SSH host.
 func sshAliases() map[string]bool {
 	m := map[string]bool{}
 	home, err := os.UserHomeDir()
@@ -281,11 +281,11 @@ func sshAliases() map[string]bool {
 	return m
 }
 
-// IsSSHAlias indique si la cible est un alias Host de ~/.ssh/config.
+// IsSSHAlias reports whether the target is a Host alias in ~/.ssh/config.
 func IsSSHAlias(target string) bool { return sshAliases()[target] }
 
-// TransportFor déduit le transport CINC de la cible : "" (local), ssh:// (user@hôte
-// OU alias ssh_config) ou docker:// (conteneur).
+// TransportFor derives the CINC transport from the target: "" (local), ssh:// (user@host
+// OR ssh_config alias) or docker:// (container).
 func TransportFor(target string) string {
 	switch {
 	case target == "local":
@@ -297,7 +297,7 @@ func TransportFor(target string) string {
 	}
 }
 
-// ResolveProfile accepte un nom embarqué (sous profiles/), un chemin ou une URL.
+// ResolveProfile accepts an embedded name (under profiles/), a path or a URL.
 func ResolveProfile(root, profile string) (string, error) {
 	if strings.HasPrefix(profile, "http://") || strings.HasPrefix(profile, "https://") {
 		return profile, nil
@@ -316,40 +316,40 @@ func ResolveProfile(root, profile string) (string, error) {
 	return "", fmt.Errorf("unknown profile: %s (see: pavois profiles)", profile)
 }
 
-// Options porte les paramètres d'un scan.
+// Options carries the parameters of a scan.
 type Options struct {
-	Root     string // racine du dépôt (résolution des profils embarqués)
-	Target   string // local | user@hôte | conteneur
+	Root     string // repository root (resolution of embedded profiles)
+	Target   string // local | user@host | container
 	Profile  string
 	Engine   string // auto | native | docker
 	SSHPass  string
-	SudoPass string // mot de passe sudo — transmis à cinc via --config (stdin), JAMAIS en argv
+	SudoPass string // sudo password — passed to cinc via --config (stdin), NEVER in argv
 	Key      string
 	Sudo     bool
-	JSONOut  string // chemin du rapport JSON à produire
-	Standard string // si défini : n'EXÉCUTE que les contrôles de cette norme
-	Level    string // niveau (cumulatif) au sein de la norme, ex. cis:1
-	OnTarget bool   // exécuter cinc-auditor SUR la cible (local://) — bien moins
-	//                 d'aller-retours SSH, scan beaucoup plus rapide
-	Controls []string // si défini : n'exécute QUE ces contrôles (par id), via cinc --controls
+	JSONOut  string // path of the JSON report to produce
+	Standard string // if set: only RUNS the controls of this standard
+	Level    string // level (cumulative) within the standard, e.g. cis:1
+	OnTarget bool   // run cinc-auditor ON the target (local://) — far fewer
+	//                 SSH round-trips, much faster scan
+	Controls []string // if set: runs ONLY these controls (by id), via cinc --controls
 }
 
-// niveaux ordonnés par norme (cumulatif : un niveau inclut les inférieurs).
+// levels ordered per standard (cumulative: a level includes the lower ones).
 var levelOrder = map[string][]string{
 	"cis":  {"1", "2"},
 	"bp28": {"minimal", "intermediary", "enhanced", "high"},
 }
 
-// controlsForNorm liste les IDs de contrôles d'un profil portant le tag de la
-// norme (et, si fourni, au niveau cumulatif demandé) — pour ne lancer QUE ceux-là
-// via `cinc --controls`. Vide si profil non local (URL) ou norme inconnue.
+// controlsForNorm lists the control IDs of a profile carrying the standard's
+// tag (and, if provided, at the requested cumulative level) — to run ONLY those
+// via `cinc --controls`. Empty if the profile is not local (URL) or the standard is unknown.
 func controlsForNorm(profDir, standard, level string) []string {
 	if standard == "" || standard == "all" {
 		return nil
 	}
 	tagPat := "tag " + regexp.QuoteMeta(standard) + ":"
 	if !regexp.MustCompile(`^[a-z0-9_]+$`).MatchString(standard) {
-		tagPat = `tag\('` + regexp.QuoteMeta(standard) + `' =>` // ex. pci-dss
+		tagPat = `tag\('` + regexp.QuoteMeta(standard) + `' =>` // e.g. pci-dss
 	}
 	reTag := regexp.MustCompile(tagPat)
 	reLvl := regexp.MustCompile(`tag level_` + strings.ReplaceAll(standard, "-", "_") + `: '([^']+)'`)
@@ -380,7 +380,7 @@ func controlsForNorm(profDir, standard, level string) []string {
 			if !reTag.MatchString(block) {
 				continue
 			}
-			if level != "" && maxIdx >= 0 { // filtre de niveau cumulatif
+			if level != "" && maxIdx >= 0 { // cumulative level filter
 				lm := reLvl.FindStringSubmatch(block)
 				if lm != nil {
 					li := -1
@@ -400,7 +400,7 @@ func controlsForNorm(profDir, standard, level string) []string {
 	return ids
 }
 
-// Run exécute le scan et retourne le code de sortie CINC (0 ok, 100/101 échecs).
+// Run runs the scan and returns the CINC exit code (0 ok, 100/101 failures).
 // secretsConfig builds the JSON for cinc-auditor's `--config -` (read from STDIN),
 // carrying the SSH login and/or sudo password. Passing them this way keeps secrets
 // OUT of argv — they never appear in `ps`, the process table or any log. Returns ""
@@ -457,8 +457,8 @@ func Run(o Options) (int, error) {
 	}
 	_ = os.Remove(o.JSONOut)
 
-	// Filtre d'EXÉCUTION par norme : ne lancer que les contrôles taggés (et au
-	// niveau demandé) via `cinc --controls <ids…>`. Profil local uniquement.
+	// EXECUTION filter by standard: run only the tagged controls (and at the
+	// requested level) via `cinc --controls <ids…>`. Local profile only.
 	var ctlArgs []string
 	if len(o.Controls) > 0 {
 		// Explicit control ids (e.g. `pavois scan --controls ssh-disable-root-login`):
@@ -477,8 +477,8 @@ func Run(o Options) (int, error) {
 		if bin == "" {
 			return 2, fmt.Errorf("native engine missing: install cinc-auditor or use --engine docker")
 		}
-		// progress-bar -> runCinc le parse pour la progression (stderr) ; json ->
-		// fichier (pavois produit SA présentation). stdout n'est pas pollué.
+		// progress-bar -> runCinc parses it for progress (stderr); json ->
+		// file (pavois produces ITS OWN presentation). stdout is not polluted.
 		args := []string{"exec", prof, "--no-create-lockfile", "--reporter", "progress-bar", "json:" + o.JSONOut}
 		// Expose the active standard to InSpec so a single merged rule can pick the per-norm
 		// threshold (e.g. PASS_MIN_LEN >= 15 for bp28, >= 12 for nist). "_default" = strictest.
@@ -491,8 +491,8 @@ func Run(o Options) (int, error) {
 		if transport != "" {
 			args = append(args, "-t", transport)
 			if strings.HasPrefix(transport, "ssh") && strings.Contains(transport, "@") {
-				// ssh DIRECT (user@host) : ignorer le ssh_config global (ProxyJump Host *).
-				// Pour un ALIAS (sans @), on garde ssh_config pour le résoudre.
+				// DIRECT ssh (user@host): ignore the global ssh_config (ProxyJump Host *).
+				// For an ALIAS (without @), we keep ssh_config to resolve it.
 				args = append(args, "--ssh-config-file", "/dev/null")
 			}
 		}
@@ -558,11 +558,11 @@ func Run(o Options) (int, error) {
 	if fi, err := os.Stat(prof); err == nil && fi.IsDir() {
 		dmap = domainMap(prof)
 	}
-	runErr := runCinc(cmd, "scanning "+o.Target, dmap) // progression riche sur stderr
+	runErr := runCinc(cmd, "scanning "+o.Target, dmap) // rich progress on stderr
 	if runErr != nil {
 		var ee *exec.ExitError
 		if errors.As(runErr, &ee) {
-			return ee.ExitCode(), nil // 100/101 = des contrôles échouent, exploitable en CI
+			return ee.ExitCode(), nil // 100/101 = controls are failing, usable in CI
 		}
 		return 2, runErr
 	}

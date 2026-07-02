@@ -1,6 +1,6 @@
-// Package audit traduit un rapport JSON CINC/InSpec en findings scankit, filtre
-// par norme + niveau, et calcule la note A->E (modèle Plumber : perte selon le
-// NOMBRE d'échecs par sévérité, malus critique).
+// Package audit translates a CINC/InSpec JSON report into scankit findings, filters
+// by standard + level, and computes the A->E grade (Plumber model: loss based on the
+// NUMBER of failures per severity, critical penalty).
 package audit
 
 import (
@@ -15,7 +15,7 @@ import (
 	"github.com/stephrobert/scankit/scoring"
 )
 
-// Report est la structure (partielle) du rapport JSON d'InSpec.
+// Report is the (partial) structure of the InSpec JSON report.
 type Report struct {
 	Platform struct {
 		Name    string `json:"name"`
@@ -28,7 +28,7 @@ type Report struct {
 	} `json:"profiles"`
 }
 
-// Control est un contrôle InSpec et ses résultats.
+// Control is an InSpec control and its results.
 type Control struct {
 	ID      string           `json:"id"`
 	Title   string           `json:"title"`
@@ -44,8 +44,8 @@ type Control struct {
 	} `json:"results"`
 }
 
-// normKeys : normes reconnues (ordre d'affichage). Le niveau est porté par
-// level_<norme> (ex. level_bp28, level_cis).
+// normKeys: recognized standards (display order). The level is carried by
+// level_<standard> (e.g. level_bp28, level_cis).
 var normKeys = []string{"bp28", "cis", "pci-dss", "nist", "stig"}
 
 var levelOrder = map[string][]string{
@@ -53,7 +53,7 @@ var levelOrder = map[string][]string{
 	"cis":  {"1", "2"},
 }
 
-// Load lit et décode un rapport JSON InSpec.
+// Load reads and decodes an InSpec JSON report.
 func Load(path string) (*Report, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -61,7 +61,7 @@ func Load(path string) (*Report, error) {
 	}
 	var r Report
 	if err := json.Unmarshal(b, &r); err != nil {
-		return nil, fmt.Errorf("JSON InSpec illisible: %w", err)
+		return nil, fmt.Errorf("unreadable InSpec JSON: %w", err)
 	}
 	return &r, nil
 }
@@ -75,8 +75,8 @@ func tagStr(c Control, key string) string {
 	return ""
 }
 
-// severity : échelle réelle des normes (3 niveaux). Le SSG ne classe pas en
-// « critical » et les normes ne surchargent pas la sévérité.
+// severity: the standards' actual scale (3 levels). The SSG does not classify as
+// "critical" and standards do not override the severity.
 func severity(impact float64) string {
 	switch {
 	case impact >= 0.9:
@@ -127,7 +127,7 @@ func inLevel(c Control, standard, level string) bool {
 	}
 	cl := tagStr(c, "level_"+strings.ReplaceAll(standard, "-", "_"))
 	if cl == "" {
-		return true // pas de niveau tagué = pas de contrainte (inclus, comme à l'exécution)
+		return true // no tagged level = no constraint (included, as at runtime)
 	}
 	return indexOf(order, cl) <= indexOf(order, level)
 }
@@ -141,20 +141,20 @@ func indexOf(s []string, v string) int {
 	return len(s)
 }
 
-// Result agrège la vue (norme+niveau) d'un rapport.
+// Result aggregates the (standard+level) view of a report.
 type Result struct {
 	Findings  []finding.Finding
 	Summary   scoring.Summary
 	Passed    int
-	Total     int // contrôles évalués (pass+fail) de la vue
-	Qualified int // PASS runtime-only : actif prouvé, persistance NON vérifiée (sous-ensemble de Passed)
+	Total     int // evaluated controls (pass+fail) in the view
+	Qualified int // runtime-only PASS: active proven, persistence NOT verified (subset of Passed)
 	OS        string
 }
 
-// Proves dérive ce qu'un PASS établit à partir du type de preuve du contrôle :
-// [actif, persistant, survit-au-reboot] en "yes" (prouvé) / "unknown" (non mesuré) / "na".
-// C'est le verdict qualifié surfacé sur la fiche, dans le rapport et en OSCAL. (Source unique :
-// oscal.go s'appuie dessus.)
+// Proves derives what a PASS establishes from the control's evidence type:
+// [active, persistent, survives-reboot] as "yes" (proven) / "unknown" (not measured) / "na".
+// This is the qualified verdict surfaced on the fiche, in the report and in OSCAL. (Single source:
+// oscal.go relies on it.)
 func Proves(evidence string) [3]string {
 	switch evidence {
 	case "effective-runtime", "behavioral":
@@ -163,22 +163,22 @@ func Proves(evidence string) [3]string {
 		return [3]string{"unknown", "yes", "yes"}
 	case "inventory-state", "filesystem-state":
 		return [3]string{"yes", "yes", "yes"}
-	default: // manual / non classé
+	default: // manual / unclassified
 		return [3]string{"na", "na", "na"}
 	}
 }
 
-// FullPass indique si un PASS sur ce type de preuve démontre un état DURABLE (survit au reboot).
-// Un PASS runtime-only (effective-runtime / behavioral) ne le démontre pas : il prouve que la
-// valeur est active maintenant, pas qu'elle survit à un redémarrage — un PASS « qualifié ».
+// FullPass indicates whether a PASS on this evidence type demonstrates a DURABLE state (survives reboot).
+// A runtime-only PASS (effective-runtime / behavioral) does not demonstrate it: it proves the
+// value is active now, not that it survives a restart: a "qualified" PASS.
 func FullPass(evidence string) bool {
 	return Proves(evidence)[2] == "yes"
 }
 
-// fullPassFor tranche si un PASS compte comme PLEIN, à partir du tag reboot (axe persistance,
-// autoritaire) en se rabattant sur le type de preuve quand le tag est absent (vieux rapports).
-// Un contrôle live (reboot != yes) redevient plein si un contrôle COMPAGNON persistant passe
-// aussi (companion-aware) : on a alors prouvé l'actif ET la persistance.
+// fullPassFor decides whether a PASS counts as FULL, from the reboot tag (persistence axis,
+// authoritative), falling back on the evidence type when the tag is absent (old reports).
+// A live control (reboot != yes) becomes full again if a persistent COMPANION control also
+// passes (companion-aware): we have then proven both the active state AND the persistence.
 func fullPassFor(reboot, evidence, companion string, passed map[string]bool) bool {
 	self := false
 	switch reboot {
@@ -187,18 +187,18 @@ func fullPassFor(reboot, evidence, companion string, passed map[string]bool) boo
 	case "no", "unknown":
 		self = false
 	default:
-		self = FullPass(evidence) // pas de tag reboot -> dérivé du type de preuve (legacy)
+		self = FullPass(evidence) // no reboot tag -> derived from evidence type (legacy)
 	}
 	if self {
 		return true
 	}
-	return companion != "" && passed[companion] // persistance prouvée par le compagnon
+	return companion != "" && passed[companion] // persistence proven by the companion
 }
 
-// Evaluate filtre par (standard, level) et produit les findings (= échecs).
+// Evaluate filters by (standard, level) and produces the findings (= failures).
 func Evaluate(r *Report, subject, standard, level string) Result {
-	// Pré-passe : l'ensemble des contrôles qui PASSENT (toutes vues), pour résoudre les
-	// compagnons persistants (companion-aware) indépendamment du filtre norme/niveau.
+	// Pre-pass: the set of controls that PASS (all views), to resolve the
+	// persistent companions (companion-aware) independently of the standard/level filter.
 	passedSet := map[string]bool{}
 	for _, p := range r.Profiles {
 		for _, c := range p.Controls {
@@ -220,12 +220,12 @@ func Evaluate(r *Report, subject, standard, level string) Result {
 				passed++
 				scored++
 				if !fullPassFor(tagStr(c, "reboot"), tagStr(c, "evidence"), tagStr(c, "companion"), passedSet) {
-					qualified++ // PASS runtime-only sans compagnon persistant : persistance non prouvée
+					qualified++ // runtime-only PASS without persistent companion: persistence not proven
 				}
 				continue
 			}
 			if st != "failed" {
-				continue // N/A : pas un finding
+				continue // N/A: not a finding
 			}
 			scored++
 			fs = append(fs, toFinding(c, subject, standard))
@@ -266,7 +266,7 @@ func toFinding(c Control, subject, standard string) finding.Finding {
 	}
 	if standard != "" && standard != "all" {
 		if lv := tagStr(c, "level_"+strings.ReplaceAll(standard, "-", "_")); lv != "" {
-			labels["niveau"] = lv
+			labels["level"] = lv
 		}
 	}
 	if s := tagStr(c, "ssg"); s != "" {
@@ -294,8 +294,8 @@ func toFinding(c Control, subject, standard string) finding.Finding {
 	}
 }
 
-// Grade : note A->E. On part de 100 et on retranche poids x nombre d'échecs par
-// sévérité, plafonné. Échelle réelle des normes : 3 niveaux (high/medium/low).
+// Grade: A->E grade. We start from 100 and subtract weight x number of failures per
+// severity, capped. Standards' actual scale: 3 levels (high/medium/low).
 func Grade(sum scoring.Summary) (letter string, points int) {
 	w := map[string]float64{"critical": 25, "high": 15, "medium": 6, "low": 3}
 	cap := map[string]float64{"critical": math.Inf(1), "high": 60, "medium": 20, "low": 10}
@@ -305,7 +305,7 @@ func Grade(sum scoring.Summary) (letter string, points int) {
 	}
 	pts := int(math.Max(0, math.Round(100-loss)))
 	if sum.Counts["critical"] > 0 && pts > 30 {
-		pts = 30 // ≥ 1 Critical -> plafonné en bande E (malus de risque)
+		pts = 30 // >= 1 Critical -> capped in band E (risk penalty)
 	}
 	switch {
 	case pts >= 90:
@@ -321,29 +321,29 @@ func Grade(sum scoring.Summary) (letter string, points int) {
 	}
 }
 
-// GradeResult applique la politique du verdict qualifié PAR-DESSUS la note en points : une note
-// ne peut pas être un « A » net si les contrôles conformes reposent sur des preuves runtime-only
-// dont la persistance n'est pas prouvée. Une telle note est plafonnée en « B » et marquée
-// runtime-qualifiée. Les points (pilotés par les échecs) ne changent pas — seule la lettre.
+// GradeResult applies the qualified-verdict policy ON TOP of the points-based grade: a grade
+// cannot be a clean "A" if the compliant controls rest on runtime-only evidence
+// whose persistence is not proven. Such a grade is capped at "B" and marked
+// runtime-qualified. The points (driven by failures) do not change: only the letter.
 func GradeResult(res Result) (letter string, points int, runtimeQualified bool) {
 	letter, points = Grade(res.Summary)
 	runtimeQualified = res.Qualified > 0
 	if runtimeQualified && letter == "A" {
-		letter = "B" // un A ne se gagne pas sur des PASS runtime-only à persistance non prouvée
+		letter = "B" // an A is not earned on runtime-only PASS with unproven persistence
 	}
 	return
 }
 
-// RemediationClass classe un contrôle par la NATURE de sa remédiation, pour distinguer ce
-// qui est corrigeable sur un hôte en cours d'exécution de ce qui ne l'est pas. Dérivé des
-// tags du rapport (domaine, type de preuve, id) :
-//   - kernel-build : exige un noyau recompilé (kconfig-*, domaine « Kernel build »)
-//   - install-time : exige une décision d'architecture/partitionnement (séparation de
-//     points de montage, domaine « Mounts », ids partition-*)
-//   - dangerous    : remédiation à fort risque opérationnel (verrou de modules, mot de
-//     passe GRUB, iommu=force) : jamais à appliquer sans plan + snapshot + test de reboot
-//   - manual       : pas de remédiation automatique (preuve « manual »)
-//   - auto         : remédiable automatiquement (le reste)
+// RemediationClass classifies a control by the NATURE of its remediation, to distinguish what
+// is fixable on a running host from what is not. Derived from the
+// report tags (domain, evidence type, id):
+//   - kernel-build: requires a recompiled kernel (kconfig-*, "Kernel build" domain)
+//   - install-time: requires an architecture/partitioning decision (mount-point
+//     separation, "Mounts" domain, partition-* ids)
+//   - dangerous   : high operational-risk remediation (module lockdown, GRUB
+//     password, iommu=force): never apply without a plan + snapshot + reboot test
+//   - manual      : no automatic remediation ("manual" evidence)
+//   - auto        : automatically remediable (the rest)
 func RemediationClass(c Control) string {
 	id := c.ID
 	switch {
@@ -363,20 +363,20 @@ func RemediationClass(c Control) string {
 	}
 }
 
-// ClassStat agrège les contrôles évalués d'une classe de remédiation.
+// ClassStat aggregates the evaluated controls of a remediation class.
 type ClassStat struct {
 	Class  string `json:"class"`
 	Passed int    `json:"passed"`
 	Failed int    `json:"failed"`
 	Total  int    `json:"total"`
-	Grade  string `json:"grade"` // note A->E calculée sur les seuls contrôles de la classe
+	Grade  string `json:"grade"` // A->E grade computed on the class's controls only
 }
 
-// Posture est la ventilation par classe de remédiation + la note REMÉDIABLE : la note
-// recalculée sur les seuls contrôles corrigeables sur un hôte vivant (hors kernel-build et
-// install-time), pour qu'une architecture/un noyau non corrigeables ne masquent pas la
-// posture réellement atteignable. C'est la réponse à « pourquoi mon C inclut-il des choix
-// que je ne peux pas corriger sans réinstaller ? » (revue ChatGPT, sections 3-5).
+// Posture is the breakdown by remediation class + the REMEDIABLE grade: the grade
+// recomputed on the controls fixable on a live host only (excluding kernel-build and
+// install-time), so that a non-fixable architecture/kernel does not mask the
+// posture actually reachable. This is the answer to "why does my C include choices
+// I cannot fix without reinstalling?" (ChatGPT review, sections 3-5).
 type Posture struct {
 	Classes          []ClassStat `json:"classes"`
 	RemediableGrade  string      `json:"remediable_grade"`
@@ -385,18 +385,18 @@ type Posture struct {
 	RemediableTotal  int         `json:"remediable_total"`
 }
 
-// classOrder fixe l'ordre d'affichage des classes.
+// classOrder sets the display order of the classes.
 var classOrder = []string{"auto", "manual", "dangerous", "install-time", "kernel-build"}
 
-// Breakdown calcule la ventilation par classe et la note remédiable, pour la même vue
-// (standard, level) qu'Evaluate.
+// Breakdown computes the breakdown by class and the remediable grade, for the same view
+// (standard, level) as Evaluate.
 func Breakdown(r *Report, standard, level string) Posture {
 	stat := map[string]*ClassStat{}
 	for _, k := range classOrder {
 		stat[k] = &ClassStat{Class: k}
 	}
 	var remFindings []finding.Finding
-	clsFindings := map[string][]finding.Finding{} // échecs par classe, pour la note par classe
+	clsFindings := map[string][]finding.Finding{} // failures per class, for the per-class grade
 	remPassed, remTotal := 0, 0
 	for _, p := range r.Profiles {
 		for _, c := range p.Controls {
@@ -420,7 +420,7 @@ func Breakdown(r *Report, standard, level string) Posture {
 				s.Failed++
 				clsFindings[cls] = append(clsFindings[cls], toFinding(c, "", standard))
 			}
-			if cls != "install-time" && cls != "kernel-build" { // périmètre remédiable
+			if cls != "install-time" && cls != "kernel-build" { // remediable scope
 				remTotal++
 				if st == "passed" {
 					remPassed++
@@ -444,14 +444,14 @@ func Breakdown(r *Report, standard, level string) Posture {
 	}
 }
 
-// Headline construit la ligne de synthèse forte (note + points + échecs).
+// Headline builds the strong summary line (grade + points + failures).
 func Headline(res Result) string {
 	letter, pts, rq := GradeResult(res)
 	c := res.Summary.Counts
 	q := ""
 	if rq {
-		q = fmt.Sprintf(" · runtime-qualifiée (%d PASS runtime-only, persistance non vérifiée)", res.Qualified)
+		q = fmt.Sprintf(" · runtime-qualified (%d runtime-only PASS, persistence not verified)", res.Qualified)
 	}
-	return fmt.Sprintf("Note %s  (%d/100)  —  Critical %d · High %d · Medium %d · Low %d  ·  %d/%d conformes%s",
+	return fmt.Sprintf("Grade %s  (%d/100)  —  Critical %d · High %d · Medium %d · Low %d  ·  %d/%d compliant%s",
 		letter, pts, c["critical"], c["high"], c["medium"], c["low"], res.Passed, res.Total, q)
 }

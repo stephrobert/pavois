@@ -13,14 +13,14 @@ func TestSeverity(t *testing.T) {
 		impact float64
 		want   string
 	}{
-		{1.0, "critique"},
-		{0.9, "critique"},
-		{0.89, "haute"},
-		{0.7, "haute"},
-		{0.69, "moyenne"},
-		{0.4, "moyenne"},
-		{0.39, "basse"},
-		{0.0, "basse"},
+		{1.0, "critical"},
+		{0.9, "critical"},
+		{0.89, "high"},
+		{0.7, "high"},
+		{0.69, "medium"},
+		{0.4, "medium"},
+		{0.39, "low"},
+		{0.0, "low"},
 	}
 	for _, tc := range tests {
 		if got := severity(tc.impact); got != tc.want {
@@ -71,7 +71,7 @@ func TestDomain(t *testing.T) {
 		{"section tag fallback", `{"id":"ssh-x","tags":{"section":"5.2"}}`, "5.2"},
 		{"id prefix fallback", `{"id":"svc-telnet-removed"}`, "svc"},
 		{"prefix stops at digit", `{"id":"net4-foo"}`, "net"},
-		{"empty prefix is Divers", `{"id":"-x"}`, "Divers"},
+		{"empty prefix is Misc", `{"id":"-x"}`, "Misc"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -113,8 +113,8 @@ func TestControlData(t *testing.T) {
 	if cd.Desc != "root login over SSH must be off" {
 		t.Errorf("Desc not trimmed: %q", cd.Desc)
 	}
-	if cd.Sev != "haute" {
-		t.Errorf("Sev = %q, want haute (impact 0.7)", cd.Sev)
+	if cd.Sev != "high" {
+		t.Errorf("Sev = %q, want high (impact 0.7)", cd.Sev)
 	}
 	if cd.Status != "failed" {
 		t.Errorf("Status = %q, want failed", cd.Status)

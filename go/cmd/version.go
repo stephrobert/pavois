@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// version est injectée au build via -ldflags "-X pavois/cmd.version=...".
+// version is injected at build time via -ldflags "-X pavois/cmd.version=...".
 var version = "dev"
 
 var versionCmd = &cobra.Command{
