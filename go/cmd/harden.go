@@ -1329,11 +1329,15 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	// installs. An in-recipe `apt-get update` execute runs too late (converge, after compile).
 	// Self-guarded so it is a no-op on dnf/zypper hosts.
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: refreshing apt cache…")
-	_ = run("ssh", sshTTY(target, "if command -v apt-get >/dev/null 2>&1; then sudo apt-get update -qq || true; fi")...)
+	_ = run("ssh", sshTTY(target, "if command -v apt-get >/dev/null 2>&1; then sudo env APT_LISTBUGS_FRONTEND=none apt-get update -qq || true; fi")...)
 
 	// Terraform-style: show the REAL diff (why-run changes nothing) before asking.
 	_, _ = fmt.Fprintf(out, "\npavois: planned changes on %s (nothing applied yet):\n\n", target)
-	why := "sudo env CHEF_LICENSE=accept-silent cinc-apply /tmp/pavois-harden.rb --why-run"
+	// APT_LISTBUGS_FRONTEND=none: if apt-listbugs is (being) installed, its apt hook otherwise
+	// ABORTS every non-interactive apt operation in the converge (it can't prompt), which makes
+	// the other package installs fail. Setting it none makes apt-listbugs a no-op for THIS
+	// converge only; a normal admin `apt install` later still gets its critical-bug warnings.
+	why := "sudo env CHEF_LICENSE=accept-silent APT_LISTBUGS_FRONTEND=none cinc-apply /tmp/pavois-harden.rb --why-run"
 	if err := run("ssh", sshTTY(target, why)...); err != nil {
 		return fmt.Errorf("why-run: %w", err)
 	}
@@ -1355,7 +1359,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	}
 
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: converging (cinc-apply)…")
-	conv := "sudo env CHEF_LICENSE=accept-silent cinc-apply /tmp/pavois-harden.rb"
+	conv := "sudo env CHEF_LICENSE=accept-silent APT_LISTBUGS_FRONTEND=none cinc-apply /tmp/pavois-harden.rb"
 	if err := run("ssh", sshTTY(target, conv)...); err != nil {
 		// With --reboot the run ends by rebooting the box: the SSH session drops mid-run,
 		// which surfaces as a non-zero exit. That's expected — wait for the box to return.
