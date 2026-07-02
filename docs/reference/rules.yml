@@ -21029,9 +21029,8 @@ misc-postfix-anti-vrfy:
   applicable_os:
   - debian12
   check:
-  - only_if { file('/usr/sbin/postconf').exist? }
-  - describe command('/usr/sbin/postconf -h disable_vrfy_command 2>/dev/null') do
-  - '  its(''stdout.strip'') { should cmp ''yes'' }'
+  - describe command('if ! command -v /usr/sbin/postconf >/dev/null 2>&1; then echo ok; elif /usr/sbin/postconf -h disable_vrfy_command 2>/dev/null | grep -qi ''^yes''; then echo ok; else echo ko; fi') do
+  - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Hardening (misc)
   evidence_type: effective-runtime
@@ -21039,9 +21038,12 @@ misc-postfix-anti-vrfy:
   levels: {}
   reboot_survivable: 'no'
   remediation:
-    command: postconf -e 'disable_vrfy_command = yes' 2>/dev/null && systemctl reload postfix 2>/dev/null; true
+    command: 'mkdir -p /etc/postfix; touch /etc/postfix/main.cf; if command -v postconf
+      >/dev/null 2>&1; then postconf -e ''disable_vrfy_command = yes''; else sed -ri
+      ''/^disable_vrfy_command/d'' /etc/postfix/main.cf; echo ''disable_vrfy_command
+      = yes'' >> /etc/postfix/main.cf; fi; systemctl reload postfix 2>/dev/null || true'
     name: postfix-anti-vrfy
-    not_if: postconf -h disable_vrfy_command 2>/dev/null | grep -qi '^yes'
+    not_if: grep -Eqs '^disable_vrfy_command[[:space:]]*=[[:space:]]*yes' /etc/postfix/main.cf
     resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-047
@@ -21050,9 +21052,8 @@ misc-postfix-banner:
   applicable_os:
   - debian12
   check:
-  - only_if { file('/usr/sbin/postconf').exist? }
-  - describe command('/usr/sbin/postconf -h smtpd_banner 2>/dev/null') do
-  - '  its(''stdout'') { should_not match(/mail_name/i) }'
+  - describe command('if ! command -v /usr/sbin/postconf >/dev/null 2>&1; then echo ok; elif /usr/sbin/postconf -h smtpd_banner 2>/dev/null | grep -qi mail_name; then echo ko; else echo ok; fi') do
+  - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Hardening (misc)
   evidence_type: effective-runtime
@@ -21060,9 +21061,13 @@ misc-postfix-banner:
   levels: {}
   reboot_survivable: 'no'
   remediation:
-    command: postconf -e 'smtpd_banner = $myhostname ESMTP' 2>/dev/null && systemctl reload postfix 2>/dev/null; true
+    command: 'mkdir -p /etc/postfix; touch /etc/postfix/main.cf; if command -v postconf
+      >/dev/null 2>&1; then postconf -e ''smtpd_banner = $myhostname ESMTP''; else sed
+      -ri ''/^smtpd_banner/d'' /etc/postfix/main.cf; echo ''smtpd_banner = $myhostname
+      ESMTP'' >> /etc/postfix/main.cf; fi; systemctl reload postfix 2>/dev/null || true'
     name: postfix-banner
-    not_if: '! postconf -h smtpd_banner 2>/dev/null | grep -qi mail_name'
+    not_if: grep -qs '^smtpd_banner' /etc/postfix/main.cf && ! grep '^smtpd_banner'
+      /etc/postfix/main.cf | grep -qi mail_name
     resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-048
