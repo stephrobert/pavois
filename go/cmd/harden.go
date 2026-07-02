@@ -418,6 +418,7 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	grubPwWanted := false            // a grub_password remediation was enabled
 	dconfWanted := false             // a dconf (GNOME) remediation was enabled
 	faillockWanted := false          // a pam_faillock remediation was enabled
+	faillockParams := ""             // pam_faillock module args (from the rule data)
 	kernelBuildWanted := false       // a kernel_build remediation was enabled (deliver the recipe)
 	manualFixes := []manualFix{}     // `manual` remediations — delivered as a script, never auto-run
 
@@ -572,7 +573,10 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		case "dconf":
 			dconfWanted = true // deploy the GNOME dconf hardening db (keyfile + locks) once, below
 		case "pam_faillock":
-			faillockWanted = true // enable account lockout via pam-auth-update profile, below
+			faillockWanted = true // enable account lockout, emitted below
+			if p := s(m["params"]); p != "" {
+				faillockParams = p // module args (deny/unlock_time/…) come from the rule data
+			}
 		case "kernel_build":
 			kernelBuildWanted = true // deliver (not run) the KSPP kernel-build recipe, below
 		case "audit_ruleset":
@@ -1048,7 +1052,12 @@ end
 		// the account line — neither shifts the post-pam_unix jump offsets (success=N), so the auth
 		// stack stays correct; audit + even_deny_root satisfy the controls. SSH key auth bypasses
 		// the password stack, so a slip here can't lock out key login.
-		fl := "audit silent deny=5 unlock_time=900 even_deny_root"
+		// The module args (deny/unlock_time/audit/even_deny_root) are policy: they come from the
+		// rule data (params), with a safe default if the rule omits them.
+		fl := faillockParams
+		if fl == "" {
+			fl = "audit silent deny=5 unlock_time=900 even_deny_root"
+		}
 		_, _ = fmt.Fprintf(&b, "execute 'pavois-faillock-preauth' do\n  command 'sed -ri \"/^auth.*pam_unix\\.so/i auth required pam_faillock.so preauth %s\" /etc/pam.d/common-auth'\n  only_if 'test -f /etc/pam.d/common-auth'\n  not_if 'grep -qE \"pam_faillock.so\" /etc/pam.d/common-auth'\nend\n\n", fl)
 		b.WriteString("execute 'pavois-faillock-account' do\n  command 'printf \"account required pam_faillock.so\\n\" >> /etc/pam.d/common-account'\n  only_if 'test -f /etc/pam.d/common-account'\n  not_if 'grep -qE \"pam_faillock.so\" /etc/pam.d/common-account'\nend\n\n")
 		n++
