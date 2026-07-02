@@ -6,14 +6,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// norm décrit une réglementation auditable et ses niveaux.
+// norm describes an auditable standard and its levels.
 type norm struct {
 	Key, Name, Desc, Levels string
 }
 
-// standards : les réglementations supportées (clé --standard) et leurs niveaux.
-// Mappings et niveaux proviennent de la référence Pavois (docs/reference/
-// pavois-content/) ; Pavois n'invente ni mapping ni valeur.
+// standards: the supported standards (--standard key) and their levels.
+// Mappings and levels come from the Pavois reference (docs/reference/
+// pavois-content/); Pavois invents neither mapping nor value.
 var standards = []norm{
 	{"bp28", "ANSSI BP-028",
 		"Configuration hardening guide for GNU/Linux systems — French national\n    cybersecurity agency (ANSSI).",

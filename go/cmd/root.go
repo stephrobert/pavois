@@ -1,5 +1,5 @@
-// Package cmd câble la CLI de Pavois (cobra), façon pitstop : commande racine,
-// scan/profiles/version, et traduction du résultat en code de sortie pour la CI.
+// Package cmd wires up the Pavois CLI (cobra), pitstop-style: root command,
+// scan/profiles/version, and translation of the result into an exit code for CI.
 package cmd
 
 import (
@@ -13,8 +13,8 @@ import (
 	screport "github.com/stephrobert/scankit/report"
 )
 
-// ComplianceError signale une non-conformité bloquante (note sous le seuil) :
-// code de sortie 1, distinct du code 2 réservé aux erreurs techniques.
+// ComplianceError signals a blocking non-compliance (grade below the threshold):
+// exit code 1, distinct from code 2 reserved for technical errors.
 type ComplianceError struct{ Points, Threshold int }
 
 func (e *ComplianceError) Error() string {
@@ -32,14 +32,14 @@ systemctl, dpkg/rpm...) via CINC Auditor, maps each control to N standards
   pavois scan user@host --key ~/.ssh/id --standard cis --level 1 --fail-under 50`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	// Bandeau (logo + version + tagline) dès le lancement de toute commande.
+	// Banner (logo + version + tagline) as soon as any command is launched.
 	PersistentPreRun: func(_ *cobra.Command, _ []string) {
 		screport.Banner(os.Stderr, bannerOpts())
 	},
 }
 
-// Execute lance la racine et traduit en code de sortie : 0 conforme, 1
-// non-conformité (sous le seuil), 2 erreur technique.
+// Execute runs the root command and translates the result into an exit code: 0 compliant, 1
+// non-compliance (below the threshold), 2 technical error.
 func Execute() {
 	err := rootCmd.Execute()
 	if err == nil {
@@ -50,11 +50,11 @@ func Execute() {
 		_, _ = fmt.Fprintln(os.Stderr, "pavois:", ce.Error())
 		os.Exit(1)
 	}
-	_, _ = fmt.Fprintln(os.Stderr, "erreur:", err)
+	_, _ = fmt.Fprintln(os.Stderr, "error:", err)
 	os.Exit(2)
 }
 
-// findRoot localise la racine du dépôt (dossier contenant profiles/).
+// findRoot locates the repository root (directory containing profiles/).
 func findRoot() string {
 	if r := os.Getenv("PAVOIS_ROOT"); r != "" {
 		return r

@@ -1,6 +1,6 @@
-// pavois — scanner de conformité (CINC/InSpec) conscient de la config effective.
-// Port Go de la CLI Python, réutilisant les libs scankit (présentation, findings,
-// scoring) façon pitstop.
+// pavois — a compliance scanner (CINC/InSpec) aware of the effective config.
+// Go port of the Python CLI, reusing the scankit libs (presentation, findings,
+// scoring) pitstop-style.
 package main
 
 import "pavois/cmd"

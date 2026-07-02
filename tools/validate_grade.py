@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""L4 — gate NOTE : le modèle de note A→E doit être IDENTIQUE entre les deux
-implémentations (le JS du rapport HTML et le Go du binaire). On extrait poids,
-plafonds et bandes des deux sources et on compare numériquement.
+"""L4 — GRADE gate: the A->E grade model must be IDENTICAL between the two
+implementations (the HTML report JS and the binary's Go). We extract weights,
+caps and bands from both sources and compare them numerically.
 
-JS  : go/internal/render/assets/app.js  (GW / GCAP / bandes ternaires)
-Go  : go/internal/audit/audit.go        (w / cap / switch des bandes)
+JS: go/internal/render/assets/app.js  (GW / GCAP / ternary bands)
+Go: go/internal/audit/audit.go        (w / cap / band switch)
 
-Sortie : 0 si les modèles coïncident, 1 sinon.
+Output: 0 if the models match, 1 otherwise.
 """
 
 import re
@@ -24,7 +24,7 @@ def nums(s):
 
 def js_model():
     gw = re.search(r"var GW=\{([^}]*)\}", JS).group(1)
-    # plafond infini (critique) : on le retire avant comptage (Infinity n'a pas de chiffre)
+    # infinite cap (critical): drop it before counting (Infinity has no digit)
     gcap = re.search(r"var GCAP=\{([^}]*)\}", JS).group(1).replace("Infinity", "")
     bands = re.search(r"fin>=(\d+)\?'A':fin>=(\d+)\?'B':fin>=(\d+)\?'C':fin>=(\d+)\?'D'", JS)
     return nums(gw), nums(gcap), nums(" ".join(bands.groups()))
@@ -43,11 +43,11 @@ def main():
     jw, jc, jb = js_model()
     gw, gc, gb = go_model()
     ok = True
-    for name, j, g in (("poids", jw, gw), ("plafonds", jc, gc), ("bandes", jb, gb)):
+    for name, j, g in (("weights", jw, gw), ("caps", jc, gc), ("bands", jb, gb)):
         if j == g:
-            print(f"  ✓ {name} identiques : {g}")
+            print(f"  ✓ {name} identical: {g}")
         else:
-            print(f"  ✗ {name} divergents — JS {j} vs Go {g}")
+            print(f"  ✗ {name} diverge — JS {j} vs Go {g}")
             ok = False
     return 0 if ok else 1
 

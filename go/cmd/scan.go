@@ -36,7 +36,7 @@ var (
 )
 
 var scanCmd = &cobra.Command{
-	Use:   "scan <local|user@hôte|conteneur>",
+	Use:   "scan <local|user@host|container>",
 	Short: "Audit a target (effective config) and grade A-E",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runScan,
@@ -98,7 +98,7 @@ func profileForOS(name, release string) string {
 	return ""
 }
 
-// familyOf : préfixe de profil de la même FAMILLE (pour le repli au plus proche).
+// familyOf: profile prefix of the same FAMILY (for the closest fallback).
 func familyOf(name string) string {
 	switch name {
 	case "ubuntu":
@@ -108,13 +108,13 @@ func familyOf(name string) string {
 	case "fedora":
 		return "fedora"
 	case "almalinux", "rhel", "redhat", "centos", "rocky", "ol", "oracle":
-		return "rhel" // les clones RHEL retombent sur rhel<major> (cf. almalinux9 à part)
+		return "rhel" // RHEL clones fall back to rhel<major> (cf. almalinux9 handled separately)
 	}
 	return ""
 }
 
-// latestFamilyProfile : profil de la famille au plus haut numéro de version
-// présent sous profiles/linux/ (ex. ubuntu2204/ubuntu2404 -> ubuntu2404).
+// latestFamilyProfile: the family profile with the highest version number
+// present under profiles/linux/ (e.g. ubuntu2204/ubuntu2404 -> ubuntu2404).
 func latestFamilyProfile(root, fam string) string {
 	entries, _ := os.ReadDir(filepath.Join(root, "profiles", "linux"))
 	best, bestN := "", -1
@@ -131,9 +131,9 @@ func latestFamilyProfile(root, fam string) string {
 	return best
 }
 
-// detectProfile interroge la CIBLE (cinc detect, tout transport) et renvoie le
-// profil linux. Repli au plus proche de la même famille si la version exacte
-// n'est pas embarquée (ex. Ubuntu 26.04 -> ubuntu2404), SANS dupliquer de corpus.
+// detectProfile queries the TARGET (cinc detect, any transport) and returns the
+// linux profile. Falls back to the closest of the same family when the exact
+// version is not bundled (e.g. Ubuntu 26.04 -> ubuntu2404), WITHOUT duplicating the corpus.
 func detectProfile(root string, o engine.Options) (profile, detected string) {
 	name, release := engine.Detect(o)
 	if name == "" {
@@ -174,9 +174,9 @@ func runScan(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("read SSH password: %w", err)
 	}
 
-	// Détection de l'OS de la CIBLE (cinc detect, tout transport) pour choisir le
-	// bon profil sans demander à l'utilisateur — et signaler un profil qui ne
-	// correspond pas à la machine testée.
+	// Detect the TARGET OS (cinc detect, any transport) to pick the right profile
+	// without asking the user — and flag a profile that does not match the machine
+	// under test.
 	_, _ = fmt.Fprint(os.Stderr, "  ⠿ detecting target OS…\r")
 	detOpts := engine.Options{Target: target, Key: scKey, SSHPass: sshPass}
 	autoProf, detectedOS := detectProfile(root, detOpts)
@@ -195,8 +195,8 @@ func runScan(cmd *cobra.Command, args []string) error {
 		scProfile = autoProf
 		_, _ = fmt.Fprintf(os.Stderr, "pavois: detected %s → profile %s\n", detectedOS, autoProf)
 	} else if autoProf != "" && !strings.HasSuffix(scProfile, autoProf) {
-		// même profil sous une autre forme de chemin (profiles/linux/x, ./x) = OK ;
-		// on n'avertit que si le profil désigne vraiment un autre OS.
+		// same profile under a different path form (profiles/linux/x, ./x) = OK;
+		// only warn if the profile really designates a different OS.
 		_, _ = fmt.Fprintf(os.Stderr, "pavois: ⚠ profile %s may not match target OS %s (suggested: %s)\n",
 			scProfile, detectedOS, autoProf)
 	}
@@ -214,13 +214,13 @@ func runScan(cmd *cobra.Command, args []string) error {
 		rc, err := engine.Run(engine.Options{
 			Root: root, Target: target, Profile: scProfile, Engine: scEngine,
 			SSHPass: sshPass, SudoPass: sudoPass, Key: scKey, Sudo: sudo, JSONOut: jsonPath,
-			Standard: scStandard, Level: scLevel, // n'exécute que la norme demandée
+			Standard: scStandard, Level: scLevel, // only runs the requested standard
 			OnTarget: scOnTarget, Controls: scControls,
 		})
 		if err != nil {
 			return err
 		}
-		_ = rc // 100/101 = des contrôles échouent : exploité via la note/--fail-under
+		_ = rc // 100/101 = controls fail: used via the grade/--fail-under
 	}
 
 	rep, err := audit.Load(jsonPath)
@@ -249,7 +249,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Rapport HTML autoporté multi-normes (note A->E côté client), à côté du JSON.
+	// Self-contained multi-standard HTML report (client-side A->E grade), next to the JSON.
 	htmlPath := strings.TrimSuffix(jsonPath, ".json") + ".html"
 	htmlStr, nctrl, nnorm := render.HTML(rep, render.Meta{
 		Machine: machine, Transport: transport,
@@ -266,12 +266,12 @@ func runScan(cmd *cobra.Command, args []string) error {
 	if scLevel != "" {
 		scope += " · level " + scLevel
 	}
-	// Pas de SummaryHeadline : la note est rendue en grosse lettre en bas (pas de
-	// doublon avec les compteurs du résumé).
+	// No SummaryHeadline: the grade is rendered as a large letter at the bottom (no
+	// duplication with the summary counters).
 	opts := reportOptions(version, scope, fmt.Sprintf("%s (%s) · %s", machine, strings.TrimSuffix(transport, "://"), res.OS), "")
 
-	// Sortie : défaut = présentation scankit (comme pitstop/plumber) ; sinon un
-	// format machine optionnel, propre sur stdout, pour une chaîne CI/CD.
+	// Output: default = scankit presentation (like pitstop/plumber); otherwise an
+	// optional machine format, clean on stdout, for a CI/CD pipeline.
 	out := cmd.OutOrStdout()
 	switch scFormat {
 	case "json":
@@ -297,9 +297,9 @@ func runScan(cmd *cobra.Command, args []string) error {
 	case "html":
 		_, _ = fmt.Fprint(out, htmlStr)
 	default:
-		// Ordre aligné sur pitstop/plumber : bandeau → écarts → résumé, et la NOTE
-		// en GROSSE LETTRE tout EN BAS. Au terminal on ne montre que critical/high ;
-		// le détail complet (medium/low) est dans le rapport HTML.
+		// Order aligned with pitstop/plumber: banner → gaps → summary, and the GRADE
+		// as a LARGE LETTER right at the BOTTOM. In the terminal we only show critical/high;
+		// the full detail (medium/low) is in the HTML report.
 		if res.Total == 0 {
 			_, _ = fmt.Fprintf(out, "  No controls evaluated — is standard %q present in profile %q?\n\n",
 				scStandard, scProfile)
@@ -310,8 +310,8 @@ func runScan(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintf(os.Stderr,
 			"  %d critical/high/medium deviation(s) shown · %d total · full report → %s\n",
 			len(top), len(res.Findings), htmlPath)
-		// On ne note (A→E) que les profils à NORMES (profiles/linux/*) ; un profil
-		// sans mapping (ex. container-baseline) n'a pas de note.
+		// We only grade (A→E) profiles with STANDARDS (profiles/linux/*); a profile
+		// without mappings (e.g. container-baseline) has no grade.
 		if nnorm > 0 {
 			letter, pts, _ := audit.GradeResult(res)
 			writeScorecard(out, letter, pts, res.Passed, res.Total, res.Qualified)

@@ -12,7 +12,7 @@ import (
 	"pavois/internal/audit"
 )
 
-// gradeArt : grande lettre A→E (style ANSI Shadow) pour la carte de score.
+// gradeArt: large A→E letter (ANSI Shadow style) for the scorecard.
 var gradeArt = map[string][]string{
 	"A": {" █████╗ ", "██╔══██╗", "███████║", "██╔══██║", "██║  ██║", "╚═╝  ╚═╝"},
 	"B": {"██████╗ ", "██╔══██╗", "██████╔╝", "██╔══██╗", "██████╔╝", "╚═════╝ "},
@@ -29,8 +29,8 @@ var gradeBand = map[string]string{
 	"A": "Excellent", "B": "Good", "C": "Fair", "D": "Poor", "E": "Critical",
 }
 
-// writeScorecard rend la note A→E en GROSSE LETTRE colorée (comme pitstop/plumber)
-// + points + bande, à côté de la lettre.
+// writeScorecard renders the A→E grade as a BIG colored LETTER (like pitstop/plumber)
+// + points + band, next to the letter.
 func writeScorecard(w io.Writer, letter string, points, passed, total, qualified int) {
 	art := gradeArt[letter]
 	if art == nil {
@@ -64,8 +64,8 @@ func writeScorecard(w io.Writer, letter string, points, passed, total, qualified
 	_, _ = fmt.Fprintln(w)
 }
 
-// writePosture rend la ventilation par classe de remédiation + la note remédiable, pour
-// montrer ce qui est corrigeable sur un hôte vivant vs l'architecture / le noyau.
+// writePosture renders the breakdown by remediation class + the remediable grade, to
+// show what is fixable on a live host vs the architecture / the kernel.
 func writePosture(w io.Writer, p audit.Posture) {
 	if len(p.Classes) == 0 {
 		return
@@ -95,8 +95,8 @@ func writePosture(w io.Writer, p audit.Posture) {
 	_, _ = fmt.Fprintln(w)
 }
 
-// onlySeverities filtre les findings sur un jeu de sévérités (terminal concis :
-// on n'affiche que critical/high, le reste va au rapport HTML).
+// onlySeverities filters findings on a set of severities (concise terminal:
+// only critical/high are shown, the rest goes to the HTML report).
 func onlySeverities(fs []finding.Finding, keep ...string) []finding.Finding {
 	set := map[string]bool{}
 	for _, s := range keep {
@@ -111,8 +111,8 @@ func onlySeverities(fs []finding.Finding, keep ...string) []finding.Finding {
 	return out
 }
 
-// pavoisBanner : wordmark « PAVOIS » en GROSSES LETTRES (style ANSI Shadow),
-// le même style que la lettre de note A→E affichée en fin de scan.
+// pavoisBanner: "PAVOIS" wordmark in BIG LETTERS (ANSI Shadow style),
+// the same style as the A→E grade letter shown at the end of a scan.
 func pavoisBanner() []string {
 	letters := map[rune][]string{
 		'P': {"██████╗ ", "██╔══██╗", "██████╔╝", "██╔═══╝ ", "██║     ", "╚═╝     "},
@@ -131,8 +131,8 @@ func pavoisBanner() []string {
 	return lines
 }
 
-// bannerOpts : options minimales pour le bandeau (logo + version + tagline),
-// affiché dès le lancement de la CLI (tout sous-commande).
+// bannerOpts: minimal options for the banner (logo + version + tagline),
+// shown as soon as the CLI is launched (any subcommand).
 func bannerOpts() screport.Options {
 	return screport.Options{
 		ToolName: "pavois",
@@ -143,18 +143,18 @@ func bannerOpts() screport.Options {
 	}
 }
 
-// reportOptions : présentation scankit pour le scan (bandeau + tier domaine).
+// reportOptions: scankit presentation for the scan (banner + domain tier).
 func reportOptions(_ /*version*/, mode, source, headline string) screport.Options {
 	o := bannerOpts()
 	o.Mode = mode
 	o.Source = source
-	o.HideTable = true // la table fait doublon avec les blocs détail
+	o.HideTable = true // the table duplicates the detail blocks
 	o.SummaryHeadline = headline
 	o.TierOf = func(f finding.Finding) string {
 		if d := f.Label("domain"); d != "" {
 			return d
 		}
-		return f.Label("niveau")
+		return f.Label("level")
 	}
 	return o
 }
