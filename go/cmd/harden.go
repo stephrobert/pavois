@@ -732,6 +732,19 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			"/etc/sysctl.d/zz-pavois.conf", c.String())
 		b.WriteString("execute 'pavois-sysctl-reload' do\n  command 'sysctl --system'\n  action :nothing\nend\n\n")
 		n += len(sysctl)
+		// Re-apply sysctls AFTER the network is up. systemd-sysctl runs at sysinit, before
+		// networkd/cloud-init bring the interface up, and that late setup resets some
+		// net.ipv4.conf.all/default keys (log_martians, rp_filter…) to the kernel default —
+		// so the drop-in is correct but the live value is wrong after a reboot. A oneshot
+		// ordered After=network-online.target reloads them once the interface exists.
+		unit := "[Unit]\\nDescription=Pavois re-apply sysctl after network is online\\n" +
+			"After=network-online.target\\nWants=network-online.target\\n" +
+			"[Service]\\nType=oneshot\\nRemainAfterExit=yes\\nExecStart=/sbin/sysctl --system\\n" +
+			"[Install]\\nWantedBy=multi-user.target\\n"
+		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\n  notifies :run, 'execute[pavois-sysctl-reapply-enable]', :immediately\nend\n\n",
+			"/etc/systemd/system/pavois-sysctl-reapply.service", unit)
+		b.WriteString("execute 'pavois-sysctl-reapply-enable' do\n  command 'systemctl daemon-reload && systemctl enable pavois-sysctl-reapply.service'\n  action :nothing\nend\n\n")
+		n++
 	}
 	for _, k := range sortedKeysS(svc) {
 		// Guard: only act if the unit exists. A service for a package that isn't installed
