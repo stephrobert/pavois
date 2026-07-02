@@ -64,13 +64,13 @@ func tagStr(c audit.Control, k string) string {
 func severity(impact float64) string {
 	switch {
 	case impact >= 0.9:
-		return "critique"
+		return "critical"
 	case impact >= 0.7:
-		return "haute"
+		return "high"
 	case impact >= 0.4:
-		return "moyenne"
+		return "medium"
 	default:
-		return "basse"
+		return "low"
 	}
 }
 
@@ -112,7 +112,7 @@ func domain(c audit.Control) string {
 		pref += string(ch)
 	}
 	if pref == "" {
-		return "Divers"
+		return "Misc"
 	}
 	return pref
 }
@@ -178,7 +178,7 @@ func HTML(rep *audit.Report, m Meta) (string, int, int) {
 			}
 		}
 	}
-	pname, pver := "Profil", ""
+	pname, pver := "Profile", ""
 	if len(rep.Profiles) > 0 {
 		if rep.Profiles[0].Title != "" {
 			pname = rep.Profiles[0].Title
@@ -189,7 +189,7 @@ func HTML(rep *audit.Report, m Meta) (string, int, int) {
 	if osStr == "" {
 		osStr = "n/a"
 	}
-	options := `<option value="all">Toutes normes</option>`
+	options := `<option value="all">All standards</option>`
 	for _, n := range present {
 		cnt := 0
 		for _, c := range cdata {
@@ -205,59 +205,59 @@ func HTML(rep *audit.Report, m Meta) (string, int, int) {
 	normsB, _ := json.Marshal(present)
 
 	var b strings.Builder
-	b.WriteString(`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+	b.WriteString(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Rapport de conformité - ` + e(pname) + `</title>
+<title>Compliance report - ` + e(pname) + `</title>
 <style>`)
 	b.WriteString(cssAsset)
 	b.WriteString(`</style></head><body>
-<header><h1>Rapport de conformité</h1>
-<div class="sub">` + e(pname) + ` ` + e(pver) + ` &middot; généré le ` + e(m.Timestamp) + ` &middot; pavois</div></header>
+<header><h1>Compliance report</h1>
+<div class="sub">` + e(pname) + ` ` + e(pver) + ` &middot; generated ` + e(m.Timestamp) + ` &middot; pavois</div></header>
 <div class="wrap">
 
-<div class="card"><h2>Caractéristiques de l'évaluation</h2><div class="grid">
+<div class="card"><h2>Assessment characteristics</h2><div class="grid">
   <div><b>Machine</b> ` + e(m.Machine) + `</div>
   <div><b>Transport</b> ` + e(m.Transport) + `</div>
-  <div><b>Horodatage</b> ` + e(m.Timestamp) + `</div>
-  <div><b>Système</b> ` + e(osStr) + `</div>
-  <div><b>Profil</b> ` + e(pname) + ` ` + e(pver) + `</div>
-  <div><b>Moteur</b> ` + e(m.Engine) + `</div>
+  <div><b>Timestamp</b> ` + e(m.Timestamp) + `</div>
+  <div><b>System</b> ` + e(osStr) + `</div>
+  <div><b>Profile</b> ` + e(pname) + ` ` + e(pver) + `</div>
+  <div><b>Engine</b> ` + e(m.Engine) + `</div>
 </div></div>
 
 <div class="toolbar">
   <div class="tgroup">
-    <label class="fld">Réglementation
+    <label class="fld">Standard
       <select id="cf-std" onchange="onStd()">` + options + `</select></label>
-    <label class="fld" id="cf-lvl-wrap" style="display:none">Niveau
+    <label class="fld" id="cf-lvl-wrap" style="display:none">Level
       <select id="cf-lvl" onchange="render()"></select></label>
-    <label class="fld">Sévérité min.
+    <label class="fld">Min. severity
       <select id="cf-sev" onchange="cfApply()">
-        <option value="all">Toutes</option>
-        <option value="moyenne">moyenne et +</option>
-        <option value="haute">haute et +</option>
-        <option value="critique">critique</option>
+        <option value="all">All</option>
+        <option value="medium">medium and up</option>
+        <option value="high">high and up</option>
+        <option value="critical">critical</option>
       </select></label>
   </div>
-  <input type="search" id="cf-q" class="search" oninput="cfApply()" placeholder="Rechercher une règle...">
-  <div class="seg" role="group" aria-label="Filtre par résultat">
-    <label><input type="radio" name="cf-res" value="all" checked onchange="cfApply()"><span>Tous</span></label>
-    <label><input type="radio" name="cf-res" value="failed" onchange="cfApply()"><span>Échecs</span></label>
-    <label><input type="radio" name="cf-res" value="passed" onchange="cfApply()"><span>Réussis</span></label>
+  <input type="search" id="cf-q" class="search" oninput="cfApply()" placeholder="Search a rule...">
+  <div class="seg" role="group" aria-label="Filter by result">
+    <label><input type="radio" name="cf-res" value="all" checked onchange="cfApply()"><span>All</span></label>
+    <label><input type="radio" name="cf-res" value="failed" onchange="cfApply()"><span>Failed</span></label>
+    <label><input type="radio" name="cf-res" value="passed" onchange="cfApply()"><span>Passed</span></label>
     <label><input type="radio" name="cf-res" value="skipped" onchange="cfApply()"><span>N/A</span></label>
   </div>
 </div>
 
-<div class="card"><h2>Conformité et score</h2><div id="cf-score"></div></div>
-<div class="card" id="cf-exec-card"><h2>Résumé exécutif</h2><div id="cf-exec"></div></div>
+<div class="card"><h2>Compliance and score</h2><div id="cf-score"></div></div>
+<div class="card" id="cf-exec-card"><h2>Executive summary</h2><div id="cf-exec"></div></div>
 <div class="legend">
-  <b>Deux axes distincts</b> :
-  <b>Niveau</b> = palier de durcissement de la <i>réglementation choisie</i>
-  (ANSSI minimal→élevé, CIS niveau&nbsp;1/2) ; <span class="lvl">pastille bleue</span>,
-  cumulatif (un palier inclut les inférieurs).
-  <b>Sévérité</b> = criticité du <i>contrôle</i> lui-même (impact InSpec),
-  <span class="sv h">haute</span> <span class="sv m">moyenne</span> <span class="sv b">basse</span> ;
-  fixe, indépendante de la norme.
-  <br>Choisir une réglementation recompose chapitres et score. Cliquer une règle pour son détail.
+  <b>Two distinct axes</b>:
+  <b>Level</b> = hardening tier of the <i>selected standard</i>
+  (ANSSI minimal→high, CIS level&nbsp;1/2); <span class="lvl">blue pill</span>,
+  cumulative (a tier includes the lower ones).
+  <b>Severity</b> = criticality of the <i>control</i> itself (InSpec impact),
+  <span class="sv h">high</span> <span class="sv m">medium</span> <span class="sv b">low</span>;
+  fixed, independent of the standard.
+  <br>Selecting a standard recomposes chapters and score. Click a rule for its detail.
 </div>
 <div id="cf-sections"></div>
 
