@@ -33,6 +33,9 @@ or partition them at install time. Options per mount point (what the controls ch
 Runtime carve with a dedicated disk (`/dev/sdb`), migrating the current content:
 
 ```bash
+# debian12 cloud images ship without LVM/rsync — install them first, or pvcreate/lvcreate
+# fail with "command not found" and the carve aborts.
+apt-get install -y lvm2 rsync
 pvcreate /dev/sdb && vgcreate vgpav /dev/sdb
 # LV : mount : options : size   (mount /var before /var/log before /var/log/audit)
 for spec in \
