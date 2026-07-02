@@ -16873,6 +16873,10 @@ kconfig-gcc-plugin-structleak:
   - rhel9
   - ubuntu2204
   - ubuntu2404
+  check:
+  - describe command("grep -hE '^(CONFIG_GCC_PLUGIN_STRUCTLEAK|CONFIG_INIT_STACK_ALL_ZERO)=y' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep -E '^(CONFIG_GCC_PLUGIN_STRUCTLEAK|CONFIG_INIT_STACK_ALL_ZERO)=y'") do
+  - '  its(''stdout'') { should match(/=y$/) }'
+  - end
   domain: Kernel build
   evidence_type: effective-runtime
   impact: 0.5
@@ -16894,10 +16898,6 @@ kconfig-gcc-plugin-structleak:
   severity: medium
   socle: SOCLE-CLD-KRN-037
   ssg: kernel_config_gcc_plugin_structleak
-  check:
-  - describe command("grep -hE '^(CONFIG_GCC_PLUGIN_STRUCTLEAK|CONFIG_INIT_STACK_ALL_ZERO)=y' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep -E '^(CONFIG_GCC_PLUGIN_STRUCTLEAK|CONFIG_INIT_STACK_ALL_ZERO)=y'") do
-  - '  its(''stdout'') { should match(/=y$/) }'
-  - end
   title: Force initialization of variables containing userspace addresses
 kconfig-gcc-plugin-structleak-byref-all:
   applicable_os:
@@ -16907,6 +16907,10 @@ kconfig-gcc-plugin-structleak-byref-all:
   - rhel9
   - ubuntu2204
   - ubuntu2404
+  check:
+  - describe command("grep -hE '^(CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL|CONFIG_INIT_STACK_ALL_ZERO)=y' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep -E '^(CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL|CONFIG_INIT_STACK_ALL_ZERO)=y'") do
+  - '  its(''stdout'') { should match(/=y$/) }'
+  - end
   domain: Kernel build
   evidence_type: effective-runtime
   impact: 0.5
@@ -16928,10 +16932,6 @@ kconfig-gcc-plugin-structleak-byref-all:
   severity: medium
   socle: SOCLE-CLD-KRN-038
   ssg: kernel_config_gcc_plugin_structleak_byref_all
-  check:
-  - describe command("grep -hE '^(CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL|CONFIG_INIT_STACK_ALL_ZERO)=y' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep -E '^(CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL|CONFIG_INIT_STACK_ALL_ZERO)=y'") do
-  - '  its(''stdout'') { should match(/=y$/) }'
-  - end
   title: zero-init everything passed by reference
 kconfig-hardened-usercopy:
   applicable_os:
@@ -21038,10 +21038,7 @@ misc-postfix-anti-vrfy:
   levels: {}
   reboot_survivable: 'no'
   remediation:
-    command: 'mkdir -p /etc/postfix; touch /etc/postfix/main.cf; if command -v postconf
-      >/dev/null 2>&1; then postconf -e ''disable_vrfy_command = yes''; else sed -ri
-      ''/^disable_vrfy_command/d'' /etc/postfix/main.cf; echo ''disable_vrfy_command
-      = yes'' >> /etc/postfix/main.cf; fi; systemctl reload postfix 2>/dev/null || true'
+    command: mkdir -p /etc/postfix; touch /etc/postfix/main.cf; if command -v postconf >/dev/null 2>&1; then postconf -e 'disable_vrfy_command = yes'; else sed -ri '/^disable_vrfy_command/d' /etc/postfix/main.cf; echo 'disable_vrfy_command = yes' >> /etc/postfix/main.cf; fi; systemctl reload postfix 2>/dev/null || true
     name: postfix-anti-vrfy
     not_if: grep -Eqs '^disable_vrfy_command[[:space:]]*=[[:space:]]*yes' /etc/postfix/main.cf
     resource: exec
@@ -21061,13 +21058,9 @@ misc-postfix-banner:
   levels: {}
   reboot_survivable: 'no'
   remediation:
-    command: 'mkdir -p /etc/postfix; touch /etc/postfix/main.cf; if command -v postconf
-      >/dev/null 2>&1; then postconf -e ''smtpd_banner = $myhostname ESMTP''; else sed
-      -ri ''/^smtpd_banner/d'' /etc/postfix/main.cf; echo ''smtpd_banner = $myhostname
-      ESMTP'' >> /etc/postfix/main.cf; fi; systemctl reload postfix 2>/dev/null || true'
+    command: mkdir -p /etc/postfix; touch /etc/postfix/main.cf; if command -v postconf >/dev/null 2>&1; then postconf -e 'smtpd_banner = $myhostname ESMTP'; else sed -ri '/^smtpd_banner/d' /etc/postfix/main.cf; echo 'smtpd_banner = $myhostname ESMTP' >> /etc/postfix/main.cf; fi; systemctl reload postfix 2>/dev/null || true
     name: postfix-banner
-    not_if: grep -qs '^smtpd_banner' /etc/postfix/main.cf && ! grep '^smtpd_banner'
-      /etc/postfix/main.cf | grep -qi mail_name
+    not_if: grep -qs '^smtpd_banner' /etc/postfix/main.cf && ! grep '^smtpd_banner' /etc/postfix/main.cf | grep -qi mail_name
     resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-048
@@ -29265,12 +29258,9 @@ posture-no-compilers:
   remediation:
     '@os':
       debian12:
-        command: for p in gcc cpp g++ gcc-12 g++-12 cpp-12 clang tcc tcc-dev;
-          do dpkg -l "$p" 2>/dev/null | grep -q '^ii' && DEBIAN_FRONTEND=noninteractive
-          apt-get purge -y "$p" >/dev/null 2>&1; done; true
+        command: for p in gcc cpp g++ gcc-12 g++-12 cpp-12 clang tcc tcc-dev; do dpkg -l "$p" 2>/dev/null | grep -q '^ii' && DEBIAN_FRONTEND=noninteractive apt-get purge -y "$p" >/dev/null 2>&1; done; true
         name: purge-compilers
-        not_if: 'for c in gcc cc g++ clang tcc; do command -v "$c" >/dev/null 2>&1
-          && exit 1; done; exit 0'
+        not_if: for c in gcc cc g++ clang tcc; do command -v "$c" >/dev/null 2>&1 && exit 1; done; exit 0
         resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-062
