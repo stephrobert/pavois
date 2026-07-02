@@ -496,54 +496,35 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			opts, _ := m["options"].(map[string]any)
 			if o, ok := opts[r.Choose].(map[string]any); ok {
 				inst[s(o["package"])] = true
-				if s(o["service"]) == "ufw" {
-					// Open SSH BEFORE enabling the firewall so Pavois (and the admin) aren't cut
-					// off — same self-preservation as the sudo noexec exemption. `systemctl enable
-					// ufw` doesn't activate it; `ufw enable` does, hence an execute.
-					// full path: ufw lives in /usr/sbin, often absent from the converge PATH.
-					// Rules BEFORE enable (sous-chefs/firewall provider order) so SSH stays up;
-					// then `ufw enable` loads the default-deny ruleset (the pavois check looks for
-					// an INPUT drop policy), and enable+start keeps the unit up across reboots.
-					// `ssh_allow_from` in the plan restricts SSH to those sources; empty = open to
-					// all (the safe default so a plan without it never locks the admin out).
-					allow := "/usr/sbin/ufw allow OpenSSH 2>/dev/null; /usr/sbin/ufw allow 22/tcp 2>/dev/null"
-					if len(r.SSHAllowFrom) > 0 {
+				// Firewall policy (the nftables ruleset, the ufw command sequence) lives in the
+				// rule as DATA — see the `ruleset`/`enable_cmd` fields on the option. Here we only
+				// substitute the dynamic SSH allow-list: `ssh_allow_from` in the plan restricts SSH
+				// to those sources; empty = open to all (the safe default so a plan without it never
+				// locks the admin out). A firewall stays up first so Pavois isn't cut off.
+				var srcs []string
+				for _, src := range r.SSHAllowFrom {
+					if src = strings.TrimSpace(src); src != "" {
+						srcs = append(srcs, src)
+					}
+				}
+				if ruleset := s(o["ruleset"]); ruleset != "" {
+					// nftables-style: a ruleset template with a %SSH_RULE% placeholder.
+					sshRule := s(o["ssh_rule"])
+					if len(srcs) > 0 && s(o["ssh_rule_from"]) != "" {
+						sshRule = strings.ReplaceAll(s(o["ssh_rule_from"]), "%CIDRS%", strings.Join(srcs, ", "))
+					}
+					fwNftConfig = strings.ReplaceAll(ruleset, "%SSH_RULE%", sshRule)
+				} else if enableCmd := s(o["enable_cmd"]); enableCmd != "" {
+					// ufw-style: an enable command with a %SSH_ALLOW% placeholder.
+					allow := s(o["ssh_allow"])
+					if len(srcs) > 0 && s(o["ssh_allow_from"]) != "" {
 						var parts []string
-						for _, src := range r.SSHAllowFrom {
-							if src = strings.TrimSpace(src); src != "" {
-								parts = append(parts, fmt.Sprintf("/usr/sbin/ufw allow from %s to any port 22 proto tcp 2>/dev/null", src))
-							}
+						for _, src := range srcs {
+							parts = append(parts, strings.ReplaceAll(s(o["ssh_allow_from"]), "%SRC%", src))
 						}
-						if len(parts) > 0 {
-							allow = strings.Join(parts, "; ")
-						}
+						allow = strings.Join(parts, "; ")
 					}
-					fwEnableCmd = allow + "; /usr/sbin/ufw --force enable; systemctl enable --now ufw"
-				} else if s(o["service"]) == "nftables" {
-					// Native nftables ruleset (robust on a hardened/modules_disabled kernel:
-					// uses only the built-in nf_tables inet path, none of the legacy xt_*
-					// match modules ufw/iptables-restore need). Default-deny input, allow
-					// loopback + established + icmp, and SSH from `ssh_allow_from` (or anywhere
-					// if unset, so a plan without it never locks the admin out).
-					sshRule := "tcp dport 22 accept"
-					if len(r.SSHAllowFrom) > 0 {
-						var cidrs []string
-						for _, src := range r.SSHAllowFrom {
-							if src = strings.TrimSpace(src); src != "" {
-								cidrs = append(cidrs, src)
-							}
-						}
-						if len(cidrs) > 0 {
-							sshRule = fmt.Sprintf("ip saddr { %s } tcp dport 22 accept", strings.Join(cidrs, ", "))
-						}
-					}
-					fwNftConfig = "#!/usr/sbin/nft -f\nflush ruleset\ntable inet filter {\n" +
-						"  chain input {\n    type filter hook input priority 0; policy drop;\n" +
-						"    iif \"lo\" accept\n    ct state established,related accept\n" +
-						"    ct state invalid drop\n    ip protocol icmp accept\n    ip6 nexthdr ipv6-icmp accept\n" +
-						"    " + sshRule + "\n  }\n" +
-						"  chain forward { type filter hook forward priority 0; policy drop; }\n" +
-						"  chain output { type filter hook output priority 0; policy accept; }\n}\n"
+					fwEnableCmd = strings.ReplaceAll(enableCmd, "%SSH_ALLOW%", allow)
 				} else {
 					setKV(svc, s(o["service"]), ":enable, :start", "service")
 				}
