@@ -37,14 +37,26 @@ sudo apt-get install -y build-essential bc flex bison libssl-dev libelf-dev dwar
 
 ## 2. Configure (base config + KSPP fragment)
 
+> **Build in a FRESH tree, in one shot.** Extract a clean source and do a single
+> `make bindeb-pkg`. A tree that was interrupted and restarted (killed builds, partial
+> `make clean`) ships modules built against a stale `Module.symvers`: they load with
+> `Unknown symbol … (err -22)` / `no symbol version for …`. If it hits `virtio_net`, the
+> VM boots with **no network** (cloud-init "nic not present", `systemd-networkd-wait-online`
+> times out) — hard to diagnose. If a build fails, `rm -rf` the tree and re-extract.
+
 ```bash
-mkdir -p ~/kbuild && cd ~/kbuild
+rm -rf ~/kbuild && mkdir -p ~/kbuild && cd ~/kbuild   # always a FRESH tree (see note above)
 tar xf /usr/src/linux-source-6.1.tar.*
 cd linux-source-6.1
 cp /boot/config-"$(uname -r)" .config        # start from the running config
 make olddefconfig
-yes "" | make localmodconfig                  # optional: only currently-loaded modules -> much faster build
 ./scripts/kconfig/merge_config.sh -m .config kspp.fragment   # the fragment below
+# RANDSTRUCT_FULL breaks a few modules that type-pun struct layout: disable the ones
+# you don't need rather than dropping randstruct. On a debian12 cloud image fs/ceph is
+# the offender; add others here if the build aborts on them:
+./scripts/config -d CEPH_FS -d CEPH_LIB
+# (Avoid `make localmodconfig` on a fresh stock config: it can emit an inconsistent
+#  bridge config -> br_vlan_tunnel.c "redefinition" build error. Full config is safer.)
 ```
 
 `kspp.fragment` (the hardening options the controls expect):
@@ -68,6 +80,18 @@ CONFIG_MODULE_SIG_ALL=y
 CONFIG_MODULE_SIG_FORCE=y
 CONFIG_MODULE_SIG_SHA512=y
 CONFIG_PANIC_ON_OOPS=y
+# virtio built-in (=y), not modules: a VM must have disk+net drivers before any module
+# loads. The debian cloud kernel does this; a generic build leaves them =m and, if
+# virtio_net isn't in the initramfs (or a symvers mismatch blocks it), the guest boots
+# with no network. Built-in removes that whole failure class.
+CONFIG_VIRTIO=y
+CONFIG_VIRTIO_PCI=y
+CONFIG_VIRTIO_NET=y
+CONFIG_VIRTIO_BLK=y
+CONFIG_VIRTIO_SCSI=y
+CONFIG_SCSI_VIRTIO=y
+CONFIG_VIRTIO_CONSOLE=y
+CONFIG_VIRTIO_BALLOON=y
 # CONFIG_PROC_KCORE is not set
 # CONFIG_SLAB_MERGE_DEFAULT is not set
 # CONFIG_X86_VSYSCALL_EMULATION is not set
