@@ -439,11 +439,12 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		if r.Remediation != nil {
 			res = s(r.Remediation["resource"])
 		}
-		// Aggregated drop-ins (sshd/cmdline/keyval) are all-or-nothing: regenerating one from
-		// only the enabled gaps would DROP compliant controls' settings and regress them (e.g.
-		// re-enable root SSH). So also pull in COMPLIANT aggregated controls — the drop-in then
-		// holds the complete desired state. They contribute their setting only (no pkg/reboot).
-		aggregated := res == "sshd_setting" || res == "kernel_cmdline" || res == "keyval" || res == "mount"
+		// Aggregated drop-ins (sysctl/sshd/cmdline/keyval/mount) are all-or-nothing: regenerating
+		// one from only the enabled gaps would DROP compliant controls' settings and regress them
+		// (e.g. wipe /etc/sysctl.d/zz-pavois.conf down to the one gap, re-enable root SSH). So also
+		// pull in COMPLIANT aggregated controls — the drop-in then holds the complete desired
+		// state. They contribute their setting only (no pkg/reboot side effects).
+		aggregated := res == "sysctl" || res == "sshd_setting" || res == "kernel_cmdline" || res == "keyval" || res == "mount"
 		keepCompliant := aggregated && !enabled && r.Status == "compliant"
 		if !enabled && !keepCompliant {
 			continue
@@ -686,13 +687,17 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		// Guard on ufw's OWN active state, NOT `systemctl is-active ufw`: installing the ufw
 		// package leaves the unit active-by-default while the firewall itself is disabled
 		// (ENABLED=no, no ruleset), so a systemd guard skips `ufw enable` and we ship no rules.
-		_, _ = fmt.Fprintf(&b, "execute 'pavois-firewall-enable' do\n  command %q\n  not_if '/usr/sbin/ufw status 2>/dev/null | grep -q \"Status: active\"'\nend\n\n", fwEnableCmd)
+		// ignore_failure: if ufw is missing or enable fails, that firewall control just stays
+		// failing in the re-scan — it must NOT abort the whole converge and regress the host.
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-firewall-enable' do\n  command %q\n  ignore_failure true\n  not_if '/usr/sbin/ufw status 2>/dev/null | grep -q \"Status: active\"'\nend\n\n", fwEnableCmd)
 		n++
 	}
 	if fwNftConfig != "" { // native nftables: write the ruleset, load it, enable the unit
+		// ignore_failure on the load+service: a bad ruleset or missing package leaves the firewall
+		// control failing (visible in the re-scan), never aborts the run.
 		_, _ = fmt.Fprintf(&b, "file '/etc/nftables.conf' do\n  content %q\n  mode '0600'\nend\n\n", fwNftConfig)
-		_, _ = fmt.Fprintf(&b, "execute 'pavois-nft-load' do\n  command 'nft -f /etc/nftables.conf'\n  subscribes :run, 'file[/etc/nftables.conf]', :immediately\nend\n\n")
-		_, _ = fmt.Fprintf(&b, "service 'nftables' do\n  action [:enable, :start]\nend\n\n")
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-nft-load' do\n  command 'nft -f /etc/nftables.conf'\n  ignore_failure true\n  subscribes :run, 'file[/etc/nftables.conf]', :immediately\nend\n\n")
+		_, _ = fmt.Fprintf(&b, "service 'nftables' do\n  action [:enable, :start]\n  ignore_failure true\nend\n\n")
 		n++
 	}
 	if _, ok := sysctl["kernel.modules_disabled"]; ok {
@@ -828,26 +833,32 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		}
 		n++
 	}
-	if owners["syslog"] { // least-privilege logging (community rsyslog cookbook): rsyslog drops
-		// to the syslog user AND creates logs as syslog:adm, so the ownership the file resources
-		// just set STAYS after a log rotation (rsyslog-as-root would recreate them root-owned).
-		// :delayed restart fires after the chowns; guarded so it's a no-op without rsyslog.
-		b.WriteString("file \"/etc/rsyslog.d/00-pavois-privdrop.conf\" do\n" +
-			"  content \"# pavois: least privilege — drop to syslog, own logs as syslog:adm\\n" +
-			"\\$FileOwner syslog\\n\\$FileGroup adm\\n\\$FileCreateMode 0640\\n" +
-			"\\$PrivDropToUser syslog\\n\\$PrivDropToGroup syslog\\n\"\n" +
+	if owners["syslog"] { // log-ownership persistence: tell rsyslog to CREATE/reopen logs as
+		// syslog:adm so the ownership the file resources just set survives a log rotation
+		// (rsyslog-as-root otherwise recreates them root-owned). We deliberately do NOT drop
+		// rsyslog's privileges: the deprecated $PrivDropToUser/$PrivDropToGroup directives make
+		// rsyslog 8.2504 (Debian 13/Trixie) fail to start, and NO control checks the daemon's
+		// runtime uid — they check file ownership, which $FileOwner/$FileGroup already satisfy.
+		// The old privdrop drop-in is removed so it can't keep bricking rsyslog on re-apply.
+		b.WriteString("file '/etc/rsyslog.d/00-pavois-privdrop.conf' do\n  action :delete\n" +
+			"  notifies :restart, 'service[rsyslog]', :delayed\n" +
+			"  only_if { ::File.exist?('/etc/rsyslog.d/00-pavois-privdrop.conf') }\nend\n\n")
+		b.WriteString("file \"/etc/rsyslog.d/00-pavois-log-ownership.conf\" do\n" +
+			"  content \"# pavois: own logs as syslog:adm (no privilege drop — breaks rsyslog on Trixie)\\n" +
+			"\\$FileOwner syslog\\n\\$FileGroup adm\\n\\$FileCreateMode 0640\\n\"\n" +
 			"  notifies :restart, 'service[rsyslog]', :delayed\n" +
 			"  only_if { ::File.exist?('/etc/rsyslog.conf') }\nend\n\n")
-		// rsyslog drops to syslog -> it must own EVERY log it writes, not just auth.log, or it
-		// can't reopen the existing root-owned files and logging silently dies. chown the whole
-		// set; the not_if makes it idempotent (only runs while a log is still root-owned) and it
-		// restarts rsyslog so the now-syslog process reopens them.
+		// Also chown the EXISTING logs (not just newly-created ones) so the current files match.
+		// The not_if keeps it idempotent (only runs while a log is still root-owned) and it
+		// restarts rsyslog so it reopens them.
 		b.WriteString("execute 'pavois-chown-rsyslog-logs' do\n" +
 			"  command 'for f in /var/log/syslog /var/log/messages /var/log/*.log; do [ -f \"$f\" ] && chown syslog:adm \"$f\"; done; true'\n" +
 			"  not_if 'test \"$(stat -c %U /var/log/syslog 2>/dev/null)\" = syslog'\n" +
 			"  notifies :restart, 'service[rsyslog]', :delayed\n" +
 			"  only_if { ::File.exist?('/etc/rsyslog.conf') }\nend\n\n")
-		b.WriteString("service 'rsyslog' do\n  action :nothing\nend\n\n")
+		// ignore_failure: a logging-daemon restart hiccup must NEVER abort the whole converge and
+		// leave the box half-hardened (Chef stops on the first unhandled error otherwise).
+		b.WriteString("service 'rsyslog' do\n  action :nothing\n  ignore_failure true\nend\n\n")
 		n++
 	}
 	// key=value drop-ins (pwquality, faillock): one file per config, all keys merged.
@@ -1341,6 +1352,19 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	// stale cache that is "no candidate" and, with ignore_failure, the package silently never
 	// installs. An in-recipe `apt-get update` execute runs too late (converge, after compile).
 	// Self-guarded so it is a no-op on dnf/zypper hosts.
+	// Heal an interrupted dpkg BEFORE touching apt. A prior aborted install (a killed run, a
+	// power loss) leaves dpkg half-configured; then EVERY apt operation fails with exit 100
+	// ("dpkg was interrupted, you must manually run 'sudo dpkg --configure -a'"), which cascades
+	// through the converge and aborts it on the first package. `dpkg --configure -a` is idempotent
+	// (a no-op when clean), so we run it only when `dpkg --audit` reports a broken state — and say
+	// so, instead of surfacing the cryptic exit-100 stacktrace later.
+	if capture("command -v dpkg >/dev/null 2>&1 && dpkg --audit 2>/dev/null | grep -q . && echo broken") == "broken" {
+		_, _ = fmt.Fprintln(os.Stderr, "pavois: dpkg is in an interrupted state (a prior install was cut short) — repairing with 'dpkg --configure -a' before continuing…")
+		if err := run("ssh", sshTTY(target, "sudo DEBIAN_FRONTEND=noninteractive dpkg --configure -a")...); err != nil {
+			return fmt.Errorf("dpkg is interrupted on %s and auto-repair failed; run 'sudo dpkg --configure -a' on the target, then retry: %w", target, err)
+		}
+	}
+
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: refreshing apt cache…")
 	_ = run("ssh", sshTTY(target, "if command -v apt-get >/dev/null 2>&1; then sudo env APT_LISTBUGS_FRONTEND=none apt-get update -qq || true; fi")...)
 
