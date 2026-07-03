@@ -21781,12 +21781,32 @@ misc-use-pam-wheel-group-for-su:
   reboot_survivable: 'yes'
   remediation:
     '@os':
+      almalinux9:
+        command: sed -ri 's/^#\s*(auth\s+required\s+pam_wheel\.so.*use_uid)/\1/' /etc/pam.d/su; grep -qE '^[^#]*pam_wheel\.so.*use_uid' /etc/pam.d/su || echo 'auth required pam_wheel.so use_uid' >> /etc/pam.d/su
+        name: pam-wheel-su
+        not_if: grep -qE '^[^#]*pam_wheel\.so.*use_uid' /etc/pam.d/su
+        resource: exec
       debian12:
         command: sed -ri 's/^#\s*(auth\s+required\s+pam_wheel\.so.*use_uid)/\1/' /etc/pam.d/su; grep -qE '^[^#]*pam_wheel\.so.*use_uid' /etc/pam.d/su || echo 'auth required pam_wheel.so use_uid' >> /etc/pam.d/su
         name: pam-wheel-su
         not_if: grep -qE '^[^#]*pam_wheel\.so.*use_uid' /etc/pam.d/su
         resource: exec
       debian13:
+        command: sed -ri 's/^#\s*(auth\s+required\s+pam_wheel\.so.*use_uid)/\1/' /etc/pam.d/su; grep -qE '^[^#]*pam_wheel\.so.*use_uid' /etc/pam.d/su || echo 'auth required pam_wheel.so use_uid' >> /etc/pam.d/su
+        name: pam-wheel-su
+        not_if: grep -qE '^[^#]*pam_wheel\.so.*use_uid' /etc/pam.d/su
+        resource: exec
+      fedora:
+        command: sed -ri 's/^#\s*(auth\s+required\s+pam_wheel\.so.*use_uid)/\1/' /etc/pam.d/su; grep -qE '^[^#]*pam_wheel\.so.*use_uid' /etc/pam.d/su || echo 'auth required pam_wheel.so use_uid' >> /etc/pam.d/su
+        name: pam-wheel-su
+        not_if: grep -qE '^[^#]*pam_wheel\.so.*use_uid' /etc/pam.d/su
+        resource: exec
+      rhel8:
+        command: sed -ri 's/^#\s*(auth\s+required\s+pam_wheel\.so.*use_uid)/\1/' /etc/pam.d/su; grep -qE '^[^#]*pam_wheel\.so.*use_uid' /etc/pam.d/su || echo 'auth required pam_wheel.so use_uid' >> /etc/pam.d/su
+        name: pam-wheel-su
+        not_if: grep -qE '^[^#]*pam_wheel\.so.*use_uid' /etc/pam.d/su
+        resource: exec
+      rhel9:
         command: sed -ri 's/^#\s*(auth\s+required\s+pam_wheel\.so.*use_uid)/\1/' /etc/pam.d/su; grep -qE '^[^#]*pam_wheel\.so.*use_uid' /etc/pam.d/su || echo 'auth required pam_wheel.so use_uid' >> /etc/pam.d/su
         name: pam-wheel-su
         not_if: grep -qE '^[^#]*pam_wheel\.so.*use_uid' /etc/pam.d/su
@@ -24420,9 +24440,21 @@ pam-unix-rounds-password-auth:
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\brounds=[0-9]\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
-  - '  its(''stdout.strip'') { should eq ''ok'' }'
-  - end
+    '@os':
+      almalinux9: &id005
+      - describe command('v=$(grep -E "^[[:space:]]*SHA_CRYPT_MIN_ROUNDS[[:space:]]+[0-9]+" /etc/login.defs 2>/dev/null | grep -oE "[0-9]+" | tail -1); { [ -n "$v" ] && [ "$v" -ge 5000 ] && echo ok; } || echo ko') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      debian12: &id004
+      - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\brounds=[0-9]\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      debian13: *id004
+      fedora: *id005
+      rhel8: *id005
+      rhel9: *id005
+      ubuntu2204: *id004
+      ubuntu2404: *id004
   domain: Accounts (PAM modules)
   evidence_type: persistent-config
   impact: 0.5
@@ -24437,6 +24469,12 @@ pam-unix-rounds-password-auth:
   reboot_survivable: 'yes'
   remediation:
     '@os':
+      almalinux9:
+        file: /etc/login.defs
+        key: SHA_CRYPT_MIN_ROUNDS
+        resource: conf_line
+        sep: space
+        value: '65536'
       debian12:
         command: sed -ri "s/(pam_unix\.so[^#]*yescrypt)( rounds=[0-9]+)?/\1 rounds=65536/" /etc/pam.d/common-password
         name: pam-unix-rounds
@@ -24447,6 +24485,24 @@ pam-unix-rounds-password-auth:
         name: pam-unix-rounds
         not_if: grep -qE "pam_unix\.so.*rounds=" /etc/pam.d/common-password
         resource: exec
+      fedora:
+        file: /etc/login.defs
+        key: SHA_CRYPT_MIN_ROUNDS
+        resource: conf_line
+        sep: space
+        value: '65536'
+      rhel8:
+        file: /etc/login.defs
+        key: SHA_CRYPT_MIN_ROUNDS
+        resource: conf_line
+        sep: space
+        value: '65536'
+      rhel9:
+        file: /etc/login.defs
+        key: SHA_CRYPT_MIN_ROUNDS
+        resource: conf_line
+        sep: space
+        value: '65536'
       ubuntu2204:
         command: sed -ri "s/(pam_unix\.so[^#]*yescrypt)( rounds=[0-9]+)?/\1 rounds=65536/" /etc/pam.d/common-password
         name: pam-unix-rounds
@@ -27151,7 +27207,7 @@ pkg-net-snmp-removed:
     cis:
       '@os':
         almalinux9: 2.1.14
-        debian12: &id004
+        debian12: &id006
         - 2.1.15
         - 2.2.4
         debian13: 2.1.14
@@ -27159,7 +27215,7 @@ pkg-net-snmp-removed:
         rhel8: 2.1.15
         rhel9: 2.1.14
         ubuntu2204: 2.1.14
-        ubuntu2404: &id005
+        ubuntu2404: &id007
         - 2.1.15
         - 2.2.4
     pci-dss: 2.2.4
@@ -28381,12 +28437,12 @@ pkg-snmpd-removed:
   norms:
     cis:
       '@os':
-        debian12: *id004
+        debian12: *id006
         debian13:
         - 2.1.15
         - 2.2.4
         ubuntu2204: 2.1.15
-        ubuntu2404: *id005
+        ubuntu2404: *id007
     pci-dss: 2.2.4
   reboot_survivable: 'yes'
   remediation:
@@ -37037,35 +37093,9 @@ sysctl-net-ipv4-ip_local_port_range:
   - ubuntu2204
   - ubuntu2404
   check:
-    '@os':
-      almalinux9:
-      - describe kernel_parameter('net.ipv4.ip_local_port_range') do
-      - '  its(''value'') { should cmp ''32768 65535'' }'
-      - end
-      debian12:
-      - describe kernel_parameter('net.ipv4.ip_local_port_range') do
-      - '  its(''value'') { should match(/32768\s+65535/) }'
-      - end
-      debian13:
-      - describe kernel_parameter('net.ipv4.ip_local_port_range') do
-      - '  its(''value'') { should cmp ''32768 65535'' }'
-      - end
-      rhel8:
-      - describe kernel_parameter('net.ipv4.ip_local_port_range') do
-      - '  its(''value'') { should cmp ''32768 65535'' }'
-      - end
-      rhel9:
-      - describe kernel_parameter('net.ipv4.ip_local_port_range') do
-      - '  its(''value'') { should cmp ''32768 65535'' }'
-      - end
-      ubuntu2204:
-      - describe kernel_parameter('net.ipv4.ip_local_port_range') do
-      - '  its(''value'') { should cmp ''32768 65535'' }'
-      - end
-      ubuntu2404:
-      - describe kernel_parameter('net.ipv4.ip_local_port_range') do
-      - '  its(''value'') { should cmp ''32768 65535'' }'
-      - end
+  - describe kernel_parameter('net.ipv4.ip_local_port_range') do
+  - '  its(''value'') { should match(/32768\s+65535/) }'
+  - end
   domain: Kernel & network (sysctl)
   evidence_type: effective-runtime
   impact: 0.5
@@ -38205,7 +38235,7 @@ umask-etc-bashrc:
     '@os':
       almalinux9:
       - 'm = {''bp28''=>''0077'',''cis''=>''0027''}.fetch(input(''pavois_standard'', value: ''_default''), ''0077'')'
-      - 'describe command("v=$(grep -hiE ''^[[:space:]]*umask[[:space:]]+[0-7]+'' /etc/bash.bashrc 2>/dev/null | grep -oE ''[0-7]+'' | tail -1); { [ -n \"$v\" ] && [ $((0$v & #{m})) -eq $((#{m})) ] && echo ok; } || echo ko") do'
+      - 'describe command("v=$(grep -hiE ''^[[:space:]]*umask[[:space:]]+[0-7]+'' /etc/bashrc 2>/dev/null | grep -oE ''[0-7]+'' | tail -1); { [ -n \"$v\" ] && [ $((0$v & #{m})) -eq $((#{m})) ] && echo ok; } || echo ko") do'
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       debian12:
@@ -38218,17 +38248,17 @@ umask-etc-bashrc:
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       fedora:
-      - describe command('v=$(grep -hiE \'^[[:space:]]*umask[[:space:]]+[0-7]+\' /etc/bash.bashrc 2>/dev/null | grep -oE \'[0-7]+\' | tail -1); { [ -n "$v" ] && [ $((0$v & 0027)) -eq $((0027)) ] && echo ok; } || echo ko') do
+      - describe command('v=$(grep -hiE \'^[[:space:]]*umask[[:space:]]+[0-7]+\' /etc/bashrc 2>/dev/null | grep -oE \'[0-7]+\' | tail -1); { [ -n "$v" ] && [ $((0$v & 0027)) -eq $((0027)) ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       rhel8:
       - 'm = {''bp28''=>''0077'',''cis''=>''0027''}.fetch(input(''pavois_standard'', value: ''_default''), ''0077'')'
-      - 'describe command("v=$(grep -hiE ''^[[:space:]]*umask[[:space:]]+[0-7]+'' /etc/bash.bashrc 2>/dev/null | grep -oE ''[0-7]+'' | tail -1); { [ -n \"$v\" ] && [ $((0$v & #{m})) -eq $((#{m})) ] && echo ok; } || echo ko") do'
+      - 'describe command("v=$(grep -hiE ''^[[:space:]]*umask[[:space:]]+[0-7]+'' /etc/bashrc 2>/dev/null | grep -oE ''[0-7]+'' | tail -1); { [ -n \"$v\" ] && [ $((0$v & #{m})) -eq $((#{m})) ] && echo ok; } || echo ko") do'
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       rhel9:
       - 'm = {''bp28''=>''0077'',''cis''=>''0027''}.fetch(input(''pavois_standard'', value: ''_default''), ''0077'')'
-      - 'describe command("v=$(grep -hiE ''^[[:space:]]*umask[[:space:]]+[0-7]+'' /etc/bash.bashrc 2>/dev/null | grep -oE ''[0-7]+'' | tail -1); { [ -n \"$v\" ] && [ $((0$v & #{m})) -eq $((#{m})) ] && echo ok; } || echo ko") do'
+      - 'describe command("v=$(grep -hiE ''^[[:space:]]*umask[[:space:]]+[0-7]+'' /etc/bashrc 2>/dev/null | grep -oE ''[0-7]+'' | tail -1); { [ -n \"$v\" ] && [ $((0$v & #{m})) -eq $((#{m})) ] && echo ok; } || echo ko") do'
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       ubuntu2204:
@@ -38292,6 +38322,11 @@ umask-etc-bashrc:
   reboot_survivable: 'yes'
   remediation:
     '@os':
+      almalinux9:
+        command: grep -qE '^[[:space:]]*umask[[:space:]]+0?77' /etc/bashrc || echo 'umask 077' >> /etc/bashrc
+        name: umask-bashrc
+        not_if: grep -qE '^[[:space:]]*umask[[:space:]]+0?77' /etc/bashrc
+        resource: exec
       debian12:
         file: /etc/bash.bashrc
         line: umask 077
@@ -38302,6 +38337,21 @@ umask-etc-bashrc:
         line: umask 077
         module: umask 077
         resource: pam_line
+      fedora:
+        command: grep -qE '^[[:space:]]*umask[[:space:]]+0?77' /etc/bashrc || echo 'umask 077' >> /etc/bashrc
+        name: umask-bashrc
+        not_if: grep -qE '^[[:space:]]*umask[[:space:]]+0?77' /etc/bashrc
+        resource: exec
+      rhel8:
+        command: grep -qE '^[[:space:]]*umask[[:space:]]+0?77' /etc/bashrc || echo 'umask 077' >> /etc/bashrc
+        name: umask-bashrc
+        not_if: grep -qE '^[[:space:]]*umask[[:space:]]+0?77' /etc/bashrc
+        resource: exec
+      rhel9:
+        command: grep -qE '^[[:space:]]*umask[[:space:]]+0?77' /etc/bashrc || echo 'umask 077' >> /etc/bashrc
+        name: umask-bashrc
+        not_if: grep -qE '^[[:space:]]*umask[[:space:]]+0?77' /etc/bashrc
+        resource: exec
       ubuntu2204:
         file: /etc/bash.bashrc
         line: umask 077
@@ -38467,6 +38517,12 @@ umask-etc-login-defs:
   reboot_survivable: 'yes'
   remediation:
     '@os':
+      almalinux9:
+        file: /etc/login.defs
+        key: UMASK
+        resource: conf_line
+        sep: space
+        value: '077'
       debian12:
         file: /etc/login.defs
         key: UMASK
@@ -38474,6 +38530,24 @@ umask-etc-login-defs:
         sep: space
         value: '077'
       debian13:
+        file: /etc/login.defs
+        key: UMASK
+        resource: conf_line
+        sep: space
+        value: '077'
+      fedora:
+        file: /etc/login.defs
+        key: UMASK
+        resource: conf_line
+        sep: space
+        value: '077'
+      rhel8:
+        file: /etc/login.defs
+        key: UMASK
+        resource: conf_line
+        sep: space
+        value: '077'
+      rhel9:
         file: /etc/login.defs
         key: UMASK
         resource: conf_line
@@ -38625,6 +38699,15 @@ umask-etc-profile:
   reboot_survivable: 'yes'
   remediation:
     '@os':
+      almalinux9:
+        content: 'umask 077
+
+          '
+        group: root
+        mode: '0755'
+        owner: root
+        path: /etc/profile.d/99-pavois-umask.sh
+        resource: file
       debian12:
         content: 'umask 077
 
@@ -38635,6 +38718,33 @@ umask-etc-profile:
         path: /etc/profile.d/99-pavois-umask.sh
         resource: file
       debian13:
+        content: 'umask 077
+
+          '
+        group: root
+        mode: '0755'
+        owner: root
+        path: /etc/profile.d/99-pavois-umask.sh
+        resource: file
+      fedora:
+        content: 'umask 077
+
+          '
+        group: root
+        mode: '0755'
+        owner: root
+        path: /etc/profile.d/99-pavois-umask.sh
+        resource: file
+      rhel8:
+        content: 'umask 077
+
+          '
+        group: root
+        mode: '0755'
+        owner: root
+        path: /etc/profile.d/99-pavois-umask.sh
+        resource: file
+      rhel9:
         content: 'umask 077
 
           '
