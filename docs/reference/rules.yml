@@ -190,6 +190,7 @@ account-disable-inactive-pw:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   check:
   - describe command('awk -F= \'/^INACTIVE=/{v=$2} END{print (v ~ /^[0-9]+$/ && v>=0 && v<=30)?"ok":"ko"}\' /etc/default/useradd') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -365,6 +366,7 @@ account-no-future-pw-change:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   check:
   - describe command('d=$(( $(date +%s) / 86400 )); awk -v d="$d" \'BEGIN{FS=":"}($3 ~ /^[0-9]+$/ && $3+0>d){c++} END{print c?"ko":"ok"}\' /etc/shadow') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -20196,6 +20198,7 @@ logindefs-sha-crypt-rounds:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   check:
   - describe login_defs do
   - '  its(''SHA_CRYPT_MIN_ROUNDS'') { should cmp >= 10000 }'
@@ -23870,6 +23873,7 @@ pam-faillock-enabled:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -23885,8 +23889,17 @@ pam-faillock-enabled:
     cis: 5.3.2.2
   reboot_survivable: 'yes'
   remediation:
-    params: audit silent deny=5 unlock_time=900 even_deny_root
-    resource: pam_faillock
+    '@os':
+      debian12: &id003
+        params: audit silent deny=5 unlock_time=900 even_deny_root
+        resource: pam_faillock
+      debian13: *id003
+      rhel8:
+        features:
+        - with-faillock
+        resource: authselect
+      ubuntu2204: *id003
+      ubuntu2404: *id003
   severity: medium
   socle: SOCLE-CLD-IAM-025
   ssg: accounts_passwords_pam_faillock_enabled
@@ -23895,6 +23908,7 @@ pam-faillock-root-unlock-time:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   check:
   - describe command('v=$(grep -rh \'^[[:space:]]*root_unlock_time[[:space:]]*=\' /etc/security/faillock.conf /etc/security/faillock.conf.d/ 2>/dev/null | tail -1 | grep -oE \'[0-9]+\'); { [ -n "$v" ] && [ "$v" -ge 60 ] && echo ok; } || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -23908,10 +23922,18 @@ pam-faillock-root-unlock-time:
     cis: 5.3.3.1.3
   reboot_survivable: 'yes'
   remediation:
-    file: /etc/security/faillock.conf.d/99-pavois.conf
-    key: root_unlock_time
-    resource: keyval
-    value: '60'
+    '@os':
+      debian12: &id004
+        file: /etc/security/faillock.conf.d/99-pavois.conf
+        key: root_unlock_time
+        resource: keyval
+        value: '60'
+      debian13: *id004
+      rhel8:
+        file: /etc/security/faillock.conf
+        key: root_unlock_time
+        resource: keyval
+        value: '60'
   severity: medium
   socle: SOCLE-CLD-IAM-026
   ssg: accounts_passwords_pam_faillock_root_unlock_time
@@ -23920,6 +23942,7 @@ pam-pwhistory-enabled:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -23935,11 +23958,20 @@ pam-pwhistory-enabled:
     cis: 5.3.2.4
   reboot_survivable: 'yes'
   remediation:
-    before: ^password.*pam_unix\.so
-    file: /etc/pam.d/common-password
-    line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
-    module: pam_pwhistory.so
-    resource: pam_line
+    '@os':
+      debian12: &id005
+        before: ^password.*pam_unix\.so
+        file: /etc/pam.d/common-password
+        line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
+        module: pam_pwhistory.so
+        resource: pam_line
+      debian13: *id005
+      rhel8:
+        features:
+        - with-pwhistory
+        resource: authselect
+      ubuntu2204: *id005
+      ubuntu2404: *id005
   severity: medium
   socle: SOCLE-CLD-IAM-027
   ssg: accounts_password_pam_pwhistory_enabled
@@ -23948,10 +23980,11 @@ pam-pwhistory-enforce:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('grep -RqE \'^[^#]*\bpam_pwhistory\\.so\b[^#]*\benforce_for_root\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+  - describe command('grep -RqE \'^[^#]*\bpam_pwhistory\.so\' /etc/pam.d/ 2>/dev/null && { grep -RqE \'^[^#]*\bpam_pwhistory\.so[^#]*\benforce_for_root\' /etc/pam.d/ 2>/dev/null || grep -qE \'^[[:space:]]*enforce_for_root\b\' /etc/security/pwhistory.conf 2>/dev/null; } && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (PAM modules)
@@ -23963,11 +23996,21 @@ pam-pwhistory-enforce:
     cis: 5.3.3.3.2
   reboot_survivable: 'yes'
   remediation:
-    before: ^password.*pam_unix\.so
-    file: /etc/pam.d/common-password
-    line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
-    module: pam_pwhistory.so
-    resource: pam_line
+    '@os':
+      debian12: &id006
+        before: ^password.*pam_unix\.so
+        file: /etc/pam.d/common-password
+        line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
+        module: pam_pwhistory.so
+        resource: pam_line
+      debian13: *id006
+      rhel8:
+        file: /etc/security/pwhistory.conf
+        key: enforce_for_root
+        resource: keyval
+        value: ''
+      ubuntu2204: *id006
+      ubuntu2404: *id006
   severity: medium
   socle: SOCLE-CLD-IAM-028
   ssg: accounts_password_pam_pwhistory_enforce_root
@@ -24046,11 +24089,11 @@ pam-pwhistory-use-authtok:
         module: pam_pwhistory.so
         resource: pam_line
       fedora:
-        features: &id003
+        features: &id007
         - with-pwhistory
         resource: authselect
       rhel8:
-        features: *id003
+        features: *id007
         resource: authselect
       ubuntu2204:
         before: ^password.*pam_unix\.so
@@ -24072,6 +24115,7 @@ pam-pwquality-enabled:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -24103,6 +24147,14 @@ pam-pwquality-enabled:
 
           '
         reason: installs + enables a PAM module, review which password profile you want
+        resource: manual
+      rhel8:
+        command: '# pwquality ships by default on RHEL (libpwquality) and authselect sssd puts pam_pwquality in the stack.
+
+          # If missing: authselect select sssd --force
+
+          '
+        reason: pwquality is default on RHEL; no apt install needed
         resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-031
@@ -24371,8 +24423,9 @@ pam-unix-no-nullok:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   check:
-  - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\bnullok\' /etc/pam.d/ 2>/dev/null && echo ko || echo ok') do
+  - describe command('grep -RlE \'^[^#]*\bpam_unix\.so\b[^#]*\bnullok\' /etc/pam.d/ 2>/dev/null | grep -qv \'sssd-shadowutils\' && echo ko || echo ok') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (PAM modules)
@@ -24386,10 +24439,17 @@ pam-unix-no-nullok:
     cis: 5.3.3.4.1
   reboot_survivable: 'yes'
   remediation:
-    command: grep -rlE '^[^#]*pam_unix\.so.*nullok' /etc/pam.d/ | while read -r f; do sed -ri '/pam_unix\.so/ s/[[:space:]]*\bnullok\b//g' "$f"; done; true
-    name: pam-unix-remove-nullok
-    not_if: '! grep -rqE ''^[^#]*pam_unix\.so.*nullok'' /etc/pam.d/'
-    resource: exec
+    '@os':
+      debian12: &id008
+        command: grep -rlE '^[^#]*pam_unix\.so.*nullok' /etc/pam.d/ | while read -r f; do sed -ri '/pam_unix\.so/ s/[[:space:]]*\bnullok\b//g' "$f"; done; true
+        name: pam-unix-remove-nullok
+        not_if: '! grep -rqE ''^[^#]*pam_unix\.so.*nullok'' /etc/pam.d/'
+        resource: exec
+      debian13: *id008
+      rhel8:
+        features:
+        - without-nullok
+        resource: authselect
   severity: high
   socle: SOCLE-CLD-IAM-036
   ssg: no_empty_passwords_unix
@@ -24441,20 +24501,20 @@ pam-unix-rounds-password-auth:
   - ubuntu2404
   check:
     '@os':
-      almalinux9: &id005
+      almalinux9: &id010
       - describe command('v=$(grep -E "^[[:space:]]*SHA_CRYPT_MIN_ROUNDS[[:space:]]+[0-9]+" /etc/login.defs 2>/dev/null | grep -oE "[0-9]+" | tail -1); { [ -n "$v" ] && [ "$v" -ge 5000 ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian12: &id004
+      debian12: &id009
       - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\brounds=[0-9]\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian13: *id004
-      fedora: *id005
-      rhel8: *id005
-      rhel9: *id005
-      ubuntu2204: *id004
-      ubuntu2404: *id004
+      debian13: *id009
+      fedora: *id010
+      rhel8: *id010
+      rhel9: *id010
+      ubuntu2204: *id009
+      ubuntu2404: *id009
   domain: Accounts (PAM modules)
   evidence_type: persistent-config
   impact: 0.5
@@ -27207,7 +27267,7 @@ pkg-net-snmp-removed:
     cis:
       '@os':
         almalinux9: 2.1.14
-        debian12: &id006
+        debian12: &id011
         - 2.1.15
         - 2.2.4
         debian13: 2.1.14
@@ -27215,7 +27275,7 @@ pkg-net-snmp-removed:
         rhel8: 2.1.15
         rhel9: 2.1.14
         ubuntu2204: 2.1.14
-        ubuntu2404: &id007
+        ubuntu2404: &id012
         - 2.1.15
         - 2.2.4
     pci-dss: 2.2.4
@@ -28437,12 +28497,12 @@ pkg-snmpd-removed:
   norms:
     cis:
       '@os':
-        debian12: *id006
+        debian12: *id011
         debian13:
         - 2.1.15
         - 2.2.4
         ubuntu2204: 2.1.15
-        ubuntu2404: *id007
+        ubuntu2404: *id012
     pci-dss: 2.2.4
   reboot_survivable: 'yes'
   remediation:
@@ -30084,6 +30144,7 @@ pwquality-enforce-root:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   check:
   - describe command('grep -rqE \'^[[:space:]]*enforce_for_root\b\' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ 2>/dev/null && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -30116,6 +30177,7 @@ pwquality-enforcing:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   check:
   - describe command('grep -RqE \'enforcing[[:space:]]*=[[:space:]]*0\' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ /etc/pam.d/ 2>/dev/null && echo ko || echo ok') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -34561,6 +34623,7 @@ sudo-custom-logfile:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   check:
   - describe command('grep -rqE \'^[^#]*Defaults[^#]*\blogfile\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -34773,6 +34836,7 @@ sudo-require-authentication:
   - almalinux9
   - debian12
   - debian13
+  - rhel8
   check:
     '@os':
       almalinux9:
@@ -34783,10 +34847,11 @@ sudo-require-authentication:
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian13:
+      debian13: &id013
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
+      rhel8: *id013
   danger: 'Removing NOPASSWD makes sudo always prompt for a password: any passwordless automation (including Pavois''s own management user) breaks. Repoint automation to a key or password FIRST.'
   domain: Sudo
   evidence_type: persistent-config
@@ -34839,10 +34904,12 @@ sudo-require-authentication:
       almalinux9: Ensure Users Re-Authenticate for Privilege Escalation - sudo
       debian12: Ensure Users Re-Authenticate for Privilege Escalation - sudo NOPASSWD
       debian13: Ensure Users Re-Authenticate for Privilege Escalation - sudo NOPASSWD
+      rhel8: Ensure Users Re-Authenticate for Privilege Escalation - sudo NOPASSWD
 sudo-require-reauthentication:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   check:
   - describe command('grep -rqE \'timestamp_timeout[[:space:]]*=[[:space:]]*-1\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
