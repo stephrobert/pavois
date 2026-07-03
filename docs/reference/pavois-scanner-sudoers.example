@@ -1,0 +1,36 @@
+# /etc/sudoers.d/pavois — least-privilege posture for the pavois scanner/hardener account.
+#
+# Install with:  sudo install -m 0440 pavois-scanner-sudoers.example /etc/sudoers.d/pavois
+# Validate with: sudo visudo -cf /etc/sudoers.d/pavois
+#
+# WHY password auth and not `NOPASSWD: ALL`
+#   pavois audits the EFFECTIVE configuration, which needs root for read-only
+#   introspection (sshd -T, sysctl, systemctl show, auditctl, getenforce,
+#   authselect current, findmnt, nginx -T, …) AND runs a Chef converge for
+#   `harden apply`. A per-command allowlist looks tighter but is FALSE security
+#   here: pavois reads protected files via grep/find/awk/stat, which are GTFOBins
+#   (`find -exec`, `awk 'BEGIN{system("/bin/sh")}'`) — anyone allowed to run those
+#   as root has a root shell anyway. So the real least-privilege control is the one
+#   pavois itself audits (sudo-require-authentication, CIS/ANSSI): require a
+#   PASSWORD, keep an audit trail, and pair it with SSH key-only login. This
+#   matches how Ansible (become password / Vault), Chef knife (--ask-sudo-pass)
+#   and Tenable/Nessus (credentialed scan account) recommend running.
+#
+# The scanner user must NOT also carry a `NOPASSWD: ALL` line elsewhere
+# (e.g. a cloud-init /etc/sudoers.d/90-cloud-init-users) or the audit control
+# still fails — remove it (see the cloud-init stanza in scanner-account docs).
+
+# Full sudo, but authentication is required (pavois passes the password over
+# stdin, never argv). Restrict the login separately to an SSH key.
+pavois ALL=(ALL) ALL
+
+# cinc-auditor execs programs during a run, so the management user is exempt from
+# a global `Defaults noexec` (which pavois can otherwise apply as a hardening).
+Defaults:pavois !noexec
+
+# Allow sudo from a non-interactive context (the scan runs cinc without a login
+# shell). `use_pty` still applies, so the command runs inside a pseudo-terminal.
+Defaults:pavois !requiretty
+
+# Keep an audit trail of everything pavois runs as root.
+Defaults:pavois logfile="/var/log/sudo-pavois.log"
