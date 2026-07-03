@@ -99,8 +99,14 @@ PAVOIS_SUDO_PASSWORD="$SUDO_PW" bin/pavois scan pavois@host --profile linux/rhel
   documents, a per-command `sudo` environment (`env_reset`, `secure_path`) does
   not always match a full root environment, so a few checks can read differently
   than under root.
-- **On-target** (`--on-target`): pavois runs cinc *as root on the target* for a
-  root-equivalent result. This currently assumes `NOPASSWD` sudo; password-sudo
-  support for `--on-target` is a known gap (the run would prompt for a password on
-  the pty and hang). Until then, use native SSH with the password account, or keep
-  `--on-target` for hosts where NOPASSWD is acceptable.
+- **On-target** (`--on-target`, recommended): pavois runs cinc *as root on the
+  target* for a root-equivalent result. It supports the password account — the
+  sudo password is fed to the remote `sudo -S` over stdin (never argv). This is
+  the accurate path: on a hardened AlmaLinux 8 it scores the same grade as a
+  NOPASSWD root run, ~40 controls higher than native-SSH per-command sudo, while
+  still passing `sudo-require-authentication`. Prefer it with the password
+  account:
+
+  ```bash
+  bin/pavois scan pavois@host --profile linux/rhel8 --sudo-prompt --on-target --key ~/.ssh/id_ed25519
+  ```
