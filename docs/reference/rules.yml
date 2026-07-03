@@ -20760,7 +20760,7 @@ misc-ensure-pam-wheel-group-empty:
   - ubuntu2204
   - ubuntu2404
   check:
-  - 'describe command(''g=$(grep -rhoE \''pam_wheel.so.*group=[a-z]+\'' /etc/pam.d/su 2>/dev/null | grep -oE \''group=[a-z]+\'' | cut -d= -f2 | head -1); { [ -n "$g" ] && [ -z "$(getent group "$g" | cut -d: -f4)" ] && echo ok; } || echo ko'') do'
+  - 'describe command(''g=$(grep -RhoE \''pam_wheel.so.*group=[a-z]+\'' /etc/pam.d/su 2>/dev/null | grep -oE \''group=[a-z]+\'' | cut -d= -f2 | head -1); { [ -n "$g" ] && [ -z "$(getent group "$g" | cut -d: -f4)" ] && echo ok; } || echo ko'') do'
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Hardening (misc)
@@ -23718,7 +23718,7 @@ pam-faillock-audit:
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('grep -rqE \'^[^#]*\bpam_faillock\\.so\b[^#]*\baudit\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+  - describe command('grep -RqE \'^[^#]*\bpam_faillock\.so\' /etc/pam.d/ 2>/dev/null && { grep -RqE \'^[^#]*\bpam_faillock\.so[^#]*\baudit\' /etc/pam.d/ 2>/dev/null || grep -qE \'^[[:space:]]*audit\b\' /etc/security/faillock.conf 2>/dev/null; } && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (PAM modules)
@@ -23743,6 +23743,21 @@ pam-faillock-audit:
         resource: pam_faillock
       debian13:
         resource: pam_faillock
+      fedora:
+        file: /etc/security/faillock.conf
+        key: audit
+        resource: keyval
+        value: ''
+      rhel8:
+        file: /etc/security/faillock.conf
+        key: audit
+        resource: keyval
+        value: ''
+      rhel9:
+        file: /etc/security/faillock.conf
+        key: audit
+        resource: keyval
+        value: ''
       ubuntu2204:
         resource: pam_faillock
       ubuntu2404:
@@ -23762,7 +23777,7 @@ pam-faillock-deny-root:
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('grep -rqE \'^[^#]*\bpam_faillock\\.so\b[^#]*\beven_deny_root\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+  - describe command('grep -RqE \'^[^#]*\bpam_faillock\.so\' /etc/pam.d/ 2>/dev/null && { grep -RqE \'^[^#]*\bpam_faillock\.so[^#]*\beven_deny_root\' /etc/pam.d/ 2>/dev/null || grep -qE \'^[[:space:]]*even_deny_root\b\' /etc/security/faillock.conf 2>/dev/null; } && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (PAM modules)
@@ -23799,10 +23814,30 @@ pam-faillock-deny-root:
   reboot_survivable: 'yes'
   remediation:
     '@os':
+      almalinux9:
+        file: /etc/security/faillock.conf
+        key: even_deny_root
+        resource: keyval
+        value: ''
       debian12:
         resource: pam_faillock
       debian13:
         resource: pam_faillock
+      fedora:
+        file: /etc/security/faillock.conf
+        key: even_deny_root
+        resource: keyval
+        value: ''
+      rhel8:
+        file: /etc/security/faillock.conf
+        key: even_deny_root
+        resource: keyval
+        value: ''
+      rhel9:
+        file: /etc/security/faillock.conf
+        key: even_deny_root
+        resource: keyval
+        value: ''
       ubuntu2204:
         resource: pam_faillock
       ubuntu2404:
@@ -23818,7 +23853,7 @@ pam-faillock-enabled:
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('grep -rqE \'^[^#]*\bpam_faillock\\.so\b\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+  - describe command('grep -RqE \'^[^#]*\bpam_faillock\\.so\b\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (PAM modules)
@@ -23868,7 +23903,7 @@ pam-pwhistory-enabled:
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('grep -rqE \'^[^#]*\bpam_pwhistory\\.so\b\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+  - describe command('grep -RqE \'^[^#]*\bpam_pwhistory\\.so\b\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (PAM modules)
@@ -23896,7 +23931,7 @@ pam-pwhistory-enforce:
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('grep -rqE \'^[^#]*\bpam_pwhistory\\.so\b[^#]*\benforce_for_root\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+  - describe command('grep -RqE \'^[^#]*\bpam_pwhistory\\.so\b[^#]*\benforce_for_root\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (PAM modules)
@@ -23923,7 +23958,7 @@ pam-pwhistory-enforce-for-root:
   - rhel8
   - rhel9
   check:
-  - describe command('grep -rqE \'^[^#]*\bpam_pwhistory\\.so\b[^#]*\benforce_for_root\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+  - describe command('grep -RqE \'^[^#]*\bpam_pwhistory\.so\' /etc/pam.d/ 2>/dev/null && { grep -RqE \'^[^#]*\bpam_pwhistory\.so[^#]*\benforce_for_root\' /etc/pam.d/ 2>/dev/null || grep -qE \'^[[:space:]]*enforce_for_root\b\' /etc/security/pwhistory.conf 2>/dev/null; } && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (PAM modules)
@@ -23942,6 +23977,16 @@ pam-pwhistory-enforce-for-root:
         line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
         module: pam_pwhistory.so
         resource: pam_line
+      rhel8:
+        file: /etc/security/pwhistory.conf
+        key: enforce_for_root
+        resource: keyval
+        value: ''
+      rhel9:
+        file: /etc/security/pwhistory.conf
+        key: enforce_for_root
+        resource: keyval
+        value: ''
   severity: medium
   socle: SOCLE-CLD-IAM-029
   ssg: accounts_password_pam_pwhistory_enforce_for_root
@@ -23955,7 +24000,7 @@ pam-pwhistory-use-authtok:
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('grep -rqE \'^[^#]*\bpam_pwhistory\\.so\b[^#]*\buse_authtok\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+  - describe command('grep -RqE \'^[^#]*\bpam_pwhistory\\.so\b[^#]*\buse_authtok\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (PAM modules)
@@ -23980,6 +24025,13 @@ pam-pwhistory-use-authtok:
         line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
         module: pam_pwhistory.so
         resource: pam_line
+      fedora:
+        features: &id003
+        - with-pwhistory
+        resource: authselect
+      rhel8:
+        features: *id003
+        resource: authselect
       ubuntu2204:
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
@@ -24003,7 +24055,7 @@ pam-pwquality-enabled:
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('grep -rqE \'^[^#]*\bpam_pwquality\\.so\b\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+  - describe command('grep -RqE \'^[^#]*\bpam_pwquality\\.so\b\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (PAM modules)
@@ -24047,7 +24099,7 @@ pam-remember-pwhistory-remember:
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('v=$(grep -rhoE \'remember=[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 24 ] && echo ok; } || echo ko') do
+  - describe command('v=$(grep -RhoE \'remember[[:space:]]*=[[:space:]]*[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 24 ] && echo ok; } || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (password history)
@@ -24062,6 +24114,11 @@ pam-remember-pwhistory-remember:
   reboot_survivable: 'yes'
   remediation:
     '@os':
+      almalinux9:
+        file: /etc/security/pwhistory.conf
+        key: remember
+        resource: keyval
+        value: '24'
       debian12:
         command: '# Enforce password history via pam_pwhistory. Set in /etc/security/pwhistory.conf:  remember = 5
 
@@ -24070,6 +24127,21 @@ pam-remember-pwhistory-remember:
           '
         reason: password-history policy choice, set the depth deliberately
         resource: manual
+      fedora:
+        file: /etc/security/pwhistory.conf
+        key: remember
+        resource: keyval
+        value: '24'
+      rhel8:
+        file: /etc/security/pwhistory.conf
+        key: remember
+        resource: keyval
+        value: '24'
+      rhel9:
+        file: /etc/security/pwhistory.conf
+        key: remember
+        resource: keyval
+        value: '24'
   severity: medium
   socle: SOCLE-CLD-IAM-032
   ssg:
@@ -24104,31 +24176,31 @@ pam-remember-unix-remember:
   check:
     '@os':
       almalinux9:
-      - describe command('v=$(grep -rhoE \'remember=[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 2 ] && echo ok; } || echo ko') do
+      - describe command('v=$(grep -RhoE \'remember[[:space:]]*=[[:space:]]*[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 2 ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       debian12:
-      - describe command('v=$(grep -rhoE \'remember=[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 2 ] && echo ok; } || echo ko') do
+      - describe command('v=$(grep -RhoE \'remember[[:space:]]*=[[:space:]]*[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 2 ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       debian13:
-      - describe command('v=$(grep -rhoE \'remember=[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 2 ] && echo ok; } || echo ko') do
+      - describe command('v=$(grep -RhoE \'remember[[:space:]]*=[[:space:]]*[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 2 ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       rhel8:
-      - describe command('v=$(grep -rhoE \'remember=[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 5 ] && echo ok; } || echo ko') do
+      - describe command('v=$(grep -RhoE \'remember[[:space:]]*=[[:space:]]*[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 5 ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       rhel9:
-      - describe command('v=$(grep -rhoE \'remember=[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 2 ] && echo ok; } || echo ko') do
+      - describe command('v=$(grep -RhoE \'remember[[:space:]]*=[[:space:]]*[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 2 ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       ubuntu2204:
-      - describe command('v=$(grep -rhoE \'remember=[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 2 ] && echo ok; } || echo ko') do
+      - describe command('v=$(grep -RhoE \'remember[[:space:]]*=[[:space:]]*[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 2 ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       ubuntu2404:
-      - describe command('v=$(grep -rhoE \'remember=[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 2 ] && echo ok; } || echo ko') do
+      - describe command('v=$(grep -RhoE \'remember[[:space:]]*=[[:space:]]*[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 2 ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
   domain: Accounts (password history)
@@ -24157,6 +24229,11 @@ pam-remember-unix-remember:
   reboot_survivable: 'yes'
   remediation:
     '@os':
+      almalinux9:
+        file: /etc/security/pwhistory.conf
+        key: remember
+        resource: keyval
+        value: '24'
       debian12:
         command: '# Either enable pam_pwhistory (preferred, see pam-remember-pwhistory-remember) OR add ''remember=5''
 
@@ -24165,6 +24242,16 @@ pam-remember-unix-remember:
           '
         reason: prefer pam_pwhistory for history; if using pam_unix remember, set it deliberately
         resource: manual
+      rhel8:
+        file: /etc/security/pwhistory.conf
+        key: remember
+        resource: keyval
+        value: '24'
+      rhel9:
+        file: /etc/security/pwhistory.conf
+        key: remember
+        resource: keyval
+        value: '24'
   severity: medium
   socle: SOCLE-CLD-IAM-033
   ssg: accounts_password_pam_unix_remember
@@ -24178,7 +24265,7 @@ pam-unix-authtok:
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('grep -rqE \'^[^#]*\bpam_unix\\.so\b[^#]*\buse_authtok\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+  - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\buse_authtok\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (PAM modules)
@@ -24220,7 +24307,7 @@ pam-unix-enabled:
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('grep -rqE \'^[^#]*\bpam_unix\\.so\b\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+  - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (PAM modules)
@@ -24265,7 +24352,7 @@ pam-unix-no-nullok:
   - debian12
   - debian13
   check:
-  - describe command('grep -rqE \'^[^#]*\bpam_unix\\.so\b[^#]*\bnullok\' /etc/pam.d/ 2>/dev/null && echo ko || echo ok') do
+  - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\bnullok\' /etc/pam.d/ 2>/dev/null && echo ko || echo ok') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (PAM modules)
@@ -24297,7 +24384,7 @@ pam-unix-no-remember:
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('grep -rE \'^[^#]*\bpam_unix\\.so\b\' /etc/pam.d/ 2>/dev/null | grep -q \'remember=\' && echo ko || echo ok') do
+  - describe command('grep -RE \'^[^#]*\bpam_unix\\.so\b\' /etc/pam.d/ 2>/dev/null | grep -q \'remember=\' && echo ko || echo ok') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (PAM modules)
@@ -24333,7 +24420,7 @@ pam-unix-rounds-password-auth:
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('grep -rqE \'^[^#]*\bpam_unix\\.so\b[^#]*\brounds=[0-9]\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+  - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\brounds=[0-9]\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Accounts (PAM modules)
@@ -27064,7 +27151,7 @@ pkg-net-snmp-removed:
     cis:
       '@os':
         almalinux9: 2.1.14
-        debian12: &id003
+        debian12: &id004
         - 2.1.15
         - 2.2.4
         debian13: 2.1.14
@@ -27072,7 +27159,7 @@ pkg-net-snmp-removed:
         rhel8: 2.1.15
         rhel9: 2.1.14
         ubuntu2204: 2.1.14
-        ubuntu2404: &id004
+        ubuntu2404: &id005
         - 2.1.15
         - 2.2.4
     pci-dss: 2.2.4
@@ -28294,12 +28381,12 @@ pkg-snmpd-removed:
   norms:
     cis:
       '@os':
-        debian12: *id003
+        debian12: *id004
         debian13:
         - 2.1.15
         - 2.2.4
         ubuntu2204: 2.1.15
-        ubuntu2404: *id004
+        ubuntu2404: *id005
     pci-dss: 2.2.4
   reboot_survivable: 'yes'
   remediation:
@@ -29974,7 +30061,7 @@ pwquality-enforcing:
   - debian12
   - debian13
   check:
-  - describe command('grep -rqE \'enforcing[[:space:]]*=[[:space:]]*0\' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ /etc/pam.d/ 2>/dev/null && echo ko || echo ok') do
+  - describe command('grep -RqE \'enforcing[[:space:]]*=[[:space:]]*0\' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ /etc/pam.d/ 2>/dev/null && echo ko || echo ok') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Passwords (pwquality)
