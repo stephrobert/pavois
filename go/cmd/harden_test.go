@@ -157,9 +157,9 @@ rules:
 		t.Fatalf("count = 0, expected enabled items")
 	}
 
-	// Baseline package installs (apply:true only).
-	if !strings.Contains(recipe, `package "auditd" do`) {
-		t.Error("recipe missing auditd install")
+	// Baseline package installs (apply:true only) go into ONE batched install execute.
+	if !strings.Contains(recipe, "pavois-install-packages") || !strings.Contains(recipe, "auditd") {
+		t.Error("recipe missing batched auditd install")
 	}
 	if strings.Contains(recipe, "skipped-pkg") {
 		t.Error("recipe must not include a baseline package with apply:false")
