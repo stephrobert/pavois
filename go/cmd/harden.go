@@ -419,6 +419,7 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	files := map[string]map[string]string{}   // path -> attr -> value
 	dirs := map[string]map[string]string{}    // directory path -> attr -> value (mode/owner/group)
 	keyvals := map[string]map[string]string{} // config file -> key -> value (drop-in, whole-file)
+	authselectFeatures := map[string]bool{}   // RHEL authselect features to enable (with-faillock, …)
 	confLines := []confLine{}                 // in-place key=value edits in a shared file (auditd.conf)
 	pamLines := []pamLine{}                   // PAM stack lines inserted before an anchor (idempotent)
 	execs := []execRem{}                      // arbitrary guarded command (e.g. chmod on a glob)
@@ -591,6 +592,17 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			faillockWanted = true // enable account lockout, emitted below
 			if p := s(m["params"]); p != "" {
 				faillockParams = p // module args (deny/unlock_time/…) come from the rule data
+			}
+		case "authselect":
+			// RHEL PAM stack: authselect owns system-auth/password-auth and places the modules
+			// (pam_faillock, pam_pwhistory). The per-option knobs live in /etc/security/*.conf
+			// (handled by keyval) — here we only collect the FEATURES to enable. no-ops on Debian.
+			if fs, ok := m["features"].([]any); ok {
+				for _, f := range fs {
+					if fv := s(f); fv != "" {
+						authselectFeatures[fv] = true
+					}
+				}
 			}
 		case "selinux_state":
 			selinuxWanted = true // enforce SELinux (RHEL family), emitted below
@@ -890,6 +902,29 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		b.WriteString("service 'rsyslog' do\n  action :nothing\n  ignore_failure true\nend\n\n")
 		n++
 	}
+	// RHEL PAM stack (authselect). Configuring /etc/security/faillock.conf or pwhistory.conf is
+	// INERT unless the matching module is in system-auth/password-auth — and on RHEL those files
+	// are owned by authselect (editing them by hand is regenerated away). So when a faillock/
+	// pwhistory .conf is being written, infer the feature that places the module. Explicit
+	// `authselect` remediations (e.g. use_authtok, which authselect puts inline, not in a .conf)
+	// add their features too. One `authselect select` runs the lot; gated on `command -v
+	// authselect`, so the whole block no-ops on Debian/Ubuntu (which use inline common-* edits).
+	if _, ok := keyvals["/etc/security/faillock.conf"]; ok {
+		authselectFeatures["with-faillock"] = true
+	}
+	if _, ok := keyvals["/etc/security/pwhistory.conf"]; ok {
+		authselectFeatures["with-pwhistory"] = true
+	}
+	if len(authselectFeatures) > 0 {
+		feats := sortedKeys(authselectFeatures)
+		var guards []string
+		for _, f := range feats {
+			guards = append(guards, "authselect current 2>/dev/null | grep -q "+f)
+		}
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-authselect' do\n  command 'authselect select sssd %s --force'\n  only_if 'command -v authselect >/dev/null 2>&1'\n  not_if %q\nend\n\n",
+			strings.Join(feats, " "), strings.Join(guards, " && "))
+		n++
+	}
 	// key=value drop-ins (pwquality, faillock): one file per config, all keys merged.
 	// Their parent .d dir may not exist (e.g. /etc/security/faillock.conf.d) and `file`
 	// won't create parents — emit a recursive `directory` first, deduped.
@@ -903,7 +938,13 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	for _, f := range sortedFileKeys(keyvals) {
 		var content strings.Builder
 		for _, k := range sortedKeysS(keyvals[f]) {
-			content.WriteString(k + " = " + keyvals[f][k] + "\\n")
+			// Bare boolean directives (faillock/pwhistory: audit, even_deny_root, enforce_for_root)
+			// carry no value — emit just the key, not `key = ` which the pam parsers reject.
+			if v := keyvals[f][k]; v == "" {
+				content.WriteString(k + "\\n")
+			} else {
+				content.WriteString(k + " = " + v + "\\n")
+			}
 		}
 		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\nend\n\n", f, content.String())
 		n++
