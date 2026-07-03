@@ -31,7 +31,12 @@ func promptSecret(label string) (string, error) {
 // accepts an inline CLI value — that would leak via `ps` and the shell history.
 func resolveSudoPass(prompt bool) (string, error) {
 	if prompt {
-		return promptSecret("[sudo] password for the target: ")
+		// Interactive first, but fall back to the env var when there is no controlling
+		// terminal (CI, `pavois … | tee`, a non-interactive runner) so --sudo-prompt is
+		// usable unattended too — as the flag help promises ("also reads …").
+		if s, err := promptSecret("[sudo] password for the target: "); err == nil {
+			return s, nil
+		}
 	}
 	v := os.Getenv("PAVOIS_SUDO_PASSWORD")
 	_ = os.Unsetenv("PAVOIS_SUDO_PASSWORD") // drop from our env so no child process inherits it
