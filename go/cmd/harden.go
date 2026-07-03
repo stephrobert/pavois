@@ -419,6 +419,7 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	files := map[string]map[string]string{}   // path -> attr -> value
 	dirs := map[string]map[string]string{}    // directory path -> attr -> value (mode/owner/group)
 	keyvals := map[string]map[string]string{} // config file -> key -> value (drop-in, whole-file)
+	authselectFeatures := map[string]bool{}   // RHEL authselect features to enable (with-faillock, …)
 	confLines := []confLine{}                 // in-place key=value edits in a shared file (auditd.conf)
 	pamLines := []pamLine{}                   // PAM stack lines inserted before an anchor (idempotent)
 	execs := []execRem{}                      // arbitrary guarded command (e.g. chmod on a glob)
@@ -432,6 +433,7 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	faillockWanted := false             // a pam_faillock remediation was enabled
 	faillockParams := ""                // pam_faillock module args (from the rule data)
 	kernelBuildWanted := false          // a kernel_build remediation was enabled (deliver the recipe)
+	selinuxWanted := false              // a selinux_state remediation was enabled (RHEL enforcing)
 	manualFixes := []manualFix{}        // `manual` remediations — delivered as a script, never auto-run
 
 	setKV := func(m map[string]string, k, v, kind string) {
@@ -591,6 +593,19 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			if p := s(m["params"]); p != "" {
 				faillockParams = p // module args (deny/unlock_time/…) come from the rule data
 			}
+		case "authselect":
+			// RHEL PAM stack: authselect owns system-auth/password-auth and places the modules
+			// (pam_faillock, pam_pwhistory). The per-option knobs live in /etc/security/*.conf
+			// (handled by keyval) — here we only collect the FEATURES to enable. no-ops on Debian.
+			if fs, ok := m["features"].([]any); ok {
+				for _, f := range fs {
+					if fv := s(f); fv != "" {
+						authselectFeatures[fv] = true
+					}
+				}
+			}
+		case "selinux_state":
+			selinuxWanted = true // enforce SELinux (RHEL family), emitted below
 		case "kernel_build":
 			kernelBuildWanted = true // deliver (not run) the KSPP kernel-build recipe, below
 		case "audit_ruleset":
@@ -769,7 +784,20 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		// (e.g. a mutually-exclusive alternative like syslogng when rsyslog is chosen)
 		// must be SKIPPED, not abort the whole run. Packages install earlier in the recipe,
 		// so a service we DO want is present by the time this runs.
-		_, _ = fmt.Fprintf(&b, "service %q do\n  action [%s]\n  only_if \"systemctl cat %s.service >/dev/null 2>&1\"\nend\n\n", k, svc[k], k)
+		// Translate the desired actions into plain `systemctl` calls in ONE execute instead of Chef's
+		// `service` resource: the Chef provider trips on RHEL units like auditd (RefuseManualStop /
+		// static), erroring inside load_current_resource where even ignore_failure can't catch it.
+		// only_if the unit exists; each verb is tolerant (|| true) so a refused stop/enable-of-static
+		// never aborts the run. systemctl enable/start/disable/stop == the Chef actions on Debian.
+		var svcCmds []string
+		for _, a := range strings.Split(svc[k], ",") {
+			verb := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(a), ":"))
+			if verb != "" {
+				svcCmds = append(svcCmds, "systemctl "+verb+" "+k+" 2>/dev/null || true")
+			}
+		}
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-service-%s' do\n  command %q\n  only_if \"systemctl cat %s.service >/dev/null 2>&1\"\n  ignore_failure true\nend\n\n",
+			k, strings.Join(svcCmds, "; "), k)
 		n++
 	}
 	for _, mod := range sortedKeys(kmods) {
@@ -874,6 +902,29 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		b.WriteString("service 'rsyslog' do\n  action :nothing\n  ignore_failure true\nend\n\n")
 		n++
 	}
+	// RHEL PAM stack (authselect). Configuring /etc/security/faillock.conf or pwhistory.conf is
+	// INERT unless the matching module is in system-auth/password-auth — and on RHEL those files
+	// are owned by authselect (editing them by hand is regenerated away). So when a faillock/
+	// pwhistory .conf is being written, infer the feature that places the module. Explicit
+	// `authselect` remediations (e.g. use_authtok, which authselect puts inline, not in a .conf)
+	// add their features too. One `authselect select` runs the lot; gated on `command -v
+	// authselect`, so the whole block no-ops on Debian/Ubuntu (which use inline common-* edits).
+	if _, ok := keyvals["/etc/security/faillock.conf"]; ok {
+		authselectFeatures["with-faillock"] = true
+	}
+	if _, ok := keyvals["/etc/security/pwhistory.conf"]; ok {
+		authselectFeatures["with-pwhistory"] = true
+	}
+	if len(authselectFeatures) > 0 {
+		feats := sortedKeys(authselectFeatures)
+		var guards []string
+		for _, f := range feats {
+			guards = append(guards, "authselect current 2>/dev/null | grep -q "+f)
+		}
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-authselect' do\n  command 'authselect select sssd %s --force'\n  only_if 'command -v authselect >/dev/null 2>&1'\n  not_if %q\nend\n\n",
+			strings.Join(feats, " "), strings.Join(guards, " && "))
+		n++
+	}
 	// key=value drop-ins (pwquality, faillock): one file per config, all keys merged.
 	// Their parent .d dir may not exist (e.g. /etc/security/faillock.conf.d) and `file`
 	// won't create parents — emit a recursive `directory` first, deduped.
@@ -887,7 +938,13 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	for _, f := range sortedFileKeys(keyvals) {
 		var content strings.Builder
 		for _, k := range sortedKeysS(keyvals[f]) {
-			content.WriteString(k + " = " + keyvals[f][k] + "\\n")
+			// Bare boolean directives (faillock/pwhistory: audit, even_deny_root, enforce_for_root)
+			// carry no value — emit just the key, not `key = ` which the pam parsers reject.
+			if v := keyvals[f][k]; v == "" {
+				content.WriteString(k + "\\n")
+			} else {
+				content.WriteString(k + " = " + v + "\\n")
+			}
 		}
 		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\nend\n\n", f, content.String())
 		n++
@@ -985,13 +1042,23 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		ensureDir("/etc/audit/rules.d") // present once auditd is installed; ensure it regardless
 		_, _ = fmt.Fprintf(&b, "file %q do\n  content %q\n  mode '0640'\nend\n\n",
 			"/etc/audit/rules.d/99-pavois.rules", auditRules)
-		// Deploying the file is not enough: the rules only auto-load at the NEXT boot, so without
-		// this every audit control fails until a reboot. Load now with augenrules. The ruleset ends
-		// with `-e 2` (immutable) — once loaded you can't reload until reboot, so skip if already
-		// immutable (auditctl -s shows enabled 2). Full paths: augenrules/auditctl live in /sbin.
+		// Make sure auditd is up before loading — augenrules loads into the kernel AND recompiles
+		// /etc/audit/audit.rules (what auditd reads at the next boot). Do this with a plain execute,
+		// NOT Chef's `service` resource: RHEL's auditd unit (RefuseManualStop=yes) trips the service
+		// provider. NEVER systemctl-restart auditd; enable + start (best-effort) is enough.
+		b.WriteString("execute 'pavois-auditd-up' do\n" +
+			"  command 'systemctl enable auditd 2>/dev/null; systemctl start auditd 2>/dev/null || service auditd start 2>/dev/null || true'\n" +
+			"  ignore_failure true\nend\n\n")
+		// Deploying the file is not enough: the rules only auto-load at the NEXT boot, so load now
+		// with augenrules. Guard on whether OUR rule set is already RESIDENT (>=40 of the ~54 rules),
+		// NOT on immutable state: the old `enabled 2` guard skipped the load once the config was
+		// immutable, so the compiled /etc/audit/audit.rules was never refreshed and auditd loaded a
+		// stale 1-rule file at boot. augenrules --load recompiles the file first, so even if the live
+		// load is refused under `-e 2`, the full set loads on the next reboot. ignore_failure keeps a
+		// refused load from aborting the converge. Full paths: augenrules/auditctl live in /sbin.
 		b.WriteString("execute 'pavois-audit-load' do\n" +
-			"  command '/sbin/augenrules --load 2>/dev/null || augenrules --load'\n" +
-			"  not_if 'auditctl -s 2>/dev/null | grep -qE \"^enabled 2\"'\nend\n\n")
+			"  command '/sbin/augenrules --load 2>/dev/null || augenrules --load 2>/dev/null || true'\n" +
+			"  not_if 'test \"$(auditctl -l 2>/dev/null | wc -l)\" -ge 40'\n  ignore_failure true\nend\n\n")
 		// syscall auditing is INERT without audit=1 on the kernel cmdline (revealed by the
 		// behavioral probe) — fold it into the cmdline drop-in emitted below.
 		cmdline["audit=1"] = true
@@ -1119,6 +1186,26 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		}
 		_, _ = fmt.Fprintf(&b, "execute 'pavois-faillock-preauth' do\n  command 'sed -ri \"/^auth.*pam_unix\\.so/i auth required pam_faillock.so preauth %s\" /etc/pam.d/common-auth'\n  only_if 'test -f /etc/pam.d/common-auth'\n  not_if 'grep -qE \"pam_faillock.so\" /etc/pam.d/common-auth'\nend\n\n", fl)
 		b.WriteString("execute 'pavois-faillock-account' do\n  command 'printf \"account required pam_faillock.so\\n\" >> /etc/pam.d/common-account'\n  only_if 'test -f /etc/pam.d/common-account'\n  not_if 'grep -qE \"pam_faillock.so\" /etc/pam.d/common-account'\nend\n\n")
+		n++
+	}
+	if selinuxWanted {
+		// SELinux enforcing (RHEL/Alma/Fedora). Persist the config first so the mode survives a
+		// reboot, then bump the LIVE state — but only from Permissive: `setenforce 1` errors when
+		// SELinux booted Disabled, and flipping a Disabled system straight to enforcing without a
+		// filesystem relabel can lock everyone out, so in that case we schedule an autorelabel and
+		// leave the runtime change for the (admin-triggered) reboot. Every step is gated on
+		// /etc/selinux/config existing, so the whole block no-ops on Debian/Ubuntu.
+		b.WriteString("execute 'pavois-selinux-persist' do\n" +
+			"  command \"sed -ri 's/^SELINUX=.*/SELINUX=enforcing/; s/^SELINUXTYPE=.*/SELINUXTYPE=targeted/' /etc/selinux/config\"\n" +
+			"  only_if 'test -f /etc/selinux/config'\n" +
+			"  not_if 'grep -qE \"^SELINUX=enforcing\" /etc/selinux/config'\nend\n\n")
+		b.WriteString("execute 'pavois-selinux-enforce-now' do\n" +
+			"  command 'setenforce 1'\n" +
+			"  only_if 'test -f /etc/selinux/config && command -v getenforce >/dev/null 2>&1 && test \"$(getenforce)\" = \"Permissive\"'\nend\n\n")
+		// Disabled -> enforcing needs a relabel + reboot to be safe; never setenforce from Disabled.
+		b.WriteString("execute 'pavois-selinux-autorelabel' do\n" +
+			"  command 'touch /.autorelabel'\n" +
+			"  only_if 'test -f /etc/selinux/config && command -v getenforce >/dev/null 2>&1 && test \"$(getenforce)\" = \"Disabled\"'\nend\n\n")
 		n++
 	}
 	if len(dconfEntries) > 0 {

@@ -52,6 +52,7 @@ DOMAIN_MAP = {
     "Banners": ("CLD", "GEN"),
     "GNOME desktop (dconf)": ("CLD", "GEN"),
     "Cron/at access control": ("CLD", "GEN"),
+    "Mandatory Access Control": ("CLD", "MAC"),
     "Hardening (misc)": ("CLD", "GEN"),
     "Hardening (posture)": ("CLD", "GEN"),
 }
