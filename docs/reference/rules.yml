@@ -4381,6 +4381,7 @@ filegroupowner-at-deny:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   domain: File ownership
@@ -6601,6 +6602,7 @@ filegroupowner-var-log-lastlog:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -6629,6 +6631,7 @@ filegroupowner-var-log-localmessages:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   domain: File ownership
@@ -6683,6 +6686,7 @@ filegroupowner-var-log-secure:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   domain: File ownership
@@ -7135,6 +7139,7 @@ fileowner-at-deny:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   domain: File ownership
@@ -9027,6 +9032,7 @@ fileowner-var-log-lastlog:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   domain: File ownership
@@ -9059,6 +9065,7 @@ fileowner-var-log-localmessages:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   domain: File ownership
@@ -9113,6 +9120,7 @@ fileowner-var-log-secure:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   domain: File ownership
@@ -9544,6 +9552,7 @@ fileperm-at-deny:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -11218,6 +11227,7 @@ fileperm-etc-audit-rules:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -14067,6 +14077,7 @@ fileperm-var-log-gdm:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -14145,6 +14156,7 @@ fileperm-var-log-lastlog:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -14183,6 +14195,7 @@ fileperm-var-log-localmessages:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -14253,6 +14266,7 @@ fileperm-var-log-sssd:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -14570,7 +14584,6 @@ findloop-file-groupownership-system-commands-dirs:
   - almalinux9
   - debian12
   - debian13
-  - rhel8
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -14623,6 +14636,7 @@ findloop-file-groupownerships-var-log:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   check:
   - describe command('timeout 90 find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal 2>/dev/null') do
   - '  its(''stdout.strip'') { should eq '''' }'
@@ -14756,6 +14770,7 @@ findloop-file-ownerships-var-log:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   check:
   - describe command('timeout 90 find /var/log -type f ! -user root ! -user syslog ! -user _aide 2>/dev/null') do
   - '  its(''stdout.strip'') { should eq '''' }'
@@ -15009,6 +15024,7 @@ findloop-no-dirs-unowned-by-root:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -15026,7 +15042,7 @@ findloop-no-dirs-unowned-by-root:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12:
+      debian12: &id004
         command: 'find / -xdev -type d -nouser 2>/dev/null
 
           # chown <user> <dir> per directory after review
@@ -15034,6 +15050,7 @@ findloop-no-dirs-unowned-by-root:
           '
         reason: review unowned directories and assign ownership deliberately
         resource: manual
+      rhel8: *id004
   severity: medium
   socle: SOCLE-CLD-FSP-190
   ssg: no_dirs_unowned_by_root
@@ -15114,6 +15131,7 @@ findloop-permissions-local-var-log:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   check:
   - describe command('timeout 90 find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null') do
   - '  its(''stdout.strip'') { should eq '''' }'
@@ -15149,6 +15167,7 @@ findloop-rsyslog-files-groupownership:
   - almalinux9
   - debian13
   - fedora
+  - rhel8
   check:
   - describe command('timeout 90 find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal 2>/dev/null') do
   - '  its(''stdout.strip'') { should eq '''' }'
@@ -15161,11 +15180,12 @@ findloop-rsyslog-files-groupownership:
       almalinux9:
         bp28: enhanced
         cis: '1'
-      debian13:
+      debian13: &id005
         bp28: enhanced
       fedora:
         bp28: enhanced
         cis: '1'
+      rhel8: *id005
   norms:
     bp28: R71
     cis:
@@ -15176,11 +15196,12 @@ findloop-rsyslog-files-groupownership:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian13:
+      debian13: &id006
         command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
         name: fix-varlog-ownership
         not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
         resource: exec
+      rhel8: *id006
   severity: medium
   socle: SOCLE-CLD-FSP-193
   ssg: rsyslog_files_groupownership
@@ -15190,6 +15211,7 @@ findloop-rsyslog-files-ownership:
   - almalinux9
   - debian13
   - fedora
+  - rhel8
   check:
   - describe command('timeout 90 find /var/log -type f ! -user root ! -user syslog ! -user _aide 2>/dev/null') do
   - '  its(''stdout.strip'') { should eq '''' }'
@@ -15202,11 +15224,12 @@ findloop-rsyslog-files-ownership:
       almalinux9:
         bp28: enhanced
         cis: '1'
-      debian13:
+      debian13: &id007
         bp28: enhanced
       fedora:
         bp28: enhanced
         cis: '1'
+      rhel8: *id007
   norms:
     bp28: R71
     cis:
@@ -15217,11 +15240,12 @@ findloop-rsyslog-files-ownership:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian13:
+      debian13: &id008
         command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
         name: fix-varlog-ownership
         not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
         resource: exec
+      rhel8: *id008
   severity: medium
   socle: SOCLE-CLD-FSP-194
   ssg: rsyslog_files_ownership
@@ -15231,6 +15255,7 @@ findloop-rsyslog-files-permissions:
   - almalinux9
   - debian13
   - fedora
+  - rhel8
   check:
   - describe command('timeout 90 find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null') do
   - '  its(''stdout.strip'') { should eq '''' }'
@@ -15243,11 +15268,12 @@ findloop-rsyslog-files-permissions:
       almalinux9:
         bp28: enhanced
         cis: '1'
-      debian13:
+      debian13: &id009
         bp28: enhanced
       fedora:
         bp28: enhanced
         cis: '1'
+      rhel8: *id009
   norms:
     bp28: R71
     cis:
@@ -15258,11 +15284,12 @@ findloop-rsyslog-files-permissions:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian13:
+      debian13: &id010
         command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
         name: fix-varlog-perms
         not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
         resource: exec
+      rhel8: *id010
   severity: medium
   socle: SOCLE-CLD-FSP-195
   ssg: rsyslog_files_permissions
@@ -15622,6 +15649,7 @@ groupowner-var-log-journal:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -15655,6 +15683,7 @@ groupownerships-var-log-gdm:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -15685,7 +15714,7 @@ groupownerships-var-log-gdm:
           '
         reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
         resource: manual
-      debian13:
+      debian13: &id011
         command: '# Set root ownership recursively under the gdm log dir (only if it exists):
 
           [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
@@ -15693,6 +15722,7 @@ groupownerships-var-log-gdm:
           '
         reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
         resource: manual
+      rhel8: *id011
   severity: medium
   socle: SOCLE-CLD-FSP-197
   ssg: file_groupownerships_var_log_gdm
@@ -15747,6 +15777,7 @@ groupownerships-var-log-sssd:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -15777,7 +15808,7 @@ groupownerships-var-log-sssd:
           '
         reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
         resource: manual
-      debian13:
+      debian13: &id012
         command: '# Set root ownership recursively under the sssd log dir (only if it exists):
 
           [ -d /var/log/sssd ] && find /var/log/sssd -print0 | xargs -0 -r chown root: || echo ''no /var/log/sssd''
@@ -15785,6 +15816,7 @@ groupownerships-var-log-sssd:
           '
         reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
         resource: manual
+      rhel8: *id012
   severity: medium
   socle: SOCLE-CLD-FSP-199
   ssg: file_groupownerships_var_log_sssd
@@ -20512,6 +20544,7 @@ misc-aide-periodic-checking-systemd-timer:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2404
   check:
   - describe command('for t in aidecheck.timer dailyaidecheck.timer aide.timer; do systemctl is-enabled "$t" 2>/dev/null; done | grep -q enabled && echo ok || echo ko') do
@@ -20525,8 +20558,9 @@ misc-aide-periodic-checking-systemd-timer:
       debian12:
         bp28: high
         cis: '1'
-      debian13:
+      debian13: &id013
         bp28: high
+      rhel8: *id013
       ubuntu2404:
         bp28: high
         cis: '1'
@@ -20565,6 +20599,11 @@ misc-aide-periodic-checking-systemd-timer:
           '
         reason: scheduling AIDE checks is a policy choice (frequency, mail), set it deliberately
         resource: manual
+      rhel8:
+        command: mkdir -p /etc/systemd/system; printf '[Unit]\nDescription=Pavois AIDE integrity check\n[Service]\nType=oneshot\nExecStart=/usr/sbin/aide --check\n' > /etc/systemd/system/aidecheck.service; printf '[Unit]\nDescription=Pavois daily AIDE integrity check\n[Timer]\nOnCalendar=daily\nPersistent=true\n[Install]\nWantedBy=timers.target\n' > /etc/systemd/system/aidecheck.timer; systemctl daemon-reload; systemctl enable --now aidecheck.timer
+        name: aide-timer
+        not_if: systemctl is-enabled aidecheck.timer dailyaidecheck.timer aide.timer 2>/dev/null | grep -q enabled
+        resource: exec
   requires_package: aide
   severity: medium
   socle: SOCLE-CLD-GEN-032
@@ -20811,6 +20850,7 @@ misc-ensure-shadow-group-empty:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -20852,7 +20892,7 @@ misc-ensure-shadow-group-empty:
           '
         reason: removing members from the shadow group is deliberate (they lose shadow access)
         resource: manual
-      debian13:
+      debian13: &id014
         command: 'getent group shadow
 
           # gpasswd -d <user> shadow   for each unexpected member
@@ -20860,6 +20900,7 @@ misc-ensure-shadow-group-empty:
           '
         reason: removing members from the shadow group is deliberate (they lose shadow access)
         resource: manual
+      rhel8: *id014
   severity: medium
   socle: SOCLE-CLD-GEN-038
   ssg: ensure_shadow_group_empty
@@ -21294,6 +21335,7 @@ misc-postfix-anti-vrfy:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   check:
   - describe command('if ! command -v /usr/sbin/postconf >/dev/null 2>&1; then echo ok; elif /usr/sbin/postconf -h disable_vrfy_command 2>/dev/null | grep -qi ''^yes''; then echo ok; else echo ko; fi') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -21315,6 +21357,7 @@ misc-postfix-banner:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   check:
   - describe command('if ! command -v /usr/sbin/postconf >/dev/null 2>&1; then echo ok; elif /usr/sbin/postconf -h smtpd_banner 2>/dev/null | grep -qi mail_name; then echo ko; else echo ok; fi') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -23531,6 +23574,7 @@ owner-var-log-journal:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -23602,6 +23646,7 @@ ownerships-var-log-gdm:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -23632,7 +23677,7 @@ ownerships-var-log-gdm:
           '
         reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
         resource: manual
-      debian13:
+      debian13: &id015
         command: '# Set root ownership recursively under the gdm log dir (only if it exists):
 
           [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
@@ -23640,6 +23685,7 @@ ownerships-var-log-gdm:
           '
         reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
         resource: manual
+      rhel8: *id015
   severity: medium
   socle: SOCLE-CLD-FSP-202
   ssg: file_ownerships_var_log_gdm
@@ -23694,6 +23740,7 @@ ownerships-var-log-sssd:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   - ubuntu2204
   - ubuntu2404
   check:
@@ -23724,7 +23771,7 @@ ownerships-var-log-sssd:
           '
         reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
         resource: manual
-      debian13:
+      debian13: &id016
         command: '# Set root ownership recursively under the sssd log dir (only if it exists):
 
           [ -d /var/log/sssd ] && find /var/log/sssd -print0 | xargs -0 -r chown root: || echo ''no /var/log/sssd''
@@ -23732,6 +23779,7 @@ ownerships-var-log-sssd:
           '
         reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
         resource: manual
+      rhel8: *id016
   severity: medium
   socle: SOCLE-CLD-FSP-204
   ssg: file_ownerships_var_log_sssd
@@ -23895,16 +23943,16 @@ pam-faillock-enabled:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id004
+      debian12: &id017
         params: audit silent deny=5 unlock_time=900 even_deny_root
         resource: pam_faillock
-      debian13: *id004
+      debian13: *id017
       rhel8:
         features:
         - with-faillock
         resource: authselect
-      ubuntu2204: *id004
-      ubuntu2404: *id004
+      ubuntu2204: *id017
+      ubuntu2404: *id017
   severity: medium
   socle: SOCLE-CLD-IAM-025
   ssg: accounts_passwords_pam_faillock_enabled
@@ -23928,12 +23976,12 @@ pam-faillock-root-unlock-time:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id005
+      debian12: &id018
         file: /etc/security/faillock.conf.d/99-pavois.conf
         key: root_unlock_time
         resource: keyval
         value: '60'
-      debian13: *id005
+      debian13: *id018
       rhel8:
         file: /etc/security/faillock.conf
         key: root_unlock_time
@@ -23964,19 +24012,19 @@ pam-pwhistory-enabled:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id006
+      debian12: &id019
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
         line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
         module: pam_pwhistory.so
         resource: pam_line
-      debian13: *id006
+      debian13: *id019
       rhel8:
         features:
         - with-pwhistory
         resource: authselect
-      ubuntu2204: *id006
-      ubuntu2404: *id006
+      ubuntu2204: *id019
+      ubuntu2404: *id019
   severity: medium
   socle: SOCLE-CLD-IAM-027
   ssg: accounts_password_pam_pwhistory_enabled
@@ -24002,20 +24050,20 @@ pam-pwhistory-enforce:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id007
+      debian12: &id020
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
         line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
         module: pam_pwhistory.so
         resource: pam_line
-      debian13: *id007
+      debian13: *id020
       rhel8:
         file: /etc/security/pwhistory.conf
         key: enforce_for_root
         resource: keyval
         value: ''
-      ubuntu2204: *id007
-      ubuntu2404: *id007
+      ubuntu2204: *id020
+      ubuntu2404: *id020
   severity: medium
   socle: SOCLE-CLD-IAM-028
   ssg: accounts_password_pam_pwhistory_enforce_root
@@ -24094,11 +24142,11 @@ pam-pwhistory-use-authtok:
         module: pam_pwhistory.so
         resource: pam_line
       fedora:
-        features: &id008
+        features: &id021
         - with-pwhistory
         resource: authselect
       rhel8:
-        features: *id008
+        features: *id021
         resource: authselect
       ubuntu2204:
         before: ^password.*pam_unix\.so
@@ -24445,12 +24493,12 @@ pam-unix-no-nullok:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id009
+      debian12: &id022
         command: grep -rlE '^[^#]*pam_unix\.so.*nullok' /etc/pam.d/ | while read -r f; do sed -ri '/pam_unix\.so/ s/[[:space:]]*\bnullok\b//g' "$f"; done; true
         name: pam-unix-remove-nullok
         not_if: '! grep -rqE ''^[^#]*pam_unix\.so.*nullok'' /etc/pam.d/'
         resource: exec
-      debian13: *id009
+      debian13: *id022
       rhel8:
         features:
         - without-nullok
@@ -24506,20 +24554,20 @@ pam-unix-rounds-password-auth:
   - ubuntu2404
   check:
     '@os':
-      almalinux9: &id011
+      almalinux9: &id024
       - describe command('v=$(grep -E "^[[:space:]]*SHA_CRYPT_MIN_ROUNDS[[:space:]]+[0-9]+" /etc/login.defs 2>/dev/null | grep -oE "[0-9]+" | tail -1); { [ -n "$v" ] && [ "$v" -ge 5000 ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian12: &id010
+      debian12: &id023
       - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\brounds=[0-9]\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian13: *id010
-      fedora: *id011
-      rhel8: *id011
-      rhel9: *id011
-      ubuntu2204: *id010
-      ubuntu2404: *id010
+      debian13: *id023
+      fedora: *id024
+      rhel8: *id024
+      rhel9: *id024
+      ubuntu2204: *id023
+      ubuntu2404: *id023
   domain: Accounts (PAM modules)
   evidence_type: persistent-config
   impact: 0.5
@@ -27272,7 +27320,7 @@ pkg-net-snmp-removed:
     cis:
       '@os':
         almalinux9: 2.1.14
-        debian12: &id012
+        debian12: &id025
         - 2.1.15
         - 2.2.4
         debian13: 2.1.14
@@ -27280,7 +27328,7 @@ pkg-net-snmp-removed:
         rhel8: 2.1.15
         rhel9: 2.1.14
         ubuntu2204: 2.1.14
-        ubuntu2404: &id013
+        ubuntu2404: &id026
         - 2.1.15
         - 2.2.4
     pci-dss: 2.2.4
@@ -28502,12 +28550,12 @@ pkg-snmpd-removed:
   norms:
     cis:
       '@os':
-        debian12: *id012
+        debian12: *id025
         debian13:
         - 2.1.15
         - 2.2.4
         ubuntu2204: 2.1.15
-        ubuntu2404: *id013
+        ubuntu2404: *id026
     pci-dss: 2.2.4
   reboot_survivable: 'yes'
   remediation:
@@ -34852,11 +34900,11 @@ sudo-require-authentication:
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian13: &id014
+      debian13: &id027
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      rhel8: *id014
+      rhel8: *id027
   danger: 'Removing NOPASSWD makes sudo always prompt for a password: any passwordless automation (including Pavois''s own management user) breaks. Repoint automation to a key or password FIRST.'
   domain: Sudo
   evidence_type: persistent-config
