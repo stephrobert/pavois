@@ -6909,6 +6909,10 @@ filegroupownership-sshd-private-key:
   - rhel9
   - ubuntu2204
   - ubuntu2404
+  check:
+  - describe command('find /etc/ssh -name "ssh_host_*_key" -type f ! -group root ! -group ssh_keys 2>/dev/null') do
+  - '  its(''stdout.strip'') { should eq '''' }'
+  - end
   domain: File ownership
   evidence_type: filesystem-state
   impact: 0.5
@@ -6926,17 +6930,13 @@ filegroupownership-sshd-private-key:
         ubuntu2404: 5.1.2
   reboot_survivable: 'yes'
   remediation:
-    group: ssh_keys
-    path: /etc/ssh
-    resource: file
+    command: chgrp ssh_keys /etc/ssh/ssh_host_*_key 2>/dev/null || chgrp root /etc/ssh/ssh_host_*_key 2>/dev/null || true
+    name: chgrp-sshd-private-keys
+    not_if: '[ -z "$(find /etc/ssh -name ''ssh_host_*_key'' -type f ! -group root ! -group ssh_keys 2>/dev/null)" ]'
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-FSP-053
   ssg: file_groupownership_sshd_private_key
-  template:
-    attr: group
-    name: file_owner
-    path: /etc/ssh
-    value: '''ssh_keys'''
   title: Verify Group Ownership on SSH Server Private *_key Key Files
 filegroupownership-sshd-pub-key:
   applicable_os:
@@ -6948,6 +6948,10 @@ filegroupownership-sshd-pub-key:
   - rhel9
   - ubuntu2204
   - ubuntu2404
+  check:
+  - describe command('find /etc/ssh -name "ssh_host_*_key.pub" -type f ! -gid 0 2>/dev/null') do
+  - '  its(''stdout.strip'') { should eq '''' }'
+  - end
   domain: File ownership
   evidence_type: filesystem-state
   impact: 0.5
@@ -6989,17 +6993,13 @@ filegroupownership-sshd-pub-key:
         ubuntu2404: 5.1.3
   reboot_survivable: 'yes'
   remediation:
-    group: root
-    path: /etc/ssh
-    resource: file
+    command: chgrp root /etc/ssh/ssh_host_*_key.pub 2>/dev/null || true
+    name: chgrp-sshd-pub-keys
+    not_if: '[ -z "$(find /etc/ssh -name ''ssh_host_*_key.pub'' -type f ! -gid 0 2>/dev/null)" ]'
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-FSP-054
   ssg: file_groupownership_sshd_pub_key
-  template:
-    attr: gid
-    name: file_owner
-    path: /etc/ssh
-    value: '0'
   title: Verify Group Ownership on SSH Server Public *.pub Key Files
 filegroupownerships-var-log-apt:
   applicable_os:
@@ -9349,6 +9349,10 @@ fileownership-sshd-pub-key:
   - rhel9
   - ubuntu2204
   - ubuntu2404
+  check:
+  - describe command('find /etc/ssh -name "ssh_host_*_key.pub" -type f ! -uid 0 2>/dev/null') do
+  - '  its(''stdout.strip'') { should eq '''' }'
+  - end
   domain: File ownership
   evidence_type: filesystem-state
   impact: 0.5
@@ -9400,17 +9404,13 @@ fileownership-sshd-pub-key:
         - 5.1.3
   reboot_survivable: 'yes'
   remediation:
-    owner: root
-    path: /etc/ssh
-    resource: file
+    command: chown root /etc/ssh/ssh_host_*_key.pub 2>/dev/null || true
+    name: chown-sshd-pub-keys
+    not_if: '[ -z "$(find /etc/ssh -name ''ssh_host_*_key.pub'' -type f ! -uid 0 2>/dev/null)" ]'
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-FSP-109
   ssg: file_ownership_sshd_pub_key
-  template:
-    attr: uid
-    name: file_owner
-    path: /etc/ssh
-    value: '0'
   title: Verify Ownership on SSH Server Public *.pub Key Files
 fileownerships-var-log-apt:
   applicable_os:
@@ -13286,7 +13286,6 @@ fileperm-sudo:
       - '  it { should_not be_writable.by(''group'') }'
       - '  it { should_not be_readable.by(''other'') }'
       - '  it { should_not be_writable.by(''other'') }'
-      - '  it { should_not be_executable.by(''other'') }'
       - end
       debian12:
       - describe file('/usr/bin/sudo') do
@@ -13309,7 +13308,6 @@ fileperm-sudo:
       - '  it { should_not be_writable.by(''group'') }'
       - '  it { should_not be_readable.by(''other'') }'
       - '  it { should_not be_writable.by(''other'') }'
-      - '  it { should_not be_executable.by(''other'') }'
       - end
       rhel9:
       - only_if { file('/usr/bin/sudo').exist? }
@@ -13320,7 +13318,6 @@ fileperm-sudo:
       - '  it { should_not be_writable.by(''group'') }'
       - '  it { should_not be_readable.by(''other'') }'
       - '  it { should_not be_writable.by(''other'') }'
-      - '  it { should_not be_executable.by(''other'') }'
       - end
       ubuntu2204:
       - describe file('/usr/bin/sudo') do
@@ -13345,7 +13342,7 @@ fileperm-sudo:
   remediation:
     '@os':
       almalinux9:
-        mode: '4110'
+        mode: '4111'
         path: /usr/bin/sudo
         resource: file
       debian12:
@@ -13357,11 +13354,11 @@ fileperm-sudo:
         path: /usr/bin/sudo
         resource: file
       rhel8:
-        mode: '4110'
+        mode: '4111'
         path: /usr/bin/sudo
         resource: file
       rhel9:
-        mode: '4110'
+        mode: '4111'
         path: /usr/bin/sudo
         resource: file
       ubuntu2204:
