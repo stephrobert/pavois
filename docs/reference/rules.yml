@@ -3058,6 +3058,11 @@ cmdline-selinux:
   - fedora
   - rhel8
   - rhel9
+  check:
+  - describe file('/proc/cmdline') do
+  - '  its(''content'') { should_not match(/\bselinux=0\b/) }'
+  - '  its(''content'') { should_not match(/\benforcing=0\b/) }'
+  - end
   domain: Kernel command line
   evidence_type: effective-runtime
   impact: 0.5
@@ -3068,12 +3073,14 @@ cmdline-selinux:
     nist: 3.1.2
     pci-dss: 1.2.6
   reboot_survivable: 'yes'
+  remediation:
+    command: grubby --update-kernel=ALL --remove-args="selinux=0 enforcing=0" 2>/dev/null || true
+    name: selinux-cmdline-clean
+    not_if: '! grep -Eqs "selinux=0|enforcing=0" /proc/cmdline'
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-KRN-013
   ssg: grub2_enable_selinux
-  template:
-    name: cmdline
-    param: selinux=0
   title: Ensure SELinux Not Disabled in /etc/default/grub
 cmdline-slab-nomerge:
   applicable_os:
@@ -30927,6 +30934,37 @@ root-path-no-dot:
   socle: SOCLE-CLD-IAM-054
   ssg: root_path_no_dot
   title: Ensure that Root's Path Does Not Include Relative Paths or Null Directories
+selinux-enforcing:
+  applicable_os:
+  - almalinux9
+  - fedora
+  - rhel8
+  - rhel9
+  check:
+  - describe command('getenforce') do
+  - '  its(''stdout.strip'') { should cmp ''Enforcing'' }'
+  - end
+  - describe file('/etc/selinux/config') do
+  - '  its(''content'') { should match(/^SELINUX=enforcing/) }'
+  - end
+  domain: Mandatory Access Control
+  evidence_type: effective-runtime
+  impact: 0.7
+  levels:
+    cis: '2'
+  norms:
+    bp28: R37
+    cis: 1.3.1.5
+    nist: AC-3
+    pci-dss: 1.2.6
+  reboot_survivable: 'yes'
+  remediation:
+    resource: selinux_state
+    state: enforcing
+  severity: high
+  socle: SOCLE-CLD-MAC-001
+  ssg: selinux_state
+  title: Ensure SELinux State is Enforcing
 service-apport-disabled:
   applicable_os:
   - ubuntu2204

@@ -432,6 +432,7 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	faillockWanted := false             // a pam_faillock remediation was enabled
 	faillockParams := ""                // pam_faillock module args (from the rule data)
 	kernelBuildWanted := false          // a kernel_build remediation was enabled (deliver the recipe)
+	selinuxWanted := false              // a selinux_state remediation was enabled (RHEL enforcing)
 	manualFixes := []manualFix{}        // `manual` remediations — delivered as a script, never auto-run
 
 	setKV := func(m map[string]string, k, v, kind string) {
@@ -591,6 +592,8 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			if p := s(m["params"]); p != "" {
 				faillockParams = p // module args (deny/unlock_time/…) come from the rule data
 			}
+		case "selinux_state":
+			selinuxWanted = true // enforce SELinux (RHEL family), emitted below
 		case "kernel_build":
 			kernelBuildWanted = true // deliver (not run) the KSPP kernel-build recipe, below
 		case "audit_ruleset":
@@ -1142,6 +1145,26 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		}
 		_, _ = fmt.Fprintf(&b, "execute 'pavois-faillock-preauth' do\n  command 'sed -ri \"/^auth.*pam_unix\\.so/i auth required pam_faillock.so preauth %s\" /etc/pam.d/common-auth'\n  only_if 'test -f /etc/pam.d/common-auth'\n  not_if 'grep -qE \"pam_faillock.so\" /etc/pam.d/common-auth'\nend\n\n", fl)
 		b.WriteString("execute 'pavois-faillock-account' do\n  command 'printf \"account required pam_faillock.so\\n\" >> /etc/pam.d/common-account'\n  only_if 'test -f /etc/pam.d/common-account'\n  not_if 'grep -qE \"pam_faillock.so\" /etc/pam.d/common-account'\nend\n\n")
+		n++
+	}
+	if selinuxWanted {
+		// SELinux enforcing (RHEL/Alma/Fedora). Persist the config first so the mode survives a
+		// reboot, then bump the LIVE state — but only from Permissive: `setenforce 1` errors when
+		// SELinux booted Disabled, and flipping a Disabled system straight to enforcing without a
+		// filesystem relabel can lock everyone out, so in that case we schedule an autorelabel and
+		// leave the runtime change for the (admin-triggered) reboot. Every step is gated on
+		// /etc/selinux/config existing, so the whole block no-ops on Debian/Ubuntu.
+		b.WriteString("execute 'pavois-selinux-persist' do\n" +
+			"  command \"sed -ri 's/^SELINUX=.*/SELINUX=enforcing/; s/^SELINUXTYPE=.*/SELINUXTYPE=targeted/' /etc/selinux/config\"\n" +
+			"  only_if 'test -f /etc/selinux/config'\n" +
+			"  not_if 'grep -qE \"^SELINUX=enforcing\" /etc/selinux/config'\nend\n\n")
+		b.WriteString("execute 'pavois-selinux-enforce-now' do\n" +
+			"  command 'setenforce 1'\n" +
+			"  only_if 'test -f /etc/selinux/config && command -v getenforce >/dev/null 2>&1 && test \"$(getenforce)\" = \"Permissive\"'\nend\n\n")
+		// Disabled -> enforcing needs a relabel + reboot to be safe; never setenforce from Disabled.
+		b.WriteString("execute 'pavois-selinux-autorelabel' do\n" +
+			"  command 'touch /.autorelabel'\n" +
+			"  only_if 'test -f /etc/selinux/config && command -v getenforce >/dev/null 2>&1 && test \"$(getenforce)\" = \"Disabled\"'\nend\n\n")
 		n++
 	}
 	if len(dconfEntries) > 0 {
