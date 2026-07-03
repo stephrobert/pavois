@@ -59,6 +59,7 @@ var (
 	haReboot   bool
 	haStandard string
 
+	haSudoPrompt        bool
 	haIUnderstandDanger bool
 )
 
@@ -87,6 +88,7 @@ func init() {
 	hardenApplyCmd.Flags().BoolVar(&haScan, "scan", false, "after converging, re-scan and generate a fresh report + grade")
 	hardenApplyCmd.Flags().BoolVar(&haReboot, "reboot", false, "when changes need it, reboot the target via a Chef `reboot` resource at the end of the run")
 	hardenApplyCmd.Flags().StringVar(&haStandard, "standard", "", "apply each rule's value for THIS standard (bp28|cis|nist|…); default = the most-secure value")
+	hardenApplyCmd.Flags().BoolVar(&haSudoPrompt, "sudo-prompt", false, "prompt for the sudo password (no echo; also reads PAVOIS_SUDO_PASSWORD) — for a least-privilege target account without NOPASSWD")
 	hardenApplyCmd.Flags().BoolVar(&haIUnderstandDanger, "i-understand-danger", false, "acknowledge ALL `danger:` items at once (brick/lockout risk); otherwise set `acknowledged: true` per item in the plan")
 	hardenCmd.AddCommand(hardenApplyCmd)
 
@@ -1482,6 +1484,30 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		c.Stdout, c.Stderr = os.Stderr, os.Stderr
 		return c.Run()
 	}
+	// Least-privilege target account (no NOPASSWD): the converge runs `sudo cinc-apply`
+	// on the target, so the sudo password must reach it. resolveSudoPass reads --sudo-prompt
+	// (no-echo) or PAVOIS_SUDO_PASSWORD; empty means NOPASSWD (unchanged behaviour).
+	sudoPass, err := resolveSudoPass(haSudoPrompt)
+	if err != nil {
+		return fmt.Errorf("read sudo password: %w", err)
+	}
+	// sudoCmd prefixes a remote command with sudo, using `-S` (read the password from stdin)
+	// when we have one. runSudoTTY runs it over ssh -tt (pty for `Defaults requiretty`) and
+	// feeds the password to stdin — NEVER argv, so it can't leak via `ps` on host or target.
+	sudoCmd := func(rest string) string {
+		if sudoPass != "" {
+			return "sudo -S " + rest
+		}
+		return "sudo " + rest
+	}
+	runSudoTTY := func(remote string) error {
+		c := exec.Command("ssh", sshTTY(target, remote)...) //nolint:gosec // fixed args, operator target
+		c.Stdout, c.Stderr = os.Stderr, os.Stderr
+		if sudoPass != "" {
+			c.Stdin = strings.NewReader(sudoPass + "\n")
+		}
+		return c.Run()
+	}
 	// capture runs a read-only command on the target over raw ssh and returns its trimmed
 	// stdout (used for the reboot proof: boot_id is world-readable, no sudo needed).
 	capture := func(remote string) string {
@@ -1512,13 +1538,13 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	// so, instead of surfacing the cryptic exit-100 stacktrace later.
 	if capture("command -v dpkg >/dev/null 2>&1 && dpkg --audit 2>/dev/null | grep -q . && echo broken") == "broken" {
 		_, _ = fmt.Fprintln(os.Stderr, "pavois: dpkg is in an interrupted state (a prior install was cut short) — repairing with 'dpkg --configure -a' before continuing…")
-		if err := run("ssh", sshTTY(target, "sudo DEBIAN_FRONTEND=noninteractive dpkg --configure -a")...); err != nil {
+		if err := runSudoTTY(sudoCmd("DEBIAN_FRONTEND=noninteractive dpkg --configure -a")); err != nil {
 			return fmt.Errorf("dpkg is interrupted on %s and auto-repair failed; run 'sudo dpkg --configure -a' on the target, then retry: %w", target, err)
 		}
 	}
 
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: refreshing apt cache…")
-	_ = run("ssh", sshTTY(target, "if command -v apt-get >/dev/null 2>&1; then sudo env APT_LISTBUGS_FRONTEND=none apt-get update -qq || true; fi")...)
+	_ = runSudoTTY("if command -v apt-get >/dev/null 2>&1; then " + sudoCmd("env APT_LISTBUGS_FRONTEND=none apt-get update -qq") + " || true; fi")
 
 	// Terraform-style: show the REAL diff (why-run changes nothing) before asking.
 	_, _ = fmt.Fprintf(out, "\npavois: planned changes on %s (nothing applied yet):\n\n", target)
@@ -1526,8 +1552,8 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	// ABORTS every non-interactive apt operation in the converge (it can't prompt), which makes
 	// the other package installs fail. Setting it none makes apt-listbugs a no-op for THIS
 	// converge only; a normal admin `apt install` later still gets its critical-bug warnings.
-	why := "sudo env CHEF_LICENSE=accept-silent APT_LISTBUGS_FRONTEND=none cinc-apply /tmp/pavois-harden.rb --why-run"
-	if err := run("ssh", sshTTY(target, why)...); err != nil {
+	why := sudoCmd("env CHEF_LICENSE=accept-silent APT_LISTBUGS_FRONTEND=none cinc-apply /tmp/pavois-harden.rb --why-run")
+	if err := runSudoTTY(why); err != nil {
 		return fmt.Errorf("why-run: %w", err)
 	}
 
@@ -1548,8 +1574,8 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	}
 
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: converging (cinc-apply)…")
-	conv := "sudo env CHEF_LICENSE=accept-silent APT_LISTBUGS_FRONTEND=none cinc-apply /tmp/pavois-harden.rb"
-	if err := run("ssh", sshTTY(target, conv)...); err != nil {
+	conv := sudoCmd("env CHEF_LICENSE=accept-silent APT_LISTBUGS_FRONTEND=none cinc-apply /tmp/pavois-harden.rb")
+	if err := runSudoTTY(conv); err != nil {
 		// With --reboot the run ends by rebooting the box: the SSH session drops mid-run,
 		// which surfaces as a non-zero exit. That's expected — wait for the box to return.
 		if !reboot || !haReboot {

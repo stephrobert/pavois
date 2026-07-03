@@ -1210,6 +1210,7 @@ audit-privileged-commands-rmmod:
   applicable_os:
   - debian12
   - debian13
+  - rhel8
   domain: Audit (auditd)
   evidence_type: effective-runtime
   impact: 0.5
@@ -1471,6 +1472,7 @@ audit-sysadmin-actions:
   - almalinux9
   - debian12
   - debian13
+  - rhel8
   domain: Audit (auditd)
   evidence_type: effective-runtime
   impact: 0.5
@@ -1482,8 +1484,9 @@ audit-sysadmin-actions:
       debian12:
         bp28: enhanced
         cis: '2'
-      debian13:
+      debian13: &id001
         bp28: enhanced
+      rhel8: *id001
   norms:
     bp28: R73
     cis:
@@ -2901,6 +2904,7 @@ cmdline-mds:
   - almalinux9
   - debian12
   - debian13
+  - rhel8
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -2944,6 +2948,7 @@ cmdline-page-alloc-shuffle:
   - almalinux9
   - debian12
   - debian13
+  - rhel8
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -13577,14 +13582,14 @@ fileperm-unauthorized-world-writable:
     cis:
       '@os':
         almalinux9: 7.1.11
-        debian12: &id001
+        debian12: &id002
         - 2.2.6
         - 7.1.11
         fedora: 7.1.11
         rhel8: 7.1.11
         rhel9: 7.1.11
         ubuntu2204: 7.1.11
-        ubuntu2404: &id002
+        ubuntu2404: &id003
         - 2.2.6
         - 7.1.11
     nist:
@@ -14822,12 +14827,12 @@ findloop-file-permissions-unauthorized-world-writable:
     cis:
       '@os':
         almalinux9: 7.1.11
-        debian12: *id001
+        debian12: *id002
         fedora: 7.1.11
         rhel8: 7.1.11
         rhel9: 7.1.11
         ubuntu2204: 7.1.11
-        ubuntu2404: *id002
+        ubuntu2404: *id003
     nist:
       '@os':
         almalinux9:
@@ -23890,16 +23895,16 @@ pam-faillock-enabled:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id003
+      debian12: &id004
         params: audit silent deny=5 unlock_time=900 even_deny_root
         resource: pam_faillock
-      debian13: *id003
+      debian13: *id004
       rhel8:
         features:
         - with-faillock
         resource: authselect
-      ubuntu2204: *id003
-      ubuntu2404: *id003
+      ubuntu2204: *id004
+      ubuntu2404: *id004
   severity: medium
   socle: SOCLE-CLD-IAM-025
   ssg: accounts_passwords_pam_faillock_enabled
@@ -23923,12 +23928,12 @@ pam-faillock-root-unlock-time:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id004
+      debian12: &id005
         file: /etc/security/faillock.conf.d/99-pavois.conf
         key: root_unlock_time
         resource: keyval
         value: '60'
-      debian13: *id004
+      debian13: *id005
       rhel8:
         file: /etc/security/faillock.conf
         key: root_unlock_time
@@ -23959,19 +23964,19 @@ pam-pwhistory-enabled:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id005
+      debian12: &id006
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
         line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
         module: pam_pwhistory.so
         resource: pam_line
-      debian13: *id005
+      debian13: *id006
       rhel8:
         features:
         - with-pwhistory
         resource: authselect
-      ubuntu2204: *id005
-      ubuntu2404: *id005
+      ubuntu2204: *id006
+      ubuntu2404: *id006
   severity: medium
   socle: SOCLE-CLD-IAM-027
   ssg: accounts_password_pam_pwhistory_enabled
@@ -23997,20 +24002,20 @@ pam-pwhistory-enforce:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id006
+      debian12: &id007
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
         line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
         module: pam_pwhistory.so
         resource: pam_line
-      debian13: *id006
+      debian13: *id007
       rhel8:
         file: /etc/security/pwhistory.conf
         key: enforce_for_root
         resource: keyval
         value: ''
-      ubuntu2204: *id006
-      ubuntu2404: *id006
+      ubuntu2204: *id007
+      ubuntu2404: *id007
   severity: medium
   socle: SOCLE-CLD-IAM-028
   ssg: accounts_password_pam_pwhistory_enforce_root
@@ -24089,11 +24094,11 @@ pam-pwhistory-use-authtok:
         module: pam_pwhistory.so
         resource: pam_line
       fedora:
-        features: &id007
+        features: &id008
         - with-pwhistory
         resource: authselect
       rhel8:
-        features: *id007
+        features: *id008
         resource: authselect
       ubuntu2204:
         before: ^password.*pam_unix\.so
@@ -24440,12 +24445,12 @@ pam-unix-no-nullok:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id008
+      debian12: &id009
         command: grep -rlE '^[^#]*pam_unix\.so.*nullok' /etc/pam.d/ | while read -r f; do sed -ri '/pam_unix\.so/ s/[[:space:]]*\bnullok\b//g' "$f"; done; true
         name: pam-unix-remove-nullok
         not_if: '! grep -rqE ''^[^#]*pam_unix\.so.*nullok'' /etc/pam.d/'
         resource: exec
-      debian13: *id008
+      debian13: *id009
       rhel8:
         features:
         - without-nullok
@@ -24501,20 +24506,20 @@ pam-unix-rounds-password-auth:
   - ubuntu2404
   check:
     '@os':
-      almalinux9: &id010
+      almalinux9: &id011
       - describe command('v=$(grep -E "^[[:space:]]*SHA_CRYPT_MIN_ROUNDS[[:space:]]+[0-9]+" /etc/login.defs 2>/dev/null | grep -oE "[0-9]+" | tail -1); { [ -n "$v" ] && [ "$v" -ge 5000 ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian12: &id009
+      debian12: &id010
       - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\brounds=[0-9]\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian13: *id009
-      fedora: *id010
-      rhel8: *id010
-      rhel9: *id010
-      ubuntu2204: *id009
-      ubuntu2404: *id009
+      debian13: *id010
+      fedora: *id011
+      rhel8: *id011
+      rhel9: *id011
+      ubuntu2204: *id010
+      ubuntu2404: *id010
   domain: Accounts (PAM modules)
   evidence_type: persistent-config
   impact: 0.5
@@ -27267,7 +27272,7 @@ pkg-net-snmp-removed:
     cis:
       '@os':
         almalinux9: 2.1.14
-        debian12: &id011
+        debian12: &id012
         - 2.1.15
         - 2.2.4
         debian13: 2.1.14
@@ -27275,7 +27280,7 @@ pkg-net-snmp-removed:
         rhel8: 2.1.15
         rhel9: 2.1.14
         ubuntu2204: 2.1.14
-        ubuntu2404: &id012
+        ubuntu2404: &id013
         - 2.1.15
         - 2.2.4
     pci-dss: 2.2.4
@@ -28497,12 +28502,12 @@ pkg-snmpd-removed:
   norms:
     cis:
       '@os':
-        debian12: *id011
+        debian12: *id012
         debian13:
         - 2.1.15
         - 2.2.4
         ubuntu2204: 2.1.15
-        ubuntu2404: *id012
+        ubuntu2404: *id013
     pci-dss: 2.2.4
   reboot_survivable: 'yes'
   remediation:
@@ -34847,11 +34852,11 @@ sudo-require-authentication:
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian13: &id013
+      debian13: &id014
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      rhel8: *id013
+      rhel8: *id014
   danger: 'Removing NOPASSWD makes sudo always prompt for a password: any passwordless automation (including Pavois''s own management user) breaks. Repoint automation to a key or password FIRST.'
   domain: Sudo
   evidence_type: persistent-config
@@ -35105,6 +35110,7 @@ sysctl-fs-protected_fifos:
   - almalinux9
   - debian12
   - debian13
+  - rhel8
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -35191,6 +35197,7 @@ sysctl-fs-protected_regular:
   - almalinux9
   - debian12
   - debian13
+  - rhel8
   - rhel9
   - ubuntu2204
   - ubuntu2404
