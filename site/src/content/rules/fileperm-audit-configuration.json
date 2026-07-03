@@ -30,19 +30,19 @@
   "check": [
     "only_if { file('/etc/audit').exist? }",
     "describe file('/etc/audit') do",
-    "  it { should_not be_executable.by('owner') }",
-    "  it { should_not be_setuid }",
-    "  it { should_not be_executable.by('group') }",
+    "  it { should be_directory }",
+    "  it { should be_executable.by('owner') }",
     "  it { should_not be_writable.by('group') }",
-    "  it { should_not be_setgid }",
-    "  it { should_not be_executable.by('other') }",
-    "  it { should_not be_writable.by('other') }",
     "  it { should_not be_readable.by('other') }",
+    "  it { should_not be_writable.by('other') }",
+    "  it { should_not be_executable.by('other') }",
+    "  it { should_not be_setuid }",
+    "  it { should_not be_setgid }",
     "  it { should_not be_sticky }",
     "end"
   ],
   "remediation": {
-    "mode": "0640",
+    "mode": "0750",
     "path": "/etc/audit",
     "resource": "file"
   },
@@ -72,11 +72,11 @@
     "fr": "auditd rapporte sa politique chargee avec `auditctl -l` et son etat avec `auditctl -s` ; les evenements arrivent dans `/var/log/audit/audit.log`. Surveillez les modifications de la configuration en ajoutant une regle auditd sur `/etc/audit` et en recherchant sa cle dans le journal."
   },
   "remediation_note": {
-    "en": "No automated remediation is defined, so apply it **manually**: `chmod -R u-x,g-wx,o-rwx /etc/audit && chown -R root:root /etc/audit` (effectively `0640` for files, `0750` for directories). Reload the policy afterwards with `augenrules --load` or `systemctl restart auditd` so the running ruleset matches.",
-    "fr": "Aucune remediation automatique n'est definie ; appliquez-la **manuellement** : `chmod -R u-x,g-wx,o-rwx /etc/audit && chown -R root:root /etc/audit` (soit `0640` pour les fichiers, `0750` pour les repertoires). Rechargez ensuite la politique avec `augenrules --load` ou `systemctl restart auditd` pour que le jeu de regles actif corresponde."
+    "en": "Pavois applies mode `0750` to the `/etc/audit` directory (owner `root` keeps read/write/**search**, group read/search, no access for others). This is automated, apply it with `pavois harden apply`. **Critical:** `/etc/audit` is a *directory*, so it MUST keep the owner execute/search bit. Never set a file-style `0640` on it: a directory without `x` cannot be traversed, and under **SELinux enforcing** the confined `auditd_t` domain is then denied the `dac_read_search` capability, so auditd fails to start with `Error opening config file (/etc/audit/auditd.conf): Permission denied`. If that happens, recover with `chmod 750 /etc/audit /etc/audit/rules.d && restorecon -R /etc/audit`.",
+    "fr": "Pavois applique le mode `0750` au repertoire `/etc/audit` (le proprietaire `root` conserve lecture/ecriture/**parcours**, le groupe lecture/parcours, aucun acces pour les autres). C'est automatise, appliquez-le avec `pavois harden apply`. **Critique :** `/etc/audit` est un *repertoire*, il DOIT donc conserver le bit execute/parcours du proprietaire. Ne lui appliquez jamais un `0640` de style fichier : un repertoire sans `x` ne peut pas etre parcouru, et sous **SELinux enforcing** le domaine confine `auditd_t` se voit alors refuser la capacite `dac_read_search`, si bien qu'auditd echoue au demarrage avec `Error opening config file (/etc/audit/auditd.conf): Permission denied`. Le cas echeant, retablissez avec `chmod 750 /etc/audit /etc/audit/rules.d && restorecon -R /etc/audit`."
   },
   "impact": {
-    "en": "Risk if not applied: writable audit config lets an attacker turn off logging; readable config maps your detection coverage for them. Precautions: restricting to `0640`/`0750` is safe, only root and the `auditd` daemon read these files. Do not remove read access for the owner, and reload auditd after changing permissions so a partially-applied change does not leave the daemon running an old policy.",
-    "fr": "Risque en cas de non-application : une config d'audit modifiable permet a un attaquant de couper la journalisation ; une config lisible cartographie votre couverture de detection pour lui. Precautions : restreindre a `0640`/`0750` est sans danger, seuls root et le demon `auditd` lisent ces fichiers. Ne retirez pas l'acces en lecture au proprietaire, et rechargez auditd apres avoir change les permissions pour qu'un changement partiel ne laisse pas le demon sur une ancienne politique."
+    "en": "Risk if not applied: a writable audit config lets an attacker turn off logging; a readable one maps your detection coverage. **Precaution (directory traversal):** apply the restriction as a *directory* mode `0750`, not a file mode `0640`. Removing the owner search bit (e.g. `chmod 0640` or a recursive `chmod -R u-x /etc/audit`) makes the directory non-traversable; on RHEL/Alma/Fedora under SELinux enforcing this denies `auditd_t` the `dac_read_search` capability and **bricks auditd at boot**. Recovery: `chmod 750 /etc/audit /etc/audit/rules.d && restorecon -R /etc/audit`, then confirm with `systemctl is-active auditd` and `auditctl -l`. Only root and the `auditd` daemon read these files, so `0750` is safe.",
+    "fr": "Risque en cas de non-application : une config d'audit modifiable permet de couper la journalisation ; une config lisible cartographie votre couverture de detection. **Precaution (parcours de repertoire) :** appliquez la restriction en tant que mode *repertoire* `0750`, pas un mode fichier `0640`. Retirer le bit de parcours du proprietaire (par ex. `chmod 0640` ou un `chmod -R u-x /etc/audit` recursif) rend le repertoire non parcourable ; sur RHEL/Alma/Fedora sous SELinux enforcing, cela refuse au domaine `auditd_t` la capacite `dac_read_search` et **brique auditd au demarrage**. Retablissement : `chmod 750 /etc/audit /etc/audit/rules.d && restorecon -R /etc/audit`, puis verifiez avec `systemctl is-active auditd` et `auditctl -l`. Seuls root et le demon `auditd` lisent ces fichiers, donc `0750` est sans danger."
   }
 }
