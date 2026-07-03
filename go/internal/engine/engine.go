@@ -593,7 +593,17 @@ func RunOnTarget(o Options) (int, error) {
 		// -tt forces a pseudo-tty so `sudo` keeps working even under `Defaults requiretty`
 		// (ANSSI BP-028 R39, which pavois itself can apply). The report is fetched via scp
 		// (a file), so tty CRLF translation never corrupts the parsed output.
-		return run("ssh", append(append([]string{"-tt"}, base...), o.Target, remote)...)
+		c := exec.Command("ssh", append(append([]string{"-tt"}, base...), o.Target, remote)...)
+		c.Stderr = os.Stderr
+		if o.Sudo && o.SudoPass != "" {
+			// Least-privilege scanner account (no NOPASSWD): feed the sudo password to the
+			// remote `sudo -S` over stdin — NEVER argv, so it can't leak via `ps` on either
+			// host. -tt writes it into the pty, where `sudo -S` reads it; a command that does
+			// not sudo just ignores the extra line. Sudo caches the credential per session,
+			// so the single line covers the one sudo in each remote command.
+			c.Stdin = strings.NewReader(o.SudoPass + "\n")
+		}
+		return c.Run()
 	}
 
 	_, _ = fmt.Fprintf(os.Stderr, "  ensuring cinc-auditor on %s…\n", o.Target)
@@ -612,6 +622,9 @@ func RunOnTarget(o Options) (int, error) {
 	sudo := ""
 	if o.Sudo {
 		sudo = "sudo "
+		if o.SudoPass != "" {
+			sudo = "sudo -S " // read the password (piped to ssh stdin above), not NOPASSWD
+		}
 	}
 	std := o.Standard
 	if std == "" {
@@ -634,7 +647,7 @@ func RunOnTarget(o Options) (int, error) {
 	}
 	// cinc-auditor wrote the report as root; on a hardened box (umask 0027) the scp user
 	// can't read it. Make it world-readable before fetching (it's a transient report).
-	_ = ssh("sudo chmod 0644 " + remoteJSON)
+	_ = ssh(sudo + "chmod 0644 " + remoteJSON)
 	if err := run("scp", append(append([]string{}, base...), o.Target+":"+remoteJSON, o.JSONOut)...); err != nil {
 		return 2, fmt.Errorf("fetch report from target: %w", err)
 	}
