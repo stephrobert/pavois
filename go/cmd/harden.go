@@ -769,7 +769,20 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		// (e.g. a mutually-exclusive alternative like syslogng when rsyslog is chosen)
 		// must be SKIPPED, not abort the whole run. Packages install earlier in the recipe,
 		// so a service we DO want is present by the time this runs.
-		_, _ = fmt.Fprintf(&b, "service %q do\n  action [%s]\n  only_if \"systemctl cat %s.service >/dev/null 2>&1\"\nend\n\n", k, svc[k], k)
+		// Translate the desired actions into plain `systemctl` calls in ONE execute instead of Chef's
+		// `service` resource: the Chef provider trips on RHEL units like auditd (RefuseManualStop /
+		// static), erroring inside load_current_resource where even ignore_failure can't catch it.
+		// only_if the unit exists; each verb is tolerant (|| true) so a refused stop/enable-of-static
+		// never aborts the run. systemctl enable/start/disable/stop == the Chef actions on Debian.
+		var svcCmds []string
+		for _, a := range strings.Split(svc[k], ",") {
+			verb := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(a), ":"))
+			if verb != "" {
+				svcCmds = append(svcCmds, "systemctl "+verb+" "+k+" 2>/dev/null || true")
+			}
+		}
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-service-%s' do\n  command %q\n  only_if \"systemctl cat %s.service >/dev/null 2>&1\"\n  ignore_failure true\nend\n\n",
+			k, strings.Join(svcCmds, "; "), k)
 		n++
 	}
 	for _, mod := range sortedKeys(kmods) {
@@ -985,13 +998,23 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		ensureDir("/etc/audit/rules.d") // present once auditd is installed; ensure it regardless
 		_, _ = fmt.Fprintf(&b, "file %q do\n  content %q\n  mode '0640'\nend\n\n",
 			"/etc/audit/rules.d/99-pavois.rules", auditRules)
-		// Deploying the file is not enough: the rules only auto-load at the NEXT boot, so without
-		// this every audit control fails until a reboot. Load now with augenrules. The ruleset ends
-		// with `-e 2` (immutable) — once loaded you can't reload until reboot, so skip if already
-		// immutable (auditctl -s shows enabled 2). Full paths: augenrules/auditctl live in /sbin.
+		// Make sure auditd is up before loading — augenrules loads into the kernel AND recompiles
+		// /etc/audit/audit.rules (what auditd reads at the next boot). Do this with a plain execute,
+		// NOT Chef's `service` resource: RHEL's auditd unit (RefuseManualStop=yes) trips the service
+		// provider. NEVER systemctl-restart auditd; enable + start (best-effort) is enough.
+		b.WriteString("execute 'pavois-auditd-up' do\n" +
+			"  command 'systemctl enable auditd 2>/dev/null; systemctl start auditd 2>/dev/null || service auditd start 2>/dev/null || true'\n" +
+			"  ignore_failure true\nend\n\n")
+		// Deploying the file is not enough: the rules only auto-load at the NEXT boot, so load now
+		// with augenrules. Guard on whether OUR rule set is already RESIDENT (>=40 of the ~54 rules),
+		// NOT on immutable state: the old `enabled 2` guard skipped the load once the config was
+		// immutable, so the compiled /etc/audit/audit.rules was never refreshed and auditd loaded a
+		// stale 1-rule file at boot. augenrules --load recompiles the file first, so even if the live
+		// load is refused under `-e 2`, the full set loads on the next reboot. ignore_failure keeps a
+		// refused load from aborting the converge. Full paths: augenrules/auditctl live in /sbin.
 		b.WriteString("execute 'pavois-audit-load' do\n" +
-			"  command '/sbin/augenrules --load 2>/dev/null || augenrules --load'\n" +
-			"  not_if 'auditctl -s 2>/dev/null | grep -qE \"^enabled 2\"'\nend\n\n")
+			"  command '/sbin/augenrules --load 2>/dev/null || augenrules --load 2>/dev/null || true'\n" +
+			"  not_if 'test \"$(auditctl -l 2>/dev/null | wc -l)\" -ge 40'\n  ignore_failure true\nend\n\n")
 		// syscall auditing is INERT without audit=1 on the kernel cmdline (revealed by the
 		// behavioral probe) — fold it into the cmdline drop-in emitted below.
 		cmdline["audit=1"] = true
