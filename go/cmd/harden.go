@@ -395,6 +395,18 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	b.WriteString("# Idempotent and batched. Apply with cinc-apply.\n\n")
 	reboot := false
 	pendingEnabled := 0
+	// ensureDir guarantees a drop-in's parent .d exists BEFORE its file is written. A missing
+	// parent makes Chef's file resource abort the whole run (EnclosingDirectoryDoesNotExist), and
+	// which .d dirs ship varies by OS (RHEL 8 has no /etc/ssh/sshd_config.d, no /etc/default/grub.d).
+	// Deduped so it is emitted once per dir; recursive so nested paths are covered.
+	dirsDone := map[string]bool{}
+	ensureDir := func(dir string) {
+		if dir == "" || dir == "/" || dir == "." || dirsDone[dir] {
+			return
+		}
+		dirsDone[dir] = true
+		_, _ = fmt.Fprintf(&b, "directory %q do\n  recursive true\nend\n\n", dir)
+	}
 	auditRuleset := false
 	noexecUser := "" // set when sudo-noexec is applied -> exempt the mgmt user (below)
 	var conflicts []string
@@ -656,13 +668,27 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		_, _ = fmt.Fprintf(&b, "execute 'pavois-apt-update' do\n  command 'if command -v apt-get >/dev/null 2>&1; then apt-get update; fi'\n  ignore_failure true\nend\n\n")
 		n++
 	}
-	// One resource per package, each ignore_failure: cross-OS lists carry names absent here (RHEL
-	// httpd/bind...) or virtual packages (telnet/ftp) that error; a batch would abort the whole run
-	// on the first, and the real packages would never be installed/removed. Individual keeps them
-	// independent — the present ones apply, the rest report failed without breaking the converge.
-	for _, name := range sortedKeys(inst) {
-		_, _ = fmt.Fprintf(&b, "package %q do\n  action :install\n  ignore_failure true\nend\n\n", name)
-		n++
+	// Install ALL packages in ONE transaction (was one resource per package): on dnf especially, a
+	// per-package resource re-runs mirror selection + metadata refresh every time (~1 pkg / 20s ->
+	// tens of minutes on a full apply). We keep the cross-OS robustness that the per-package loop
+	// gave (cross-OS lists carry names absent here — RHEL httpd/bind, virtual telnet/ftp): dnf gets
+	// `--setopt=strict=0` (install the available ones, skip the rest instead of aborting), and on
+	// apt we filter through `apt-cache show` first (local, no mirror hit) so an unknown name can't
+	// abort the batch. ignore_failure so a package-manager hiccup never tanks the converge.
+	if names := sortedKeys(inst); len(names) > 0 {
+		list := strings.Join(names, " ")
+		// One transaction per package manager, each tolerant of names absent on this OS (cross-OS
+		// lists leak RHEL httpd/bind, virtual telnet/ftp): dnf `--setopt=strict=0` and zypper
+		// `--ignore-unknown` skip the missing ones; on apt we pre-filter through `apt-cache show`.
+		// dnf/zypper/apt cover every pavois target and then some (Chef's generic package resource
+		// handled zypper/yum too; keep that breadth). On RHEL/clones enable EPEL first (best-effort):
+		// many hardening tools live only in EPEL, else those installs `no match`.
+		cmd := "if command -v dnf >/dev/null 2>&1; then dnf install -y epel-release 2>/dev/null || true; dnf install -y --skip-broken --setopt=strict=0 " + list +
+			"; elif command -v zypper >/dev/null 2>&1; then zypper --non-interactive install --no-recommends --ignore-unknown " + list +
+			"; elif command -v apt-get >/dev/null 2>&1; then P=\"\"; for p in " + list +
+			"; do apt-cache show \"$p\" >/dev/null 2>&1 && P=\"$P $p\"; done; [ -n \"$P\" ] && DEBIAN_FRONTEND=noninteractive apt-get install -y $P; fi; true"
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-install-packages' do\n  command %q\n  ignore_failure true\nend\n\n", cmd)
+		n += len(names)
 	}
 	if k := sortedKeys(rm); len(k) > 0 {
 		for _, name := range k {
@@ -936,14 +962,27 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		for _, k := range sortedKeysS(sshd) {
 			content.WriteString(k + " " + sshd[k] + "\\n")
 		}
-		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\n  verify 'sshd -t -f %%{path}'\n  notifies :reload, 'service[ssh]'\nend\n\n",
+		// The drop-in dir is absent on RHEL 8 (only RHEL 9 / Debian ship it) and RHEL 8's
+		// sshd_config has no Include line — so create the dir, then prepend
+		// `Include /etc/ssh/sshd_config.d/*.conf` at the TOP of sshd_config (sshd takes the FIRST
+		// value per keyword, so the drop-in must be read first to win). Both idempotent: no-op
+		// where the dir/Include already exist (Debian, RHEL 9).
+		b.WriteString("directory '/etc/ssh/sshd_config.d' do\n  recursive true\n  mode '0755'\nend\n\n")
+		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\n  verify 'sshd -t -f %%{path}'\n  notifies :run, 'execute[pavois-sshd-reload]', :delayed\nend\n\n",
 			"/etc/ssh/sshd_config.d/99-pavois.conf", content.String())
-		b.WriteString("service 'ssh' do\n  action :nothing\nend\n\n")
+		b.WriteString("execute 'pavois-sshd-include' do\n" +
+			"  command %q{sed -i '1i Include /etc/ssh/sshd_config.d/*.conf' /etc/ssh/sshd_config}\n" +
+			"  not_if %q{grep -qE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config.d' /etc/ssh/sshd_config}\n" +
+			"  notifies :run, 'execute[pavois-sshd-reload]', :delayed\nend\n\n")
+		// Reload whichever unit exists (sshd on RHEL, ssh on Debian); non-fatal so a reload hiccup
+		// never aborts the converge.
+		b.WriteString("execute 'pavois-sshd-reload' do\n  command 'systemctl reload sshd 2>/dev/null || systemctl reload ssh 2>/dev/null || true'\n  action :nothing\nend\n\n")
 		n += len(sshd)
 	}
 	if auditRuleset && auditRules != "" { // Pavois audit ruleset -> one file
 		// mode 0640: audit rules must not be group/other-readable (fileperm-etc-audit-rulesd
 		// checks `find -perm /0137`); a default 0644 file is world-readable and fails it.
+		ensureDir("/etc/audit/rules.d") // present once auditd is installed; ensure it regardless
 		_, _ = fmt.Fprintf(&b, "file %q do\n  content %q\n  mode '0640'\nend\n\n",
 			"/etc/audit/rules.d/99-pavois.rules", auditRules)
 		// Deploying the file is not enough: the rules only auto-load at the NEXT boot, so without
@@ -963,12 +1002,6 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 	// ONE grub drop-in that APPENDS to GRUB_CMDLINE_LINUX, then regenerate grub.cfg (no native
 	// grub resource -> execute). Reboot needed to take effect.
 	if len(cmdline) > 0 {
-		// Debian's /etc/default/grub does NOT source /etc/default/grub.d/ (that's an Ubuntu
-		// convention, and it varies between Debian images) — so our drop-in would be silently
-		// ignored. Guarantee the sourcing first, or the cmdline mitigations never reach grub.cfg.
-		b.WriteString("execute 'pavois-grub-source-dropins' do\n" +
-			`  command 'printf "\nif [ -d /etc/default/grub.d ]; then for x in /etc/default/grub.d/*.cfg; do [ -e \"\$x\" ] && . \"\$x\"; done; fi\n" >> /etc/default/grub'` +
-			"\n  not_if 'grep -q /etc/default/grub.d /etc/default/grub'\nend\n\n")
 		// iommu=force forces the IOMMU and BRICKS virtualized guests (virtio disk/net vanish at
 		// boot, the VM never returns). Apply it ONLY on bare metal: a guarded append skipped when
 		// systemd-detect-virt sees a VM. Every other param is safe on both metal and guests.
@@ -982,13 +1015,31 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 			}
 			safe = append(safe, k)
 		}
-		content := "GRUB_CMDLINE_LINUX=\"$GRUB_CMDLINE_LINUX " + strings.Join(safe, " ") + "\"\n"
+		args := strings.Join(safe, " ")
+		// Debian's /etc/default/grub does NOT source /etc/default/grub.d/ (Ubuntu convention, varies
+		// by image) — guarantee the sourcing, or the drop-in never reaches grub.cfg. RHEL has no
+		// grub.d at all; ensureDir keeps the file write from aborting there (grubby applies the args
+		// directly regardless).
+		ensureDir("/etc/default/grub.d")
+		b.WriteString("execute 'pavois-grub-source-dropins' do\n" +
+			`  command 'printf "\nif [ -d /etc/default/grub.d ]; then for x in /etc/default/grub.d/*.cfg; do [ -e \"\$x\" ] && . \"\$x\"; done; fi\n" >> /etc/default/grub'` +
+			"\n  not_if 'grep -q /etc/default/grub.d /etc/default/grub'\nend\n\n")
+		content := "GRUB_CMDLINE_LINUX=\"$GRUB_CMDLINE_LINUX " + args + "\"\n"
 		if iommuForce {
 			content += "systemd-detect-virt -q -v || GRUB_CMDLINE_LINUX=\"$GRUB_CMDLINE_LINUX iommu=force\"\n"
 		}
-		_, _ = fmt.Fprintf(&b, "file %q do\n  content %q\n  notifies :run, 'execute[update-grub]', :immediately\nend\n\n",
+		_, _ = fmt.Fprintf(&b, "file %q do\n  content %q\n  notifies :run, 'execute[pavois-grub-apply]', :immediately\nend\n\n",
 			"/etc/default/grub.d/99-pavois-cmdline.cfg", content)
-		b.WriteString("execute 'update-grub' do\n  command 'update-grub'\n  action :nothing\nend\n\n")
+		// Regenerate the bootloader config the OS-native way: update-grub on Debian; grubby (BLS,
+		// updates every kernel entry directly) on RHEL/clones; grub2-mkconfig as a last resort.
+		// `update-grub` does not exist on RHEL, grubby does not on Debian — hence the detection.
+		apply := "if command -v update-grub >/dev/null 2>&1; then update-grub; " +
+			"elif command -v grubby >/dev/null 2>&1; then grubby --update-kernel=ALL --args=\"" + args + "\"; "
+		if iommuForce {
+			apply += "systemd-detect-virt -q -v || grubby --update-kernel=ALL --args=\"iommu=force\"; "
+		}
+		apply += "elif command -v grub2-mkconfig >/dev/null 2>&1; then grub2-mkconfig -o \"$(find /boot -name grub.cfg 2>/dev/null | head -1)\"; fi"
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-grub-apply' do\n  command %q\n  action :nothing\nend\n\n", apply)
 		reboot = true
 		n++
 	}
@@ -1034,16 +1085,22 @@ func compileRecipe(p planFile, auditRules, grubPassword, std string) (string, in
 		// (grub-mkpasswd-pbkdf2 is salted) and write the superuser entry. The plaintext lands in
 		// a 0600 temp file, used then removed. Idempotent: skip if a grub password already exists.
 		_, _ = fmt.Fprintf(&b, "file '/tmp/pavois-grub-pw' do\n  content %q\n  mode '0600'\nend\n\n", grubPassword)
-		// A proper /etc/grub.d/ SCRIPT (shebang + heredoc) so update-grub EMITS the directives
-		// into grub.cfg; it reads the salted hash from a sibling dotfile (ignored by update-grub).
-		_, _ = fmt.Fprintf(&b, "file '/etc/grub.d/40_pavois_password' do\n  content %q\n  mode '0755'\nend\n\n",
+		// Debian-only grub.d SCRIPT (update-grub emits its directives into grub.cfg, reading the
+		// salted hash from a sibling dotfile). only_if update-grub so it is NOT written on RHEL,
+		// which reads /boot/grub2/user.cfg directly (grub2 password path below).
+		_, _ = fmt.Fprintf(&b, "file '/etc/grub.d/40_pavois_password' do\n  content %q\n  mode '0755'\n  only_if { ::File.exist?('/usr/sbin/update-grub') || ::File.exist?('/usr/bin/update-grub') }\nend\n\n",
 			"#!/bin/sh\ncat <<EOF\nset superusers=\"root\"\npassword_pbkdf2 root $(cat /etc/grub.d/.pavois-grub-hash)\nEOF\n")
-		b.WriteString(`execute 'pavois-grub-password' do
-  command 'H=$(printf "%s\n%s\n" "$(cat /tmp/pavois-grub-pw)" "$(cat /tmp/pavois-grub-pw)" | grub-mkpasswd-pbkdf2 2>/dev/null | grep -oE "grub\.pbkdf2\.[^ ]+"); [ -n "$H" ] && { printf "%s\n" "$H" > /etc/grub.d/.pavois-grub-hash; chmod 0600 /etc/grub.d/.pavois-grub-hash; grep -q -- "--unrestricted" /etc/grub.d/10_linux || sed -ri "/^CLASS=/ s/\"\$/ --unrestricted\"/" /etc/grub.d/10_linux; /usr/sbin/update-grub; }; rm -f /tmp/pavois-grub-pw'
-  not_if 'test -s /etc/grub.d/.pavois-grub-hash'
-end
-
-`)
+		// Hash the plaintext ON the target (pbkdf2 is salted), then persist the OS-native way:
+		//  - Debian: hash dotfile + `--unrestricted` on 10_linux (a superuser WITHOUT --unrestricted
+		//    blocks every boot) + update-grub.
+		//  - RHEL/clones: write GRUB2_PASSWORD to /boot/grub2/user.cfg (grub sources it, superuser
+		//    root is implicit, and booting the default entry stays password-free — no brick).
+		// ignore_failure: a grub-password hiccup must never abort the converge (it is a danger item).
+		deb := `H=$(printf "%s\n%s\n" "$(cat /tmp/pavois-grub-pw)" "$(cat /tmp/pavois-grub-pw)" | grub-mkpasswd-pbkdf2 2>/dev/null | grep -oE "grub\.pbkdf2\.[^ ]+"); [ -n "$H" ] && { printf "%s\n" "$H" > /etc/grub.d/.pavois-grub-hash; chmod 0600 /etc/grub.d/.pavois-grub-hash; grep -q -- "--unrestricted" /etc/grub.d/10_linux || sed -ri "/^CLASS=/ s/\"\$/ --unrestricted\"/" /etc/grub.d/10_linux; /usr/sbin/update-grub; }`
+		rhel := `H=$(printf "%s\n%s\n" "$(cat /tmp/pavois-grub-pw)" "$(cat /tmp/pavois-grub-pw)" | grub2-mkpasswd-pbkdf2 2>/dev/null | grep -oE "grub\.pbkdf2\.[^ ]+"); [ -n "$H" ] && { echo "GRUB2_PASSWORD=$H" > /boot/grub2/user.cfg; chmod 0600 /boot/grub2/user.cfg; }`
+		b.WriteString("execute 'pavois-grub-password' do\n  command 'if command -v update-grub >/dev/null 2>&1; then " + deb +
+			"; elif command -v grub2-mkpasswd-pbkdf2 >/dev/null 2>&1; then " + rhel +
+			"; fi; rm -f /tmp/pavois-grub-pw'\n  not_if 'test -s /etc/grub.d/.pavois-grub-hash || test -s /boot/grub2/user.cfg'\n  ignore_failure true\nend\n\n")
 		reboot = true
 		n++
 	}
