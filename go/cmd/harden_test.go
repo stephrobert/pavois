@@ -142,7 +142,7 @@ rules:
       value: "2"
 `)
 
-	recipe, count, reboot, pending, conflicts := compileRecipe(plan, "", "", "")
+	recipe, count, reboot, pending, conflicts := compileRecipe(plan, "", "", "", "")
 
 	if len(conflicts) != 0 {
 		t.Fatalf("unexpected conflicts: %v", conflicts)
@@ -201,7 +201,7 @@ rules:
       key: net.ipv4.ip_forward
       value: "1"
 `)
-	_, _, _, _, conflicts := compileRecipe(plan, "", "", "")
+	_, _, _, _, conflicts := compileRecipe(plan, "", "", "", "")
 	if len(conflicts) == 0 {
 		t.Fatal("expected a conflict for the same sysctl key with two values")
 	}
@@ -228,7 +228,7 @@ rules:
       action: remove
       name: nftables
 `)
-	_, _, _, _, conflicts := compileRecipe(plan, "", "", "")
+	_, _, _, _, conflicts := compileRecipe(plan, "", "", "", "")
 	found := false
 	for _, c := range conflicts {
 		if strings.Contains(c, "nftables") && strings.Contains(c, "install vs remove") {
@@ -255,7 +255,7 @@ rules:
     apply: true
     status: gap
 `)
-	_, _, reboot, pending, conflicts := compileRecipe(plan, "", "", "")
+	_, _, reboot, pending, conflicts := compileRecipe(plan, "", "", "", "")
 	if len(conflicts) != 0 {
 		t.Fatalf("unexpected conflicts: %v", conflicts)
 	}
@@ -278,7 +278,7 @@ rules:
       resource: package
       name: should-not-appear
 `)
-	recipe, count, _, _, _ := compileRecipe(plan, "", "", "")
+	recipe, count, _, _, _ := compileRecipe(plan, "", "", "", "")
 	if strings.Contains(recipe, "should-not-appear") {
 		t.Error("a rule with apply:false must not emit resources")
 	}
@@ -308,7 +308,7 @@ rules:
       directive: PasswordAuthentication
       value: "no"
 `)
-	recipe, _, _, _, conflicts := compileRecipe(plan, "", "", "")
+	recipe, _, _, _, conflicts := compileRecipe(plan, "", "", "", "")
 	if len(conflicts) != 0 {
 		t.Fatalf("unexpected conflicts: %v", conflicts)
 	}
