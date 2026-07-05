@@ -154,6 +154,10 @@ run = "bash {{config_root}}/tools/benchmark/effective-config-bench.sh"
 description = "Pavois vs SSG/oscap coverage gap (triaged by oscap N/A). Args: --os <os> --datastream <ssg-ds.xml> [--oscap-results <xml>] [--pavois-report <json>] [--create-issues]"
 run = "uv run --with pyyaml python3 tools/coverage_gap.py"
 
+[tasks."gaps"]
+description = "PILOT: per-OS remediation-coverage gaps (parity = fix exists elsewhere, port it; orphan = none anywhere; manual/kernel skipped). Args: [os] | --parity. Drives cross-OS remediation parity."
+run = "uv run --with pyyaml python3 tools/remediation_gaps.py"
+
 [tasks."rule:show"]
 description = "Show one control + its mappings, e.g. `mise run rule:show -- --os debian12 --id ssh-disable-root-login`"
 depends = ["build"]
@@ -168,3 +172,7 @@ run = "{{config_root}}/go/pavois scan"
 description = "Copy the rendered .rb corpus into the binary's embed dir (for a self-contained release build)"
 depends = ["render"]
 run = "rm -rf {{config_root}}/go/internal/corpus/profiles/linux && cp -r {{config_root}}/profiles/linux {{config_root}}/go/internal/corpus/profiles/linux"
+
+[tasks."regression"]
+description = "PILOT: per-OS scan-result baseline + regression detector. Keeps the best result per OS; a re-scan that flips baseline-passing controls to FAIL (or drops lynis) exits non-zero. Args: <scan.json> --os <os> [--lynis N] [--update]"
+run = "uv run --with pyyaml python3 tools/regression.py"
