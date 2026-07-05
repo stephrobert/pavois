@@ -1898,6 +1898,12 @@ auditd-action-mail-acct:
         resource: conf_line
         service: auditd
         value: root
+      rhel8:
+        file: /etc/audit/auditd.conf
+        key: action_mail_acct
+        resource: conf_line
+        service: auditd
+        value: root
   requires_package: auditd
   severity: medium
   socle: SOCLE-RUN-AUD-025
@@ -2291,6 +2297,12 @@ auditd-max-log-file:
   remediation:
     '@os':
       debian12:
+        file: /etc/audit/auditd.conf
+        key: max_log_file
+        resource: conf_line
+        service: auditd
+        value: '8'
+      rhel8:
         file: /etc/audit/auditd.conf
         key: max_log_file
         resource: conf_line
@@ -2917,7 +2929,7 @@ cmdline-mds:
     bp28: R8
   reboot_survivable: 'yes'
   remediation:
-    param: mds=full,nosmt
+    param: mds=full
     reboot_required: true
     resource: kernel_cmdline
   severity: medium
@@ -2925,7 +2937,7 @@ cmdline-mds:
   ssg: grub2_mds_argument
   template:
     name: cmdline
-    param: mds=full,nosmt
+    param: mds=full
   title: Configure Microarchitectural Data Sampling mitigation
 cmdline-nousb:
   applicable_os:
@@ -14575,6 +14587,11 @@ findloop-file-groupowner-var-log:
         name: fix-varlog-ownership
         not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
         resource: exec
+      rhel8:
+        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
+        name: fix-varlog-ownership
+        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
+        resource: exec
   severity: medium
   socle: SOCLE-CLD-FSP-181
   ssg: file_groupowner_var_log
@@ -14705,6 +14722,11 @@ findloop-file-owner-var-log:
         name: fix-varlog-ownership
         not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
         resource: exec
+      rhel8:
+        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
+        name: fix-varlog-ownership
+        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
+        resource: exec
   severity: medium
   socle: SOCLE-CLD-FSP-184
   ssg: file_owner_var_log
@@ -14758,6 +14780,11 @@ findloop-file-ownership-binary-dirs:
         not_if: test -z "$(find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) 2>/dev/null | head -1)"
         resource: exec
       ubuntu2404:
+        command: find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) -exec chown root:root {} + 2>/dev/null; true
+        name: fix-bindir-ownership
+        not_if: test -z "$(find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) 2>/dev/null | head -1)"
+        resource: exec
+      rhel8:
         command: find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) -exec chown root:root {} + 2>/dev/null; true
         name: fix-bindir-ownership
         not_if: test -z "$(find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) 2>/dev/null | head -1)"
@@ -15012,6 +15039,11 @@ findloop-file-permissions-var-log:
         not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
         resource: exec
       ubuntu2404:
+        command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
+        name: fix-varlog-perms
+        not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
+        resource: exec
+      rhel8:
         command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
         name: fix-varlog-perms
         not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
@@ -16149,6 +16181,10 @@ home-files-permissions:
         command: 'awk -F: ''($3>=1000 && $3!=65534 && $6!="/"){print $6}'' /etc/passwd | while read h; do [ -d "$h" ] && find "$h" -perm /7027 ! -type l -exec chmod u-s,g-w-s,o=- {} + 2>/dev/null; done; true'
         name: fix-home-perms
         resource: exec
+      rhel8:
+        command: 'awk -F: ''($3>=1000 && $3!=65534 && $6!="/"){print $6}'' /etc/passwd | while read h; do [ -d "$h" ] && find "$h" -perm /7027 ! -type l -exec chmod u-s,g-w-s,o=- {} + 2>/dev/null; done; true'
+        name: fix-home-perms
+        resource: exec
   severity: medium
   socle: SOCLE-CLD-IAM-015
   ssg: accounts_users_home_files_permissions
@@ -16232,6 +16268,21 @@ journald-compress:
         path: /etc/systemd/journald.conf.d/99-pavois.conf
         resource: file
       ubuntu2404:
+        content: '[Journal]
+
+          Compress=yes
+
+          ForwardToSyslog=no
+
+          Storage=persistent
+
+          '
+        group: root
+        mode: '0644'
+        owner: root
+        path: /etc/systemd/journald.conf.d/99-pavois.conf
+        resource: file
+      rhel8:
         content: '[Journal]
 
           Compress=yes
@@ -16339,6 +16390,21 @@ journald-forwardtosyslog:
         owner: root
         path: /etc/systemd/journald.conf.d/99-pavois.conf
         resource: file
+      rhel8:
+        content: '[Journal]
+
+          Compress=yes
+
+          ForwardToSyslog=no
+
+          Storage=persistent
+
+          '
+        group: root
+        mode: '0644'
+        owner: root
+        path: /etc/systemd/journald.conf.d/99-pavois.conf
+        resource: file
   severity: medium
   socle: SOCLE-RUN-LOG-002
   ssg:
@@ -16429,6 +16495,21 @@ journald-storage:
         path: /etc/systemd/journald.conf.d/99-pavois.conf
         resource: file
       ubuntu2404:
+        content: '[Journal]
+
+          Compress=yes
+
+          ForwardToSyslog=no
+
+          Storage=persistent
+
+          '
+        group: root
+        mode: '0644'
+        owner: root
+        path: /etc/systemd/journald.conf.d/99-pavois.conf
+        resource: file
+      rhel8:
         content: '[Journal]
 
           Compress=yes
@@ -16758,42 +16839,6 @@ kconfig-debug-credentials:
     set: true
     value: y
   title: Enable checks on credential management
-kconfig-debug-fs:
-  applicable_os:
-  - almalinux9
-  - debian12
-  - debian13
-  - rhel8
-  - rhel9
-  - ubuntu2204
-  - ubuntu2404
-  domain: Kernel build
-  evidence_type: effective-runtime
-  impact: 0.3
-  levels:
-    bp28: high
-  norms:
-    bp28: R15
-  reboot_survivable: 'yes'
-  remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-  severity: low
-  socle: SOCLE-CLD-KRN-027
-  ssg: kernel_config_debug_fs
-  template:
-    name: kconfig
-    option: CONFIG_DEBUG_FS
-    set: false
-    value: y
-  title: Disable kernel debugfs
 kconfig-debug-list:
   applicable_os:
   - almalinux9
@@ -19907,6 +19952,12 @@ logindefs-encrypt_method:
         resource: conf_line
         sep: space
         value: YESCRYPT
+      rhel8:
+        file: /etc/login.defs
+        key: ENCRYPT_METHOD
+        resource: conf_line
+        sep: space
+        value: YESCRYPT
   severity: medium
   socle: SOCLE-CLD-IAM-016
   ssg: set_password_hashing_algorithm_logindefs
@@ -20008,6 +20059,12 @@ logindefs-pass_max_days:
         resource: conf_line
         sep: space
         value: '365'
+      rhel8:
+        file: /etc/login.defs
+        key: PASS_MAX_DAYS
+        resource: conf_line
+        sep: space
+        value: '365'
   severity: medium
   socle: SOCLE-CLD-IAM-018
   ssg: accounts_maximum_age_login_defs
@@ -20087,6 +20144,12 @@ logindefs-pass_min_days:
         sep: space
         value: '1'
       ubuntu2404:
+        file: /etc/login.defs
+        key: PASS_MIN_DAYS
+        resource: conf_line
+        sep: space
+        value: '1'
+      rhel8:
         file: /etc/login.defs
         key: PASS_MIN_DAYS
         resource: conf_line
@@ -20187,6 +20250,12 @@ logindefs-pass_min_len:
         resource: conf_line
         sep: space
         value: '15'
+      rhel8:
+        file: /etc/login.defs
+        key: PASS_MIN_LEN
+        resource: conf_line
+        sep: space
+        value: '15'
   severity: medium
   socle: SOCLE-CLD-IAM-020
   ssg: accounts_password_minlen_login_defs
@@ -20269,6 +20338,12 @@ logindefs-pass_warn_age:
   remediation:
     '@os':
       debian12:
+        file: /etc/login.defs
+        key: PASS_WARN_AGE
+        resource: conf_line
+        sep: space
+        value: '7'
+      rhel8:
         file: /etc/login.defs
         key: PASS_WARN_AGE
         resource: conf_line
@@ -20482,6 +20557,19 @@ misc-accounts-tmout:
         owner: root
         path: /etc/profile.d/99-pavois-tmout.sh
         resource: file
+      rhel8:
+        content: 'TMOUT=900
+
+          readonly TMOUT
+
+          export TMOUT
+
+          '
+        group: root
+        mode: '0644'
+        owner: root
+        path: /etc/profile.d/99-pavois-tmout.sh
+        resource: file
   severity: medium
   socle: SOCLE-CLD-GEN-030
   ssg: accounts_tmout
@@ -20581,6 +20669,11 @@ misc-aide-build-database:
         command: apt-get install -y aide-common >/dev/null 2>&1 || true; aideinit -y -f >/dev/null 2>&1 || aide --init; mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db 2>/dev/null || true
         name: aide-build-database
         not_if: ls /var/lib/aide/aide.db >/dev/null 2>&1
+        resource: exec
+      rhel8:
+        command: dnf install -y aide >/dev/null 2>&1; aide --init >/dev/null 2>&1; mv -f /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz 2>/dev/null; true
+        name: aide-build-database
+        not_if: test -s /var/lib/aide/aide.db.gz || test -s /var/lib/aide/aide.db
         resource: exec
   requires_package: aide
   severity: medium
@@ -20833,6 +20926,13 @@ misc-disable-host-auth:
   remediation:
     '@os':
       debian12:
+        directive: HostbasedAuthentication
+        notify:
+          action: reload
+          service: ssh
+        resource: sshd_setting
+        value: 'no'
+      rhel8:
         directive: HostbasedAuthentication
         notify:
           action: reload
@@ -21095,6 +21195,11 @@ misc-no-direct-root-logins:
         name: empty-securetty
         not_if: test ! -s /etc/securetty
         resource: exec
+      rhel8:
+        command: ': > /etc/securetty'
+        name: empty-securetty
+        not_if: test ! -s /etc/securetty
+        resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-041
   ssg: no_direct_root_logins
@@ -21222,6 +21327,11 @@ misc-no-nologin-in-shells:
         not_if: '! grep -qE ''nologin|/bin/false'' /etc/shells'
         resource: exec
       debian13:
+        command: sed -ri '\#(nologin|/bin/false)#d' /etc/shells
+        name: strip-nologin-from-shells
+        not_if: '! grep -qE ''nologin|/bin/false'' /etc/shells'
+        resource: exec
+      rhel8:
         command: sed -ri '\#(nologin|/bin/false)#d' /etc/shells
         name: strip-nologin-from-shells
         not_if: '! grep -qE ''nologin|/bin/false'' /etc/shells'
@@ -21370,6 +21480,11 @@ misc-no-shelllogin-for-systemaccounts:
         not_if: 'test -z "$(awk -F: ''($3<1000 && $1!="root" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}'' /etc/passwd)"'
         resource: exec
       ubuntu2404:
+        command: 'awk -F: ''($3<1000 && $1!="root" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}'' /etc/passwd | while read u; do usermod -s /usr/sbin/nologin "$u" 2>/dev/null; done; true'
+        name: nologin-sysaccounts
+        not_if: 'test -z "$(awk -F: ''($3<1000 && $1!="root" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}'' /etc/passwd)"'
+        resource: exec
+      rhel8:
         command: 'awk -F: ''($3<1000 && $1!="root" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}'' /etc/passwd | while read u; do usermod -s /usr/sbin/nologin "$u" 2>/dev/null; done; true'
         name: nologin-sysaccounts
         not_if: 'test -z "$(awk -F: ''($3<1000 && $1!="root" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}'' /etc/passwd)"'
@@ -21537,6 +21652,11 @@ misc-postfix-network-listening-disabled:
         not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
         resource: exec
       ubuntu2404:
+        command: postconf -e 'inet_interfaces = loopback-only' 2>/dev/null && systemctl restart postfix 2>/dev/null; true
+        name: postfix-loopback
+        not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
+        resource: exec
+      rhel8:
         command: postconf -e 'inet_interfaces = loopback-only' 2>/dev/null && systemctl restart postfix 2>/dev/null; true
         name: postfix-loopback
         not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
@@ -22003,6 +22123,11 @@ mount-boot-efi-nosuid:
   impact: 0.5
   levels: {}
   reboot_survivable: 'yes'
+  remediation:
+    command: awk -v m=/boot/efi -v o=nosuid '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /boot/efi && mount -o remount,nosuid /boot/efi || true
+    name: mount-boot-efi-nosuid
+    not_if: awk -v m=/boot/efi '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nosuid
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-001
   ssg: mount_option_boot_efi_nosuid
@@ -22020,6 +22145,11 @@ mount-boot-nodev:
   impact: 0.5
   levels: {}
   reboot_survivable: 'yes'
+  remediation:
+    command: awk -v m=/boot -v o=nodev '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /boot && mount -o remount,nodev /boot || true
+    name: mount-boot-nodev
+    not_if: awk -v m=/boot '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nodev
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-002
   ssg: mount_option_boot_nodev
@@ -22046,27 +22176,10 @@ mount-boot-noexec:
     bp28: R28
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        bind: true
-        mount_point: /boot
-        option: noexec
-        resource: mount
-      debian13:
-        bind: true
-        mount_point: /boot
-        option: noexec
-        resource: mount
-      ubuntu2204:
-        bind: true
-        mount_point: /boot
-        option: noexec
-        resource: mount
-      ubuntu2404:
-        bind: true
-        mount_point: /boot
-        option: noexec
-        resource: mount
+    command: awk -v m=/boot -v o=noexec '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /boot && mount -o remount,noexec /boot || true
+    name: mount-boot-noexec
+    not_if: awk -v m=/boot '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx noexec
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-003
   ssg: mount_option_boot_noexec
@@ -22100,27 +22213,10 @@ mount-boot-nosuid:
     - MP-7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        bind: true
-        mount_point: /boot
-        option: nosuid
-        resource: mount
-      debian13:
-        bind: true
-        mount_point: /boot
-        option: nosuid
-        resource: mount
-      ubuntu2204:
-        bind: true
-        mount_point: /boot
-        option: nosuid
-        resource: mount
-      ubuntu2404:
-        bind: true
-        mount_point: /boot
-        option: nosuid
-        resource: mount
+    command: awk -v m=/boot -v o=nosuid '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /boot && mount -o remount,nosuid /boot || true
+    name: mount-boot-nosuid
+    not_if: awk -v m=/boot '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nosuid
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-004
   ssg: mount_option_boot_nosuid
@@ -22155,31 +22251,11 @@ mount-dev-shm-nodev:
     - MP-7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /dev/shm
-        option: nodev
-        resource: mount
-      debian13:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /dev/shm
-        option: nodev
-        resource: mount
-      ubuntu2204:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /dev/shm
-        option: nodev
-        resource: mount
-      ubuntu2404:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /dev/shm
-        option: nodev
-        resource: mount
+    device: tmpfs
+    fstype: tmpfs
+    mount_point: /dev/shm
+    option: nodev
+    resource: mount
   severity: medium
   socle: SOCLE-CLD-MNT-005
   ssg: mount_option_dev_shm_nodev
@@ -22214,31 +22290,11 @@ mount-dev-shm-noexec:
     - MP-7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /dev/shm
-        option: noexec
-        resource: mount
-      debian13:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /dev/shm
-        option: noexec
-        resource: mount
-      ubuntu2204:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /dev/shm
-        option: noexec
-        resource: mount
-      ubuntu2404:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /dev/shm
-        option: noexec
-        resource: mount
+    device: tmpfs
+    fstype: tmpfs
+    mount_point: /dev/shm
+    option: noexec
+    resource: mount
   severity: medium
   socle: SOCLE-CLD-MNT-006
   ssg: mount_option_dev_shm_noexec
@@ -22273,31 +22329,11 @@ mount-dev-shm-nosuid:
     - MP-7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /dev/shm
-        option: nosuid
-        resource: mount
-      debian13:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /dev/shm
-        option: nosuid
-        resource: mount
-      ubuntu2204:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /dev/shm
-        option: nosuid
-        resource: mount
-      ubuntu2404:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /dev/shm
-        option: nosuid
-        resource: mount
+    device: tmpfs
+    fstype: tmpfs
+    mount_point: /dev/shm
+    option: nosuid
+    resource: mount
   severity: medium
   socle: SOCLE-CLD-MNT-007
   ssg: mount_option_dev_shm_nosuid
@@ -22325,27 +22361,10 @@ mount-home-nodev:
     cis: 1.1.2.3.2
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        bind: true
-        mount_point: /home
-        option: nodev
-        resource: mount
-      debian13:
-        bind: true
-        mount_point: /home
-        option: nodev
-        resource: mount
-      ubuntu2204:
-        bind: true
-        mount_point: /home
-        option: nodev
-        resource: mount
-      ubuntu2404:
-        bind: true
-        mount_point: /home
-        option: nodev
-        resource: mount
+    command: awk -v m=/home -v o=nodev '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /home && mount -o remount,nodev /home || true
+    name: mount-home-nodev
+    not_if: awk -v m=/home '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nodev
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-008
   ssg: mount_option_home_nodev
@@ -22373,27 +22392,10 @@ mount-home-noexec:
     nist: CM-6(b)
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        bind: true
-        mount_point: /home
-        option: noexec
-        resource: mount
-      debian13:
-        bind: true
-        mount_point: /home
-        option: noexec
-        resource: mount
-      ubuntu2204:
-        bind: true
-        mount_point: /home
-        option: noexec
-        resource: mount
-      ubuntu2404:
-        bind: true
-        mount_point: /home
-        option: noexec
-        resource: mount
+    command: awk -v m=/home -v o=noexec '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /home && mount -o remount,noexec /home || true
+    name: mount-home-noexec
+    not_if: awk -v m=/home '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx noexec
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-009
   ssg: mount_option_home_noexec
@@ -22460,27 +22462,10 @@ mount-home-nosuid:
     - MP-7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        bind: true
-        mount_point: /home
-        option: nosuid
-        resource: mount
-      debian13:
-        bind: true
-        mount_point: /home
-        option: nosuid
-        resource: mount
-      ubuntu2204:
-        bind: true
-        mount_point: /home
-        option: nosuid
-        resource: mount
-      ubuntu2404:
-        bind: true
-        mount_point: /home
-        option: nosuid
-        resource: mount
+    command: awk -v m=/home -v o=nosuid '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /home && mount -o remount,nosuid /home || true
+    name: mount-home-nosuid
+    not_if: awk -v m=/home '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nosuid
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-010
   ssg: mount_option_home_nosuid
@@ -22507,27 +22492,10 @@ mount-opt-nosuid:
     bp28: R28
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        bind: true
-        mount_point: /opt
-        option: nosuid
-        resource: mount
-      debian13:
-        bind: true
-        mount_point: /opt
-        option: nosuid
-        resource: mount
-      ubuntu2204:
-        bind: true
-        mount_point: /opt
-        option: nosuid
-        resource: mount
-      ubuntu2404:
-        bind: true
-        mount_point: /opt
-        option: nosuid
-        resource: mount
+    command: awk -v m=/opt -v o=nosuid '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /opt && mount -o remount,nosuid /opt || true
+    name: mount-opt-nosuid
+    not_if: awk -v m=/opt '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nosuid
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-011
   ssg: mount_option_opt_nosuid
@@ -22554,27 +22522,10 @@ mount-srv-nosuid:
     bp28: R28
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        bind: true
-        mount_point: /srv
-        option: nosuid
-        resource: mount
-      debian13:
-        bind: true
-        mount_point: /srv
-        option: nosuid
-        resource: mount
-      ubuntu2204:
-        bind: true
-        mount_point: /srv
-        option: nosuid
-        resource: mount
-      ubuntu2404:
-        bind: true
-        mount_point: /srv
-        option: nosuid
-        resource: mount
+    command: awk -v m=/srv -v o=nosuid '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /srv && mount -o remount,nosuid /srv || true
+    name: mount-srv-nosuid
+    not_if: awk -v m=/srv '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nosuid
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-012
   ssg: mount_option_srv_nosuid
@@ -22850,27 +22801,10 @@ mount-var-log-audit-nodev:
     - MP-7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        bind: true
-        mount_point: /var/log/audit
-        option: nodev
-        resource: mount
-      debian13:
-        bind: true
-        mount_point: /var/log/audit
-        option: nodev
-        resource: mount
-      ubuntu2204:
-        bind: true
-        mount_point: /var/log/audit
-        option: nodev
-        resource: mount
-      ubuntu2404:
-        bind: true
-        mount_point: /var/log/audit
-        option: nodev
-        resource: mount
+    command: awk -v m=/var/log/audit -v o=nodev '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var/log/audit && mount -o remount,nodev /var/log/audit || true
+    name: mount-var-log-audit-nodev
+    not_if: awk -v m=/var/log/audit '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nodev
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-016
   ssg: mount_option_var_log_audit_nodev
@@ -22905,27 +22839,10 @@ mount-var-log-audit-noexec:
     - MP-7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        bind: true
-        mount_point: /var/log/audit
-        option: noexec
-        resource: mount
-      debian13:
-        bind: true
-        mount_point: /var/log/audit
-        option: noexec
-        resource: mount
-      ubuntu2204:
-        bind: true
-        mount_point: /var/log/audit
-        option: noexec
-        resource: mount
-      ubuntu2404:
-        bind: true
-        mount_point: /var/log/audit
-        option: noexec
-        resource: mount
+    command: awk -v m=/var/log/audit -v o=noexec '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var/log/audit && mount -o remount,noexec /var/log/audit || true
+    name: mount-var-log-audit-noexec
+    not_if: awk -v m=/var/log/audit '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx noexec
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-017
   ssg: mount_option_var_log_audit_noexec
@@ -22960,27 +22877,10 @@ mount-var-log-audit-nosuid:
     - MP-7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        bind: true
-        mount_point: /var/log/audit
-        option: nosuid
-        resource: mount
-      debian13:
-        bind: true
-        mount_point: /var/log/audit
-        option: nosuid
-        resource: mount
-      ubuntu2204:
-        bind: true
-        mount_point: /var/log/audit
-        option: nosuid
-        resource: mount
-      ubuntu2404:
-        bind: true
-        mount_point: /var/log/audit
-        option: nosuid
-        resource: mount
+    command: awk -v m=/var/log/audit -v o=nosuid '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var/log/audit && mount -o remount,nosuid /var/log/audit || true
+    name: mount-var-log-audit-nosuid
+    not_if: awk -v m=/var/log/audit '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nosuid
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-018
   ssg: mount_option_var_log_audit_nosuid
@@ -23015,27 +22915,10 @@ mount-var-log-nodev:
     - MP-7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        bind: true
-        mount_point: /var/log
-        option: nodev
-        resource: mount
-      debian13:
-        bind: true
-        mount_point: /var/log
-        option: nodev
-        resource: mount
-      ubuntu2204:
-        bind: true
-        mount_point: /var/log
-        option: nodev
-        resource: mount
-      ubuntu2404:
-        bind: true
-        mount_point: /var/log
-        option: nodev
-        resource: mount
+    command: awk -v m=/var/log -v o=nodev '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var/log && mount -o remount,nodev /var/log || true
+    name: mount-var-log-nodev
+    not_if: awk -v m=/var/log '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nodev
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-019
   ssg: mount_option_var_log_nodev
@@ -23102,27 +22985,10 @@ mount-var-log-noexec:
     - MP-7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        bind: true
-        mount_point: /var/log
-        option: noexec
-        resource: mount
-      debian13:
-        bind: true
-        mount_point: /var/log
-        option: noexec
-        resource: mount
-      ubuntu2204:
-        bind: true
-        mount_point: /var/log
-        option: noexec
-        resource: mount
-      ubuntu2404:
-        bind: true
-        mount_point: /var/log
-        option: noexec
-        resource: mount
+    command: awk -v m=/var/log -v o=noexec '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var/log && mount -o remount,noexec /var/log || true
+    name: mount-var-log-noexec
+    not_if: awk -v m=/var/log '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx noexec
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-020
   ssg: mount_option_var_log_noexec
@@ -23189,27 +23055,10 @@ mount-var-log-nosuid:
     - MP-7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        bind: true
-        mount_point: /var/log
-        option: nosuid
-        resource: mount
-      debian13:
-        bind: true
-        mount_point: /var/log
-        option: nosuid
-        resource: mount
-      ubuntu2204:
-        bind: true
-        mount_point: /var/log
-        option: nosuid
-        resource: mount
-      ubuntu2404:
-        bind: true
-        mount_point: /var/log
-        option: nosuid
-        resource: mount
+    command: awk -v m=/var/log -v o=nosuid '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var/log && mount -o remount,nosuid /var/log || true
+    name: mount-var-log-nosuid
+    not_if: awk -v m=/var/log '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nosuid
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-021
   ssg: mount_option_var_log_nosuid
@@ -23244,27 +23093,10 @@ mount-var-nodev:
     - MP-7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        bind: true
-        mount_point: /var
-        option: nodev
-        resource: mount
-      debian13:
-        bind: true
-        mount_point: /var
-        option: nodev
-        resource: mount
-      ubuntu2204:
-        bind: true
-        mount_point: /var
-        option: nodev
-        resource: mount
-      ubuntu2404:
-        bind: true
-        mount_point: /var
-        option: nodev
-        resource: mount
+    command: awk -v m=/var -v o=nodev '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var && mount -o remount,nodev /var || true
+    name: mount-var-nodev
+    not_if: awk -v m=/var '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nodev
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-022
   ssg: mount_option_var_nodev
@@ -23298,17 +23130,10 @@ mount-var-noexec:
       ubuntu2404: 'pavois does not auto-apply noexec to /var on Debian: dpkg executes maintainer scripts from /var/lib/dpkg/info, so noexec on /var breaks apt/dpkg (postinst Permission denied). CIS deliberately omits /var noexec for this reason (only nodev,nosuid); ANSSI R28 lists it but it is incompatible with Debian package management. Apply manually only if you accept this.'
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# Add noexec to /var ONLY after confirming /var is a separate fs with nothing executing from it
-
-          # (apt/dpkg run maintainer scripts under /var). Edit the /var line in /etc/fstab to add ,noexec
-
-          # then:  mount -o remount /var
-
-          '
-        reason: noexec on /var commonly breaks apt/dpkg maintainer scripts, verify /var layout first
-        resource: manual
+    command: awk -v m=/var -v o=noexec '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var && mount -o remount,noexec /var || true
+    name: mount-var-noexec
+    not_if: awk -v m=/var '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx noexec
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-023
   ssg: mount_option_var_noexec
@@ -23368,27 +23193,10 @@ mount-var-nosuid:
         ubuntu2404: 1.1.2.4.3
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        bind: true
-        mount_point: /var
-        option: nosuid
-        resource: mount
-      debian13:
-        bind: true
-        mount_point: /var
-        option: nosuid
-        resource: mount
-      ubuntu2204:
-        bind: true
-        mount_point: /var
-        option: nosuid
-        resource: mount
-      ubuntu2404:
-        bind: true
-        mount_point: /var
-        option: nosuid
-        resource: mount
+    command: awk -v m=/var -v o=nosuid '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var && mount -o remount,nosuid /var || true
+    name: mount-var-nosuid
+    not_if: awk -v m=/var '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nosuid
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-024
   ssg: mount_option_var_nosuid
@@ -23416,31 +23224,10 @@ mount-var-tmp-nodev:
     cis: 1.1.2.5.2
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /var/tmp
-        option: nodev
-        resource: mount
-      debian13:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /var/tmp
-        option: nodev
-        resource: mount
-      ubuntu2204:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /var/tmp
-        option: nodev
-        resource: mount
-      ubuntu2404:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /var/tmp
-        option: nodev
-        resource: mount
+    command: awk -v m=/var/tmp -v o=nodev '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var/tmp && mount -o remount,nodev /var/tmp || true
+    name: mount-var-tmp-nodev
+    not_if: awk -v m=/var/tmp '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nodev
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-025
   ssg: mount_option_var_tmp_nodev
@@ -23500,31 +23287,10 @@ mount-var-tmp-noexec:
         ubuntu2404: 1.1.2.5.4
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /var/tmp
-        option: noexec
-        resource: mount
-      debian13:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /var/tmp
-        option: noexec
-        resource: mount
-      ubuntu2204:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /var/tmp
-        option: noexec
-        resource: mount
-      ubuntu2404:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /var/tmp
-        option: noexec
-        resource: mount
+    command: awk -v m=/var/tmp -v o=noexec '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var/tmp && mount -o remount,noexec /var/tmp || true
+    name: mount-var-tmp-noexec
+    not_if: awk -v m=/var/tmp '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx noexec
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-026
   ssg: mount_option_var_tmp_noexec
@@ -23584,31 +23350,10 @@ mount-var-tmp-nosuid:
         ubuntu2404: 1.1.2.5.3
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /var/tmp
-        option: nosuid
-        resource: mount
-      debian13:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /var/tmp
-        option: nosuid
-        resource: mount
-      ubuntu2204:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /var/tmp
-        option: nosuid
-        resource: mount
-      ubuntu2404:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /var/tmp
-        option: nosuid
-        resource: mount
+    command: awk -v m=/var/tmp -v o=nosuid '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var/tmp && mount -o remount,nosuid /var/tmp || true
+    name: mount-var-tmp-nosuid
+    not_if: awk -v m=/var/tmp '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nosuid
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-MNT-027
   ssg: mount_option_var_tmp_nosuid
@@ -30034,6 +29779,15 @@ posture-core-dumps-limits:
         owner: root
         path: /etc/security/limits.d/99-pavois-core.conf
         resource: file
+      rhel8:
+        content: '* hard core 0
+
+          '
+        group: root
+        mode: '0644'
+        owner: root
+        path: /etc/security/limits.d/99-pavois-core.conf
+        resource: file
   severity: medium
   socle: SOCLE-CLD-GEN-058
   ssg: posture-core-dumps-limits
@@ -30109,6 +29863,11 @@ posture-malware-scanner:
       ubuntu2404:
         name: chkrootkit
         resource: package
+      rhel8:
+        command: command -v rkhunter >/dev/null 2>&1 || { dnf install -y rkhunter >/dev/null 2>&1 || { dnf install -y epel-release >/dev/null 2>&1; dnf install -y rkhunter >/dev/null 2>&1; }; }; true
+        name: install-malware-scanner
+        not_if: command -v rkhunter chkrootkit clamscan >/dev/null 2>&1
+        resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-060
   ssg: posture-malware-scanner
@@ -30174,6 +29933,11 @@ posture-no-compilers:
         name: purge-compilers
         not_if: for c in gcc cc g++ clang tcc; do command -v "$c" >/dev/null 2>&1 && exit 1; done; exit 0
         resource: exec
+      rhel8:
+        command: for c in gcc cc cpp g++ c++ clang gfortran; do p=$(command -v $c 2>/dev/null) && chmod 0750 "$(readlink -f "$p")" 2>/dev/null; done; true
+        name: restrict-compilers
+        not_if: for c in gcc cc g++ clang; do p=$(command -v $c 2>/dev/null); [ -n "$p" ] && find "$p" -perm -o+x 2>/dev/null | grep -q . && exit 1; done; exit 0
+        resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-062
   ssg: posture-no-compilers
@@ -30204,6 +29968,11 @@ posture-process-accounting:
         command: DEBIAN_FRONTEND=noninteractive apt-get install -y acct >/dev/null 2>&1; systemctl enable --now acct 2>/dev/null || true
         name: enable-process-accounting
         not_if: systemctl is-active auditd acct psacct 2>/dev/null | grep -q '^active'
+        resource: exec
+      rhel8:
+        command: dnf install -y psacct >/dev/null 2>&1; systemctl enable --now psacct >/dev/null 2>&1; true
+        name: enable-process-accounting
+        not_if: systemctl is-active psacct 2>/dev/null | grep -q '^active'
         resource: exec
   requires_package: auditd
   severity: low
@@ -30246,6 +30015,11 @@ posture-sysstat:
       ubuntu2404:
         name: sysstat
         resource: package
+      rhel8:
+        command: dnf install -y sysstat >/dev/null 2>&1; systemctl enable --now sysstat >/dev/null 2>&1; true
+        name: enable-sysstat-collection
+        not_if: systemctl is-active sysstat >/dev/null 2>&1
+        resource: exec
   severity: low
   socle: SOCLE-CLD-GEN-064
   ssg: posture-sysstat
@@ -33900,6 +33674,10 @@ ssh-enable-warning-banner-net:
         resource: sshd_setting
         value: /etc/issue.net
       ubuntu2404:
+        directive: Banner
+        resource: sshd_setting
+        value: /etc/issue.net
+      rhel8:
         directive: Banner
         resource: sshd_setting
         value: /etc/issue.net
