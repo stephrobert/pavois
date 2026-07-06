@@ -29,6 +29,7 @@ NF_STACK="NETFILTER NETFILTER_NETLINK NETFILTER_XTABLES NF_CONNTRACK NF_TABLES N
 
 # --- rhel8 ---------------------------------------------------------------------
 command -v dnf >/dev/null 2>&1 || { echo "this script is for rhel8 (needs dnf)"; exit 1; }
+export HOME=/root  # rpmbuild uses ~/rpmbuild — force root's tree even if launched without HOME (systemd-run/sudo -E), else ~ resolves to /rpmbuild on a too-small /
   # RHEL/AlmaLinux build the kernel from the SRPM (rpmbuild), NOT a raw tree, and ship it WITHOUT
   # gcc-plugin support, so the plugins must be enabled and gcc-plugin-devel installed explicitly.
   # The shared KSPP set is applied below with a per-symbol existence check against the target
@@ -70,21 +71,27 @@ command -v dnf >/dev/null 2>&1 || { echo "this script is for rhel8 (needs dnf)";
   # vmlinux.h` (a kernel-devel BPF-dev header, not needed for a hardened kernel) fails "load BTF
   # ... No such file". Make it non-fatal so packaging continues with an empty vmlinux.h.
   sed -ri 's#(bpftool btf dump file vmlinux format c > .*/vmlinux.h)#\1 || :#' ~/rpmbuild/SPECS/kernel.spec
+  # el8 arch/x86/kernel/sev.c uses kmalloc/kfree via a TRANSITIVE linux/slab.h include (asm/pci.h)
+  # that a hardened KSPP config can drop -> the file then fails -Werror (implicit-declaration /
+  # int-conversion) in %build. Inject the include explicitly at %prep (the upstream-style fix), so
+  # the build is robust regardless of which option broke the transitive chain.
+  sed -ri '/^%build[[:space:]]*$/i find "$RPM_BUILD_DIR" -path "*/arch/x86/kernel/sev.c" -exec sed -i "/^#define pr_fmt/a #include <linux/slab.h>" {} +' ~/rpmbuild/SPECS/kernel.spec
   ARCH=$(uname -m)
-  echo "==> applying Pavois KSPP to the base config (only symbols THIS kernel version has)"
-  BASECFG=~/rpmbuild/SOURCES/kernel-"$ARCH".config
-  # Edit the base .config directly + a per-symbol existence check, so el8 (4.18), el9 (5.14) and
-  # el10 (6.x) each take exactly the KSPP symbols they support — process_configs.sh never sees a
-  # name from a newer kernel. Same shared KSPP_ENABLE/KSPP_DISABLE/NF_STACK as the Debian branch.
-  setcfg() {  # $1 symbol  $2 y|n — no-op if the symbol is absent from THIS kernel's base config
-    grep -qE "^(CONFIG_$1=|# CONFIG_$1 is not set)" "$BASECFG" || return 0
-    sed -ri "/^(CONFIG_$1=|# CONFIG_$1 )/d" "$BASECFG"
-    if [ "$2" = y ]; then echo "CONFIG_$1=y" >> "$BASECFG"; else echo "# CONFIG_$1 is not set" >> "$BASECFG"; fi
-  }
-  # vsyscall is a Kconfig CHOICE the RHEL spec's strict process_configs.sh rejects if edited here;
-  # leave it to the kernel cmdline (vsyscall=none) instead of the config.
-  for o in $KSPP_ENABLE $NF_STACK; do case "$o" in LEGACY_VSYSCALL_*|X86_VSYSCALL_EMULATION) continue;; esac; setcfg "$o" y; done
-  for o in $KSPP_DISABLE;         do case "$o" in LEGACY_VSYSCALL_*|X86_VSYSCALL_EMULATION) continue;; esac; setcfg "$o" n; done
+  echo "==> injecting Pavois KSPP AFTER process_configs (el8 REGENERATES the flavor config from"
+  echo "    redhat/configs at %prep, so editing SOURCES/kernel-<arch>.config is silently overwritten)"
+  # Drop the Kconfig CHOICE members (vsyscall + the module-sig hash): process_configs/olddefconfig
+  # reject or reset them (vsyscall is covered at runtime by the cmdline vsyscall=none). NF_STACK is
+  # NOT forced builtin on RHEL: stock netfilter modules are SIGNED (MODULE_SIG_ALL) so they load
+  # under MODULE_SIG_FORCE, and forcing =y flips LIBCRC32C m->y which process_configs -w rejects.
+  # DEBUG_KERNEL + GCC_PLUGINS are added as prerequisites, else `make olddefconfig` at %build
+  # silently drops the DEBUG_* / GCC_PLUGIN_* KSPP options (unmet dependency).
+  KSPP_EN=""; for o in $KSPP_ENABLE DEBUG_KERNEL; do case "$o" in LEGACY_VSYSCALL_*|X86_VSYSCALL_EMULATION|MODULE_SIG_SHA512) continue;; esac; KSPP_EN="$KSPP_EN CONFIG_$o"; done
+  KSPP_DIS=""; for o in $KSPP_DISABLE; do case "$o" in LEGACY_VSYSCALL_*|X86_VSYSCALL_EMULATION|MODULE_SIG_SHA512) continue;; esac; KSPP_DIS="$KSPP_DIS CONFIG_$o"; done
+  # Apply with scripts/config on the REGENERATED x86_64 flavor config (the one %build copies to
+  # .config, spec line ~1265). Insert the loop right after the ./process_configs.sh line so it runs
+  # at the very end of %prep, on the fragment-generated config that the build actually uses.
+  INJECT="_sc=\$(find \"\$RPM_BUILD_DIR\" -path '*/scripts/config' 2>/dev/null | head -1); for _c in \$(find \"\$RPM_BUILD_DIR\" -name 'kernel-*-$ARCH.config' ! -name '*-debug.config' 2>/dev/null); do for _o in$KSPP_EN; do \"\$_sc\" --file \"\$_c\" --enable \$_o; done; for _o in$KSPP_DIS; do \"\$_sc\" --file \"\$_c\" --disable \$_o; done; done"
+  awk -v ins="$INJECT" '/\.\/process_configs\.sh -w -c/{print; print ins; next} {print}' ~/rpmbuild/SPECS/kernel.spec > ~/rpmbuild/SPECS/kernel.spec.pav && mv ~/rpmbuild/SPECS/kernel.spec.pav ~/rpmbuild/SPECS/kernel.spec
   # --without kabichk: GCC_PLUGIN_RANDSTRUCT randomises struct layout and intentionally BREAKS
   # kABI, so the RHEL kABI stability check must be off (a KSPP kernel is not kABI-compatible with
   # the stock one; out-of-tree kmods built against stock symbols will not load — an accepted tradeoff).
@@ -92,5 +99,8 @@ command -v dnf >/dev/null 2>&1 || { echo "this script is for rhel8 (needs dnf)";
   # gcc-plugin instrumentation ~doubles per-compile-job RAM; a full -j nproc can OOM (SIGKILL,
   # exit 137). Cap parallelism to fit memory (~1.5GB/job) via _smp_mflags.
   echo "==> building (long)"; rpmbuild --define "_smp_mflags -j6" -bb --without debug --without debuginfo --without kabidupchk --without kabichk --with baseonly --target="$ARCH" kernel.spec
-  echo "==> installing"; dnf install -y ~/rpmbuild/RPMS/"$ARCH"/kernel-*pavois*.rpm
+  echo "==> installing"
+  # --force so a REBUILT same-NVR kernel actually replaces the installed one (dnf install would
+  # no-op on identical name-version-release; the .pavois buildid does not change between builds)
+  rpm -Uvh --force ~/rpmbuild/RPMS/"$ARCH"/kernel-core-*pavois*.rpm ~/rpmbuild/RPMS/"$ARCH"/kernel-modules-*pavois*.rpm ~/rpmbuild/RPMS/"$ARCH"/kernel-[0-9]*pavois*.rpm
   echo "==> DONE — reboot into the -pavois kernel, then re-scan with Pavois."
