@@ -479,6 +479,22 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 				}
 			}
 		}
+		// misc-sshd-limit-user-access is manual by default (which users/groups may SSH is
+		// site-specific, Pavois cannot guess it). If the operator listed them in the plan,
+		// enforce AllowUsers/AllowGroups as an sshd drop-in instead of a manual script. This runs
+		// BEFORE the nil-remediation skip below: the control carries a remediation only for some
+		// OSes, but the operator's override must apply on EVERY OS (else SSH access-limiting is
+		// silently dropped where no @os remediation exists — e.g. debian13, ubuntu, RHEL).
+		// NB: the list MUST include the account Pavois connects as, or SSH locks out.
+		if enabled && cid == "misc-sshd-limit-user-access" && (len(r.SSHAllowUsers) > 0 || len(r.SSHAllowGroups) > 0) {
+			if len(r.SSHAllowUsers) > 0 {
+				setKV(sshd, "allowusers", strings.Join(r.SSHAllowUsers, " "), "sshd")
+			}
+			if len(r.SSHAllowGroups) > 0 {
+				setKV(sshd, "allowgroups", strings.Join(r.SSHAllowGroups, " "), "sshd")
+			}
+			continue
+		}
 		if r.Remediation == nil {
 			if enabled {
 				pendingEnabled++ // enabled but no remediation yet — don't skip silently
@@ -493,19 +509,6 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 			if rb, ok := m["reboot_required"].(bool); ok && rb {
 				reboot = true
 			}
-		}
-		// misc-sshd-limit-user-access is manual by default (which users/groups may SSH is
-		// site-specific, Pavois cannot guess it). If the operator listed them in the plan,
-		// enforce AllowUsers/AllowGroups as an sshd drop-in instead of a manual script.
-		// NB: the list MUST include the account Pavois connects as, or SSH locks out.
-		if enabled && cid == "misc-sshd-limit-user-access" && (len(r.SSHAllowUsers) > 0 || len(r.SSHAllowGroups) > 0) {
-			if len(r.SSHAllowUsers) > 0 {
-				setKV(sshd, "allowusers", strings.Join(r.SSHAllowUsers, " "), "sshd")
-			}
-			if len(r.SSHAllowGroups) > 0 {
-				setKV(sshd, "allowgroups", strings.Join(r.SSHAllowGroups, " "), "sshd")
-			}
-			continue
 		}
 		switch res {
 		case "choose":
@@ -1338,7 +1341,13 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("parse plan: %w", err)
 	}
 	auditRules, _ := os.ReadFile(filepath.Join(findRoot(), "docs", "reference", "audit.rules"))
-	kernelRecipe, _ := os.ReadFile(filepath.Join(findRoot(), "docs", "reference", "kernel-build.sh"))
+	// The kernel-build recipe is DATA, one script per OS/version under docs/reference/kernel-build/
+	// (each tailored to its distro + kernel: apt bindeb-pkg vs dnf rpmbuild, version quirks). Pick
+	// the target's; fall back to the legacy single kernel-build.sh if a per-OS file is absent.
+	kernelRecipe, _ := os.ReadFile(filepath.Join(findRoot(), "docs", "reference", "kernel-build", p.OS+".sh"))
+	if len(kernelRecipe) == 0 {
+		kernelRecipe, _ = os.ReadFile(filepath.Join(findRoot(), "docs", "reference", "kernel-build.sh"))
+	}
 	out := cmd.OutOrStdout()
 
 	// Danger gate: an enabled remediation flagged `danger:` can brick or lock out the
