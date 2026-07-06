@@ -26,53 +26,9 @@ KSPP_DISABLE="ACPI_CUSTOM_METHOD BINFMT_MISC COMPAT_BRK COMPAT_VDSO DEVKMEM HARD
 # unsigned nf_tables.ko). NETFILTER + NF_TABLES_* are BOOL and reject =m.
 NF_STACK="NETFILTER NETFILTER_NETLINK NETFILTER_XTABLES NF_CONNTRACK NF_TABLES NF_TABLES_INET NF_TABLES_IPV4 NF_TABLES_IPV6 NFT_CT NFT_COUNTER NFT_LOG NFT_LIMIT NFT_NAT NFT_MASQ NF_NAT IP_NF_IPTABLES IP6_NF_IPTABLES"
 
-if command -v apt-get >/dev/null 2>&1; then
-  echo "==> Debian/Ubuntu: build dependencies"
-  apt-get update
-  apt-get install -y build-essential fakeroot dpkg-dev debhelper libncurses-dev bison flex libssl-dev libelf-dev bc dwarves rsync kmod cpio lz4 zstd lzop xz-utils
-  GCCV=$(gcc -dumpversion | cut -d. -f1)
-  apt-get install -y "gcc-${GCCV}-plugin-dev" || apt-get install -y gcc-plugin-dev || true
-  echo "==> kernel source matching the RUNNING kernel (needs deb-src enabled)"
-  cd /usr/src
-  SRCVER=$(dpkg-query -W -f='${source:Version}' "linux-image-$KVER" 2>/dev/null || true)
-  CODENAME=$(. /etc/os-release 2>/dev/null; echo "$VERSION_CODENAME")
-  # pin to the running kernel's source version, else this release's current point release, else latest
-  apt-get source "linux=$SRCVER" 2>/dev/null || apt-get source "linux/$CODENAME" 2>/dev/null || apt-get source linux
-  SRC=$(find /usr/src -maxdepth 1 -type d -name 'linux-*' | sort | tail -1)
-  cd "$SRC"
-  cp "/boot/config-$KVER" .config
-  echo "==> applying Pavois KSPP options (scripts/config ignores symbols this kernel lacks)"
-  for o in $KSPP_ENABLE $NF_STACK; do scripts/config --enable "CONFIG_$o"; done
-  for o in $KSPP_DISABLE; do scripts/config --disable "CONFIG_$o"; done
-  scripts/config --disable SYSTEM_TRUSTED_KEYS --disable SYSTEM_REVOCATION_KEYS
-  make olddefconfig
-  # abort early if the firewall stack got pruned anyway — never ship a firewall-less kernel
-  grep -qE '^CONFIG_NF_TABLES=[ym]' .config || { echo "ERROR: CONFIG_NF_TABLES missing after olddefconfig; the built kernel would have no nftables firewall. Aborting." >&2; exit 1; }
-  echo "==> building (long)"; make -j"$(nproc)" bindeb-pkg
-  echo "==> installing"; dpkg -i ../linux-image-*.deb
-  update-grub
-  # ensure the /vmlinuz + /initrd.img top-level symlinks point to the newest kernel (lynis
-  # KRNL-5788): purging the stock cloud kernels can leave them dangling/absent. Reproducible,
-  # part of the build so an operator never has to relink by hand.
-  NEWK=$(ls -1 /boot/vmlinuz-* 2>/dev/null | sort -V | tail -1)
-  NEWI=$(ls -1 /boot/initrd.img-* 2>/dev/null | sort -V | tail -1)
-  [ -n "$NEWK" ] && ln -sf "$NEWK" /vmlinuz
-  [ -n "$NEWI" ] && ln -sf "$NEWI" /initrd.img
-  # post-install guard: nf_tables must be reachable in the new kernel — builtin (=y, no .ko) OR
-  # a present module. Check the installed config, then (module case) that the .ko exists.
-  NV=$(make -s kernelrelease 2>/dev/null)
-  if grep -qE '^CONFIG_NF_TABLES=y' "/boot/config-$NV" 2>/dev/null; then
-    echo "==> nf_tables builtin (=y) in $NV — firewall OK."
-  elif find "/lib/modules/$NV" -name 'nf_tables.ko*' 2>/dev/null | grep -q .; then
-    echo "==> nf_tables module present in $NV — firewall OK."
-  else
-    echo "WARNING: nf_tables missing from $NV — nftables/firewalld will fail; do NOT reboot into it as-is." >&2
-  fi
-  # KSPP sanity: warn if struct-layout randomization silently ended up disabled
-  grep -qE '^CONFIG_(RANDSTRUCT_FULL|GCC_PLUGIN_RANDSTRUCT)=y' "/boot/config-$NV" 2>/dev/null || \
-    echo "WARNING: randstruct is NONE in $NV (symbol renamed?) — struct layout not randomized." >&2
-  echo "==> DONE — reboot into the hardened kernel, then re-scan with Pavois."
-elif command -v dnf >/dev/null 2>&1; then
+
+# --- rhel10 ---------------------------------------------------------------------
+command -v dnf >/dev/null 2>&1 || { echo "this script is for rhel10 (needs dnf)"; exit 1; }
   # RHEL/AlmaLinux build the kernel from the SRPM (rpmbuild), NOT a raw tree, and ship it WITHOUT
   # gcc-plugin support, so the plugins must be enabled and gcc-plugin-devel installed explicitly.
   # The shared KSPP set is applied below with a per-symbol existence check against the target
@@ -138,6 +94,3 @@ elif command -v dnf >/dev/null 2>&1; then
   echo "==> building (long)"; rpmbuild --define "_smp_mflags -j6" -bb --without debug --without debuginfo --without kabidupchk --without kabichk --with baseonly --target="$ARCH" kernel.spec
   echo "==> installing"; dnf install -y ~/rpmbuild/RPMS/"$ARCH"/kernel-*pavois*.rpm
   echo "==> DONE — reboot into the -pavois kernel, then re-scan with Pavois."
-else
-  echo "unsupported: need apt-get (Debian/Ubuntu) or dnf (RHEL/AlmaLinux)"; exit 1
-fi
