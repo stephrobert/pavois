@@ -87,11 +87,19 @@ export HOME=/root  # rpmbuild uses ~/rpmbuild — force root's tree even if laun
   # silently drops the DEBUG_* / GCC_PLUGIN_* KSPP options (unmet dependency).
   KSPP_EN=""; for o in $KSPP_ENABLE DEBUG_KERNEL; do case "$o" in LEGACY_VSYSCALL_*|X86_VSYSCALL_EMULATION|MODULE_SIG_SHA512) continue;; esac; KSPP_EN="$KSPP_EN CONFIG_$o"; done
   KSPP_DIS=""; for o in $KSPP_DISABLE; do case "$o" in LEGACY_VSYSCALL_*|X86_VSYSCALL_EMULATION|MODULE_SIG_SHA512) continue;; esac; KSPP_DIS="$KSPP_DIS CONFIG_$o"; done
+  # The kernel-5.14 (el9) GCC plugin sources (stackleak/latent_entropy/randstruct/structleak) do
+  # NOT compile with GCC >= 11 (scripts/gcc-plugins/*.c use STRING_EQUAL, gone in newer GCC).
+  # RHEL ships el9 WITHOUT plugins for the same reason -> drop the plugin KSPP options on
+  # GCC >= 11; native hardening (INIT_ON_ALLOC/FREE, INIT_STACK_ALL_ZERO, DEBUG_*, MODULE_SIG) stays.
+  if [ "$(gcc -dumpversion | cut -d. -f1)" -ge 11 ]; then
+    for _p in GCC_PLUGINS GCC_PLUGIN_LATENT_ENTROPY GCC_PLUGIN_RANDSTRUCT RANDSTRUCT_FULL GCC_PLUGIN_STACKLEAK GCC_PLUGIN_STRUCTLEAK GCC_PLUGIN_STRUCTLEAK_BYREF_ALL; do
+      KSPP_EN=$(printf " %s " "$KSPP_EN" | sed "s/ CONFIG_$_p / /g"); done
+  fi
   # Apply with scripts/config on the REGENERATED x86_64 flavor config (the one %build copies to
   # .config, spec line ~1265). Insert the loop right after the ./process_configs.sh line so it runs
   # at the very end of %prep, on the fragment-generated config that the build actually uses.
   INJECT="_sc=\$(find \"\$RPM_BUILD_DIR\" -path '*/scripts/config' 2>/dev/null | head -1); for _c in \$(find \"\$RPM_BUILD_DIR\" -name 'kernel-*-$ARCH.config' ! -name '*-debug.config' 2>/dev/null); do for _o in$KSPP_EN; do \"\$_sc\" --file \"\$_c\" --enable \$_o; done; for _o in$KSPP_DIS; do \"\$_sc\" --file \"\$_c\" --disable \$_o; done; done"
-  awk -v ins="$INJECT" '/\.\/process_configs\.sh -w -c/{print; print ins; next} {print}' ~/rpmbuild/SPECS/kernel.spec > ~/rpmbuild/SPECS/kernel.spec.pav && mv ~/rpmbuild/SPECS/kernel.spec.pav ~/rpmbuild/SPECS/kernel.spec
+  awk -v ins="$INJECT" '/\.\/process_configs\.sh/{print; print ins; next} {print}' ~/rpmbuild/SPECS/kernel.spec > ~/rpmbuild/SPECS/kernel.spec.pav && mv ~/rpmbuild/SPECS/kernel.spec.pav ~/rpmbuild/SPECS/kernel.spec
   # --without kabichk: GCC_PLUGIN_RANDSTRUCT randomises struct layout and intentionally BREAKS
   # kABI, so the RHEL kABI stability check must be off (a KSPP kernel is not kABI-compatible with
   # the stock one; out-of-tree kmods built against stock symbols will not load — an accepted tradeoff).
