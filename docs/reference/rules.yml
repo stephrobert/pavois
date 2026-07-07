@@ -1905,7 +1905,7 @@ auditd-admin-space-left-percentage:
   applicable_os:
   - rhel9
   check:
-  - describe command('v=$(grep -iE \'^[[:space:]]*admin_space_left_percentage[[:space:]]*=\' /etc/audit/auditd.conf 2>/dev/null | grep -oE \'[0-9]+\' | tail -1); { [ -n "$v" ] && [ "$v" -ge 5 ] && echo ok; } || echo ko') do
+  - describe command('v=$(grep -iE \'^[[:space:]]*admin_space_left[[:space:]]*=[[:space:]]*[0-9]+%\' /etc/audit/auditd.conf 2>/dev/null | grep -oE \'[0-9]+\' | tail -1); { [ -n "$v" ] && [ "$v" -ge 5 ] && echo ok; } || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Audit (auditd daemon)
@@ -1914,6 +1914,14 @@ auditd-admin-space-left-percentage:
   levels: {}
   reboot_survivable: 'yes'
   requires_package: auditd
+  remediation:
+    '@os':
+      rhel9:
+        file: /etc/audit/auditd.conf
+        key: admin_space_left
+        resource: conf_line
+        service: auditd
+        value: '5%'
   severity: medium
   socle: SOCLE-RUN-AUD-027
   ssg: auditd_data_retention_admin_space_left_percentage
@@ -2418,7 +2426,7 @@ auditd-space-left-percentage:
   - ubuntu2204
   - ubuntu2404
   check:
-  - describe command('v=$(grep -iE \'^[[:space:]]*space_left_percentage[[:space:]]*=\' /etc/audit/auditd.conf 2>/dev/null | grep -oE \'[0-9]+\' | tail -1); { [ -n "$v" ] && [ "$v" -ge 25 ] && echo ok; } || echo ko') do
+  - describe command('v=$(grep -iE \'^[[:space:]]*space_left[[:space:]]*=[[:space:]]*[0-9]+%\' /etc/audit/auditd.conf 2>/dev/null | grep -oE \'[0-9]+\' | tail -1); { [ -n "$v" ] && [ "$v" -ge 25 ] && echo ok; } || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
   domain: Audit (auditd daemon)
@@ -2449,6 +2457,14 @@ auditd-space-left-percentage:
         ubuntu2404: UBTU-24-900960
   reboot_survivable: 'yes'
   requires_package: auditd
+  remediation:
+    '@os':
+      rhel9:
+        file: /etc/audit/auditd.conf
+        key: space_left
+        resource: conf_line
+        service: auditd
+        value: '25%'
   severity: medium
   socle: SOCLE-RUN-AUD-037
   ssg: auditd_data_retention_space_left_percentage
@@ -2698,6 +2714,12 @@ cmdline-init-on-alloc:
   impact: 0.5
   levels: {}
   reboot_survivable: 'yes'
+  remediation:
+    '@os':
+      rhel9:
+        param: init_on_alloc=1
+        reboot_required: true
+        resource: kernel_cmdline
   severity: medium
   socle: SOCLE-CLD-KRN-003
   ssg: grub2_init_on_alloc_argument
@@ -2823,6 +2845,12 @@ cmdline-nousb:
   impact: 0.5
   levels: {}
   reboot_survivable: 'yes'
+  remediation:
+    '@os':
+      rhel9:
+        param: nousb
+        reboot_required: true
+        resource: kernel_cmdline
   severity: medium
   socle: SOCLE-CLD-KRN-008
   ssg: grub2_nousb_argument
@@ -3091,6 +3119,12 @@ cmdline-vsyscall:
   impact: 0.5
   levels: {}
   reboot_survivable: 'yes'
+  remediation:
+    '@os':
+      rhel9:
+        param: vsyscall=none
+        reboot_required: true
+        resource: kernel_cmdline
   severity: medium
   socle: SOCLE-CLD-KRN-018
   ssg: grub2_vsyscall_argument
@@ -24881,7 +24915,7 @@ pkg-cryptsetup-luks-installed:
   reboot_survivable: 'yes'
   remediation:
     action: install
-    name: cryptsetup-luks
+    name: cryptsetup
     resource: package
   severity: medium
   socle: SOCLE-CLD-PKG-020
