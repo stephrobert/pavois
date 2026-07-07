@@ -87,12 +87,7 @@ func profileForOS(name, release string) string {
 		return "ubuntu" + strings.ReplaceAll(release, ".", "")
 	case "fedora":
 		return "fedora"
-	case "almalinux":
-		if major == "9" {
-			return "almalinux9"
-		}
-		return "rhel" + major
-	case "rhel", "redhat", "centos", "rocky", "ol", "oracle":
+	case "almalinux", "rhel", "redhat", "centos", "rocky", "ol", "oracle":
 		return "rhel" + major
 	}
 	return ""
@@ -108,7 +103,7 @@ func familyOf(name string) string {
 	case "fedora":
 		return "fedora"
 	case "almalinux", "rhel", "redhat", "centos", "rocky", "ol", "oracle":
-		return "rhel" // RHEL clones fall back to rhel<major> (cf. almalinux9 handled separately)
+		return "rhel" // RHEL family + clones (AlmaLinux, Rocky, Oracle...) map to rhel<major>
 	}
 	return ""
 }

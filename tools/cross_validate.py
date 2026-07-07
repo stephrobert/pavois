@@ -31,7 +31,6 @@ AL_REPO = {
     "ubuntu2604": "UBUNTU26-CIS",
     "rhel8": "RHEL8-CIS",
     "rhel9": "RHEL9-CIS",
-    "almalinux9": "RHEL9-CIS",
 }.get(OS)
 
 

@@ -10,7 +10,7 @@ set -euo pipefail
 SSG_VERSION="0.1.81"                                   # pinned (no :latest — reproducible oracle)
 CACHE="/tmp/oscap-analysis/ssg"
 ZIP="/tmp/ssg-${SSG_VERSION}.zip"
-OSES=(debian12 debian13 ubuntu2204 ubuntu2404 rhel8 rhel9 almalinux9 fedora)
+OSES=(debian12 debian13 ubuntu2204 ubuntu2404 rhel8 rhel9 fedora)
 
 mkdir -p "$CACHE"
 
