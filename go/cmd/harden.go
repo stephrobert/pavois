@@ -1026,12 +1026,16 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		}
 		// The drop-in dir is absent on RHEL 8 (only RHEL 9 / Debian ship it) and RHEL 8's
 		// sshd_config has no Include line — so create the dir, then prepend
-		// `Include /etc/ssh/sshd_config.d/*.conf` at the TOP of sshd_config (sshd takes the FIRST
-		// value per keyword, so the drop-in must be read first to win). Both idempotent: no-op
-		// where the dir/Include already exist (Debian, RHEL 9).
+		// `Include /etc/ssh/sshd_config.d/*.conf` at the TOP of sshd_config. sshd takes the FIRST
+		// value per keyword and reads drop-ins in lexical order, so the Pavois drop-in must sort
+		// BEFORE the vendor ones to win: el9 ships 50-redhat.conf (X11Forwarding yes,
+		// GSSAPIAuthentication yes) and Ubuntu ships 50-cloud-init.conf — a 99- name loses to them.
+		// Hence 00-pavois.conf (loads first, Pavois wins). Delete a stale 99-pavois.conf from an
+		// older apply so the two do not coexist. All idempotent.
 		b.WriteString("directory '/etc/ssh/sshd_config.d' do\n  recursive true\n  mode '0700'\nend\n\n")
+		b.WriteString("file '/etc/ssh/sshd_config.d/99-pavois.conf' do\n  action :delete\nend\n\n")
 		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\n  verify 'sshd -t -f %%{path}'\n  notifies :run, 'execute[pavois-sshd-reload]', :delayed\nend\n\n",
-			"/etc/ssh/sshd_config.d/99-pavois.conf", content.String())
+			"/etc/ssh/sshd_config.d/00-pavois.conf", content.String())
 		b.WriteString("execute 'pavois-sshd-include' do\n" +
 			"  command %q{sed -i '1i Include /etc/ssh/sshd_config.d/*.conf' /etc/ssh/sshd_config}\n" +
 			"  not_if %q{grep -qE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config.d' /etc/ssh/sshd_config}\n" +

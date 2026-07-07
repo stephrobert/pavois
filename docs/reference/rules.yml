@@ -28662,6 +28662,11 @@ posture-malware-scanner:
         name: install-malware-scanner
         not_if: command -v rkhunter chkrootkit clamscan >/dev/null 2>&1
         resource: exec
+      rhel9:
+        command: command -v rkhunter >/dev/null 2>&1 || { dnf install -y rkhunter >/dev/null 2>&1 || { dnf install -y epel-release >/dev/null 2>&1; dnf install -y rkhunter >/dev/null 2>&1; }; }; true
+        name: install-malware-scanner
+        not_if: command -v rkhunter chkrootkit clamscan >/dev/null 2>&1
+        resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-060
   ssg: posture-malware-scanner
@@ -28766,6 +28771,11 @@ posture-process-accounting:
         not_if: systemctl is-active auditd acct psacct 2>/dev/null | grep -q '^active'
         resource: exec
       rhel8:
+        command: dnf install -y psacct >/dev/null 2>&1; systemctl enable --now psacct >/dev/null 2>&1; true
+        name: enable-process-accounting
+        not_if: systemctl is-active psacct 2>/dev/null | grep -q '^active'
+        resource: exec
+      rhel9:
         command: dnf install -y psacct >/dev/null 2>&1; systemctl enable --now psacct >/dev/null 2>&1; true
         name: enable-process-accounting
         not_if: systemctl is-active psacct 2>/dev/null | grep -q '^active'
@@ -31613,6 +31623,7 @@ ssh-disable-agent-forwarding:
   - debian12
   - debian13
   - rhel8
+  - rhel9
   check:
   - describe command('sshd -T') do
   - '  its(''stdout'') { should match(/^allowagentforwarding\s+no$/i) }'
@@ -32015,6 +32026,7 @@ ssh-disable-tcp-forwarding:
   - debian13
   - fedora
   - rhel8
+  - rhel9
   check:
   - describe command('sshd -T') do
   - '  its(''stdout'') { should match(/^allowtcpforwarding\s+no$/i) }'
@@ -32043,6 +32055,7 @@ ssh-disable-tcpkeepalive:
   - debian12
   - debian13
   - rhel8
+  - rhel9
   check:
   - describe command('sshd -T') do
   - '  its(''stdout'') { should match(/^tcpkeepalive\s+no$/i) }'
@@ -32096,6 +32109,7 @@ ssh-disable-x11-forwarding:
   - debian12
   - debian13
   - rhel8
+  - rhel9
   check:
   - describe command('sshd -T') do
   - '  its(''stdout'') { should match(/^x11forwarding\s+no$/i) }'
