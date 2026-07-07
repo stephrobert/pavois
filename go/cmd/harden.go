@@ -1029,7 +1029,7 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		// `Include /etc/ssh/sshd_config.d/*.conf` at the TOP of sshd_config (sshd takes the FIRST
 		// value per keyword, so the drop-in must be read first to win). Both idempotent: no-op
 		// where the dir/Include already exist (Debian, RHEL 9).
-		b.WriteString("directory '/etc/ssh/sshd_config.d' do\n  recursive true\n  mode '0755'\nend\n\n")
+		b.WriteString("directory '/etc/ssh/sshd_config.d' do\n  recursive true\n  mode '0700'\nend\n\n")
 		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\n  verify 'sshd -t -f %%{path}'\n  notifies :run, 'execute[pavois-sshd-reload]', :delayed\nend\n\n",
 			"/etc/ssh/sshd_config.d/99-pavois.conf", content.String())
 		b.WriteString("execute 'pavois-sshd-include' do\n" +
