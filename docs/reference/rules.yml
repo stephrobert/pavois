@@ -13822,6 +13822,11 @@ findloop-file-groupownership-system-commands-dirs:
         name: fix-bindir-ownership
         not_if: test -z "$(find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) 2>/dev/null | head -1)"
         resource: exec
+      rhel9:
+        command: find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) -exec chown root:root {} + 2>/dev/null; true
+        name: fix-bindir-ownership
+        not_if: test -z "$(find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) 2>/dev/null | head -1)"
+        resource: exec
       debian13:
         command: find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) -exec chown root:root {} + 2>/dev/null; true
         name: fix-bindir-ownership
@@ -14222,6 +14227,11 @@ findloop-file-permissions-var-log:
         not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
         resource: exec
       rhel8:
+        command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
+        name: fix-varlog-perms
+        not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
+        resource: exec
+      rhel9:
         command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
         name: fix-varlog-perms
         not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
@@ -15293,6 +15303,10 @@ home-files-permissions:
         name: fix-home-perms
         resource: exec
       rhel8:
+        command: 'awk -F: ''($3>=1000 && $3!=65534 && $6!="/"){print $6}'' /etc/passwd | while read h; do [ -d "$h" ] && find "$h" -perm /7027 ! -type l -exec chmod u-s,g-w-s,o=- {} + 2>/dev/null; done; true'
+        name: fix-home-perms
+        resource: exec
+      rhel9:
         command: 'awk -F: ''($3>=1000 && $3!=65534 && $6!="/"){print $6}'' /etc/passwd | while read h; do [ -d "$h" ] && find "$h" -perm /7027 ! -type l -exec chmod u-s,g-w-s,o=- {} + 2>/dev/null; done; true'
         name: fix-home-perms
         resource: exec
@@ -19759,6 +19773,11 @@ misc-aide-build-database:
         name: aide-build-database
         not_if: test -s /var/lib/aide/aide.db.gz || test -s /var/lib/aide/aide.db
         resource: exec
+      rhel9:
+        command: dnf install -y aide >/dev/null 2>&1; aide --init >/dev/null 2>&1; mv -f /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz 2>/dev/null; true
+        name: aide-build-database
+        not_if: test -s /var/lib/aide/aide.db.gz || test -s /var/lib/aide/aide.db
+        resource: exec
   requires_package: aide
   severity: medium
   socle: SOCLE-CLD-GEN-031
@@ -20716,6 +20735,11 @@ misc-postfix-network-listening-disabled:
         not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
         resource: exec
       rhel8:
+        command: postconf -e 'inet_interfaces = loopback-only' 2>/dev/null && systemctl restart postfix 2>/dev/null; true
+        name: postfix-loopback
+        not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
+        resource: exec
+      rhel9:
         command: postconf -e 'inet_interfaces = loopback-only' 2>/dev/null && systemctl restart postfix 2>/dev/null; true
         name: postfix-loopback
         not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
@@ -28672,6 +28696,11 @@ posture-no-compilers:
         name: restrict-compilers
         not_if: for c in gcc cc g++ clang; do p=$(command -v $c 2>/dev/null); [ -n "$p" ] && find "$p" -perm -o+x 2>/dev/null | grep -q . && exit 1; done; exit 0
         resource: exec
+      rhel9:
+        command: for c in gcc cc cpp g++ c++ clang gfortran; do p=$(command -v $c 2>/dev/null) && chmod 0750 "$(readlink -f "$p")" 2>/dev/null; done; true
+        name: restrict-compilers
+        not_if: for c in gcc cc g++ clang; do p=$(command -v $c 2>/dev/null); [ -n "$p" ] && find "$p" -perm -o+x 2>/dev/null | grep -q . && exit 1; done; exit 0
+        resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-062
   ssg: posture-no-compilers
@@ -28748,6 +28777,11 @@ posture-sysstat:
         name: sysstat
         resource: package
       rhel8:
+        command: dnf install -y sysstat >/dev/null 2>&1; systemctl enable --now sysstat >/dev/null 2>&1; true
+        name: enable-sysstat-collection
+        not_if: systemctl is-active sysstat >/dev/null 2>&1
+        resource: exec
+      rhel9:
         command: dnf install -y sysstat >/dev/null 2>&1; systemctl enable --now sysstat >/dev/null 2>&1; true
         name: enable-sysstat-collection
         not_if: systemctl is-active sysstat >/dev/null 2>&1
