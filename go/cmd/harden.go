@@ -417,6 +417,8 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 	rm := map[string]bool{}
 	sysctl := map[string]string{}             // key -> value
 	sshd := map[string]string{}               // directive -> value
+	sshdEnabled := false                      // an sshd_setting (or AllowUsers) is ACTIVELY enabled — not just compliant siblings
+	allowUsersSet := false                    // the plan explicitly set ssh_allow_users/groups (else preserve the live value)
 	svc := map[string]string{}                // service -> "action[…]"
 	files := map[string]map[string]string{}   // path -> attr -> value
 	dirs := map[string]map[string]string{}    // directory path -> attr -> value (mode/owner/group)
@@ -487,6 +489,8 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		// silently dropped where no @os remediation exists — e.g. debian13, ubuntu, RHEL).
 		// NB: the list MUST include the account Pavois connects as, or SSH locks out.
 		if enabled && cid == "misc-sshd-limit-user-access" && (len(r.SSHAllowUsers) > 0 || len(r.SSHAllowGroups) > 0) {
+			sshdEnabled = true
+			allowUsersSet = true
 			if len(r.SSHAllowUsers) > 0 {
 				setKV(sshd, "allowusers", strings.Join(r.SSHAllowUsers, " "), "sshd")
 			}
@@ -554,6 +558,9 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 			}
 		case "sshd_setting":
 			setKV(sshd, s(m["directive"]), s(m["value"]), "sshd")
+			if enabled {
+				sshdEnabled = true
+			}
 		case "package":
 			if s(m["action"]) == "remove" {
 				rm[s(m["name"])] = true
@@ -1018,8 +1025,12 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 	}
 
 	// All sshd settings -> ONE drop-in, validated (sshd -t) before it goes live
-	// (no lockout) and reloaded (not restarted, keeps existing sessions).
-	if len(sshd) > 0 {
+	// (no lockout) and reloaded (not restarted, keeps existing sessions). Only rewrite it when an
+	// sshd_setting is ACTIVELY enabled: `sshd` also collects COMPLIANT siblings (keepCompliant) so
+	// the regenerated drop-in stays complete, but if nothing sshd is being changed we must NOT
+	// touch the file — else an unrelated apply (packages, sysctl, audit) would regenerate it and
+	// silently drop AllowUsers/AllowGroups (which come from a `manual` control, not re-emitted).
+	if len(sshd) > 0 && sshdEnabled {
 		var content strings.Builder
 		for _, k := range sortedKeysS(sshd) {
 			content.WriteString(k + " " + sshd[k] + "\\n")
@@ -1034,8 +1045,22 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		// older apply so the two do not coexist. All idempotent.
 		b.WriteString("directory '/etc/ssh/sshd_config.d' do\n  recursive true\n  mode '0700'\nend\n\n")
 		b.WriteString("file '/etc/ssh/sshd_config.d/99-pavois.conf' do\n  action :delete\nend\n\n")
+		// AllowUsers/AllowGroups is set by a `manual` control (site-specific): it is NOT in the
+		// regenerated content unless the operator passed ssh_allow_users/groups in THIS plan. So
+		// when they did not, PRESERVE whatever is effective now — capture before the overwrite,
+		// re-append after — so rewriting the drop-in for some other sshd setting never widens SSH
+		// back to "all users" (the recurring AllowUsers-drop regression).
+		if !allowUsersSet {
+			b.WriteString("execute 'pavois-sshd-capture-allow' do\n" +
+				"  command %q{sshd -T 2>/dev/null | grep -iE '^(allowusers|allowgroups) ' > /run/pavois-sshd-allow || true}\nend\n\n")
+		}
 		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\n  verify 'sshd -t -f %%{path}'\n  notifies :run, 'execute[pavois-sshd-reload]', :delayed\nend\n\n",
 			"/etc/ssh/sshd_config.d/00-pavois.conf", content.String())
+		if !allowUsersSet {
+			b.WriteString("execute 'pavois-sshd-restore-allow' do\n" +
+				"  command %q{[ -s /run/pavois-sshd-allow ] && ! grep -qiE '^(allowusers|allowgroups) ' /etc/ssh/sshd_config.d/00-pavois.conf && cat /run/pavois-sshd-allow >> /etc/ssh/sshd_config.d/00-pavois.conf; rm -f /run/pavois-sshd-allow; true}\n" +
+				"  notifies :run, 'execute[pavois-sshd-reload]', :delayed\nend\n\n")
+		}
 		b.WriteString("execute 'pavois-sshd-include' do\n" +
 			"  command %q{sed -i '1i Include /etc/ssh/sshd_config.d/*.conf' /etc/ssh/sshd_config}\n" +
 			"  not_if %q{grep -qE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config.d' /etc/ssh/sshd_config}\n" +
