@@ -33,7 +33,6 @@ OSES = [
     "ubuntu2404",
     "rhel8",
     "rhel9",
-    "almalinux9",
     "fedora",
 ]
 NOT_REMEDIABLE_EVIDENCE = {"manual", "behavioral"}
