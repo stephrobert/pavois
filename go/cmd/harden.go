@@ -1513,8 +1513,14 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		}
 		return "sudo " + rest
 	}
+	// Run a sudo command over ssh WITHOUT a forced -tt: `ssh -tt` + a piped password races the pty
+	// line discipline and `sudo -S` times out ("a password is required") on rhel9. Pavois hardens
+	// sudo with `use_pty` (not `requiretty`), which allocates the pty for the COMMAND and does NOT
+	// require the caller to have one, so a plain pipe to `sudo -S` is reliable pre- and post-harden;
+	// the password stays on stdin, never argv.
 	runSudoTTY := func(remote string) error {
-		c := exec.Command("ssh", sshTTY(target, remote)...) //nolint:gosec // fixed args, operator target
+		args := append(append([]string{}, sshOpts()...), target, remote)
+		c := exec.Command("ssh", args...) //nolint:gosec // fixed args, operator target
 		c.Stdout, c.Stderr = os.Stderr, os.Stderr
 		if sudoPass != "" {
 			c.Stdin = strings.NewReader(sudoPass + "\n")
@@ -1529,12 +1535,18 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		return strings.TrimSpace(string(o))
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "pavois: ensuring cinc-client on %s…\n", target)
-	// Run the bootstrap AS ROOT (outer sudo -S, password on stdin) and let the installer run
-	// without a nested sudo: a naked `curl | sudo bash` prompts for a password on a hardened
-	// target that has no NOPASSWD (the correct posture), and hangs forever over the -tt pty.
-	// Under the outer sudo we are already root, so the install writes to /opt directly.
-	ensure := sudoCmd("bash -c 'command -v cinc-apply >/dev/null || curl -L https://omnitruck.cinc.sh/install.sh | bash -s -- -P cinc'")
-	if err := runSudoTTY(ensure); err != nil {
+	// Bootstrap the cinc client AS ROOT (sudo first), downloading the installer to a FILE then
+	// running it — a `curl | bash` pipe or a nested `sudo bash` wedges on the target. Run over ssh
+	// WITHOUT -tt and pipe the password: `ssh -tt` + stdin races the pty line discipline and
+	// `sudo -S` times out ("a password is required") on rhel9; a plain pipe to sudo -S is reliable,
+	// the fresh target has no requiretty yet, and the password never reaches argv.
+	ensure := sudoCmd("bash -c 'command -v cinc-apply >/dev/null || { curl -fsSL https://omnitruck.cinc.sh/install.sh -o /tmp/pavois-cinc-install.sh && sh /tmp/pavois-cinc-install.sh -P cinc; }'")
+	ec := exec.Command("ssh", append(append(sshOpts(), target), ensure)...) //nolint:gosec // fixed args, operator target
+	ec.Stdout, ec.Stderr = os.Stderr, os.Stderr
+	if sudoPass != "" {
+		ec.Stdin = strings.NewReader(sudoPass + "\n")
+	}
+	if err := ec.Run(); err != nil {
 		return fmt.Errorf("install cinc-client: %w", err)
 	}
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: copying recipe…")

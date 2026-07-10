@@ -111,4 +111,8 @@ export HOME=/root  # rpmbuild uses ~/rpmbuild — force root's tree even if laun
   # --force so a REBUILT same-NVR kernel actually replaces the installed one (dnf install would
   # no-op on identical name-version-release; the .pavois buildid does not change between builds)
   rpm -Uvh --force ~/rpmbuild/RPMS/"$ARCH"/kernel-core-*pavois*.rpm ~/rpmbuild/RPMS/"$ARCH"/kernel-modules-*pavois*.rpm ~/rpmbuild/RPMS/"$ARCH"/kernel-[0-9]*pavois*.rpm
+  # drop the ~5 GB rpmbuild tree (SRPM sources + BUILD + built RPMs): frees disk and, critically,
+  # stops AIDE's integrity init from checksumming tens of thousands of kernel-source files for many
+  # minutes on every subsequent hardening run.
+  rm -rf ~/rpmbuild
   echo "==> DONE — reboot into the -pavois kernel, then re-scan with Pavois."
