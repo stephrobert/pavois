@@ -40,7 +40,7 @@ command -v apt-get >/dev/null 2>&1 || { echo "this script is for debian12 (needs
   CODENAME=$(. /etc/os-release 2>/dev/null; echo "$VERSION_CODENAME")
   # pin to the running kernel's source version, else this release's current point release, else latest
   apt-get source "linux=$SRCVER" 2>/dev/null || apt-get source "linux/$CODENAME" 2>/dev/null || apt-get source linux
-  SRC=$(find /usr/src -maxdepth 1 -type d -name 'linux-*' | sort | tail -1)
+  SRC=$(find /usr/src -maxdepth 1 -type d -name 'linux-*' ! -name '*-headers-*' ! -name '*-generic' ! -name '*-hwe-*' | sort -V | tail -1)  # the apt-get source tree, NOT installed linux-headers-*
   cd "$SRC"
   cp "/boot/config-$KVER" .config
   echo "==> applying Pavois KSPP options (scripts/config ignores symbols this kernel lacks)"

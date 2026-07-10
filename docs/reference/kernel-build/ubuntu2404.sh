@@ -29,29 +29,39 @@ NF_STACK="NETFILTER NETFILTER_NETLINK NETFILTER_XTABLES NF_CONNTRACK NF_TABLES N
 
 # --- ubuntu2404 ---------------------------------------------------------------------
 command -v apt-get >/dev/null 2>&1 || { echo "this script is for ubuntu2404 (needs apt-get)"; exit 1; }
-  echo "==> Debian/Ubuntu: build dependencies"
+  echo "==> Ubuntu: build dependencies"
   apt-get update
-  apt-get install -y build-essential fakeroot dpkg-dev debhelper libncurses-dev bison flex libssl-dev libelf-dev bc dwarves rsync kmod cpio lz4 zstd lzop xz-utils
+  apt-get install -y build-essential fakeroot dpkg-dev debhelper libncurses-dev bison flex libssl-dev libelf-dev bc dwarves rsync kmod cpio lz4 zstd lzop xz-utils wget
   GCCV=$(gcc -dumpversion | cut -d. -f1)
   apt-get install -y "gcc-${GCCV}-plugin-dev" || apt-get install -y gcc-plugin-dev || true
-  echo "==> kernel source matching the RUNNING kernel (needs deb-src enabled)"
+  # Ubuntu's `apt-get source linux` ships the debian.master packaging whose init/build-version
+  # helper makes `make bindeb-pkg` fail (mkdebian -> Makefile.package Error 127). Build the MAINLINE
+  # stable tarball of the SAME x.y series from kernel.org instead: it boots on this release and
+  # packages cleanly with bindeb-pkg. (Debian's source tree is mainline-compatible; only Ubuntu's isn't.)
+  KMAJMIN=$(uname -r | grep -oE '^[0-9]+\.[0-9]+')    # e.g. 6.8
+  KMAJ=${KMAJMIN%%.*}
   cd /usr/src
-  SRCVER=$(dpkg-query -W -f='${source:Version}' "linux-image-$KVER" 2>/dev/null || true)
-  CODENAME=$(. /etc/os-release 2>/dev/null; echo "$VERSION_CODENAME")
-  # pin to the running kernel's source version, else this release's current point release, else latest
-  apt-get source "linux=$SRCVER" 2>/dev/null || apt-get source "linux/$CODENAME" 2>/dev/null || apt-get source linux
-  SRC=$(find /usr/src -maxdepth 1 -type d -name 'linux-*' | sort | tail -1)
+  TARBALL="linux-${KMAJMIN}.tar.xz"
+  [ -f "$TARBALL" ] || wget -O "$TARBALL" "https://cdn.kernel.org/pub/linux/kernel/v${KMAJ}.x/${TARBALL}"
+  rm -rf "linux-${KMAJMIN}"
+  tar -xf "$TARBALL"
+  SRC="/usr/src/linux-${KMAJMIN}"
   cd "$SRC"
   cp "/boot/config-$KVER" .config
+  # mainline lacks Canonical's signing certs referenced by the stock config → clear the trusted /
+  # revocation key paths or the build aborts looking for debian/canonical-certs.pem.
+  scripts/config --disable SYSTEM_TRUSTED_KEYS --disable SYSTEM_REVOCATION_KEYS
+  scripts/config --set-str CONFIG_SYSTEM_TRUSTED_KEYS ""
+  scripts/config --set-str CONFIG_SYSTEM_REVOCATION_KEYS ""
+  scripts/config --set-str LOCALVERSION "-pavois"     # distinct name so grub/symlinks pick it over -generic
   echo "==> applying Pavois KSPP options (scripts/config ignores symbols this kernel lacks)"
   for o in $KSPP_ENABLE $NF_STACK; do scripts/config --enable "CONFIG_$o"; done
   for o in $KSPP_DISABLE; do scripts/config --disable "CONFIG_$o"; done
-  scripts/config --disable SYSTEM_TRUSTED_KEYS --disable SYSTEM_REVOCATION_KEYS
   make olddefconfig
   # abort early if the firewall stack got pruned anyway — never ship a firewall-less kernel
   grep -qE '^CONFIG_NF_TABLES=[ym]' .config || { echo "ERROR: CONFIG_NF_TABLES missing after olddefconfig; the built kernel would have no nftables firewall. Aborting." >&2; exit 1; }
   echo "==> building (long)"; make -j"$(nproc)" bindeb-pkg
-  echo "==> installing"; dpkg -i ../linux-image-*.deb
+  echo "==> installing"; dpkg -i ../linux-image-*.deb ../linux-headers-*.deb
   update-grub
   # ensure the /vmlinuz + /initrd.img top-level symlinks point to the newest kernel (lynis
   # KRNL-5788): purging the stock cloud kernels can leave them dangling/absent. Reproducible,
@@ -73,4 +83,14 @@ command -v apt-get >/dev/null 2>&1 || { echo "this script is for ubuntu2404 (nee
   # KSPP sanity: warn if struct-layout randomization silently ended up disabled
   grep -qE '^CONFIG_(RANDSTRUCT_FULL|GCC_PLUGIN_RANDSTRUCT)=y' "/boot/config-$NV" 2>/dev/null || \
     echo "WARNING: randstruct is NONE in $NV (symbol renamed?) — struct layout not randomized." >&2
+  # The kernel is built: drop the toolchain so the hardened box ships no compiler
+  # (CIS/lynis HRDN-7222 / posture-no-compilers). A re-run reinstalls it at the top.
+  echo "==> removing build toolchain (compiler-free hardened host)"
+  apt-get purge -y build-essential gcc g++ cpp "gcc-${GCCV}" "g++-${GCCV}" "cpp-${GCCV}" \
+    "gcc-${GCCV}-plugin-dev" >/dev/null 2>&1 || true
+  apt-get autoremove --purge -y >/dev/null 2>&1 || true
+  # drop the ~1.5 GB source tree + tarball + .deb (no longer needed once installed): frees disk
+  # and, critically, stops AIDE's integrity init from checksumming tens of thousands of kernel-
+  # source files for many minutes on every subsequent hardening run.
+  rm -rf "$SRC" "/usr/src/$TARBALL" /usr/src/linux-image-*.deb /usr/src/linux-headers-*.deb 2>/dev/null || true
   echo "==> DONE — reboot into the hardened kernel, then re-scan with Pavois."
