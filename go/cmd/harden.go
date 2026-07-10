@@ -1529,8 +1529,12 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		return strings.TrimSpace(string(o))
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "pavois: ensuring cinc-client on %s…\n", target)
-	ensure := "command -v cinc-apply >/dev/null || curl -L https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc"
-	if err := run("ssh", sshTTY(target, ensure)...); err != nil {
+	// Run the bootstrap AS ROOT (outer sudo -S, password on stdin) and let the installer run
+	// without a nested sudo: a naked `curl | sudo bash` prompts for a password on a hardened
+	// target that has no NOPASSWD (the correct posture), and hangs forever over the -tt pty.
+	// Under the outer sudo we are already root, so the install writes to /opt directly.
+	ensure := sudoCmd("bash -c 'command -v cinc-apply >/dev/null || curl -L https://omnitruck.cinc.sh/install.sh | bash -s -- -P cinc'")
+	if err := runSudoTTY(ensure); err != nil {
 		return fmt.Errorf("install cinc-client: %w", err)
 	}
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: copying recipe…")
