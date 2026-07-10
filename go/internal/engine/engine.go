@@ -607,10 +607,30 @@ func RunOnTarget(o Options) (int, error) {
 	}
 
 	_, _ = fmt.Fprintf(os.Stderr, "  ensuring cinc-auditor on %s…\n", o.Target)
-	ensure := "command -v cinc-auditor >/dev/null 2>&1 || command -v inspec >/dev/null 2>&1 || " +
-		"curl -L https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc-auditor"
-	if err := ssh(ensure); err != nil {
-		return 2, fmt.Errorf("ensure cinc-auditor on target: %w", err)
+	// FIRST check presence with NO sudo — cinc-auditor is world-executable in PATH, and a hardened
+	// target (use_pty) blocks a naked non-tty sudo, so we must never need sudo just to CHECK (that
+	// broke the post-harden re-scan). Only if it is genuinely absent do we sudo-install it.
+	checkArgs := append(append([]string{}, base...), o.Target, "command -v cinc-auditor >/dev/null 2>&1 || command -v inspec >/dev/null 2>&1")
+	if exec.Command("ssh", checkArgs...).Run() != nil { //nolint:gosec // fixed args, operator target
+		ensureSudo := "sudo "
+		if o.SudoPass != "" {
+			ensureSudo = "sudo -S "
+		}
+		// Install AS ROOT, downloading the installer to a FILE then running it (a `curl | bash` pipe
+		// or a nested `sudo bash` wedges on the target). Runs over ssh WITHOUT -tt and pipes the
+		// password: `ssh -tt` + stdin races the pty line discipline and `sudo -S` times out on rhel9;
+		// a plain pipe to sudo -S is reliable and the fresh (not-yet-hardened) target has no use_pty
+		// yet. The password never reaches argv. cinc-auditor absent -> pavois installs it itself.
+		install := ensureSudo + "sh -c 'curl -fsSL https://omnitruck.cinc.sh/install.sh -o /tmp/pavois-cinc-install.sh && sh /tmp/pavois-cinc-install.sh -P cinc-auditor'"
+		instArgs := append(append([]string{}, base...), o.Target, install)
+		ec := exec.Command("ssh", instArgs...) //nolint:gosec // fixed args, operator target
+		ec.Stdout, ec.Stderr = os.Stderr, os.Stderr
+		if o.Sudo && o.SudoPass != "" {
+			ec.Stdin = strings.NewReader(o.SudoPass + "\n")
+		}
+		if err := ec.Run(); err != nil {
+			return 2, fmt.Errorf("ensure cinc-auditor on target: %w", err)
+		}
 	}
 
 	const remoteProf, remoteJSON = "/tmp/pavois-profile", "/tmp/pavois-out.json"
@@ -630,11 +650,15 @@ func RunOnTarget(o Options) (int, error) {
 	if std == "" {
 		std = "_default" // no standard selected -> the merged rules use their most-secure threshold
 	}
-	exe := fmt.Sprintf("%senv CHEF_LICENSE=accept-silent $(command -v cinc-auditor || command -v inspec) "+
-		"exec %s -t local:// --no-create-lockfile --input pavois_standard=%s --reporter json:%s", sudo, remoteProf, std, remoteJSON)
+	cincCmd := fmt.Sprintf("env CHEF_LICENSE=accept-silent $(command -v cinc-auditor || command -v inspec) "+
+		"exec %s -t local:// --no-create-lockfile --input pavois_standard=%s --reporter json:%s", remoteProf, std, remoteJSON)
 	if len(o.Controls) > 0 { // single-rule iteration: run only these controls
-		exe += " --controls " + strings.Join(o.Controls, " ")
+		cincCmd += " --controls " + strings.Join(o.Controls, " ")
 	}
+	// cinc-auditor must NOT inherit the -tt pty as stdin: on some targets (rhel9) train-local goes
+	// interactive on a tty and hangs, producing no report. `sudo -S` still reads the password from
+	// the pty, then the scan runs under `sh -c` with stdin on /dev/null. cincCmd has no single quotes.
+	exe := sudo + "sh -c '" + cincCmd + " </dev/null'"
 	_, _ = fmt.Fprintf(os.Stderr, "  scanning %s on the target (local, fast)…\n", o.Target)
 	rc := 0
 	if err := ssh(exe); err != nil {

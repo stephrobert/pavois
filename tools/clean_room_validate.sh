@@ -47,8 +47,8 @@ provision(){
   # substrate normalization (NOT hardening): a real server is patched and has no cloud-init
   # NOPASSWD. pavois still sudos with a password via PAVOIS_SUDO_PASSWORD.
   say "substrate: apt upgrade + drop cloud-init NOPASSWD"
-  vrun "cloud-init status --wait >/dev/null 2>&1 || true"   # let first-boot cloud-init release the apt lock
-  vrun "export DEBIAN_FRONTEND=noninteractive; apt-get update -qq && apt-get -y -qq upgrade" 2>&1 | tail -2
+  vrun "cloud-init status --wait >/dev/null 2>&1 || true"   # let first-boot cloud-init release the pkg lock
+  vrun "if command -v apt-get >/dev/null; then export DEBIAN_FRONTEND=noninteractive; apt-get update -qq && apt-get -y -qq upgrade; elif command -v dnf >/dev/null; then dnf -y -q upgrade; fi" 2>&1 | tail -2
   vrun "rm -f /etc/sudoers.d/90-cloud-init-users; echo \"$CIUSER ALL=(ALL) ALL\" > /etc/sudoers.d/50-$CIUSER; chmod 0440 /etc/sudoers.d/50-$CIUSER; visudo -cf /etc/sudoers.d/50-$CIUSER"
   vrun "systemctl reboot" || true; sleep 8; waitssh
 }
@@ -64,7 +64,7 @@ kernel(){
 partition(){
   say "3 LVM PARTITIONS (delivered recipe)"
   scp -o StrictHostKeyChecking=no -i "$KEY" docs/reference/partition-build/$OS.sh "$TARGET:/tmp/p.sh" >/dev/null
-  vrun "apt-get install -y rsync >/dev/null 2>&1; bash /tmp/p.sh" 2>&1 | grep -iE '==>|migrated|FATAL|fstab' | tail -20
+  vrun "bash /tmp/p.sh" 2>&1 | grep -iE '==>|migrated|FATAL|fstab|relabel' | tail -20
   vrun "systemctl reboot" || true; sleep 8; waitssh
   vrun "mount | grep -c vghard; apt-get check 2>&1 | tail -1"
 }
@@ -72,7 +72,7 @@ partition(){
 harden(){
   say "4 HARDEN + SCAN + LYNIS (via harness)"
   # install a recent lynis so the harness step 6 can measure (operator-side tool, not hardening)
-  vrun "test -x /opt/lynis/lynis || { cd /opt && wget -q https://github.com/CISOfy/lynis/archive/refs/tags/3.1.4.tar.gz -O /tmp/l.tgz && tar -xzf /tmp/l.tgz -C /opt && mv /opt/lynis-3.1.4 /opt/lynis; }; echo lynis \$(/opt/lynis/lynis show version 2>/dev/null)"
+  vrun "test -x /opt/lynis/lynis || { cd /opt && curl -sSL https://github.com/CISOfy/lynis/archive/refs/tags/3.1.4.tar.gz -o /tmp/l.tgz && tar -xzf /tmp/l.tgz -C /opt && mv /opt/lynis-3.1.4 /opt/lynis; }; echo lynis \$(cd /opt/lynis && ./lynis show version 2>/dev/null)"
   PAVOIS_SUDO_PASSWORD="$PAVOIS_SUDO_PASSWORD" tools/harden_validate.sh "$OS" "$TARGET" "$KEY" "$CIUSER"
 }
 
