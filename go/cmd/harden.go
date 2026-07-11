@@ -1513,13 +1513,15 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		}
 		return "sudo " + rest
 	}
-	// Run a sudo command over ssh WITHOUT a forced -tt: `ssh -tt` + a piped password races the pty
-	// line discipline and `sudo -S` times out ("a password is required") on rhel9. Pavois hardens
-	// sudo with `use_pty` (not `requiretty`), which allocates the pty for the COMMAND and does NOT
-	// require the caller to have one, so a plain pipe to `sudo -S` is reliable pre- and post-harden;
-	// the password stays on stdin, never argv.
+	// cinc-apply needs a controlling terminal (-tt) to actually CONVERGE — without one it runs but
+	// applies nothing (silent no-op). But `ssh -tt` + a naked piped password races the pty line
+	// discipline and `sudo -S` times out on rhel9. So: force -tt for the tty, but READ the password
+	// from ssh-stdin into a shell var first (draining the pty) and feed it to `sudo -S` via a bash
+	// here-string — no race, and the password never reaches argv. Empty sudoPass (NOPASSWD) just
+	// leaves __P empty, which sudo ignores.
 	runSudoTTY := func(remote string) error {
-		args := append(append([]string{}, sshOpts()...), target, remote)
+		wrapped := "IFS= read -r __P; " + remote + " <<<\"$__P\""
+		args := append(append([]string{"-tt"}, sshOpts()...), target, wrapped)
 		c := exec.Command("ssh", args...) //nolint:gosec // fixed args, operator target
 		c.Stdout, c.Stderr = os.Stderr, os.Stderr
 		if sudoPass != "" {
@@ -1535,19 +1537,21 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		return strings.TrimSpace(string(o))
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "pavois: ensuring cinc-client on %s…\n", target)
-	// Bootstrap the cinc client AS ROOT (sudo first), downloading the installer to a FILE then
-	// running it — a `curl | bash` pipe or a nested `sudo bash` wedges on the target. Run over ssh
-	// WITHOUT -tt and pipe the password: `ssh -tt` + stdin races the pty line discipline and
-	// `sudo -S` times out ("a password is required") on rhel9; a plain pipe to sudo -S is reliable,
-	// the fresh target has no requiretty yet, and the password never reaches argv.
-	ensure := sudoCmd("bash -c 'command -v cinc-apply >/dev/null || { curl -fsSL https://omnitruck.cinc.sh/install.sh -o /tmp/pavois-cinc-install.sh && sh /tmp/pavois-cinc-install.sh -P cinc; }'")
-	ec := exec.Command("ssh", append(append(sshOpts(), target), ensure)...) //nolint:gosec // fixed args, operator target
-	ec.Stdout, ec.Stderr = os.Stderr, os.Stderr
-	if sudoPass != "" {
-		ec.Stdin = strings.NewReader(sudoPass + "\n")
-	}
-	if err := ec.Run(); err != nil {
-		return fmt.Errorf("install cinc-client: %w", err)
+	// FIRST check presence with NO sudo — a hardened target (use_pty) blocks a naked non-tty sudo,
+	// so we must never need sudo just to CHECK (that breaks the post-harden re-apply). Only if
+	// cinc-apply is genuinely absent do we sudo-install it: as root (sudo first), download the
+	// installer to a FILE then run it (a `curl | bash` pipe / nested sudo wedges), over ssh WITHOUT
+	// -tt and piping the password (an -tt pty races `sudo -S` on rhel9). Password never hits argv.
+	if err := exec.Command("ssh", append(append(sshOpts(), target), "command -v cinc-apply >/dev/null 2>&1")...).Run(); err != nil { //nolint:gosec // fixed args, operator target
+		ensure := sudoCmd("bash -c 'curl -fsSL https://omnitruck.cinc.sh/install.sh -o /tmp/pavois-cinc-install.sh && sh /tmp/pavois-cinc-install.sh -P cinc'")
+		ec := exec.Command("ssh", append(append(sshOpts(), target), ensure)...) //nolint:gosec // fixed args, operator target
+		ec.Stdout, ec.Stderr = os.Stderr, os.Stderr
+		if sudoPass != "" {
+			ec.Stdin = strings.NewReader(sudoPass + "\n")
+		}
+		if err := ec.Run(); err != nil {
+			return fmt.Errorf("install cinc-client: %w", err)
+		}
 	}
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: copying recipe…")
 	if err := run("scp", append(append(sshOpts(), tmp.Name()), target+":/tmp/pavois-harden.rb")...); err != nil {

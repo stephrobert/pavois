@@ -590,17 +590,19 @@ func RunOnTarget(o Options) (int, error) {
 		return c.Run()
 	}
 	ssh := func(remote string) error {
-		// -tt forces a pseudo-tty so `sudo` keeps working even under `Defaults requiretty`
-		// (ANSSI BP-028 R39, which pavois itself can apply). The report is fetched via scp
-		// (a file), so tty CRLF translation never corrupts the parsed output.
-		c := exec.Command("ssh", append(append([]string{"-tt"}, base...), o.Target, remote)...)
+		// A hardened target has `Defaults use_pty`, which needs a controlling tty (-tt) or sudo dies
+		// with "a password is required"; but `ssh -tt` + a naked piped password races the pty line
+		// discipline and sudo times out. So when we have a password: force -tt AND drain it from
+		// ssh-stdin into a shell var first, feeding sudo via a bash here-string (no race, off argv).
+		// With no password (NOPASSWD) skip -tt entirely.
+		args := append(append([]string{}, base...), o.Target, remote)
+		if o.Sudo && o.SudoPass != "" {
+			wrapped := "IFS= read -r __P; " + remote + " <<<\"$__P\""
+			args = append(append([]string{"-tt"}, base...), o.Target, wrapped)
+		}
+		c := exec.Command("ssh", args...)
 		c.Stderr = os.Stderr
 		if o.Sudo && o.SudoPass != "" {
-			// Least-privilege scanner account (no NOPASSWD): feed the sudo password to the
-			// remote `sudo -S` over stdin — NEVER argv, so it can't leak via `ps` on either
-			// host. -tt writes it into the pty, where `sudo -S` reads it; a command that does
-			// not sudo just ignores the extra line. Sudo caches the credential per session,
-			// so the single line covers the one sudo in each remote command.
 			c.Stdin = strings.NewReader(o.SudoPass + "\n")
 		}
 		return c.Run()
