@@ -60,6 +60,8 @@ def main():
     ap.add_argument("--ref", required=True)
     ap.add_argument("--controls", default="")
     ap.add_argument("--auto-family", action="store_true")
+    ap.add_argument("--mirror", action="store_true",
+                    help="onboard a sibling: add target to EVERY control the ref applies to")
     ap.add_argument("--exclude", default="")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
@@ -77,7 +79,16 @@ def main():
         d = yaml.load(f)
 
     exclude = {c for c in a.exclude.split(",") if c}
-    if a.auto_family:
+    if a.mirror:
+        # onboard a sibling OS: extend the target onto EVERY control the ref already applies to,
+        # mirroring the ref's @os values. Used to seed a new release from its closest sibling
+        # (e.g. ubuntu2604 from ubuntu2404) — 26.04 hardens like 24.04.
+        want = [
+            c for c, v in d.items()
+            if isinstance(v, dict) and isinstance(v.get("applicable_os"), list)
+            and a.ref in v["applicable_os"] and a.target not in v["applicable_os"]
+        ]
+    elif a.auto_family:
         anchors = FAMILY[a.target]
         want = [
             c for c, v in d.items()
