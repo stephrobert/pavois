@@ -175,37 +175,51 @@ def _kmod_ext(L):
     return None
 
 
+# The kernel config must be PROVEN, never assumed. A `set: false` control asserts the option is
+# absent from the config: if the config source itself is missing or unreadable (RHEL ships
+# /boot/config-* as 0600, and a scan without --sudo cannot read it), stdout is empty and
+# `should_not match` is satisfied by NOTHING. That is a vacuous pass: the control reports
+# compliant without a shred of evidence, which is exactly the failure mode pavois exists to
+# expose in OVAL scanners. So the command emits a marker when there is no config to read, and
+# every kconfig control asserts the marker is absent BEFORE asserting the option.
+_KCONFIG_NONE = "PAVOIS_NO_KERNEL_CONFIG"
+_KCONFIG_SRC = (
+    'C=/boot/config-$(uname -r); if [ -r \\"$C\\" ]; then cat \\"$C\\"; '
+    "elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; "
+    f"else echo {_KCONFIG_NONE}; fi"
+)
+
+
 def _kconfig_exp(p):
     opt = p["option"]
-    grep = (
-        f"grep -h '^{opt}=' /boot/config-$(uname -r) 2>/dev/null; "
-        f"zcat /proc/config.gz 2>/dev/null | grep '^{opt}='"
-    )
+    cmd = f"{_KCONFIG_SRC} | grep -E '^({opt}=|{_KCONFIG_NONE})'"
     neg = "" if p["set"] else "_not"
     return [
-        f'describe command("{grep}") do',
+        f'describe command("{cmd}") do',
+        f"  its('stdout') {{ should_not match(/{_KCONFIG_NONE}/) }}",
         f"  its('stdout') {{ should{neg} match(/^{opt}={p['value']}$/) }}",
         "end",
     ]
 
 
 def _kconfig_ext(L):
-    if len(L) != 3 or L[2] != "end":
+    if len(L) != 4 or L[3] != "end":
         return None
     m0 = re.fullmatch(
-        r"""describe command\("grep -h '\^(CONFIG_\w+)=' /boot/config-\$\(uname -r\) """
-        r"""2>/dev/null; zcat /proc/config\.gz 2>/dev/null \| grep '\^(CONFIG_\w+)='"\) do""",
+        r"describe command\(\".*\| grep -E '\^\((CONFIG_\w+)=\|" + _KCONFIG_NONE + r"\)'\"\) do",
         L[0],
     )
-    m1 = re.fullmatch(
-        r"  its\('stdout'\) \{ should(_not)? match\(/\^(CONFIG_\w+)=(.*?)\$/\) \}", L[1]
+    if not m0 or L[1] != f"  its('stdout') {{ should_not match(/{_KCONFIG_NONE}/) }}":
+        return None
+    m2 = re.fullmatch(
+        r"  its\('stdout'\) \{ should(_not)? match\(/\^(CONFIG_\w+)=(.*?)\$/\) \}", L[2]
     )
-    if m0 and m1 and m0.group(1) == m0.group(2) == m1.group(2):
+    if m2 and m0.group(1) == m2.group(2):
         return {
             "name": "kconfig",
-            "option": m1.group(2),
-            "value": m1.group(3),
-            "set": m1.group(1) is None,
+            "option": m2.group(2),
+            "value": m2.group(3),
+            "set": m2.group(1) is None,
         }
     return None
 
