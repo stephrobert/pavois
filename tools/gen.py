@@ -47,6 +47,7 @@ SCALAR = [
     "note",
     "exclusive_group",
     "danger",
+    "waiver",  # accepted risk: justification for a control we deliberately do NOT enforce
 ]
 NORMS = ["bp28", "nist", "pci-dss", "cis", "stig"]
 

@@ -111,7 +111,33 @@ def main(os_name, out_dir=None):
             "Do not edit by hand.\n\n" + "\n".join(ctrls),
             encoding="utf-8",
         )
-    print(f"{os_name}: {len(ref)} controls -> {out}  ({len(groups)} files)")
+    # Accepted risks -> an InSpec waiver file next to the controls. A control carrying a `waiver:`
+    # justification is one we deliberately do NOT enforce because enforcing it would break the host
+    # (e.g. noexec on /var kills apt) or because the check itself is defective. `run: false` makes
+    # cinc SKIP it, so it stops counting as a failure while the justification stays in the report —
+    # an auditable exception, the way OpenSCAP/CIS handle waivers.
+    waived = {
+        cid: {"run": False, "justification": ref[cid]["waiver"]}
+        for cid in sorted(ref)
+        if ref[cid].get("waiver")
+    }
+    wfile = out.parent / "waivers.yml"
+    if waived:
+        wfile.write_text(
+            "# Accepted risks (generated — do not edit by hand). Each control here is\n"
+            "# NOT enforced; the justification is what an auditor reads.\n"
+            "# Source: the `waiver:` field in docs/reference/rules.yml.\n"
+            + yaml.safe_dump(waived, sort_keys=True, allow_unicode=True, width=100),
+            encoding="utf-8",
+        )
+    elif wfile.exists():
+        wfile.unlink()
+    # A profile without inspec.yml is NOT runnable: cinc refuses the directory ("doesn't
+    # look like a supported profile structure"), and a scan that dies there can ship back
+    # a stale report. Fail loudly here instead.
+    if not (out.parent / "inspec.yml").exists():
+        sys.exit(f"{os_name}: missing {out.parent}/inspec.yml — the profile would not be runnable")
+    print(f"{os_name}: {len(ref)} controls -> {out}  ({len(groups)} files, {len(waived)} waived)")
 
 
 if __name__ == "__main__":

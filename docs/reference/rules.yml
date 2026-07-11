@@ -14516,6 +14516,7 @@ fileperm-sshd-drop-in-config:
   socle: SOCLE-CLD-FSP-159
   ssg: file_permissions_sshd_drop_in_config
   title: Verify Permissions on SSH Server Config File
+  waiver: 'Defective control: it asserts /etc/ssh/sshd_config.d is NOT executable by owner, but a DIRECTORY needs the owner-execute bit to be traversable at all — no mode satisfies both this check and a working sshd. The directory is hardened to 0700 (root-only). Waived until the upstream check is fixed.'
 fileperm-sshd-pub-key:
   applicable_os:
   - debian12
@@ -16853,9 +16854,10 @@ findloop-permissions-local-var-log:
     pci-dss: 10.3.1
   reboot_survivable: 'yes'
   remediation:
-    command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
+    command: 'for u in apt-daily apt-daily-upgrade unattended-upgrades sysstat-collect sysstat-summary dnf-makecache rpm-ostreed-automatic; do systemctl list-unit-files ${u}.service --no-legend 2>/dev/null | grep -q . || continue; mkdir -p /etc/systemd/system/${u}.service.d; printf ''[Service]\nUMask=0027\n'' > /etc/systemd/system/${u}.service.d/pavois-umask.conf; done; systemctl daemon-reload; find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true'
     name: fix-varlog-perms
-    not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
+    not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)" && { ! systemctl list-unit-files apt-daily.service --no-legend 2>/dev/null | grep -q . || test -e /etc/systemd/system/apt-daily.service.d/pavois-umask.conf; }
+    reason: 'the chmod alone does not hold: the log files are RE-CREATED by the services that write them (apt-daily, unattended-upgrades, sysstat run with UMask=0022 -> 0644), so the control drifts back to FAIL. The fix is at the source: a systemd drop-in sets UMask=0027 on those units, so every new log file is born 0640. The chmod only repairs what already exists.'
     resource: exec
   severity: medium
   socle: SOCLE-CLD-FSP-192
@@ -21586,6 +21588,7 @@ kmod-loading-disabled:
     name: sysctl
     value: '1'
   title: Disable loading and unloading of kernel modules
+  waiver: 'kernel.modules_disabled=1 permanently blocks module loading, which strands the nftables firewall (it needs nf_conntrack for `ct state`) and can cut SSH. Enforcing it would break a control we rank higher (a working host firewall). Accepted risk: modules stay loadable.'
 kmod-mac80211-disabled:
   applicable_os:
   - rhel9
@@ -25926,6 +25929,7 @@ mount-var-noexec:
     name: mount_option
     option: noexec
   title: Add noexec Option to /var
+  waiver: 'noexec on /var breaks apt/dnf: maintainer scripts and rpm scriptlets execute under /var, leaving the package manager unusable (no patching). CIS itself only asks for nodev,nosuid on /var. Accepted risk: /var keeps exec, and /var/tmp + /var/log DO carry noexec.'
 mount-var-nosuid:
   applicable_os:
   - debian12
@@ -27836,6 +27840,7 @@ partition-usr:
   socle: SOCLE-CLD-MNT-034
   ssg: partition_for_usr
   title: Ensure /usr Located On Separate Partition
+  waiver: 'A separate /usr filesystem must be mounted by the initramfs before switch-root; getting it wrong leaves the host unbootable, with no remote recovery. The security gain does not justify bricking a fleet. Accepted risk: /usr stays on the root filesystem.'
 partition-var:
   applicable_os:
   - debian12
