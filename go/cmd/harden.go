@@ -1615,6 +1615,11 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("converge: %w", err)
 		}
 	}
+	// SELinux (rhel/fedora): a config that cinc-apply writes via atomic temp+rename can inherit the
+	// wrong type (tmp_t/etc_t) instead of the target's, so a confined daemon IGNORES it — sshd skips
+	// a mislabeled drop-in and the whole harden silently has NO effect (grade unchanged). Relabel
+	// /etc so every dropped file gets its correct context. No-op off SELinux.
+	_ = runSudoTTY(sudoCmd("sh -c 'selinuxenabled 2>/dev/null && command -v restorecon >/dev/null 2>&1 && restorecon -R /etc 2>/dev/null; true'"))
 	if reboot && haReboot {
 		// Like Ansible's reboot module (wait_for_connection): wait for the connection to
 		// DROP (box going down), then for it to come back — a plain re-ping right away
