@@ -15,3 +15,11 @@ fi
 for os in "${oses[@]}"; do
   uv run --with pyyaml python3 tools/render_reference.py "$os"
 done
+
+# Real syntax gate: `cinc-auditor check` does NOT catch a broken Ruby string in a control
+# (it happily reported "0 errors" on a corpus that failed to parse at exec time). ruby -c does.
+fail=0
+for f in profiles/linux/*/controls/*.rb; do
+  ruby -c "$f" >/dev/null 2>&1 || { echo "SYNTAX ERROR in $f"; ruby -c "$f" 2>&1 | head -3; fail=1; }
+done
+[ "$fail" -eq 0 ] || { echo "render: the corpus does not parse — refusing to ship it"; exit 1; }
