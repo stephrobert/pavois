@@ -48,7 +48,7 @@ provision(){
   # NOPASSWD. pavois still sudos with a password via PAVOIS_SUDO_PASSWORD.
   say "substrate: apt upgrade + drop cloud-init NOPASSWD"
   vrun "cloud-init status --wait >/dev/null 2>&1 || true"   # let first-boot cloud-init release the pkg lock
-  vrun "if command -v apt-get >/dev/null; then export DEBIAN_FRONTEND=noninteractive; apt-get update -qq && apt-get -y -qq upgrade; elif command -v dnf >/dev/null; then dnf -y -q upgrade; fi" 2>&1 | tail -2
+  vrun "if command -v apt-get >/dev/null; then export DEBIAN_FRONTEND=noninteractive; apt-get update -qq && apt-get -y -qq upgrade; elif command -v dnf >/dev/null; then dnf clean all -q 2>/dev/null; dnf -y -q upgrade || true; fi" 2>&1 | tail -2
   vrun "rm -f /etc/sudoers.d/90-cloud-init-users; echo \"$CIUSER ALL=(ALL) ALL\" > /etc/sudoers.d/50-$CIUSER; chmod 0440 /etc/sudoers.d/50-$CIUSER; visudo -cf /etc/sudoers.d/50-$CIUSER"
   vrun "systemctl reboot" || true; sleep 8; waitssh
 }
