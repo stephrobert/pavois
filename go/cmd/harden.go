@@ -650,8 +650,15 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 			}
 			for _, k := range []string{"owner", "group", "mode", "content", "verify"} {
 				if v, ok := m[k]; ok {
-					setKV(files[path], path+"#"+k, s(v), "file "+k)
-					files[path][k] = s(v)
+					val := s(v)
+					// A config file must end with a newline: the stricter visudo in Ubuntu 26.04
+					// rejects a sudoers drop-in with no trailing line terminator ("missing line
+					// terminator at end of file"), which aborts the whole converge. Harmless elsewhere.
+					if k == "content" && val != "" && !strings.HasSuffix(val, "\n") {
+						val += "\n"
+					}
+					setKV(files[path], path+"#"+k, val, "file "+k)
+					files[path][k] = val
 				}
 			}
 		case "directory":
@@ -867,6 +874,11 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		}
 		if v, ok := fa["verify"]; ok { // e.g. visudo -cf %{path} — never ship an invalid file
 			_, _ = fmt.Fprintf(&b, "  verify '%s'\n", v)
+			// The verify still PROTECTS (invalid content is never written), but one rejected file
+			// must not abort the WHOLE converge — e.g. Ubuntu 26.04 ships sudo-rs, which rejects
+			// `Defaults logfile=…` ("unknown setting"), and without this that single control tanked
+			// every other one. Failure is logged; that control just stays a gap for its own scan.
+			b.WriteString("  ignore_failure true\n")
 		}
 		if !hasContent { // pure owner/perm fix: the `file` resource fails on a DIRECTORY or a
 			// missing path (cross-OS noise like /var/log/apt). Guard so it SKIPS instead of
