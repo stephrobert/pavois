@@ -3376,7 +3376,7 @@ cmdline-nousb:
   ssg: grub2_nousb_argument
   template:
     name: cmdline
-    param: kernel=ALL
+    param: nousb
   title: Disable Kernel Support for USB via Bootloader Configuration
 cmdline-page-alloc-shuffle:
   applicable_os:
@@ -14976,24 +14976,20 @@ fileperm-unauthorized-world-writable:
       - '  its(''stdout'') { should eq '''' }'
       - end
       fedora:
-      - only_if { file('/tmp').exist? }
-      - describe file('/tmp') do
-      - '  it { should_not be_writable.by(''other'') }'
+      - describe command('find / -xdev -type f -perm -0002 2>/dev/null | head -1') do
+      - "  its('stdout') { should eq '' }"
       - end
       rhel8:
-      - only_if { file('/tmp').exist? }
-      - describe file('/tmp') do
-      - '  it { should_not be_writable.by(''other'') }'
+      - describe command('find / -xdev -type f -perm -0002 2>/dev/null | head -1') do
+      - "  its('stdout') { should eq '' }"
       - end
       rhel9:
-      - only_if { file('/tmp').exist? }
-      - describe file('/tmp') do
-      - '  it { should_not be_writable.by(''other'') }'
+      - describe command('find / -xdev -type f -perm -0002 2>/dev/null | head -1') do
+      - "  its('stdout') { should eq '' }"
       - end
       rhel10:
-      - only_if { file('/tmp').exist? }
-      - describe file('/tmp') do
-      - '  it { should_not be_writable.by(''other'') }'
+      - describe command('find / -xdev -type f -perm -0002 2>/dev/null | head -1') do
+      - "  its('stdout') { should eq '' }"
       - end
       ubuntu2204:
       - describe command('find / -xdev -type f -perm -0002 2>/dev/null | head -1') do
@@ -15109,21 +15105,25 @@ fileperm-unauthorized-world-writable:
         not_if: test -z "$(find / -xdev -type f -perm -0002 2>/dev/null | head -1)"
         resource: exec
       fedora:
-        mode: '0775'
-        path: /tmp
-        resource: file
+        command: find / -xdev -type f -perm -0002 -exec chmod o-w {} + 2>/dev/null || true
+        name: fix-world-writable
+        not_if: test -z "$(find / -xdev -type f -perm -0002 2>/dev/null | head -1)"
+        resource: exec
       rhel8:
-        mode: '0775'
-        path: /tmp
-        resource: file
+        command: find / -xdev -type f -perm -0002 -exec chmod o-w {} + 2>/dev/null || true
+        name: fix-world-writable
+        not_if: test -z "$(find / -xdev -type f -perm -0002 2>/dev/null | head -1)"
+        resource: exec
       rhel9:
-        mode: '0775'
-        path: /tmp
-        resource: file
+        command: find / -xdev -type f -perm -0002 -exec chmod o-w {} + 2>/dev/null || true
+        name: fix-world-writable
+        not_if: test -z "$(find / -xdev -type f -perm -0002 2>/dev/null | head -1)"
+        resource: exec
       rhel10:
-        mode: '0775'
-        path: /tmp
-        resource: file
+        command: find / -xdev -type f -perm -0002 -exec chmod o-w {} + 2>/dev/null || true
+        name: fix-world-writable
+        not_if: test -z "$(find / -xdev -type f -perm -0002 2>/dev/null | head -1)"
+        resource: exec
       ubuntu2204:
         command: find / -xdev -type f -perm -0002 -exec chmod o-w {} + 2>/dev/null || true
         name: fix-world-writable
@@ -16559,9 +16559,43 @@ findloop-file-permissions-ungroupowned:
   - ubuntu2404
   - ubuntu2604
   check:
-  - describe command('timeout 90 find / -xdev -nogroup 2>/dev/null') do
-  - '  its(''stdout.strip'') { should eq '''' }'
-  - end
+    '@os':
+      debian12:
+      - describe command('timeout 90 find / -xdev -nogroup -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      debian13:
+      - describe command('timeout 90 find / -xdev -nogroup -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      fedora:
+      - describe command('timeout 90 find / -xdev -nogroup -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      rhel8:
+      - describe command('timeout 90 find / -xdev -nogroup -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      rhel9:
+      - describe command('timeout 90 find / -xdev -nogroup -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      rhel10:
+      - describe command('timeout 90 find / -xdev -nogroup -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      ubuntu2204:
+      - describe command('timeout 90 find / -xdev -nogroup -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      ubuntu2404:
+      - describe command('timeout 90 find / -xdev -nogroup -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      ubuntu2604:
+      - describe command('timeout 90 find / -xdev -nogroup -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
   domain: Filesystem (scan)
   evidence_type: filesystem-state
   impact: 0.5
@@ -16718,9 +16752,39 @@ findloop-no-dirs-unowned-by-root:
   - ubuntu2404
   - ubuntu2604
   check:
-  - describe command('timeout 90 find / -xdev -type d -nouser 2>/dev/null') do
-  - '  its(''stdout.strip'') { should eq '''' }'
-  - end
+    '@os':
+      debian12:
+      - describe command('timeout 90 find / -xdev -type d -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      debian13:
+      - describe command('timeout 90 find / -xdev -type d -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      rhel8:
+      - describe command('timeout 90 find / -xdev -type d -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      rhel9:
+      - describe command('timeout 90 find / -xdev -type d -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      rhel10:
+      - describe command('timeout 90 find / -xdev -type d -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      ubuntu2204:
+      - describe command('timeout 90 find / -xdev -type d -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      ubuntu2404:
+      - describe command('timeout 90 find / -xdev -type d -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      ubuntu2604:
+      - describe command('timeout 90 find / -xdev -type d -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
   domain: Filesystem (scan)
   evidence_type: filesystem-state
   impact: 0.5
@@ -16756,9 +16820,43 @@ findloop-no-files-unowned-by-user:
   - ubuntu2404
   - ubuntu2604
   check:
-  - describe command('timeout 90 find / -xdev -type f -nouser 2>/dev/null') do
-  - '  its(''stdout.strip'') { should eq '''' }'
-  - end
+    '@os':
+      debian12:
+      - describe command('timeout 90 find / -xdev -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      debian13:
+      - describe command('timeout 90 find / -xdev -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      fedora:
+      - describe command('timeout 90 find / -xdev -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      rhel8:
+      - describe command('timeout 90 find / -xdev -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      rhel9:
+      - describe command('timeout 90 find / -xdev -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      rhel10:
+      - describe command('timeout 90 find / -xdev -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      ubuntu2204:
+      - describe command('timeout 90 find / -xdev -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      ubuntu2404:
+      - describe command('timeout 90 find / -xdev -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      ubuntu2604:
+      - describe command('timeout 90 find / -xdev -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null') do
+      - "  its('stdout.strip') { should eq '' }"
+      - end
   domain: Filesystem (scan)
   evidence_type: filesystem-state
   impact: 0.5
@@ -21359,7 +21457,7 @@ kmod-firewire-core-disabled:
   reboot_survivable: 'yes'
   remediation:
     action: blacklist
-    name: firewire_core
+    name: firewire-core
     reboot_required: true
     resource: kernel_module
   severity: low
@@ -22154,39 +22252,39 @@ logindefs-encrypt_method:
     '@os':
       debian12:
       - describe login_defs do
-      - '  its(''ENCRYPT_METHOD'') { should cmp ''YESCRYPT'' }'
+      - "  its('ENCRYPT_METHOD') { should match(/\\A(SHA512|YESCRYPT)\\z/i) }"
       - end
       debian13:
       - describe login_defs do
-      - '  its(''ENCRYPT_METHOD'') { should cmp ''YESCRYPT'' }'
+      - "  its('ENCRYPT_METHOD') { should match(/\\A(SHA512|YESCRYPT)\\z/i) }"
       - end
       fedora:
       - describe login_defs do
-      - '  its(''ENCRYPT_METHOD'') { should cmp ''YESCRYPT|SHA512'' }'
+      - "  its('ENCRYPT_METHOD') { should match(/\\A(SHA512|YESCRYPT)\\z/i) }"
       - end
       rhel8:
       - describe login_defs do
-      - '  its(''ENCRYPT_METHOD'') { should cmp ''YESCRYPT|SHA512'' }'
+      - "  its('ENCRYPT_METHOD') { should match(/\\A(SHA512|YESCRYPT)\\z/i) }"
       - end
       rhel9:
       - describe login_defs do
-      - '  its(''ENCRYPT_METHOD'') { should cmp ''SHA512'' }'
+      - "  its('ENCRYPT_METHOD') { should match(/\\A(SHA512|YESCRYPT)\\z/i) }"
       - end
       rhel10:
       - describe login_defs do
-      - '  its(''ENCRYPT_METHOD'') { should cmp ''SHA512'' }'
+      - "  its('ENCRYPT_METHOD') { should match(/\\A(SHA512|YESCRYPT)\\z/i) }"
       - end
       ubuntu2204:
       - describe login_defs do
-      - '  its(''ENCRYPT_METHOD'') { should cmp ''SHA512|YESCRYPT'' }'
+      - "  its('ENCRYPT_METHOD') { should match(/\\A(SHA512|YESCRYPT)\\z/i) }"
       - end
       ubuntu2404:
       - describe login_defs do
-      - '  its(''ENCRYPT_METHOD'') { should match(/\A(YESCRYPT|SHA512)\z/) }'
+      - "  its('ENCRYPT_METHOD') { should match(/\\A(SHA512|YESCRYPT)\\z/i) }"
       - end
       ubuntu2604:
       - describe login_defs do
-      - '  its(''ENCRYPT_METHOD'') { should match(/\A(YESCRYPT|SHA512)\z/) }'
+      - "  its('ENCRYPT_METHOD') { should match(/\\A(SHA512|YESCRYPT)\\z/i) }"
       - end
   domain: Accounts (login.defs)
   evidence_type: persistent-config
@@ -23576,6 +23674,26 @@ misc-ensure-pam-wheel-group-empty:
           '
         reason: removing wheel members revokes their su access, confirm each
         resource: manual
+      fedora:
+        command: getent group sugroup >/dev/null || groupadd -r sugroup; gpasswd -M '' sugroup >/dev/null 2>&1 || true; if grep -qE '^[[:space:]]*auth[[:space:]]+required[[:space:]]+pam_wheel\.so' /etc/pam.d/su; then sed -i -E 's|^([[:space:]]*auth[[:space:]]+required[[:space:]]+pam_wheel\.so.*)$|auth required pam_wheel.so use_uid group=sugroup|' /etc/pam.d/su; else sed -i '1i auth required pam_wheel.so use_uid group=sugroup' /etc/pam.d/su; fi
+        name: pam-wheel-empty-group
+        not_if: grep -qE 'pam_wheel\.so.*group=sugroup' /etc/pam.d/su
+        resource: exec
+      rhel8:
+        command: getent group sugroup >/dev/null || groupadd -r sugroup; gpasswd -M '' sugroup >/dev/null 2>&1 || true; if grep -qE '^[[:space:]]*auth[[:space:]]+required[[:space:]]+pam_wheel\.so' /etc/pam.d/su; then sed -i -E 's|^([[:space:]]*auth[[:space:]]+required[[:space:]]+pam_wheel\.so.*)$|auth required pam_wheel.so use_uid group=sugroup|' /etc/pam.d/su; else sed -i '1i auth required pam_wheel.so use_uid group=sugroup' /etc/pam.d/su; fi
+        name: pam-wheel-empty-group
+        not_if: grep -qE 'pam_wheel\.so.*group=sugroup' /etc/pam.d/su
+        resource: exec
+      rhel9:
+        command: getent group sugroup >/dev/null || groupadd -r sugroup; gpasswd -M '' sugroup >/dev/null 2>&1 || true; if grep -qE '^[[:space:]]*auth[[:space:]]+required[[:space:]]+pam_wheel\.so' /etc/pam.d/su; then sed -i -E 's|^([[:space:]]*auth[[:space:]]+required[[:space:]]+pam_wheel\.so.*)$|auth required pam_wheel.so use_uid group=sugroup|' /etc/pam.d/su; else sed -i '1i auth required pam_wheel.so use_uid group=sugroup' /etc/pam.d/su; fi
+        name: pam-wheel-empty-group
+        not_if: grep -qE 'pam_wheel\.so.*group=sugroup' /etc/pam.d/su
+        resource: exec
+      rhel10:
+        command: getent group sugroup >/dev/null || groupadd -r sugroup; gpasswd -M '' sugroup >/dev/null 2>&1 || true; if grep -qE '^[[:space:]]*auth[[:space:]]+required[[:space:]]+pam_wheel\.so' /etc/pam.d/su; then sed -i -E 's|^([[:space:]]*auth[[:space:]]+required[[:space:]]+pam_wheel\.so.*)$|auth required pam_wheel.so use_uid group=sugroup|' /etc/pam.d/su; else sed -i '1i auth required pam_wheel.so use_uid group=sugroup' /etc/pam.d/su; fi
+        name: pam-wheel-empty-group
+        not_if: grep -qE 'pam_wheel\.so.*group=sugroup' /etc/pam.d/su
+        resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-037
   ssg: ensure_pam_wheel_group_empty
@@ -24135,14 +24253,29 @@ misc-no-shelllogin-for-systemaccounts:
         not_if: 'test -z "$(awk -F: ''($3<1000 && $1!="root" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}'' /etc/passwd)"'
         resource: exec
       rhel8:
-        command: 'awk -F: ''($3<1000 && $1!="root" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}'' /etc/passwd | while read u; do usermod -s /usr/sbin/nologin "$u" 2>/dev/null; done; true'
+        command: "awk -F: '($3<1000 && $1!=\"root\" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}' /etc/passwd | while read u; do usermod -s /sbin/nologin \"$u\" 2>/dev/null; done; true"
         name: nologin-sysaccounts
-        not_if: 'test -z "$(awk -F: ''($3<1000 && $1!="root" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}'' /etc/passwd)"'
+        not_if: "test -z \"$(awk -F: '($3<1000 && $1!=\"root\" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}' /etc/passwd)\""
         resource: exec
       ubuntu2604:
         command: 'awk -F: ''($3<1000 && $1!="root" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}'' /etc/passwd | while read u; do usermod -s /usr/sbin/nologin "$u" 2>/dev/null; done; true'
         name: nologin-sysaccounts
         not_if: 'test -z "$(awk -F: ''($3<1000 && $1!="root" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}'' /etc/passwd)"'
+        resource: exec
+      fedora:
+        command: "awk -F: '($3<1000 && $1!=\"root\" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}' /etc/passwd | while read u; do usermod -s /sbin/nologin \"$u\" 2>/dev/null; done; true"
+        name: nologin-sysaccounts
+        not_if: "test -z \"$(awk -F: '($3<1000 && $1!=\"root\" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}' /etc/passwd)\""
+        resource: exec
+      rhel9:
+        command: "awk -F: '($3<1000 && $1!=\"root\" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}' /etc/passwd | while read u; do usermod -s /sbin/nologin \"$u\" 2>/dev/null; done; true"
+        name: nologin-sysaccounts
+        not_if: "test -z \"$(awk -F: '($3<1000 && $1!=\"root\" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}' /etc/passwd)\""
+        resource: exec
+      rhel10:
+        command: "awk -F: '($3<1000 && $1!=\"root\" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}' /etc/passwd | while read u; do usermod -s /sbin/nologin \"$u\" 2>/dev/null; done; true"
+        name: nologin-sysaccounts
+        not_if: "test -z \"$(awk -F: '($3<1000 && $1!=\"root\" && $7 !~ /nologin|false|sync|shutdown|halt/){print $1}' /etc/passwd)\""
         resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-046
@@ -24401,9 +24534,43 @@ misc-set-password-hashing-algorithm:
   - ubuntu2404
   - ubuntu2604
   check:
-  - describe command('grep -qrE \'pam_unix.so.*(sha512|yescrypt)\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
-  - '  its(''stdout.strip'') { should eq ''ok'' }'
-  - end
+    '@os':
+      debian12:
+      - describe command('grep -qrE \'pam_unix.so.*(sha512|yescrypt)\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      debian13:
+      - describe command('grep -qrE \'pam_unix.so.*(sha512|yescrypt)\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      fedora:
+      - describe login_defs do
+      - "  its('ENCRYPT_METHOD') { should match(/\\A(SHA512|YESCRYPT)\\z/i) }"
+      - end
+      rhel8:
+      - describe login_defs do
+      - "  its('ENCRYPT_METHOD') { should match(/\\A(SHA512|YESCRYPT)\\z/i) }"
+      - end
+      rhel9:
+      - describe login_defs do
+      - "  its('ENCRYPT_METHOD') { should match(/\\A(SHA512|YESCRYPT)\\z/i) }"
+      - end
+      rhel10:
+      - describe login_defs do
+      - "  its('ENCRYPT_METHOD') { should match(/\\A(SHA512|YESCRYPT)\\z/i) }"
+      - end
+      ubuntu2204:
+      - describe command('grep -qrE \'pam_unix.so.*(sha512|yescrypt)\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      ubuntu2404:
+      - describe command('grep -qrE \'pam_unix.so.*(sha512|yescrypt)\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      ubuntu2604:
+      - describe command('grep -qrE \'pam_unix.so.*(sha512|yescrypt)\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
   domain: Hardening (misc)
   evidence_type: persistent-config
   impact: 0.5
@@ -24458,6 +24625,30 @@ misc-set-password-hashing-algorithm:
           '
         reason: changing the pam_unix hashing option edits the PAM stack, apply via pam-auth-update / review
         resource: manual
+      fedora:
+        file: /etc/login.defs
+        key: ENCRYPT_METHOD
+        resource: conf_line
+        sep: space
+        value: YESCRYPT
+      rhel8:
+        file: /etc/login.defs
+        key: ENCRYPT_METHOD
+        resource: conf_line
+        sep: space
+        value: YESCRYPT
+      rhel9:
+        file: /etc/login.defs
+        key: ENCRYPT_METHOD
+        resource: conf_line
+        sep: space
+        value: YESCRYPT
+      rhel10:
+        file: /etc/login.defs
+        key: ENCRYPT_METHOD
+        resource: conf_line
+        sep: space
+        value: YESCRYPT
   severity: medium
   socle: SOCLE-CLD-GEN-051
   ssg:
@@ -24575,14 +24766,17 @@ misc-sssd-ldap-configure-tls-reqcert:
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       rhel8:
+      - only_if { file('/etc/sssd/sssd.conf').exist? }
       - describe command('grep -qriE \'^[[:space:]]*ldap_tls_reqcert[[:space:]]*=[[:space:]]*(demand|hard)\' /etc/sssd/ 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       rhel9:
+      - only_if { file('/etc/sssd/sssd.conf').exist? }
       - describe command('grep -qriE \'^[[:space:]]*ldap_tls_reqcert[[:space:]]*=[[:space:]]*(demand|hard)\' /etc/sssd/ 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       rhel10:
+      - only_if { file('/etc/sssd/sssd.conf').exist? }
       - describe command('grep -qriE \'^[[:space:]]*ldap_tls_reqcert[[:space:]]*=[[:space:]]*(demand|hard)\' /etc/sssd/ 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
@@ -24774,9 +24968,47 @@ misc-wireless-disable-interfaces:
   - ubuntu2404
   - ubuntu2604
   check:
-  - describe command('nmcli radio all 2>/dev/null | grep -qiw enabled && echo ko || echo ok') do
-  - '  its(''stdout.strip'') { should eq ''ok'' }'
-  - end
+    '@os':
+      debian12:
+      - describe command('nmcli radio all 2>/dev/null | grep -qiw enabled && echo ko || echo ok') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      debian13:
+      - describe command('nmcli radio all 2>/dev/null | grep -qiw enabled && echo ko || echo ok') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      fedora:
+      - only_if { command('ls -d /sys/class/net/*/wireless 2>/dev/null | grep -q .').exit_status == 0 }
+      - describe command('nmcli radio all 2>/dev/null | grep -qiw enabled && echo ko || echo ok') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      rhel8:
+      - only_if { command('ls -d /sys/class/net/*/wireless 2>/dev/null | grep -q .').exit_status == 0 }
+      - describe command('nmcli radio all 2>/dev/null | grep -qiw enabled && echo ko || echo ok') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      rhel9:
+      - only_if { command('ls -d /sys/class/net/*/wireless 2>/dev/null | grep -q .').exit_status == 0 }
+      - describe command('nmcli radio all 2>/dev/null | grep -qiw enabled && echo ko || echo ok') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      rhel10:
+      - only_if { command('ls -d /sys/class/net/*/wireless 2>/dev/null | grep -q .').exit_status == 0 }
+      - describe command('nmcli radio all 2>/dev/null | grep -qiw enabled && echo ko || echo ok') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      ubuntu2204:
+      - describe command('nmcli radio all 2>/dev/null | grep -qiw enabled && echo ko || echo ok') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      ubuntu2404:
+      - describe command('nmcli radio all 2>/dev/null | grep -qiw enabled && echo ko || echo ok') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      ubuntu2604:
+      - describe command('nmcli radio all 2>/dev/null | grep -qiw enabled && echo ko || echo ok') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
   domain: Hardening (misc)
   evidence_type: effective-runtime
   impact: 0.5
@@ -29468,11 +29700,24 @@ pkg-dnf-plugin-subscription-manager-installed:
   severity: medium
   socle: SOCLE-CLD-PKG-026
   ssg: package_dnf-plugin-subscription-manager_installed
-  template:
-    installed: true
-    name: package
-    package: dnf-plugin-subscription-manager
   title: Install dnf-plugin-subscription-manager Package
+  check:
+    '@os':
+      rhel8:
+      - only_if { file('/etc/redhat-release').content.to_s =~ /Red Hat/ }
+      - describe package('dnf-plugin-subscription-manager') do
+      - '  it { should be_installed }'
+      - end
+      rhel10:
+      - only_if { file('/etc/redhat-release').content.to_s =~ /Red Hat/ }
+      - describe package('dnf-plugin-subscription-manager') do
+      - '  it { should be_installed }'
+      - end
+      rhel9:
+      - only_if { file('/etc/redhat-release').content.to_s =~ /Red Hat/ }
+      - describe package('dnf-plugin-subscription-manager') do
+      - '  it { should be_installed }'
+      - end
 pkg-dnsmasq-removed:
   applicable_os:
   - debian12
@@ -30375,7 +30620,6 @@ pkg-logrotate-installed:
 pkg-mailx-installed:
   applicable_os:
   - rhel8
-  - rhel10
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -35988,10 +36232,19 @@ service-pcscd-enabled:
   - rhel9
   - rhel10
   check:
-  - describe service('pcscd.service') do
-  - '  it { should be_enabled }'
-  - '  it { should be_running }'
-  - end
+    '@os':
+      rhel9:
+      - only_if { command('authselect current 2>/dev/null | grep -q with-smartcard').exit_status == 0 }
+      - describe service('pcscd.service') do
+      - '  it { should be_enabled }'
+      - '  it { should be_running }'
+      - end
+      rhel10:
+      - only_if { command('authselect current 2>/dev/null | grep -q with-smartcard').exit_status == 0 }
+      - describe service('pcscd.service') do
+      - '  it { should be_enabled }'
+      - '  it { should be_running }'
+      - end
   domain: systemd services
   evidence_type: effective-runtime
   impact: 0.5
@@ -36463,16 +36716,19 @@ service-sssd-enabled:
       - '  it { should be_running }'
       - end
       rhel8:
+      - only_if { file('/etc/sssd/sssd.conf').exist? }
       - describe service('sssd.service') do
       - '  it { should be_enabled }'
       - '  it { should be_running }'
       - end
       rhel9:
+      - only_if { file('/etc/sssd/sssd.conf').exist? }
       - describe service('sssd.service') do
       - '  it { should be_enabled }'
       - '  it { should be_running }'
       - end
       rhel10:
+      - only_if { file('/etc/sssd/sssd.conf').exist? }
       - describe service('sssd.service') do
       - '  it { should be_enabled }'
       - '  it { should be_running }'
@@ -36599,11 +36855,13 @@ service-systemd-journal-upload-enabled:
       - '  it { should be_running }'
       - end
       fedora:
+      - only_if { command('grep -qsE "^URL=" /etc/systemd/journal-upload.conf').exit_status == 0 }
       - describe service('systemd-journal-upload.service') do
       - '  it { should be_enabled }'
       - '  it { should be_running }'
       - end
       rhel8:
+      - only_if { command('grep -qsE "^URL=" /etc/systemd/journal-upload.conf').exit_status == 0 }
       - describe service('systemd-journal-upload.service') do
       - '  it { should be_enabled }'
       - '  it { should be_running }'
@@ -36626,11 +36884,13 @@ service-systemd-journal-upload-enabled:
       - '  it { should be_running }'
       - end
       rhel9:
+      - only_if { command('grep -qsE "^URL=" /etc/systemd/journal-upload.conf').exit_status == 0 }
       - describe service('systemd-journal-upload.service') do
       - '  it { should be_enabled }'
       - '  it { should be_running }'
       - end
       rhel10:
+      - only_if { command('grep -qsE "^URL=" /etc/systemd/journal-upload.conf').exit_status == 0 }
       - describe service('systemd-journal-upload.service') do
       - '  it { should be_enabled }'
       - '  it { should be_running }'
@@ -38734,9 +38994,21 @@ ssh-use-directory-configuration:
   - rhel9
   - rhel10
   check:
-  - describe command('sshd -T') do
-  - '  its(''stdout'') { should match(/^remediation\s+probably\ already\ happened,\ ''\/etc\/ssh\/sshd_config\.d\/sshd_config_original\.conf''\ already\ exists,\ not\ doing\ anything\.$/i) }'
-  - end
+    '@os':
+      rhel9:
+      - describe command('grep -iE "^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\\.d/\\*\\.conf" /etc/ssh/sshd_config') do
+      - "  its('stdout') { should match(/\\S/) }"
+      - end
+      - describe directory('/etc/ssh/sshd_config.d') do
+      - '  it { should exist }'
+      - end
+      rhel10:
+      - describe command('grep -iE "^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\\.d/\\*\\.conf" /etc/ssh/sshd_config') do
+      - "  its('stdout') { should match(/\\S/) }"
+      - end
+      - describe directory('/etc/ssh/sshd_config.d') do
+      - '  it { should exist }'
+      - end
   domain: SSH
   evidence_type: effective-runtime
   impact: 0.5
@@ -38746,6 +39018,18 @@ ssh-use-directory-configuration:
   socle: SOCLE-CLD-SSH-034
   ssg: sshd_use_directory_configuration
   title: Distribute the SSH Server configuration to multiple files in a config directory.
+  remediation:
+    '@os':
+      rhel9:
+        command: mkdir -p /etc/ssh/sshd_config.d; grep -qiE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\.d/\*\.conf' /etc/ssh/sshd_config || sed -i '1i Include /etc/ssh/sshd_config.d/*.conf' /etc/ssh/sshd_config; sshd -t
+        name: sshd-include-dropin-dir
+        not_if: grep -qiE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\.d/\*\.conf' /etc/ssh/sshd_config
+        resource: exec
+      rhel10:
+        command: mkdir -p /etc/ssh/sshd_config.d; grep -qiE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\.d/\*\.conf' /etc/ssh/sshd_config || sed -i '1i Include /etc/ssh/sshd_config.d/*.conf' /etc/ssh/sshd_config; sshd -t
+        name: sshd-include-dropin-dir
+        not_if: grep -qiE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\.d/\*\.conf' /etc/ssh/sshd_config
+        resource: exec
 ssh-use-strong-ciphers:
   applicable_os:
   - debian12
