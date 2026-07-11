@@ -520,6 +520,28 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 			opts, _ := m["options"].(map[string]any)
 			if o, ok := opts[r.Choose].(map[string]any); ok {
 				inst[s(o["package"])] = true
+				// An exclusive group means ONE technology. Installing nftables while firewalld
+				// is still running leaves two firewalls fighting: firewalld owns the live ruleset,
+				// the chosen one is inert, and the control fails anyway (seen on rhel10, where
+				// firewalld is up by default). Stop and disable the options we did NOT pick — only
+				// the ones actually present, so this is a no-op where they are not installed.
+				var others []string
+				for name, v := range opts {
+					vo, _ := v.(map[string]any)
+					if name == r.Choose || vo == nil || s(vo["service"]) == "" {
+						continue
+					}
+					others = append(others, s(vo["service"]))
+				}
+				if len(others) > 0 {
+					sort.Strings(others)
+					execs = append(execs, execRem{
+						name: cid + "-exclusive",
+						command: "for s in " + strings.Join(others, " ") +
+							"; do systemctl list-unit-files ${s}.service --no-legend 2>/dev/null | grep -q . && " +
+							"systemctl disable --now $s 2>/dev/null; done; true",
+					})
+				}
 				// Firewall policy (the nftables ruleset, the ufw command sequence) lives in the
 				// rule as DATA — see the `ruleset`/`enable_cmd` fields on the option. Here we only
 				// substitute the dynamic SSH allow-list: `ssh_allow_from` in the plan restricts SSH

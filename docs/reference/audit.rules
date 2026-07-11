@@ -102,6 +102,14 @@
 -a always,exit -F arch=b64 -C euid!=uid -F auid!=4294967295 -S execve -F key=execpriv
 -a always,exit -F arch=b32 -C euid!=uid -F auid!=4294967295 -S execve -F key=execpriv
 
+## setuid/setgid — an execve that GAINS root through a setuid/setgid binary. Narrower than
+## execpriv above (which is any euid!=uid) and carries the key the audit-suid-privilege-function
+## control looks for.
+-a always,exit -F arch=b64 -S execve -C uid!=euid -F euid=0 -F key=setuid
+-a always,exit -F arch=b32 -S execve -C uid!=euid -F euid=0 -F key=setuid
+-a always,exit -F arch=b64 -S execve -C gid!=egid -F egid=0 -F key=setgid
+-a always,exit -F arch=b32 -S execve -C gid!=egid -F egid=0 -F key=setgid
+
 ## cronjobs — changes to scheduled jobs under /etc/cron.d
 -w /etc/cron.d -p wa -k cronjobs
 
