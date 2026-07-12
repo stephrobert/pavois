@@ -838,15 +838,27 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		// static), erroring inside load_current_resource where even ignore_failure can't catch it.
 		// only_if the unit exists; each verb is tolerant (|| true) so a refused stop/enable-of-static
 		// never aborts the run. systemctl enable/start/disable/stop == the Chef actions on Debian.
+		// The rule may name the unit with or without the suffix: normalise, or the guard below
+		// looked for `rsync.service.service`, never matched, and the whole execute was SKIPPED —
+		// which is how an ENABLED rsync daemon survived every apply on the debian golden.
+		unit := k
+		if !strings.Contains(unit, ".") {
+			unit += ".service"
+		}
+		base := strings.TrimSuffix(unit, ".service")
 		var svcCmds []string
 		for _, a := range strings.Split(svc[k], ",") {
 			verb := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(a), ":"))
 			if verb != "" {
-				svcCmds = append(svcCmds, "systemctl "+verb+" "+k+" 2>/dev/null || true")
+				svcCmds = append(svcCmds, "systemctl "+verb+" "+unit+" 2>/dev/null || true")
 			}
 		}
-		_, _ = fmt.Fprintf(&b, "execute 'pavois-service-%s' do\n  command %q\n  only_if \"systemctl cat %s.service >/dev/null 2>&1\"\n  ignore_failure true\nend\n\n",
-			k, strings.Join(svcCmds, "; "), k)
+		// A SysV service (Debian rsync) has NO unit file at all: `systemctl cat` and
+		// `list-unit-files` both fail on it, while systemctl still enables/disables it through
+		// systemd-sysv-install. So the init script counts as the unit existing.
+		guard := fmt.Sprintf("systemctl cat %s >/dev/null 2>&1 || test -e /etc/init.d/%s", unit, base)
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-service-%s' do\n  command %q\n  only_if %q\n  ignore_failure true\nend\n\n",
+			base, strings.Join(svcCmds, "; "), guard)
 		n++
 	}
 	for _, mod := range sortedKeys(kmods) {
