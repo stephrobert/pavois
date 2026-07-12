@@ -88,7 +88,7 @@ def main():
             f"[{a.os}] no baseline yet: {len(passing)} passing, {len(failing)} failing"
             + (f", lynis {a.lynis}" if a.lynis is not None else "")
         )
-        if a.update:
+        if a.update or a.reset:  # --reset anchors a FIRST baseline too, not only a re-anchor
             save(bpath, a, passing, failing)
             print(f"  -> baseline created at {bpath}")
         return 0
