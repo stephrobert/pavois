@@ -66,6 +66,35 @@ def main():
             if isinstance(tpl, dict) and not checks.get(os):
                 checks[os] = templates.expand(tpl)
 
+        # A `template` OVERRIDES an explicit `check` at render (gen.py render()): the check is dead
+        # code, and the control keeps auditing whatever the stale template says. That is how the
+        # coredump control went on auditing a unit that exists nowhere after being rewritten.
+        if e.get("check") and e.get("template"):
+            findings["dead-check"].append(
+                f"{cid}: has BOTH check and template — the check is ignored"
+            )
+
+        # primitive leak: the check resolves @{pkg.httpd} (apache2 on Debian) while the remediation
+        # keeps the literal `httpd` shared by the nine OSes. pavois then audits the right package
+        # and remediates one that exists on half the fleet. Both must resolve the same primitive.
+        prim = None
+        for tpl in per_os(e, "template").values():
+            if isinstance(tpl, dict):
+                for k in ("package", "service"):
+                    v = str(tpl.get(k) or "")
+                    if v.startswith("@{"):
+                        prim = v
+        if prim:
+            for os, r in rems.items():
+                if not isinstance(r, dict):
+                    continue
+                for k in ("name", "package"):
+                    v = r.get(k)
+                    if isinstance(v, str) and not v.startswith("@{"):
+                        findings["primitive-leak"].append(
+                            f"{cid} [{os}]: check uses {prim}, remediation hardcodes {v!r}"
+                        )
+
         for os, lines in checks.items():
             text = " ".join(lines or [])
             if SSG_PROSE.search(text):
@@ -118,6 +147,8 @@ def main():
 
     total = 0
     for kind in (
+        "dead-check",
+        "primitive-leak",
         "ssg-leak",
         "bad-param",
         "sticky-dir",
