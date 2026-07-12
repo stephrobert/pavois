@@ -903,7 +903,7 @@ audit-kernel-module-loading:
   norms:
     bp28: R73
     cis:
-      '@os':
+    - '@os':
         fedora:
         - 6.3.3.31
         - 6.3.3.30
@@ -911,6 +911,11 @@ audit-kernel-module-loading:
         rhel8: 6.3.3.19
         rhel9: 6.3.3.19
         rhel10: 6.3.3.19
+    - '@os':
+        debian12: 6.2.3.19
+        debian13: 6.3.3.19
+        ubuntu2404: 6.3.3.19
+        ubuntu2604: 6.3.3.19
     nist: 3.1.7
   reboot_survivable: 'yes'
   remediation:
@@ -935,6 +940,8 @@ audit-kernel-module-loading:
       rhel9: Ensure auditd Collects Information on Kernel Module Loading and Unloading
       rhel10: Ensure auditd Collects Information on Kernel Module Loading and Unloading
   remediation_class: auto
+  replaces:
+  - audit-privileged-commands-rmmod
 audit-login-events:
   applicable_os:
   - debian12
@@ -1339,43 +1346,6 @@ audit-privileged-commands-fdisk:
     name: audit_rule
   title: Ensure auditd Collects Information on the Use of Privileged Commands - fdisk
   remediation_class: auto
-audit-privileged-commands-rmmod:
-  applicable_os:
-  - debian12
-  - debian13
-  - ubuntu2404
-  - ubuntu2604
-  - rhel8
-  - rhel10
-  - rhel9
-  domain: Audit (auditd)
-  evidence_type: effective-runtime
-  impact: 0.5
-  levels:
-    bp28: enhanced
-    cis: '2'
-  norms:
-    bp28: R73
-    cis:
-      '@os':
-        debian12: 6.2.3.19
-        debian13: 6.3.3.19
-        ubuntu2404: 6.3.3.19
-        ubuntu2604: 6.3.3.19
-    nist: 3.1.7
-  reboot_survivable: 'yes'
-  remediation:
-    reboot_required: true
-    resource: audit_ruleset
-  requires_package: auditd
-  severity: medium
-  socle: SOCLE-RUN-AUD-014
-  ssg: audit_rules_privileged_commands_rmmod
-  template:
-    key: modules
-    name: audit_rule
-  title: Ensure auditd Collects Information on the Use of Privileged Commands - rmmod
-  remediation_class: auto
 audit-session-events:
   applicable_os:
   - debian12
@@ -1482,58 +1452,6 @@ audit-session-events:
       ubuntu2204: Record Attempts to Alter Process and Session Initiation Information
       ubuntu2404: Record Attempts to Alter Process and Session Initiation Information
       ubuntu2604: Record Attempts to Alter Process and Session Initiation Information
-  remediation_class: auto
-audit-sudoers:
-  applicable_os:
-  - fedora
-  - rhel8
-  - rhel9
-  - rhel10
-  - ubuntu2204
-  - ubuntu2404
-  - ubuntu2604
-  domain: Audit (auditd)
-  evidence_type: effective-runtime
-  impact: 0.5
-  levels:
-    bp28: enhanced
-    cis: '2'
-  norms:
-    bp28: R73
-    cis:
-      '@os':
-        fedora: 6.3.3.1
-        rhel8: 6.3.3.1
-        rhel9: 6.3.3.1
-        rhel10: 6.3.3.1
-        ubuntu2204: 6.3.3.1
-        ubuntu2404: 6.2.3.1
-        ubuntu2604: 6.2.3.1
-    nist: 3.1.7
-    pci-dss: 10.2.1.5
-    stig:
-      '@os':
-        ubuntu2204:
-        - UBTU-22-654220
-        - UBTU-22-654225
-        ubuntu2404:
-        - UBTU-24-900510
-        - UBTU-24-900520
-        ubuntu2604:
-        - UBTU-24-900510
-        - UBTU-24-900520
-  reboot_survivable: 'yes'
-  remediation:
-    reboot_required: true
-    resource: audit_ruleset
-  requires_package: auditd
-  severity: medium
-  socle: SOCLE-RUN-AUD-016
-  ssg: audit_rules_sudoers
-  template:
-    key: actions
-    name: audit_rule
-  title: Ensure auditd Collects System Administrator Actions - /etc/sudoers
   remediation_class: auto
 audit-suid-auid-privilege-function:
   applicable_os:
@@ -1676,10 +1594,18 @@ audit-sysadmin-actions:
   norms:
     bp28: R73
     cis:
-      '@os':
+    - '@os':
         debian12:
         - 10.2.1.5
         - 6.2.3.1
+    - '@os':
+        fedora: 6.3.3.1
+        rhel8: 6.3.3.1
+        rhel9: 6.3.3.1
+        rhel10: 6.3.3.1
+        ubuntu2204: 6.3.3.1
+        ubuntu2404: 6.2.3.1
+        ubuntu2604: 6.2.3.1
     nist:
     - 3.1.7
     - AC-2(7)(b)
@@ -1688,13 +1614,25 @@ audit-sysadmin-actions:
     - AU-2(d)
     - CM-6(a)
     pci-dss:
-      '@os':
+    - '@os':
         debian12:
         - Req-10.2.2
         - 10.2.1.5
         debian13: 10.2.1.5
         ubuntu2404: 10.2.1.5
         ubuntu2604: 10.2.1.5
+    - 10.2.1.5
+    stig:
+      '@os':
+        ubuntu2204:
+        - UBTU-22-654220
+        - UBTU-22-654225
+        ubuntu2404:
+        - UBTU-24-900510
+        - UBTU-24-900520
+        ubuntu2604:
+        - UBTU-24-900510
+        - UBTU-24-900520
   reboot_survivable: 'yes'
   remediation:
     reboot_required: true
@@ -1708,6 +1646,8 @@ audit-sysadmin-actions:
     name: audit_rule
   title: Ensure auditd Collects System Administrator Actions
   remediation_class: auto
+  replaces:
+  - audit-sudoers
 audit-time:
   applicable_os:
   - debian12
@@ -2229,7 +2169,7 @@ auditd-admin-space-left-action:
     key: admin_space_left_action
     resource: conf_line
     service: auditd
-    value: halt
+    value: single
   requires_package: auditd
   severity: medium
   socle: SOCLE-RUN-AUD-026
@@ -3216,7 +3156,7 @@ cmdline-l1tf:
     bp28: R8
   reboot_survivable: 'yes'
   remediation:
-    param: l1tf=full,force
+    param: l1tf=full
     reboot_required: true
     resource: kernel_cmdline
   severity: high
@@ -3224,7 +3164,7 @@ cmdline-l1tf:
   ssg: grub2_l1tf_argument
   template:
     name: cmdline
-    param: l1tf=full,force
+    param: l1tf=full
   title: Configure L1 Terminal Fault mitigations
   remediation_class: auto
 cmdline-mce:
@@ -3308,7 +3248,8 @@ cmdline-nousb:
     name: cmdline
     param: nousb
   title: Disable Kernel Support for USB via Bootloader Configuration
-  remediation_class: auto
+  remediation_class: dangerous
+  danger: 'nousb kills USB keyboard and mouse: on bare metal the physical console is lost'
 cmdline-page-alloc-shuffle:
   applicable_os:
   - debian12
@@ -3459,6 +3400,7 @@ cmdline-selinux:
     name: selinux-cmdline-clean
     not_if: '! grep -Eqs "selinux=0|enforcing=0" /proc/cmdline'
     resource: exec
+    reboot_required: true
   severity: medium
   socle: SOCLE-CLD-KRN-013
   ssg: grub2_enable_selinux
@@ -4529,7 +4471,7 @@ faillock-deny:
         ubuntu2604: UBTU-24-200610
   reboot_survivable: 'yes'
   remediation:
-    file: /etc/security/faillock.conf.d/99-pavois.conf
+    file: /etc/security/faillock.conf
     key: deny
     resource: keyval
     value: '3'
@@ -4612,7 +4554,7 @@ faillock-unlock_time:
         ubuntu2604: UBTU-24-200610
   reboot_survivable: 'yes'
   remediation:
-    file: /etc/security/faillock.conf.d/99-pavois.conf
+    file: /etc/security/faillock.conf
     key: unlock_time
     resource: keyval
     value: '900'
@@ -7081,19 +7023,19 @@ filegroupowner-systemmap:
     bp28: R29
   reboot_survivable: 'yes'
   remediation:
-    group: root
-    path: /boot
-    resource: file
+    resource: exec
+    name: systemmap-group
+    command: find /boot -maxdepth 1 -name 'System.map-*' -exec chgrp root {} + 2>/dev/null; true
+    not_if: test -z "$(find /boot -maxdepth 1 -name 'System.map-*' ! -group root 2>/dev/null)"
   severity: low
   socle: SOCLE-CLD-FSP-039
   ssg: file_groupowner_systemmap
-  template:
-    attr: group
-    name: file_owner
-    path: /boot
-    value: '''root'''
   title: Verify Group Who Owns System.map Files
   remediation_class: auto
+  check:
+  - describe command("find /boot -maxdepth 1 -name 'System.map-*' ! -group root 2>/dev/null") do
+  - "  its('stdout.strip') { should eq '' }"
+  - end
 filegroupowner-user-cfg:
   applicable_os:
   - debian12
@@ -9828,19 +9770,19 @@ fileowner-systemmap:
     bp28: R29
   reboot_survivable: 'yes'
   remediation:
-    owner: root
-    path: /boot
-    resource: file
+    resource: exec
+    name: systemmap-user
+    command: find /boot -maxdepth 1 -name 'System.map-*' -exec chown root {} + 2>/dev/null; true
+    not_if: test -z "$(find /boot -maxdepth 1 -name 'System.map-*' ! -user root 2>/dev/null)"
   severity: low
   socle: SOCLE-CLD-FSP-095
   ssg: file_owner_systemmap
-  template:
-    attr: uid
-    name: file_owner
-    path: /boot
-    value: '0'
   title: Verify User Who Owns System.map Files
   remediation_class: auto
+  check:
+  - describe command("find /boot -maxdepth 1 -name 'System.map-*' ! -user root 2>/dev/null") do
+  - "  its('stdout.strip') { should eq '' }"
+  - end
 fileowner-user-cfg:
   applicable_os:
   - debian12
@@ -10154,7 +10096,7 @@ fileowner-var-log-localmessages:
         ubuntu2604: 6.1.4.1
   reboot_survivable: 'yes'
   remediation:
-    owner: syslog
+    owner: '@{usr.varlog}'
     path: /var/log/localmessages
     resource: file
   severity: medium
@@ -10164,7 +10106,7 @@ fileowner-var-log-localmessages:
     attr: owner
     name: file_owner
     path: /var/log/localmessages
-    value: '''syslog'''
+    value: '''@{usr.varlog}'''
   title: Verify User Who Owns /var/log/localmessages File
   remediation_class: auto
 fileowner-var-log-messages:
@@ -10216,7 +10158,7 @@ fileowner-var-log-secure:
         ubuntu2604: 6.1.4.1
   reboot_survivable: 'yes'
   remediation:
-    owner: syslog
+    owner: '@{usr.varlog}'
     path: /var/log/secure
     resource: file
   severity: medium
@@ -10226,7 +10168,7 @@ fileowner-var-log-secure:
     attr: owner
     name: file_owner
     path: /var/log/secure
-    value: '''syslog'''
+    value: '''@{usr.varlog}'''
   title: Verify User Who Owns /var/log/secure File
   remediation_class: auto
 fileowner-var-log-syslog:
@@ -14636,75 +14578,9 @@ fileperm-sshd-pub-key:
   - ubuntu2404
   - ubuntu2604
   check:
-    '@os':
-      debian12:
-      - describe command('find /etc/ssh -maxdepth 1 -name "*.pub" -perm /0133 2>/dev/null') do
-      - '  its(''stdout'') { should eq '''' }'
-      - end
-      debian13:
-      - describe command('find /etc/ssh -maxdepth 1 -name "*.pub" -perm /0133 2>/dev/null') do
-      - '  its(''stdout'') { should eq '''' }'
-      - end
-      fedora:
-      - only_if { file('/etc/ssh').exist? }
-      - describe file('/etc/ssh') do
-      - '  it { should_not be_executable.by(''owner'') }'
-      - '  it { should_not be_setuid }'
-      - '  it { should_not be_executable.by(''group'') }'
-      - '  it { should_not be_writable.by(''group'') }'
-      - '  it { should_not be_setgid }'
-      - '  it { should_not be_executable.by(''other'') }'
-      - '  it { should_not be_writable.by(''other'') }'
-      - '  it { should_not be_sticky }'
-      - end
-      rhel8:
-      - only_if { file('/etc/ssh').exist? }
-      - describe file('/etc/ssh') do
-      - '  it { should_not be_executable.by(''owner'') }'
-      - '  it { should_not be_setuid }'
-      - '  it { should_not be_executable.by(''group'') }'
-      - '  it { should_not be_writable.by(''group'') }'
-      - '  it { should_not be_setgid }'
-      - '  it { should_not be_executable.by(''other'') }'
-      - '  it { should_not be_writable.by(''other'') }'
-      - '  it { should_not be_sticky }'
-      - end
-      rhel9:
-      - only_if { file('/etc/ssh').exist? }
-      - describe file('/etc/ssh') do
-      - '  it { should_not be_executable.by(''owner'') }'
-      - '  it { should_not be_setuid }'
-      - '  it { should_not be_executable.by(''group'') }'
-      - '  it { should_not be_writable.by(''group'') }'
-      - '  it { should_not be_setgid }'
-      - '  it { should_not be_executable.by(''other'') }'
-      - '  it { should_not be_writable.by(''other'') }'
-      - '  it { should_not be_sticky }'
-      - end
-      rhel10:
-      - only_if { file('/etc/ssh').exist? }
-      - describe file('/etc/ssh') do
-      - '  it { should_not be_executable.by(''owner'') }'
-      - '  it { should_not be_setuid }'
-      - '  it { should_not be_executable.by(''group'') }'
-      - '  it { should_not be_writable.by(''group'') }'
-      - '  it { should_not be_setgid }'
-      - '  it { should_not be_executable.by(''other'') }'
-      - '  it { should_not be_writable.by(''other'') }'
-      - '  it { should_not be_sticky }'
-      - end
-      ubuntu2204:
-      - describe command('find /etc/ssh -maxdepth 1 -name "*.pub" -perm /0133 2>/dev/null') do
-      - '  its(''stdout'') { should eq '''' }'
-      - end
-      ubuntu2404:
-      - describe command('find /etc/ssh -maxdepth 1 -name "*.pub" -perm /0133 2>/dev/null') do
-      - '  its(''stdout'') { should eq '''' }'
-      - end
-      ubuntu2604:
-      - describe command('find /etc/ssh -maxdepth 1 -name "*.pub" -perm /0133 2>/dev/null') do
-      - '  its(''stdout'') { should eq '''' }'
-      - end
+  - describe command("find /etc/ssh -maxdepth 1 -name '*.pub' -perm /133 2>/dev/null") do
+  - "  its('stdout.strip') { should eq '' }"
+  - end
   domain: File permissions
   evidence_type: persistent-config
   impact: 0.5
@@ -14772,48 +14648,10 @@ fileperm-sshd-pub-key:
         ubuntu2604: Req-2.2.4
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: chmod 0644 /etc/ssh/*.pub 2>/dev/null || true
-        name: chmod-sshd-pubkeys
-        not_if: test -z "$(find /etc/ssh -maxdepth 1 -name '*.pub' -perm /0133 2>/dev/null)"
-        resource: exec
-      debian13:
-        command: chmod 0644 /etc/ssh/*.pub 2>/dev/null || true
-        name: chmod-sshd-pubkeys
-        not_if: test -z "$(find /etc/ssh -maxdepth 1 -name '*.pub' -perm /0133 2>/dev/null)"
-        resource: exec
-      fedora:
-        mode: '0644'
-        path: /etc/ssh
-        resource: file
-      rhel8:
-        mode: '0644'
-        path: /etc/ssh
-        resource: file
-      rhel9:
-        mode: '0644'
-        path: /etc/ssh
-        resource: file
-      rhel10:
-        mode: '0644'
-        path: /etc/ssh
-        resource: file
-      ubuntu2204:
-        command: chmod 0644 /etc/ssh/*.pub 2>/dev/null || true
-        name: chmod-sshd-pubkeys
-        not_if: test -z "$(find /etc/ssh -maxdepth 1 -name '*.pub' -perm /0133 2>/dev/null)"
-        resource: exec
-      ubuntu2404:
-        command: chmod 0644 /etc/ssh/*.pub 2>/dev/null || true
-        name: chmod-sshd-pubkeys
-        not_if: test -z "$(find /etc/ssh -maxdepth 1 -name '*.pub' -perm /0133 2>/dev/null)"
-        resource: exec
-      ubuntu2604:
-        command: chmod 0644 /etc/ssh/*.pub 2>/dev/null || true
-        name: chmod-sshd-pubkeys
-        not_if: test -z "$(find /etc/ssh -maxdepth 1 -name '*.pub' -perm /0133 2>/dev/null)"
-        resource: exec
+    resource: exec
+    name: sshd-pubkey-perms
+    command: find /etc/ssh -maxdepth 1 -name '*.pub' -exec chmod 0644 {} + 2>/dev/null; true
+    not_if: test -z "$(find /etc/ssh -maxdepth 1 -name '*.pub' -perm /133 2>/dev/null)"
   severity: medium
   socle: SOCLE-CLD-FSP-160
   ssg: file_permissions_sshd_pub_key
@@ -14949,69 +14787,10 @@ fileperm-systemmap:
   - ubuntu2404
   - ubuntu2604
   check:
-    '@os':
-      debian12:
-      - describe command('find /boot -maxdepth 1 -name "System.map-*" -perm /0177 2>/dev/null') do
-      - '  its(''stdout'') { should eq '''' }'
-      - end
-      debian13:
-      - describe command('find /boot -maxdepth 1 -name "System.map-*" -perm /0177 2>/dev/null') do
-      - '  its(''stdout'') { should eq '''' }'
-      - end
-      rhel8:
-      - only_if { file('/boot').exist? }
-      - describe file('/boot') do
-      - '  it { should_not be_executable.by(''owner'') }'
-      - '  it { should_not be_setuid }'
-      - '  it { should_not be_executable.by(''group'') }'
-      - '  it { should_not be_writable.by(''group'') }'
-      - '  it { should_not be_readable.by(''group'') }'
-      - '  it { should_not be_setgid }'
-      - '  it { should_not be_executable.by(''other'') }'
-      - '  it { should_not be_writable.by(''other'') }'
-      - '  it { should_not be_readable.by(''other'') }'
-      - '  it { should_not be_sticky }'
-      - end
-      rhel9:
-      - only_if { file('/boot').exist? }
-      - describe file('/boot') do
-      - '  it { should_not be_executable.by(''owner'') }'
-      - '  it { should_not be_setuid }'
-      - '  it { should_not be_executable.by(''group'') }'
-      - '  it { should_not be_writable.by(''group'') }'
-      - '  it { should_not be_readable.by(''group'') }'
-      - '  it { should_not be_setgid }'
-      - '  it { should_not be_executable.by(''other'') }'
-      - '  it { should_not be_writable.by(''other'') }'
-      - '  it { should_not be_readable.by(''other'') }'
-      - '  it { should_not be_sticky }'
-      - end
-      rhel10:
-      - only_if { file('/boot').exist? }
-      - describe file('/boot') do
-      - '  it { should_not be_executable.by(''owner'') }'
-      - '  it { should_not be_setuid }'
-      - '  it { should_not be_executable.by(''group'') }'
-      - '  it { should_not be_writable.by(''group'') }'
-      - '  it { should_not be_readable.by(''group'') }'
-      - '  it { should_not be_setgid }'
-      - '  it { should_not be_executable.by(''other'') }'
-      - '  it { should_not be_writable.by(''other'') }'
-      - '  it { should_not be_readable.by(''other'') }'
-      - '  it { should_not be_sticky }'
-      - end
-      ubuntu2204:
-      - describe command('find /boot -maxdepth 1 -name "System.map-*" -perm /0177 2>/dev/null') do
-      - '  its(''stdout'') { should eq '''' }'
-      - end
-      ubuntu2404:
-      - describe command('find /boot -maxdepth 1 -name "System.map-*" -perm /0177 2>/dev/null') do
-      - '  its(''stdout'') { should eq '''' }'
-      - end
-      ubuntu2604:
-      - describe command('find /boot -maxdepth 1 -name "System.map-*" -perm /0177 2>/dev/null') do
-      - '  its(''stdout'') { should eq '''' }'
-      - end
+  - describe command("find /boot -maxdepth 1 -name 'System.map-*' -perm /077 2>/dev/null") do
+  - "  its('exit_status') { should_not cmp 124 }"
+  - "  its('stdout.strip') { should eq '' }"
+  - end
   domain: File permissions
   evidence_type: persistent-config
   impact: 0.3
@@ -15021,44 +14800,10 @@ fileperm-systemmap:
     bp28: R29
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: chmod 0600 /boot/System.map-* 2>/dev/null || true
-        name: chmod-system-map
-        not_if: test -z "$(find /boot -maxdepth 1 -name 'System.map-*' -perm /0177 2>/dev/null)"
-        resource: exec
-      debian13:
-        command: chmod 0600 /boot/System.map-* 2>/dev/null || true
-        name: chmod-system-map
-        not_if: test -z "$(find /boot -maxdepth 1 -name 'System.map-*' -perm /0177 2>/dev/null)"
-        resource: exec
-      rhel8:
-        mode: '0600'
-        path: /boot
-        resource: file
-      rhel9:
-        mode: '0600'
-        path: /boot
-        resource: file
-      rhel10:
-        mode: '0600'
-        path: /boot
-        resource: file
-      ubuntu2204:
-        command: chmod 0600 /boot/System.map-* 2>/dev/null || true
-        name: chmod-system-map
-        not_if: test -z "$(find /boot -maxdepth 1 -name 'System.map-*' -perm /0177 2>/dev/null)"
-        resource: exec
-      ubuntu2404:
-        command: chmod 0600 /boot/System.map-* 2>/dev/null || true
-        name: chmod-system-map
-        not_if: test -z "$(find /boot -maxdepth 1 -name 'System.map-*' -perm /0177 2>/dev/null)"
-        resource: exec
-      ubuntu2604:
-        command: chmod 0600 /boot/System.map-* 2>/dev/null || true
-        name: chmod-system-map
-        not_if: test -z "$(find /boot -maxdepth 1 -name 'System.map-*' -perm /0177 2>/dev/null)"
-        resource: exec
+    resource: exec
+    name: systemmap-perms
+    command: find /boot -maxdepth 1 -name 'System.map-*' -exec chmod 0600 {} + 2>/dev/null; true
+    not_if: test -z "$(find /boot -maxdepth 1 -name 'System.map-*' -perm /077 2>/dev/null)"
   severity: low
   socle: SOCLE-CLD-FSP-162
   ssg: file_permissions_systemmap
@@ -15724,7 +15469,7 @@ fileperm-var-log-gdm:
         ubuntu2604: 6.1.4.1
   reboot_survivable: 'yes'
   remediation:
-    mode: '0660'
+    mode: '0750'
     path: /var/log/gdm
     resource: file
   severity: medium
@@ -16208,7 +15953,7 @@ findloop-file-groupowner-var-log:
   norms:
     bp28: R71
     cis:
-      '@os':
+    - '@os':
         rhel8: 6.2.3.1
         rhel9: 6.2.4.1
         rhel10: 6.2.4.1
@@ -16219,6 +15964,9 @@ findloop-file-groupowner-var-log:
         ubuntu2604:
         - 6.1.4.1
         - 6.2.4.1
+    - 6.1.4.1
+    - '@os':
+        fedora: 6.2.6.1
     pci-dss: 10.3.2
     stig:
       '@os':
@@ -16236,6 +15984,9 @@ findloop-file-groupowner-var-log:
   ssg: file_groupowner_var_log
   title: Verify Group Who Owns /var/log Directory
   remediation_class: auto
+  replaces:
+  - findloop-file-groupownerships-var-log
+  - findloop-rsyslog-files-groupownership
 findloop-file-groupownership-system-commands-dirs:
   applicable_os:
   - debian12
@@ -16276,41 +16027,6 @@ findloop-file-groupownership-system-commands-dirs:
   ssg: file_groupownership_system_commands_dirs
   title: Verify that system commands files are group owned by root or a system account
   remediation_class: auto
-findloop-file-groupownerships-var-log:
-  applicable_os:
-  - debian12
-  - debian13
-  - ubuntu2404
-  - ubuntu2604
-  - rhel8
-  - rhel10
-  - rhel9
-  check:
-  - describe command('timeout 90 find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal 2>/dev/null') do
-  - "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass"
-  - '  its(''stdout.strip'') { should eq '''' }'
-  - end
-  domain: Filesystem (scan)
-  evidence_type: filesystem-state
-  impact: 0.5
-  levels:
-    bp28: enhanced
-    cis: '1'
-  norms:
-    bp28: R71
-    cis: 6.1.4.1
-    pci-dss: 10.3.2
-  reboot_survivable: 'yes'
-  remediation:
-    command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-    name: fix-varlog-ownership
-    not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-    resource: exec
-  severity: medium
-  socle: SOCLE-CLD-FSP-183
-  ssg: file_groupownerships_var_log
-  title: Verify ownership of log files
-  remediation_class: auto
 findloop-file-owner-var-log:
   applicable_os:
   - rhel8
@@ -16333,7 +16049,7 @@ findloop-file-owner-var-log:
   norms:
     bp28: R71
     cis:
-      '@os':
+    - '@os':
         rhel8: 6.2.3.1
         rhel9: 6.2.4.1
         rhel10: 6.2.4.1
@@ -16344,6 +16060,9 @@ findloop-file-owner-var-log:
         ubuntu2604:
         - 6.1.4.1
         - 6.2.4.1
+    - 6.1.4.1
+    - '@os':
+        fedora: 6.2.6.1
     pci-dss: 10.3.2
     stig:
       '@os':
@@ -16361,6 +16080,9 @@ findloop-file-owner-var-log:
   ssg: file_owner_var_log
   title: Verify User Who Owns /var/log Directory
   remediation_class: auto
+  replaces:
+  - findloop-file-ownerships-var-log
+  - findloop-rsyslog-files-ownership
 findloop-file-ownership-binary-dirs:
   applicable_os:
   - debian12
@@ -16404,41 +16126,6 @@ findloop-file-ownership-binary-dirs:
   socle: SOCLE-CLD-FSP-185
   ssg: file_ownership_binary_dirs
   title: Verify that System Executables Have Root Ownership
-  remediation_class: auto
-findloop-file-ownerships-var-log:
-  applicable_os:
-  - debian12
-  - debian13
-  - ubuntu2404
-  - ubuntu2604
-  - rhel8
-  - rhel10
-  - rhel9
-  check:
-  - describe command('timeout 90 find /var/log -type f ! -user root ! -user syslog ! -user _aide 2>/dev/null') do
-  - "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass"
-  - '  its(''stdout.strip'') { should eq '''' }'
-  - end
-  domain: Filesystem (scan)
-  evidence_type: filesystem-state
-  impact: 0.5
-  levels:
-    bp28: enhanced
-    cis: '1'
-  norms:
-    bp28: R71
-    cis: 6.1.4.1
-    pci-dss: 10.3.2
-  reboot_survivable: 'yes'
-  remediation:
-    command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-    name: fix-varlog-ownership
-    not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-    resource: exec
-  severity: medium
-  socle: SOCLE-CLD-FSP-186
-  ssg: file_ownerships_var_log
-  title: Verify ownership of log files
   remediation_class: auto
 findloop-file-permissions-unauthorized-world-writable:
   applicable_os:
@@ -16675,58 +16362,6 @@ findloop-file-permissions-ungroupowned:
   ssg: file_permissions_ungroupowned
   title: Ensure All Files Are Owned by a Group
   remediation_class: manual
-findloop-file-permissions-var-log:
-  applicable_os:
-  - rhel8
-  - rhel9
-  - rhel10
-  - ubuntu2204
-  - ubuntu2404
-  - ubuntu2604
-  check:
-  - describe command('timeout 90 find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null') do
-  - "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass"
-  - '  its(''stdout.strip'') { should eq '''' }'
-  - end
-  domain: Filesystem (scan)
-  evidence_type: filesystem-state
-  impact: 0.5
-  levels:
-    bp28: enhanced
-    cis: '1'
-  norms:
-    bp28: R71
-    cis:
-      '@os':
-        rhel8: 6.2.3.1
-        rhel9: 6.2.4.1
-        rhel10: 6.2.4.1
-        ubuntu2204: 6.2.2.1
-        ubuntu2404:
-        - 6.1.4.1
-        - 6.2.4.1
-        ubuntu2604:
-        - 6.1.4.1
-        - 6.2.4.1
-    pci-dss: 10.3.1
-    stig:
-      '@os':
-        ubuntu2204:
-        - UBTU-22-232025
-        - UBTU-22-232026
-        ubuntu2404: UBTU-24-700120
-        ubuntu2604: UBTU-24-700120
-  reboot_survivable: 'yes'
-  remediation:
-    command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
-    name: fix-varlog-perms
-    not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
-    resource: exec
-  severity: medium
-  socle: SOCLE-CLD-FSP-189
-  ssg: file_permissions_var_log
-  title: Verify Permissions on /var/log Directory
-  remediation_class: auto
 findloop-no-dirs-unowned-by-root:
   applicable_os:
   - debian12
@@ -16946,11 +16581,31 @@ findloop-permissions-local-var-log:
     cis:
     - 10.3.1
     - 6.1.4.1
+    - '@os':
+        rhel8: 6.2.3.1
+        rhel9: 6.2.4.1
+        rhel10: 6.2.4.1
+        ubuntu2204: 6.2.2.1
+        ubuntu2404:
+        - 6.1.4.1
+        - 6.2.4.1
+        ubuntu2604:
+        - 6.1.4.1
+        - 6.2.4.1
+    - '@os':
+        fedora: 6.2.6.1
     nist:
     - SI-11(a)
     - SI-11(b)
     - SI-11
     pci-dss: 10.3.1
+    stig:
+      '@os':
+        ubuntu2204:
+        - UBTU-22-232025
+        - UBTU-22-232026
+        ubuntu2404: UBTU-24-700120
+        ubuntu2604: UBTU-24-700120
   reboot_survivable: 'yes'
   remediation:
     command: 'if [ -f /etc/sysstat/sysstat ]; then sed -ri ''s/^[[:space:]]*UMASK=.*/UMASK=0027/'' /etc/sysstat/sysstat; grep -q ''^UMASK='' /etc/sysstat/sysstat || echo UMASK=0027 >> /etc/sysstat/sysstat; fi; for u in apt-daily apt-daily-upgrade unattended-upgrades sysstat-collect sysstat-summary dnf-makecache rpm-ostreed-automatic; do systemctl list-unit-files ${u}.service --no-legend 2>/dev/null | grep -q . || continue; mkdir -p /etc/systemd/system/${u}.service.d; printf ''[Service]\nUMask=0027\n'' > /etc/systemd/system/${u}.service.d/pavois-umask.conf; done; systemctl daemon-reload; find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true'
@@ -16963,138 +16618,9 @@ findloop-permissions-local-var-log:
   ssg: permissions_local_var_log
   title: Verify permissions of log files
   remediation_class: auto
-findloop-rsyslog-files-groupownership:
-  applicable_os:
-  - debian13
-  - fedora
-  - rhel8
-  - rhel10
-  - rhel9
-  check:
-  - describe command('timeout 90 find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal 2>/dev/null') do
-  - "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass"
-  - '  its(''stdout.strip'') { should eq '''' }'
-  - end
-  domain: Filesystem (scan)
-  evidence_type: filesystem-state
-  impact: 0.5
-  levels:
-    '@os':
-      debian13: &id004
-        bp28: enhanced
-      fedora:
-        bp28: enhanced
-        cis: '1'
-      rhel8: *id004
-      rhel9:
-        bp28: enhanced
-      rhel10:
-        bp28: enhanced
-  norms:
-    bp28: R71
-    cis:
-      '@os':
-        fedora: 6.2.6.1
-    pci-dss: 10.3.2
-  reboot_survivable: 'yes'
-  remediation:
-    command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-    name: fix-varlog-ownership
-    not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-    resource: exec
-  severity: medium
-  socle: SOCLE-CLD-FSP-193
-  ssg: rsyslog_files_groupownership
-  title: Ensure Log Files Are Owned By Appropriate Group
-  remediation_class: auto
-findloop-rsyslog-files-ownership:
-  applicable_os:
-  - debian13
-  - fedora
-  - rhel8
-  - rhel10
-  - rhel9
-  check:
-  - describe command('timeout 90 find /var/log -type f ! -user root ! -user syslog ! -user _aide 2>/dev/null') do
-  - "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass"
-  - '  its(''stdout.strip'') { should eq '''' }'
-  - end
-  domain: Filesystem (scan)
-  evidence_type: filesystem-state
-  impact: 0.5
-  levels:
-    '@os':
-      debian13: &id005
-        bp28: enhanced
-      fedora:
-        bp28: enhanced
-        cis: '1'
-      rhel8: *id005
-      rhel9:
-        bp28: enhanced
-      rhel10:
-        bp28: enhanced
-  norms:
-    bp28: R71
-    cis:
-      '@os':
-        fedora: 6.2.6.1
-    pci-dss: 10.3.2
-  reboot_survivable: 'yes'
-  remediation:
-    command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-    name: fix-varlog-ownership
-    not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-    resource: exec
-  severity: medium
-  socle: SOCLE-CLD-FSP-194
-  ssg: rsyslog_files_ownership
-  title: Ensure Log Files Are Owned By Appropriate User
-  remediation_class: auto
-findloop-rsyslog-files-permissions:
-  applicable_os:
-  - debian13
-  - fedora
-  - rhel8
-  - rhel10
-  - rhel9
-  check:
-  - describe command('timeout 90 find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null') do
-  - "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass"
-  - '  its(''stdout.strip'') { should eq '''' }'
-  - end
-  domain: Filesystem (scan)
-  evidence_type: filesystem-state
-  impact: 0.5
-  levels:
-    '@os':
-      debian13: &id006
-        bp28: enhanced
-      fedora:
-        bp28: enhanced
-        cis: '1'
-      rhel8: *id006
-      rhel9:
-        bp28: enhanced
-      rhel10:
-        bp28: enhanced
-  norms:
-    bp28: R71
-    cis:
-      '@os':
-        fedora: 6.2.6.1
-    pci-dss: 10.3.1
-  reboot_survivable: 'yes'
-  remediation:
-    command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
-    name: fix-varlog-perms
-    not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
-    resource: exec
-  severity: medium
-  socle: SOCLE-CLD-FSP-195
-  ssg: rsyslog_files_permissions
-  title: Ensure System Log Files Have Correct Permissions
-  remediation_class: auto
+  replaces:
+  - findloop-file-permissions-var-log
+  - findloop-rsyslog-files-permissions
 firewall-default-deny:
   applicable_os:
   - debian12
@@ -18414,7 +17940,6 @@ kconfig-debug-credentials:
   applicable_os:
   - debian12
   - rhel8
-  - rhel10
   - rhel9
   - ubuntu2204
   domain: Kernel build
@@ -19253,8 +18778,6 @@ kconfig-page-poisoning:
 kconfig-page-poisoning-no-sanity:
   applicable_os:
   - rhel8
-  - rhel10
-  - rhel9
   domain: Kernel build
   evidence_type: effective-runtime
   impact: 0.5
@@ -19278,8 +18801,6 @@ kconfig-page-poisoning-no-sanity:
 kconfig-page-poisoning-zero:
   applicable_os:
   - rhel8
-  - rhel10
-  - rhel9
   domain: Kernel build
   evidence_type: effective-runtime
   impact: 0.5
@@ -20771,17 +20292,18 @@ kmod-overlayfs-disabled:
   reboot_survivable: 'yes'
   remediation:
     action: blacklist
-    name: overlayfs
+    name: overlay
     reboot_required: true
     resource: kernel_module
   severity: low
   socle: SOCLE-CLD-MOD-016
   ssg: kernel_module_overlayfs_disabled
   template:
-    module: overlayfs
+    module: overlay
     name: kmod_disabled
   title: Ensure overlayfs kernel module is not available
-  remediation_class: auto
+  remediation_class: dangerous
+  danger: 'blacklisting overlay breaks podman/docker and any overlayfs mount: the container runtime stops working'
 kmod-rds-disabled:
   applicable_os:
   - debian12
@@ -21778,6 +21300,7 @@ logindefs-sha-crypt-rounds:
   socle: SOCLE-CLD-IAM-022
   title: Set SHA_CRYPT minimum rounds in login.defs
   remediation_class: auto
+  severity: medium
 misc-account-unique-id:
   applicable_os:
   - debian12
@@ -22088,9 +21611,9 @@ misc-aide-periodic-checking-systemd-timer:
       debian12:
         bp28: high
         cis: '1'
-      debian13: &id007
+      debian13: &id004
         bp28: high
-      rhel8: *id007
+      rhel8: *id004
       ubuntu2404:
         bp28: high
         cis: '1'
@@ -22345,7 +21868,7 @@ misc-disable-host-auth:
     directive: HostbasedAuthentication
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'no'
   severity: medium
@@ -25336,16 +24859,16 @@ pam-faillock-enabled:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id008
+      debian12: &id005
         params: audit silent deny=5 unlock_time=900 even_deny_root
         resource: pam_faillock
-      debian13: *id008
+      debian13: *id005
       rhel8:
         features:
         - with-faillock
         resource: authselect
-      ubuntu2204: *id008
-      ubuntu2404: *id008
+      ubuntu2204: *id005
+      ubuntu2404: *id005
       ubuntu2604:
         params: audit silent deny=5 unlock_time=900 even_deny_root
         resource: pam_faillock
@@ -25385,12 +24908,12 @@ pam-faillock-root-unlock-time:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id009
+      debian12: &id006
         file: /etc/security/faillock.conf.d/99-pavois.conf
         key: root_unlock_time
         resource: keyval
         value: '60'
-      debian13: *id009
+      debian13: *id006
       rhel8:
         file: /etc/security/faillock.conf
         key: root_unlock_time
@@ -25445,19 +24968,19 @@ pam-pwhistory-enabled:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id010
+      debian12: &id007
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
         line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
         module: pam_pwhistory.so
         resource: pam_line
-      debian13: *id010
+      debian13: *id007
       rhel8:
         features:
         - with-pwhistory
         resource: authselect
-      ubuntu2204: *id010
-      ubuntu2404: *id010
+      ubuntu2204: *id007
+      ubuntu2404: *id007
       ubuntu2604:
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
@@ -25501,20 +25024,20 @@ pam-pwhistory-enforce:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id011
+      debian12: &id008
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
         line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
         module: pam_pwhistory.so
         resource: pam_line
-      debian13: *id011
+      debian13: *id008
       rhel8:
         file: /etc/security/pwhistory.conf
         key: enforce_for_root
         resource: keyval
         value: ''
-      ubuntu2204: *id011
-      ubuntu2404: *id011
+      ubuntu2204: *id008
+      ubuntu2404: *id008
       ubuntu2604:
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
@@ -25536,52 +25059,8 @@ pam-pwhistory-enforce:
   ssg: accounts_password_pam_pwhistory_enforce_root
   title: Limit Password Reuse
   remediation_class: auto
-pam-pwhistory-enforce-for-root:
-  applicable_os:
-  - debian13
-  - rhel8
-  - rhel9
-  - rhel10
-  check:
-  - describe command('grep -RqE \'^[^#]*\bpam_pwhistory\.so\' /etc/pam.d/ 2>/dev/null && { grep -RqE \'^[^#]*\bpam_pwhistory\.so[^#]*\benforce_for_root\' /etc/pam.d/ 2>/dev/null || grep -qE \'^[[:space:]]*enforce_for_root\b\' /etc/security/pwhistory.conf 2>/dev/null; } && echo ok || echo ko') do
-  - '  its(''stdout.strip'') { should eq ''ok'' }'
-  - end
-  domain: Accounts (PAM modules)
-  evidence_type: persistent-config
-  impact: 0.5
-  levels:
-    cis: '1'
-  norms:
-    cis: 5.3.3.3.2
-  reboot_survivable: 'yes'
-  remediation:
-    '@os':
-      debian13:
-        before: ^password.*pam_unix\.so
-        file: /etc/pam.d/common-password
-        line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
-        module: pam_pwhistory.so
-        resource: pam_line
-      rhel8:
-        file: /etc/security/pwhistory.conf
-        key: enforce_for_root
-        resource: keyval
-        value: ''
-      rhel9:
-        file: /etc/security/pwhistory.conf
-        key: enforce_for_root
-        resource: keyval
-        value: ''
-      rhel10:
-        file: /etc/security/pwhistory.conf
-        key: enforce_for_root
-        resource: keyval
-        value: ''
-  severity: medium
-  socle: SOCLE-CLD-IAM-029
-  ssg: accounts_password_pam_pwhistory_enforce_for_root
-  title: Ensure Password History Is Enforced for the Root User
-  remediation_class: auto
+  replaces:
+  - pam-pwhistory-enforce-for-root
 pam-pwhistory-use-authtok:
   applicable_os:
   - debian12
@@ -25620,11 +25099,11 @@ pam-pwhistory-use-authtok:
         module: pam_pwhistory.so
         resource: pam_line
       fedora:
-        features: &id012
+        features: &id009
         - with-pwhistory
         resource: authselect
       rhel8:
-        features: *id012
+        features: *id009
         resource: authselect
       ubuntu2204:
         before: ^password.*pam_unix\.so
@@ -26032,12 +25511,12 @@ pam-unix-no-nullok:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id013
+      debian12: &id010
         command: grep -rlE '^[^#]*pam_unix\.so.*nullok' /etc/pam.d/ | while read -r f; do sed -ri '/pam_unix\.so/ s/[[:space:]]*\bnullok\b//g' "$f"; done; true
         name: pam-unix-remove-nullok
         not_if: '! grep -rqE ''^[^#]*pam_unix\.so.*nullok'' /etc/pam.d/'
         resource: exec
-      debian13: *id013
+      debian13: *id010
       rhel8:
         features:
         - without-nullok
@@ -26116,20 +25595,20 @@ pam-unix-rounds-password-auth:
   - ubuntu2604
   check:
     '@os':
-      debian12: &id014
+      debian12: &id011
       - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\brounds=[0-9]\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian13: *id014
-      fedora: &id015
+      debian13: *id011
+      fedora: &id012
       - describe command('v=$(grep -E "^[[:space:]]*SHA_CRYPT_MIN_ROUNDS[[:space:]]+[0-9]+" /etc/login.defs 2>/dev/null | grep -oE "[0-9]+" | tail -1); { [ -n "$v" ] && [ "$v" -ge 5000 ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      rhel8: *id015
-      rhel9: *id015
-      rhel10: *id015
-      ubuntu2204: *id014
-      ubuntu2404: *id014
+      rhel8: *id012
+      rhel9: *id012
+      rhel10: *id012
+      ubuntu2204: *id011
+      ubuntu2404: *id011
       ubuntu2604:
       - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\brounds=[0-9]\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -27230,9 +26709,9 @@ pkg-audispd-plugins-installed:
     '@os':
       debian12:
         cis: '2'
-      debian13: &id016
+      debian13: &id013
         cis: '2'
-      rhel8: *id016
+      rhel8: *id013
       rhel9: {}
       rhel10: {}
       ubuntu2204:
@@ -28026,6 +27505,7 @@ pkg-fail2ban-installed:
     package: fail2ban
   title: Install fail2ban (brute-force protection)
   remediation_class: auto
+  severity: low
 pkg-fapolicyd-installed:
   applicable_os:
   - fedora
@@ -28846,7 +28326,7 @@ pkg-net-snmp-removed:
   norms:
     cis:
       '@os':
-        debian12: &id017
+        debian12: &id014
         - 2.1.15
         - 2.2.4
         debian13: 2.1.14
@@ -28855,7 +28335,7 @@ pkg-net-snmp-removed:
         rhel9: 2.1.14
         rhel10: 2.1.14
         ubuntu2204: 2.1.14
-        ubuntu2404: &id018
+        ubuntu2404: &id015
         - 2.1.15
         - 2.2.4
         ubuntu2604:
@@ -30119,12 +29599,12 @@ pkg-snmpd-removed:
   norms:
     cis:
       '@os':
-        debian12: *id017
+        debian12: *id014
         debian13:
         - 2.1.15
         - 2.2.4
         ubuntu2204: 2.1.15
-        ubuntu2404: *id018
+        ubuntu2404: *id015
         ubuntu2604:
         - 2.1.15
         - 2.2.4
@@ -30381,11 +29861,11 @@ pkg-talk-removed:
       debian12:
         bp28: minimal
         cis: '1'
-      debian13: &id019
+      debian13: &id016
         bp28: minimal
       fedora:
         bp28: minimal
-      rhel8: *id019
+      rhel8: *id016
       ubuntu2204:
         bp28: minimal
         cis: '1'
@@ -33008,36 +32488,8 @@ root-path:
       ubuntu2404: Ensure that All Entries in The Path of Root Are Directories
       ubuntu2604: Ensure that All Entries in The Path of Root Are Directories
   remediation_class: manual
-root-path-no-dot:
-  applicable_os:
-  - rhel9
-  - rhel10
-  check:
-  - rp = os_env('PATH').content.to_s.split(':')
-  - describe rp do
-  - '  it { should_not be_empty }'
-  - '  it { should_not include '''' }'
-  - '  it { should_not include ''.'' }'
-  - end
-  - rp.reject { |d| d.empty? || d == '.' }.each do |d|
-  - '  describe file(d) do'
-  - '    it { should_not be_writable.by ''group'' }'
-  - '    it { should_not be_writable.by ''other'' }'
-  - '  end'
-  - end
-  domain: Accounts (root PATH)
-  evidence_type: persistent-config
-  impact: 0.5
-  levels:
-    cis: '1'
-  norms:
-    cis: 5.4.2.5
-  reboot_survivable: 'yes'
-  severity: medium
-  socle: SOCLE-CLD-IAM-054
-  ssg: root_path_no_dot
-  title: Ensure that Root's Path Does Not Include Relative Paths or Null Directories
-  remediation_class: manual
+  replaces:
+  - root-path-no-dot
 selinux-enforcing:
   applicable_os:
   - fedora
@@ -34770,13 +34222,14 @@ ssh-disable-agent-forwarding:
     directive: allowagentforwarding
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'no'
     verify: sshd -t -f %{path}
   socle: SOCLE-CLD-SSH-001
   title: Disable SSH Agent Forwarding
   remediation_class: auto
+  severity: medium
 ssh-disable-compression:
   applicable_os:
   - debian12
@@ -34801,7 +34254,7 @@ ssh-disable-compression:
     directive: compression
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'no'
     verify: sshd -t -f %{path}
@@ -34891,7 +34344,7 @@ ssh-disable-empty-passwords:
     directive: permitemptypasswords
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'no'
     verify: sshd -t -f %{path}
@@ -34937,7 +34390,7 @@ ssh-disable-forwarding:
     directive: disableforwarding
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'yes'
     verify: sshd -t -f %{path}
@@ -34989,7 +34442,7 @@ ssh-disable-gssapi-auth:
     directive: gssapiauthentication
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'no'
     verify: sshd -t -f %{path}
@@ -35023,7 +34476,7 @@ ssh-disable-kerb-auth:
     directive: kerberosauthentication
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'no'
     verify: sshd -t -f %{path}
@@ -35082,7 +34535,7 @@ ssh-disable-rhosts:
     directive: ignorerhosts
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'yes'
     verify: sshd -t -f %{path}
@@ -35180,7 +34633,7 @@ ssh-disable-root-login:
     directive: permitrootlogin
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'no'
     verify: sshd -t -f %{path}
@@ -35237,7 +34690,7 @@ ssh-disable-tcp-forwarding:
     directive: allowtcpforwarding
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'no'
     verify: sshd -t -f %{path}
@@ -35268,13 +34721,14 @@ ssh-disable-tcpkeepalive:
     directive: tcpkeepalive
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'no'
     verify: sshd -t -f %{path}
   socle: SOCLE-CLD-SSH-011
   title: Disable SSH TCPKeepAlive (use ClientAlive instead)
   remediation_class: auto
+  severity: low
 ssh-disable-user-known-hosts:
   applicable_os:
   - debian12
@@ -35299,7 +34753,7 @@ ssh-disable-user-known-hosts:
     directive: ignoreuserknownhosts
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'yes'
     verify: sshd -t -f %{path}
@@ -35330,7 +34784,7 @@ ssh-disable-x11-forwarding:
     directive: x11forwarding
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'no'
     verify: sshd -t -f %{path}
@@ -35404,7 +34858,7 @@ ssh-do-not-permit-user-env:
     directive: permituserenvironment
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'no'
     verify: sshd -t -f %{path}
@@ -35462,7 +34916,7 @@ ssh-enable-pam:
     directive: usepam
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'yes'
     verify: sshd -t -f %{path}
@@ -35500,7 +34954,7 @@ ssh-enable-pubkey-auth:
     directive: pubkeyauthentication
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'yes'
     verify: sshd -t -f %{path}
@@ -35534,7 +34988,7 @@ ssh-enable-strictmodes:
     directive: strictmodes
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'yes'
     verify: sshd -t -f %{path}
@@ -35644,7 +35098,7 @@ ssh-print-last-log:
     directive: printlastlog
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 'yes'
     verify: sshd -t -f %{path}
@@ -35761,7 +35215,7 @@ ssh-set-idle-timeout:
         directive: clientaliveinterval
         notify:
           action: reload
-          service: ssh
+          service: '@{svc.sshd}'
         resource: sshd_setting
         value: '300'
         verify: sshd -t -f %{path}
@@ -35769,7 +35223,7 @@ ssh-set-idle-timeout:
         directive: clientaliveinterval
         notify:
           action: reload
-          service: ssh
+          service: '@{svc.sshd}'
         resource: sshd_setting
         value: '300'
         verify: sshd -t -f %{path}
@@ -35777,7 +35231,7 @@ ssh-set-idle-timeout:
         directive: clientaliveinterval
         notify:
           action: reload
-          service: ssh
+          service: '@{svc.sshd}'
         resource: sshd_setting
         value: '900'
         verify: sshd -t -f %{path}
@@ -35785,7 +35239,7 @@ ssh-set-idle-timeout:
         directive: clientaliveinterval
         notify:
           action: reload
-          service: ssh
+          service: '@{svc.sshd}'
         resource: sshd_setting
         value: '600'
         verify: sshd -t -f %{path}
@@ -35793,7 +35247,7 @@ ssh-set-idle-timeout:
         directive: clientaliveinterval
         notify:
           action: reload
-          service: ssh
+          service: '@{svc.sshd}'
         resource: sshd_setting
         value: '600'
         verify: sshd -t -f %{path}
@@ -35801,7 +35255,7 @@ ssh-set-idle-timeout:
         directive: clientaliveinterval
         notify:
           action: reload
-          service: ssh
+          service: '@{svc.sshd}'
         resource: sshd_setting
         value: '600'
         verify: sshd -t -f %{path}
@@ -35809,7 +35263,7 @@ ssh-set-idle-timeout:
         directive: clientaliveinterval
         notify:
           action: reload
-          service: ssh
+          service: '@{svc.sshd}'
         resource: sshd_setting
         value: '600'
         verify: sshd -t -f %{path}
@@ -35817,7 +35271,7 @@ ssh-set-idle-timeout:
         directive: clientaliveinterval
         notify:
           action: reload
-          service: ssh
+          service: '@{svc.sshd}'
         resource: sshd_setting
         value: '600'
         verify: sshd -t -f %{path}
@@ -35825,7 +35279,7 @@ ssh-set-idle-timeout:
         directive: clientaliveinterval
         notify:
           action: reload
-          service: ssh
+          service: '@{svc.sshd}'
         resource: sshd_setting
         value: '600'
         verify: sshd -t -f %{path}
@@ -35847,7 +35301,7 @@ ssh-set-keepalive:
   - ubuntu2604
   check:
   - describe command('sshd -T') do
-  - '  its(''stdout'') { should match(/^clientalivecountmax\s+0$/i) }'
+  - "  its('stdout') { should match(/^clientalivecountmax\\s+[1-3]$/i) }"
   - end
   domain: SSH
   evidence_type: effective-runtime
@@ -35906,9 +35360,9 @@ ssh-set-keepalive:
     directive: clientalivecountmax
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
-    value: '0'
+    value: '1'
     verify: sshd -t -f %{path}
   severity: medium
   socle: SOCLE-CLD-SSH-022
@@ -35959,7 +35413,7 @@ ssh-set-login-grace-time:
     directive: logingracetime
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: '60'
     verify: sshd -t -f %{path}
@@ -36030,7 +35484,7 @@ ssh-set-loglevel-info:
     directive: loglevel
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: verbose
     verify: sshd -t -f %{path}
@@ -36091,7 +35545,7 @@ ssh-set-loglevel-verbose:
     directive: loglevel
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: verbose
     verify: sshd -t -f %{path}
@@ -36178,7 +35632,7 @@ ssh-set-max-auth-tries:
     directive: maxauthtries
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: '3'
     verify: sshd -t -f %{path}
@@ -36231,7 +35685,7 @@ ssh-set-max-sessions:
     directive: maxsessions
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: '2'
     verify: sshd -t -f %{path}
@@ -36284,7 +35738,7 @@ ssh-set-maxstartups:
     directive: maxstartups
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 10:30:60
     verify: sshd -t -f %{path}
@@ -36315,7 +35769,7 @@ ssh-set-rekey-limit:
     directive: rekeylimit
     notify:
       action: reload
-      service: ssh
+      service: '@{svc.sshd}'
     resource: sshd_setting
     value: 512M 1h
     verify: sshd -t -f %{path}
@@ -36819,7 +36273,8 @@ sudo-noexec:
   socle: SOCLE-CLD-IAM-058
   ssg: sudo_add_noexec
   title: Ensure Privileged Escalated Commands Cannot Execute Other Commands - sudo NOEXEC
-  remediation_class: auto
+  remediation_class: dangerous
+  danger: "Defaults noexec forbids every command run under sudo from spawning a child: `sudo bash`, admin scripts and pavois's own cinc bootstrap stop working"
 sudo-remove-no-authenticate:
   applicable_os:
   - debian12
@@ -36928,11 +36383,11 @@ sudo-require-authentication:
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian13: &id020
+      debian13: &id017
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      rhel8: *id020
+      rhel8: *id017
       ubuntu2404:
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -37073,7 +36528,8 @@ sudo-requiretty:
   socle: SOCLE-CLD-IAM-062
   ssg: sudo_add_requiretty
   title: Ensure Only Users Logged In To Real tty Can Execute Sudo - sudo requiretty
-  remediation_class: auto
+  remediation_class: dangerous
+  danger: 'Defaults requiretty breaks NON-INTERACTIVE sudo (ssh exec, CI, cloud-init): an SSH-driven scanner locks itself out'
 sudo-umask:
   applicable_os:
   - debian12
@@ -37889,16 +37345,16 @@ sysctl-kernel-pid_max:
   remediation:
     key: kernel.pid_max
     resource: sysctl
-    value: '65536'
+    value: '4194304'
   severity: medium
   socle: SOCLE-CLD-SYS-016
   ssg: sysctl_kernel_pid_max
-  template:
-    key: kernel.pid_max
-    name: sysctl
-    value: '65536'
   title: Configure maximum number of process identifiers
   remediation_class: auto
+  check:
+  - describe kernel_parameter('kernel.pid_max') do
+  - "  its('value') { should cmp >= 65536 }"
+  - end
 sysctl-kernel-randomize_va_space:
   applicable_os:
   - debian12
@@ -38064,12 +37520,15 @@ sysctl-kernel-unprivileged_bpf_disabled:
       ubuntu2204: sysctl_kernel_unprivileged_bpf_disabled_accept_default
       ubuntu2404: sysctl_kernel_unprivileged_bpf_disabled_accept_default
       ubuntu2604: sysctl_kernel_unprivileged_bpf_disabled_accept_default
-  template:
-    key: kernel.unprivileged_bpf_disabled
-    name: sysctl
-    value: '1'
   title: Disable Access to Network bpf() Syscall From Unprivileged Processes
   remediation_class: auto
+  check:
+  - describe kernel_parameter('kernel.unprivileged_bpf_disabled') do
+  - "  its('value') { should cmp >= 1 }"
+  - end
+  - describe command("grep -hsE '^[[:space:]]*kernel.unprivileged_bpf_disabled[[:space:]]*=[[:space:]]*[12]([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null") do
+  - "  its('stdout') { should match(/\\S/) }"
+  - end
 sysctl-kernel-yama-ptrace_scope:
   applicable_os:
   - debian12
@@ -38375,14 +37834,14 @@ sysctl-net-ipv4-conf-all-arp_filter:
   remediation:
     key: net.ipv4.conf.all.arp_filter
     resource: sysctl
-    value: '0'
+    value: '1'
   severity: medium
   socle: SOCLE-CLD-SYS-025
   ssg: sysctl_net_ipv4_conf_all_arp_filter
   template:
     key: net.ipv4.conf.all.arp_filter
     name: sysctl
-    value: '0'
+    value: '1'
   title: Configure ARP filtering for All IPv4 Interfaces
   remediation_class: auto
 sysctl-net-ipv4-conf-all-arp_ignore:
@@ -40645,7 +40104,8 @@ sysctl-user-max_user_namespaces:
     name: sysctl
     value: '0'
   title: Disable the use of user namespaces
-  remediation_class: auto
+  remediation_class: dangerous
+  danger: user.max_user_namespaces=0 breaks rootless podman, flatpak and every systemd unit using PrivateUsers=
 sysctl-vm-mmap_min_addr:
   applicable_os:
   - debian12
@@ -40750,7 +40210,7 @@ time-sync-present:
     options:
       chrony:
         package: chrony
-        service: chrony
+        service: '@{svc.chrony}'
       timesyncd:
         package: systemd-timesyncd
         service: systemd-timesyncd
