@@ -50,7 +50,13 @@ command -v apt-get >/dev/null 2>&1 || { echo "this script is for debian13 (needs
   make olddefconfig
   # abort early if the firewall stack got pruned anyway — never ship a firewall-less kernel
   grep -qE '^CONFIG_NF_TABLES=[ym]' .config || { echo "ERROR: CONFIG_NF_TABLES missing after olddefconfig; the built kernel would have no nftables firewall. Aborting." >&2; exit 1; }
-  echo "==> building (long)"; make -j"$(nproc)" bindeb-pkg
+  # gcc-plugin instrumentation roughly DOUBLES the memory of each compile job (~1.5G).
+  # A full -j nproc on a small VM gets OOM-killed hours into the build (SIGKILL, exit 137),
+  # which is a miserable way to learn the box was too small. Cap the jobs on the RAM.
+  MEM_GB=$(awk '/MemTotal/{printf "%d", $2/1024/1024}' /proc/meminfo)
+  JOBS=$(( MEM_GB * 2 / 3 )); [ "$JOBS" -lt 1 ] && JOBS=1
+  [ "$JOBS" -gt "$(nproc)" ] && JOBS=$(nproc)
+  echo "==> building (long, -j$JOBS for ${MEM_GB}G of RAM)"; make -j"$JOBS" bindeb-pkg
   echo "==> installing"; dpkg -i ../linux-image-*.deb
   update-grub
   # ensure the /vmlinuz + /initrd.img top-level symlinks point to the newest kernel (lynis

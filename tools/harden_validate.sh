@@ -32,6 +32,21 @@ sleep 8
 until ssh -F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i "$KEY" "$TARGET" true 2>/dev/null; do sleep 5; done
 echo "back up"
 
+say "4b/6 INVARIANTS — a hardened host that lost a vital function is a FAILURE, not a grade"
+# We learned this the hard way: two firewall controls with different defaults cancelled each other
+# out and the box came back with NO firewall, and a scan reports that as one failing control among
+# hundreds. These are pass/fail: if hardening broke the machine, say so, loudly, here.
+inv=0
+$SSH "$TARGET" "systemctl is-active --quiet ufw || systemctl is-active --quiet nftables || systemctl is-active --quiet firewalld" \
+  >/dev/null 2>&1 || { echo "  INVARIANT FAILED: no firewall is active after hardening"; inv=1; }
+$SSH "$TARGET" "systemctl is-active --quiet ssh || systemctl is-active --quiet sshd" >/dev/null 2>&1 \
+  || { echo "  INVARIANT FAILED: sshd is not running"; inv=1; }
+$SSH "$TARGET" "command -v apt-get >/dev/null && apt-get check >/dev/null 2>&1 || command -v dnf >/dev/null && dnf -q check-update >/dev/null 2>&1 || true" \
+  >/dev/null 2>&1 || { echo "  INVARIANT FAILED: the package manager is broken"; inv=1; }
+$SSH "$TARGET" "systemctl is-system-running 2>/dev/null | grep -qvx degraded" >/dev/null 2>&1 \
+  || { echo "  INVARIANT WARNING: the host reports degraded (a unit failed)"; }
+[ "$inv" -eq 0 ] && echo "  invariants OK: firewall up, sshd up, package manager healthy"
+
 say "5/6 re-scan (grade)"
 bin/pavois scan "$TARGET" --profile "linux/$OS" --sudo --on-target --key "$KEY" 2>&1 | \
   grep -iE "Grade|Remediable posture|controls passing|CRITICAL|kernel-build|install-time"

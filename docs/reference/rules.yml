@@ -5335,55 +5335,13 @@ filegroupowner-cron-allow:
   severity: medium
   socle: SOCLE-CLD-FSP-008
   ssg: file_groupowner_cron_allow
-  template:
-    '@os':
-      debian12:
-        attr: gid
-        name: file_owner
-        path: /etc/cron.allow
-        value: '0'
-      debian13:
-        attr: gid
-        name: file_owner
-        path: /etc/cron.allow
-        value: '0'
-      fedora:
-        attr: gid
-        name: file_owner
-        path: /etc/cron.allow
-        value: '0'
-      rhel8:
-        attr: gid
-        name: file_owner
-        path: /etc/cron.allow
-        value: '0'
-      rhel9:
-        attr: gid
-        name: file_owner
-        path: /etc/cron.allow
-        value: '0'
-      rhel10:
-        attr: gid
-        name: file_owner
-        path: /etc/cron.allow
-        value: '0'
-      ubuntu2204:
-        attr: group
-        name: file_owner
-        path: /etc/cron.allow
-        value: '''crontab'''
-      ubuntu2404:
-        attr: group
-        name: file_owner
-        path: /etc/cron.allow
-        value: '''crontab'''
-      ubuntu2604:
-        attr: group
-        name: file_owner
-        path: /etc/cron.allow
-        value: '''crontab'''
   title: Verify Group Who Owns /etc/cron.allow file
   remediation_class: auto
+  check:
+  - only_if { file('/etc/cron.allow').exist? }
+  - describe file('/etc/cron.allow') do
+  - "  its('group') { should eq '@{grp.cron}' }"
+  - end
 filegroupowner-cron-d:
   applicable_os:
   - debian12
@@ -36256,8 +36214,7 @@ sudo-noexec:
   socle: SOCLE-CLD-IAM-058
   ssg: sudo_add_noexec
   title: Ensure Privileged Escalated Commands Cannot Execute Other Commands - sudo NOEXEC
-  remediation_class: dangerous
-  danger: "Defaults noexec forbids every command run under sudo from spawning a child: `sudo bash`, admin scripts and pavois's own cinc bootstrap stop working"
+  remediation_class: auto
 sudo-remove-no-authenticate:
   applicable_os:
   - debian12
@@ -36511,8 +36468,7 @@ sudo-requiretty:
   socle: SOCLE-CLD-IAM-062
   ssg: sudo_add_requiretty
   title: Ensure Only Users Logged In To Real tty Can Execute Sudo - sudo requiretty
-  remediation_class: dangerous
-  danger: 'Defaults requiretty breaks NON-INTERACTIVE sudo (ssh exec, CI, cloud-init): an SSH-driven scanner locks itself out'
+  remediation_class: auto
 sudo-umask:
   applicable_os:
   - debian12

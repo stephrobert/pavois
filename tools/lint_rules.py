@@ -145,8 +145,35 @@ def main():
                     f"{cid} [{os}]: check reads {m.group(1)}, remediation writes {wrote}"
                 )
 
+    # Two controls of the SAME exclusive group with DIFFERENT defaults make harden install two
+    # technologies and (with the group resolved) disable each other's pick: a hardened host with
+    # NO firewall at all. Measured on a clean-room debian12. One group, one default.
+    import itertools
+
+    excl = yaml.safe_load((ROOT / "docs" / "reference" / "exclusivity.yml").read_text()) or {}
+    for gname, g in (excl.get("groups") or {}).items():
+        defaults = {}
+        gd = g.get("default") or {}
+        for fam, tech in gd.items():
+            defaults.setdefault(fam, set()).add(tech)
+        for e in d.values():
+            if not isinstance(e, dict) or e.get("exclusive_group") != gname:
+                continue
+            for r in per_os(e, "remediation").values():
+                if isinstance(r, dict) and r.get("default"):
+                    for fam in defaults:
+                        defaults[fam].add(str(r["default"]))
+        for fam, techs in defaults.items():
+            if len(techs) > 1:
+                findings["group-default"].append(
+                    f"{gname} [{fam}]: two defaults {sorted(techs)} — harden sets up both, "
+                    "and they cancel each other out"
+                )
+    _ = itertools
+
     total = 0
     for kind in (
+        "group-default",
         "dead-check",
         "primitive-leak",
         "ssg-leak",

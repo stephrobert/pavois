@@ -18,6 +18,8 @@ STAGE="${1:-all}"
 PVE="${PVE:-root@pve.example}"                                  # Proxmox host (ssh target)
 VMID="${CK_VMID:-9000}"; IP="${CK_IP:-203.0.113.62}"; GW="${CK_GW:-203.0.113.1}"
 OS="${CK_OS:-ubuntu2404}"; CIUSER="${CK_USER:-pavois}"
+# the KSPP build is the memory-hungry step; size the VM for the hypervisor you have
+MEM="${CK_MEM:-12288}"; CORES="${CK_CORES:-8}"
 CLOUDIMG="${CK_CLOUDIMG:-/var/lib/vz/template/iso/noble-server-cloudimg-amd64.img}"
 KEY="${CK_KEY:-$HOME/.ssh/id_ed25519}"; TARGET=$CIUSER@$IP
 : "${PAVOIS_SUDO_PASSWORD:?set PAVOIS_SUDO_PASSWORD}"
@@ -33,7 +35,7 @@ provision(){
   scp -o StrictHostKeyChecking=no "${KEY}.pub" "$PVE:/root/pavois-ck.pub" >/dev/null
   rm -f /tmp/ck-known
   pssh "qm status $VMID >/dev/null 2>&1 && { qm stop $VMID --skiplock >/dev/null 2>&1; sleep 3; qm destroy $VMID --purge --destroy-unreferenced-disks 1; }; true"
-  pssh "qm create $VMID --name pavois-$OS-clean --memory 12288 --cores 8 --cpu host \
+  pssh "qm create $VMID --name pavois-$OS-clean --memory $MEM --cores $CORES --cpu host \
       --net0 virtio,bridge=vmbr0 --scsihw virtio-scsi-single --agent 1 --serial0 socket --vga std --ostype l26"
   pssh "qm set $VMID --scsi0 srv-pve:0,import-from=$CLOUDIMG,discard=on"
   pssh "qm disk resize $VMID scsi0 50G"
