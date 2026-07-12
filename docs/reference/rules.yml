@@ -54,17 +54,15 @@ account-accounts-no-uid-except-zero:
         ubuntu2604: Req-8.5
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# List accounts with uid 0 other than root; remove/fix each ONLY after confirming it is rogue.
+    command: '# List accounts with uid 0 other than root; remove/fix each ONLY after confirming it is rogue.
 
-          awk -F: ''($3==0 && $1!="root"){print $1}'' /etc/passwd
+      awk -F: ''($3==0 && $1!="root"){print $1}'' /etc/passwd
 
-          # for a confirmed rogue account: userdel <name>   (irreversible, verify it is not legitimate)
+      # for a confirmed rogue account: userdel <name>   (irreversible, verify it is not legitimate)
 
-          '
-        reason: deleting an account is irreversible, a human must confirm it is rogue
-        resource: manual
+      '
+    reason: deleting an account is irreversible, a human must confirm it is rogue
+    resource: manual
   severity: critical
   socle: SOCLE-CLD-IAM-001
   ssg: accounts_no_uid_except_zero
@@ -124,15 +122,13 @@ account-accounts-password-all-shadowed:
         ubuntu2604: Req-8.2.1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'grep -E ''^[^:]+:[^:!*x]'' /etc/passwd   # accounts with a hash still in /etc/passwd
+    command: 'grep -E ''^[^:]+:[^:!*x]'' /etc/passwd   # accounts with a hash still in /etc/passwd
 
-          pwconv   # migrate them to /etc/shadow
+      pwconv   # migrate them to /etc/shadow
 
-          '
-        reason: moving passwords to /etc/shadow with pwconv is safe but verify no app reads /etc/passwd hashes
-        resource: manual
+      '
+    reason: moving passwords to /etc/shadow with pwconv is safe but verify no app reads /etc/passwd hashes
+    resource: manual
   severity: critical
   socle: SOCLE-CLD-IAM-002
   ssg: accounts_password_all_shadowed
@@ -188,15 +184,13 @@ account-accounts-root-gid-zero:
         ubuntu2604: Req-8.1.1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'id -g root
+    command: 'id -g root
 
-          usermod -g 0 root   # set root''s primary GID to 0 (only if the audit flagged it)
+      usermod -g 0 root   # set root''s primary GID to 0 (only if the audit flagged it)
 
-          '
-        reason: changing root's primary group is sensitive, confirm before applying
-        resource: manual
+      '
+    reason: changing root's primary group is sensitive, confirm before applying
+    resource: manual
   severity: high
   socle: SOCLE-CLD-IAM-003
   ssg: accounts_root_gid_zero
@@ -282,15 +276,13 @@ account-gid-passwd-group-same:
     pci-dss: 8.2.2
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'awk -F: ''{print $4}'' /etc/passwd | sort -u | while read g; do getent group "$g" >/dev/null || echo "missing group gid=$g"; done
+    command: 'awk -F: ''{print $4}'' /etc/passwd | sort -u | while read g; do getent group "$g" >/dev/null || echo "missing group gid=$g"; done
 
-          # groupadd -g <gid> <name> for each, or reassign the user''s primary group
+      # groupadd -g <gid> <name> for each, or reassign the user''s primary group
 
-          '
-        reason: a user's primary GID must exist in /etc/group, create the missing group deliberately
-        resource: manual
+      '
+    reason: a user's primary GID must exist in /etc/group, create the missing group deliberately
+    resource: manual
   severity: low
   socle: SOCLE-CLD-IAM-005
   ssg: gid_passwd_group_same
@@ -378,15 +370,13 @@ account-no-empty-passwords:
         - UBTU-24-300027
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'awk -F: ''($2==""){print $1}'' /etc/shadow   # accounts with NO password
+    command: 'awk -F: ''($2==""){print $1}'' /etc/shadow   # accounts with NO password
 
-          # passwd -l <user>   (lock) for each, after confirming it should not log in
+      # passwd -l <user>   (lock) for each, after confirming it should not log in
 
-          '
-        reason: locking an account is disruptive, confirm each empty-password account before locking
-        resource: manual
+      '
+    reason: locking an account is disruptive, confirm each empty-password account before locking
+    resource: manual
   severity: critical
   socle: SOCLE-CLD-IAM-006
   ssg: no_empty_passwords
@@ -2101,31 +2091,11 @@ auditd-action-mail-acct:
         ubuntu2604: UBTU-24-900980
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        file: /etc/audit/auditd.conf
-        key: action_mail_acct
-        resource: conf_line
-        service: auditd
-        value: root
-      rhel8:
-        file: /etc/audit/auditd.conf
-        key: action_mail_acct
-        resource: conf_line
-        service: auditd
-        value: root
-      rhel9:
-        file: /etc/audit/auditd.conf
-        key: action_mail_acct
-        resource: conf_line
-        service: auditd
-        value: root
-      rhel10:
-        file: /etc/audit/auditd.conf
-        key: action_mail_acct
-        resource: conf_line
-        service: auditd
-        value: root
+    file: /etc/audit/auditd.conf
+    key: action_mail_acct
+    resource: conf_line
+    service: auditd
+    value: root
   requires_package: auditd
   severity: medium
   socle: SOCLE-RUN-AUD-025
@@ -2484,25 +2454,11 @@ auditd-freq:
   reboot_survivable: 'yes'
   requires_package: auditd
   remediation:
-    '@os':
-      rhel8:
-        file: /etc/audit/auditd.conf
-        key: freq
-        resource: conf_line
-        service: auditd
-        value: '100'
-      rhel9:
-        file: /etc/audit/auditd.conf
-        key: freq
-        resource: conf_line
-        service: auditd
-        value: '100'
-      rhel10:
-        file: /etc/audit/auditd.conf
-        key: freq
-        resource: conf_line
-        service: auditd
-        value: '100'
+    file: /etc/audit/auditd.conf
+    key: freq
+    resource: conf_line
+    service: auditd
+    value: '100'
   severity: medium
   socle: SOCLE-RUN-AUD-031
   ssg: auditd_freq
@@ -2583,31 +2539,11 @@ auditd-max-log-file:
         ubuntu2604: Req-10.7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        file: /etc/audit/auditd.conf
-        key: max_log_file
-        resource: conf_line
-        service: auditd
-        value: '8'
-      rhel8:
-        file: /etc/audit/auditd.conf
-        key: max_log_file
-        resource: conf_line
-        service: auditd
-        value: '8'
-      rhel9:
-        file: /etc/audit/auditd.conf
-        key: max_log_file
-        resource: conf_line
-        service: auditd
-        value: '8'
-      rhel10:
-        file: /etc/audit/auditd.conf
-        key: max_log_file
-        resource: conf_line
-        service: auditd
-        value: '8'
+    file: /etc/audit/auditd.conf
+    key: max_log_file
+    resource: conf_line
+    service: auditd
+    value: '8'
   requires_package: auditd
   severity: medium
   socle: SOCLE-RUN-AUD-032
@@ -2711,25 +2647,11 @@ auditd-name-format:
   reboot_survivable: 'yes'
   requires_package: auditd
   remediation:
-    '@os':
-      rhel8:
-        file: /etc/audit/auditd.conf
-        key: name_format
-        resource: conf_line
-        service: auditd
-        value: hostname
-      rhel9:
-        file: /etc/audit/auditd.conf
-        key: name_format
-        resource: conf_line
-        service: auditd
-        value: hostname
-      rhel10:
-        file: /etc/audit/auditd.conf
-        key: name_format
-        resource: conf_line
-        service: auditd
-        value: hostname
+    file: /etc/audit/auditd.conf
+    key: name_format
+    resource: conf_line
+    service: auditd
+    value: hostname
   severity: medium
   socle: SOCLE-RUN-AUD-034
   ssg: auditd_name_format
@@ -2909,37 +2831,11 @@ auditd-space-left-percentage:
   reboot_survivable: 'yes'
   requires_package: auditd
   remediation:
-    '@os':
-      rhel8:
-        file: /etc/audit/auditd.conf
-        key: space_left
-        resource: conf_line
-        service: auditd
-        value: '25%'
-      rhel9:
-        file: /etc/audit/auditd.conf
-        key: space_left
-        resource: conf_line
-        service: auditd
-        value: '25%'
-      rhel10:
-        file: /etc/audit/auditd.conf
-        key: space_left
-        resource: conf_line
-        service: auditd
-        value: '25%'
-      ubuntu2404:
-        file: /etc/audit/auditd.conf
-        key: space_left
-        resource: conf_line
-        service: auditd
-        value: '25%'
-      ubuntu2604:
-        file: /etc/audit/auditd.conf
-        key: space_left
-        resource: conf_line
-        service: auditd
-        value: '25%'
+    file: /etc/audit/auditd.conf
+    key: space_left
+    resource: conf_line
+    service: auditd
+    value: '25%'
   severity: medium
   socle: SOCLE-RUN-AUD-037
   ssg: auditd_data_retention_space_left_percentage
@@ -3362,15 +3258,9 @@ cmdline-nousb:
   levels: {}
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      rhel9:
-        param: nousb
-        reboot_required: true
-        resource: kernel_cmdline
-      rhel10:
-        param: nousb
-        reboot_required: true
-        resource: kernel_cmdline
+    param: nousb
+    reboot_required: true
+    resource: kernel_cmdline
   severity: medium
   socle: SOCLE-CLD-KRN-008
   ssg: grub2_nousb_argument
@@ -3658,19 +3548,9 @@ cmdline-vsyscall:
   levels: {}
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      rhel8:
-        param: vsyscall=none
-        reboot_required: true
-        resource: kernel_cmdline
-      rhel9:
-        param: vsyscall=none
-        reboot_required: true
-        resource: kernel_cmdline
-      rhel10:
-        param: vsyscall=none
-        reboot_required: true
-        resource: kernel_cmdline
+    param: vsyscall=none
+    reboot_required: true
+    resource: kernel_cmdline
   severity: medium
   socle: SOCLE-CLD-KRN-018
   ssg: grub2_vsyscall_argument
@@ -10222,19 +10102,9 @@ fileowner-var-log-syslog:
         ubuntu2604: UBTU-24-700140
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      ubuntu2204:
-        owner: syslog
-        path: /var/log/syslog
-        resource: file
-      ubuntu2404:
-        owner: syslog
-        path: /var/log/syslog
-        resource: file
-      ubuntu2604:
-        owner: syslog
-        path: /var/log/syslog
-        resource: file
+    owner: syslog
+    path: /var/log/syslog
+    resource: file
   severity: medium
   socle: SOCLE-CLD-FSP-104
   ssg: file_owner_var_log_syslog
@@ -16049,15 +15919,13 @@ findloop-dir-perms-world-writable-sticky-bits:
         ubuntu2604: UBTU-24-600150
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'find / -xdev -type d -perm -0002 ! -perm -1000 2>/dev/null
+    command: 'find / -xdev -type d -perm -0002 ! -perm -1000 2>/dev/null
 
-          # for each: chmod +t <dir>   (after confirming it is a shared directory)
+      # for each: chmod +t <dir>   (after confirming it is a shared directory)
 
-          '
-        reason: setting the sticky bit on shared dirs is usually safe but verify each is a real shared dir
-        resource: manual
+      '
+    reason: setting the sticky bit on shared dirs is usually safe but verify each is a real shared dir
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-179
   ssg: dir_perms_world_writable_sticky_bits
@@ -16089,17 +15957,15 @@ findloop-dir-system-commands:
     - CM-5(6).1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# Review ownership/permissions of system command directories (e.g. /bin /sbin /usr/bin /usr/sbin):
+    command: '# Review ownership/permissions of system command directories (e.g. /bin /sbin /usr/bin /usr/sbin):
 
-          find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -xdev \( -perm -0002 -o ! -user root \) 2>/dev/null
+      find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -xdev \( -perm -0002 -o ! -user root \) 2>/dev/null
 
-          # fix each after review: chown root <path> ; chmod o-w <path>
+      # fix each after review: chown root <path> ; chmod o-w <path>
 
-          '
-        reason: tightening perms on system command dirs can break packaged tooling, review
-        resource: manual
+      '
+    reason: tightening perms on system command dirs can break packaged tooling, review
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-180
   ssg: dir_system_commands_group_root_owned
@@ -16145,27 +16011,10 @@ findloop-file-groupowner-var-log:
         ubuntu2604: UBTU-24-700100
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      ubuntu2204:
-        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-        name: fix-varlog-ownership
-        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-        resource: exec
-      ubuntu2404:
-        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-        name: fix-varlog-ownership
-        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-        resource: exec
-      rhel8:
-        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-        name: fix-varlog-ownership
-        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-        resource: exec
-      ubuntu2604:
-        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-        name: fix-varlog-ownership
-        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-        resource: exec
+    command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
+    name: fix-varlog-ownership
+    not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-FSP-181
   ssg: file_groupowner_var_log
@@ -16316,27 +16165,10 @@ findloop-file-owner-var-log:
         ubuntu2604: UBTU-24-700110
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      ubuntu2204:
-        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-        name: fix-varlog-ownership
-        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-        resource: exec
-      ubuntu2404:
-        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-        name: fix-varlog-ownership
-        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-        resource: exec
-      rhel8:
-        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-        name: fix-varlog-ownership
-        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-        resource: exec
-      ubuntu2604:
-        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-        name: fix-varlog-ownership
-        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-        resource: exec
+    command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
+    name: fix-varlog-ownership
+    not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-FSP-184
   ssg: file_owner_var_log
@@ -16376,37 +16208,10 @@ findloop-file-ownership-binary-dirs:
         ubuntu2604: UBTU-24-300012
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) -exec chown root:root {} + 2>/dev/null; true
-        name: fix-bindir-ownership
-        not_if: test -z "$(find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) 2>/dev/null | head -1)"
-        resource: exec
-      debian13:
-        command: find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) -exec chown root:root {} + 2>/dev/null; true
-        name: fix-bindir-ownership
-        not_if: test -z "$(find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) 2>/dev/null | head -1)"
-        resource: exec
-      ubuntu2204:
-        command: find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) -exec chown root:root {} + 2>/dev/null; true
-        name: fix-bindir-ownership
-        not_if: test -z "$(find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) 2>/dev/null | head -1)"
-        resource: exec
-      ubuntu2404:
-        command: find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) -exec chown root:root {} + 2>/dev/null; true
-        name: fix-bindir-ownership
-        not_if: test -z "$(find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) 2>/dev/null | head -1)"
-        resource: exec
-      rhel8:
-        command: find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) -exec chown root:root {} + 2>/dev/null; true
-        name: fix-bindir-ownership
-        not_if: test -z "$(find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) 2>/dev/null | head -1)"
-        resource: exec
-      ubuntu2604:
-        command: find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) -exec chown root:root {} + 2>/dev/null; true
-        name: fix-bindir-ownership
-        not_if: test -z "$(find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) 2>/dev/null | head -1)"
-        resource: exec
+    command: find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) -exec chown root:root {} + 2>/dev/null; true
+    name: fix-bindir-ownership
+    not_if: test -z "$(find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \( ! -user root -o ! -group root \) 2>/dev/null | head -1)"
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-FSP-185
   ssg: file_ownership_binary_dirs
@@ -16541,17 +16346,15 @@ findloop-file-permissions-unauthorized-world-writable:
     pci-dss: 2.2.6
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# List world-writable files (excluding the sticky-bit dirs), then fix each after review:
+    command: '# List world-writable files (excluding the sticky-bit dirs), then fix each after review:
 
-          find / -xdev -type f -perm -0002 2>/dev/null
+      find / -xdev -type f -perm -0002 2>/dev/null
 
-          # for each legitimate-to-fix: chmod o-w <file>
+      # for each legitimate-to-fix: chmod o-w <file>
 
-          '
-        reason: auto-chmod over a find risks breaking apps that rely on a world-writable path, review each
-        resource: manual
+      '
+    reason: auto-chmod over a find risks breaking apps that rely on a world-writable path, review each
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-187
   ssg: file_permissions_unauthorized_world_writable
@@ -16669,15 +16472,13 @@ findloop-file-permissions-ungroupowned:
     pci-dss: 2.2.6
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'find / -xdev -nogroup 2>/dev/null
+    command: 'find / -xdev -nogroup 2>/dev/null
 
-          # chgrp <group> <path> per item after review
+      # chgrp <group> <path> per item after review
 
-          '
-        reason: an ungroup-owned file signals a deleted group, assign a group deliberately
-        resource: manual
+      '
+    reason: an ungroup-owned file signals a deleted group, assign a group deliberately
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-188
   ssg: file_permissions_ungroupowned
@@ -16821,16 +16622,13 @@ findloop-no-dirs-unowned-by-root:
     cis: 5.4.2.5
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12: &id004
-        command: 'find / -xdev -type d -nouser 2>/dev/null
+    command: 'find / -xdev -type d -nouser 2>/dev/null
 
-          # chown <user> <dir> per directory after review
+      # chown <user> <dir> per directory after review
 
-          '
-        reason: review unowned directories and assign ownership deliberately
-        resource: manual
-      rhel8: *id004
+      '
+    reason: review unowned directories and assign ownership deliberately
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-190
   ssg: no_dirs_unowned_by_root
@@ -16944,15 +16742,13 @@ findloop-no-files-unowned-by-user:
     pci-dss: 2.2.6
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'find / -xdev -nouser 2>/dev/null
+    command: 'find / -xdev -nouser 2>/dev/null
 
-          # review each, then assign a real owner: chown <user> <file>  (or remove if orphaned)
+      # review each, then assign a real owner: chown <user> <file>  (or remove if orphaned)
 
-          '
-        reason: an unowned file usually signals a deleted user, assign ownership deliberately, do not blindly chown
-        resource: manual
+      '
+    reason: an unowned file usually signals a deleted user, assign ownership deliberately, do not blindly chown
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-191
   ssg: no_files_unowned_by_user
@@ -16989,10 +16785,10 @@ findloop-permissions-local-var-log:
     pci-dss: 10.3.1
   reboot_survivable: 'yes'
   remediation:
-    command: 'for u in apt-daily apt-daily-upgrade unattended-upgrades sysstat-collect sysstat-summary dnf-makecache rpm-ostreed-automatic; do systemctl list-unit-files ${u}.service --no-legend 2>/dev/null | grep -q . || continue; mkdir -p /etc/systemd/system/${u}.service.d; printf ''[Service]\nUMask=0027\n'' > /etc/systemd/system/${u}.service.d/pavois-umask.conf; done; systemctl daemon-reload; find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true'
+    command: 'if [ -f /etc/sysstat/sysstat ]; then sed -ri ''s/^[[:space:]]*UMASK=.*/UMASK=0027/'' /etc/sysstat/sysstat; grep -q ''^UMASK='' /etc/sysstat/sysstat || echo UMASK=0027 >> /etc/sysstat/sysstat; fi; for u in apt-daily apt-daily-upgrade unattended-upgrades sysstat-collect sysstat-summary dnf-makecache rpm-ostreed-automatic; do systemctl list-unit-files ${u}.service --no-legend 2>/dev/null | grep -q . || continue; mkdir -p /etc/systemd/system/${u}.service.d; printf ''[Service]\nUMask=0027\n'' > /etc/systemd/system/${u}.service.d/pavois-umask.conf; done; systemctl daemon-reload; find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true'
     name: fix-varlog-perms
-    not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)" && { ! systemctl list-unit-files apt-daily.service --no-legend 2>/dev/null | grep -q . || test -e /etc/systemd/system/apt-daily.service.d/pavois-umask.conf; }
-    reason: 'the chmod alone does not hold: the log files are RE-CREATED by the services that write them (apt-daily, unattended-upgrades, sysstat run with UMask=0022 -> 0644), so the control drifts back to FAIL. The fix is at the source: a systemd drop-in sets UMask=0027 on those units, so every new log file is born 0640. The chmod only repairs what already exists.'
+    not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)" && { ! test -f /etc/sysstat/sysstat || grep -q '^UMASK=0027' /etc/sysstat/sysstat; } && { ! systemctl list-unit-files apt-daily.service --no-legend 2>/dev/null | grep -q . || test -e /etc/systemd/system/apt-daily.service.d/pavois-umask.conf; }
+    reason: 'the chmod alone does not hold: the files are RE-CREATED by the services that write them. Two sources must be fixed, not one: the systemd units (UMask=0027 drop-in, for apt-daily / unattended-upgrades / dnf-makecache) AND sysstat''s own UMASK knob in /etc/sysstat/sysstat, which overrides the unit''s umask. The chmod only repairs what already exists.'
     resource: exec
   severity: medium
   socle: SOCLE-CLD-FSP-192
@@ -17007,6 +16803,49 @@ findloop-rsyslog-files-groupownership:
   - rhel9
   check:
   - describe command('timeout 90 find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal 2>/dev/null') do
+  - "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass"
+  - '  its(''stdout.strip'') { should eq '''' }'
+  - end
+  domain: Filesystem (scan)
+  evidence_type: filesystem-state
+  impact: 0.5
+  levels:
+    '@os':
+      debian13: &id004
+        bp28: enhanced
+      fedora:
+        bp28: enhanced
+        cis: '1'
+      rhel8: *id004
+      rhel9:
+        bp28: enhanced
+      rhel10:
+        bp28: enhanced
+  norms:
+    bp28: R71
+    cis:
+      '@os':
+        fedora: 6.2.6.1
+    pci-dss: 10.3.2
+  reboot_survivable: 'yes'
+  remediation:
+    command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
+    name: fix-varlog-ownership
+    not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
+    resource: exec
+  severity: medium
+  socle: SOCLE-CLD-FSP-193
+  ssg: rsyslog_files_groupownership
+  title: Ensure Log Files Are Owned By Appropriate Group
+findloop-rsyslog-files-ownership:
+  applicable_os:
+  - debian13
+  - fedora
+  - rhel8
+  - rhel10
+  - rhel9
+  check:
+  - describe command('timeout 90 find /var/log -type f ! -user root ! -user syslog ! -user _aide 2>/dev/null') do
   - "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass"
   - '  its(''stdout.strip'') { should eq '''' }'
   - end
@@ -17033,79 +16872,10 @@ findloop-rsyslog-files-groupownership:
     pci-dss: 10.3.2
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian13: &id006
-        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-        name: fix-varlog-ownership
-        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-        resource: exec
-      rhel8: *id006
-      rhel9:
-        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-        name: fix-varlog-ownership
-        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-        resource: exec
-      rhel10:
-        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-        name: fix-varlog-ownership
-        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-        resource: exec
-  severity: medium
-  socle: SOCLE-CLD-FSP-193
-  ssg: rsyslog_files_groupownership
-  title: Ensure Log Files Are Owned By Appropriate Group
-findloop-rsyslog-files-ownership:
-  applicable_os:
-  - debian13
-  - fedora
-  - rhel8
-  - rhel10
-  - rhel9
-  check:
-  - describe command('timeout 90 find /var/log -type f ! -user root ! -user syslog ! -user _aide 2>/dev/null') do
-  - "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass"
-  - '  its(''stdout.strip'') { should eq '''' }'
-  - end
-  domain: Filesystem (scan)
-  evidence_type: filesystem-state
-  impact: 0.5
-  levels:
-    '@os':
-      debian13: &id007
-        bp28: enhanced
-      fedora:
-        bp28: enhanced
-        cis: '1'
-      rhel8: *id007
-      rhel9:
-        bp28: enhanced
-      rhel10:
-        bp28: enhanced
-  norms:
-    bp28: R71
-    cis:
-      '@os':
-        fedora: 6.2.6.1
-    pci-dss: 10.3.2
-  reboot_survivable: 'yes'
-  remediation:
-    '@os':
-      debian13: &id008
-        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-        name: fix-varlog-ownership
-        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-        resource: exec
-      rhel8: *id008
-      rhel9:
-        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-        name: fix-varlog-ownership
-        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-        resource: exec
-      rhel10:
-        command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
-        name: fix-varlog-ownership
-        not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
-        resource: exec
+    command: find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true
+    name: fix-varlog-ownership
+    not_if: test -z "$(find /var/log -type f \( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \) 2>/dev/null | head -1)"
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-FSP-194
   ssg: rsyslog_files_ownership
@@ -17127,12 +16897,12 @@ findloop-rsyslog-files-permissions:
   impact: 0.5
   levels:
     '@os':
-      debian13: &id009
+      debian13: &id006
         bp28: enhanced
       fedora:
         bp28: enhanced
         cis: '1'
-      rhel8: *id009
+      rhel8: *id006
       rhel9:
         bp28: enhanced
       rhel10:
@@ -17145,23 +16915,10 @@ findloop-rsyslog-files-permissions:
     pci-dss: 10.3.1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian13: &id010
-        command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
-        name: fix-varlog-perms
-        not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
-        resource: exec
-      rhel8: *id010
-      rhel9:
-        command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
-        name: fix-varlog-perms
-        not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
-        resource: exec
-      rhel10:
-        command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
-        name: fix-varlog-perms
-        not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
-        resource: exec
+    command: find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true
+    name: fix-varlog-perms
+    not_if: test -z "$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)"
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-FSP-195
   ssg: rsyslog_files_permissions
@@ -17632,40 +17389,13 @@ groupownerships-var-log-gdm:
         ubuntu2604: 6.1.4.1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# Set root ownership recursively under the gdm log dir (only if it exists):
+    command: '# Set root ownership recursively under the gdm log dir (only if it exists):
 
-          [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
+      [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
 
-          '
-        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
-        resource: manual
-      debian13: &id011
-        command: '# Set root ownership recursively under the gdm log dir (only if it exists):
-
-          [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
-
-          '
-        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
-        resource: manual
-      rhel8: *id011
-      rhel9:
-        command: '# Set root ownership recursively under the gdm log dir (only if it exists):
-
-          [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
-
-          '
-        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
-        resource: manual
-      rhel10:
-        command: '# Set root ownership recursively under the gdm log dir (only if it exists):
-
-          [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
-
-          '
-        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
-        resource: manual
+      '
+    reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-197
   ssg: file_groupownerships_var_log_gdm
@@ -17698,23 +17428,13 @@ groupownerships-var-log-gdm3:
         ubuntu2604: 6.1.4.1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# Set root ownership recursively under the gdm log dir (only if it exists):
+    command: '# Set root ownership recursively under the gdm log dir (only if it exists):
 
-          [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
+      [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
 
-          '
-        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
-        resource: manual
-      debian13:
-        command: '# Set root ownership recursively under the gdm log dir (only if it exists):
-
-          [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
-
-          '
-        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
-        resource: manual
+      '
+    reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-198
   ssg: file_groupownerships_var_log_gdm3
@@ -17750,40 +17470,13 @@ groupownerships-var-log-sssd:
         ubuntu2604: 6.1.4.1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# Set root ownership recursively under the sssd log dir (only if it exists):
+    command: '# Set root ownership recursively under the sssd log dir (only if it exists):
 
-          [ -d /var/log/sssd ] && find /var/log/sssd -print0 | xargs -0 -r chown root: || echo ''no /var/log/sssd''
+      [ -d /var/log/sssd ] && find /var/log/sssd -print0 | xargs -0 -r chown root: || echo ''no /var/log/sssd''
 
-          '
-        reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
-        resource: manual
-      debian13: &id012
-        command: '# Set root ownership recursively under the sssd log dir (only if it exists):
-
-          [ -d /var/log/sssd ] && find /var/log/sssd -print0 | xargs -0 -r chown root: || echo ''no /var/log/sssd''
-
-          '
-        reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
-        resource: manual
-      rhel8: *id012
-      rhel9:
-        command: '# Set root ownership recursively under the sssd log dir (only if it exists):
-
-          [ -d /var/log/sssd ] && find /var/log/sssd -print0 | xargs -0 -r chown root: || echo ''no /var/log/sssd''
-
-          '
-        reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
-        resource: manual
-      rhel10:
-        command: '# Set root ownership recursively under the sssd log dir (only if it exists):
-
-          [ -d /var/log/sssd ] && find /var/log/sssd -print0 | xargs -0 -r chown root: || echo ''no /var/log/sssd''
-
-          '
-        reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
-        resource: manual
+      '
+    reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-199
   ssg: file_groupownerships_var_log_sssd
@@ -17858,17 +17551,15 @@ home-directory-exists:
         ubuntu2604: 7.2.9
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# Find interactive users whose home directory is missing, then create it deliberately:
+    command: '# Find interactive users whose home directory is missing, then create it deliberately:
 
-          awk -F: ''($3>=1000 && $7!~/(nologin|false)/){print $1" "$6}'' /etc/passwd
+      awk -F: ''($3>=1000 && $7!~/(nologin|false)/){print $1" "$6}'' /etc/passwd
 
-          # mkdir -p <home>; chown <user>:<group> <home>; chmod 750 <home>
+      # mkdir -p <home>; chown <user>:<group> <home>; chmod 750 <home>
 
-          '
-        reason: creating/relocating a user's home is per-user and may need data migration
-        resource: manual
+      '
+    reason: creating/relocating a user's home is per-user and may need data migration
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-010
   ssg: accounts_user_interactive_home_directory_exists
@@ -17934,15 +17625,13 @@ home-dot-group-ownership:
         ubuntu2604: 7.2.10
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'for d in $(awk -F: ''($3>=1000){print $6}'' /etc/passwd); do find "$d" -maxdepth 1 -name ''.*'' 2>/dev/null; done
+    command: 'for d in $(awk -F: ''($3>=1000){print $6}'' /etc/passwd); do find "$d" -maxdepth 1 -name ''.*'' 2>/dev/null; done
 
-          # chgrp <user-group> per file after review
+      # chgrp <user-group> per file after review
 
-          '
-        reason: fixing dot-file group is per-user, verify before chgrp'ing a user's files
-        resource: manual
+      '
+    reason: fixing dot-file group is per-user, verify before chgrp'ing a user's files
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-011
   ssg: accounts_user_dot_group_ownership
@@ -18008,15 +17697,13 @@ home-dot-user-ownership:
         ubuntu2604: 7.2.10
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# Dot-files in a home must be owned by that user. List offenders, then chown deliberately.
+    command: '# Dot-files in a home must be owned by that user. List offenders, then chown deliberately.
 
-          for d in $(awk -F: ''($3>=1000){print $6}'' /etc/passwd); do find "$d" -maxdepth 1 -name ''.*'' ! -user "$(stat -c %U "$d")" 2>/dev/null; done
+      for d in $(awk -F: ''($3>=1000){print $6}'' /etc/passwd); do find "$d" -maxdepth 1 -name ''.*'' ! -user "$(stat -c %U "$d")" 2>/dev/null; done
 
-          '
-        reason: fixing dot-file ownership is per-user, verify before chowning a user's files
-        resource: manual
+      '
+    reason: fixing dot-file ownership is per-user, verify before chowning a user's files
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-012
   ssg: accounts_user_dot_user_ownership
@@ -18045,15 +17732,13 @@ home-files-groupownership:
     bp28: R50
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'awk -F: ''($3>=1000){print $1" "$6}'' /etc/passwd
+    command: 'awk -F: ''($3>=1000){print $1" "$6}'' /etc/passwd
 
-          # chgrp -R <group> <home> per user after review
+      # chgrp -R <group> <home> per user after review
 
-          '
-        reason: re-grouping a user's whole home is per-user, verify before acting
-        resource: manual
+      '
+    reason: re-grouping a user's whole home is per-user, verify before acting
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-013
   ssg: accounts_users_home_files_groupownership
@@ -18082,15 +17767,13 @@ home-files-ownership:
     bp28: R50
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# Files under each home should be owned by that user: review, then chown -R deliberately per user.
+    command: '# Files under each home should be owned by that user: review, then chown -R deliberately per user.
 
-          awk -F: ''($3>=1000){print $1" "$6}'' /etc/passwd
+      awk -F: ''($3>=1000){print $1" "$6}'' /etc/passwd
 
-          '
-        reason: re-owning a user's whole home is per-user and risky, verify before acting
-        resource: manual
+      '
+    reason: re-owning a user's whole home is per-user and risky, verify before acting
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-014
   ssg: accounts_users_home_files_ownership
@@ -18190,127 +17873,20 @@ journald-compress:
         ubuntu2604: 6.1.2.3
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        content: '[Journal]
+    content: '[Journal]
 
-          Compress=yes
+      Compress=yes
 
-          ForwardToSyslog=no
+      ForwardToSyslog=no
 
-          Storage=persistent
+      Storage=persistent
 
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      debian13:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      ubuntu2204:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      ubuntu2404:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      rhel8:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      rhel9:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      rhel10:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      ubuntu2604:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
+      '
+    group: root
+    mode: '0644'
+    owner: root
+    path: /etc/systemd/journald.conf.d/99-pavois.conf
+    resource: file
   severity: medium
   socle: SOCLE-RUN-LOG-001
   ssg: journald_compress
@@ -18349,127 +17925,20 @@ journald-forwardtosyslog:
         rhel10: 6.2.1.1.4
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        content: '[Journal]
+    content: '[Journal]
 
-          Compress=yes
+      Compress=yes
 
-          ForwardToSyslog=no
+      ForwardToSyslog=no
 
-          Storage=persistent
+      Storage=persistent
 
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      debian13:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      ubuntu2204:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      ubuntu2404:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      rhel8:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      ubuntu2604:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      rhel9:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      rhel10:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
+      '
+    group: root
+    mode: '0644'
+    owner: root
+    path: /etc/systemd/journald.conf.d/99-pavois.conf
+    resource: file
   severity: medium
   socle: SOCLE-RUN-LOG-002
   ssg:
@@ -18518,127 +17987,20 @@ journald-storage:
         ubuntu2604: 6.1.2.4
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        content: '[Journal]
+    content: '[Journal]
 
-          Compress=yes
+      Compress=yes
 
-          ForwardToSyslog=no
+      ForwardToSyslog=no
 
-          Storage=persistent
+      Storage=persistent
 
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      debian13:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      ubuntu2204:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      ubuntu2404:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      rhel8:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      rhel9:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      rhel10:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
-      ubuntu2604:
-        content: '[Journal]
-
-          Compress=yes
-
-          ForwardToSyslog=no
-
-          Storage=persistent
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/systemd/journald.conf.d/99-pavois.conf
-        resource: file
+      '
+    group: root
+    mode: '0644'
+    owner: root
+    path: /etc/systemd/journald.conf.d/99-pavois.conf
+    resource: file
   severity: medium
   socle: SOCLE-RUN-LOG-003
   ssg: journald_storage
@@ -18662,17 +18024,7 @@ kconfig-acpi-custom-method:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: low
   socle: SOCLE-CLD-KRN-019
   ssg: kernel_config_acpi_custom_method
@@ -18743,9 +18095,7 @@ kconfig-arm64-sw-ttbr0-pan:
     bp28: R27
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-020
   ssg: kernel_config_arm64_sw_ttbr0_pan
@@ -18769,17 +18119,7 @@ kconfig-binfmt-misc:
     bp28: R23
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-021
   ssg: kernel_config_binfmt_misc
@@ -18808,17 +18148,7 @@ kconfig-bug:
     bp28: R19
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-022
   ssg: kernel_config_bug
@@ -18847,17 +18177,7 @@ kconfig-bug-on-data-corruption:
     bp28: R16
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: low
   socle: SOCLE-CLD-KRN-023
   ssg: kernel_config_bug_on_data_corruption
@@ -18886,17 +18206,7 @@ kconfig-compat-brk:
     bp28: R17
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-024
   ssg: kernel_config_compat_brk
@@ -18925,17 +18235,7 @@ kconfig-compat-vdso:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: low
   socle: SOCLE-CLD-KRN-025
   ssg: kernel_config_compat_vdso
@@ -18961,15 +18261,7 @@ kconfig-debug-credentials:
     bp28: R16
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
+    resource: kernel_build
   severity: low
   socle: SOCLE-CLD-KRN-026
   ssg: kernel_config_debug_credentials
@@ -18998,17 +18290,7 @@ kconfig-debug-list:
     bp28: R16
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: low
   socle: SOCLE-CLD-KRN-028
   ssg: kernel_config_debug_list
@@ -19037,17 +18319,7 @@ kconfig-debug-notifiers:
     bp28: R16
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: low
   socle: SOCLE-CLD-KRN-029
   ssg: kernel_config_debug_notifiers
@@ -19076,17 +18348,7 @@ kconfig-debug-sg:
     bp28: R16
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: low
   socle: SOCLE-CLD-KRN-030
   ssg: kernel_config_debug_sg
@@ -19115,17 +18377,7 @@ kconfig-debug-wx:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-031
   ssg: kernel_config_debug_wx
@@ -19154,17 +18406,7 @@ kconfig-devkmem:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: low
   socle: SOCLE-CLD-KRN-032
   ssg: kernel_config_devkmem
@@ -19193,17 +18435,7 @@ kconfig-fortify-source:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-033
   ssg: kernel_config_fortify_source
@@ -19232,17 +18464,7 @@ kconfig-gcc-plugin-latent-entropy:
     bp28: R21
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-034
   ssg: kernel_config_gcc_plugin_latent_entropy
@@ -19352,17 +18574,7 @@ kconfig-gcc-plugin-stackleak:
     bp28: R21
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-036
   ssg: kernel_config_gcc_plugin_stackleak
@@ -19395,17 +18607,7 @@ kconfig-gcc-plugin-structleak:
     bp28: R21
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-037
   ssg: kernel_config_gcc_plugin_structleak
@@ -19473,17 +18675,7 @@ kconfig-hardened-usercopy:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: high
   socle: SOCLE-CLD-KRN-039
   ssg: kernel_config_hardened_usercopy
@@ -19512,17 +18704,7 @@ kconfig-hardened-usercopy-fallback:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: high
   socle: SOCLE-CLD-KRN-040
   ssg: kernel_config_hardened_usercopy_fallback
@@ -19551,17 +18733,7 @@ kconfig-hibernation:
     bp28: R23
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-041
   ssg: kernel_config_hibernation
@@ -19590,17 +18762,7 @@ kconfig-ia32-emulation:
     bp28: R25
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-042
   ssg: kernel_config_ia32_emulation
@@ -19629,17 +18791,7 @@ kconfig-kexec:
     bp28: R23
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: low
   socle: SOCLE-CLD-KRN-043
   ssg: kernel_config_kexec
@@ -19668,17 +18820,7 @@ kconfig-legacy-ptys:
     bp28: R23
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-044
   ssg: kernel_config_legacy_ptys
@@ -19707,17 +18849,7 @@ kconfig-legacy-vsyscall-emulate:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-045
   ssg: kernel_config_legacy_vsyscall_emulate
@@ -19746,17 +18878,7 @@ kconfig-legacy-vsyscall-none:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-046
   ssg: kernel_config_legacy_vsyscall_none
@@ -19784,17 +18906,7 @@ kconfig-legacy-vsyscall-xonly:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-047
   ssg: kernel_config_legacy_vsyscall_xonly
@@ -19823,17 +18935,7 @@ kconfig-modify-ldt-syscall:
     bp28: R25
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-048
   ssg: kernel_config_modify_ldt_syscall
@@ -19862,17 +18964,7 @@ kconfig-module-sig:
     bp28: R18
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-049
   ssg: kernel_config_module_sig
@@ -19901,17 +18993,7 @@ kconfig-module-sig-all:
     bp28: R18
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-050
   ssg: kernel_config_module_sig_all
@@ -19940,17 +19022,7 @@ kconfig-module-sig-force:
     bp28: R18
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-051
   ssg: kernel_config_module_sig_force
@@ -19979,17 +19051,7 @@ kconfig-module-sig-sha512:
     bp28: R18
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-052
   ssg: kernel_config_module_sig_sha512
@@ -20018,17 +19080,7 @@ kconfig-page-poisoning:
     bp28: R17
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-053
   ssg: kernel_config_page_poisoning
@@ -20052,15 +19104,7 @@ kconfig-page-poisoning-no-sanity:
     bp28: R17
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-054
   ssg: kernel_config_page_poisoning_no_sanity
@@ -20084,15 +19128,7 @@ kconfig-page-poisoning-zero:
     bp28: R17
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-055
   ssg: kernel_config_page_poisoning_zero
@@ -20121,17 +19157,7 @@ kconfig-page-table-isolation:
     bp28: R25
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: high
   socle: SOCLE-CLD-KRN-056
   ssg: kernel_config_page_table_isolation
@@ -20197,17 +19223,7 @@ kconfig-panic-on-oops:
     bp28: R19
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-057
   ssg: kernel_config_panic_on_oops
@@ -20236,17 +19252,7 @@ kconfig-proc-kcore:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: low
   socle: SOCLE-CLD-KRN-058
   ssg: kernel_config_proc_kcore
@@ -20275,17 +19281,7 @@ kconfig-randomize-base:
     bp28: R25
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-059
   ssg: kernel_config_randomize_base
@@ -20314,17 +19310,7 @@ kconfig-randomize-memory:
     bp28: R25
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-060
   ssg: kernel_config_randomize_memory
@@ -20395,9 +19381,7 @@ kconfig-refcount-full:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-061
   ssg: kernel_config_refcount_full
@@ -20421,17 +19405,7 @@ kconfig-retpoline:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-062
   ssg: kernel_config_retpoline
@@ -20497,17 +19471,7 @@ kconfig-sched-stack-end-check:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-063
   ssg: kernel_config_sched_stack_end_check
@@ -20536,17 +19500,7 @@ kconfig-seccomp:
     bp28: R20
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-064
   ssg: kernel_config_seccomp
@@ -20575,17 +19529,7 @@ kconfig-seccomp-filter:
     bp28: R20
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-065
   ssg: kernel_config_seccomp_filter
@@ -20614,17 +19558,7 @@ kconfig-security:
     bp28: R20
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-066
   ssg: kernel_config_security
@@ -20653,17 +19587,7 @@ kconfig-security-dmesg-restrict:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-067
   ssg: kernel_config_security_dmesg_restrict
@@ -20692,17 +19616,7 @@ kconfig-security-writable-hooks:
     bp28: R20
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-068
   ssg: kernel_config_security_writable_hooks
@@ -20731,17 +19645,7 @@ kconfig-security-yama:
     bp28: R20
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-069
   ssg: kernel_config_security_yama
@@ -20770,17 +19674,7 @@ kconfig-slab-freelist-hardened:
     bp28: R17
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-070
   ssg: kernel_config_slab_freelist_hardened
@@ -20809,17 +19703,7 @@ kconfig-slab-freelist-random:
     bp28: R17
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-071
   ssg: kernel_config_slab_freelist_random
@@ -20848,17 +19732,7 @@ kconfig-slab-merge-default:
     bp28: R17
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-072
   ssg: kernel_config_slab_merge_default
@@ -20887,17 +19761,7 @@ kconfig-slub-debug:
     bp28: R17
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-073
   ssg: kernel_config_slub_debug
@@ -20926,17 +19790,7 @@ kconfig-stackprotector:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-074
   ssg: kernel_config_stackprotector
@@ -20965,17 +19819,7 @@ kconfig-stackprotector-strong:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-075
   ssg: kernel_config_stackprotector_strong
@@ -21004,17 +19848,7 @@ kconfig-strict-kernel-rwx:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-076
   ssg: kernel_config_strict_kernel_rwx
@@ -21043,17 +19877,7 @@ kconfig-strict-module-rwx:
     bp28: R18
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-077
   ssg: kernel_config_strict_module_rwx
@@ -21082,17 +19906,7 @@ kconfig-syn-cookies:
     bp28: R22
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-078
   ssg: kernel_config_syn_cookies
@@ -21163,9 +19977,7 @@ kconfig-unmap-kernel-at-el0:
     bp28: R27
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-079
   ssg: kernel_config_unmap_kernel_at_el0
@@ -21189,17 +20001,7 @@ kconfig-vmap-stack:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: medium
   socle: SOCLE-CLD-KRN-080
   ssg: kernel_config_vmap_stack
@@ -21228,17 +20030,7 @@ kconfig-x86-vsyscall-emulation:
     bp28: R15
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        resource: kernel_build
-      debian13:
-        resource: kernel_build
-      ubuntu2204:
-        resource: kernel_build
-      ubuntu2404:
-        resource: kernel_build
-      ubuntu2604:
-        resource: kernel_build
+    resource: kernel_build
   severity: low
   socle: SOCLE-CLD-KRN-081
   ssg: kernel_config_x86_vsyscall_emulation
@@ -22396,55 +21188,11 @@ logindefs-encrypt_method:
         ubuntu2604: UBTU-24-400400
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        file: /etc/login.defs
-        key: ENCRYPT_METHOD
-        resource: conf_line
-        sep: space
-        value: YESCRYPT
-      debian13:
-        file: /etc/login.defs
-        key: ENCRYPT_METHOD
-        resource: conf_line
-        sep: space
-        value: YESCRYPT
-      ubuntu2204:
-        file: /etc/login.defs
-        key: ENCRYPT_METHOD
-        resource: conf_line
-        sep: space
-        value: YESCRYPT
-      ubuntu2404:
-        file: /etc/login.defs
-        key: ENCRYPT_METHOD
-        resource: conf_line
-        sep: space
-        value: YESCRYPT
-      rhel8:
-        file: /etc/login.defs
-        key: ENCRYPT_METHOD
-        resource: conf_line
-        sep: space
-        value: YESCRYPT
-      rhel9:
-        file: /etc/login.defs
-        key: ENCRYPT_METHOD
-        resource: conf_line
-        sep: space
-        value: YESCRYPT
-      rhel10:
-        file: /etc/login.defs
-        key: ENCRYPT_METHOD
-        resource: conf_line
-        sep: space
-        value: YESCRYPT
-      ubuntu2604:
-        file: /etc/login.defs
-        key: ENCRYPT_METHOD
-        resource: conf_line
-        sep: space
-        value: YESCRYPT
+    file: /etc/login.defs
+    key: ENCRYPT_METHOD
+    resource: conf_line
+    sep: space
+    value: YESCRYPT
   severity: medium
   socle: SOCLE-CLD-IAM-016
   ssg: set_password_hashing_algorithm_logindefs
@@ -22548,55 +21296,11 @@ logindefs-pass_max_days:
         ubuntu2604: UBTU-24-400310
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        file: /etc/login.defs
-        key: PASS_MAX_DAYS
-        resource: conf_line
-        sep: space
-        value: '365'
-      debian13:
-        file: /etc/login.defs
-        key: PASS_MAX_DAYS
-        resource: conf_line
-        sep: space
-        value: '365'
-      ubuntu2204:
-        file: /etc/login.defs
-        key: PASS_MAX_DAYS
-        resource: conf_line
-        sep: space
-        value: '365'
-      ubuntu2404:
-        file: /etc/login.defs
-        key: PASS_MAX_DAYS
-        resource: conf_line
-        sep: space
-        value: '365'
-      rhel8:
-        file: /etc/login.defs
-        key: PASS_MAX_DAYS
-        resource: conf_line
-        sep: space
-        value: '365'
-      rhel9:
-        file: /etc/login.defs
-        key: PASS_MAX_DAYS
-        resource: conf_line
-        sep: space
-        value: '365'
-      rhel10:
-        file: /etc/login.defs
-        key: PASS_MAX_DAYS
-        resource: conf_line
-        sep: space
-        value: '365'
-      ubuntu2604:
-        file: /etc/login.defs
-        key: PASS_MAX_DAYS
-        resource: conf_line
-        sep: space
-        value: '365'
+    file: /etc/login.defs
+    key: PASS_MAX_DAYS
+    resource: conf_line
+    sep: space
+    value: '365'
   severity: medium
   socle: SOCLE-CLD-IAM-018
   ssg: accounts_maximum_age_login_defs
@@ -22661,55 +21365,11 @@ logindefs-pass_min_days:
         ubuntu2604: UBTU-24-400300
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        file: /etc/login.defs
-        key: PASS_MIN_DAYS
-        resource: conf_line
-        sep: space
-        value: '1'
-      debian13:
-        file: /etc/login.defs
-        key: PASS_MIN_DAYS
-        resource: conf_line
-        sep: space
-        value: '1'
-      ubuntu2204:
-        file: /etc/login.defs
-        key: PASS_MIN_DAYS
-        resource: conf_line
-        sep: space
-        value: '1'
-      ubuntu2404:
-        file: /etc/login.defs
-        key: PASS_MIN_DAYS
-        resource: conf_line
-        sep: space
-        value: '1'
-      rhel8:
-        file: /etc/login.defs
-        key: PASS_MIN_DAYS
-        resource: conf_line
-        sep: space
-        value: '1'
-      rhel9:
-        file: /etc/login.defs
-        key: PASS_MIN_DAYS
-        resource: conf_line
-        sep: space
-        value: '1'
-      rhel10:
-        file: /etc/login.defs
-        key: PASS_MIN_DAYS
-        resource: conf_line
-        sep: space
-        value: '1'
-      ubuntu2604:
-        file: /etc/login.defs
-        key: PASS_MIN_DAYS
-        resource: conf_line
-        sep: space
-        value: '1'
+    file: /etc/login.defs
+    key: PASS_MIN_DAYS
+    resource: conf_line
+    sep: space
+    value: '1'
   severity: medium
   socle: SOCLE-CLD-IAM-019
   ssg: accounts_minimum_age_login_defs
@@ -22922,31 +21582,11 @@ logindefs-pass_warn_age:
         ubuntu2604: Req-8.2.4
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        file: /etc/login.defs
-        key: PASS_WARN_AGE
-        resource: conf_line
-        sep: space
-        value: '7'
-      rhel8:
-        file: /etc/login.defs
-        key: PASS_WARN_AGE
-        resource: conf_line
-        sep: space
-        value: '7'
-      rhel9:
-        file: /etc/login.defs
-        key: PASS_WARN_AGE
-        resource: conf_line
-        sep: space
-        value: '7'
-      rhel10:
-        file: /etc/login.defs
-        key: PASS_WARN_AGE
-        resource: conf_line
-        sep: space
-        value: '7'
+    file: /etc/login.defs
+    key: PASS_WARN_AGE
+    resource: conf_line
+    sep: space
+    value: '7'
   severity: medium
   socle: SOCLE-CLD-IAM-021
   ssg: accounts_password_warn_age_login_defs
@@ -23028,15 +21668,13 @@ misc-account-unique-id:
         ubuntu2604: Req-8.1.1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'cut -d: -f3 /etc/passwd | sort | uniq -d   # duplicate UIDs
+    command: 'cut -d: -f3 /etc/passwd | sort | uniq -d   # duplicate UIDs
 
-          # resolve by usermod -u <new-uid> <user> (and chown their files), manual
+      # resolve by usermod -u <new-uid> <user> (and chown their files), manual
 
-          '
-        reason: duplicate UIDs need a deliberate renumber/merge, never auto-change a UID
-        resource: manual
+      '
+    reason: duplicate UIDs need a deliberate renumber/merge, never auto-change a UID
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-029
   ssg: account_unique_id
@@ -23119,111 +21757,18 @@ misc-accounts-tmout:
         ubuntu2604: UBTU-24-200060
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        content: 'TMOUT=900
+    content: 'TMOUT=900
 
-          readonly TMOUT
+      readonly TMOUT
 
-          export TMOUT
+      export TMOUT
 
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/profile.d/99-pavois-tmout.sh
-        resource: file
-      debian13:
-        content: 'TMOUT=900
-
-          readonly TMOUT
-
-          export TMOUT
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/profile.d/99-pavois-tmout.sh
-        resource: file
-      ubuntu2204:
-        content: 'TMOUT=900
-
-          readonly TMOUT
-
-          export TMOUT
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/profile.d/99-pavois-tmout.sh
-        resource: file
-      ubuntu2404:
-        content: 'TMOUT=900
-
-          readonly TMOUT
-
-          export TMOUT
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/profile.d/99-pavois-tmout.sh
-        resource: file
-      rhel8:
-        content: 'TMOUT=900
-
-          readonly TMOUT
-
-          export TMOUT
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/profile.d/99-pavois-tmout.sh
-        resource: file
-      rhel9:
-        content: 'TMOUT=900
-
-          readonly TMOUT
-
-          export TMOUT
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/profile.d/99-pavois-tmout.sh
-        resource: file
-      rhel10:
-        content: 'TMOUT=900
-
-          readonly TMOUT
-
-          export TMOUT
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/profile.d/99-pavois-tmout.sh
-        resource: file
-      ubuntu2604:
-        content: 'TMOUT=900
-
-          readonly TMOUT
-
-          export TMOUT
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/profile.d/99-pavois-tmout.sh
-        resource: file
+      '
+    group: root
+    mode: '0644'
+    owner: root
+    path: /etc/profile.d/99-pavois-tmout.sh
+    resource: file
   severity: medium
   socle: SOCLE-CLD-GEN-030
   ssg: accounts_tmout
@@ -23379,9 +21924,9 @@ misc-aide-periodic-checking-systemd-timer:
       debian12:
         bp28: high
         cis: '1'
-      debian13: &id013
+      debian13: &id007
         bp28: high
-      rhel8: *id013
+      rhel8: *id007
       ubuntu2404:
         bp28: high
         cis: '1'
@@ -23520,23 +22065,13 @@ misc-all-apparmor-profiles-in-enforce-complain-mode:
     cis: 1.3.1.3
   reboot_survivable: 'no'
   remediation:
-    '@os':
-      debian12:
-        command: 'aa-status | sed -n ''1,20p''
+    command: 'aa-status | sed -n ''1,20p''
 
-          # set profiles to enforce: aa-enforce /etc/apparmor.d/*   (watch for app breakage, then aa-complain any that misbehave)
+      # set profiles to enforce: aa-enforce /etc/apparmor.d/*   (watch for app breakage, then aa-complain any that misbehave)
 
-          '
-        reason: forcing all profiles to enforce can break apps with incomplete profiles, review
-        resource: manual
-      debian13:
-        command: 'aa-status | sed -n ''1,20p''
-
-          # set profiles to enforce: aa-enforce /etc/apparmor.d/*   (watch for app breakage, then aa-complain any that misbehave)
-
-          '
-        reason: forcing all profiles to enforce can break apps with incomplete profiles, review
-        resource: manual
+      '
+    reason: forcing all profiles to enforce can break apps with incomplete profiles, review
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-034
   ssg: all_apparmor_profiles_in_enforce_complain_mode
@@ -23639,35 +22174,12 @@ misc-disable-host-auth:
     pci-dss: 8.3.1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        directive: HostbasedAuthentication
-        notify:
-          action: reload
-          service: ssh
-        resource: sshd_setting
-        value: 'no'
-      rhel8:
-        directive: HostbasedAuthentication
-        notify:
-          action: reload
-          service: ssh
-        resource: sshd_setting
-        value: 'no'
-      rhel9:
-        directive: HostbasedAuthentication
-        notify:
-          action: reload
-          service: ssh
-        resource: sshd_setting
-        value: 'no'
-      rhel10:
-        directive: HostbasedAuthentication
-        notify:
-          action: reload
-          service: ssh
-        resource: sshd_setting
-        value: 'no'
+    directive: HostbasedAuthentication
+    notify:
+      action: reload
+      service: ssh
+    resource: sshd_setting
+    value: 'no'
   severity: medium
   socle: SOCLE-CLD-GEN-036
   ssg: disable_host_auth
@@ -23790,40 +22302,13 @@ misc-ensure-shadow-group-empty:
         ubuntu2604: Req-8.2.1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'getent group shadow
+    command: 'getent group shadow
 
-          # gpasswd -d <user> shadow   for each unexpected member
+      # gpasswd -d <user> shadow   for each unexpected member
 
-          '
-        reason: removing members from the shadow group is deliberate (they lose shadow access)
-        resource: manual
-      debian13: &id014
-        command: 'getent group shadow
-
-          # gpasswd -d <user> shadow   for each unexpected member
-
-          '
-        reason: removing members from the shadow group is deliberate (they lose shadow access)
-        resource: manual
-      rhel8: *id014
-      rhel9:
-        command: 'getent group shadow
-
-          # gpasswd -d <user> shadow   for each unexpected member
-
-          '
-        reason: removing members from the shadow group is deliberate (they lose shadow access)
-        resource: manual
-      rhel10:
-        command: 'getent group shadow
-
-          # gpasswd -d <user> shadow   for each unexpected member
-
-          '
-        reason: removing members from the shadow group is deliberate (they lose shadow access)
-        resource: manual
+      '
+    reason: removing members from the shadow group is deliberate (they lose shadow access)
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-038
   ssg: ensure_shadow_group_empty
@@ -23869,15 +22354,13 @@ misc-group-unique-id:
     pci-dss: 8.2.1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'cut -d: -f3 /etc/group | sort | uniq -d
+    command: 'cut -d: -f3 /etc/group | sort | uniq -d
 
-          # groupmod -g <new-gid> <group> (and fix file groups), manual
+      # groupmod -g <new-gid> <group> (and fix file groups), manual
 
-          '
-        reason: duplicate GIDs need a deliberate renumber, never auto-change a GID
-        resource: manual
+      '
+    reason: duplicate GIDs need a deliberate renumber, never auto-change a GID
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-039
   ssg: group_unique_id
@@ -23906,15 +22389,13 @@ misc-groups-no-zero-gid-except-root:
     cis: 5.4.2.3
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'awk -F: ''($3==0 && $1!="root"){print $1}'' /etc/group
+    command: 'awk -F: ''($3==0 && $1!="root"){print $1}'' /etc/group
 
-          # groupmod -g <new-gid> <group> for each, manual
+      # groupmod -g <new-gid> <group> for each, manual
 
-          '
-        reason: a non-root group with GID 0 needs a deliberate renumber
-        resource: manual
+      '
+    reason: a non-root group with GID 0 needs a deliberate renumber
+    resource: manual
   severity: high
   socle: SOCLE-CLD-GEN-040
   ssg: groups_no_zero_gid_except_root
@@ -23976,17 +22457,10 @@ misc-no-direct-root-logins:
     pci-dss: 8.6.1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: ': > /etc/securetty'
-        name: empty-securetty
-        not_if: test ! -s /etc/securetty
-        resource: exec
-      rhel8:
-        command: ': > /etc/securetty'
-        name: empty-securetty
-        not_if: test ! -s /etc/securetty
-        resource: exec
+    command: ': > /etc/securetty'
+    name: empty-securetty
+    not_if: test ! -s /etc/securetty
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-041
   ssg: no_direct_root_logins
@@ -24025,15 +22499,13 @@ misc-no-forward-files:
         ubuntu2604: 7.2.10
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'find /home /root -maxdepth 2 -name .forward 2>/dev/null
+    command: 'find /home /root -maxdepth 2 -name .forward 2>/dev/null
 
-          # rm -f <path> per file after confirming the forwarding is not required
+      # rm -f <path> per file after confirming the forwarding is not required
 
-          '
-        reason: deleting user .forward files can drop mail forwarding, review each before removing
-        resource: manual
+      '
+    reason: deleting user .forward files can drop mail forwarding, review each before removing
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-042
   ssg: no_forward_files
@@ -24077,15 +22549,13 @@ misc-no-netrc-files:
     - IA-5(h)
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'find /home /root -maxdepth 2 -name .netrc 2>/dev/null
+    command: 'find /home /root -maxdepth 2 -name .netrc 2>/dev/null
 
-          # rm -f <path> per file (or chmod 600) after review
+      # rm -f <path> per file (or chmod 600) after review
 
-          '
-        reason: a .netrc holds credentials, review each before deleting
-        resource: manual
+      '
+    reason: a .netrc holds credentials, review each before deleting
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-043
   ssg: no_netrc_files
@@ -24114,32 +22584,10 @@ misc-no-nologin-in-shells:
     cis: 5.4.3.1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: sed -ri '\#(nologin|/bin/false)#d' /etc/shells
-        name: strip-nologin-from-shells
-        not_if: '! grep -qE ''nologin|/bin/false'' /etc/shells'
-        resource: exec
-      debian13:
-        command: sed -ri '\#(nologin|/bin/false)#d' /etc/shells
-        name: strip-nologin-from-shells
-        not_if: '! grep -qE ''nologin|/bin/false'' /etc/shells'
-        resource: exec
-      rhel8:
-        command: sed -ri '\#(nologin|/bin/false)#d' /etc/shells
-        name: strip-nologin-from-shells
-        not_if: '! grep -qE ''nologin|/bin/false'' /etc/shells'
-        resource: exec
-      rhel9:
-        command: sed -ri '\#(nologin|/bin/false)#d' /etc/shells
-        name: strip-nologin-from-shells
-        not_if: '! grep -qE ''nologin|/bin/false'' /etc/shells'
-        resource: exec
-      rhel10:
-        command: sed -ri '\#(nologin|/bin/false)#d' /etc/shells
-        name: strip-nologin-from-shells
-        not_if: '! grep -qE ''nologin|/bin/false'' /etc/shells'
-        resource: exec
+    command: sed -ri '\#(nologin|/bin/false)#d' /etc/shells
+    name: strip-nologin-from-shells
+    not_if: '! grep -qE ''nologin|/bin/false'' /etc/shells'
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-044
   ssg: no_nologin_in_shells
@@ -24220,15 +22668,13 @@ misc-no-rsh-trust-files:
         - CM-6(a)
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'find /home /root -maxdepth 2 -name .rhosts 2>/dev/null; ls -l /etc/hosts.equiv 2>/dev/null
+    command: 'find /home /root -maxdepth 2 -name .rhosts 2>/dev/null; ls -l /etc/hosts.equiv 2>/dev/null
 
-          # rm -f each after review
+      # rm -f each after review
 
-          '
-        reason: removing .rhosts/hosts.equiv kills rsh trust, review (rsh should not be used)
-        resource: manual
+      '
+    reason: removing .rhosts/hosts.equiv kills rsh trust, review (rsh should not be used)
+    resource: manual
   severity: high
   socle: SOCLE-CLD-GEN-045
   ssg: no_rsh_trust_files
@@ -24491,47 +22937,10 @@ misc-postfix-network-listening-disabled:
     pci-dss: 1.4.2
   reboot_survivable: 'no'
   remediation:
-    '@os':
-      debian12:
-        command: postconf -e 'inet_interfaces = loopback-only' 2>/dev/null && systemctl restart postfix 2>/dev/null; true
-        name: postfix-loopback
-        not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
-        resource: exec
-      debian13:
-        command: postconf -e 'inet_interfaces = loopback-only' 2>/dev/null && systemctl restart postfix 2>/dev/null; true
-        name: postfix-loopback
-        not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
-        resource: exec
-      ubuntu2204:
-        command: postconf -e 'inet_interfaces = loopback-only' 2>/dev/null && systemctl restart postfix 2>/dev/null; true
-        name: postfix-loopback
-        not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
-        resource: exec
-      ubuntu2404:
-        command: postconf -e 'inet_interfaces = loopback-only' 2>/dev/null && systemctl restart postfix 2>/dev/null; true
-        name: postfix-loopback
-        not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
-        resource: exec
-      rhel8:
-        command: postconf -e 'inet_interfaces = loopback-only' 2>/dev/null && systemctl restart postfix 2>/dev/null; true
-        name: postfix-loopback
-        not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
-        resource: exec
-      rhel9:
-        command: postconf -e 'inet_interfaces = loopback-only' 2>/dev/null && systemctl restart postfix 2>/dev/null; true
-        name: postfix-loopback
-        not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
-        resource: exec
-      rhel10:
-        command: postconf -e 'inet_interfaces = loopback-only' 2>/dev/null && systemctl restart postfix 2>/dev/null; true
-        name: postfix-loopback
-        not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
-        resource: exec
-      ubuntu2604:
-        command: postconf -e 'inet_interfaces = loopback-only' 2>/dev/null && systemctl restart postfix 2>/dev/null; true
-        name: postfix-loopback
-        not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
-        resource: exec
+    command: postconf -e 'inet_interfaces = loopback-only' 2>/dev/null && systemctl restart postfix 2>/dev/null; true
+    name: postfix-loopback
+    not_if: postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'
+    resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-049
   ssg: postfix_network_listening_disabled
@@ -24559,13 +22968,11 @@ misc-prefer-64bit-os:
     bp28: R1
   reboot_survivable: 'no'
   remediation:
-    '@os':
-      debian12:
-        command: 'uname -m   # if not x86_64/aarch64, a reinstall is required (audit-only finding)
+    command: 'uname -m   # if not x86_64/aarch64, a reinstall is required (audit-only finding)
 
-          '
-        reason: the OS architecture cannot be changed in place, reinstall as 64-bit if needed
-        resource: manual
+      '
+    reason: the OS architecture cannot be changed in place, reinstall as 64-bit if needed
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-050
   ssg: prefer_64bit_os
@@ -24776,17 +23183,15 @@ misc-sshd-limit-user-access:
         ubuntu2604: Req-2.2.4
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# Decide the allowed users/groups, then add to /etc/ssh/sshd_config.d/ a drop-in, e.g.:
+    command: '# Decide the allowed users/groups, then add to /etc/ssh/sshd_config.d/ a drop-in, e.g.:
 
-          #   AllowGroups ssh-users
+      #   AllowGroups ssh-users
 
-          # and: systemctl reload ssh
+      # and: systemctl reload ssh
 
-          '
-        reason: which users/groups may SSH is SITE-SPECIFIC, pavois cannot guess it
-        resource: manual
+      '
+    reason: which users/groups may SSH is SITE-SPECIFIC, pavois cannot guess it
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-052
   ssg: sshd_limit_user_access
@@ -24855,17 +23260,15 @@ misc-sssd-ldap-configure-tls-reqcert:
     - SC-12(3)
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# If SSSD with LDAP is configured, require certificate validation in /etc/sssd/sssd.conf:
+    command: '# If SSSD with LDAP is configured, require certificate validation in /etc/sssd/sssd.conf:
 
-          #   ldap_tls_reqcert = demand
+      #   ldap_tls_reqcert = demand
 
-          # then: systemctl restart sssd
+      # then: systemctl restart sssd
 
-          '
-        reason: only applies if SSSD/LDAP is in use, set tls_reqcert in sssd.conf deliberately
-        resource: manual
+      '
+    reason: only applies if SSSD/LDAP is in use, set tls_reqcert in sssd.conf deliberately
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-053
   ssg: sssd_ldap_configure_tls_reqcert
@@ -24898,17 +23301,15 @@ misc-sssd-ldap-start-tls:
     - CM-7(b)
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# If SSSD with LDAP is configured, enable StartTLS in /etc/sssd/sssd.conf:
+    command: '# If SSSD with LDAP is configured, enable StartTLS in /etc/sssd/sssd.conf:
 
-          #   ldap_id_use_start_tls = true
+      #   ldap_id_use_start_tls = true
 
-          # then: systemctl restart sssd
+      # then: systemctl restart sssd
 
-          '
-        reason: only applies if SSSD/LDAP is in use, enable StartTLS in sssd.conf deliberately
-        resource: manual
+      '
+    reason: only applies if SSSD/LDAP is in use, enable StartTLS in sssd.conf deliberately
+    resource: manual
   severity: high
   socle: SOCLE-CLD-GEN-054
   ssg: sssd_ldap_start_tls
@@ -25106,15 +23507,13 @@ misc-wireless-disable-interfaces:
         ubuntu2604: UBTU-24-600230
   reboot_survivable: 'no'
   remediation:
-    '@os':
-      debian12:
-        command: 'nmcli radio all 2>/dev/null || rfkill list
+    command: 'nmcli radio all 2>/dev/null || rfkill list
 
-          # nmcli radio all off   (or: rfkill block wifi), only on hosts that must not use wireless
+      # nmcli radio all off   (or: rfkill block wifi), only on hosts that must not use wireless
 
-          '
-        reason: disabling wireless can cut connectivity, confirm the host is wired
-        resource: manual
+      '
+    reason: disabling wireless can cut connectivity, confirm the host is wired
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-GEN-056
   ssg: wireless_disable_interfaces
@@ -25582,37 +23981,11 @@ mount-tmp-nodev:
     - MP-7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /tmp
-        option: nodev
-        resource: mount
-      debian13:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /tmp
-        option: nodev
-        resource: mount
-      ubuntu2204:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /tmp
-        option: nodev
-        resource: mount
-      ubuntu2404:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /tmp
-        option: nodev
-        resource: mount
-      ubuntu2604:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /tmp
-        option: nodev
-        resource: mount
+    device: tmpfs
+    fstype: tmpfs
+    mount_point: /tmp
+    option: nodev
+    resource: mount
   severity: medium
   socle: SOCLE-CLD-MNT-013
   ssg: mount_option_tmp_nodev
@@ -25684,37 +24057,11 @@ mount-tmp-noexec:
     - MP-7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /tmp
-        option: noexec
-        resource: mount
-      debian13:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /tmp
-        option: noexec
-        resource: mount
-      ubuntu2204:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /tmp
-        option: noexec
-        resource: mount
-      ubuntu2404:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /tmp
-        option: noexec
-        resource: mount
-      ubuntu2604:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /tmp
-        option: noexec
-        resource: mount
+    device: tmpfs
+    fstype: tmpfs
+    mount_point: /tmp
+    option: noexec
+    resource: mount
   severity: medium
   socle: SOCLE-CLD-MNT-014
   ssg: mount_option_tmp_noexec
@@ -25786,37 +24133,11 @@ mount-tmp-nosuid:
     - MP-7
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /tmp
-        option: nosuid
-        resource: mount
-      debian13:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /tmp
-        option: nosuid
-        resource: mount
-      ubuntu2204:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /tmp
-        option: nosuid
-        resource: mount
-      ubuntu2404:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /tmp
-        option: nosuid
-        resource: mount
-      ubuntu2604:
-        device: tmpfs
-        fstype: tmpfs
-        mount_point: /tmp
-        option: nosuid
-        resource: mount
+    device: tmpfs
+    fstype: tmpfs
+    mount_point: /tmp
+    option: nosuid
+    resource: mount
   severity: medium
   socle: SOCLE-CLD-MNT-015
   ssg: mount_option_tmp_nosuid
@@ -26562,40 +24883,13 @@ ownerships-var-log-gdm:
         ubuntu2604: 6.1.4.1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# Set root ownership recursively under the gdm log dir (only if it exists):
+    command: '# Set root ownership recursively under the gdm log dir (only if it exists):
 
-          [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
+      [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
 
-          '
-        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
-        resource: manual
-      debian13: &id015
-        command: '# Set root ownership recursively under the gdm log dir (only if it exists):
-
-          [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
-
-          '
-        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
-        resource: manual
-      rhel8: *id015
-      rhel9:
-        command: '# Set root ownership recursively under the gdm log dir (only if it exists):
-
-          [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
-
-          '
-        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
-        resource: manual
-      rhel10:
-        command: '# Set root ownership recursively under the gdm log dir (only if it exists):
-
-          [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
-
-          '
-        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
-        resource: manual
+      '
+    reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-202
   ssg: file_ownerships_var_log_gdm
@@ -26628,23 +24922,13 @@ ownerships-var-log-gdm3:
         ubuntu2604: 6.1.4.1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# Set root ownership recursively under the gdm log dir (only if it exists):
+    command: '# Set root ownership recursively under the gdm log dir (only if it exists):
 
-          [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
+      [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
 
-          '
-        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
-        resource: manual
-      debian13:
-        command: '# Set root ownership recursively under the gdm log dir (only if it exists):
-
-          [ -d /var/log/gdm ] && find /var/log/gdm -print0 | xargs -0 -r chown root: || echo ''no /var/log/gdm''
-
-          '
-        reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
-        resource: manual
+      '
+    reason: recursive ownership fix under /var/log/gdm, verify the service is present and review
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-203
   ssg: file_ownerships_var_log_gdm3
@@ -26680,40 +24964,13 @@ ownerships-var-log-sssd:
         ubuntu2604: 6.1.4.1
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# Set root ownership recursively under the sssd log dir (only if it exists):
+    command: '# Set root ownership recursively under the sssd log dir (only if it exists):
 
-          [ -d /var/log/sssd ] && find /var/log/sssd -print0 | xargs -0 -r chown root: || echo ''no /var/log/sssd''
+      [ -d /var/log/sssd ] && find /var/log/sssd -print0 | xargs -0 -r chown root: || echo ''no /var/log/sssd''
 
-          '
-        reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
-        resource: manual
-      debian13: &id016
-        command: '# Set root ownership recursively under the sssd log dir (only if it exists):
-
-          [ -d /var/log/sssd ] && find /var/log/sssd -print0 | xargs -0 -r chown root: || echo ''no /var/log/sssd''
-
-          '
-        reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
-        resource: manual
-      rhel8: *id016
-      rhel9:
-        command: '# Set root ownership recursively under the sssd log dir (only if it exists):
-
-          [ -d /var/log/sssd ] && find /var/log/sssd -print0 | xargs -0 -r chown root: || echo ''no /var/log/sssd''
-
-          '
-        reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
-        resource: manual
-      rhel10:
-        command: '# Set root ownership recursively under the sssd log dir (only if it exists):
-
-          [ -d /var/log/sssd ] && find /var/log/sssd -print0 | xargs -0 -r chown root: || echo ''no /var/log/sssd''
-
-          '
-        reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
-        resource: manual
+      '
+    reason: recursive ownership fix under /var/log/sssd, verify the service is present and review
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-FSP-204
   ssg: file_ownerships_var_log_sssd
@@ -26898,16 +25155,16 @@ pam-faillock-enabled:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id017
+      debian12: &id008
         params: audit silent deny=5 unlock_time=900 even_deny_root
         resource: pam_faillock
-      debian13: *id017
+      debian13: *id008
       rhel8:
         features:
         - with-faillock
         resource: authselect
-      ubuntu2204: *id017
-      ubuntu2404: *id017
+      ubuntu2204: *id008
+      ubuntu2404: *id008
       ubuntu2604:
         params: audit silent deny=5 unlock_time=900 even_deny_root
         resource: pam_faillock
@@ -26946,12 +25203,12 @@ pam-faillock-root-unlock-time:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id018
+      debian12: &id009
         file: /etc/security/faillock.conf.d/99-pavois.conf
         key: root_unlock_time
         resource: keyval
         value: '60'
-      debian13: *id018
+      debian13: *id009
       rhel8:
         file: /etc/security/faillock.conf
         key: root_unlock_time
@@ -27005,19 +25262,19 @@ pam-pwhistory-enabled:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id019
+      debian12: &id010
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
         line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
         module: pam_pwhistory.so
         resource: pam_line
-      debian13: *id019
+      debian13: *id010
       rhel8:
         features:
         - with-pwhistory
         resource: authselect
-      ubuntu2204: *id019
-      ubuntu2404: *id019
+      ubuntu2204: *id010
+      ubuntu2404: *id010
       ubuntu2604:
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
@@ -27060,20 +25317,20 @@ pam-pwhistory-enforce:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id020
+      debian12: &id011
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
         line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
         module: pam_pwhistory.so
         resource: pam_line
-      debian13: *id020
+      debian13: *id011
       rhel8:
         file: /etc/security/pwhistory.conf
         key: enforce_for_root
         resource: keyval
         value: ''
-      ubuntu2204: *id020
-      ubuntu2404: *id020
+      ubuntu2204: *id011
+      ubuntu2404: *id011
       ubuntu2604:
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
@@ -27177,11 +25434,11 @@ pam-pwhistory-use-authtok:
         module: pam_pwhistory.so
         resource: pam_line
       fedora:
-        features: &id021
+        features: &id012
         - with-pwhistory
         resource: authselect
       rhel8:
-        features: *id021
+        features: *id012
         resource: authselect
       ubuntu2204:
         before: ^password.*pam_unix\.so
@@ -27583,12 +25840,12 @@ pam-unix-no-nullok:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id022
+      debian12: &id013
         command: grep -rlE '^[^#]*pam_unix\.so.*nullok' /etc/pam.d/ | while read -r f; do sed -ri '/pam_unix\.so/ s/[[:space:]]*\bnullok\b//g' "$f"; done; true
         name: pam-unix-remove-nullok
         not_if: '! grep -rqE ''^[^#]*pam_unix\.so.*nullok'' /etc/pam.d/'
         resource: exec
-      debian13: *id022
+      debian13: *id013
       rhel8:
         features:
         - without-nullok
@@ -27665,20 +25922,20 @@ pam-unix-rounds-password-auth:
   - ubuntu2604
   check:
     '@os':
-      debian12: &id023
+      debian12: &id014
       - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\brounds=[0-9]\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian13: *id023
-      fedora: &id024
+      debian13: *id014
+      fedora: &id015
       - describe command('v=$(grep -E "^[[:space:]]*SHA_CRYPT_MIN_ROUNDS[[:space:]]+[0-9]+" /etc/login.defs 2>/dev/null | grep -oE "[0-9]+" | tail -1); { [ -n "$v" ] && [ "$v" -ge 5000 ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      rhel8: *id024
-      rhel9: *id024
-      rhel10: *id024
-      ubuntu2204: *id023
-      ubuntu2404: *id023
+      rhel8: *id015
+      rhel9: *id015
+      rhel10: *id015
+      ubuntu2204: *id014
+      ubuntu2404: *id014
       ubuntu2604:
       - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\brounds=[0-9]\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -27773,19 +26030,17 @@ partition-boot:
     bp28: R28
   reboot_survivable: 'no'
   remediation:
-    '@os':
-      debian12:
-        command: '# /boot should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
+    command: '# /boot should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
 
-          # offline disk/LVM work, not a safe runtime change.
+      # offline disk/LVM work, not a safe runtime change.
 
-          findmnt /boot >/dev/null 2>&1 && echo ''/boot is already a mount point'' || echo ''/boot is NOT separate''
+      findmnt /boot >/dev/null 2>&1 && echo ''/boot is already a mount point'' || echo ''/boot is NOT separate''
 
-          # Then: dedicate an LVM volume / disk to /boot and add it to /etc/fstab.
+      # Then: dedicate an LVM volume / disk to /boot and add it to /etc/fstab.
 
-          '
-        reason: a separate /boot filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
-        resource: manual
+      '
+    reason: a separate /boot filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-MNT-028
   ssg: partition_for_boot
@@ -27814,21 +26069,19 @@ partition-dev-shm:
     cis: 1.1.2.2.1
   reboot_survivable: 'no'
   remediation:
-    '@os':
-      debian12:
-        command: '# /dev/shm should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
+    command: '# /dev/shm should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
 
-          # offline disk/LVM work, not a safe runtime change.
+      # offline disk/LVM work, not a safe runtime change.
 
-          findmnt /dev/shm >/dev/null 2>&1 && echo ''/dev/shm is already a mount point'' || echo ''/dev/shm is NOT separate''
+      findmnt /dev/shm >/dev/null 2>&1 && echo ''/dev/shm is already a mount point'' || echo ''/dev/shm is NOT separate''
 
-          # Then: dedicate an LVM volume / disk to /dev/shm and add it to /etc/fstab.
+      # Then: dedicate an LVM volume / disk to /dev/shm and add it to /etc/fstab.
 
-          # /dev/shm can instead be a tmpfs, add:  tmpfs /dev/shm tmpfs defaults,rw,nosuid,nodev,noexec 0 0
+      # /dev/shm can instead be a tmpfs, add:  tmpfs /dev/shm tmpfs defaults,rw,nosuid,nodev,noexec 0 0
 
-          '
-        reason: a separate /dev/shm filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
-        resource: manual
+      '
+    reason: a separate /dev/shm filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
+    resource: manual
   severity: low
   socle: SOCLE-CLD-MNT-029
   ssg: partition_for_dev_shm
@@ -27896,19 +26149,17 @@ partition-home:
     - SC-5(2)
   reboot_survivable: 'no'
   remediation:
-    '@os':
-      debian12:
-        command: '# /home should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
+    command: '# /home should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
 
-          # offline disk/LVM work, not a safe runtime change.
+      # offline disk/LVM work, not a safe runtime change.
 
-          findmnt /home >/dev/null 2>&1 && echo ''/home is already a mount point'' || echo ''/home is NOT separate''
+      findmnt /home >/dev/null 2>&1 && echo ''/home is already a mount point'' || echo ''/home is NOT separate''
 
-          # Then: dedicate an LVM volume / disk to /home and add it to /etc/fstab.
+      # Then: dedicate an LVM volume / disk to /home and add it to /etc/fstab.
 
-          '
-        reason: a separate /home filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
-        resource: manual
+      '
+    reason: a separate /home filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
+    resource: manual
   severity: low
   socle: SOCLE-CLD-MNT-030
   ssg: partition_for_home
@@ -27936,19 +26187,17 @@ partition-opt:
     bp28: R28
   reboot_survivable: 'no'
   remediation:
-    '@os':
-      debian12:
-        command: '# /opt should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
+    command: '# /opt should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
 
-          # offline disk/LVM work, not a safe runtime change.
+      # offline disk/LVM work, not a safe runtime change.
 
-          findmnt /opt >/dev/null 2>&1 && echo ''/opt is already a mount point'' || echo ''/opt is NOT separate''
+      findmnt /opt >/dev/null 2>&1 && echo ''/opt is already a mount point'' || echo ''/opt is NOT separate''
 
-          # Then: dedicate an LVM volume / disk to /opt and add it to /etc/fstab.
+      # Then: dedicate an LVM volume / disk to /opt and add it to /etc/fstab.
 
-          '
-        reason: a separate /opt filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
-        resource: manual
+      '
+    reason: a separate /opt filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-MNT-031
   ssg: partition_for_opt
@@ -27976,19 +26225,17 @@ partition-srv:
     bp28: R28
   reboot_survivable: 'no'
   remediation:
-    '@os':
-      debian12:
-        command: '# /srv should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
+    command: '# /srv should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
 
-          # offline disk/LVM work, not a safe runtime change.
+      # offline disk/LVM work, not a safe runtime change.
 
-          findmnt /srv >/dev/null 2>&1 && echo ''/srv is already a mount point'' || echo ''/srv is NOT separate''
+      findmnt /srv >/dev/null 2>&1 && echo ''/srv is already a mount point'' || echo ''/srv is NOT separate''
 
-          # Then: dedicate an LVM volume / disk to /srv and add it to /etc/fstab.
+      # Then: dedicate an LVM volume / disk to /srv and add it to /etc/fstab.
 
-          '
-        reason: a separate /srv filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
-        resource: manual
+      '
+    reason: a separate /srv filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-MNT-032
   ssg: partition_for_srv
@@ -28069,17 +26316,15 @@ partition-tmp:
         - SC-5(2)
   reboot_survivable: 'no'
   remediation:
-    '@os':
-      debian12:
-        command: '# /tmp must be its own filesystem. Simplest without repartitioning: make it a tmpfs via systemd:
+    command: '# /tmp must be its own filesystem. Simplest without repartitioning: make it a tmpfs via systemd:
 
-          systemctl unmask tmp.mount && systemctl enable --now tmp.mount
+      systemctl unmask tmp.mount && systemctl enable --now tmp.mount
 
-          # (review /usr/share/systemd/tmp.mount first). A real disk partition requires offline disk work.
+      # (review /usr/share/systemd/tmp.mount first). A real disk partition requires offline disk work.
 
-          '
-        reason: a separate /tmp filesystem needs partitioning/tmpfs, not a safe runtime change
-        resource: manual
+      '
+    reason: a separate /tmp filesystem needs partitioning/tmpfs, not a safe runtime change
+    resource: manual
   severity: low
   socle: SOCLE-CLD-MNT-033
   ssg: partition_for_tmp
@@ -28107,19 +26352,17 @@ partition-usr:
     bp28: R28
   reboot_survivable: 'no'
   remediation:
-    '@os':
-      debian12:
-        command: '# /usr should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
+    command: '# /usr should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
 
-          # offline disk/LVM work, not a safe runtime change.
+      # offline disk/LVM work, not a safe runtime change.
 
-          findmnt /usr >/dev/null 2>&1 && echo ''/usr is already a mount point'' || echo ''/usr is NOT separate''
+      findmnt /usr >/dev/null 2>&1 && echo ''/usr is already a mount point'' || echo ''/usr is NOT separate''
 
-          # Then: dedicate an LVM volume / disk to /usr and add it to /etc/fstab.
+      # Then: dedicate an LVM volume / disk to /usr and add it to /etc/fstab.
 
-          '
-        reason: a separate /usr filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
-        resource: manual
+      '
+    reason: a separate /usr filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-MNT-034
   ssg: partition_for_usr
@@ -28188,19 +26431,17 @@ partition-var:
     - SC-5(2)
   reboot_survivable: 'no'
   remediation:
-    '@os':
-      debian12:
-        command: '# /var should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
+    command: '# /var should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
 
-          # offline disk/LVM work, not a safe runtime change.
+      # offline disk/LVM work, not a safe runtime change.
 
-          findmnt /var >/dev/null 2>&1 && echo ''/var is already a mount point'' || echo ''/var is NOT separate''
+      findmnt /var >/dev/null 2>&1 && echo ''/var is already a mount point'' || echo ''/var is NOT separate''
 
-          # Then: dedicate an LVM volume / disk to /var and add it to /etc/fstab.
+      # Then: dedicate an LVM volume / disk to /var and add it to /etc/fstab.
 
-          '
-        reason: a separate /var filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
-        resource: manual
+      '
+    reason: a separate /var filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
+    resource: manual
   severity: low
   socle: SOCLE-CLD-MNT-035
   ssg: partition_for_var
@@ -28269,19 +26510,17 @@ partition-var-log:
     - SC-5(2)
   reboot_survivable: 'no'
   remediation:
-    '@os':
-      debian12:
-        command: '# /var/log should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
+    command: '# /var/log should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
 
-          # offline disk/LVM work, not a safe runtime change.
+      # offline disk/LVM work, not a safe runtime change.
 
-          findmnt /var/log >/dev/null 2>&1 && echo ''/var/log is already a mount point'' || echo ''/var/log is NOT separate''
+      findmnt /var/log >/dev/null 2>&1 && echo ''/var/log is already a mount point'' || echo ''/var/log is NOT separate''
 
-          # Then: dedicate an LVM volume / disk to /var/log and add it to /etc/fstab.
+      # Then: dedicate an LVM volume / disk to /var/log and add it to /etc/fstab.
 
-          '
-        reason: a separate /var/log filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
-        resource: manual
+      '
+    reason: a separate /var/log filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
+    resource: manual
   severity: low
   socle: SOCLE-CLD-MNT-036
   ssg: partition_for_var_log
@@ -28350,19 +26589,17 @@ partition-var-log-audit:
     - SC-5(2)
   reboot_survivable: 'no'
   remediation:
-    '@os':
-      debian12:
-        command: '# /var/log/audit should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
+    command: '# /var/log/audit should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
 
-          # offline disk/LVM work, not a safe runtime change.
+      # offline disk/LVM work, not a safe runtime change.
 
-          findmnt /var/log/audit >/dev/null 2>&1 && echo ''/var/log/audit is already a mount point'' || echo ''/var/log/audit is NOT separate''
+      findmnt /var/log/audit >/dev/null 2>&1 && echo ''/var/log/audit is already a mount point'' || echo ''/var/log/audit is NOT separate''
 
-          # Then: dedicate an LVM volume / disk to /var/log/audit and add it to /etc/fstab.
+      # Then: dedicate an LVM volume / disk to /var/log/audit and add it to /etc/fstab.
 
-          '
-        reason: a separate /var/log/audit filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
-        resource: manual
+      '
+    reason: a separate /var/log/audit filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
+    resource: manual
   severity: low
   socle: SOCLE-CLD-MNT-037
   ssg: partition_for_var_log_audit
@@ -28427,21 +26664,19 @@ partition-var-tmp:
         ubuntu2604: 1.1.2.5.1
   reboot_survivable: 'no'
   remediation:
-    '@os':
-      debian12:
-        command: '# /var/tmp should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
+    command: '# /var/tmp should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,
 
-          # offline disk/LVM work, not a safe runtime change.
+      # offline disk/LVM work, not a safe runtime change.
 
-          findmnt /var/tmp >/dev/null 2>&1 && echo ''/var/tmp is already a mount point'' || echo ''/var/tmp is NOT separate''
+      findmnt /var/tmp >/dev/null 2>&1 && echo ''/var/tmp is already a mount point'' || echo ''/var/tmp is NOT separate''
 
-          # Then: dedicate an LVM volume / disk to /var/tmp and add it to /etc/fstab.
+      # Then: dedicate an LVM volume / disk to /var/tmp and add it to /etc/fstab.
 
-          # /var/tmp can instead be a tmpfs, add:  tmpfs /var/tmp tmpfs defaults,rw,nosuid,nodev,noexec 0 0
+      # /var/tmp can instead be a tmpfs, add:  tmpfs /var/tmp tmpfs defaults,rw,nosuid,nodev,noexec 0 0
 
-          '
-        reason: a separate /var/tmp filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
-        resource: manual
+      '
+    reason: a separate /var/tmp filesystem needs partitioning/LVM/tmpfs, not a safe runtime change
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-MNT-038
   ssg: partition_for_var_tmp
@@ -28449,7 +26684,6 @@ partition-var-tmp:
 pkg-abrt-addon-ccpp-removed:
   applicable_os:
   - rhel8
-  - rhel10
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -28471,7 +26705,6 @@ pkg-abrt-addon-ccpp-removed:
 pkg-abrt-addon-kerneloops-removed:
   applicable_os:
   - rhel8
-  - rhel10
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -28493,7 +26726,6 @@ pkg-abrt-addon-kerneloops-removed:
 pkg-abrt-cli-removed:
   applicable_os:
   - rhel8
-  - rhel10
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -28515,7 +26747,6 @@ pkg-abrt-cli-removed:
 pkg-abrt-plugin-sosreport-removed:
   applicable_os:
   - rhel8
-  - rhel10
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -28538,7 +26769,6 @@ pkg-abrt-removed:
   applicable_os:
   - fedora
   - rhel8
-  - rhel10
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -28818,9 +27048,9 @@ pkg-audispd-plugins-installed:
     '@os':
       debian12:
         cis: '2'
-      debian13: &id025
+      debian13: &id016
         cis: '2'
-      rhel8: *id025
+      rhel8: *id016
       rhel9: {}
       rhel10: {}
       ubuntu2204:
@@ -29335,11 +27565,11 @@ pkg-bind-removed:
       debian12:
         installed: false
         name: package
-        package: bind
+        package: bind9
       debian13:
         installed: false
         name: package
-        package: bind
+        package: bind9
       fedora:
         installed: false
         name: package
@@ -29442,7 +27672,7 @@ pkg-cron-installed:
       fedora:
         installed: true
         name: package
-        package: cron
+        package: cronie
       rhel8:
         installed: true
         name: package
@@ -29675,11 +27905,11 @@ pkg-dhcp-removed:
       debian12:
         installed: false
         name: package
-        package: dhcp
+        package: isc-dhcp-server
       debian13:
         installed: false
         name: package
-        package: dhcp
+        package: isc-dhcp-server
       fedora:
         installed: false
         name: package
@@ -29839,11 +28069,11 @@ pkg-dovecot-removed:
       debian12:
         installed: false
         name: package
-        package: dovecot
+        package: dovecot-core
       debian13:
         installed: false
         name: package
-        package: dovecot
+        package: dovecot-core
       fedora:
         installed: false
         name: package
@@ -30046,11 +28276,11 @@ pkg-gdm-removed:
       debian12:
         installed: false
         name: package
-        package: gdm
+        package: gdm3
       debian13:
         installed: false
         name: package
-        package: gdm
+        package: gdm3
       fedora:
         installed: false
         name: package
@@ -30189,11 +28419,11 @@ pkg-httpd-removed:
       debian12:
         installed: false
         name: package
-        package: httpd
+        package: apache2
       debian13:
         installed: false
         name: package
-        package: httpd
+        package: apache2
       fedora:
         installed: false
         name: package
@@ -30294,7 +28524,6 @@ pkg-iprutils-removed:
   applicable_os:
   - rhel8
   - rhel9
-  - rhel10
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -30536,7 +28765,6 @@ pkg-libpam-tmpdir-installed:
 pkg-libreport-plugin-logger-removed:
   applicable_os:
   - rhel8
-  - rhel10
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -30558,7 +28786,6 @@ pkg-libreport-plugin-logger-removed:
 pkg-libreport-plugin-rhtsupport-removed:
   applicable_os:
   - rhel8
-  - rhel10
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -30761,7 +28988,7 @@ pkg-net-snmp-removed:
   norms:
     cis:
       '@os':
-        debian12: &id026
+        debian12: &id017
         - 2.1.15
         - 2.2.4
         debian13: 2.1.14
@@ -30770,7 +28997,7 @@ pkg-net-snmp-removed:
         rhel9: 2.1.14
         rhel10: 2.1.14
         ubuntu2204: 2.1.14
-        ubuntu2404: &id027
+        ubuntu2404: &id018
         - 2.1.15
         - 2.2.4
         ubuntu2604:
@@ -30786,9 +29013,43 @@ pkg-net-snmp-removed:
   socle: SOCLE-CLD-PKG-057
   ssg: package_net-snmp_removed
   template:
-    installed: false
-    name: package
-    package: net-snmp
+    '@os':
+      debian12:
+        installed: false
+        name: package
+        package: snmpd
+      debian13:
+        installed: false
+        name: package
+        package: snmpd
+      fedora:
+        installed: false
+        name: package
+        package: net-snmp
+      rhel8:
+        installed: false
+        name: package
+        package: net-snmp
+      rhel9:
+        installed: false
+        name: package
+        package: net-snmp
+      rhel10:
+        installed: false
+        name: package
+        package: net-snmp
+      ubuntu2204:
+        installed: false
+        name: package
+        package: snmpd
+      ubuntu2404:
+        installed: false
+        name: package
+        package: snmpd
+      ubuntu2604:
+        installed: false
+        name: package
+        package: snmpd
   title: Uninstall net-snmp Package
 pkg-nfs-common-removed:
   applicable_os:
@@ -31038,9 +29299,43 @@ pkg-openldap-clients-removed:
   socle: SOCLE-CLD-PKG-065
   ssg: package_openldap-clients_removed
   template:
-    installed: false
-    name: package
-    package: openldap-clients
+    '@os':
+      debian12:
+        installed: false
+        name: package
+        package: ldap-utils
+      debian13:
+        installed: false
+        name: package
+        package: ldap-utils
+      fedora:
+        installed: false
+        name: package
+        package: openldap-clients
+      rhel8:
+        installed: false
+        name: package
+        package: openldap-clients
+      rhel9:
+        installed: false
+        name: package
+        package: openldap-clients
+      rhel10:
+        installed: false
+        name: package
+        package: openldap-clients
+      ubuntu2204:
+        installed: false
+        name: package
+        package: ldap-utils
+      ubuntu2404:
+        installed: false
+        name: package
+        package: ldap-utils
+      ubuntu2604:
+        installed: false
+        name: package
+        package: ldap-utils
   title: Ensure LDAP client is not installed
 pkg-opensc-installed:
   applicable_os:
@@ -31521,7 +29816,6 @@ pkg-prelink-removed:
 pkg-python3-abrt-addon-removed:
   applicable_os:
   - rhel8
-  - rhel10
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -32013,14 +30307,9 @@ pkg-sendmail-removed:
   title: Uninstall Sendmail Package
 pkg-setroubleshoot-plugins-removed:
   applicable_os:
-  - debian12
-  - debian13
   - rhel8
   - rhel9
   - rhel10
-  - ubuntu2204
-  - ubuntu2404
-  - ubuntu2604
   domain: Packages
   evidence_type: inventory-state
   impact: 0.3
@@ -32043,15 +30332,10 @@ pkg-setroubleshoot-plugins-removed:
   title: Uninstall setroubleshoot-plugins Package
 pkg-setroubleshoot-removed:
   applicable_os:
-  - debian12
-  - debian13
   - fedora
   - rhel8
   - rhel9
   - rhel10
-  - ubuntu2204
-  - ubuntu2404
-  - ubuntu2604
   domain: Packages
   evidence_type: inventory-state
   impact: 0.3
@@ -32076,14 +30360,9 @@ pkg-setroubleshoot-removed:
   title: Uninstall setroubleshoot Package
 pkg-setroubleshoot-server-removed:
   applicable_os:
-  - debian12
-  - debian13
   - rhel8
   - rhel9
   - rhel10
-  - ubuntu2204
-  - ubuntu2404
-  - ubuntu2604
   domain: Packages
   evidence_type: inventory-state
   impact: 0.3
@@ -32222,12 +30501,12 @@ pkg-snmpd-removed:
   norms:
     cis:
       '@os':
-        debian12: *id026
+        debian12: *id017
         debian13:
         - 2.1.15
         - 2.2.4
         ubuntu2204: 2.1.15
-        ubuntu2404: *id027
+        ubuntu2404: *id018
         ubuntu2604:
         - 2.1.15
         - 2.2.4
@@ -32484,7 +30763,6 @@ pkg-talk-removed:
   - debian13
   - fedora
   - rhel8
-  - rhel10
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -32497,11 +30775,11 @@ pkg-talk-removed:
       debian12:
         bp28: minimal
         cis: '1'
-      debian13: &id028
+      debian13: &id019
         bp28: minimal
       fedora:
         bp28: minimal
-      rhel8: *id028
+      rhel8: *id019
       ubuntu2204:
         bp28: minimal
         cis: '1'
@@ -32512,8 +30790,6 @@ pkg-talk-removed:
         bp28: minimal
         cis: '1'
       rhel9:
-        bp28: minimal
-      rhel10:
         bp28: minimal
   norms:
     bp28: R62
@@ -32798,9 +31074,43 @@ pkg-telnet-server-removed:
   socle: SOCLE-CLD-PKG-105
   ssg: package_telnet-server_removed
   template:
-    installed: false
-    name: package
-    package: telnet-server
+    '@os':
+      debian12:
+        installed: false
+        name: package
+        package: telnetd
+      debian13:
+        installed: false
+        name: package
+        package: telnetd
+      fedora:
+        installed: false
+        name: package
+        package: telnet-server
+      rhel8:
+        installed: false
+        name: package
+        package: telnet-server
+      rhel9:
+        installed: false
+        name: package
+        package: telnet-server
+      rhel10:
+        installed: false
+        name: package
+        package: telnet-server
+      ubuntu2204:
+        installed: false
+        name: package
+        package: telnetd
+      ubuntu2404:
+        installed: false
+        name: package
+        package: telnetd
+      ubuntu2604:
+        installed: false
+        name: package
+        package: telnetd
   title: Uninstall telnet-server Package
 pkg-telnetd-removed:
   applicable_os:
@@ -33026,11 +31336,11 @@ pkg-tftp-server-removed:
       debian12:
         installed: false
         name: package
-        package: tftp-server
+        package: tftpd-hpa
       debian13:
         installed: false
         name: package
-        package: tftp-server
+        package: tftpd-hpa
       fedora:
         installed: false
         name: package
@@ -33218,7 +31528,6 @@ pkg-xinetd-removed:
   - debian13
   - fedora
   - rhel8
-  - rhel10
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -33250,9 +31559,6 @@ pkg-xinetd-removed:
       rhel9:
         bp28: minimal
         cis: '1'
-      rhel10:
-        bp28: minimal
-        cis: '1'
   norms:
     bp28: R62
     cis:
@@ -33269,7 +31575,6 @@ pkg-xinetd-removed:
         - 2.1.19
         - 2.2.4
         rhel9: 2.1.20
-        rhel10: 2.1.20
     nist:
     - CM-6(a)
     - CM-7(a)
@@ -33373,9 +31678,39 @@ pkg-xorg-x11-server-common-removed:
   socle: SOCLE-CLD-PKG-117
   ssg: package_xorg-x11-server-common_removed
   template:
-    installed: false
-    name: package
-    package: xorg-x11-server-common
+    '@os':
+      debian12:
+        installed: false
+        name: package
+        package: xserver-xorg-core
+      debian13:
+        installed: false
+        name: package
+        package: xserver-xorg-core
+      rhel8:
+        installed: false
+        name: package
+        package: xorg-x11-server-common
+      rhel9:
+        installed: false
+        name: package
+        package: xorg-x11-server-common
+      rhel10:
+        installed: false
+        name: package
+        package: xorg-x11-server-common
+      ubuntu2204:
+        installed: false
+        name: package
+        package: xserver-xorg-core
+      ubuntu2404:
+        installed: false
+        name: package
+        package: xserver-xorg-core
+      ubuntu2604:
+        installed: false
+        name: package
+        package: xserver-xorg-core
   title: Remove the X Windows Package Group
 pkg-xserver-xorg-core-removed:
   applicable_os:
@@ -33509,7 +31844,6 @@ pkg-ypbind-removed:
   applicable_os:
   - fedora
   - rhel8
-  - rhel10
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -33524,16 +31858,12 @@ pkg-ypbind-removed:
       rhel9:
         bp28: minimal
         cis: '1'
-      rhel10:
-        bp28: minimal
-        cis: '1'
   norms:
     bp28: R62
     cis:
       '@os':
         rhel8: 2.2.3
         rhel9: 2.2.3
-        rhel10: 2.2.3
     pci-dss: 2.2.4
   reboot_survivable: 'yes'
   remediation:
@@ -33554,7 +31884,6 @@ pkg-ypserv-removed:
   - debian13
   - fedora
   - rhel8
-  - rhel10
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -33586,9 +31915,6 @@ pkg-ypserv-removed:
       rhel9:
         bp28: minimal
         cis: '1'
-      rhel10:
-        bp28: minimal
-        cis: '1'
   norms:
     bp28: R62
     cis:
@@ -33605,7 +31931,6 @@ pkg-ypserv-removed:
         - 2.1.10
         - 2.2.4
         rhel9: 2.1.10
-        rhel10: 2.1.10
     nist:
     - CM-6(a)
     - CM-7(a)
@@ -33621,7 +31946,6 @@ pkg-ypserv-removed:
         ubuntu2404: Req-2.2.2
         ubuntu2604: Req-2.2.2
         rhel9: 2.2.4
-        rhel10: 2.2.4
   reboot_survivable: 'yes'
   remediation:
     action: remove
@@ -33686,79 +32010,14 @@ posture-core-dumps-limits:
   posture: durcissement
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        content: '* hard core 0
+    content: '* hard core 0
 
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/security/limits.d/99-pavois-core.conf
-        resource: file
-      debian13:
-        content: '* hard core 0
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/security/limits.d/99-pavois-core.conf
-        resource: file
-      ubuntu2204:
-        content: '* hard core 0
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/security/limits.d/99-pavois-core.conf
-        resource: file
-      ubuntu2404:
-        content: '* hard core 0
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/security/limits.d/99-pavois-core.conf
-        resource: file
-      rhel8:
-        content: '* hard core 0
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/security/limits.d/99-pavois-core.conf
-        resource: file
-      rhel9:
-        content: '* hard core 0
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/security/limits.d/99-pavois-core.conf
-        resource: file
-      rhel10:
-        content: '* hard core 0
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/security/limits.d/99-pavois-core.conf
-        resource: file
-      ubuntu2604:
-        content: '* hard core 0
-
-          '
-        group: root
-        mode: '0644'
-        owner: root
-        path: /etc/security/limits.d/99-pavois-core.conf
-        resource: file
+      '
+    group: root
+    mode: '0644'
+    owner: root
+    path: /etc/security/limits.d/99-pavois-core.conf
+    resource: file
   severity: medium
   socle: SOCLE-CLD-GEN-058
   ssg: posture-core-dumps-limits
@@ -33880,15 +32139,13 @@ posture-no-autologin:
   posture: durcissement
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'grep -rilE ''autologin'' /etc/gdm3 /etc/gdm /etc/lightdm 2>/dev/null
+    command: 'grep -rilE ''autologin'' /etc/gdm3 /etc/gdm /etc/lightdm 2>/dev/null
 
-          # in /etc/gdm3/custom.conf set:  AutomaticLoginEnable=false   (remove the AutomaticLogin lines)
+      # in /etc/gdm3/custom.conf set:  AutomaticLoginEnable=false   (remove the AutomaticLogin lines)
 
-          '
-        reason: disabling autologin is safe but verify no kiosk/appliance relies on it
-        resource: manual
+      '
+    reason: disabling autologin is safe but verify no kiosk/appliance relies on it
+    resource: manual
   severity: high
   socle: SOCLE-CLD-GEN-061
   ssg: posture-no-autologin
@@ -35241,15 +33498,13 @@ root-path:
     cis: 5.4.2.5
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'sudo -l 2>/dev/null | grep -i secure_path; grep -rE ''PATH='' /root/.bashrc /root/.profile /etc/profile 2>/dev/null
+    command: 'sudo -l 2>/dev/null | grep -i secure_path; grep -rE ''PATH='' /root/.bashrc /root/.profile /etc/profile 2>/dev/null
 
-          # ensure no empty entry, no ''.'', no world-writable dir; fix in the relevant file
+      # ensure no empty entry, no ''.'', no world-writable dir; fix in the relevant file
 
-          '
-        reason: fixing root's PATH may be in a shell profile or sudoers secure_path, review the source
-        resource: manual
+      '
+    reason: fixing root's PATH may be in a shell profile or sudoers secure_path, review the source
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-053
   ssg:
@@ -38090,7 +36345,7 @@ ssh-enable-warning-banner:
   - rhel10
   check:
   - describe command('sshd -T') do
-  - '  its(''stdout'') { should match(/^banner\s+\/etc\/issue$/i) }'
+  - "  its('stdout') { should match(/^banner\\s+\\/etc\\/issue(\\.net)?$/i) }"
   - end
   domain: SSH
   evidence_type: effective-runtime
@@ -38103,6 +36358,10 @@ ssh-enable-warning-banner:
   socle: SOCLE-CLD-SSH-018
   ssg: sshd_enable_warning_banner
   title: Enable SSH Warning Banner
+  remediation:
+    directive: Banner
+    resource: sshd_setting
+    value: /etc/issue.net
 ssh-enable-warning-banner-net:
   applicable_os:
   - debian12
@@ -38148,39 +36407,9 @@ ssh-enable-warning-banner-net:
         ubuntu2604: UBTU-24-200640
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        directive: Banner
-        resource: sshd_setting
-        value: /etc/issue.net
-      debian13:
-        directive: Banner
-        resource: sshd_setting
-        value: /etc/issue.net
-      ubuntu2204:
-        directive: Banner
-        resource: sshd_setting
-        value: /etc/issue.net
-      ubuntu2404:
-        directive: Banner
-        resource: sshd_setting
-        value: /etc/issue.net
-      rhel8:
-        directive: Banner
-        resource: sshd_setting
-        value: /etc/issue.net
-      rhel9:
-        directive: Banner
-        resource: sshd_setting
-        value: /etc/issue.net
-      rhel10:
-        directive: Banner
-        resource: sshd_setting
-        value: /etc/issue.net
-      ubuntu2604:
-        directive: Banner
-        resource: sshd_setting
-        value: /etc/issue.net
+    directive: Banner
+    resource: sshd_setting
+    value: /etc/issue.net
   severity: medium
   socle: SOCLE-CLD-SSH-019
   ssg: sshd_enable_warning_banner_net
@@ -39545,15 +37774,13 @@ sudo-remove-no-authenticate:
         ubuntu2604: UBTU-24-300021
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: 'grep -rl ''!authenticate'' /etc/sudoers /etc/sudoers.d/ 2>/dev/null
+    command: 'grep -rl ''!authenticate'' /etc/sudoers /etc/sudoers.d/ 2>/dev/null
 
-          # remove the !authenticate directive from each with: visudo  (or visudo -f /etc/sudoers.d/<file>)
+      # remove the !authenticate directive from each with: visudo  (or visudo -f /etc/sudoers.d/<file>)
 
-          '
-        reason: sudoers edits risk lockout, always edit via visudo
-        resource: manual
+      '
+    reason: sudoers edits risk lockout, always edit via visudo
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-059
   ssg: sudo_remove_no_authenticate
@@ -39573,11 +37800,11 @@ sudo-require-authentication:
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian13: &id029
+      debian13: &id020
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      rhel8: *id029
+      rhel8: *id020
       ubuntu2404:
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -39619,55 +37846,17 @@ sudo-require-authentication:
     pci-dss: 2.2.6
   reboot_survivable: 'yes'
   remediation:
-    '@os':
-      debian12:
-        command: '# Remove NOPASSWD so sudo always authenticates. WARNING: breaks any automation relying on passwordless
+    command: '# Remove NOPASSWD so sudo always authenticates. WARNING: breaks any automation relying on passwordless
 
-          # sudo (including pavois''s own management user), repoint it to a key/password FIRST.
+      # sudo (including pavois''s own management user), repoint it to a key/password FIRST.
 
-          grep -rl ''NOPASSWD'' /etc/sudoers /etc/sudoers.d/ 2>/dev/null
+      grep -rl ''NOPASSWD'' /etc/sudoers /etc/sudoers.d/ 2>/dev/null
 
-          # then edit each with: visudo  (or visudo -f /etc/sudoers.d/<file>) and delete the NOPASSWD tag
+      # then edit each with: visudo  (or visudo -f /etc/sudoers.d/<file>) and delete the NOPASSWD tag
 
-          '
-        reason: dropping NOPASSWD breaks passwordless automation (incl. pavois), repoint it first
-        resource: manual
-      debian13:
-        command: '# Remove NOPASSWD so sudo always authenticates. WARNING: breaks any automation relying on passwordless
-
-          # sudo (including pavois''s own management user), repoint it to a key/password FIRST.
-
-          grep -rl ''NOPASSWD'' /etc/sudoers /etc/sudoers.d/ 2>/dev/null
-
-          # then edit each with: visudo  (or visudo -f /etc/sudoers.d/<file>) and delete the NOPASSWD tag
-
-          '
-        reason: dropping NOPASSWD breaks passwordless automation (incl. pavois), repoint it first
-        resource: manual
-      ubuntu2404:
-        command: '# Remove NOPASSWD so sudo always authenticates. WARNING: breaks any automation relying on passwordless
-
-          # sudo (including pavois''s own management user), repoint it to a key/password FIRST.
-
-          grep -rl ''NOPASSWD'' /etc/sudoers /etc/sudoers.d/ 2>/dev/null
-
-          # then edit each with: visudo  (or visudo -f /etc/sudoers.d/<file>) and delete the NOPASSWD tag
-
-          '
-        reason: dropping NOPASSWD breaks passwordless automation (incl. pavois), repoint it first
-        resource: manual
-      ubuntu2604:
-        command: '# Remove NOPASSWD so sudo always authenticates. WARNING: breaks any automation relying on passwordless
-
-          # sudo (including pavois''s own management user), repoint it to a key/password FIRST.
-
-          grep -rl ''NOPASSWD'' /etc/sudoers /etc/sudoers.d/ 2>/dev/null
-
-          # then edit each with: visudo  (or visudo -f /etc/sudoers.d/<file>) and delete the NOPASSWD tag
-
-          '
-        reason: dropping NOPASSWD breaks passwordless automation (incl. pavois), repoint it first
-        resource: manual
+      '
+    reason: dropping NOPASSWD breaks passwordless automation (incl. pavois), repoint it first
+    resource: manual
   severity: medium
   socle: SOCLE-CLD-IAM-060
   ssg: sudo_require_authentication
