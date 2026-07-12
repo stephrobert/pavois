@@ -22,9 +22,16 @@ _SYSCTL_PATHS = (
 )
 
 
+def _ere(s):
+    """Escape a VALUE before it lands in an ERE. kernel.core_pattern is `|/bin/false`: the bare
+    pipe made an ALTERNATION, so the persistence grep matched ANY core_pattern assignment and the
+    control passed without proving the value. A value is a literal, never a pattern."""
+    return re.sub(r"([.\\^$*+?()\[\]{}|])", r"\\\1", str(s))
+
+
 def _sysctl_exp(p):
     k, v = p["key"], p["value"]
-    vtok = str(v).strip("\"'")
+    vtok = _ere(str(v).strip("\"'"))
     pat = f"^[[:space:]]*{k}[[:space:]]*=[[:space:]]*{vtok}([[:space:]]|$)"
     paths = _SYSCTL_PATHS
     # kernel.modules_disabled is a one-way switch applied LATE via a systemd oneshot (a boot-time
