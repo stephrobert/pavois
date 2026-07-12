@@ -1738,7 +1738,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintf(out, "pavois: report %s (%d controls, %d standards)\n", htmlPath, nctrl, nnorm)
 	if nnorm > 0 {
 		letter, pts, _ := audit.GradeResult(res)
-		writeScorecard(out, letter, pts, res.Passed, res.Total, res.Qualified)
+		writeScorecard(out, letter, pts, res.Passed, res.Total, res.Qualified, res.Waived, res.NotApplicable)
 	}
 
 	// Validate every applied remediation actually made its control PASS — a remediation

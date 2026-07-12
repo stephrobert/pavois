@@ -309,7 +309,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 		// without mappings (e.g. container-baseline) has no grade.
 		if nnorm > 0 {
 			letter, pts, _ := audit.GradeResult(res)
-			writeScorecard(out, letter, pts, res.Passed, res.Total, res.Qualified)
+			writeScorecard(out, letter, pts, res.Passed, res.Total, res.Qualified, res.Waived, res.NotApplicable)
 			writePosture(out, audit.Breakdown(rep, scStandard, scLevel))
 		} else {
 			_, _ = fmt.Fprintln(out, "  No standard mappings in this profile — grade applies to profiles/linux/* only.")

@@ -65,6 +65,8 @@ def render_control(cid, e):
         out.append(f"  tag merge_group: {_rb(e['merge_group'])}")
     if "posture" in e:
         out.append(f"  tag posture: {_rb(e['posture'])}")
+    if e.get("remediation_class"):  # the scoring class comes from the RULE, never from Go
+        out.append(f"  tag remediation_class: {_rb(e['remediation_class'])}")
     if e.get("ssg"):
         out.append(f"  tag ssg: {_rb(e['ssg'])}")
     # Mutual exclusivity ("one of"): a per-tech member is N/A when ANOTHER option in its
