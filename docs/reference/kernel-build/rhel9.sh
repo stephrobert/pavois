@@ -119,4 +119,20 @@ export HOME=/root  # rpmbuild uses ~/rpmbuild — force root's tree even if laun
   # stops AIDE's integrity init from checksumming tens of thousands of kernel-source files for many
   # minutes on every subsequent hardening run.
   rm -rf ~/rpmbuild ~/kernel-*.src.rpm
+  # Never ASSUME the new kernel becomes the default: on Debian the recipe learned the hard way that
+  # a kernel can be built, installed, and never booted (GRUB picks the highest version, and the
+  # distro can out-number us). el relies on the kernel package's scriptlet; make it explicit, and
+  # SAY SO if it did not take, instead of rebooting onto the stock kernel in silence.
+  KV=$(ls -1 /boot/vmlinuz-*pavois* 2>/dev/null | sed 's|.*/vmlinuz-||' | sort -V | tail -1)
+  if [ -n "$KV" ]; then
+    grubby --set-default "/boot/vmlinuz-$KV" >/dev/null 2>&1 || true
+    DEF=$(grubby --default-kernel 2>/dev/null)
+    case "$DEF" in
+      *pavois*) echo "==> default boot entry: $DEF" ;;
+      *) echo "WARNING: the default kernel is $DEF, NOT the KSPP one ($KV) — the host would reboot" >&2
+         echo "         onto the stock kernel and every kconfig control would fail on it." >&2 ;;
+    esac
+  else
+    echo "WARNING: no -pavois kernel in /boot: the build did not install" >&2
+  fi
   echo "==> DONE — reboot into the -pavois kernel, then re-scan with Pavois."
