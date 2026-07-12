@@ -12,6 +12,7 @@ generate_rule_pages.py, `pavois oscal`) produce the corpus, site fiches and OSCA
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -95,6 +96,50 @@ def invert(data):
     return lib
 
 
+OS_PROFILES = {}  # {os: primitives}, loaded lazily from docs/reference/os/<os>.yml
+
+
+def profile(os):
+    """The OS primitive profile: the ~40 facts that make a control distro-specific (package
+    names, grub dir, the group that owns /var/log...). A control references them as @{pkg.httpd}
+    instead of carrying nine copies of the same value, so a wrong fact is fixed in ONE cell
+    instead of hiding in one @os block among a thousand. That is how the phantom RHEL package
+    names sat unnoticed in the debian columns."""
+    if os not in OS_PROFILES:
+        p = ROOT / "docs" / "reference" / "os" / f"{os}.yml"
+        OS_PROFILES[os] = yaml.safe_load(p.read_text()) if p.exists() else {}
+    return OS_PROFILES[os]
+
+
+# Sigil: @{...}. NOT ${...} (shell remediations use it: `for u in ...; do ... ${u}.service`)
+# and NOT %{...} (harden.go uses %{path} in a file `verify:` command).
+VAR = re.compile(r"@\{([a-z_][\w.]*)\}")
+
+
+def subst(v, os, cid):
+    """Resolve @{primitive} against the OS profile. An unknown primitive is a HARD ERROR: it must
+    never render as an empty string, because package('') is installed nowhere and would pass
+    forever — a vacuous control, the very thing we are hunting."""
+    if isinstance(v, str):
+
+        def one(m):
+            node = profile(os)
+            for part in m.group(1).split("."):
+                if not isinstance(node, dict) or part not in node:
+                    raise SystemExit(f"{cid} [{os}]: unknown primitive @{{{m.group(1)}}}")
+                node = node[part]
+            if node is None or node == "":
+                raise SystemExit(f"{cid} [{os}]: primitive @{{{m.group(1)}}} is empty")
+            return str(node)
+
+        return VAR.sub(one, v)
+    if isinstance(v, list):
+        return [subst(x, os, cid) for x in v]
+    if isinstance(v, dict):
+        return {k: subst(x, os, cid) for k, x in v.items()}
+    return v
+
+
 def pick(v, os):
     """Resolve a field for one OS: the @os override, else `default`, else the shared value.
 
@@ -121,7 +166,7 @@ def render(lib):
                 if f in entry:
                     val = pick(entry[f], os)
                     if val is not None:
-                        ctrl[f] = val
+                        ctrl[f] = subst(val, os, cid)
             if "norms" in entry:
                 nm = {k: pick(v, os) for k, v in entry["norms"].items() if pick(v, os) is not None}
                 if nm:
@@ -129,7 +174,7 @@ def render(lib):
             if "template" in entry:  # check defined once as a template -> expand to verbatim check
                 t = pick(entry["template"], os)
                 if t is not None:
-                    ctrl["check"] = templates.expand(t)
+                    ctrl["check"] = templates.expand(subst(t, os, cid))
             out[os][cid] = ctrl
     return out
 
