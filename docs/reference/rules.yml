@@ -18574,13 +18574,13 @@ kconfig-legacy-vsyscall-none:
   severity: medium
   socle: SOCLE-CLD-KRN-046
   ssg: kernel_config_legacy_vsyscall_none
-  template:
-    name: kconfig
-    option: CONFIG_LEGACY_VSYSCALL_NONE
-    set: true
-    value: y
-  title: Disable vsyscall mapping
+  title: The legacy vsyscall page is not emulated
   remediation_class: kernel-build
+  check:
+  - describe command("C=/boot/config-$(uname -r); if [ -r \"$C\" ]; then cat \"$C\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_X86_VSYSCALL_EMULATION=|CONFIG_LEGACY_VSYSCALL_NONE=|PAVOIS_NO_KERNEL_CONFIG)'") do
+  - "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }"
+  - "  its('stdout') { should_not match(/^CONFIG_X86_VSYSCALL_EMULATION=y$/) }"
+  - end
 kconfig-legacy-vsyscall-xonly:
   applicable_os:
   - debian12
@@ -31069,7 +31069,7 @@ posture-no-compilers:
   - ubuntu2404
   - ubuntu2604
   check:
-  - describe command('for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; find "$p" -perm -o+x 2>/dev/null; done') do
+  - describe command('for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; p=$(readlink -f \"$p\"); find \"$p\" -perm -o+x 2>/dev/null; done') do
   - "  its('stdout.strip') { should eq '' }"
   - end
   domain: Hardening (posture)
@@ -31081,34 +31081,34 @@ posture-no-compilers:
   remediation:
     '@os':
       debian12:
-        command: for p in gcc cpp g++ gcc-12 g++-12 cpp-12 clang tcc tcc-dev; do dpkg -l "$p" 2>/dev/null | grep -q '^ii' && DEBIAN_FRONTEND=noninteractive apt-get purge -y "$p" >/dev/null 2>&1; done; true; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x "$p" 2>/dev/null; done; true
+        command: for p in gcc cpp g++ gcc-12 g++-12 cpp-12 clang tcc tcc-dev; do dpkg -l "$p" 2>/dev/null | grep -q '^ii' && DEBIAN_FRONTEND=noninteractive apt-get purge -y "$p" >/dev/null 2>&1; done; true; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x "$p" 2>/dev/null; don; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x "$(readlink -f "$p")" 2>/dev/null; done; true
         name: purge-compilers
-        not_if: test -z "$(for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; find "$p" -perm -o+x 2>/dev/null; done)"
+        not_if: test -z "$(for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; p=$(readlink -f \"$p\"); find \"$p\" -perm -o+x 2>/dev/null; done)"
         resource: exec
       ubuntu2404:
-        command: for p in build-essential gcc cpp g++ gcc-13 g++-13 cpp-13 gcc-14 g++-14 cpp-14 clang tcc; do dpkg -l "$p" 2>/dev/null | grep -q '^ii' && DEBIAN_FRONTEND=noninteractive apt-get purge -y "$p" >/dev/null 2>&1; done; DEBIAN_FRONTEND=noninteractive apt-get autoremove --purge -y >/dev/null 2>&1; true; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x "$p" 2>/dev/null; done; true
+        command: for p in build-essential gcc cpp g++ gcc-13 g++-13 cpp-13 gcc-14 g++-14 cpp-14 clang tcc; do dpkg -l "$p" 2>/dev/null | grep -q '^ii' && DEBIAN_FRONTEND=noninteractive apt-get purge -y "$p" >/dev/null 2>&1; done; DEBIAN_FRONTEND=noninteractive apt-get autoremove --purge -y >/dev/null 2>&1; true; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x "$p" 2>/dev/null; don; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x "$(readlink -f "$p")" 2>/dev/null; done; true
         name: purge-compilers
-        not_if: test -z "$(for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; find "$p" -perm -o+x 2>/dev/null; done)"
+        not_if: test -z "$(for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; p=$(readlink -f \"$p\"); find \"$p\" -perm -o+x 2>/dev/null; done)"
         resource: exec
       rhel8:
         command: for c in gcc cc cpp g++ c++ clang gfortran; do p=$(command -v $c 2>/dev/null) && chmod 0750 "$(readlink -f "$p")" 2>/dev/null; done; true; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x "$p" 2>/dev/null; done; true
         name: restrict-compilers
-        not_if: test -z "$(for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; find "$p" -perm -o+x 2>/dev/null; done)"
+        not_if: test -z "$(for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; p=$(readlink -f \"$p\"); find \"$p\" -perm -o+x 2>/dev/null; done)"
         resource: exec
       rhel9:
         command: for c in gcc cc cpp g++ c++ clang gfortran; do p=$(command -v $c 2>/dev/null) && chmod 0750 "$(readlink -f "$p")" 2>/dev/null; done; true; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x "$p" 2>/dev/null; done; true
         name: restrict-compilers
-        not_if: test -z "$(for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; find "$p" -perm -o+x 2>/dev/null; done)"
+        not_if: test -z "$(for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; p=$(readlink -f \"$p\"); find \"$p\" -perm -o+x 2>/dev/null; done)"
         resource: exec
       rhel10:
         command: for c in gcc cc cpp g++ c++ clang gfortran; do p=$(command -v $c 2>/dev/null) && chmod 0750 "$(readlink -f "$p")" 2>/dev/null; done; true; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x "$p" 2>/dev/null; done; true
         name: restrict-compilers
-        not_if: test -z "$(for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; find "$p" -perm -o+x 2>/dev/null; done)"
+        not_if: test -z "$(for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; p=$(readlink -f \"$p\"); find \"$p\" -perm -o+x 2>/dev/null; done)"
         resource: exec
       ubuntu2604:
-        command: for p in build-essential gcc cpp g++ gcc-13 g++-13 cpp-13 gcc-14 g++-14 cpp-14 clang tcc; do dpkg -l "$p" 2>/dev/null | grep -q '^ii' && DEBIAN_FRONTEND=noninteractive apt-get purge -y "$p" >/dev/null 2>&1; done; DEBIAN_FRONTEND=noninteractive apt-get autoremove --purge -y >/dev/null 2>&1; true; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x "$p" 2>/dev/null; done; true
+        command: for p in build-essential gcc cpp g++ gcc-13 g++-13 cpp-13 gcc-14 g++-14 cpp-14 clang tcc; do dpkg -l "$p" 2>/dev/null | grep -q '^ii' && DEBIAN_FRONTEND=noninteractive apt-get purge -y "$p" >/dev/null 2>&1; done; DEBIAN_FRONTEND=noninteractive apt-get autoremove --purge -y >/dev/null 2>&1; true; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x "$p" 2>/dev/null; don; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x "$(readlink -f "$p")" 2>/dev/null; done; true
         name: purge-compilers
-        not_if: test -z "$(for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; find "$p" -perm -o+x 2>/dev/null; done)"
+        not_if: test -z "$(for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; p=$(readlink -f \"$p\"); find \"$p\" -perm -o+x 2>/dev/null; done)"
         resource: exec
   severity: medium
   socle: SOCLE-CLD-GEN-062

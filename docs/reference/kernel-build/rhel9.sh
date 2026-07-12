@@ -86,12 +86,16 @@ export HOME=/root  # rpmbuild uses ~/rpmbuild — force root's tree even if laun
   # DEBUG_KERNEL + GCC_PLUGINS are added as prerequisites, else `make olddefconfig` at %build
   # silently drops the DEBUG_* / GCC_PLUGIN_* KSPP options (unmet dependency).
   KSPP_EN=""; for o in $KSPP_ENABLE DEBUG_KERNEL; do case "$o" in LEGACY_VSYSCALL_*|X86_VSYSCALL_EMULATION|MODULE_SIG_SHA512) continue;; esac; KSPP_EN="$KSPP_EN CONFIG_$o"; done
-  KSPP_DIS=""; for o in $KSPP_DISABLE; do case "$o" in LEGACY_VSYSCALL_*|X86_VSYSCALL_EMULATION|MODULE_SIG_SHA512) continue;; esac; KSPP_DIS="$KSPP_DIS CONFIG_$o"; done
+  KSPP_DIS=""; for o in $KSPP_DISABLE; do case "$o" in LEGACY_VSYSCALL_*|MODULE_SIG_SHA512) continue;; esac; KSPP_DIS="$KSPP_DIS CONFIG_$o"; done
   # The kernel-5.14 (el9) GCC plugin sources (stackleak/latent_entropy/randstruct/structleak) do
   # NOT compile with GCC >= 11 (scripts/gcc-plugins/*.c use STRING_EQUAL, gone in newer GCC).
   # RHEL ships el9 WITHOUT plugins for the same reason -> drop the plugin KSPP options on
   # GCC >= 11; native hardening (INIT_ON_ALLOC/FREE, INIT_STACK_ALL_ZERO, DEBUG_*, MODULE_SIG) stays.
-  if [ "$(gcc -dumpversion | cut -d. -f1)" -ge 11 ]; then
+  # ...but ONLY for the OLD kernel series. The 6.x plugin sources compile fine with a modern GCC;
+  # applying the el9 workaround to el10 (6.12) silently shipped a kernel with NO plugins at all
+  # (CONFIG_GCC_PLUGINS absent), so latent_entropy / randstruct / stackleak could never pass.
+  KMAJ=$(rpm -q --qf '%{VERSION}\n' kernel | head -1 | cut -d. -f1)
+  if [ "$(gcc -dumpversion | cut -d. -f1)" -ge 11 ] && [ "${KMAJ:-0}" -lt 6 ]; then
     for _p in GCC_PLUGINS GCC_PLUGIN_LATENT_ENTROPY GCC_PLUGIN_RANDSTRUCT RANDSTRUCT_FULL GCC_PLUGIN_STACKLEAK GCC_PLUGIN_STRUCTLEAK GCC_PLUGIN_STRUCTLEAK_BYREF_ALL; do
       KSPP_EN=$(printf " %s " "$KSPP_EN" | sed "s/ CONFIG_$_p / /g"); done
   fi
@@ -114,5 +118,5 @@ export HOME=/root  # rpmbuild uses ~/rpmbuild — force root's tree even if laun
   # drop the ~5 GB rpmbuild tree (SRPM sources + BUILD + built RPMs): frees disk and, critically,
   # stops AIDE's integrity init from checksumming tens of thousands of kernel-source files for many
   # minutes on every subsequent hardening run.
-  rm -rf ~/rpmbuild
+  rm -rf ~/rpmbuild ~/kernel-*.src.rpm
   echo "==> DONE — reboot into the -pavois kernel, then re-scan with Pavois."
