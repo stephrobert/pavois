@@ -17130,7 +17130,7 @@ grub-password:
   - describe command('grep -rqsE \'^[[:space:]]*(set[[:space:]]+superusers|password_pbkdf2|password)\' /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg /etc/grub.d/ 2>/dev/null && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
   - end
-  danger: A GRUB superuser password without --unrestricted stops every boot at the GRUB prompt and bricks headless/remote hosts. Pavois appends --unrestricted; still verify serial/console access before applying.
+  danger: "A GRUB superuser password stops every boot at `Enter username:` unless the entries carry --unrestricted AND the menu is flat: --unrestricted never lands on the 'Advanced options' submenu, so a kernel pinned inside it bricks a headless host. pavois does both; still verify console access before applying."
   domain: Bootloader (grub)
   evidence_type: persistent-config
   impact: 0.7
@@ -17147,6 +17147,9 @@ grub-password:
   remediation:
     reboot_required: true
     resource: grub_password
+    superuser: root
+    command_apt: H=$(printf "%s\n%s\n" "$(cat %{pwfile})" "$(cat %{pwfile})" | grub-mkpasswd-pbkdf2 2>/dev/null | grep -oE "grub\.pbkdf2\.[^ ]+"); [ -n "$H" ] && { printf "%s\n" "$H" > /etc/grub.d/.pavois-grub-hash; chmod 0600 /etc/grub.d/.pavois-grub-hash; grep -q -- "--unrestricted" /etc/grub.d/10_linux || sed -ri "/^CLASS=/ s/\"$/ --unrestricted\"/" /etc/grub.d/10_linux; sed -ri "/^GRUB_DISABLE_SUBMENU=/d" /etc/default/grub; echo "GRUB_DISABLE_SUBMENU=y" >> /etc/default/grub; /usr/sbin/update-grub; }
+    command_rhel: H=$(printf "%s\n%s\n" "$(cat %{pwfile})" "$(cat %{pwfile})" | grub2-mkpasswd-pbkdf2 2>/dev/null | grep -oE "grub\.pbkdf2\.[^ ]+"); [ -n "$H" ] && { echo "GRUB2_PASSWORD=$H" > /boot/grub2/user.cfg; chmod 0600 /boot/grub2/user.cfg; }
   severity: high
   socle: SOCLE-CLD-BOOT-001
   ssg: grub2_password
