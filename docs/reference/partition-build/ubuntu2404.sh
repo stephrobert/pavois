@@ -27,17 +27,51 @@ for d in $(lsblk -dno NAME,TYPE | awk '$2=="disk"{print $1}'); do
   if [ -z "$(lsblk -no NAME "/dev/$d" | tail -n +2)" ]; then NEW="/dev/$d"; break; fi
 done
 
-# --- LVM (reuse vghard if a previous run created it) ----------------------------------
+# --- LVM: SIZE THE VOLUMES FROM THE ACTUAL DATA -----------------------------------------
+# Fixed sizes are wrong by construction: a host that has been running (or that just built a
+# kernel) can hold 3.8G of logs, and a 3G varlog LV then fails the rsync with a cryptic rc=11
+# half way through the migration. Measure, add headroom, and refuse EARLY and clearly if the
+# second disk cannot hold the data, instead of discovering it mid-move.
+need() {  # <path> <min_gb> -> the LV size in GB: max(min, used * 1.6), rounded up
+  local used_mb; used_mb=$(du -sm "$1" 2>/dev/null | cut -f1); used_mb=${used_mb:-0}
+  local want=$(( (used_mb * 16 / 10 + 1023) / 1024 ))
+  [ "$want" -lt "$2" ] && want="$2"
+  echo "$want"
+}
+S_HOME=$(need /home 3); S_VARLOG=$(need /var/log 3); S_AUDIT=$(need /var/log/audit 2)
+S_VARTMP=$(need /var/tmp 2); S_OPT=$(need /opt 1); S_SRV=$(need /srv 1)
+# /var is measured WITHOUT the subtrees that get their own LV
+S_VAR=$(( $(need /var 6) - S_VARLOG - S_AUDIT - S_VARTMP )); [ "$S_VAR" -lt 6 ] && S_VAR=6
+TOTAL=$(( S_HOME + S_VAR + S_VARLOG + S_AUDIT + S_VARTMP + S_OPT + S_SRV ))
+
 if ! vgs vghard >/dev/null 2>&1; then
   [ -n "$NEW" ] || { echo "no empty second disk and no vghard VG"; exit 1; }
-  echo "==> creating vghard on $NEW"
+  DISK_GB=$(( $(blockdev --getsize64 "$NEW") / 1024 / 1024 / 1024 ))
+  if [ "$TOTAL" -gt "$DISK_GB" ]; then
+    echo "FATAL: this host needs ${TOTAL}G of separate filesystems (/var/log alone is $(du -sh /var/log | cut -f1))" >&2
+    echo "       but the second disk is only ${DISK_GB}G. Attach a bigger disk, or rotate the logs first." >&2
+    exit 1
+  fi
+  echo "==> creating vghard on $NEW (${TOTAL}G of ${DISK_GB}G: home=${S_HOME} var=${S_VAR} varlog=${S_VARLOG} audit=${S_AUDIT} vartmp=${S_VARTMP} opt=${S_OPT} srv=${S_SRV})"
   pvcreate -ff -y "$NEW"; vgcreate vghard "$NEW"
-  lvcreate -y -L 3G -n home vghard; lvcreate -y -L 6G -n var vghard
-  lvcreate -y -L 3G -n varlog vghard; lvcreate -y -L 2G -n varlogaudit vghard
-  lvcreate -y -L 2G -n vartmp vghard; lvcreate -y -L 1G -n opt vghard
-  lvcreate -y -L 1G -n srv vghard
+  lvcreate -y -L "${S_HOME}G" -n home vghard;        lvcreate -y -L "${S_VAR}G" -n var vghard
+  lvcreate -y -L "${S_VARLOG}G" -n varlog vghard;    lvcreate -y -L "${S_AUDIT}G" -n varlogaudit vghard
+  lvcreate -y -L "${S_VARTMP}G" -n vartmp vghard;    lvcreate -y -L "${S_OPT}G" -n opt vghard
+  lvcreate -y -L "${S_SRV}G" -n srv vghard
 else
   echo "==> reusing existing vghard"
+  # a previous run may have sized a volume too small for the data that has grown since
+  for pair in "home:$S_HOME" "var:$S_VAR" "varlog:$S_VARLOG" "varlogaudit:$S_AUDIT" \
+              "vartmp:$S_VARTMP" "opt:$S_OPT" "srv:$S_SRV"; do
+    lv=${pair%%:*}; want=${pair##*:}
+    cur=$(lvs --noheadings -o lv_size --units g --nosuffix "vghard/$lv" 2>/dev/null | tr -d ' ' | cut -d. -f1)
+    [ -n "$cur" ] || continue
+    if [ "$cur" -lt "$want" ]; then
+      echo "    growing $lv from ${cur}G to ${want}G (the data no longer fits)"
+      lvextend -L "${want}G" "/dev/vghard/$lv" >/dev/null 2>&1 || {
+        echo "FATAL: cannot grow $lv to ${want}G: the VG is full. Attach a bigger disk." >&2; exit 1; }
+    fi
+  done
 fi
 for lv in home var varlog varlogaudit vartmp opt srv; do mkfs.ext4 -q -F "/dev/vghard/$lv"; done
 
