@@ -415,11 +415,15 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 
 	inst := map[string]bool{}
 	rm := map[string]bool{}
-	sysctl := map[string]string{}             // key -> value
-	sshd := map[string]string{}               // directive -> value
-	sshdEnabled := false                      // an sshd_setting (or AllowUsers) is ACTIVELY enabled — not just compliant siblings
-	allowUsersSet := false                    // the plan explicitly set ssh_allow_users/groups (else preserve the live value)
-	svc := map[string]string{}                // service -> "action[…]"
+	sysctl := map[string]string{} // key -> value
+	sshd := map[string]string{}   // directive -> value
+	sshdEnabled := false          // an sshd_setting (or AllowUsers) is ACTIVELY enabled — not just compliant siblings
+	allowUsersSet := false        // the plan explicitly set ssh_allow_users/groups (else preserve the live value)
+	svc := map[string]string{}    // service -> "action[…]"
+	// Exclusive groups (firewall, syslog, time-sync) are resolved ACROSS the whole plan:
+	// candidates = every technology the group offers, chosen = the ones a control picked.
+	exclCandidates := map[string]bool{}
+	exclChosen := map[string]bool{}
 	files := map[string]map[string]string{}   // path -> attr -> value
 	dirs := map[string]map[string]string{}    // directory path -> attr -> value (mode/owner/group)
 	keyvals := map[string]map[string]string{} // config file -> key -> value (drop-in, whole-file)
@@ -520,27 +524,22 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 			opts, _ := m["options"].(map[string]any)
 			if o, ok := opts[r.Choose].(map[string]any); ok {
 				inst[s(o["package"])] = true
-				// An exclusive group means ONE technology. Installing nftables while firewalld
-				// is still running leaves two firewalls fighting: firewalld owns the live ruleset,
-				// the chosen one is inert, and the control fails anyway (seen on rhel10, where
-				// firewalld is up by default). Stop and disable the options we did NOT pick — only
-				// the ones actually present, so this is a no-op where they are not installed.
-				var others []string
+				// An exclusive group means ONE technology, and the plan may contain SEVERAL controls
+				// of the same group (firewall-present picks the daemon, firewall-default-deny picks
+				// the policy). Never decide "what to disable" from one control alone: two controls
+				// whose defaults differ would each disable the other's pick, and a hardened host
+				// would come out with NO firewall at all (measured on a clean-room debian12: ufw and
+				// nftables both installed, both dead). Record the candidates and the picks here, and
+				// resolve the whole group ONCE, after every control has spoken.
 				for name, v := range opts {
 					vo, _ := v.(map[string]any)
-					if name == r.Choose || vo == nil || s(vo["service"]) == "" {
+					if vo == nil || s(vo["service"]) == "" {
 						continue
 					}
-					others = append(others, s(vo["service"]))
-				}
-				if len(others) > 0 {
-					sort.Strings(others)
-					execs = append(execs, execRem{
-						name: cid + "-exclusive",
-						command: "for s in " + strings.Join(others, " ") +
-							"; do systemctl list-unit-files ${s}.service --no-legend 2>/dev/null | grep -q . && " +
-							"systemctl disable --now $s 2>/dev/null; done; true",
-					})
+					exclCandidates[s(vo["service"])] = true
+					if name == r.Choose {
+						exclChosen[s(vo["service"])] = true
+					}
 				}
 				// Firewall policy (the nftables ruleset, the ufw command sequence) lives in the
 				// rule as DATA — see the `ruleset`/`enable_cmd` fields on the option. Here we only
@@ -761,6 +760,26 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		_, _ = fmt.Fprintf(&b, "execute 'pavois-firewall-enable' do\n  command %q\n  ignore_failure true\n  not_if '/usr/sbin/ufw status 2>/dev/null | grep -q \"Status: active\"'\nend\n\n", fwEnableCmd)
 		n++
 	}
+	// One firewall, one syslog, one time-sync: disable the candidates NOBODY picked. Doing this per
+	// control would make two controls of the same group cancel each other out (that is exactly how a
+	// hardened host ended up with ufw and nftables both installed and both dead).
+	var unpicked []string
+	for s2 := range exclCandidates {
+		if !exclChosen[s2] {
+			unpicked = append(unpicked, s2)
+		}
+	}
+	if len(unpicked) > 0 {
+		sort.Strings(unpicked)
+		execs = append(execs, execRem{
+			name: "pavois-exclusive-groups",
+			command: "for s in " + strings.Join(unpicked, " ") +
+				"; do systemctl list-unit-files ${s}.service --no-legend 2>/dev/null | grep -q . && " +
+				"systemctl disable --now $s 2>/dev/null; done; true",
+		})
+		n++
+	}
+
 	if fwNftConfig != "" { // native nftables: write the ruleset, load it, enable the unit
 		// ignore_failure on the load+service: a bad ruleset or missing package leaves the firewall
 		// control failing (visible in the re-scan), never aborts the run.

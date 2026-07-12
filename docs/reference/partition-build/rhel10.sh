@@ -14,6 +14,12 @@
 # (/.autorelabel); without it, sshd/systemd/etc. can be denied and the box may not come back.
 set -euo pipefail
 
+# The recipe must bring its OWN tools: a minimal cloud image may ship neither lvm2 nor rsync.
+if ! command -v pvcreate >/dev/null 2>&1 || ! command -v rsync >/dev/null 2>&1; then
+  echo "==> installing lvm2 + rsync"
+  dnf install -y -q lvm2 rsync >/dev/null 2>&1 || true
+fi
+
 # rsync drives the migration; ensure it (removed again at the end so no rsync daemon lingers).
 command -v rsync >/dev/null 2>&1 || dnf install -y -q rsync >/dev/null 2>&1 || true
 
