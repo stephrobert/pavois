@@ -69,6 +69,15 @@ def main():
     ap.add_argument("--update", action="store_true", help="promote to baseline if >= best")
     ap.add_argument("--lynis", type=int, default=None, help="lynis hardening index for this scan")
     ap.add_argument("--label", default="")
+    # A baseline is only a reference while the CORPUS is the same. After a campaign that
+    # merges duplicates and drops controls that could never pass, "fewer passing" is not a
+    # regression, it is a smaller (and honest) denominator. --reset re-anchors it, and the
+    # label must say why: a baseline nobody can explain is not opposable.
+    ap.add_argument(
+        "--reset",
+        action="store_true",
+        help="re-anchor the baseline (the corpus changed); --label is then required",
+    )
     a = ap.parse_args()
 
     passing, failing = extract(a.scan)
@@ -107,7 +116,12 @@ def main():
 
     lynis_reg = b.get("lynis") is not None and a.lynis is not None and a.lynis < b["lynis"]
     better = not regressions and len(passing) >= len(base_pass) and not lynis_reg
-    if a.update and better:
+    if a.reset:
+        if not a.label:
+            sys.exit("--reset needs a --label saying WHY the baseline is re-anchored")
+        save(bpath, a, passing, failing)
+        print(f"  -> baseline RE-ANCHORED: {a.label}")
+    elif a.update and better:
         save(bpath, a, passing, failing)
         print("  -> baseline updated (new best)")
     elif a.update:
