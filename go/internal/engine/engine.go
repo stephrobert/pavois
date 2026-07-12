@@ -670,8 +670,13 @@ func RunOnTarget(o Options) (int, error) {
 	if std == "" {
 		std = "_default" // no standard selected -> the merged rules use their most-secure threshold
 	}
-	cincCmd := fmt.Sprintf("env CHEF_LICENSE=accept-silent $(command -v cinc-auditor || command -v inspec) "+
-		"exec %s -t local:// --no-create-lockfile --input pavois_standard=%s --reporter json:%s", remoteProf, std, remoteJSON)
+	// HOME is forced to a scratch dir: sudo keeps the caller's HOME, so cinc (running as root)
+	// creates a root-owned ~/.inspec in the audited user's home. An auditor must leave NO trace on
+	// the target, and pavois was failing its own home-files-permissions control on that garbage.
+	const remoteHome = "/tmp/pavois-home"
+	cincCmd := fmt.Sprintf("env HOME=%s CHEF_LICENSE=accept-silent $(command -v cinc-auditor || command -v inspec) "+
+		"exec %s -t local:// --no-create-lockfile --input pavois_standard=%s --reporter json:%s",
+		remoteHome, remoteProf, std, remoteJSON)
 	// Accepted risks travel with the profile (the whole dir is copied), so point cinc at the copy.
 	if waiverFile(prof) != "" {
 		cincCmd += " --waiver-file " + remoteProf + "/waivers.yml"
@@ -706,5 +711,8 @@ func RunOnTarget(o Options) (int, error) {
 	if err := run("scp", append(append([]string{}, base...), o.Target+":"+remoteJSON, o.JSONOut)...); err != nil {
 		return 2, fmt.Errorf("fetch report from target: %w", err)
 	}
+	// Leave no trace: the profile copy, the report and the scratch HOME are ours, not the target's.
+	// (Older pavois versions left a root-owned ~/.inspec behind; remove that too.)
+	_ = ssh(sudo + "rm -rf " + remoteProf + " " + remoteJSON + " " + remoteHome + " ~/.inspec")
 	return rc, nil
 }

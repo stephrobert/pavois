@@ -766,6 +766,14 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		// control failing (visible in the re-scan), never aborts the run.
 		_, _ = fmt.Fprintf(&b, "file '/etc/nftables.conf' do\n  content %q\n  mode '0600'\nend\n\n", fwNftConfig)
 		_, _ = fmt.Fprintf(&b, "execute 'pavois-nft-load' do\n  command 'nft -f /etc/nftables.conf'\n  ignore_failure true\n  subscribes :run, 'file[/etc/nftables.conf]', :immediately\nend\n\n")
+		// RHEL's nftables.service does NOT read /etc/nftables.conf: it loads what
+		// /etc/sysconfig/nftables.conf includes. Without this, the ruleset is live until the next
+		// reboot and the box comes back with an EMPTY firewall (seen on rhel10: nftables active,
+		// zero rules, and the default-deny control failing while the host was in fact wide open).
+		bootInc := "if [ -f /etc/sysconfig/nftables.conf ] && ! grep -q '/etc/nftables.conf' " +
+			"/etc/sysconfig/nftables.conf; then printf 'include \"/etc/nftables.conf\"\\n' >> " +
+			"/etc/sysconfig/nftables.conf; fi; true"
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-nft-boot-include' do\n  command %q\n  ignore_failure true\nend\n\n", bootInc)
 		_, _ = fmt.Fprintf(&b, "service 'nftables' do\n  action [:enable, :start]\n  ignore_failure true\nend\n\n")
 		n++
 	}

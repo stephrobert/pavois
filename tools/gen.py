@@ -96,7 +96,17 @@ def invert(data):
 
 
 def pick(v, os):
-    return v["@os"].get(os) if isinstance(v, dict) and "@os" in v else v
+    """Resolve a field for one OS: the @os override, else `default`, else the shared value.
+
+    Without the `default` fallback, a field written `@os: {debian12: ...}` silently resolved to
+    None on the eight other OSes and vanished from the render. That single missing line is what
+    produced 123 rhel10 controls with NO remediation at all against 3 on debian12: not 123
+    oversights, one generator semantics defect, multiplied. `default` makes the portable value
+    explicit and the hole a deliberate one.
+    """
+    if isinstance(v, dict) and "@os" in v:
+        return v["@os"].get(os, v.get("default"))
+    return v
 
 
 def render(lib):
