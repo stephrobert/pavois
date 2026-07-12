@@ -30,12 +30,18 @@ type Report struct {
 
 // Control is an InSpec control and its results.
 type Control struct {
-	ID      string           `json:"id"`
-	Title   string           `json:"title"`
-	Desc    string           `json:"desc"`
-	Impact  float64          `json:"impact"`
-	Tags    map[string]any   `json:"tags"`
-	Refs    []map[string]any `json:"refs"`
+	ID     string           `json:"id"`
+	Title  string           `json:"title"`
+	Desc   string           `json:"desc"`
+	Impact float64          `json:"impact"`
+	Tags   map[string]any   `json:"tags"`
+	Refs   []map[string]any `json:"refs"`
+	// cinc fills this for a control listed in the profile's waivers.yml: it carries the
+	// justification an auditor reads, and it is how we tell an ACCEPTED RISK from a plain N/A.
+	WaiverData struct {
+		Justification string `json:"justification"`
+		Run           *bool  `json:"run"`
+	} `json:"waiver_data"`
 	Results []struct {
 		Status      string `json:"status"`
 		CodeDesc    string `json:"code_desc"`
@@ -148,7 +154,12 @@ type Result struct {
 	Passed    int
 	Total     int // evaluated controls (pass+fail) in the view
 	Qualified int // runtime-only PASS: active proven, persistence NOT verified (subset of Passed)
-	OS        string
+	// A waived or N/A control leaves the denominator, so the grade RISES when you add one.
+	// Reporting the grade without these two numbers would let anyone fabricate an A by waiving
+	// what fails. They are part of the verdict, not a footnote.
+	Waived        int // accepted risks: run: false in the profile's waivers.yml, with a justification
+	NotApplicable int // skipped by an only_if guard (no SSSD domain, no wireless card, no GRUB...)
+	OS            string
 }
 
 // Proves derives what a PASS establishes from the control's evidence type:
@@ -209,7 +220,7 @@ func Evaluate(r *Report, subject, standard, level string) Result {
 	}
 
 	var fs []finding.Finding
-	passed, scored, qualified := 0, 0, 0
+	passed, scored, qualified, waived, na := 0, 0, 0, 0, 0
 	for _, p := range r.Profiles {
 		for _, c := range p.Controls {
 			if !applicable(c, standard) || !inLevel(c, standard, level) {
@@ -225,7 +236,14 @@ func Evaluate(r *Report, subject, standard, level string) Result {
 				continue
 			}
 			if st != "failed" {
-				continue // N/A: not a finding
+				// Skipped: either an ACCEPTED RISK (waived, with a justification) or genuinely
+				// N/A (an only_if guard). Both leave the denominator, so both must be reported.
+				if c.WaiverData.Justification != "" {
+					waived++
+				} else {
+					na++
+				}
+				continue
 			}
 			scored++
 			fs = append(fs, toFinding(c, subject, standard))
@@ -239,7 +257,10 @@ func Evaluate(r *Report, subject, standard, level string) Result {
 		return fs[i].Code < fs[j].Code
 	})
 	os := strings.TrimSpace(r.Platform.Name + " " + r.Platform.Release)
-	return Result{Findings: fs, Summary: scoring.Summarize(fs), Passed: passed, Total: scored, Qualified: qualified, OS: os}
+	return Result{
+		Findings: fs, Summary: scoring.Summarize(fs), Passed: passed, Total: scored,
+		Qualified: qualified, Waived: waived, NotApplicable: na, OS: os,
+	}
 }
 
 func toFinding(c Control, subject, standard string) finding.Finding {
@@ -344,18 +365,24 @@ func GradeResult(res Result) (letter string, points int, runtimeQualified bool) 
 //     password, iommu=force): never apply without a plan + snapshot + reboot test
 //   - manual      : no automatic remediation ("manual" evidence)
 //   - auto        : automatically remediable (the rest)
+//
+// RemediationClass reads the class off the RULE. It used to be a hardcoded list of id prefixes
+// here in Go while the knowledge already lived in the YAML (`danger:`, `domain`) — two sources of
+// truth, and they had already drifted: nine rhel10 controls carried `danger:` but the Go list knew
+// only three of them, so six high-risk remediations were reported as plain `auto`. The engine does
+// not decide what a rule is; the rule says it (see docs/reference/rules.yml `remediation_class`).
+// The fallbacks below only cover a corpus rendered before the tag existed.
 func RemediationClass(c Control) string {
-	id := c.ID
+	if k := tagStr(c, "remediation_class"); k != "" {
+		return k
+	}
 	switch {
-	case id == "kmod-loading-disabled",
-		strings.Contains(id, "modules-disabled"),
-		strings.HasPrefix(id, "cmdline-iommu"),
-		strings.Contains(id, "grub-password"):
-		return "dangerous"
 	case strings.EqualFold(tagStr(c, "domain"), "Kernel build"):
 		return "kernel-build"
-	case strings.EqualFold(tagStr(c, "domain"), "Mounts"), strings.HasPrefix(id, "partition-"):
+	case strings.EqualFold(tagStr(c, "domain"), "Mounts"), strings.HasPrefix(c.ID, "partition-"):
 		return "install-time"
+	case tagStr(c, "danger") != "":
+		return "dangerous"
 	case tagStr(c, "evidence") == "manual":
 		return "manual"
 	default:

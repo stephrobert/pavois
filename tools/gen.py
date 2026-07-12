@@ -42,6 +42,7 @@ SCALAR = [
     "requires_companion_control",
     "requires_package",
     "posture",
+    "remediation_class",  # auto | dangerous | install-time | kernel-build | manual
     "replaces",
     "merge_group",
     "thresholds",

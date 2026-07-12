@@ -106,6 +106,12 @@ def main():
     ap.add_argument("--domain")
     ap.add_argument("--control")
     ap.add_argument("--diff", help="another OS: show what differs between the two")
+    ap.add_argument(
+        "--export",
+        help="write a REVIEW DOSSIER for this OS (resolved rules + remediations) to a file, "
+        "so a reviewer (human or model) can validate the whole set: nothing inconsistent, "
+        "nothing unsatisfiable, no check its own remediation cannot make pass.",
+    )
     a = ap.parse_args()
 
     d = yaml.safe_load(RULES.read_text())
@@ -136,6 +142,41 @@ def main():
                         print(f"  {C['cyn']}{cid}.{f}{C['0']}: {a.os}={a1} | {other}={b1}")
                         n += 1
         print(f"\n{n} difference(s)")
+        return
+
+    if a.export:
+        # The RESOLVED view: no @os, no @{primitive}, exactly what the target will be audited
+        # against and remediated with. That is what a reviewer must judge.
+        ref = yaml.safe_load((CONTENT / f"{a.os}.yml").read_text())["rules"]
+        out = [
+            f"# pavois review dossier — {a.os} — {len(ref)} controls",
+            "# Fully resolved: this is EXACTLY what the scanner runs and what harden applies.",
+            "# For each control: what it asserts, and what pavois does to make it pass.",
+            "",
+        ]
+        for cid in sorted(ref):
+            e = ref[cid]
+            out.append(
+                f"## {cid}   [{e.get('severity')}] {e.get('domain')} "
+                f"class={e.get('remediation_class')}"
+            )
+            out.append(f"title: {e.get('title')}")
+            for ln in e.get("check") or []:
+                out.append(f"check| {ln}")
+            r = e.get("remediation")
+            if r:
+                for ln in yaml.safe_dump(r, width=110, allow_unicode=True).rstrip().splitlines():
+                    out.append(f"rem  | {ln}")
+            else:
+                out.append("rem  | (NONE)")
+            if e.get("waiver"):
+                out.append(f"waiver| {e['waiver'][:200]}")
+            out.append("")
+        Path(a.export).write_text("\n".join(out))
+        print(
+            f"review dossier: {a.export}  ({len(ref)} controls, "
+            f"{len(chr(10).join(out).splitlines())} lines)"
+        )
         return
 
     want = set(lib)
