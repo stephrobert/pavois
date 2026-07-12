@@ -28,7 +28,10 @@ fi
 command -v rsync >/dev/null 2>&1 || { apt-get update -qq; DEBIAN_FRONTEND=noninteractive apt-get install -y rsync >/dev/null 2>&1; }
 
 # --- find the new empty disk (no partitions, not the root disk) ------------------------
-ROOTDISK=$(lsblk -no PKNAME "$(findmnt -no SOURCE /)" | head -1)
+# btrfs reports the SUBVOLUME in the source (/dev/sda4[/root], which is what Fedora Cloud
+# gives you), and lsblk refuses it: "not a block device". Strip the subvolume.
+ROOTSRC=$(findmnt -no SOURCE / | sed "s/\[.*\]//")
+ROOTDISK=$(lsblk -no PKNAME "$ROOTSRC" | head -1)
 NEW=""
 for d in $(lsblk -dno NAME,TYPE | awk '$2=="disk"{print $1}'); do
   [ "$d" = "$ROOTDISK" ] && continue
