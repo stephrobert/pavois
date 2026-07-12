@@ -68,7 +68,28 @@ command -v apt-get >/dev/null 2>&1 || { echo "this script is for ubuntu2204 (nee
   [ "$JOBS" -gt "$(nproc)" ] && JOBS=$(nproc)
   echo "==> building (long, -j$JOBS for ${MEM_GB}G of RAM)"; make -j"$JOBS" bindeb-pkg
   echo "==> installing"; dpkg -i ../linux-image-*.deb ../linux-headers-*.deb
+  KREL=$(make -s kernelrelease 2>/dev/null)
+  # GRUB boots the HIGHEST version, and the distro's own kernel can out-number ours: Debian 13 ships
+  # 6.12.95+deb13 while kernel.org's 6.12 tarball is at 6.12.94. The KSPP kernel was built,
+  # installed... and never booted, and every kconfig control failed on a kernel we had replaced.
+  # So the recipe pins its kernel as the default entry, BY MENU ID (a name match would hit the
+  # distro's own 6.12.94+deb13), and it FLATTENS the menu first: `--unrestricted` lands on the menu
+  # entries, never on the "Advanced options" submenu, so a pinned entry inside that submenu stops a
+  # password-protected GRUB at `Enter username:` and the machine never boots.
+  sed -ri "/^GRUB_DISABLE_SUBMENU=/d" /etc/default/grub
+  echo "GRUB_DISABLE_SUBMENU=y" >> /etc/default/grub
   update-grub
+  if [ -n "$KREL" ]; then
+    OUR=$(grep -oE "gnulinux-${KREL}-advanced-[0-9a-f-]+" /boot/grub/grub.cfg | head -1)
+    if [ -n "$OUR" ]; then
+      sed -ri "/^GRUB_DEFAULT=/d" /etc/default/grub
+      echo "GRUB_DEFAULT=\"$OUR\"" >> /etc/default/grub
+      update-grub
+      echo "==> default boot entry: Linux $KREL (the KSPP kernel)"
+    else
+      echo "WARNING: no GRUB entry for $KREL — the stock kernel will keep booting" >&2
+    fi
+  fi
   # ensure the /vmlinuz + /initrd.img top-level symlinks point to the newest kernel (lynis
   # KRNL-5788): purging the stock cloud kernels can leave them dangling/absent. Reproducible,
   # part of the build so an operator never has to relink by hand.

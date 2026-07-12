@@ -432,11 +432,14 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 	pamLines := []pamLine{}                   // PAM stack lines inserted before an anchor (idempotent)
 	execs := []execRem{}                      // arbitrary guarded command (e.g. chmod on a glob)
 	kmods := map[string]bool{}
-	cmdline := map[string]bool{}        // kernel cmdline params -> one grub drop-in
-	mounts := map[string]*mountAgg{}    // mount point -> aggregated tmpfs options (all-or-nothing)
-	fwEnableCmd := ""                   // firewall: open SSH then enable (no lockout), emitted once
-	fwNftConfig := ""                   // native nftables ruleset (hardened-kernel friendly), emitted once
-	grubPwWanted := false               // a grub_password remediation was enabled
+	cmdline := map[string]bool{}     // kernel cmdline params -> one grub drop-in
+	mounts := map[string]*mountAgg{} // mount point -> aggregated tmpfs options (all-or-nothing)
+	fwEnableCmd := ""                // firewall: open SSH then enable (no lockout), emitted once
+	fwNftConfig := ""                // native nftables ruleset (hardened-kernel friendly), emitted once
+	grubPwWanted := false            // a grub_password remediation was enabled
+	// WHAT to do to grub is policy and lives in the RULE (command_apt / command_rhel); the engine
+	// only generates the secret, vaults it, and executes. harden.go is the engine (#157).
+	grubCmdApt, grubCmdRhel := "", ""
 	dconfEntries := map[string]string{} // dconf key -> value, aggregated from the rule data
 	faillockWanted := false             // a pam_faillock remediation was enabled
 	faillockParams := ""                // pam_faillock module args (from the rule data)
@@ -660,6 +663,7 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 			ma.opts[s(m["option"])] = true // options aggregated per mount point (below)
 		case "grub_password":
 			grubPwWanted = true // Pavois generates the secret + vaults it (below)
+			grubCmdApt, grubCmdRhel = s(m["command_apt"]), s(m["command_rhel"])
 		case "file":
 			path := s(m["path"])
 			if files[path] == nil {
@@ -1270,11 +1274,27 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		//  - RHEL/clones: write GRUB2_PASSWORD to /boot/grub2/user.cfg (grub sources it, superuser
 		//    root is implicit, and booting the default entry stays password-free — no brick).
 		// ignore_failure: a grub-password hiccup must never abort the converge (it is a danger item).
-		deb := `H=$(printf "%s\n%s\n" "$(cat /tmp/pavois-grub-pw)" "$(cat /tmp/pavois-grub-pw)" | grub-mkpasswd-pbkdf2 2>/dev/null | grep -oE "grub\.pbkdf2\.[^ ]+"); [ -n "$H" ] && { printf "%s\n" "$H" > /etc/grub.d/.pavois-grub-hash; chmod 0600 /etc/grub.d/.pavois-grub-hash; grep -q -- "--unrestricted" /etc/grub.d/10_linux || sed -ri "/^CLASS=/ s/\"\$/ --unrestricted\"/" /etc/grub.d/10_linux; /usr/sbin/update-grub; }`
-		rhel := `H=$(printf "%s\n%s\n" "$(cat /tmp/pavois-grub-pw)" "$(cat /tmp/pavois-grub-pw)" | grub2-mkpasswd-pbkdf2 2>/dev/null | grep -oE "grub\.pbkdf2\.[^ ]+"); [ -n "$H" ] && { echo "GRUB2_PASSWORD=$H" > /boot/grub2/user.cfg; chmod 0600 /boot/grub2/user.cfg; }`
-		b.WriteString("execute 'pavois-grub-password' do\n  command 'if command -v update-grub >/dev/null 2>&1; then " + deb +
+		// The engine's job here is the SECRET (generate it, vault it, hand it to the target) and the
+		// execution. WHAT to do to grub is policy, and policy lives in the rule (docs/reference/
+		// rules.yml, grub-password: `command_apt` / `command_rhel`), like audit.rules and the kernel
+		// recipe. harden.go is the engine, the rules are the content (#157).
+		pwfile := "/tmp/pavois-grub-pw" //nolint:gosec // a path, not a credential
+		deb, rhel := grubCmdApt, grubCmdRhel
+		if deb == "" || rhel == "" {
+			conflicts = append(conflicts,
+				"grub-password: the rule must carry command_apt and command_rhel (the policy is data)")
+		}
+		deb = strings.ReplaceAll(deb, "%{pwfile}", pwfile)
+		rhel = strings.ReplaceAll(rhel, "%{pwfile}", pwfile)
+		if deb == "" || rhel == "" {
+			deb, rhel = "true", "true" // the conflict above already refuses the run
+		}
+		cmd := "if command -v update-grub >/dev/null 2>&1; then " + deb +
 			"; elif command -v grub2-mkpasswd-pbkdf2 >/dev/null 2>&1; then " + rhel +
-			"; fi; rm -f /tmp/pavois-grub-pw'\n  not_if 'test -s /etc/grub.d/.pavois-grub-hash || test -s /boot/grub2/user.cfg'\n  ignore_failure true\nend\n\n")
+			"; fi; rm -f " + pwfile
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-grub-password' do\n  command %q\n"+
+			"  not_if 'test -s /etc/grub.d/.pavois-grub-hash || test -s /boot/grub2/user.cfg'\n"+
+			"  ignore_failure true\nend\n\n", cmd)
 		reboot = true
 		n++
 	}
