@@ -206,6 +206,7 @@ account-disable-inactive-pw:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe command('awk -F= \'/^INACTIVE=/{v=$2} END{print (v ~ /^[0-9]+$/ && v>=0 && v<=30)?"ok":"ko"}\' /etc/default/useradd') do
@@ -395,6 +396,7 @@ account-no-future-pw-change:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe command('d=$(( $(date +%s) / 86400 )); awk -v d="$d" \'BEGIN{FS=":"}($3 ~ /^[0-9]+$/ && $3+0>d){c++} END{print c?"ko":"ok"}\' /etc/shadow') do
@@ -542,6 +544,7 @@ audit-etc-cron-d:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -1276,6 +1279,7 @@ audit-networkconfig-modification-network-scripts:
   applicable_os:
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   domain: Audit (auditd)
   evidence_type: effective-runtime
@@ -1460,6 +1464,7 @@ audit-suid-auid-privilege-function:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -1479,6 +1484,7 @@ audit-suid-auid-privilege-function:
         ubuntu2204: 6.3.3.2
         ubuntu2404: 6.2.3.2
         ubuntu2604: 6.2.3.2
+        fedora: 6.3.3.2
   reboot_survivable: 'yes'
   remediation:
     reboot_required: true
@@ -1571,6 +1577,7 @@ audit-sysadmin-actions:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   domain: Audit (auditd)
   evidence_type: effective-runtime
@@ -1590,6 +1597,8 @@ audit-sysadmin-actions:
       rhel9:
         bp28: enhanced
       rhel10:
+        bp28: enhanced
+      fedora:
         bp28: enhanced
   norms:
     bp28: R73
@@ -2181,6 +2190,7 @@ auditd-admin-space-left-percentage:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   check:
   - describe command('v=$(grep -iE \'^[[:space:]]*admin_space_left[[:space:]]*=[[:space:]]*[0-9]+%\' /etc/audit/auditd.conf 2>/dev/null | grep -oE \'[0-9]+\' | tail -1); { [ -n "$v" ] && [ "$v" -ge 5 ] && echo ok; } || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -2367,6 +2377,7 @@ auditd-flush:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
     '@os':
       rhel8:
@@ -2378,6 +2389,10 @@ auditd-flush:
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       rhel10:
+      - describe command('grep -qiE \'^[[:space:]]*flush[[:space:]]*=[[:space:]]*(incremental_async)\b\' /etc/audit/auditd.conf 2>/dev/null && echo ok || echo ko') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      fedora:
       - describe command('grep -qiE \'^[[:space:]]*flush[[:space:]]*=[[:space:]]*(incremental_async)\b\' /etc/audit/auditd.conf 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
@@ -2765,6 +2780,7 @@ auditd-space-left-percentage:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -3092,6 +3108,7 @@ cmdline-init-on-alloc:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   domain: Kernel command line
   evidence_type: effective-runtime
   impact: 0.5
@@ -3116,6 +3133,7 @@ cmdline-iommu-force:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -3147,6 +3165,7 @@ cmdline-l1tf:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -3177,6 +3196,7 @@ cmdline-mce:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -3207,6 +3227,7 @@ cmdline-mds:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -3260,6 +3281,7 @@ cmdline-page-alloc-shuffle:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -3354,6 +3376,7 @@ cmdline-rng-core-default-quality:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -3416,6 +3439,7 @@ cmdline-slab-nomerge:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -3478,6 +3502,7 @@ cmdline-spec-store-bypass-disable:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -3508,6 +3533,7 @@ cmdline-spectre-v2:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -3790,6 +3816,7 @@ dconf-gnome-disable-ctrlaltdel-reboot:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -3827,6 +3854,7 @@ dconf-gnome-disable-restart-shutdown:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   check:
   - only_if { command('dconf').exist? }
   - describe command('{ s=$(grep -rhE \'^[[:space:]]*disable-restart-buttons[[:space:]]*=\' /etc/dconf/db/*.d/* 2>/dev/null | tail -1 | sed -E \'s/^[^=]*=[[:space:]]*//\' | tr -d "\'\\""); [ "$s" = "true" ] && grep -rqxF \'/org/gnome/login-screen/disable-restart-buttons\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do
@@ -3899,6 +3927,7 @@ dconf-gnome-lock-screen-on-smartcard-removal:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2404
   - ubuntu2604
   check:
@@ -4243,6 +4272,7 @@ dconf-gnome-screensaver-lock-locked:
   applicable_os:
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - only_if { command('dconf').exist? }
@@ -4862,6 +4892,7 @@ filegroupowner-at-deny:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -5458,6 +5489,7 @@ filegroupowner-cron-deny:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   domain: File ownership
   evidence_type: filesystem-state
   impact: 0.5
@@ -5727,6 +5759,7 @@ filegroupowner-efi-grub2-cfg:
   applicable_os:
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   domain: File ownership
   evidence_type: filesystem-state
@@ -5757,6 +5790,7 @@ filegroupowner-efi-user-cfg:
   applicable_os:
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   domain: File ownership
   evidence_type: filesystem-state
@@ -5790,6 +5824,7 @@ filegroupowner-etc-crypttab:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -6049,6 +6084,7 @@ filegroupowner-etc-ipsec-conf:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -6081,6 +6117,7 @@ filegroupowner-etc-ipsec-secrets:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -6392,6 +6429,7 @@ filegroupowner-etc-sestatus-conf:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: File ownership
   evidence_type: filesystem-state
   impact: 0.5
@@ -6648,6 +6686,7 @@ filegroupowner-etc-sudoers:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -6677,6 +6716,7 @@ filegroupowner-etc-sysconfig-sshd:
   applicable_os:
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   domain: File ownership
   evidence_type: filesystem-state
@@ -6988,6 +7028,7 @@ filegroupowner-systemmap:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -7165,6 +7206,7 @@ filegroupowner-var-log:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -7205,6 +7247,10 @@ filegroupowner-var-log:
         group: syslog
         path: /var/log
         resource: file
+      fedora:
+        group: root
+        path: /var/log
+        resource: file
   severity: medium
   socle: SOCLE-CLD-FSP-041
   ssg: file_groupowner_var_log
@@ -7240,6 +7286,11 @@ filegroupowner-var-log:
         name: file_owner
         path: /var/log
         value: '''syslog'''
+      fedora:
+        attr: gid
+        name: file_owner
+        path: /var/log
+        value: '0'
   title: Verify Group Who Owns /var/log Directory
   remediation_class: auto
 filegroupowner-var-log-auth:
@@ -7318,6 +7369,7 @@ filegroupowner-var-log-lastlog:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -7352,6 +7404,7 @@ filegroupowner-var-log-localmessages:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -7389,6 +7442,7 @@ filegroupowner-var-log-messages:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: File ownership
   evidence_type: filesystem-state
   impact: 0.5
@@ -7414,6 +7468,7 @@ filegroupowner-var-log-secure:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -7910,6 +7965,7 @@ fileowner-at-deny:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -8321,6 +8377,7 @@ fileowner-cron-deny:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   domain: File ownership
   evidence_type: filesystem-state
   impact: 0.5
@@ -8590,6 +8647,7 @@ fileowner-efi-grub2-cfg:
   applicable_os:
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   domain: File ownership
   evidence_type: filesystem-state
@@ -8620,6 +8678,7 @@ fileowner-efi-user-cfg:
   applicable_os:
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   domain: File ownership
   evidence_type: filesystem-state
@@ -8653,6 +8712,7 @@ fileowner-etc-crypttab:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -8836,6 +8896,7 @@ fileowner-etc-ipsec-conf:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -8868,6 +8929,7 @@ fileowner-etc-ipsec-secrets:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -9179,6 +9241,7 @@ fileowner-etc-sestatus-conf:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: File ownership
   evidence_type: filesystem-state
   impact: 0.5
@@ -9359,6 +9422,7 @@ fileowner-etc-sudoers:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -9388,6 +9452,7 @@ fileowner-etc-sysconfig-sshd:
   applicable_os:
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   domain: File ownership
   evidence_type: filesystem-state
@@ -9726,6 +9791,7 @@ fileowner-systemmap:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -9903,6 +9969,7 @@ fileowner-var-log:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -10011,6 +10078,7 @@ fileowner-var-log-lastlog:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -10049,6 +10117,7 @@ fileowner-var-log-localmessages:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -10088,6 +10157,7 @@ fileowner-var-log-messages:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: File ownership
   evidence_type: filesystem-state
   impact: 0.5
@@ -10115,6 +10185,7 @@ fileowner-var-log-secure:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -10562,6 +10633,7 @@ fileperm-at-deny:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -12322,6 +12394,7 @@ fileperm-etc-audit-auditd:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -12356,6 +12429,7 @@ fileperm-etc-audit-auditd:
         cis: '2'
       ubuntu2604:
         cis: '2'
+      fedora: {}
   norms:
     cis:
       '@os':
@@ -12393,6 +12467,7 @@ fileperm-etc-audit-rules:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -12445,6 +12520,7 @@ fileperm-etc-audit-rulesd:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -12510,6 +12586,19 @@ fileperm-etc-audit-rulesd:
       - '  it { should_not be_setgid }'
       - '  it { should_not be_sticky }'
       - end
+      fedora:
+      - only_if { file('/etc/audit/rules.d').exist? }
+      - describe file('/etc/audit/rules.d') do
+      - '  it { should be_directory }'
+      - '  it { should be_executable.by(''owner'') }'
+      - '  it { should_not be_writable.by(''group'') }'
+      - '  it { should_not be_readable.by(''other'') }'
+      - '  it { should_not be_writable.by(''other'') }'
+      - '  it { should_not be_executable.by(''other'') }'
+      - '  it { should_not be_setuid }'
+      - '  it { should_not be_setgid }'
+      - '  it { should_not be_sticky }'
+      - end
   domain: File permissions
   evidence_type: filesystem-state
   impact: 0.5
@@ -12528,6 +12617,7 @@ fileperm-etc-audit-rulesd:
         cis: '2'
       rhel9: {}
       rhel10: {}
+      fedora: {}
   norms:
     cis:
       '@os':
@@ -12588,6 +12678,10 @@ fileperm-etc-audit-rulesd:
         mode: '0750'
         path: /etc/audit/rules.d
         resource: file
+      fedora:
+        mode: '0750'
+        path: /etc/audit/rules.d
+        resource: file
   requires_package: auditd
   severity: medium
   socle: SOCLE-CLD-FSP-133
@@ -12601,6 +12695,7 @@ fileperm-etc-crypttab:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -12960,6 +13055,7 @@ fileperm-etc-ipsec-conf:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -12999,6 +13095,7 @@ fileperm-etc-ipsec-secrets:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -13038,6 +13135,7 @@ fileperm-etc-ipsecd:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -13403,6 +13501,7 @@ fileperm-etc-selinux:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
   - only_if { file('/etc/selinux').exist? }
   - describe file('/etc/selinux') do
@@ -13434,6 +13533,7 @@ fileperm-etc-sestatus-conf:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
   - only_if { file('/etc/sestatus.conf').exist? }
   - describe file('/etc/sestatus.conf') do
@@ -13788,6 +13888,7 @@ fileperm-etc-sudoers:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -13829,6 +13930,7 @@ fileperm-etc-sudoersd:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -13864,6 +13966,7 @@ fileperm-etc-sysconfig-sshd:
   applicable_os:
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - only_if { file('/etc/sysconfig/sshd').exist? }
@@ -13902,6 +14005,7 @@ fileperm-etc-sysctld:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -14610,6 +14714,7 @@ fileperm-sudo:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -14675,6 +14780,16 @@ fileperm-sudo:
       - '  it { should_not be_writable.by(''group'') }'
       - '  it { should_not be_writable.by(''other'') }'
       - end
+      fedora:
+      - only_if { file('/usr/bin/sudo').exist? }
+      - describe file('/usr/bin/sudo') do
+      - '  it { should_not be_readable.by(''owner'') }'
+      - '  it { should_not be_writable.by(''owner'') }'
+      - '  it { should_not be_readable.by(''group'') }'
+      - '  it { should_not be_writable.by(''group'') }'
+      - '  it { should_not be_readable.by(''other'') }'
+      - '  it { should_not be_writable.by(''other'') }'
+      - end
   domain: File permissions
   evidence_type: persistent-config
   impact: 0.5
@@ -14717,6 +14832,10 @@ fileperm-sudo:
         mode: '4755'
         path: /usr/bin/sudo
         resource: file
+      fedora:
+        mode: '4111'
+        path: /usr/bin/sudo
+        resource: file
   severity: medium
   socle: SOCLE-CLD-FSP-161
   ssg: file_permissions_sudo
@@ -14729,6 +14848,7 @@ fileperm-systemmap:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -15118,6 +15238,7 @@ fileperm-var-log:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -15167,6 +15288,15 @@ fileperm-var-log:
       - describe file('/var/log') do
       - '  it { should_not be_writable.by(''group'') }'
       - '  it { should_not be_writable.by(''other'') }'
+      - end
+      fedora:
+      - only_if { file('/var/log').exist? }
+      - describe file('/var/log') do
+      - '  it { should_not be_setuid }'
+      - '  it { should_not be_writable.by(''group'') }'
+      - '  it { should_not be_setgid }'
+      - '  it { should_not be_writable.by(''other'') }'
+      - '  it { should_not be_sticky }'
       - end
   domain: File permissions
   evidence_type: persistent-config
@@ -15384,6 +15514,7 @@ fileperm-var-log-gdm:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -15463,6 +15594,7 @@ fileperm-var-log-lastlog:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -15507,6 +15639,7 @@ fileperm-var-log-localmessages:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -15551,6 +15684,7 @@ fileperm-var-log-messages:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
   - only_if { file('/var/log/messages').exist? }
   - describe file('/var/log/messages') do
@@ -15585,6 +15719,7 @@ fileperm-var-log-sssd:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -15825,6 +15960,7 @@ findloop-dir-system-commands:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -15864,6 +16000,7 @@ findloop-file-groupowner-var-log:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -15892,6 +16029,7 @@ findloop-file-groupowner-var-log:
         ubuntu2604:
         - 6.1.4.1
         - 6.2.4.1
+        fedora: 6.2.4.1
     - 6.1.4.1
     - '@os':
         fedora: 6.2.6.1
@@ -15921,6 +16059,7 @@ findloop-file-groupownership-system-commands-dirs:
   - debian13
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -15960,6 +16099,7 @@ findloop-file-owner-var-log:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -15988,6 +16128,7 @@ findloop-file-owner-var-log:
         ubuntu2604:
         - 6.1.4.1
         - 6.2.4.1
+        fedora: 6.2.4.1
     - 6.1.4.1
     - '@os':
         fedora: 6.2.6.1
@@ -16297,6 +16438,7 @@ findloop-no-dirs-unowned-by-root:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -16338,6 +16480,11 @@ findloop-no-dirs-unowned-by-root:
       - "  its('stdout.strip') { should eq '' }"
       - end
       ubuntu2604:
+      - describe command("timeout 90 find / -xdev -type d -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null") do
+      - "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass"
+      - "  its('stdout.strip') { should eq '' }"
+      - end
+      fedora:
       - describe command("timeout 90 find / -xdev -type d -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null") do
       - "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass"
       - "  its('stdout.strip') { should eq '' }"
@@ -16492,6 +16639,7 @@ findloop-permissions-local-var-log:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe command('timeout 90 find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null') do
@@ -16520,6 +16668,7 @@ findloop-permissions-local-var-log:
         ubuntu2604:
         - 6.1.4.1
         - 6.2.4.1
+        fedora: 6.2.4.1
     - '@os':
         fedora: 6.2.6.1
     nist:
@@ -16555,6 +16704,7 @@ firewall-default-deny:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2404
   - ubuntu2604
@@ -16954,6 +17104,7 @@ groupowner-var-log-journal:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -16993,6 +17144,7 @@ groupownerships-var-log-gdm:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -17076,6 +17228,7 @@ groupownerships-var-log-sssd:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -17354,6 +17507,7 @@ home-files-groupownership:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -17390,6 +17544,7 @@ home-files-ownership:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -17426,6 +17581,7 @@ home-files-permissions:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -17628,6 +17784,7 @@ kconfig-acpi-custom-method:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -17658,6 +17815,7 @@ kconfig-arm64-sw-ttbr0-pan:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -17703,6 +17861,11 @@ kconfig-arm64-sw-ttbr0-pan:
       - describe command("grep -h '^CONFIG_ARM64_SW_TTBR0_PAN=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_ARM64_SW_TTBR0_PAN='") do
       - '  its(''stdout'') { should match(/^CONFIG_ARM64_SW_TTBR0_PAN=y$/) }'
       - end
+      fedora:
+      - only_if('arm64 only') { os.arch.to_s =~ /aarch64|arm/ }
+      - describe command("grep -h '^CONFIG_ARM64_SW_TTBR0_PAN=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_ARM64_SW_TTBR0_PAN='") do
+      - '  its(''stdout'') { should match(/^CONFIG_ARM64_SW_TTBR0_PAN=y$/) }'
+      - end
   domain: Kernel build
   evidence_type: effective-runtime
   impact: 0.5
@@ -17725,6 +17888,7 @@ kconfig-binfmt-misc:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -17755,6 +17919,7 @@ kconfig-bug:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -17785,6 +17950,7 @@ kconfig-bug-on-data-corruption:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -17815,6 +17981,7 @@ kconfig-compat-brk:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -17845,6 +18012,7 @@ kconfig-compat-vdso:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -17901,6 +18069,7 @@ kconfig-debug-list:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -17931,6 +18100,7 @@ kconfig-debug-notifiers:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -17961,6 +18131,7 @@ kconfig-debug-sg:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -17991,6 +18162,7 @@ kconfig-debug-wx:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18021,6 +18193,7 @@ kconfig-devkmem:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18051,6 +18224,7 @@ kconfig-fortify-source:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18081,6 +18255,7 @@ kconfig-gcc-plugin-latent-entropy:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18111,6 +18286,7 @@ kconfig-gcc-plugin-randstruct:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18169,6 +18345,11 @@ kconfig-gcc-plugin-randstruct:
         option: CONFIG_RANDSTRUCT_FULL
         set: true
         value: y
+      fedora:
+        name: kconfig
+        option: CONFIG_RANDSTRUCT_FULL
+        set: true
+        value: y
   title: Randomize layout of sensitive kernel structures
   remediation_class: kernel-build
 kconfig-gcc-plugin-stackleak:
@@ -18177,6 +18358,7 @@ kconfig-gcc-plugin-stackleak:
   - debian13
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18207,6 +18389,7 @@ kconfig-gcc-plugin-structleak:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18236,6 +18419,7 @@ kconfig-gcc-plugin-structleak-byref-all:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18265,6 +18449,7 @@ kconfig-hardened-usercopy:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18295,6 +18480,7 @@ kconfig-hardened-usercopy-fallback:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18325,6 +18511,7 @@ kconfig-hibernation:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18355,6 +18542,7 @@ kconfig-ia32-emulation:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18385,6 +18573,7 @@ kconfig-kexec:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18415,6 +18604,7 @@ kconfig-legacy-ptys:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18445,6 +18635,7 @@ kconfig-legacy-vsyscall-emulate:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18475,6 +18666,7 @@ kconfig-legacy-vsyscall-none:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18504,6 +18696,7 @@ kconfig-legacy-vsyscall-xonly:
   - debian13
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18534,6 +18727,7 @@ kconfig-modify-ldt-syscall:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18564,6 +18758,7 @@ kconfig-module-sig:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18594,6 +18789,7 @@ kconfig-module-sig-all:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18624,6 +18820,7 @@ kconfig-module-sig-force:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18654,6 +18851,7 @@ kconfig-module-sig-sha512:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18684,6 +18882,7 @@ kconfig-page-poisoning:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18760,6 +18959,7 @@ kconfig-page-table-isolation:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18818,6 +19018,11 @@ kconfig-page-table-isolation:
         option: CONFIG_PAGE_TABLE_ISOLATION
         set: true
         value: y
+      fedora:
+        name: kconfig
+        option: CONFIG_MITIGATION_PAGE_TABLE_ISOLATION
+        set: true
+        value: y
   title: Remove the kernel mapping in user mode
   remediation_class: kernel-build
 kconfig-panic-on-oops:
@@ -18827,6 +19032,7 @@ kconfig-panic-on-oops:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18857,6 +19063,7 @@ kconfig-proc-kcore:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18887,6 +19094,7 @@ kconfig-randomize-base:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18917,6 +19125,7 @@ kconfig-randomize-memory:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18947,6 +19156,7 @@ kconfig-refcount-full:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -18992,6 +19202,11 @@ kconfig-refcount-full:
       - describe command("grep -h '^CONFIG_REFCOUNT_FULL=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_REFCOUNT_FULL='") do
       - '  its(''stdout'') { should match(/^CONFIG_REFCOUNT_FULL=y$/) }'
       - end
+      fedora:
+      - only_if('option exists (removed in kernel >= 5.5)') { command('grep -q REFCOUNT_FULL /boot/config-$(uname -r)').exit_status == 0 }
+      - describe command("grep -h '^CONFIG_REFCOUNT_FULL=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_REFCOUNT_FULL='") do
+      - '  its(''stdout'') { should match(/^CONFIG_REFCOUNT_FULL=y$/) }'
+      - end
   domain: Kernel build
   evidence_type: effective-runtime
   impact: 0.5
@@ -19014,6 +19229,7 @@ kconfig-retpoline:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19072,6 +19288,11 @@ kconfig-retpoline:
         option: CONFIG_RETPOLINE
         set: true
         value: y
+      fedora:
+        name: kconfig
+        option: CONFIG_MITIGATION_RETPOLINE
+        set: true
+        value: y
   title: Avoid speculative indirect branches in kernel
   remediation_class: kernel-build
 kconfig-sched-stack-end-check:
@@ -19081,6 +19302,7 @@ kconfig-sched-stack-end-check:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19111,6 +19333,7 @@ kconfig-seccomp:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19141,6 +19364,7 @@ kconfig-seccomp-filter:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19171,6 +19395,7 @@ kconfig-security:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19201,6 +19426,7 @@ kconfig-security-dmesg-restrict:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19231,6 +19457,7 @@ kconfig-security-writable-hooks:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19261,6 +19488,7 @@ kconfig-security-yama:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19291,6 +19519,7 @@ kconfig-slab-freelist-hardened:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19321,6 +19550,7 @@ kconfig-slab-freelist-random:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19351,6 +19581,7 @@ kconfig-slab-merge-default:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19381,6 +19612,7 @@ kconfig-slub-debug:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19411,6 +19643,7 @@ kconfig-stackprotector:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19441,6 +19674,7 @@ kconfig-stackprotector-strong:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19471,6 +19705,7 @@ kconfig-strict-kernel-rwx:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19501,6 +19736,7 @@ kconfig-strict-module-rwx:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19531,6 +19767,7 @@ kconfig-syn-cookies:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19561,6 +19798,7 @@ kconfig-unmap-kernel-at-el0:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19606,6 +19844,11 @@ kconfig-unmap-kernel-at-el0:
       - describe command("grep -h '^CONFIG_UNMAP_KERNEL_AT_EL0=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_UNMAP_KERNEL_AT_EL0='") do
       - '  its(''stdout'') { should match(/^CONFIG_UNMAP_KERNEL_AT_EL0=y$/) }'
       - end
+      fedora:
+      - only_if('arm64 only') { os.arch.to_s =~ /aarch64|arm/ }
+      - describe command("grep -h '^CONFIG_UNMAP_KERNEL_AT_EL0=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_UNMAP_KERNEL_AT_EL0='") do
+      - '  its(''stdout'') { should match(/^CONFIG_UNMAP_KERNEL_AT_EL0=y$/) }'
+      - end
   domain: Kernel build
   evidence_type: effective-runtime
   impact: 0.5
@@ -19628,6 +19871,7 @@ kconfig-vmap-stack:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19658,6 +19902,7 @@ kconfig-x86-vsyscall-emulation:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -19722,6 +19967,7 @@ kmod-bluetooth-disabled:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Kernel modules
   evidence_type: effective-runtime
   impact: 0.5
@@ -19782,6 +20028,7 @@ kmod-cfg80211-disabled:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   domain: Kernel modules
   evidence_type: effective-runtime
   impact: 0.5
@@ -20070,6 +20317,7 @@ kmod-iwlmvm-disabled:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   domain: Kernel modules
   evidence_type: effective-runtime
   impact: 0.5
@@ -20092,6 +20340,7 @@ kmod-iwlwifi-disabled:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   domain: Kernel modules
   evidence_type: effective-runtime
   impact: 0.5
@@ -20186,6 +20435,7 @@ kmod-mac80211-disabled:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   domain: Kernel modules
   evidence_type: effective-runtime
   impact: 0.5
@@ -20604,6 +20854,7 @@ kmod-uvcvideo-disabled:
   applicable_os:
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   domain: Kernel modules
   evidence_type: effective-runtime
@@ -20869,6 +21120,7 @@ logindefs-fail_delay:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
   - describe login_defs do
   - '  its(''FAIL_DELAY'') { should cmp >= 4 }'
@@ -21198,6 +21450,7 @@ logindefs-sha-crypt-rounds:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe login_defs do
@@ -21481,26 +21734,19 @@ misc-aide-build-database:
         name: aide-build-database
         not_if: ls /var/lib/aide/aide.db >/dev/null 2>&1
         resource: exec
-      rhel8:
-        command: dnf install -y aide >/dev/null 2>&1; aide --init >/dev/null 2>&1; mv -f /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz 2>/dev/null; true
-        name: aide-build-database
-        not_if: test -s /var/lib/aide/aide.db.gz || test -s /var/lib/aide/aide.db
+      rhel8: &id004
         resource: exec
-      rhel9:
-        command: dnf install -y aide >/dev/null 2>&1; aide --init >/dev/null 2>&1; mv -f /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz 2>/dev/null; true
-        name: aide-build-database
-        not_if: test -s /var/lib/aide/aide.db.gz || test -s /var/lib/aide/aide.db
-        resource: exec
-      rhel10:
-        command: dnf install -y aide >/dev/null 2>&1; aide --init >/dev/null 2>&1; mv -f /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz 2>/dev/null; true
-        name: aide-build-database
-        not_if: test -s /var/lib/aide/aide.db.gz || test -s /var/lib/aide/aide.db
-        resource: exec
+        name: aide-init
+        command: dnf install -y -q aide >/dev/null 2>&1 || true; aide --init >/dev/null 2>&1 && mv -f /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz 2>/dev/null; true
+        not_if: test -s /var/lib/aide/aide.db.gz
+      rhel9: *id004
+      rhel10: *id004
       ubuntu2604:
         command: apt-get install -y aide-common >/dev/null 2>&1 || true; aideinit -y -f >/dev/null 2>&1 || aide --init; mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db 2>/dev/null || true
         name: aide-build-database
         not_if: ls /var/lib/aide/aide.db >/dev/null 2>&1
         resource: exec
+      fedora: *id004
   requires_package: aide
   severity: medium
   socle: SOCLE-CLD-GEN-031
@@ -21513,6 +21759,7 @@ misc-aide-periodic-checking-systemd-timer:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2404
   - ubuntu2604
@@ -21528,9 +21775,9 @@ misc-aide-periodic-checking-systemd-timer:
       debian12:
         bp28: high
         cis: '1'
-      debian13: &id004
+      debian13: &id005
         bp28: high
-      rhel8: *id004
+      rhel8: *id005
       ubuntu2404:
         bp28: high
         cis: '1'
@@ -21540,6 +21787,8 @@ misc-aide-periodic-checking-systemd-timer:
       rhel9:
         bp28: high
       rhel10:
+        bp28: high
+      fedora:
         bp28: high
   norms:
     bp28: R76
@@ -21592,6 +21841,11 @@ misc-aide-periodic-checking-systemd-timer:
         not_if: systemctl is-enabled aidecheck.timer dailyaidecheck.timer aide.timer 2>/dev/null | grep -q enabled
         resource: exec
       rhel10:
+        command: mkdir -p /etc/systemd/system; printf '[Unit]\nDescription=Pavois AIDE integrity check\n[Service]\nType=oneshot\nExecStart=/usr/sbin/aide --check\n' > /etc/systemd/system/aidecheck.service; printf '[Unit]\nDescription=Pavois daily AIDE integrity check\n[Timer]\nOnCalendar=daily\nPersistent=true\n[Install]\nWantedBy=timers.target\n' > /etc/systemd/system/aidecheck.timer; systemctl daemon-reload; systemctl enable --now aidecheck.timer
+        name: aide-timer
+        not_if: systemctl is-enabled aidecheck.timer dailyaidecheck.timer aide.timer 2>/dev/null | grep -q enabled
+        resource: exec
+      fedora:
         command: mkdir -p /etc/systemd/system; printf '[Unit]\nDescription=Pavois AIDE integrity check\n[Service]\nType=oneshot\nExecStart=/usr/sbin/aide --check\n' > /etc/systemd/system/aidecheck.service; printf '[Unit]\nDescription=Pavois daily AIDE integrity check\n[Timer]\nOnCalendar=daily\nPersistent=true\n[Install]\nWantedBy=timers.target\n' > /etc/systemd/system/aidecheck.timer; systemctl daemon-reload; systemctl enable --now aidecheck.timer
         name: aide-timer
         not_if: systemctl is-enabled aidecheck.timer dailyaidecheck.timer aide.timer 2>/dev/null | grep -q enabled
@@ -21874,6 +22128,7 @@ misc-ensure-shadow-group-empty:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -22204,6 +22459,7 @@ misc-no-rsh-trust-files:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -22231,6 +22487,8 @@ misc-no-rsh-trust-files:
         cis: '1'
       ubuntu2604:
         cis: '1'
+      fedora:
+        cis: '1'
   norms:
     cis:
       '@os':
@@ -22241,6 +22499,7 @@ misc-no-rsh-trust-files:
         ubuntu2204: 7.2.10
         ubuntu2404: 7.2.10
         ubuntu2604: 7.2.10
+        fedora: 7.2.9
     nist:
       '@os':
         debian12:
@@ -22271,6 +22530,10 @@ misc-no-rsh-trust-files:
         - CM-7(a)
         - CM-7(b)
         - CM-6(a)
+        fedora:
+        - CM-6(a)
+        - CM-7(a)
+        - CM-7(b)
   reboot_survivable: 'yes'
   remediation:
     command: 'find /home /root -maxdepth 2 -name .rhosts 2>/dev/null; ls -l /etc/hosts.equiv 2>/dev/null
@@ -22390,6 +22653,7 @@ misc-postfix-anti-vrfy:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe command('if ! command -v /usr/sbin/postconf >/dev/null 2>&1; then echo ok; elif /usr/sbin/postconf -h disable_vrfy_command 2>/dev/null | grep -qi ''^yes''; then echo ok; else echo ko; fi') do
@@ -22417,6 +22681,7 @@ misc-postfix-banner:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe command('if ! command -v /usr/sbin/postconf >/dev/null 2>&1; then echo ok; elif /usr/sbin/postconf -h smtpd_banner 2>/dev/null | grep -qi mail_name; then echo ko; else echo ok; fi') do
@@ -22562,6 +22827,7 @@ misc-prefer-64bit-os:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -22816,6 +23082,7 @@ misc-sssd-ldap-configure-tls-reqcert:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -22861,6 +23128,11 @@ misc-sssd-ldap-configure-tls-reqcert:
       - describe command('grep -qriE \'^[[:space:]]*ldap_tls_reqcert[[:space:]]*=[[:space:]]*(demand|hard)\' /etc/sssd/ 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
+      fedora:
+      - only_if { file('/etc/sssd/sssd.conf').exist? }
+      - describe command('grep -qriE \'^[[:space:]]*ldap_tls_reqcert[[:space:]]*=[[:space:]]*(demand|hard)\' /etc/sssd/ 2>/dev/null && echo ok || echo ko') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
   domain: Hardening (misc)
   evidence_type: persistent-config
   impact: 0.5
@@ -22894,6 +23166,7 @@ misc-sssd-ldap-start-tls:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -23098,6 +23371,7 @@ mount-boot-efi-nosuid:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Mounts
   evidence_type: effective-runtime
   impact: 0.5
@@ -23122,6 +23396,7 @@ mount-boot-nodev:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Mounts
   evidence_type: effective-runtime
   impact: 0.5
@@ -23148,6 +23423,7 @@ mount-boot-noexec:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -23180,6 +23456,7 @@ mount-boot-nosuid:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -23375,6 +23652,7 @@ mount-home-noexec:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -23484,6 +23762,7 @@ mount-opt-nosuid:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -23516,6 +23795,7 @@ mount-srv-nosuid:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -24095,6 +24375,7 @@ mount-var-noexec:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -24375,6 +24656,7 @@ owner-var-log-journal:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -24462,6 +24744,7 @@ ownerships-var-log-gdm:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -24545,6 +24828,7 @@ ownerships-var-log-sssd:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -24746,6 +25030,7 @@ pam-faillock-enabled:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -24764,16 +25049,16 @@ pam-faillock-enabled:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id005
+      debian12: &id006
         params: audit silent even_deny_root
         resource: pam_faillock
-      debian13: *id005
+      debian13: *id006
       rhel8:
         features:
         - with-faillock
         resource: authselect
-      ubuntu2204: *id005
-      ubuntu2404: *id005
+      ubuntu2204: *id006
+      ubuntu2404: *id006
       ubuntu2604:
         params: audit silent even_deny_root
         resource: pam_faillock
@@ -24782,6 +25067,10 @@ pam-faillock-enabled:
         - with-faillock
         resource: authselect
       rhel10:
+        features:
+        - with-faillock
+        resource: authselect
+      fedora:
         features:
         - with-faillock
         resource: authselect
@@ -24798,6 +25087,7 @@ pam-faillock-root-unlock-time:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe command('v=$(grep -rh \'^[[:space:]]*root_unlock_time[[:space:]]*=\' /etc/security/faillock.conf /etc/security/faillock.conf.d/ 2>/dev/null | tail -1 | grep -oE \'[0-9]+\'); { [ -n "$v" ] && [ "$v" -ge 60 ] && echo ok; } || echo ko') do
@@ -24813,12 +25103,12 @@ pam-faillock-root-unlock-time:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id006
+      debian12: &id007
         file: /etc/security/faillock.conf
         key: root_unlock_time
         resource: keyval
         value: '60'
-      debian13: *id006
+      debian13: *id007
       rhel8:
         file: /etc/security/faillock.conf
         key: root_unlock_time
@@ -24844,6 +25134,11 @@ pam-faillock-root-unlock-time:
         key: root_unlock_time
         resource: keyval
         value: '60'
+      fedora:
+        file: /etc/security/faillock.conf
+        key: root_unlock_time
+        resource: keyval
+        value: '60'
   severity: medium
   socle: SOCLE-CLD-IAM-026
   ssg: accounts_passwords_pam_faillock_root_unlock_time
@@ -24855,6 +25150,7 @@ pam-pwhistory-enabled:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -24873,19 +25169,19 @@ pam-pwhistory-enabled:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id007
+      debian12: &id008
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
         line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
         module: pam_pwhistory.so
         resource: pam_line
-      debian13: *id007
+      debian13: *id008
       rhel8:
         features:
         - with-pwhistory
         resource: authselect
-      ubuntu2204: *id007
-      ubuntu2404: *id007
+      ubuntu2204: *id008
+      ubuntu2404: *id008
       ubuntu2604:
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
@@ -24900,6 +25196,10 @@ pam-pwhistory-enabled:
         features:
         - with-pwhistory
         resource: authselect
+      fedora:
+        features:
+        - with-pwhistory
+        resource: authselect
   severity: medium
   socle: SOCLE-CLD-IAM-027
   ssg: accounts_password_pam_pwhistory_enabled
@@ -24911,6 +25211,7 @@ pam-pwhistory-enforce:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -24929,20 +25230,20 @@ pam-pwhistory-enforce:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id008
+      debian12: &id009
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
         line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
         module: pam_pwhistory.so
         resource: pam_line
-      debian13: *id008
+      debian13: *id009
       rhel8:
         file: /etc/security/pwhistory.conf
         key: enforce_for_root
         resource: keyval
         value: ''
-      ubuntu2204: *id008
-      ubuntu2404: *id008
+      ubuntu2204: *id009
+      ubuntu2404: *id009
       ubuntu2604:
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
@@ -24955,6 +25256,11 @@ pam-pwhistory-enforce:
         resource: keyval
         value: ''
       rhel10:
+        file: /etc/security/pwhistory.conf
+        key: enforce_for_root
+        resource: keyval
+        value: ''
+      fedora:
         file: /etc/security/pwhistory.conf
         key: enforce_for_root
         resource: keyval
@@ -25004,11 +25310,11 @@ pam-pwhistory-use-authtok:
         module: pam_pwhistory.so
         resource: pam_line
       fedora:
-        features: &id009
+        features: &id010
         - with-pwhistory
         resource: authselect
       rhel8:
-        features: *id009
+        features: *id010
         resource: authselect
       ubuntu2204:
         before: ^password.*pam_unix\.so
@@ -25047,6 +25353,7 @@ pam-pwquality-enabled:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -25098,6 +25405,14 @@ pam-pwquality-enabled:
         reason: pwquality is default on RHEL; no apt install needed
         resource: manual
       rhel10:
+        command: '# pwquality ships by default on RHEL (libpwquality) and authselect sssd puts pam_pwquality in the stack.
+
+          # If missing: authselect select sssd --force
+
+          '
+        reason: pwquality is default on RHEL; no apt install needed
+        resource: manual
+      fedora:
         command: '# pwquality ships by default on RHEL (libpwquality) and authselect sssd puts pam_pwquality in the stack.
 
           # If missing: authselect select sssd --force
@@ -25197,6 +25512,7 @@ pam-remember-unix-remember:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -25234,6 +25550,10 @@ pam-remember-unix-remember:
       - describe command('v=$(grep -RhoE \'remember[[:space:]]*=[[:space:]]*[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 2 ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
+      fedora:
+      - describe command('v=$(grep -RhoE \'remember[[:space:]]*=[[:space:]]*[0-9]+\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \'[0-9]+\' | sort -n | tail -1); { [ -n "$v" ] && [ "$v" -ge 2 ] && echo ok; } || echo ko') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
   domain: Accounts (password history)
   evidence_type: persistent-config
   impact: 0.5
@@ -25258,6 +25578,7 @@ pam-remember-unix-remember:
         ubuntu2204: 8.3.7
         ubuntu2404: 8.3.7
         ubuntu2604: 8.3.7
+        fedora: 8.3.7
   reboot_survivable: 'yes'
   remediation:
     '@os':
@@ -25280,6 +25601,11 @@ pam-remember-unix-remember:
         resource: keyval
         value: '24'
       rhel10:
+        file: /etc/security/pwhistory.conf
+        key: remember
+        resource: keyval
+        value: '24'
+      fedora:
         file: /etc/security/pwhistory.conf
         key: remember
         resource: keyval
@@ -25399,6 +25725,7 @@ pam-unix-no-nullok:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe command('grep -RlE \'^[^#]*\bpam_unix\.so\b[^#]*\bnullok\' /etc/pam.d/ 2>/dev/null | grep -qv \'sssd-shadowutils\' && echo ko || echo ok') do
@@ -25416,12 +25743,12 @@ pam-unix-no-nullok:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id010
+      debian12: &id011
         command: grep -rlE '^[^#]*pam_unix\.so.*nullok' /etc/pam.d/ | while read -r f; do sed -ri '/pam_unix\.so/ s/[[:space:]]*\bnullok\b//g' "$f"; done; true
         name: pam-unix-remove-nullok
         not_if: '! grep -rqE ''^[^#]*pam_unix\.so.*nullok'' /etc/pam.d/'
         resource: exec
-      debian13: *id010
+      debian13: *id011
       rhel8:
         features:
         - without-nullok
@@ -25441,6 +25768,10 @@ pam-unix-no-nullok:
         - without-nullok
         resource: authselect
       rhel10:
+        features:
+        - without-nullok
+        resource: authselect
+      fedora:
         features:
         - without-nullok
         resource: authselect
@@ -25500,20 +25831,20 @@ pam-unix-rounds-password-auth:
   - ubuntu2604
   check:
     '@os':
-      debian12: &id011
+      debian12: &id012
       - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\brounds=[0-9]\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian13: *id011
-      fedora: &id012
+      debian13: *id012
+      fedora: &id013
       - describe command('v=$(grep -E "^[[:space:]]*SHA_CRYPT_MIN_ROUNDS[[:space:]]+[0-9]+" /etc/login.defs 2>/dev/null | grep -oE "[0-9]+" | tail -1); { [ -n "$v" ] && [ "$v" -ge 5000 ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      rhel8: *id012
-      rhel9: *id012
-      rhel10: *id012
-      ubuntu2204: *id011
-      ubuntu2404: *id011
+      rhel8: *id013
+      rhel9: *id013
+      rhel10: *id013
+      ubuntu2204: *id012
+      ubuntu2404: *id012
       ubuntu2604:
       - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\brounds=[0-9]\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -25595,6 +25926,7 @@ partition-boot:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe mount('/boot') do
@@ -25753,6 +26085,7 @@ partition-opt:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -25792,6 +26125,7 @@ partition-srv:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -25921,6 +26255,7 @@ partition-usr:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -26604,6 +26939,7 @@ pkg-audispd-plugins-installed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -26614,9 +26950,9 @@ pkg-audispd-plugins-installed:
     '@os':
       debian12:
         cis: '2'
-      debian13: &id013
+      debian13: &id014
         cis: '2'
-      rhel8: *id013
+      rhel8: *id014
       rhel9: {}
       rhel10: {}
       ubuntu2204:
@@ -26625,6 +26961,7 @@ pkg-audispd-plugins-installed:
         cis: '2'
       ubuntu2604:
         cis: '2'
+      fedora: {}
   norms:
     cis:
       '@os':
@@ -26663,6 +27000,7 @@ pkg-audispd-plugins-installed:
       ubuntu2204: package_audit-audispd-plugins_installed
       ubuntu2404: package_audit-audispd-plugins_installed
       ubuntu2604: package_audit-audispd-plugins_installed
+      fedora: package_audispd-plugins_installed
   template:
     installed: true
     name: package
@@ -26677,10 +27015,12 @@ pkg-audispd-plugins-installed:
       ubuntu2204: Ensure the default plugins for the audit dispatcher are Installed
       ubuntu2404: Ensure the default plugins for the audit dispatcher are Installed
       ubuntu2604: Ensure the default plugins for the audit dispatcher are Installed
+      fedora: Install audispd-plugins Package
   remediation_class: auto
 pkg-audit-rules-installed:
   applicable_os:
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -26843,6 +27183,7 @@ pkg-authselect-installed:
   applicable_os:
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -26871,6 +27212,7 @@ pkg-autofs-removed:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -26902,6 +27244,7 @@ pkg-avahi-daemon-removed:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -27048,6 +27391,7 @@ pkg-crypto-policies-installed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -27070,6 +27414,7 @@ pkg-cryptsetup-luks-installed:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -27096,6 +27441,7 @@ pkg-cups-removed:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -27267,7 +27613,7 @@ pkg-dnf-automatic-installed:
   reboot_survivable: 'yes'
   remediation:
     action: install
-    name: dnf-automatic
+    name: '@{pkg.dnf_automatic}'
     resource: package
   severity: medium
   socle: SOCLE-CLD-PKG-025
@@ -27275,7 +27621,7 @@ pkg-dnf-automatic-installed:
   template:
     installed: true
     name: package
-    package: dnf-automatic
+    package: '@{pkg.dnf_automatic}'
   title: Install dnf-automatic Package
   remediation_class: auto
 pkg-dnf-plugin-subscription-manager-installed:
@@ -27587,6 +27933,7 @@ pkg-gnutls-utils-installed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -27610,6 +27957,7 @@ pkg-gssproxy-removed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -27811,6 +28159,7 @@ pkg-krb5-server-removed:
   applicable_os:
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -27834,6 +28183,7 @@ pkg-krb5-workstation-removed:
   applicable_os:
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -28055,6 +28405,7 @@ pkg-libreswan-installed:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -28108,6 +28459,7 @@ pkg-logrotate-installed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -28132,6 +28484,7 @@ pkg-logrotate-installed:
         ubuntu2204: 10.5.1
         ubuntu2404: 10.5.1
         ubuntu2604: 10.5.1
+        fedora: 10.5.1
   reboot_survivable: 'yes'
   remediation:
     action: install
@@ -28241,7 +28594,7 @@ pkg-net-snmp-removed:
   norms:
     cis:
       '@os':
-        debian12: &id014
+        debian12: &id015
         - 2.1.15
         - 2.2.4
         debian13: 2.1.14
@@ -28250,7 +28603,7 @@ pkg-net-snmp-removed:
         rhel9: 2.1.14
         rhel10: 2.1.14
         ubuntu2204: 2.1.14
-        ubuntu2404: &id015
+        ubuntu2404: &id016
         - 2.1.15
         - 2.2.4
         ubuntu2604:
@@ -28332,6 +28685,7 @@ pkg-nfs-utils-removed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.3
@@ -28471,6 +28825,7 @@ pkg-nss-tools-installed:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -28494,6 +28849,7 @@ pkg-opensc-installed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -28532,12 +28888,14 @@ pkg-opensc-installed:
       ubuntu2204: Install the opensc-pkcs11 Package For Multifactor Authentication
       ubuntu2404: Install the opensc-pkcs11 Package For Multifactor Authentication
       ubuntu2604: Install the opensc-pkcs11 Package For Multifactor Authentication
+      fedora: Install the opensc Package For Multifactor Authentication
   remediation_class: auto
 pkg-openscap-scanner-installed:
   applicable_os:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -28561,6 +28919,7 @@ pkg-openssh-clients-installed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -28584,6 +28943,7 @@ pkg-openssh-server-installed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -28620,6 +28980,7 @@ pkg-pam-installed:
   applicable_os:
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -28776,6 +29137,7 @@ pkg-pcsc-lite-installed:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -28799,6 +29161,7 @@ pkg-policycoreutils-installed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.3
@@ -28822,6 +29185,7 @@ pkg-policycoreutils-python-utils-installed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -28847,6 +29211,7 @@ pkg-postfix-installed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -28870,6 +29235,8 @@ pkg-postfix-installed:
         cis: '2'
       ubuntu2604:
         cis: '2'
+      fedora:
+        cis: '2'
   norms:
     cis:
       '@os':
@@ -28880,6 +29247,7 @@ pkg-postfix-installed:
         ubuntu2204: 6.3.2.4
         ubuntu2404: 6.3.2.4
         ubuntu2604: 6.3.2.4
+        fedora: 6.3.2.4
     pci-dss: 10.5.1
   reboot_survivable: 'yes'
   remediation:
@@ -28948,6 +29316,7 @@ pkg-rear-installed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -28995,6 +29364,7 @@ pkg-rpcbind-removed:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -29026,6 +29396,7 @@ pkg-rsh-client-removed:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -29189,6 +29560,7 @@ pkg-s-nail-installed:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -29254,6 +29626,7 @@ pkg-scap-security-guide-installed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -29336,6 +29709,7 @@ pkg-setroubleshoot-plugins-removed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.3
@@ -29391,6 +29765,7 @@ pkg-setroubleshoot-server-removed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.3
@@ -29418,6 +29793,7 @@ pkg-slapd-removed:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -29455,6 +29831,7 @@ pkg-slapd-removed:
       ubuntu2604: Uninstall slapd Package
       rhel9: Uninstall openldap-servers Package
       rhel10: Uninstall openldap-servers Package
+      fedora: Uninstall openldap-servers Package
   remediation_class: auto
 pkg-snmpd-removed:
   applicable_os:
@@ -29471,12 +29848,12 @@ pkg-snmpd-removed:
   norms:
     cis:
       '@os':
-        debian12: *id014
+        debian12: *id015
         debian13:
         - 2.1.15
         - 2.2.4
         ubuntu2204: 2.1.15
-        ubuntu2404: *id015
+        ubuntu2404: *id016
         ubuntu2604:
         - 2.1.15
         - 2.2.4
@@ -29544,6 +29921,7 @@ pkg-sssd-installed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -29579,6 +29957,7 @@ pkg-subscription-manager-installed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -29733,11 +30112,11 @@ pkg-talk-removed:
       debian12:
         bp28: minimal
         cis: '1'
-      debian13: &id016
+      debian13: &id017
         bp28: minimal
       fedora:
         bp28: minimal
-      rhel8: *id016
+      rhel8: *id017
       ubuntu2204:
         bp28: minimal
         cis: '1'
@@ -29811,6 +30190,7 @@ pkg-talkd-removed:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -30231,6 +30611,7 @@ pkg-tmux-installed:
   applicable_os:
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   domain: Packages
   evidence_type: inventory-state
@@ -30284,6 +30665,7 @@ pkg-tuned-removed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -30307,6 +30689,7 @@ pkg-usbguard-installed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: Packages
   evidence_type: inventory-state
   impact: 0.5
@@ -30378,7 +30761,6 @@ pkg-xinetd-removed:
   applicable_os:
   - debian12
   - debian13
-  - fedora
   - rhel8
   - rhel9
   - ubuntu2204
@@ -30393,8 +30775,6 @@ pkg-xinetd-removed:
         bp28: minimal
         cis: '1'
       debian13:
-        bp28: minimal
-      fedora:
         bp28: minimal
       rhel8:
         bp28: minimal
@@ -30480,6 +30860,7 @@ pkg-xorg-x11-server-common-removed:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -30523,6 +30904,10 @@ pkg-xorg-x11-server-common-removed:
         - CM-6(a)
         - CM-7(a)
         - CM-7(b)
+        fedora:
+        - CM-6(a)
+        - CM-7(a)
+        - CM-7(b)
   reboot_survivable: 'yes'
   remediation:
     action: remove
@@ -30543,6 +30928,7 @@ pkg-xserver-xorg-core-removed:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -30624,6 +31010,10 @@ pkg-xserver-xorg-core-removed:
         name: '@{pkg.xserver_xorg_core}'
         resource: package
       rhel10:
+        action: remove
+        name: '@{pkg.xserver_xorg_core}'
+        resource: package
+      fedora:
         action: remove
         name: '@{pkg.xserver_xorg_core}'
         resource: package
@@ -30888,24 +31278,17 @@ posture-malware-scanner:
       ubuntu2404:
         name: chkrootkit
         resource: package
-      rhel8:
-        command: command -v rkhunter >/dev/null 2>&1 || { dnf install -y rkhunter >/dev/null 2>&1 || { dnf install -y epel-release >/dev/null 2>&1; dnf install -y rkhunter >/dev/null 2>&1; }; }; true
-        name: install-malware-scanner
-        not_if: command -v rkhunter chkrootkit clamscan >/dev/null 2>&1
+      rhel8: &id018
         resource: exec
-      rhel9:
-        command: command -v rkhunter >/dev/null 2>&1 || { dnf install -y rkhunter >/dev/null 2>&1 || { dnf install -y epel-release >/dev/null 2>&1; dnf install -y rkhunter >/dev/null 2>&1; }; }; true
-        name: install-malware-scanner
-        not_if: command -v rkhunter chkrootkit clamscan >/dev/null 2>&1
-        resource: exec
-      rhel10:
-        command: command -v rkhunter >/dev/null 2>&1 || { dnf install -y rkhunter >/dev/null 2>&1 || { dnf install -y epel-release >/dev/null 2>&1; dnf install -y rkhunter >/dev/null 2>&1; }; }; true
-        name: install-malware-scanner
-        not_if: command -v rkhunter chkrootkit clamscan >/dev/null 2>&1
-        resource: exec
+        name: malware-scanner
+        command: dnf install -y -q rkhunter >/dev/null 2>&1 || { dnf install -y -q epel-release >/dev/null 2>&1 && dnf install -y -q rkhunter >/dev/null 2>&1; }; true
+        not_if: command -v rkhunter >/dev/null 2>&1 || command -v chkrootkit >/dev/null 2>&1
+      rhel9: *id018
+      rhel10: *id018
       ubuntu2604:
         name: chkrootkit
         resource: package
+      fedora: *id018
   severity: medium
   socle: SOCLE-CLD-GEN-060
   ssg: posture-malware-scanner
@@ -31031,21 +31414,14 @@ posture-process-accounting:
         name: enable-process-accounting
         not_if: systemctl is-active acct psacct 2>/dev/null | grep -qx active
         resource: exec
-      rhel8:
-        command: dnf install -y psacct >/dev/null 2>&1; systemctl enable --now psacct >/dev/null 2>&1; true
-        name: enable-process-accounting
-        not_if: systemctl is-active acct psacct 2>/dev/null | grep -qx active
+      rhel8: &id019
         resource: exec
-      rhel9:
-        command: dnf install -y psacct >/dev/null 2>&1; systemctl enable --now psacct >/dev/null 2>&1; true
-        name: enable-process-accounting
-        not_if: systemctl is-active acct psacct 2>/dev/null | grep -qx active
-        resource: exec
-      rhel10:
-        command: dnf install -y psacct >/dev/null 2>&1; systemctl enable --now psacct >/dev/null 2>&1; true
-        name: enable-process-accounting
-        not_if: systemctl is-active acct psacct 2>/dev/null | grep -qx active
-        resource: exec
+        name: process-accounting
+        command: dnf install -y -q psacct >/dev/null 2>&1 || true; systemctl enable --now psacct 2>/dev/null || true
+        not_if: systemctl is-active psacct acct 2>/dev/null | grep -qx active
+      rhel9: *id019
+      rhel10: *id019
+      fedora: *id019
   requires_package: auditd
   severity: low
   socle: SOCLE-CLD-GEN-063
@@ -31089,24 +31465,17 @@ posture-sysstat:
       ubuntu2404:
         name: sysstat
         resource: package
-      rhel8:
-        command: dnf install -y sysstat >/dev/null 2>&1; systemctl enable --now sysstat >/dev/null 2>&1; true
-        name: enable-sysstat-collection
-        not_if: systemctl is-active sysstat >/dev/null 2>&1
+      rhel8: &id020
         resource: exec
-      rhel9:
-        command: dnf install -y sysstat >/dev/null 2>&1; systemctl enable --now sysstat >/dev/null 2>&1; true
-        name: enable-sysstat-collection
-        not_if: systemctl is-active sysstat >/dev/null 2>&1
-        resource: exec
-      rhel10:
-        command: dnf install -y sysstat >/dev/null 2>&1; systemctl enable --now sysstat >/dev/null 2>&1; true
-        name: enable-sysstat-collection
-        not_if: systemctl is-active sysstat >/dev/null 2>&1
-        resource: exec
+        name: sysstat
+        command: dnf install -y -q sysstat >/dev/null 2>&1 || true; if [ -f /etc/sysconfig/sysstat ]; then sed -ri 's/^[[:space:]]*ENABLED=.*/ENABLED="true"/' /etc/sysconfig/sysstat; fi; systemctl enable --now sysstat 2>/dev/null || true
+        not_if: systemctl is-active sysstat 2>/dev/null | grep -qx active
+      rhel9: *id020
+      rhel10: *id020
       ubuntu2604:
         name: sysstat
         resource: package
+      fedora: *id020
   severity: low
   socle: SOCLE-CLD-GEN-064
   ssg: posture-sysstat
@@ -31294,6 +31663,7 @@ pwquality-enforce-root:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe command('grep -rqE \'^[[:space:]]*enforce_for_root\b\' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ 2>/dev/null && echo ok || echo ko') do
@@ -31332,6 +31702,7 @@ pwquality-enforcing:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe command('grep -RqE \'enforcing[[:space:]]*=[[:space:]]*0\' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ /etc/pam.d/ 2>/dev/null && echo ko || echo ok') do
@@ -31453,6 +31824,7 @@ pwquality-maxclassrepeat:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
   - describe command('v=$(grep -rh \'^[[:space:]]*maxclassrepeat[[:space:]]*=\' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ 2>/dev/null | tail -1 | grep -oE \'[-]?[0-9]+\'); { [ -n "$v" ] && [ "$v" -le 4 ] && echo ok; } || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -31982,6 +32354,7 @@ repgroupowner-etc-ipsecd:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -32012,6 +32385,7 @@ repgroupowner-etc-selinux:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: File ownership
   evidence_type: filesystem-state
   impact: 0.5
@@ -32041,6 +32415,7 @@ repgroupowner-etc-sudoersd:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -32073,6 +32448,7 @@ repgroupowner-etc-sysctld:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -32138,6 +32514,7 @@ repowner-etc-ipsecd:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -32168,6 +32545,7 @@ repowner-etc-selinux:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: File ownership
   evidence_type: filesystem-state
   impact: 0.5
@@ -32197,6 +32575,7 @@ repowner-etc-sudoersd:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -32229,6 +32608,7 @@ repowner-etc-sysctld:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -32879,6 +33259,7 @@ service-dnsmasq-disabled:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -32898,6 +33279,7 @@ service-dnsmasq-disabled:
         ubuntu2204: 2.1.5
         ubuntu2404: 2.1.5
         ubuntu2604: 2.1.5
+        fedora: 2.1.5
   reboot_survivable: 'yes'
   remediation:
     action:
@@ -32919,6 +33301,7 @@ service-dovecot-disabled:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -32950,6 +33333,7 @@ service-fapolicyd-enabled:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
   - describe service('fapolicyd.service') do
   - '  it { should be_enabled }'
@@ -32977,6 +33361,7 @@ service-httpd-disabled:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -33015,12 +33400,14 @@ service-httpd-disabled:
       ubuntu2604: Disable apache2 Service
       rhel9: Disable httpd Service
       rhel10: Disable httpd Service
+      fedora: Disable httpd Service
   remediation_class: auto
 service-kdump-disabled:
   applicable_os:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -33069,6 +33456,7 @@ service-named-disabled:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2404
   - ubuntu2604
@@ -33145,6 +33533,7 @@ service-nginx-disabled:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -33175,6 +33564,7 @@ service-pcscd-enabled:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   check:
     '@os':
       rhel9:
@@ -33184,6 +33574,12 @@ service-pcscd-enabled:
       - '  it { should be_running }'
       - end
       rhel10:
+      - only_if { command('authselect current 2>/dev/null | grep -q with-smartcard').exit_status == 0 }
+      - describe service('pcscd.service') do
+      - '  it { should be_enabled }'
+      - '  it { should be_running }'
+      - end
+      fedora:
       - only_if { command('authselect current 2>/dev/null | grep -q with-smartcard').exit_status == 0 }
       - describe service('pcscd.service') do
       - '  it { should be_enabled }'
@@ -33285,6 +33681,7 @@ service-rsyncd-disabled:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -33332,6 +33729,7 @@ service-slapd-disabled:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -33364,6 +33762,7 @@ service-smb-disabled:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -33397,6 +33796,7 @@ service-snmpd-disabled:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -33418,6 +33818,7 @@ service-snmpd-disabled:
         cis: '1'
       ubuntu2604:
         cis: '1'
+      fedora: {}
   norms:
     cis:
       '@os':
@@ -33448,6 +33849,7 @@ service-squid-disabled:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -33469,6 +33871,7 @@ service-squid-disabled:
         cis: '1'
       ubuntu2604:
         cis: '1'
+      fedora: {}
   norms:
     cis:
       '@os':
@@ -33497,6 +33900,7 @@ service-sshd-enabled:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -33531,6 +33935,11 @@ service-sshd-enabled:
       ubuntu2604:
       - "# Ubuntu 24.04 ships sshd socket-activated: ssh.socket is the enabled unit"
       - describe service('ssh.socket') do
+      - '  it { should be_enabled }'
+      - '  it { should be_running }'
+      - end
+      fedora:
+      - describe service('sshd.service') do
       - '  it { should be_enabled }'
       - '  it { should be_running }'
       - end
@@ -33571,6 +33980,7 @@ service-sssd-enabled:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -33617,6 +34027,12 @@ service-sssd-enabled:
       - '  it { should be_running }'
       - end
       ubuntu2604:
+      - only_if { file('/etc/sssd/sssd.conf').exist? }
+      - describe service('sssd.service') do
+      - '  it { should be_enabled }'
+      - '  it { should be_running }'
+      - end
+      fedora:
       - only_if { file('/etc/sssd/sssd.conf').exist? }
       - describe service('sssd.service') do
       - '  it { should be_enabled }'
@@ -33849,6 +34265,7 @@ service-telnet-disabled:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   domain: systemd services
   evidence_type: effective-runtime
   impact: 0.7
@@ -33878,6 +34295,7 @@ service-tftp-disabled:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -33916,12 +34334,14 @@ service-tftp-disabled:
       ubuntu2604: Disable tftpd-hpa Service
       rhel9: Disable tftp Service
       rhel10: Disable tftp Service
+      fedora: Disable tftp Service
   remediation_class: auto
 service-usbguard-enabled:
   applicable_os:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
   - describe service('usbguard.service') do
   - '  it { should be_enabled }'
@@ -33949,6 +34369,7 @@ service-vsftpd-disabled:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -34073,6 +34494,7 @@ ssh-disable-agent-forwarding:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
   - describe command('sshd -T') do
   - '  its(''stdout'') { should match(/^allowagentforwarding\s+no$/i) }'
@@ -34103,6 +34525,7 @@ ssh-disable-compression:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
   - describe command('sshd -T') do
   - '  its(''stdout'') { should match(/^compression\s+no$/i) }'
@@ -34515,6 +34938,7 @@ ssh-disable-root-password-login:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
   - describe command('sshd -T') do
   - '  its(''stdout'') { should match(/^permitrootlogin\s+(prohibit\-password|without\-password|no)$/i) }'
@@ -34572,6 +34996,7 @@ ssh-disable-tcpkeepalive:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
   - describe command('sshd -T') do
   - '  its(''stdout'') { should match(/^tcpkeepalive\s+no$/i) }'
@@ -34602,6 +35027,7 @@ ssh-disable-user-known-hosts:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
   - describe command('sshd -T') do
   - '  its(''stdout'') { should match(/^ignoreuserknownhosts\s+yes$/i) }'
@@ -34635,6 +35061,7 @@ ssh-disable-x11-forwarding:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
   - describe command('sshd -T') do
   - '  its(''stdout'') { should match(/^x11forwarding\s+no$/i) }'
@@ -34796,6 +35223,7 @@ ssh-enable-pubkey-auth:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -34957,6 +35385,7 @@ ssh-print-last-log:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
   - describe command('sshd -T') do
   - '  its(''stdout'') { should match(/^printlastlog\s+yes$/i) }'
@@ -35301,6 +35730,7 @@ ssh-set-loglevel-info:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -35326,6 +35756,7 @@ ssh-set-loglevel-info:
         cis: '1'
       ubuntu2604:
         cis: '1'
+      fedora: {}
   norms:
     cis:
       '@os':
@@ -35627,6 +36058,7 @@ ssh-set-rekey-limit:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe command('sshd -T') do
@@ -35760,6 +36192,7 @@ ssh-use-directory-configuration:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   check:
     '@os':
       rhel9:
@@ -35770,6 +36203,13 @@ ssh-use-directory-configuration:
       - '  it { should exist }'
       - end
       rhel10:
+      - describe command('grep -iE "^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\\.d/\\*\\.conf" /etc/ssh/sshd_config') do
+      - "  its('stdout') { should match(/\\S/) }"
+      - end
+      - describe directory('/etc/ssh/sshd_config.d') do
+      - '  it { should exist }'
+      - end
+      fedora:
       - describe command('grep -iE "^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\\.d/\\*\\.conf" /etc/ssh/sshd_config') do
       - "  its('stdout') { should match(/\\S/) }"
       - end
@@ -35797,6 +36237,7 @@ ssh-use-strong-ciphers:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -35832,6 +36273,7 @@ ssh-use-strong-kex:
   - debian13
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   - ubuntu2404
@@ -35867,6 +36309,10 @@ ssh-use-strong-kex:
       - '  its(''stdout'') { should match(/^kexalgorithms\s+curve25519\-sha256,curve25519\-sha256@libssh\.org,ecdh\-sha2\-nistp256,ecdh\-sha2\-nistp384,ecdh\-sha2\-nistp521,diffie\-hellman\-group\-exchange\-sha256,diffie\-hellman\-group16\-sha512,diffie\-hellman\-group18\-sha512,diffie\-hellman\-group14\-sha256$/i) }'
       - end
       rhel10:
+      - describe command('sshd -T') do
+      - '  its(''stdout'') { should match(/^kexalgorithms\s+curve25519\-sha256,curve25519\-sha256@libssh\.org,ecdh\-sha2\-nistp256,ecdh\-sha2\-nistp384,ecdh\-sha2\-nistp521,diffie\-hellman\-group\-exchange\-sha256,diffie\-hellman\-group16\-sha512,diffie\-hellman\-group18\-sha512,diffie\-hellman\-group14\-sha256$/i) }'
+      - end
+      fedora:
       - describe command('sshd -T') do
       - '  its(''stdout'') { should match(/^kexalgorithms\s+curve25519\-sha256,curve25519\-sha256@libssh\.org,ecdh\-sha2\-nistp256,ecdh\-sha2\-nistp384,ecdh\-sha2\-nistp521,diffie\-hellman\-group\-exchange\-sha256,diffie\-hellman\-group16\-sha512,diffie\-hellman\-group18\-sha512,diffie\-hellman\-group14\-sha256$/i) }'
       - end
@@ -35965,6 +36411,14 @@ ssh-use-strong-kex:
           action: reload
           service: '@{svc.sshd}'
         verify: sshd -t -f %{path}
+      fedora:
+        directive: KexAlgorithms
+        resource: sshd_setting
+        value: curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256
+        notify:
+          action: reload
+          service: '@{svc.sshd}'
+        verify: sshd -t -f %{path}
   severity: medium
   socle: SOCLE-CLD-SSH-036
   ssg: sshd_use_strong_kex
@@ -35978,6 +36432,7 @@ ssh-use-strong-macs:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   - ubuntu2204
   check:
@@ -36011,6 +36466,10 @@ ssh-use-strong-macs:
       - '  its(''stdout'') { should match(/^macs\s+hmac\-sha2\-512\-etm@openssh\.com,hmac\-sha2\-256\-etm@openssh\.com,hmac\-sha2\-512,hmac\-sha2\-256$/i) }'
       - end
       rhel10:
+      - describe command('sshd -T') do
+      - '  its(''stdout'') { should match(/^macs\s+hmac\-sha2\-512\-etm@openssh\.com,hmac\-sha2\-256\-etm@openssh\.com,hmac\-sha2\-512,hmac\-sha2\-256$/i) }'
+      - end
+      fedora:
       - describe command('sshd -T') do
       - '  its(''stdout'') { should match(/^macs\s+hmac\-sha2\-512\-etm@openssh\.com,hmac\-sha2\-256\-etm@openssh\.com,hmac\-sha2\-512,hmac\-sha2\-256$/i) }'
       - end
@@ -36050,6 +36509,7 @@ sudo-custom-logfile:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe command('grep -rqE \'^[^#]*Defaults[^#]*\blogfile\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ok || echo ko') do
@@ -36089,6 +36549,7 @@ sudo-env-reset:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe command('grep -rqE \'^[^#]*Defaults[^#]*\benv_reset\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ok || echo ko') do
@@ -36125,6 +36586,7 @@ sudo-ignore-dot:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe command('grep -rqE \'^[^#]*Defaults[^#]*\bignore_dot\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ok || echo ko') do
@@ -36160,6 +36622,7 @@ sudo-noexec:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -36291,6 +36754,7 @@ sudo-require-authentication:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
     '@os':
@@ -36298,11 +36762,11 @@ sudo-require-authentication:
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian13: &id017
+      debian13: &id021
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      rhel8: *id017
+      rhel8: *id021
       ubuntu2404:
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -36316,6 +36780,10 @@ sudo-require-authentication:
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       rhel10:
+      - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      fedora:
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
@@ -36367,6 +36835,7 @@ sudo-require-authentication:
       ubuntu2604: Ensure Users Re-Authenticate for Privilege Escalation - sudo NOPASSWD
       rhel9: Ensure Users Re-Authenticate for Privilege Escalation - sudo NOPASSWD
       rhel10: Ensure Users Re-Authenticate for Privilege Escalation - sudo NOPASSWD
+      fedora: Ensure Users Re-Authenticate for Privilege Escalation - sudo NOPASSWD
   remediation_class: dangerous
 sudo-require-reauthentication:
   applicable_os:
@@ -36376,6 +36845,7 @@ sudo-require-reauthentication:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe command('grep -rqE \'timestamp_timeout[[:space:]]*=[[:space:]]*-1\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
@@ -36414,6 +36884,7 @@ sudo-requiretty:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -36452,6 +36923,7 @@ sudo-umask:
   - ubuntu2604
   - rhel8
   - rhel10
+  - fedora
   - rhel9
   check:
   - describe command('grep -rqE \'^[^#]*Defaults[^#]*\bumask\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ok || echo ko') do
@@ -36593,6 +37065,7 @@ sysctl-fs-protected_fifos:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -36686,6 +37159,7 @@ sysctl-fs-protected_regular:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -36876,6 +37350,7 @@ sysctl-kernel-core_uses_pid:
   applicable_os:
   - rhel9
   - rhel10
+  - fedora
   domain: Kernel & network (sysctl)
   evidence_type: effective-runtime
   impact: 0.5
@@ -37119,6 +37594,7 @@ sysctl-kernel-panic_on_oops:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -37150,6 +37626,7 @@ sysctl-kernel-perf_cpu_time_max_percent:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -37181,6 +37658,7 @@ sysctl-kernel-perf_event_max_sample_rate:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -37245,6 +37723,7 @@ sysctl-kernel-pid_max:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -37371,6 +37850,7 @@ sysctl-kernel-sysrq:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -37554,6 +38034,7 @@ sysctl-net-ipv4-conf-all-accept_local:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -37734,6 +38215,7 @@ sysctl-net-ipv4-conf-all-arp_filter:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -37765,6 +38247,7 @@ sysctl-net-ipv4-conf-all-arp_ignore:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -37796,6 +38279,7 @@ sysctl-net-ipv4-conf-all-drop_gratuitous_arp:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -37910,6 +38394,7 @@ sysctl-net-ipv4-conf-all-route_localnet:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -38205,6 +38690,7 @@ sysctl-net-ipv4-conf-all-shared_media:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -38705,6 +39191,7 @@ sysctl-net-ipv4-conf-default-shared_media:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -38988,6 +39475,7 @@ sysctl-net-ipv4-ip_local_port_range:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -39019,6 +39507,7 @@ sysctl-net-ipv4-tcp_rfc1337:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -39195,6 +39684,7 @@ sysctl-net-ipv6-conf-all-accept_ra_defrtr:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -39226,6 +39716,7 @@ sysctl-net-ipv6-conf-all-accept_ra_pinfo:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -39257,6 +39748,7 @@ sysctl-net-ipv6-conf-all-accept_ra_rtr_pref:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -39436,6 +39928,7 @@ sysctl-net-ipv6-conf-all-autoconf:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -39515,6 +40008,7 @@ sysctl-net-ipv6-conf-all-max_addresses:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -39546,6 +40040,7 @@ sysctl-net-ipv6-conf-all-router_solicitations:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -39624,6 +40119,7 @@ sysctl-net-ipv6-conf-default-accept_ra_defrtr:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -39655,6 +40151,7 @@ sysctl-net-ipv6-conf-default-accept_ra_pinfo:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -39686,6 +40183,7 @@ sysctl-net-ipv6-conf-default-accept_ra_rtr_pref:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -39882,6 +40380,7 @@ sysctl-net-ipv6-conf-default-autoconf:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -39940,6 +40439,7 @@ sysctl-net-ipv6-conf-default-max_addresses:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -39971,6 +40471,7 @@ sysctl-net-ipv6-conf-default-router_solicitations:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -40027,6 +40528,7 @@ sysctl-vm-mmap_min_addr:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
@@ -40408,6 +40910,7 @@ umask-etc-csh-cshrc:
   - rhel8
   - rhel9
   - rhel10
+  - fedora
   check:
     '@os':
       rhel8:
@@ -40419,6 +40922,10 @@ umask-etc-csh-cshrc:
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
       rhel10:
+      - describe command('v=$(grep -hiE \'^[[:space:]]*umask[[:space:]]+[0-7]+\' /etc/csh.cshrc 2>/dev/null | grep -oE \'[0-7]+\' | tail -1); { [ -n "$v" ] && [ $((0$v & 0077)) -eq $((0077)) ] && echo ok; } || echo ko') do
+      - '  its(''stdout.strip'') { should eq ''ok'' }'
+      - end
+      fedora:
       - describe command('v=$(grep -hiE \'^[[:space:]]*umask[[:space:]]+[0-7]+\' /etc/csh.cshrc 2>/dev/null | grep -oE \'[0-7]+\' | tail -1); { [ -n "$v" ] && [ $((0$v & 0077)) -eq $((0077)) ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
