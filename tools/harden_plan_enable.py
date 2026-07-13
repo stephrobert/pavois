@@ -16,8 +16,9 @@ per-run hand-editing of the YAML plan.
 
 Usage: harden_plan_enable.py <plan.yml> --ssh-user pavois [--ssh-from CIDR ...]
 """
+
 import argparse
-import sys
+
 import yaml
 
 # danger items that ARE safe to auto-apply, with why
@@ -33,13 +34,19 @@ def main():
     ap.add_argument("--ssh-from", action="append", default=[])
     a = ap.parse_args()
 
-    d = yaml.safe_load(open(a.plan))
+    with open(a.plan) as f:
+        d = yaml.safe_load(f)
     rules = d.get("rules", {})
     enabled = acked = 0
     for rid, r in rules.items():
         if not isinstance(r, dict):
             continue
         if r.get("status") != "gap":
+            continue
+        # install-time / kernel-build / manual: no apply can close this gap (it takes a partition
+        # recipe, a kernel rebuild, a human). Enabling it anyway makes every convergence pass
+        # "apply" it, achieve nothing, and never reach a fixpoint.
+        if r.get("class"):
             continue
         if rid in KEEP_OFF:
             continue
@@ -62,9 +69,12 @@ def main():
     for pkg in d.get("baseline_packages", []):
         pkg["apply"] = True
 
-    yaml.safe_dump(d, open(a.plan, "w"), default_flow_style=False, sort_keys=False, width=1000)
-    print(f"enabled {enabled} gaps ({acked} safe-dangers acked), "
-          f"baseline pkgs on, ssh_allow_users={a.ssh_user}, ssh_from={a.ssh_from or 'any'}")
+    with open(a.plan, "w") as f:
+        yaml.safe_dump(d, f, default_flow_style=False, sort_keys=False, width=1000)
+    print(
+        f"enabled {enabled} gaps ({acked} safe-dangers acked), "
+        f"baseline pkgs on, ssh_allow_users={a.ssh_user}, ssh_from={a.ssh_from or 'any'}"
+    )
 
 
 if __name__ == "__main__":

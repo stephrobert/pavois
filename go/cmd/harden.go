@@ -116,6 +116,7 @@ type refControl struct {
 	Remediation     map[string]any `yaml:"remediation"`
 	RequiresPackage string         `yaml:"requires_package"`
 	Danger          string         `yaml:"danger"`
+	Class           string         `yaml:"remediation_class"`
 }
 type refDoc struct {
 	Rules map[string]refControl `yaml:"rules"`
@@ -127,6 +128,7 @@ type planRule struct {
 	Severity        string         `yaml:"severity"`
 	Status          string         `yaml:"status"`
 	Danger          string         `yaml:"danger,omitempty"`       // brick/lockout risk, shown before apply
+	Class           string         `yaml:"class,omitempty"`        // non-auto: a recipe/rebuild the apply cannot run (install-time, kernel-build, manual)
 	Acknowledged    *bool          `yaml:"acknowledged,omitempty"` // must be flipped true (or --i-understand-danger) to apply a danger item
 	Apply           *bool          `yaml:"apply,omitempty"`
 	Choose          *string        `yaml:"choose,omitempty"`
@@ -240,6 +242,12 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 			}
 			pr.RequiresPackage = e.RequiresPackage // dependency: install this prereq when applied
 			pr.Danger = e.Danger                   // brick/lockout risk surfaced before the operator opts in
+			if e.Class != "" && e.Class != "auto" {
+				// install-time / kernel-build / manual: no apply can close this gap — it takes a
+				// recipe or a rebuild. Saying so keeps a convergence loop from re-enabling it
+				// every pass and never reaching a fixpoint.
+				pr.Class = e.Class
+			}
 			switch st {
 			case "gap", "compliant":
 				// Carry the remediation for BOTH: gaps need fixing, and a control that's
