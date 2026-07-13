@@ -17494,15 +17494,11 @@ journald-compress:
 
       Compress=yes
 
-      ForwardToSyslog=no
-
-      Storage=persistent
-
       '
     group: root
     mode: '0644'
     owner: root
-    path: /etc/systemd/journald.conf.d/99-pavois.conf
+    path: /etc/systemd/journald.conf.d/99-pavois-compress.conf
     resource: file
   severity: medium
   socle: SOCLE-RUN-LOG-001
@@ -17546,17 +17542,13 @@ journald-forwardtosyslog:
   remediation:
     content: '[Journal]
 
-      Compress=yes
-
       ForwardToSyslog=no
-
-      Storage=persistent
 
       '
     group: root
     mode: '0644'
     owner: root
-    path: /etc/systemd/journald.conf.d/99-pavois.conf
+    path: /etc/systemd/journald.conf.d/99-pavois-forward.conf
     resource: file
   severity: medium
   socle: SOCLE-RUN-LOG-002
@@ -17609,17 +17601,13 @@ journald-storage:
   remediation:
     content: '[Journal]
 
-      Compress=yes
-
-      ForwardToSyslog=no
-
       Storage=persistent
 
       '
     group: root
     mode: '0644'
     owner: root
-    path: /etc/systemd/journald.conf.d/99-pavois.conf
+    path: /etc/systemd/journald.conf.d/99-pavois-storage.conf
     resource: file
   severity: medium
   socle: SOCLE-RUN-LOG-003
@@ -40833,3 +40821,32 @@ growth-tmp-cleaned:
   - rhel8
   - rhel9
   - rhel10
+journald-forward-to-running-syslog:
+  title: journald forwards to the syslog daemon that is actually running
+  domain: Hardening (posture)
+  severity: high
+  remediation_class: auto
+  applicable_os:
+  - debian12
+  - debian13
+  - fedora
+  - rhel8
+  - rhel9
+  - rhel10
+  - ubuntu2204
+  - ubuntu2404
+  - ubuntu2604
+  check:
+  - only_if { service('rsyslog').running? || service('syslog-ng').running? }
+  - describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*ForwardToSyslog[[:space:]]*=" | tail -1 | grep -qiE "=[[:space:]]*(no|false|0)" && echo ko || echo ok') do
+  - "  its('stdout.strip') { should eq 'ok' }"
+  - end
+  remediation:
+    resource: exec
+    name: journald-forward-to-running-syslog
+    command: mkdir -p /etc/systemd/journald.conf.d && printf '[Journal]\nForwardToSyslog=yes\n' > /etc/systemd/journald.conf.d/99-pavois-forward.conf && rm -f /etc/systemd/journald.conf.d/99-pavois.conf && systemctl restart systemd-journald 2>/dev/null; systemctl restart rsyslog 2>/dev/null; true
+    not_if: '! test -e /etc/systemd/journald.conf.d/99-pavois.conf && ! systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*ForwardToSyslog[[:space:]]*=" | tail -1 | grep -qiE "=[[:space:]]*(no|false|0)"'
+  impact: 0.7
+  evidence_type: effective-runtime
+  reboot_survivable: true
+  note: "A host running rsyslog/syslog-ng gets its log FILES through journald's forwarding. Turn the forwarding off while that daemon is running and /var/log/syslog stops receiving anything: the daemon still reports active, every log-content control stays green, and the file-based pipeline (SIEM shipping, logrotate, forensics) is silently dead. This is the other half of the CIS requirement, which allows ForwardToSyslog=no ONLY when journald is the sole log store."
