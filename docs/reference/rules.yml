@@ -15315,16 +15315,16 @@ fileperm-var-log-cloud-init:
   - ubuntu2404
   - ubuntu2604
   check:
-  - only_if { file('/var/log/cloud-init').exist? }
-  - describe file('/var/log/cloud-init') do
-  - '  it { should_not be_executable.by(''owner'') }'
-  - '  it { should_not be_setuid }'
-  - '  it { should_not be_executable.by(''group'') }'
-  - '  it { should_not be_writable.by(''group'') }'
-  - '  it { should_not be_setgid }'
-  - '  it { should_not be_executable.by(''other'') }'
-  - '  it { should_not be_writable.by(''other'') }'
-  - '  it { should_not be_sticky }'
+  - "['/var/log/cloud-init.log', '/var/log/cloud-init-output.log'].each do |f|"
+  - '  next unless file(f).exist?'
+  - '  describe file(f) do'
+  - "    it { should_not be_writable.by('group') }"
+  - "    it { should_not be_readable.by('other') }"
+  - "    it { should_not be_writable.by('other') }"
+  - "    it { should_not be_executable.by('other') }"
+  - '    it { should_not be_setuid }'
+  - '    it { should_not be_setgid }'
+  - '  end'
   - end
   domain: File permissions
   evidence_type: persistent-config
@@ -15341,9 +15341,10 @@ fileperm-var-log-cloud-init:
         ubuntu2604: 6.1.4.1
   reboot_survivable: 'yes'
   remediation:
-    mode: '0644'
-    path: /var/log/cloud-init.log
-    resource: file
+    resource: exec
+    name: fileperm-var-log-cloud-init-tighten
+    command: for f in /var/log/cloud-init.log /var/log/cloud-init-output.log; do [ -e "$f" ] && chmod g-wx,o-rwx "$f"; done; true
+    not_if: '! find /var/log/cloud-init.log /var/log/cloud-init-output.log -maxdepth 0 \( -perm /g=wx -o -perm /o=rwx \) 2>/dev/null | grep -q .'
   severity: medium
   socle: SOCLE-CLD-FSP-169
   ssg: file_permissions_var_log_cloud-init
@@ -15652,16 +15653,16 @@ fileperm-var-log-waagent:
   - ubuntu2404
   - ubuntu2604
   check:
-  - only_if { file('/var/log/waagent').exist? }
-  - describe file('/var/log/waagent') do
-  - '  it { should_not be_executable.by(''owner'') }'
-  - '  it { should_not be_setuid }'
-  - '  it { should_not be_executable.by(''group'') }'
-  - '  it { should_not be_writable.by(''group'') }'
-  - '  it { should_not be_setgid }'
-  - '  it { should_not be_executable.by(''other'') }'
-  - '  it { should_not be_writable.by(''other'') }'
-  - '  it { should_not be_sticky }'
+  - "['/var/log/waagent.log'].each do |f|"
+  - '  next unless file(f).exist?'
+  - '  describe file(f) do'
+  - "    it { should_not be_writable.by('group') }"
+  - "    it { should_not be_readable.by('other') }"
+  - "    it { should_not be_writable.by('other') }"
+  - "    it { should_not be_executable.by('other') }"
+  - '    it { should_not be_setuid }'
+  - '    it { should_not be_setgid }'
+  - '  end'
   - end
   domain: File permissions
   evidence_type: persistent-config
@@ -15678,9 +15679,10 @@ fileperm-var-log-waagent:
         ubuntu2604: 6.1.4.1
   reboot_survivable: 'yes'
   remediation:
-    mode: '0644'
-    path: /var/log/waagent.log
-    resource: file
+    resource: exec
+    name: fileperm-var-log-waagent-tighten
+    command: for f in /var/log/waagent.log; do [ -e "$f" ] && chmod g-wx,o-rwx "$f"; done; true
+    not_if: '! find /var/log/waagent.log -maxdepth 0 \( -perm /g=wx -o -perm /o=rwx \) 2>/dev/null | grep -q .'
   severity: medium
   socle: SOCLE-CLD-FSP-177
   ssg: file_permissions_var_log_waagent
@@ -26505,9 +26507,9 @@ pkg-aide-installed:
   socle: SOCLE-CLD-PKG-006
   ssg: package_aide_installed
   template:
-    installed: true
     name: package
-    package: aide
+    package: '@{pkg.aide}'
+    installed: true
   title: Install AIDE
   remediation_class: auto
 pkg-apparmor-installed:
