@@ -14959,7 +14959,7 @@ fileperm-unauthorized-world-writable:
     bp28: R54
     cis:
       '@os':
-        debian12: &id002
+        debian12: &id004
         - 2.2.6
         - 7.1.11
         fedora: 7.1.11
@@ -14967,7 +14967,7 @@ fileperm-unauthorized-world-writable:
         rhel9: 7.1.11
         rhel10: 7.1.11
         ubuntu2204: 7.1.11
-        ubuntu2404: &id003
+        ubuntu2404: &id005
         - 2.2.6
         - 7.1.11
         ubuntu2604:
@@ -15310,9 +15310,21 @@ fileperm-var-log:
         ubuntu2604: UBTU-24-700120
   reboot_survivable: 'yes'
   remediation:
-    mode: '0755'
-    path: /var/log
-    resource: file
+    '@os':
+      rhel8: &id002
+        mode: '0755'
+        path: /var/log
+        resource: file
+      rhel9: *id002
+      rhel10: *id002
+      fedora: *id002
+      ubuntu2204: &id003
+        resource: exec
+        name: var-log-mode-tmpfiles
+        command: "printf '# pavois: /var/log must not be group-writable (STIG)\\nz /var/log 0750 root syslog -\\n' > /etc/tmpfiles.d/00rsyslog.conf; chmod 0750 /var/log; systemd-tmpfiles --create /etc/tmpfiles.d/00rsyslog.conf >/dev/null 2>&1 || true"
+        not_if: test -f /etc/tmpfiles.d/00rsyslog.conf && grep -Eq '^z /var/log 0750 root syslog' /etc/tmpfiles.d/00rsyslog.conf
+      ubuntu2404: *id003
+      ubuntu2604: *id003
   severity: medium
   socle: SOCLE-CLD-FSP-165
   ssg: file_permissions_var_log
@@ -16247,13 +16259,13 @@ findloop-file-permissions-unauthorized-world-writable:
     bp28: R54
     cis:
       '@os':
-        debian12: *id002
+        debian12: *id004
         fedora: 7.1.11
         rhel8: 7.1.11
         rhel9: 7.1.11
         rhel10: 7.1.11
         ubuntu2204: 7.1.11
-        ubuntu2404: *id003
+        ubuntu2404: *id005
         ubuntu2604:
         - 2.2.6
         - 7.1.11
@@ -21734,19 +21746,19 @@ misc-aide-build-database:
         name: aide-build-database
         not_if: ls /var/lib/aide/aide.db >/dev/null 2>&1
         resource: exec
-      rhel8: &id004
+      rhel8: &id006
         resource: exec
         name: aide-init
         command: dnf install -y -q aide >/dev/null 2>&1 || true; aide --init >/dev/null 2>&1 && mv -f /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz 2>/dev/null; true
         not_if: test -s /var/lib/aide/aide.db.gz
-      rhel9: *id004
-      rhel10: *id004
+      rhel9: *id006
+      rhel10: *id006
       ubuntu2604:
         command: apt-get install -y aide-common >/dev/null 2>&1 || true; aideinit -y -f >/dev/null 2>&1 || aide --init; mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db 2>/dev/null || true
         name: aide-build-database
         not_if: ls /var/lib/aide/aide.db >/dev/null 2>&1
         resource: exec
-      fedora: *id004
+      fedora: *id006
   requires_package: aide
   severity: medium
   socle: SOCLE-CLD-GEN-031
@@ -21775,9 +21787,9 @@ misc-aide-periodic-checking-systemd-timer:
       debian12:
         bp28: high
         cis: '1'
-      debian13: &id005
+      debian13: &id007
         bp28: high
-      rhel8: *id005
+      rhel8: *id007
       ubuntu2404:
         bp28: high
         cis: '1'
@@ -25049,16 +25061,16 @@ pam-faillock-enabled:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id006
+      debian12: &id008
         params: audit silent even_deny_root
         resource: pam_faillock
-      debian13: *id006
+      debian13: *id008
       rhel8:
         features:
         - with-faillock
         resource: authselect
-      ubuntu2204: *id006
-      ubuntu2404: *id006
+      ubuntu2204: *id008
+      ubuntu2404: *id008
       ubuntu2604:
         params: audit silent even_deny_root
         resource: pam_faillock
@@ -25103,12 +25115,12 @@ pam-faillock-root-unlock-time:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id007
+      debian12: &id009
         file: /etc/security/faillock.conf
         key: root_unlock_time
         resource: keyval
         value: '60'
-      debian13: *id007
+      debian13: *id009
       rhel8:
         file: /etc/security/faillock.conf
         key: root_unlock_time
@@ -25169,19 +25181,19 @@ pam-pwhistory-enabled:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id008
+      debian12: &id010
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
         line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
         module: pam_pwhistory.so
         resource: pam_line
-      debian13: *id008
+      debian13: *id010
       rhel8:
         features:
         - with-pwhistory
         resource: authselect
-      ubuntu2204: *id008
-      ubuntu2404: *id008
+      ubuntu2204: *id010
+      ubuntu2404: *id010
       ubuntu2604:
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
@@ -25230,20 +25242,20 @@ pam-pwhistory-enforce:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id009
+      debian12: &id011
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
         line: password required pam_pwhistory.so remember=24 use_authtok enforce_for_root
         module: pam_pwhistory.so
         resource: pam_line
-      debian13: *id009
+      debian13: *id011
       rhel8:
         file: /etc/security/pwhistory.conf
         key: enforce_for_root
         resource: keyval
         value: ''
-      ubuntu2204: *id009
-      ubuntu2404: *id009
+      ubuntu2204: *id011
+      ubuntu2404: *id011
       ubuntu2604:
         before: ^password.*pam_unix\.so
         file: /etc/pam.d/common-password
@@ -25310,11 +25322,11 @@ pam-pwhistory-use-authtok:
         module: pam_pwhistory.so
         resource: pam_line
       fedora:
-        features: &id010
+        features: &id012
         - with-pwhistory
         resource: authselect
       rhel8:
-        features: *id010
+        features: *id012
         resource: authselect
       ubuntu2204:
         before: ^password.*pam_unix\.so
@@ -25743,12 +25755,12 @@ pam-unix-no-nullok:
   reboot_survivable: 'yes'
   remediation:
     '@os':
-      debian12: &id011
+      debian12: &id013
         command: grep -rlE '^[^#]*pam_unix\.so.*nullok' /etc/pam.d/ | while read -r f; do sed -ri '/pam_unix\.so/ s/[[:space:]]*\bnullok\b//g' "$f"; done; true
         name: pam-unix-remove-nullok
         not_if: '! grep -rqE ''^[^#]*pam_unix\.so.*nullok'' /etc/pam.d/'
         resource: exec
-      debian13: *id011
+      debian13: *id013
       rhel8:
         features:
         - without-nullok
@@ -25831,20 +25843,20 @@ pam-unix-rounds-password-auth:
   - ubuntu2604
   check:
     '@os':
-      debian12: &id012
+      debian12: &id014
       - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\brounds=[0-9]\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian13: *id012
-      fedora: &id013
+      debian13: *id014
+      fedora: &id015
       - describe command('v=$(grep -E "^[[:space:]]*SHA_CRYPT_MIN_ROUNDS[[:space:]]+[0-9]+" /etc/login.defs 2>/dev/null | grep -oE "[0-9]+" | tail -1); { [ -n "$v" ] && [ "$v" -ge 5000 ] && echo ok; } || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      rhel8: *id013
-      rhel9: *id013
-      rhel10: *id013
-      ubuntu2204: *id012
-      ubuntu2404: *id012
+      rhel8: *id015
+      rhel9: *id015
+      rhel10: *id015
+      ubuntu2204: *id014
+      ubuntu2404: *id014
       ubuntu2604:
       - describe command('grep -RqE \'^[^#]*\bpam_unix\\.so\b[^#]*\brounds=[0-9]\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
@@ -26950,9 +26962,9 @@ pkg-audispd-plugins-installed:
     '@os':
       debian12:
         cis: '2'
-      debian13: &id014
+      debian13: &id016
         cis: '2'
-      rhel8: *id014
+      rhel8: *id016
       rhel9: {}
       rhel10: {}
       ubuntu2204:
@@ -28594,7 +28606,7 @@ pkg-net-snmp-removed:
   norms:
     cis:
       '@os':
-        debian12: &id015
+        debian12: &id017
         - 2.1.15
         - 2.2.4
         debian13: 2.1.14
@@ -28603,7 +28615,7 @@ pkg-net-snmp-removed:
         rhel9: 2.1.14
         rhel10: 2.1.14
         ubuntu2204: 2.1.14
-        ubuntu2404: &id016
+        ubuntu2404: &id018
         - 2.1.15
         - 2.2.4
         ubuntu2604:
@@ -28810,7 +28822,7 @@ pkg-nss-sss-installed:
   reboot_survivable: 'yes'
   remediation:
     action: install
-    name: nss-sss
+    name: libnss-sss
     resource: package
   severity: medium
   socle: SOCLE-CLD-PKG-063
@@ -29122,7 +29134,7 @@ pkg-pam-sss-installed:
   reboot_survivable: 'yes'
   remediation:
     action: install
-    name: pam-sss
+    name: libpam-sss
     resource: package
   severity: medium
   socle: SOCLE-CLD-PKG-072
@@ -29848,12 +29860,12 @@ pkg-snmpd-removed:
   norms:
     cis:
       '@os':
-        debian12: *id015
+        debian12: *id017
         debian13:
         - 2.1.15
         - 2.2.4
         ubuntu2204: 2.1.15
-        ubuntu2404: *id016
+        ubuntu2404: *id018
         ubuntu2604:
         - 2.1.15
         - 2.2.4
@@ -29940,16 +29952,16 @@ pkg-sssd-installed:
         ubuntu2604: UBTU-24-100650
   reboot_survivable: 'yes'
   remediation:
-    action: install
-    name: sssd
     resource: package
+    name: '@{pkg.sssd}'
+    action: install
   severity: medium
   socle: SOCLE-CLD-PKG-097
   ssg: package_sssd_installed
   template:
-    installed: true
     name: package
-    package: sssd
+    package: '@{pkg.sssd}'
+    installed: true
   title: Install the SSSD Package
   remediation_class: auto
 pkg-subscription-manager-installed:
@@ -30112,11 +30124,11 @@ pkg-talk-removed:
       debian12:
         bp28: minimal
         cis: '1'
-      debian13: &id017
+      debian13: &id019
         bp28: minimal
       fedora:
         bp28: minimal
-      rhel8: *id017
+      rhel8: *id019
       ubuntu2204:
         bp28: minimal
         cis: '1'
@@ -30506,16 +30518,16 @@ pkg-tftp-removed:
     pci-dss: 2.2.4
   reboot_survivable: 'yes'
   remediation:
-    action: remove
-    name: tftp
     resource: package
+    name: '@{pkg.tftp}'
+    action: remove
   severity: low
   socle: SOCLE-CLD-PKG-108
   ssg: package_tftp_removed
   template:
-    installed: false
     name: package
-    package: tftp
+    package: '@{pkg.tftp}'
+    installed: false
   title: Remove tftp Daemon
   remediation_class: auto
 pkg-tftp-server-removed:
@@ -31278,17 +31290,17 @@ posture-malware-scanner:
       ubuntu2404:
         name: chkrootkit
         resource: package
-      rhel8: &id018
+      rhel8: &id020
         resource: exec
         name: malware-scanner
         command: dnf install -y -q rkhunter >/dev/null 2>&1 || { dnf install -y -q epel-release >/dev/null 2>&1 && dnf install -y -q rkhunter >/dev/null 2>&1; }; true
         not_if: command -v rkhunter >/dev/null 2>&1 || command -v chkrootkit >/dev/null 2>&1
-      rhel9: *id018
-      rhel10: *id018
+      rhel9: *id020
+      rhel10: *id020
       ubuntu2604:
         name: chkrootkit
         resource: package
-      fedora: *id018
+      fedora: *id020
   severity: medium
   socle: SOCLE-CLD-GEN-060
   ssg: posture-malware-scanner
@@ -31409,19 +31421,22 @@ posture-process-accounting:
   reboot_survivable: 'no'
   remediation:
     '@os':
-      debian12:
+      debian12: &id022
         command: DEBIAN_FRONTEND=noninteractive apt-get install -y acct >/dev/null 2>&1; systemctl enable --now acct 2>/dev/null || true
         name: enable-process-accounting
         not_if: systemctl is-active acct psacct 2>/dev/null | grep -qx active
         resource: exec
-      rhel8: &id019
+      rhel8: &id021
         resource: exec
         name: process-accounting
         command: dnf install -y -q psacct >/dev/null 2>&1 || true; systemctl enable --now psacct 2>/dev/null || true
         not_if: systemctl is-active psacct acct 2>/dev/null | grep -qx active
-      rhel9: *id019
-      rhel10: *id019
-      fedora: *id019
+      rhel9: *id021
+      rhel10: *id021
+      fedora: *id021
+      ubuntu2204: *id022
+      ubuntu2404: *id022
+      ubuntu2604: *id022
   requires_package: auditd
   severity: low
   socle: SOCLE-CLD-GEN-063
@@ -31465,17 +31480,17 @@ posture-sysstat:
       ubuntu2404:
         name: sysstat
         resource: package
-      rhel8: &id020
+      rhel8: &id023
         resource: exec
         name: sysstat
         command: dnf install -y -q sysstat >/dev/null 2>&1 || true; if [ -f /etc/sysconfig/sysstat ]; then sed -ri 's/^[[:space:]]*ENABLED=.*/ENABLED="true"/' /etc/sysconfig/sysstat; fi; systemctl enable --now sysstat 2>/dev/null || true
         not_if: systemctl is-active sysstat 2>/dev/null | grep -qx active
-      rhel9: *id020
-      rhel10: *id020
+      rhel9: *id023
+      rhel10: *id023
       ubuntu2604:
         name: sysstat
         resource: package
-      fedora: *id020
+      fedora: *id023
   severity: low
   socle: SOCLE-CLD-GEN-064
   ssg: posture-sysstat
@@ -36762,11 +36777,11 @@ sudo-require-authentication:
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      debian13: &id021
+      debian13: &id024
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
       - end
-      rhel8: *id021
+      rhel8: *id024
       ubuntu2404:
       - describe command('grep -rqE \'^[^#]*\bNOPASSWD\b\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do
       - '  its(''stdout.strip'') { should eq ''ok'' }'
