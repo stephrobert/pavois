@@ -1820,6 +1820,30 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}
+
+	// A plan is a snapshot of the system BEFORE hardening — but hardening MUTATES the system.
+	// pavois installs the packages a control needs to be meaningful (`requires_package`), and a
+	// package brings its own files, units and defaults with it: installing `at` creates
+	// /etc/at.deny (which another control requires to be ABSENT), installing an MTA brings its
+	// banner and VRFY defaults into scope. Those controls were compliant or not-applicable when
+	// the plan was computed, so nothing ever remediated them, and a single apply can never close
+	// them. Name them, and say how to converge.
+	var emerged []string
+	for cid, r := range p.Rules {
+		if st2[cid] == "gap" && r.Status != "gap" {
+			emerged = append(emerged, cid)
+		}
+	}
+	if len(emerged) > 0 {
+		sort.Strings(emerged)
+		_, _ = fmt.Fprintf(out, "\npavois: ⚠ %d control(s) became applicable DURING this run and were not in the plan\n"+
+			"    (hardening installed packages that brought new files/units into scope):\n", len(emerged))
+		for _, c := range emerged {
+			_, _ = fmt.Fprintf(out, "    - %s\n", c)
+		}
+		_, _ = fmt.Fprintf(out, "    Converge: re-plan from the CURRENT state and apply again, until a pass has\n"+
+			"    nothing left to do:  pavois harden plan %s --sudo --from <this report>\n", target)
+	}
 	return nil
 }
 

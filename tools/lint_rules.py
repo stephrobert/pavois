@@ -95,6 +95,24 @@ def main():
                             f"{cid} [{os}]: check uses {prim}, remediation hardcodes {v!r}"
                         )
 
+        # pkg-mismatch: the check audits one package, the remediation installs/removes ANOTHER.
+        # The remediation then cannot make its own check pass, and on a host where the name does
+        # not exist it aborts the whole Chef run. pkg-nss-sss-installed audited `libnss-sss` (the
+        # Debian name) and installed `nss-sss` (the RHEL one) — invisible until a live apply.
+        for os, tpl in per_os(e, "template").items():
+            if not isinstance(tpl, dict) or tpl.get("name") != "package":
+                continue
+            audited = str(tpl.get("package") or "")
+            r = rems.get(os)
+            if not isinstance(r, dict) or r.get("resource") != "package":
+                continue
+            fixed = str(r.get("name") or r.get("package") or "")
+            if audited and fixed and audited != fixed:
+                findings["pkg-mismatch"].append(
+                    f"{cid} [{os}]: audits {audited!r}, remediates {fixed!r} — "
+                    "cannot pass its own check"
+                )
+
         for os, lines in checks.items():
             text = " ".join(lines or [])
             if SSG_PROSE.search(text):
@@ -175,6 +193,7 @@ def main():
     for kind in (
         "group-default",
         "dead-check",
+        "pkg-mismatch",
         "primitive-leak",
         "ssg-leak",
         "bad-param",
