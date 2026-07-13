@@ -40837,7 +40837,7 @@ journald-forward-to-running-syslog:
   - ubuntu2404
   - ubuntu2604
   check:
-  - only_if { service('rsyslog').running? || service('syslog-ng').running? }
+  - only_if { (service('rsyslog').running? || service('syslog-ng').running?) && !command('grep -rqsE \'^[[:space:]]*(module\\(load="imjournal"|\\$ModLoad[[:space:]]+imjournal)\' /etc/rsyslog.conf /etc/rsyslog.d/ 2>/dev/null').exit_status.zero? }
   - describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*ForwardToSyslog[[:space:]]*=" | tail -1 | grep -qiE "=[[:space:]]*(no|false|0)" && echo ko || echo ok') do
   - "  its('stdout.strip') { should eq 'ok' }"
   - end
@@ -40849,4 +40849,4 @@ journald-forward-to-running-syslog:
   impact: 0.7
   evidence_type: effective-runtime
   reboot_survivable: true
-  note: "A host running rsyslog/syslog-ng gets its log FILES through journald's forwarding. Turn the forwarding off while that daemon is running and /var/log/syslog stops receiving anything: the daemon still reports active, every log-content control stays green, and the file-based pipeline (SIEM shipping, logrotate, forensics) is silently dead. This is the other half of the CIS requirement, which allows ForwardToSyslog=no ONLY when journald is the sole log store."
+  note: "A host whose syslog daemon takes its lines from journald's forwarding (imuxsock, the Debian/Ubuntu default) stops writing /var/log/syslog the moment that forwarding is turned off: the daemon still reports active, every log-content control stays green, and the file pipeline (SIEM shipping, logrotate, forensics) is silently dead. A daemon that reads the journal DIRECTLY (imjournal, the RHEL default) does not depend on it, and is not audited here. This is the other half of the CIS rule that allows ForwardToSyslog=no ONLY when journald is the sole log store."
