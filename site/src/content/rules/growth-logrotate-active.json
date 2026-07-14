@@ -38,17 +38,32 @@
   },
   "title": {
     "en": "Log rotation actually runs (logrotate is scheduled)",
-    "fr": "Log rotation actually runs (logrotate is scheduled)"
+    "fr": "La rotation des journaux tourne réellement (logrotate est planifié)"
   },
-  "needs_translation": [
-    "title.fr"
-  ],
-  "needs_authoring": [
-    "summary",
-    "check_note",
-    "verify",
-    "logs",
-    "remediation_note",
-    "impact"
-  ]
+  "summary": {
+    "en": "Verify that logrotate is not merely installed but **actually scheduled**: either `logrotate.timer` is active, or `/etc/cron.daily/logrotate` is executable. A perfect `logrotate.conf` behind a masked timer rotates nothing. This **pavois-native** `growth-*` control audits the mechanism that bounds `/var/log`, not the free space it happens to have today.",
+    "fr": "Vérifie que logrotate n'est pas seulement installé mais **réellement planifié** : soit `logrotate.timer` est actif, soit `/etc/cron.daily/logrotate` est exécutable. Un `logrotate.conf` parfait derrière une minuterie masquée ne fait tourner aucun journal. Ce contrôle **natif pavois** de la famille `growth-*` audite le mécanisme qui borne `/var/log`, pas l'espace libre dont il dispose aujourd'hui."
+  },
+  "check_note": {
+    "en": "The check interrogates the **runtime scheduler state**, not a configuration file: `systemctl is-active logrotate.timer` must return `active`, or `/etc/cron.daily/logrotate` must carry the executable bit (the older, cron-driven path still used on some images). Either path proves rotation will actually fire. Checking the mere presence of `/etc/logrotate.conf` would be a **false-negative** factory: the package can be installed, the rules impeccable, and the timer disabled or masked.",
+    "fr": "Le contrôle interroge l'**état du planificateur à l'exécution**, pas un fichier de configuration : `systemctl is-active logrotate.timer` doit renvoyer `active`, ou `/etc/cron.daily/logrotate` doit porter le bit exécutable (l'ancien chemin, piloté par cron, encore utilisé sur certaines images). L'un ou l'autre prouve que la rotation se déclenchera vraiment. Vérifier la seule présence de `/etc/logrotate.conf` fabriquerait des **faux négatifs** : le paquet peut être installé, les règles impeccables, et la minuterie désactivée ou masquée."
+  },
+  "verify": {
+    "en": "Confirm the schedule, then that it actually fires:\n\n```\nsystemctl is-active logrotate.timer\nsystemctl list-timers logrotate.timer --all\ntest -x /etc/cron.daily/logrotate && echo cron-path-ok\n```\n\n`logrotate --debug /etc/logrotate.conf` performs a dry run and prints which files would rotate, without touching them.",
+    "fr": "Confirmez la planification, puis son déclenchement réel :\n\n```\nsystemctl is-active logrotate.timer\nsystemctl list-timers logrotate.timer --all\ntest -x /etc/cron.daily/logrotate && echo cron-path-ok\n```\n\n`logrotate --debug /etc/logrotate.conf` effectue une simulation et affiche les fichiers qui tourneraient, sans y toucher."
+  },
+  "logs": {
+    "en": "Each run leaves a trace in `journalctl -u logrotate.service`, and logrotate stamps its own state file (`/var/lib/logrotate/status` on Debian and Ubuntu, `/var/lib/logrotate.status` on RHEL): every managed log carries the date of its last rotation. A state file whose timestamps are weeks old is the signature of a rotation that has stopped running, visible long before the disk fills.",
+    "fr": "Chaque exécution laisse une trace dans `journalctl -u logrotate.service`, et logrotate horodate son fichier d'état (`/var/lib/logrotate/status` sur Debian et Ubuntu, `/var/lib/logrotate.status` sur RHEL) : chaque journal géré y porte la date de sa dernière rotation. Un fichier d'état dont les horodatages datent de plusieurs semaines signe une rotation qui ne tourne plus, visible bien avant que le disque ne se remplisse."
+  },
+  "remediation_note": {
+    "en": "Pavois runs the `logrotate-scheduled` step: if a `logrotate.timer` unit file exists, it is enabled and started immediately (`systemctl enable --now logrotate.timer`); otherwise, on cron-driven images, `/etc/cron.daily/logrotate` is made executable. The step is guarded by a `not_if` that re-tests both paths, so an already-scheduled host is left untouched and `confkit harden apply` stays idempotent.",
+    "fr": "Pavois exécute l'étape `logrotate-scheduled` : si une unité `logrotate.timer` existe, elle est activée et démarrée immédiatement (`systemctl enable --now logrotate.timer`) ; sinon, sur les images pilotées par cron, `/etc/cron.daily/logrotate` reçoit le bit exécutable. L'étape est gardée par un `not_if` qui reteste les deux chemins, si bien qu'un hôte déjà planifié n'est pas touché et que `confkit harden apply` reste idempotent."
+  },
+  "impact": {
+    "en": "Near-zero operational risk: this re-enables a scheduler that ships enabled by default on every supported distribution. The one consequence to anticipate is that logs will now **actually rotate**: any tool holding an open file descriptor on a log, or tailing it by path, must handle rotation (`copytruncate`, or a `postrotate` signal to the daemon). Weigh that against the failure mode this family was born from: a pavois-hardened host that shut itself down six seconds into every boot because a log filesystem it had carved out reached 100%, with every control green.",
+    "fr": "Risque opérationnel quasi nul : on réactive un planificateur livré actif par défaut sur toutes les distributions supportées. La seule conséquence à anticiper est que les journaux vont désormais **réellement tourner** : tout outil qui garde un descripteur ouvert sur un journal, ou qui le suit par chemin, doit gérer la rotation (`copytruncate`, ou un signal `postrotate` vers le démon). À mettre en balance avec le mode de défaillance qui a fait naître cette famille : un hôte durci par pavois qui s'éteignait six secondes après chaque démarrage parce qu'un système de fichiers de journaux qu'il avait lui-même découpé atteignait 100 %, tous contrôles au vert."
+  },
+  "datePublished": "2026-07-14",
+  "dateModified": "2026-07-14"
 }

@@ -49,7 +49,29 @@ const groups = letters.map((l) => ({
 }));
 ---
 
-<Base title={`Pavois, ${t.glossaryTitle}`} description={t.glossaryIntro} lang={lang} breadcrumbs={[{ name: 'Pavois', path: `/${lang}/` }, { name: t.navGlossary, path: `/${lang}/glossary/` }]}>
+<Base schema="CollectionPage" collectionSize={terms.length} title={`Pavois, ${t.glossaryTitle}`} description={t.glossaryIntro} lang={lang} breadcrumbs={[{ name: 'Pavois', path: `/${lang}/` }, { name: t.navGlossary, path: `/${lang}/glossary/` }]}>
+  {/* 192 bilingual definitions were readable by a human and invisible to an answer engine: a
+      DefinedTermSet says what this page IS, term by term, without minting a single new URL. */}
+  <script
+    type="application/ld+json"
+    is:inline
+    set:html={JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'DefinedTermSet',
+      '@id': `https://pavois.dev/${lang}/glossary/#set`,
+      name: t.glossaryTitle,
+      description: t.glossaryIntro,
+      inLanguage: lang,
+      hasDefinedTerm: terms.map((e) => ({
+        '@type': 'DefinedTerm',
+        '@id': `https://pavois.dev/${lang}/glossary/#${e.data.slug}`,
+        name: e.data.term,
+        description: def(e).short,
+        inDefinedTermSet: `https://pavois.dev/${lang}/glossary/#set`,
+      })),
+    })}
+  />
+
   <div class="wrap page-head gloss-head">
     <h1>{t.glossaryTitle}</h1>
     <p class="lede">{t.glossaryIntro}</p>
@@ -97,9 +119,11 @@ const groups = letters.map((l) => ({
                   .join(' ')
                   .toLowerCase();
                 return (
-                  <article class="term" data-cat={e.data.category} data-search={hay}>
+                  <article class="term" id={e.data.slug} data-cat={e.data.category} data-search={hay}>
                     <div class="th">
-                      <h3>{e.data.term}</h3>
+                      {/* one anchor per term: the tooltip already knows the slug, it just had
+                          nowhere to send you. 192 deep links, zero new URL. */}
+                      <h3><a class="ganchor" href={`#${e.data.slug}`}>{e.data.term}</a></h3>
                       <span class:list={['cat', { pavois: e.data.category === 'pavois' }]}>{catLabel(e.data.category)}</span>
                     </div>
                     <div class="short prose" set:html={md(d.short)} />
@@ -154,5 +178,22 @@ const groups = letters.map((l) => ({
       if (card && !(e.target as HTMLElement).closest('a')) card.classList.toggle('expanded');
     });
     apply(); // correct initial count + empty-state on load
+
+    // A tooltip now deep-links to /glossary/#<slug>. Arriving on an anchor while a filter hides
+    // that very term would land the reader on an empty page, so: clear the filters, open the
+    // term, scroll to it. Runs on load AND on every hash change (an in-page link).
+    const focusHash = () => {
+      const slug = decodeURIComponent(location.hash.slice(1));
+      if (!slug) return;
+      const card = document.getElementById(slug);
+      if (!card || !card.classList.contains('term')) return;
+      if (search) search.value = '';
+      if (cat) cat.value = '';
+      apply();
+      card.classList.add('expanded', 'targeted');
+      card.scrollIntoView({ block: 'center' });
+    };
+    focusHash();
+    window.addEventListener('hashchange', focusHash);
   }
 </script>

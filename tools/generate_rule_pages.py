@@ -99,7 +99,6 @@ for rid, items in sorted(by_id.items()):
         "check": base.get("check", []),
         "remediation": base.get("remediation", {}),
         "title": base["title"],
-        "needs_translation": base.get("needs_translation", ["title.fr"]),
     }
     if base.get("rationale"):
         entry["rationale"] = base["rationale"]
@@ -137,22 +136,42 @@ stale = sorted(p for p in OUT.glob("*.json") if p.stem not in by_id)
 for p in stale:
     p.unlink()
 
-# The 5 rich fields are hand-written expertise; a freshly generated fiche has none of them. Say so
-# in the data (needs_authoring), so the gap is a queryable fact and not something you discover by
+# Both honesty flags are DERIVED from the data, never asserted.
+#
+# needs_authoring: the 5 rich fields are hand-written expertise, and a freshly generated fiche has
+# none of them. Saying so in the data makes the gap queryable instead of something you discover by
 # reading 800 pages.
-todo = 0
+#
+# needs_translation: this used to default to ["title.fr"] whenever the key was absent — so a fiche
+# somebody had actually translated got re-flagged on the very next build, and the flag meant
+# nothing. A French field is untranslated when it is empty or still identical to the English one.
+# That is checkable, so we check it.
+LOCALIZED = ("title", "summary", "rationale", *RICH)
+todo = untranslated = 0
 for p in sorted(OUT.glob("*.json")):
     d = json.loads(p.read_text(encoding="utf-8"))
+    before = json.dumps(d, sort_keys=True)
+
     missing = [k for k in RICH if k not in d]
+    d.pop("needs_authoring", None)
     if missing:
         d["needs_authoring"] = missing
-        p.write_text(json.dumps(d, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         todo += 1
-    elif "needs_authoring" in d:
-        del d["needs_authoring"]
+
+    echoes = [
+        f"{k}.fr"
+        for k in LOCALIZED
+        if isinstance(d.get(k), dict) and (not d[k].get("fr") or d[k].get("fr") == d[k].get("en"))
+    ]
+    d.pop("needs_translation", None)
+    if echoes:
+        d["needs_translation"] = echoes
+        untranslated += 1
+
+    if json.dumps(d, sort_keys=True) != before:
         p.write_text(json.dumps(d, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 print(f"wrote {gen} fiches ({kept} kept their authored prose), from {len(oses)} OSes")
 gone = ", ".join(p.stem for p in stale) or "-"
 print(f"removed {len(stale)} stale fiche(s) whose control is gone: {gone}")
-print(f"{todo} fiche(s) still need authored prose (needs_authoring)")
+print(f"{todo} fiche(s) still need authored prose, {untranslated} still need a FR pass")

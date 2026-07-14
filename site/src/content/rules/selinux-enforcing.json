@@ -35,17 +35,32 @@
   },
   "title": {
     "en": "Ensure SELinux State is Enforcing",
-    "fr": "Ensure SELinux State is Enforcing"
+    "fr": "Garantir que SELinux est en mode enforcing"
   },
-  "needs_translation": [
-    "title.fr"
-  ],
-  "needs_authoring": [
-    "summary",
-    "check_note",
-    "verify",
-    "logs",
-    "remediation_note",
-    "impact"
-  ]
+  "summary": {
+    "en": "SELinux must run in **enforcing** mode: policy denials are actually blocked, not merely logged as they are in `permissive`. Pavois checks both the running state (`getenforce` returns `Enforcing`) and the persisted intent (`SELINUX=enforcing` in `/etc/selinux/config`). RHEL family only.",
+    "fr": "SELinux doit fonctionner en mode **enforcing** : les refus de la politique sont réellement bloqués, et non simplement journalisés comme en mode `permissive`. Pavois vérifie à la fois l'état en cours d'exécution (`getenforce` renvoie `Enforcing`) et l'intention persistée (`SELINUX=enforcing` dans `/etc/selinux/config`). Famille RHEL uniquement."
+  },
+  "check_note": {
+    "en": "`getenforce` returns the **effective** kernel state, which is the only thing that decides whether a denial blocks or merely logs. `/etc/selinux/config` expresses the intent at boot and nothing more: it can be overridden from the kernel command line (`selinux=0`, `enforcing=0`), so a host can boot `Permissive` or `Disabled` while its config file says `enforcing`. Reading only that file would report a host with SELinux effectively off as compliant. Pavois therefore requires both: the running state **and** the persisted setting, so the mode also survives a reboot.",
+    "fr": "`getenforce` renvoie l'état **effectif** du noyau, seul juge de savoir si un refus bloque ou se contente d'être journalisé. `/etc/selinux/config` n'exprime que l'intention au démarrage : elle peut être écrasée depuis la ligne de commande du noyau (`selinux=0`, `enforcing=0`), de sorte qu'un hôte peut démarrer en `Permissive` ou `Disabled` alors que son fichier de configuration indique `enforcing`. Lire seulement ce fichier déclarerait conforme une machine dont SELinux est en réalité inactif. Pavois exige donc les deux : l'état en cours **et** le réglage persisté, pour que le mode survive aussi au redémarrage."
+  },
+  "verify": {
+    "en": "Confirm the running mode, the persisted mode, and that nothing on the kernel command line is disabling SELinux:\n\n```\ngetenforce\n# Enforcing\nsestatus | grep -E 'SELinux status|Current mode|Policy from config'\ngrep ^SELINUX= /etc/selinux/config\n# SELINUX=enforcing\ngrep -o 'selinux=0\\|enforcing=0' /proc/cmdline\n# (no output expected)\n```",
+    "fr": "Vérifiez le mode en cours, le mode persisté, et qu'aucun paramètre de la ligne de commande du noyau ne désactive SELinux :\n\n```\ngetenforce\n# Enforcing\nsestatus | grep -E 'SELinux status|Current mode|Policy from config'\ngrep ^SELINUX= /etc/selinux/config\n# SELINUX=enforcing\ngrep -o 'selinux=0\\|enforcing=0' /proc/cmdline\n# (aucune sortie attendue)\n```"
+  },
+  "logs": {
+    "en": "Every access a policy refuses is written to `/var/log/audit/audit.log` as an `AVC` record (`type=AVC ... denied { ... } scontext=... tcontext=...`); with auditd stopped, the same lines land in the kernel log (`journalctl -k`, `dmesg`). Grep the raw audit log for `avc:` rather than relying on `ausearch`, which is known to return false \"no matches\". In `permissive` mode those very same AVC records are produced **without blocking anything**: that is how you inventory what enforcing will break, and what `audit2why` / `audit2allow` consume to explain a denial or propose a policy module.",
+    "fr": "Chaque accès refusé par la politique est écrit dans `/var/log/audit/audit.log` sous forme d'enregistrement `AVC` (`type=AVC ... denied { ... } scontext=... tcontext=...`) ; si auditd est arrêté, les mêmes lignes partent dans le journal du noyau (`journalctl -k`, `dmesg`). Cherchez `avc:` directement dans le fichier d'audit brut plutôt que de vous fier à `ausearch`, connu pour renvoyer de faux « aucun résultat ». En mode `permissive`, ces mêmes enregistrements AVC sont produits **sans rien bloquer** : c'est ainsi que l'on inventorie ce que le mode enforcing cassera, et c'est ce que consomment `audit2why` / `audit2allow` pour expliquer un refus ou proposer un module de politique."
+  },
+  "remediation_note": {
+    "en": "The Pavois plan persists the mode first, then raises the live state, and it deliberately refuses the dangerous shortcut. It rewrites `/etc/selinux/config` to `SELINUX=enforcing` / `SELINUXTYPE=targeted`, then runs `setenforce 1` **only if the current state is `Permissive`**. If SELinux booted `Disabled`, Pavois never calls `setenforce` (the command errors out, and switching an unlabelled filesystem straight to enforcing can lock everyone out): it creates `/.autorelabel` instead, so the **next reboot** relabels the whole filesystem and brings the host up enforcing. That reboot remains the administrator's decision. Every step is gated on `/etc/selinux/config` existing, so the whole block is a no-op on Debian and Ubuntu.",
+    "fr": "Le plan Pavois persiste d'abord le mode, relève ensuite l'état en cours, et refuse délibérément le raccourci dangereux. Il réécrit `/etc/selinux/config` en `SELINUX=enforcing` / `SELINUXTYPE=targeted`, puis exécute `setenforce 1` **seulement si l'état courant est `Permissive`**. Si SELinux a démarré en `Disabled`, Pavois n'appelle jamais `setenforce` (la commande échoue, et basculer d'un coup en enforcing un système de fichiers non étiqueté peut enfermer tout le monde dehors) : il crée `/.autorelabel` à la place, afin que le **prochain redémarrage** réétiquette l'ensemble du système de fichiers et relance l'hôte en enforcing. Ce redémarrage reste la décision de l'administrateur. Chaque étape est conditionnée à l'existence de `/etc/selinux/config` : le bloc est donc sans effet sur Debian et Ubuntu."
+  },
+  "impact": {
+    "en": "**Enforcing on a system that has never been labelled can prevent it from booting.** When SELinux has run `Disabled`, files created since then carry no security context: switching to enforcing without a **full filesystem relabel** leaves init unable to transition domains, and services (starting with `sshd` and the login stack) get denied. That is why Pavois schedules `/.autorelabel` instead of forcing the state. Before applying:\n\n- **From `Disabled`**: expect the relabel plus a reboot, and expect it to take time (minutes, much longer on a large filesystem, with the machine unavailable meanwhile). Have console access; never rely on SSH alone.\n- **From `Permissive`**: this is the safe path, but only once the denial backlog is empty. Inventory the AVC records in `/var/log/audit/audit.log` and fix their causes (a wrong label on a non-standard data directory, a service listening on a non-standard port that needs `semanage port`, a boolean to flip) **before** enforcing. Anything still denied in the log will break the moment enforcing kicks in.\n- Check the kernel command line: a leftover `selinux=0` or `enforcing=0` silently defeats the change at the next boot.",
+    "fr": "**Passer en enforcing sur un système qui n'a jamais été étiqueté peut l'empêcher de démarrer.** Quand SELinux a tourné en `Disabled`, les fichiers créés depuis ne portent aucun contexte de sécurité : basculer en enforcing sans **réétiquetage complet du système de fichiers** empêche init de changer de domaine, et les services (à commencer par `sshd` et la pile d'authentification) sont refusés. C'est pourquoi Pavois programme `/.autorelabel` plutôt que de forcer l'état. Avant d'appliquer :\n\n- **Depuis `Disabled`** : prévoyez le réétiquetage puis un redémarrage, et prévoyez du temps (quelques minutes, bien davantage sur un gros système de fichiers, la machine étant indisponible pendant l'opération). Disposez d'un accès console, ne comptez jamais sur le seul SSH.\n- **Depuis `Permissive`** : c'est le chemin sûr, mais seulement une fois la file des refus vidée. Inventoriez les enregistrements AVC de `/var/log/audit/audit.log` et corrigez leurs causes (mauvaise étiquette sur un répertoire de données non standard, service en écoute sur un port non standard qui réclame `semanage port`, booléen à basculer) **avant** de passer en enforcing. Tout ce qui reste refusé dans le journal cassera à l'instant où le mode enforcing prendra effet.\n- Vérifiez la ligne de commande du noyau : un `selinux=0` ou `enforcing=0` oublié annule silencieusement le changement au prochain démarrage."
+  },
+  "datePublished": "2026-07-14",
+  "dateModified": "2026-07-14"
 }
