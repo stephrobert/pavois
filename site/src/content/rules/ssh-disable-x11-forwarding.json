@@ -40,17 +40,32 @@
   },
   "title": {
     "en": "Disable SSH X11 Forwarding",
-    "fr": "Disable SSH X11 Forwarding"
+    "fr": "Désactiver le transfert X11 dans SSH"
   },
-  "needs_translation": [
-    "title.fr"
-  ],
-  "needs_authoring": [
-    "summary",
-    "check_note",
-    "verify",
-    "logs",
-    "remediation_note",
-    "impact"
-  ]
+  "summary": {
+    "en": "Forbid the SSH server from tunnelling graphical sessions back to the client (`X11Forwarding no`). The X11 protocol has no isolation between clients: a compromised server that receives a forwarded display can read the user's keystrokes and screen contents on their workstation.",
+    "fr": "Interdit au serveur SSH de tunneliser des sessions graphiques vers le client (`X11Forwarding no`). Le protocole X11 n'isole pas ses clients entre eux : un serveur compromis qui reçoit un affichage transféré peut lire les frappes clavier et le contenu de l'écran de l'utilisateur sur son poste de travail."
+  },
+  "check_note": {
+    "en": "Pavois runs `sshd -T` and requires the resolved line `x11forwarding no`. `sshd -T` prints the configuration the daemon really applies, after all `Include` directives and every drop-in in `/etc/ssh/sshd_config.d/`. This matters here because distributions and desktop packages routinely ship drop-ins that set `X11Forwarding yes`: grepping `/etc/ssh/sshd_config` alone would report a compliant host while the daemon is forwarding X11.",
+    "fr": "Pavois exécute `sshd -T` et exige la ligne résolue `x11forwarding no`. `sshd -T` affiche la configuration réellement appliquée par le démon, après toutes les directives `Include` et tous les drop-ins de `/etc/ssh/sshd_config.d/`. Le point est important ici, car distributions et paquets de bureau livrent couramment des drop-ins positionnant `X11Forwarding yes` : ne scruter que `/etc/ssh/sshd_config` déclarerait l'hôte conforme alors que le démon transfère bel et bien X11."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -i x11forwarding` as root. Expected output:\n\n```\nx11forwarding no\n```\n\nEnd to end: `ssh -X user@host 'echo $DISPLAY'` must print an empty line, and the client displays `X11 forwarding request failed on channel 0`.",
+    "fr": "Exécutez `sshd -T | grep -i x11forwarding` en root. Sortie attendue :\n\n```\nx11forwarding no\n```\n\nDe bout en bout : `ssh -X user@hote 'echo $DISPLAY'` doit afficher une ligne vide, et le client signale `X11 forwarding request failed on channel 0`."
+  },
+  "logs": {
+    "en": "At the default `LogLevel INFO`, a refused X11 request is **not** logged. Raise the daemon to `LogLevel VERBOSE` and sshd records, in `/var/log/auth.log` (Debian/Ubuntu), `/var/log/secure` (RHEL) or `journalctl -u ssh`:\n\n```\nsshd[1234]: X11 forwarding disabled in server configuration file.\n```\n\nThat line is the cheapest way to inventory the users and jobs still asking for a display before enforcing the rule fleet-wide.",
+    "fr": "Au niveau par défaut `LogLevel INFO`, une demande X11 refusée n'est **pas** journalisée. Passez le démon en `LogLevel VERBOSE` et sshd consigne, dans `/var/log/auth.log` (Debian/Ubuntu), `/var/log/secure` (RHEL) ou `journalctl -u ssh` :\n\n```\nsshd[1234]: X11 forwarding disabled in server configuration file.\n```\n\nCette ligne est le moyen le plus simple de recenser les utilisateurs et les traitements qui réclament encore un affichage avant d'appliquer la règle à tout le parc."
+  },
+  "remediation_note": {
+    "en": "The Pavois harden plan uses the `sshd_setting` resource to force the directive `x11forwarding` to `no` in the Pavois drop-in under `/etc/ssh/sshd_config.d/`. Because the drop-in is read after the distribution's own files, it wins over a packaged `X11Forwarding yes`. The file is validated with `sshd -t -f <file>`, then a change notifies a **reload** of `ssh.service`.",
+    "fr": "Le plan de durcissement Pavois utilise la ressource `sshd_setting` pour forcer la directive `x11forwarding` à `no` dans le drop-in Pavois sous `/etc/ssh/sshd_config.d/`. Comme ce drop-in est lu après les fichiers de la distribution, il l'emporte sur un `X11Forwarding yes` livré par un paquet. Le fichier est validé par `sshd -t -f <fichier>`, puis tout changement déclenche un **reload** de `ssh.service`."
+  },
+  "impact": {
+    "en": "With X11 forwarding on, any root-level compromise of the server gives access to the forwarded `$DISPLAY` of every connected user: keylogging and screen capture on their workstation, plus the extra listening socket sshd opens for the proxy display. **Before applying**, check for admins who launch graphical tools over SSH (`virt-manager`, `xclock`, installers, vendor consoles) and for scripts that assume `$DISPLAY` is set; the supported replacements are a local client, a web console, or an explicit, per-host exception. The reload does not break running sessions: only new ones lose the display.",
+    "fr": "Avec le transfert X11 actif, toute compromission root du serveur donne accès au `$DISPLAY` transféré de chaque utilisateur connecté : enregistrement des frappes et capture d'écran sur son poste, sans compter la socket d'écoute supplémentaire que sshd ouvre pour l'affichage mandataire. **Avant d'appliquer**, vérifiez qu'aucun administrateur ne lance d'outil graphique via SSH (`virt-manager`, `xclock`, installateurs, consoles constructeur) et qu'aucun script ne suppose `$DISPLAY` défini ; les solutions de repli sont un client local, une console web, ou une exception explicite par hôte. Le reload ne casse pas les sessions en cours : seules les nouvelles perdent l'affichage."
+  },
+  "datePublished": "2026-07-14",
+  "dateModified": "2026-07-14"
 }

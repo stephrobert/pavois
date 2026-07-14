@@ -38,7 +38,6 @@
     "en": "Poison kernel stack before returning from syscalls",
     "fr": "Effacer la pile noyau avant le retour des appels système"
   },
-  "needs_translation": [],
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_GCC_PLUGIN_STACKLEAK=y`, a GCC plugin that erases (poisons) the kernel stack on return from each syscall.",
     "fr": "Exige que le noyau soit compilé avec `CONFIG_GCC_PLUGIN_STACKLEAK=y`, un plugin GCC qui efface (empoisonne) la pile noyau au retour de chaque appel système."
@@ -66,5 +65,7 @@
   "impact": {
     "en": "When a syscall returns, the kernel stack it used still holds **leftover data**, pointers, secrets, canaries. A later syscall whose code reads an **uninitialized local variable** can disclose that stale data to userspace (an info leak that defeats ASLR/KASLR) or be steered to use attacker-influenced leftovers. The STACKLEAK plugin overwrites the used portion of the stack with a poison value before returning to userspace, eliminating both the info-leak and the stale-data reuse class. It also detects stack-depth overflows. Without it, uninitialized-stack-variable attacks remain viable. This is a **build-time** option needing GCC plugin support, set only by booting a kernel compiled with it. **Precautions:** there is a runtime cost proportional to stack depth (usually a few percent); switching to a hardened kernel changes module ABI, so validate driver loading and benchmark latency-sensitive workloads off production. No reboot risk beyond a normal kernel swap.",
     "fr": "Lorsqu'un appel système retourne, la pile noyau qu'il a utilisée contient encore des **données résiduelles**, pointeurs, secrets, canaris. Un appel système ultérieur dont le code lit une **variable locale non initialisée** peut divulguer ces données périmées vers l'espace utilisateur (une fuite d'information qui défait l'ASLR/KASLR) ou être orienté pour réutiliser des restes influencés par l'attaquant. Le plugin STACKLEAK écrase la portion utilisée de la pile avec une valeur d'empoisonnement avant de revenir en espace utilisateur, éliminant à la fois la fuite d'information et la réutilisation de données périmées. Il détecte aussi les débordements de profondeur de pile. Sans lui, les attaques par variables de pile non initialisées restent viables. C'est une option **à la compilation** nécessitant le support des plugins GCC, posée uniquement en démarrant un noyau compilé avec. **Précautions :** il y a un coût à l'exécution proportionnel à la profondeur de pile (généralement quelques pour cent) ; passer à un noyau durci change l'ABI des modules, donc vérifiez le chargement des pilotes et mesurez les charges sensibles à la latence hors production. Aucun risque de redémarrage au-delà d'un échange de noyau classique."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

@@ -36,17 +36,32 @@
   },
   "title": {
     "en": "Disable Postfix SMTP VRFY Command",
-    "fr": "Disable Postfix SMTP VRFY Command"
+    "fr": "Désactiver la commande SMTP VRFY de Postfix"
   },
-  "needs_translation": [
-    "title.fr"
-  ],
-  "needs_authoring": [
-    "summary",
-    "check_note",
-    "verify",
-    "logs",
-    "remediation_note",
-    "impact"
-  ]
+  "summary": {
+    "en": "Set `disable_vrfy_command = yes` so the Postfix SMTP server refuses the `VRFY` verb. `VRFY` asks the server whether a mailbox exists, and the server answers truthfully, which turns any reachable MTA into a free **user-enumeration oracle**: an attacker harvests valid local accounts one probe at a time, then feeds them to a password-spraying or phishing campaign.",
+    "fr": "Positionne `disable_vrfy_command = yes` pour que le serveur SMTP Postfix refuse le verbe `VRFY`. `VRFY` demande au serveur si une boîte aux lettres existe, et le serveur répond honnêtement, ce qui transforme tout MTA joignable en **oracle d'énumération d'utilisateurs** gratuit : un attaquant moissonne les comptes locaux valides sonde par sonde, puis les alimente dans une campagne de pulvérisation de mots de passe ou d'hameçonnage."
+  },
+  "check_note": {
+    "en": "Pavois queries the **effective** parameter with `postconf -h disable_vrfy_command`, which prints the value Postfix will actually use, after `main.cf` **and** the built-in defaults (the default is `no`, so a `main.cf` that simply omits the parameter is exposed). Grepping `/etc/postfix/main.cf` would make a missing line look inconclusive instead of the non-compliance it really is. When `postconf` is absent (Postfix not installed) the control returns `ok`: an MTA that does not exist cannot leak.",
+    "fr": "Pavois interroge le paramètre **effectif** avec `postconf -h disable_vrfy_command`, qui affiche la valeur que Postfix utilisera réellement, après `main.cf` **et** les valeurs par défaut intégrées (le défaut est `no`, donc un `main.cf` qui omet simplement le paramètre est exposé). Lire `/etc/postfix/main.cf` au grep rendrait une ligne absente indécidable au lieu de la non-conformité qu'elle est. Quand `postconf` est absent (Postfix non installé), le contrôle renvoie `ok` : un MTA inexistant ne peut rien divulguer."
+  },
+  "verify": {
+    "en": "Read the resolved value, then prove it on the wire:\n\n```\npostconf -h disable_vrfy_command      # must print: yes\nprintf 'VRFY root\\r\\nQUIT\\r\\n' | nc localhost 25\n```\n\nA hardened server answers `502 5.5.1 VRFY command is disabled`. Without the setting it answers `252` or `250`, confirming the account exists.",
+    "fr": "Lisez la valeur résolue, puis prouvez-la sur le fil :\n\n```\npostconf -h disable_vrfy_command      # doit afficher : yes\nprintf 'VRFY root\\r\\nQUIT\\r\\n' | nc localhost 25\n```\n\nUn serveur durci répond `502 5.5.1 VRFY command is disabled`. Sans le réglage, il répond `252` ou `250`, ce qui confirme l'existence du compte."
+  },
+  "logs": {
+    "en": "Postfix logs SMTP sessions to `/var/log/mail.log` (Debian, Ubuntu) or `/var/log/maillog` (RHEL), also reachable via `journalctl -u postfix`. Once the command is disabled, enumeration attempts leave a visible trail of rejected `VRFY` verbs from a single source: that pattern is worth an alert, because a probe that keeps trying is reconnaissance, not a misconfigured client.",
+    "fr": "Postfix journalise les sessions SMTP dans `/var/log/mail.log` (Debian, Ubuntu) ou `/var/log/maillog` (RHEL), également accessibles via `journalctl -u postfix`. Une fois la commande désactivée, les tentatives d'énumération laissent une trace visible de verbes `VRFY` rejetés depuis une même source : ce motif mérite une alerte, car une sonde qui insiste relève de la reconnaissance, pas d'un client mal configuré."
+  },
+  "remediation_note": {
+    "en": "Pavois runs the `postfix-anti-vrfy` step: it calls `postconf -e 'disable_vrfy_command = yes'` (the supported way to edit `main.cf`, rewriting the parameter in place), falls back to a de-duplicating `sed` plus append when `postconf` is unavailable, then reloads Postfix. A `not_if` guard skips the step when `main.cf` already carries the setting, keeping `confkit harden apply` idempotent.",
+    "fr": "Pavois exécute l'étape `postfix-anti-vrfy` : elle appelle `postconf -e 'disable_vrfy_command = yes'` (la manière supportée d'éditer `main.cf`, qui réécrit le paramètre sur place), retombe sur un `sed` de dédoublonnage suivi d'un ajout si `postconf` est indisponible, puis recharge Postfix. Une garde `not_if` saute l'étape quand `main.cf` porte déjà le réglage, ce qui garde `confkit harden apply` idempotent."
+  },
+  "impact": {
+    "en": "No effect on mail delivery: `VRFY` is a diagnostic verb, outside the message path, and modern clients never use it. The only things that break are the rare monitoring probes or address-validation scripts that still call `VRFY`; migrate them to a `RCPT TO` against a test recipient, or to a local `postmap -q` lookup. The remediation reloads Postfix rather than restarting it, so the mail queue is untouched.",
+    "fr": "Aucun effet sur l'acheminement du courrier : `VRFY` est un verbe de diagnostic, hors du chemin des messages, et les clients modernes ne l'utilisent jamais. Les seules casses possibles concernent les rares sondes de supervision ou scripts de validation d'adresses qui appellent encore `VRFY` ; migrez-les vers un `RCPT TO` sur un destinataire de test, ou vers une consultation locale `postmap -q`. La remédiation recharge Postfix au lieu de le redémarrer : la file d'attente n'est pas affectée."
+  },
+  "datePublished": "2026-07-14",
+  "dateModified": "2026-07-14"
 }

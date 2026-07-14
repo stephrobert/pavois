@@ -44,19 +44,34 @@
     "en": "Ensure Sudo Logfile Exists - sudo logfile",
     "fr": "Vérifier l'existence d'un fichier de journal sudo dédié"
   },
-  "needs_translation": [
-    "rationale.fr"
-  ],
+  "summary": {
+    "en": "Declare a dedicated sudo log file (`Defaults logfile=\"/var/log/sudo.log\"`) so that every privileged command is written to a file of its own, independent of syslog. Without it, the sudo trail is just one stream among many inside `auth.log` or `secure`, easily drowned in noise or carried away by that stream's rotation.",
+    "fr": "Déclare un fichier de journal dédié à sudo (`Defaults logfile=\"/var/log/sudo.log\"`) afin que chaque commande privilégiée soit écrite dans un fichier qui lui est propre, indépendant de syslog. Sans cela, la trace de sudo n'est qu'un flux parmi d'autres dans `auth.log` ou `secure`, facilement noyé dans le bruit ou emporté par la rotation de ce flux."
+  },
   "rationale": {
     "en": "A sudo log file simplifies auditing of sudo commands.",
-    "fr": "A sudo log file simplifies auditing of sudo commands."
+    "fr": "Un fichier de journal dédié à sudo simplifie l'audit des commandes exécutées avec des privilèges."
   },
-  "needs_authoring": [
-    "summary",
-    "check_note",
-    "verify",
-    "logs",
-    "remediation_note",
-    "impact"
-  ]
+  "check_note": {
+    "en": "Pavois runs `grep -rqE '^[^#]*Defaults[^#]*\\blogfile\\b' /etc/sudoers /etc/sudoers.d/` and expects `ok`. The grep is **recursive over the drop-in directory**, so a `Defaults logfile` placed in any file pulled in by `@includedir /etc/sudoers.d` counts, exactly as sudo itself would read it, and the `^[^#]*` anchor rejects commented-out lines. Unlike SSH, sudo offers no unprivileged equivalent of `sshd -T`: the policy is re-parsed at every invocation, which is why this control is typed `persistent-config` and not `effective-runtime`.",
+    "fr": "Pavois exécute `grep -rqE '^[^#]*Defaults[^#]*\\blogfile\\b' /etc/sudoers /etc/sudoers.d/` et attend `ok`. Le grep est **récursif sur le répertoire de drop-ins** : un `Defaults logfile` posé dans n'importe quel fichier tiré par `@includedir /etc/sudoers.d` est donc pris en compte, exactement comme sudo le lirait, et l'ancrage `^[^#]*` écarte les lignes commentées. Contrairement à SSH, sudo n'offre aucun équivalent non privilégié de `sshd -T` : la politique est réanalysée à chaque invocation, d'où le type `persistent-config` de ce contrôle plutôt que `effective-runtime`."
+  },
+  "verify": {
+    "en": "Run `sudo grep -rE '^[^#]*Defaults.*logfile' /etc/sudoers /etc/sudoers.d/`. Expected output:\n\n```\n/etc/sudoers.d/99-pavois-logfile:Defaults logfile=\"/var/log/sudo.log\"\n```\n\nThen prove it end to end: run any `sudo` command and read the last entry with `sudo tail -1 /var/log/sudo.log`. Confirm the whole sudoers set still parses with `sudo visudo -c`.",
+    "fr": "Exécutez `sudo grep -rE '^[^#]*Defaults.*logfile' /etc/sudoers /etc/sudoers.d/`. Sortie attendue :\n\n```\n/etc/sudoers.d/99-pavois-logfile:Defaults logfile=\"/var/log/sudo.log\"\n```\n\nPuis prouvez-le de bout en bout : lancez n'importe quelle commande `sudo` et lisez la dernière entrée avec `sudo tail -1 /var/log/sudo.log`. Vérifiez que l'ensemble sudoers reste analysable avec `sudo visudo -c`."
+  },
+  "logs": {
+    "en": "Once the rule is applied, every sudo invocation lands in `/var/log/sudo.log`:\n\n```\nJul 14 10:12:03 : alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/systemctl restart nginx\n```\n\nThe `logfile` destination is **additive**: sudo keeps writing to syslog as well (`/var/log/auth.log` on Debian/Ubuntu, `/var/log/secure` on RHEL, `journalctl -t sudo`), so an existing syslog-based collection pipeline is not disturbed.",
+    "fr": "Une fois la règle appliquée, chaque invocation de sudo aboutit dans `/var/log/sudo.log` :\n\n```\nJul 14 10:12:03 : alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/systemctl restart nginx\n```\n\nLa destination `logfile` s'**ajoute** aux autres : sudo continue d'écrire vers syslog (`/var/log/auth.log` sur Debian/Ubuntu, `/var/log/secure` sur RHEL, `journalctl -t sudo`), une chaîne de collecte fondée sur syslog n'est donc pas perturbée."
+  },
+  "remediation_note": {
+    "en": "The Pavois harden plan uses the `file` resource to create `/etc/sudoers.d/99-pavois-logfile`, owned `root:root`, mode `0440`, holding the single line `Defaults logfile=\"/var/log/sudo.log\"`. The file is validated with `visudo -cf <file>` before it is kept, so a syntax error can never reach the live sudoers set. There is no service to reload: sudo re-reads its policy at the next invocation and creates the log file on first use.",
+    "fr": "Le plan de durcissement Pavois utilise la ressource `file` pour créer `/etc/sudoers.d/99-pavois-logfile`, appartenant à `root:root`, en mode `0440`, contenant l'unique ligne `Defaults logfile=\"/var/log/sudo.log\"`. Le fichier est validé par `visudo -cf <fichier>` avant d'être conservé : une erreur de syntaxe ne peut donc jamais atteindre l'ensemble sudoers actif. Aucun service à recharger : sudo relit sa politique à l'invocation suivante et crée le fichier de journal dès son premier usage."
+  },
+  "impact": {
+    "en": "Without a dedicated file, the record of who ran what as root exists only inside the general authentication stream, where it competes with SSH and PAM noise and inherits that stream's retention. Two precautions when applying. First, **any malformed file in `/etc/sudoers.d/` breaks sudo for everyone**, which is why the plan gates the write behind `visudo -cf` and sets mode `0440` (sudo ignores files writable by group or others); keep a root session open while sudoers changes. Second, `/var/log/sudo.log` is **not covered by any default logrotate rule**: on a busy host it grows without bound, so add a logrotate snippet for it and treat its retention as audit data, since it holds the privileged-command history.",
+    "fr": "Sans fichier dédié, la trace de qui a exécuté quoi en root n'existe que dans le flux d'authentification général, où elle rivalise avec le bruit de SSH et de PAM et hérite de la rétention de ce flux. Deux précautions à l'application. D'abord, **tout fichier mal formé dans `/etc/sudoers.d/` casse sudo pour tout le monde** : c'est pourquoi le plan conditionne l'écriture à `visudo -cf` et pose le mode `0440` (sudo ignore les fichiers accessibles en écriture au groupe ou à tous) ; gardez une session root ouverte pendant la modification de sudoers. Ensuite, `/var/log/sudo.log` n'est **couvert par aucune règle logrotate par défaut** : sur un hôte chargé, il croît sans borne. Ajoutez-lui un fichier logrotate et traitez sa rétention comme une donnée d'audit, puisqu'il contient l'historique des commandes privilégiées."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }
