@@ -17,6 +17,10 @@ const sections = [
   { slug: 'build', en: 'Build from source', fr: 'Construire depuis les sources' },
   { slug: 'scan', en: 'First scan', fr: 'Premier scan' },
   { slug: 'harden', en: 'Harden, then prove', fr: 'Durcir, puis prouver' },
+  { slug: 'converge', en: '4. Converge (an apply is not enough)', fr: '4. Converger (un apply ne suffit pas)' },
+  { slug: 'limits', en: '5. What an apply cannot close', fr: '5. Ce qu’un apply ne peut pas fermer' },
+  { slug: 'survive', en: '6. Prove the host survived', fr: '6. Prouver que l’hôte a survécu' },
+  { slug: 'ci', en: '7. In CI', fr: '7. En CI' },
   { slug: 'takeaways', en: 'Key takeaways', fr: 'À retenir' },
   { slug: 'next', en: 'Next steps', fr: 'Prochaines étapes' },
 ];
@@ -128,11 +132,99 @@ ready - try:  pavois scan local --sudo
       <a href={`/${lang}/handbook/qualified-verdict/`}>{fr ? 'Voir le verdict qualifié.' : 'See the qualified verdict.'}</a>
     </p>
 
+
+    <h2 id="converge">{fr ? '4. Converger (un apply ne suffit pas)' : '4. Converge (an apply is not enough)'}</h2>
+    <p>
+      {fr
+        ? 'Un plan est un instantané de l’état AVANT durcissement, or le durcissement change cet état. Pavois installe les paquets qu’un contrôle exige pour avoir un sens, et un paquet apporte ses propres fichiers : installer '
+        : 'A plan is a snapshot of the state BEFORE hardening, and hardening changes that state. Pavois installs the packages a control needs to be meaningful, and a package brings its own files with it: installing '}
+      <code>at</code>
+      {fr
+        ? ' crée /etc/at.deny, qu’un autre contrôle exige absent. Il était absent quand le plan a été écrit : rien ne l’a supprimé. Un apply en une passe ne peut donc pas fermer les trous qu’il crée lui-même.'
+        : ' creates /etc/at.deny, which another control requires to be absent. It was absent when the plan was written, so nothing ever deleted it. A single-pass apply therefore cannot close the gaps it creates itself.'}
+    </p>
+    <p>{fr ? 'La boucle : re-scanner, re-planifier, ré-appliquer, jusqu’à ce qu’une passe n’ait plus rien à faire.' : 'The loop: re-scan, re-plan, re-apply, until a pass has nothing left to do.'}</p>
+    <Fragment set:html={highlight(`# ${fr ? 'jusqu’au point fixe (2 a 3 passes en pratique)' : 'until the fixpoint (2 to 3 passes in practice)'}
+./go/pavois scan user@host --key ~/.ssh/id_ed25519 --sudo
+./go/pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo --from reports/<last>.json
+./go/pavois harden apply --target user@host --key ~/.ssh/id_ed25519 --sudo-prompt plan.yml`, 'bash')} />
+    <p class="muted">
+      {fr
+        ? 'Attention aux contrôles qui se contredisent : un paquet installé par l’un peut être retiré par l’autre. Corrige la paire avant de boucler, sinon la boucle oscille.'
+        : 'Watch for controls that contradict each other: a package one installs, another removes. Fix the pair before looping, or the loop oscillates.'}
+    </p>
+
+    <h2 id="limits">{fr ? '5. Ce qu’un apply ne peut pas fermer' : '5. What an apply cannot close'}</h2>
+    <p>{fr ? 'Chaque règle porte une classe de remédiation. Trois d’entre elles ne se règlent pas par un apply :' : 'Every rule carries a remediation class. Three of them are not something an apply can close:'}</p>
+    <ul>
+      <li>
+        <b>install-time</b>
+        {fr
+          ? ' : un système de fichiers séparé (/var, /var/log, /tmp) se décide à l’installation. Pavois livre une recette de partitionnement LVM, pas un tour de passe-passe.'
+          : ': a separate filesystem (/var, /var/log, /tmp) is decided at install time. Pavois ships an LVM partition recipe, not a sleight of hand.'}
+      </li>
+      <li>
+        <b>kernel-build</b>
+        {fr
+          ? ' : une option KSPP absente du noyau de la distribution exige un noyau recompilé. Pavois livre la recette de build.'
+          : ': a KSPP option missing from the distribution kernel requires a rebuilt kernel. Pavois ships the build recipe.'}
+      </li>
+      <li>
+        <b>dangerous</b>
+        {fr
+          ? ' : un mot de passe GRUB, un pare-feu en deny par défaut, kernel.modules_disabled. Ces règles peuvent te verrouiller dehors : elles exigent un acquittement explicite dans le plan et ne s’appliquent jamais toutes seules.'
+          : ': a GRUB password, a default-deny firewall, kernel.modules_disabled. These can lock you out: they require an explicit acknowledgement in the plan and never apply on their own.'}
+      </li>
+    </ul>
+    <p>
+      {fr
+        ? 'C’est pourquoi le rapport affiche DEUX notes : la note brute, et la '
+        : 'That is why the report prints TWO grades: the raw grade, and the '}
+      <b>{fr ? 'posture remédiable' : 'remediable posture'}</b>
+      {fr
+        ? ' (ce que pavois peut atteindre par lui-même, hors install-time et kernel-build). Sur une debian 12 sortie d’une image cloud, la campagne complète donne note B, remédiable A, indice lynis 89.'
+        : ' (what pavois can reach on its own, excluding install-time and kernel-build). On a debian 12 straight out of a cloud image, the full campaign lands at grade B, remediable A, lynis index 89.'}
+    </p>
+
+    <h2 id="survive">{fr ? '6. Prouver que l’hôte a survécu' : '6. Prove the host survived'}</h2>
+    <p>
+      {fr
+        ? 'Une machine durcie qui a perdu une fonction vitale est un échec, pas une note. Après un apply, vérifie que le pare-feu tourne, que sshd répond, que le gestionnaire de paquets est sain et que la machine journalise encore. Un hôte peut afficher 560 contrôles au vert et n’écrire plus une ligne dans /var/log/syslog.'
+        : 'A hardened host that lost a vital function is a failure, not a grade. After an apply, check that the firewall is up, sshd answers, the package manager is healthy and the machine still logs. A host can show 560 green controls and no longer write a single line to /var/log/syslog.'}
+    </p>
+    <Fragment set:html={highlight(`# ${fr ? 'redemarre, re-scanne : un PASS apres reboot est reboot-proven' : 'reboot, re-scan: a PASS after reboot is reboot-proven'}
+./go/pavois harden apply --target user@host --key ~/.ssh/id_ed25519 --sudo-prompt --reboot --scan plan.yml
+
+# ${fr ? 'validation comportementale : tenter l’action interdite' : 'behavioural validation: attempt the forbidden action'}
+./go/pavois verify user@host --key ~/.ssh/id_ed25519`, 'bash')} />
+    <p>
+      <code>pavois verify</code>
+      {fr
+        ? ' ne lit pas la configuration : il tente la connexion root en SSH, et confirme qu’elle est refusée. C’est la seule preuve qui ne dépend d’aucune interprétation.'
+        : ' does not read the configuration: it attempts the root SSH login and confirms it is refused. That is the one proof that depends on nobody\'s interpretation.'}
+    </p>
+
+    <h2 id="ci">{fr ? '7. En CI' : '7. In CI'}</h2>
+    <p>{fr ? 'Le code de sortie porte le verdict, et le format de sortie s’adapte à ton outillage :' : 'The exit code carries the verdict, and the output format fits your tooling:'}</p>
+    <Fragment set:html={highlight(`# ${fr ? 'echoue la CI sous 80/100 ; SARIF pour GitHub code scanning' : 'fail the build under 80/100; SARIF for GitHub code scanning'}
+./go/pavois scan user@host --key ~/.ssh/id --sudo --fail-under 80 --format sarif --out ./out
+
+# ${fr ? 'un paquet de preuve horodate, avec manifeste et empreintes' : 'a timestamped evidence package, with a manifest and checksums'}
+./go/pavois bundle before.json after.json --plan plan.yml --out evidence/`, 'bash')} />
+    <p class="muted">
+      {fr
+        ? 'Codes de sortie : 0 conforme, 1 sous le seuil, 2 erreur technique. Formats : table, json, sarif, junit, csv, html.'
+        : 'Exit codes: 0 compliant, 1 below the threshold, 2 technical error. Formats: table, json, sarif, junit, csv, html.'}
+    </p>
+
     <h2 id="takeaways">{fr ? 'À retenir' : 'Key takeaways'}</h2>
     <ul>
       <li>{fr ? 'Trois commandes : ' : 'Three commands: '}<code>build</code>, <code>scan</code>, <code>harden</code>.</li>
       <li>{fr ? 'Pas d’agent : Pavois utilise ton ~/.ssh/config et ton sudo, comme oscap/lynis.' : 'No agent: Pavois uses your ~/.ssh/config and your sudo, like oscap/lynis.'}</li>
       <li>{fr ? 'Un A net exige une posture reboot-proof, pas seulement active.' : 'A clean A requires a reboot-proof posture, not just a live one.'}</li>
+      <li>{fr ? 'Un apply ne suffit pas : le durcissement modifie l’état sur lequel le plan a été calculé. Converge jusqu’au point fixe.' : 'One apply is not enough: hardening changes the very state the plan was computed from. Converge to a fixpoint.'}</li>
+      <li>{fr ? 'Partitions et noyau ne se corrigent pas à chaud : ce sont des recettes, et la note remédiable dit ce que pavois peut atteindre sans elles.' : 'Partitions and the kernel are not fixable in place: they are recipes, and the remediable grade says what pavois can reach without them.'}</li>
+      <li>{fr ? 'Vérifie toujours qu’un hôte durci fonctionne encore : pare-feu, sshd, gestionnaire de paquets, journalisation.' : 'Always check a hardened host still works: firewall, sshd, package manager, logging.'}</li>
     </ul>
 
     <h2 id="next">{fr ? 'Prochaines étapes' : 'Next steps'}</h2>
