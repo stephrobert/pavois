@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -30,19 +32,23 @@
     "  it { should be_mounted }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# /srv should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /srv >/dev/null 2>&1 && echo '/srv is already a mount point' || echo '/srv is NOT separate'\n# Then: dedicate an LVM volume / disk to /srv and add it to /etc/fstab.\n",
+    "reason": "a separate /srv filesystem needs partitioning/LVM/tmpfs, not a safe runtime change",
+    "resource": "manual"
+  },
   "title": {
     "en": "Ensure /srv Located On Separate Partition",
     "fr": "S'assurer que /srv est sur une partition separee"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/srv` holds data served by the host (web roots, FTP, network shares). Mounting it on its own partition lets you apply restrictive options such as **`nodev`** and **`nosuid`**, and ensures that user- or service-generated content cannot trivially fill the root or log/audit filesystems and cause a denial of service.",
-    "fr": "`/srv` contient les donnees servies par l'hote (racines web, FTP, partages reseau). Le monter sur sa propre partition permet d'appliquer des options restrictives comme **`nodev`** et **`nosuid`**, et garantit que le contenu genere par les utilisateurs ou les services ne peut pas saturer trivialement le systeme de fichiers racine ou de logs/audit et provoquer un deni de service."
-  },
   "summary": {
     "en": "Verifies that **`/srv`** is mounted on its own partition so served data is isolated and restrictive mount options can apply.",
     "fr": "Verifie que **`/srv`** est monte sur sa propre partition afin d'isoler les donnees servies et d'appliquer des options de montage restrictives."
+  },
+  "rationale": {
+    "en": "`/srv` holds data served by the host (web roots, FTP, network shares). Mounting it on its own partition lets you apply restrictive options such as **`nodev`** and **`nosuid`**, and ensures that user- or service-generated content cannot trivially fill the root or log/audit filesystems and cause a denial of service.",
+    "fr": "`/srv` contient les donnees servies par l'hote (racines web, FTP, partages reseau). Le monter sur sa propre partition permet d'appliquer des options restrictives comme **`nodev`** et **`nosuid`**, et garantit que le contenu genere par les utilisateurs ou les services ne peut pas saturer trivialement le systeme de fichiers racine ou de logs/audit et provoquer un deni de service."
   },
   "check_note": {
     "en": "Pavois uses the InSpec `mount('/srv')` resource, reading the **effective** mount table (`/proc/self/mountinfo`) rather than `/etc/fstab`. It reports what the kernel has actually mounted, distinguishing a genuine separate mount from an fstab entry that never took effect.",

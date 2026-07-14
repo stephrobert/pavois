@@ -1,6 +1,7 @@
 {
   "id": "auditd-admin-space-left-percentage",
   "supported_os": [
+    "fedora",
     "rhel10",
     "rhel9"
   ],
@@ -14,23 +15,29 @@
   "reboot_survivable": "yes",
   "norms": {},
   "check": [
-    "describe command('v=$(grep -iE \\'^[[:space:]]*admin_space_left_percentage[[:space:]]*=\\' /etc/audit/auditd.conf 2>/dev/null | grep -oE \\'[0-9]+\\' | tail -1); { [ -n \"$v\" ] && [ \"$v\" -ge 5 ] && echo ok; } || echo ko') do",
+    "describe command('v=$(grep -iE \\'^[[:space:]]*admin_space_left[[:space:]]*=[[:space:]]*[0-9]+%\\' /etc/audit/auditd.conf 2>/dev/null | grep -oE \\'[0-9]+\\' | tail -1); { [ -n \"$v\" ] && [ \"$v\" -ge 5 ] && echo ok; } || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "file": "/etc/audit/auditd.conf",
+    "key": "admin_space_left",
+    "resource": "conf_line",
+    "service": "auditd",
+    "value": "5%"
+  },
   "title": {
     "en": "Configure auditd admin_space_left on Low Disk Space",
     "fr": "Configurer auditd admin_space_left_percentage en cas d'espace disque faible"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Notifying administrators of an impending disk space problem may allow them to take corrective action prior to any disruption.",
-    "fr": "Avertir les administrateurs d'un problème imminent d'espace disque leur permet de prendre des mesures correctives avant toute interruption."
-  },
   "summary": {
     "en": "Ensures `admin_space_left_percentage` in `/etc/audit/auditd.conf` is set to **at least 5 %**, defining the critical audit-disk threshold by percentage.",
     "fr": "Garantit que `admin_space_left_percentage` dans `/etc/audit/auditd.conf` est réglé à **au moins 5 %**, définissant en pourcentage le seuil critique d'espace disque d'audit."
+  },
+  "rationale": {
+    "en": "Notifying administrators of an impending disk space problem may allow them to take corrective action prior to any disruption.",
+    "fr": "Avertir les administrateurs d'un problème imminent d'espace disque leur permet de prendre des mesures correctives avant toute interruption."
   },
   "check_note": {
     "en": "Pavois reads the last `admin_space_left_percentage` value from `/etc/audit/auditd.conf` and expects a number **≥ 5**. Parsing the daemon's effective config (last value wins, as auditd does) reflects the real threshold rather than assuming a documented default.",

@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,9 +26,9 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "5.1.12",
       "5.1.10",
-      "8.3.1"
+      "8.3.1",
+      "5.1.12"
     ],
     "nist": [
       "3.1.12",
@@ -44,19 +45,27 @@
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "directive": "HostbasedAuthentication",
+    "notify": {
+      "action": "reload",
+      "service": "ssh.service"
+    },
+    "resource": "sshd_setting",
+    "value": "no"
+  },
   "title": {
     "en": "Disable Host-Based Authentication",
     "fr": "Désactiver l'authentification basée sur l'hôte"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Host-based authentication establishes trust relationships between machines, letting a user on a trusted host log in without per-user credentials. This means compromising one host lets an attacker move trivially to every host that trusts it, turning a single breach into lateral movement across the fleet. Disabling it forces real per-user authentication (keys, passwords) on every connection.",
-    "fr": "L'authentification basée sur l'hôte établit des relations de confiance entre machines, permettant à un utilisateur d'un hôte de confiance de se connecter sans identifiants par utilisateur. Ainsi, compromettre un hôte permet à un attaquant de se déplacer trivialement vers chaque hôte qui lui fait confiance, transformant une seule brèche en mouvement latéral sur tout le parc. La désactiver force une authentification réelle par utilisateur (clés, mots de passe) à chaque connexion."
-  },
   "summary": {
     "en": "Ensures SSH `HostbasedAuthentication` is set to **no** so clients cannot authenticate purely by virtue of their host identity.",
     "fr": "Garantit que `HostbasedAuthentication` SSH est réglé sur **no** afin que les clients ne puissent s'authentifier uniquement sur la base de l'identité de leur hôte."
+  },
+  "rationale": {
+    "en": "Host-based authentication establishes trust relationships between machines, letting a user on a trusted host log in without per-user credentials. This means compromising one host lets an attacker move trivially to every host that trusts it, turning a single breach into lateral movement across the fleet. Disabling it forces real per-user authentication (keys, passwords) on every connection.",
+    "fr": "L'authentification basée sur l'hôte établit des relations de confiance entre machines, permettant à un utilisateur d'un hôte de confiance de se connecter sans identifiants par utilisateur. Ainsi, compromettre un hôte permet à un attaquant de se déplacer trivialement vers chaque hôte qui lui fait confiance, transformant une seule brèche en mouvement latéral sur tout le parc. La désactiver force une authentification réelle par utilisateur (clés, mots de passe) à chaque connexion."
   },
   "check_note": {
     "en": "Pavois runs `sshd -T` and checks the effective `hostbasedauthentication no` line. `sshd -T` prints the fully resolved running configuration, including `Match` blocks, `Include`d files and drop-ins under `/etc/ssh/sshd_config.d/`, so Pavois reports what sshd actually enforces, not what a single `sshd_config` line might say while a drop-in overrides it.",

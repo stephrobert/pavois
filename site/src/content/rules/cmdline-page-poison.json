@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -30,6 +31,9 @@
   "check": [
     "describe command('cat /proc/cmdline') do",
     "  its('stdout') { should match(/(^| )page_poison=1( |$)/) }",
+    "end",
+    "describe command(\"grep -hwsF 'page_poison=1' /etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -42,13 +46,13 @@
     "fr": "Activer l'empoisonnement de l'allocateur de pages"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Page poisoning writes a known pattern into memory **pages as they are freed**, so any read or write to a page after it has been freed (or before it is re-initialized) is detected and prevented. This neutralizes large classes of **use-after-free** vulnerabilities at very low performance cost, and additionally **scrubs sensitive data** left in freed pages so it cannot leak to the next allocation.",
-    "fr": "L'empoisonnement de pages écrit un motif connu dans les **pages mémoire au moment de leur libération**, si bien que toute lecture ou écriture sur une page après sa libération (ou avant sa réinitialisation) est détectée et empêchée. Cela neutralise de larges classes de vulnérabilités **use-after-free** à très faible coût de performance, et **efface les données sensibles** restées dans les pages libérées afin qu'elles ne fuient pas vers l'allocation suivante."
-  },
   "summary": {
     "en": "Requires the **`page_poison=1`** kernel boot parameter so freed memory pages are overwritten with a poison pattern, catching use-after-free and scrubbing leftover data.",
     "fr": "Exige le paramètre de démarrage noyau **`page_poison=1`** afin que les pages mémoire libérées soient écrasées par un motif d'empoisonnement, détectant les use-after-free et effaçant les données résiduelles."
+  },
+  "rationale": {
+    "en": "Page poisoning writes a known pattern into memory **pages as they are freed**, so any read or write to a page after it has been freed (or before it is re-initialized) is detected and prevented. This neutralizes large classes of **use-after-free** vulnerabilities at very low performance cost, and additionally **scrubs sensitive data** left in freed pages so it cannot leak to the next allocation.",
+    "fr": "L'empoisonnement de pages écrit un motif connu dans les **pages mémoire au moment de leur libération**, si bien que toute lecture ou écriture sur une page après sa libération (ou avant sa réinitialisation) est détectée et empêchée. Cela neutralise de larges classes de vulnérabilités **use-after-free** à très faible coût de performance, et **efface les données sensibles** restées dans les pages libérées afin qu'elles ne fuient pas vers l'allocation suivante."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel command line** from `/proc/cmdline` and checks for `page_poison=1`. It reflects what the running kernel parsed, not `/etc/default/grub`, a file edit that was never turned into a rebuilt bootloader config would falsely pass a file-based scan while the mitigation is still inactive.",

@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,10 +27,10 @@
   "norms": {
     "bp28": "R73",
     "cis": [
-      "6.3.3.9",
       "10.3.4",
       "6.2.3.9",
-      "6.3.3.18"
+      "6.3.3.18",
+      "6.3.3.9"
     ],
     "nist": [
       "3.1.7",
@@ -50,6 +51,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)perm_mod\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'perm_mod' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -61,13 +65,13 @@
     "fr": "Journaliser les modifications des contrôles d'accès discrétionnaires (DAC) - chmod"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Changes to file permissions, ownership and ACLs (the discretionary access controls) are how an attacker opens up files they should not reach, or hides the traces of an intrusion. Auditing the `chmod`/`chown`/`setxattr` family of syscalls under the **`perm_mod`** key produces an immutable record that lets responders reconstruct who altered access rights and when, surfacing patterns of abuse by both authorized and unauthorized users.",
-    "fr": "Les modifications de permissions, de propriété et d'ACL (les contrôles d'accès discrétionnaires) sont le moyen par lequel un attaquant ouvre l'accès à des fichiers interdits, ou efface les traces d'une intrusion. Auditer la famille d'appels système `chmod`/`chown`/`setxattr` sous la clé **`perm_mod`** produit un enregistrement immuable permettant aux intervenants de reconstituer qui a modifié les droits d'accès et quand, révélant les schémas d'abus par des utilisateurs autorisés comme non autorisés."
-  },
   "summary": {
     "en": "Ensures auditd has a live rule tagged **`perm_mod`** recording every change to file permissions/ownership (DAC).",
     "fr": "Garantit qu'auditd possède une règle active marquée **`perm_mod`** journalisant chaque modification de permissions/propriété de fichier (DAC)."
+  },
+  "rationale": {
+    "en": "Changes to file permissions, ownership and ACLs (the discretionary access controls) are how an attacker opens up files they should not reach, or hides the traces of an intrusion. Auditing the `chmod`/`chown`/`setxattr` family of syscalls under the **`perm_mod`** key produces an immutable record that lets responders reconstruct who altered access rights and when, surfacing patterns of abuse by both authorized and unauthorized users.",
+    "fr": "Les modifications de permissions, de propriété et d'ACL (les contrôles d'accès discrétionnaires) sont le moyen par lequel un attaquant ouvre l'accès à des fichiers interdits, ou efface les traces d'une intrusion. Auditer la famille d'appels système `chmod`/`chown`/`setxattr` sous la clé **`perm_mod`** produit un enregistrement immuable permettant aux intervenants de reconstituer qui a modifié les droits d'accès et quand, révélant les schémas d'abus par des utilisateurs autorisés comme non autorisés."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks that the loaded ruleset contains a rule keyed `perm_mod`. This is the effective, kernel-loaded ruleset, not the contents of `/etc/audit/rules.d/`. A rule present in a file but never loaded (syntax error, missing `augenrules --load`, pending reboot) would pass a file scan yet fail here, which is exactly the gap Pavois is built to catch.",

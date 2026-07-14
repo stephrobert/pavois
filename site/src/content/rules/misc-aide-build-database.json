@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,15 +27,12 @@
   "norms": {
     "bp28": "R76",
     "cis": [
-      "6.1.1",
       "11.5.2",
-      "6.3.1"
+      "6.3.1",
+      "6.1.1"
     ],
     "nist": "CM-6(a)",
-    "pci-dss": [
-      "11.5.2",
-      "Req-11.5"
-    ],
+    "pci-dss": "11.5.2",
     "stig": [
       "UBTU-22-651015",
       "UBTU-24-100110"
@@ -45,19 +43,24 @@
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "apt-get install -y aide-common >/dev/null 2>&1 || true; aideinit -y -f >/dev/null 2>&1 || aide --init; mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db 2>/dev/null || true",
+    "name": "aide-build-database",
+    "not_if": "ls /var/lib/aide/aide.db >/dev/null 2>&1",
+    "resource": "exec"
+  },
   "title": {
     "en": "Build and Test AIDE Database",
     "fr": "Construire et tester la base de données AIDE"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "AIDE (Advanced Intrusion Detection Environment) detects unauthorized changes to files by comparing the current state against a baseline. That baseline is only useful if a \"known-good\" database has actually been built from a trusted installation. Without an initialized database, AIDE cannot tell whether a binary, config or library was tampered with, silently providing no protection.",
-    "fr": "AIDE (Advanced Intrusion Detection Environment) détecte les modifications non autorisées de fichiers en comparant l'état courant à une référence. Cette référence n'est utile que si une base « known-good » a réellement été construite à partir d'une installation de confiance. Sans base initialisée, AIDE ne peut dire si un binaire, une config ou une bibliothèque a été altéré, n'offrant silencieusement aucune protection."
-  },
   "summary": {
     "en": "Ensures **AIDE** is installed and that an initial integrity database exists under `/var/lib/aide/aide.db*`.",
     "fr": "Garantit que **AIDE** est installé et qu'une base d'intégrité initiale existe sous `/var/lib/aide/aide.db*`."
+  },
+  "rationale": {
+    "en": "AIDE (Advanced Intrusion Detection Environment) detects unauthorized changes to files by comparing the current state against a baseline. That baseline is only useful if a \"known-good\" database has actually been built from a trusted installation. Without an initialized database, AIDE cannot tell whether a binary, config or library was tampered with, silently providing no protection.",
+    "fr": "AIDE (Advanced Intrusion Detection Environment) détecte les modifications non autorisées de fichiers en comparant l'état courant à une référence. Cette référence n'est utile que si une base « known-good » a réellement été construite à partir d'une installation de confiance. Sans base initialisée, AIDE ne peut dire si un binaire, une config ou une bibliothèque a été altéré, n'offrant silencieusement aucune protection."
   },
   "check_note": {
     "en": "Pavois confirms the `aide` binary is on `PATH` and that an `aide.db*` file is present in `/var/lib/aide/`. It checks the actual on-disk database rather than just the package state, because a package can be installed without the database ever having been initialized, the effective protective artifact is the database file itself.",

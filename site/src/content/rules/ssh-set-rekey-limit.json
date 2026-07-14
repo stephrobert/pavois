@@ -1,0 +1,56 @@
+{
+  "id": "ssh-set-rekey-limit",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "SSH",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe command('sshd -T') do",
+    "  its('stdout') { should match(/^rekeylimit\\s+536870912\\s+3600$/i) }",
+    "end"
+  ],
+  "remediation": {
+    "directive": "rekeylimit",
+    "notify": {
+      "action": "reload",
+      "service": "ssh.service"
+    },
+    "resource": "sshd_setting",
+    "value": "512M 1h",
+    "verify": "sshd -t -f %{path}"
+  },
+  "title": {
+    "en": "Force Frequent SSH Session Key Renegotiation",
+    "fr": "Force Frequent SSH Session Key Renegotiation"
+  },
+  "needs_translation": [
+    "title.fr"
+  ],
+  "needs_authoring": [
+    "summary",
+    "check_note",
+    "verify",
+    "logs",
+    "remediation_note",
+    "impact"
+  ]
+}

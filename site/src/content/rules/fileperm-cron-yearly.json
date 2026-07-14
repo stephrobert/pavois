@@ -2,10 +2,14 @@
   "id": "fileperm-cron-yearly",
   "supported_os": [
     "fedora",
-    "rhel8"
+    "rhel10",
+    "rhel8",
+    "rhel9"
   ],
   "os_versions": {
-    "rhel8": "4.0.0"
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
   },
   "severity": "medium",
   "domain": "File permissions",
@@ -38,13 +42,13 @@
     "fr": "Vérifier les permissions de cron.yearly"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/cron.yearly` holds scripts the cron daemon runs **once a year as root**. If the directory is writable by group or other, an unauthorized user can plant or modify a script that runs with root privileges, full compromise. If it is readable by group/other, the jobs can be enumerated for reconnaissance. Restricting it to the owner prevents both unauthorized changes and disclosure.",
-    "fr": "`/etc/cron.yearly` contient les scripts que le démon cron exécute **une fois par an en tant que root**. Si le répertoire est modifiable par le groupe ou les autres, un utilisateur non autorisé peut y déposer ou y modifier un script qui s'exécutera avec les privilèges root, compromission totale. S'il est lisible par le groupe/les autres, les tâches peuvent être énumérées à des fins de reconnaissance. Le restreindre au propriétaire empêche à la fois les modifications non autorisées et la divulgation."
-  },
   "summary": {
     "en": "Ensures the `/etc/cron.yearly` directory is owned by root and is **not readable, writable or executable by group or other**, with no setuid/setgid/sticky bits, so only root can add or change yearly cron scripts.",
     "fr": "Garantit que le répertoire `/etc/cron.yearly` appartient à root et n'est **ni lisible, ni modifiable, ni exécutable par le groupe ou les autres**, sans bits setuid/setgid/sticky, afin que seul root puisse ajouter ou modifier les scripts cron annuels."
+  },
+  "rationale": {
+    "en": "`/etc/cron.yearly` holds scripts the cron daemon runs **once a year as root**. If the directory is writable by group or other, an unauthorized user can plant or modify a script that runs with root privileges, full compromise. If it is readable by group/other, the jobs can be enumerated for reconnaissance. Restricting it to the owner prevents both unauthorized changes and disclosure.",
+    "fr": "`/etc/cron.yearly` contient les scripts que le démon cron exécute **une fois par an en tant que root**. Si le répertoire est modifiable par le groupe ou les autres, un utilisateur non autorisé peut y déposer ou y modifier un script qui s'exécutera avec les privilèges root, compromission totale. S'il est lisible par le groupe/les autres, les tâches peuvent être énumérées à des fins de reconnaissance. Le restreindre au propriétaire empêche à la fois les modifications non autorisées et la divulgation."
   },
   "check_note": {
     "en": "Pavois reads the **live inode** with `file('/etc/cron.yearly')` and asserts no group/other access and no special mode bits, gated by `only_if` to skip when absent. Inspecting effective on-disk permissions catches drift from package upgrades, manual `chmod`, or backup restores that a config-template assumption would miss.",

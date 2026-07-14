@@ -21,7 +21,9 @@ export const GET: APIRoute = async ({ site }) => {
       'reboot-survivable, so the grade only reaches a clean A when persistence is proven.'
   );
   lines.push('');
-  lines.push(`The control base spans ${rules.length} neutral control ids across 8 Linux targets.`);
+  const targets = new Set(rules.flatMap((r) => r.data.supported_os));
+  // counted, never asserted: this line said "8 Linux targets" while the base covered 9
+  lines.push(`The control base spans ${rules.length} neutral control ids across ${targets.size} Linux targets.`);
   lines.push('');
 
   lines.push('## Handbook');

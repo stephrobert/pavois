@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "2.4.1.2",
-      "2.2.6"
+      "2.2.6",
+      "2.4.1.2"
     ],
     "nist": [
       "AC-6(1)",
@@ -50,7 +51,9 @@
     "end"
   ],
   "remediation": {
+    "group": "root",
     "mode": "0600",
+    "owner": "root",
     "path": "/etc/crontab",
     "resource": "file"
   },
@@ -59,13 +62,13 @@
     "fr": "Vérifier les permissions de crontab"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/crontab` is the system-wide crontab whose entries the cron daemon runs **as the user named in each line, typically root**. If it is writable by group or other, an attacker can append a line that executes any command as root, direct system compromise. If it is readable by group/other, the schedule and any embedded paths or credentials are exposed for reconnaissance. Restricting it to the owner prevents both unauthorized changes and disclosure.",
-    "fr": "`/etc/crontab` est la crontab système dont les entrées sont exécutées par le démon cron **en tant qu'utilisateur indiqué sur chaque ligne, généralement root**. S'il est modifiable par le groupe ou les autres, un attaquant peut y ajouter une ligne exécutant n'importe quelle commande en tant que root, compromission directe du système. S'il est lisible par le groupe/les autres, la planification ainsi que les chemins ou identifiants éventuellement présents sont exposés à la reconnaissance. Le restreindre au propriétaire empêche à la fois les modifications non autorisées et la divulgation."
-  },
   "summary": {
     "en": "Ensures `/etc/crontab` is owned by root and is **not writable or readable by group/other** and carries no setuid/setgid/sticky or execute bits, so only root can edit the system crontab.",
     "fr": "Garantit que `/etc/crontab` appartient à root et n'est **ni modifiable ni lisible par le groupe ou les autres** et ne porte aucun bit setuid/setgid/sticky ni exécution, afin que seul root puisse éditer la crontab système."
+  },
+  "rationale": {
+    "en": "`/etc/crontab` is the system-wide crontab whose entries the cron daemon runs **as the user named in each line, typically root**. If it is writable by group or other, an attacker can append a line that executes any command as root, direct system compromise. If it is readable by group/other, the schedule and any embedded paths or credentials are exposed for reconnaissance. Restricting it to the owner prevents both unauthorized changes and disclosure.",
+    "fr": "`/etc/crontab` est la crontab système dont les entrées sont exécutées par le démon cron **en tant qu'utilisateur indiqué sur chaque ligne, généralement root**. S'il est modifiable par le groupe ou les autres, un attaquant peut y ajouter une ligne exécutant n'importe quelle commande en tant que root, compromission directe du système. S'il est lisible par le groupe/les autres, la planification ainsi que les chemins ou identifiants éventuellement présents sont exposés à la reconnaissance. Le restreindre au propriétaire empêche à la fois les modifications non autorisées et la divulgation."
   },
   "check_note": {
     "en": "Pavois reads the **live inode** with `file('/etc/crontab')` and asserts no group/other read or write, no execute bit, and no setuid/setgid/sticky, gated by `only_if` to skip when absent. Inspecting effective on-disk permissions catches drift from package upgrades, manual `chmod`, or backup restores that a config-template assumption would miss.",

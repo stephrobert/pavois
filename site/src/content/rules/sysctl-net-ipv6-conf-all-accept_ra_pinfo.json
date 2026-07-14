@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.all.accept_ra_pinfo') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.all.accept_ra_pinfo[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Configurer l'acceptation des informations de préfixe dans les annonces de routeur sur toutes les interfaces IPv6"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The Prefix Information Option in a Router Advertisement tells the host which IPv6 prefixes are on-link and usable for SLAAC autoconfiguration. Because RAs are **unauthenticated**, a rogue node can advertise forged prefixes to make the host self-assign attacker-controlled addresses or treat hostile prefixes as on-link, enabling **man-in-the-middle** and traffic redirection. A host with static addressing has no need to learn prefixes from the network.",
-    "fr": "L'option d'information de préfixe d'une annonce de routeur indique à l'hôte quels préfixes IPv6 sont on-link et exploitables pour l'autoconfiguration SLAAC. Comme les RA ne sont **pas authentifiées**, un nœud malveillant peut annoncer de faux préfixes pour amener l'hôte à s'auto-attribuer des adresses contrôlées par l'attaquant ou à considérer des préfixes hostiles comme on-link, ouvrant la voie à des attaques de **l'homme du milieu** et à la redirection de trafic. Un hôte à adressage statique n'a pas besoin d'apprendre des préfixes depuis le réseau."
-  },
   "summary": {
     "en": "Sets `net.ipv6.conf.all.accept_ra_pinfo` to `0` so the host ignores Prefix Information Options carried in IPv6 Router Advertisements on all interfaces.",
     "fr": "Fixe `net.ipv6.conf.all.accept_ra_pinfo` à `0` afin que l'hôte ignore les options d'information de préfixe transportées dans les annonces de routeur IPv6 sur toutes les interfaces."
+  },
+  "rationale": {
+    "en": "The Prefix Information Option in a Router Advertisement tells the host which IPv6 prefixes are on-link and usable for SLAAC autoconfiguration. Because RAs are **unauthenticated**, a rogue node can advertise forged prefixes to make the host self-assign attacker-controlled addresses or treat hostile prefixes as on-link, enabling **man-in-the-middle** and traffic redirection. A host with static addressing has no need to learn prefixes from the network.",
+    "fr": "L'option d'information de préfixe d'une annonce de routeur indique à l'hôte quels préfixes IPv6 sont on-link et exploitables pour l'autoconfiguration SLAAC. Comme les RA ne sont **pas authentifiées**, un nœud malveillant peut annoncer de faux préfixes pour amener l'hôte à s'auto-attribuer des adresses contrôlées par l'attaquant ou à considérer des préfixes hostiles comme on-link, ouvrant la voie à des attaques de **l'homme du milieu** et à la redirection de trafic. Un hôte à adressage statique n'a pas besoin d'apprendre des préfixes depuis le réseau."
   },
   "check_note": {
     "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.all.accept_ra_pinfo`) and asserts it is `0`. The live kernel value is authoritative: a value in `/etc/sysctl.d/*` may be **shadowed** by a later drop-in or never applied, so reading the running parameter avoids the false pass that file inspection (OVAL/oscap) can give.",

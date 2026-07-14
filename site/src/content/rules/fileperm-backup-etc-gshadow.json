@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -31,12 +32,9 @@
     "only_if { file('/etc/gshadow-').exist? }",
     "describe file('/etc/gshadow-') do",
     "  it { should_not be_executable.by('owner') }",
-    "  it { should_not be_writable.by('owner') }",
-    "  it { should_not be_readable.by('owner') }",
     "  it { should_not be_setuid }",
     "  it { should_not be_executable.by('group') }",
     "  it { should_not be_writable.by('group') }",
-    "  it { should_not be_readable.by('group') }",
     "  it { should_not be_setgid }",
     "  it { should_not be_executable.by('other') }",
     "  it { should_not be_writable.by('other') }",
@@ -45,7 +43,7 @@
     "end"
   ],
   "remediation": {
-    "mode": "0000",
+    "mode": "0640",
     "path": "/etc/gshadow-",
     "resource": "file"
   },
@@ -54,13 +52,13 @@
     "fr": "Verifier les permissions du fichier de sauvegarde gshadow"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/gshadow-` is the backup of `/etc/gshadow` and contains **group password hashes** and the list of group administrators. Any read access by group or other exposes those hashes to **offline cracking**, and any write access lets an attacker forge group credentials that become live if the backup is restored. This file must be **mode `0000`** (no permissions, accessed only by root via privileged tools) and owned by `root`.",
-    "fr": "`/etc/gshadow-` est la sauvegarde de `/etc/gshadow` et contient les **hachages de mots de passe de groupe** et la liste des administrateurs de groupe. Tout acces en lecture par le groupe ou les autres expose ces hachages a un **cassage hors ligne**, et tout acces en ecriture permet a un attaquant de falsifier des identifiants de groupe qui deviennent effectifs si la sauvegarde est restauree. Ce fichier doit etre en **mode `0000`** (aucune permission, accede uniquement par root via des outils privilegies) et appartenir a `root`."
-  },
   "summary": {
     "en": "Ensures the backup file `/etc/gshadow-` is unreadable, unwritable and non-executable by owner, group and other, with no special bits, i.e. mode `0000`.",
     "fr": "Garantit que le fichier de sauvegarde `/etc/gshadow-` n'est ni lisible, ni modifiable, ni executable par le proprietaire, le groupe et les autres, sans bit special, soit le mode `0000`."
+  },
+  "rationale": {
+    "en": "`/etc/gshadow-` is the backup of `/etc/gshadow` and contains **group password hashes** and the list of group administrators. Any read access by group or other exposes those hashes to **offline cracking**, and any write access lets an attacker forge group credentials that become live if the backup is restored. This file must be **mode `0000`** (no permissions, accessed only by root via privileged tools) and owned by `root`.",
+    "fr": "`/etc/gshadow-` est la sauvegarde de `/etc/gshadow` et contient les **hachages de mots de passe de groupe** et la liste des administrateurs de groupe. Tout acces en lecture par le groupe ou les autres expose ces hachages a un **cassage hors ligne**, et tout acces en ecriture permet a un attaquant de falsifier des identifiants de groupe qui deviennent effectifs si la sauvegarde est restauree. Ce fichier doit etre en **mode `0000`** (aucune permission, accede uniquement par root via des outils privilegies) et appartenir a `root`."
   },
   "check_note": {
     "en": "Pavois reads the **live mode bits** of `/etc/gshadow-` via the InSpec `file` resource. The matchers are unusually strict, even **owner** read/write is rejected, because the file is meant to be accessed only by root through setuid tools (`gpasswd`, `vigr`), which bypass DAC. Inspecting the real inode catches a backup left readable by a sloppy copy. The `only_if` guard skips the check when no backup exists.",

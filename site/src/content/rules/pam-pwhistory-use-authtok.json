@@ -2,14 +2,21 @@
   "id": "pam-pwhistory-use-authtok",
   "supported_os": [
     "debian12",
+    "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -21,7 +28,7 @@
     "cis": "5.3.3.3.3"
   },
   "check": [
-    "describe command('grep -rqE \\'^[^#]*\\bpam_pwhistory\\\\.so\\b[^#]*\\buse_authtok\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
+    "describe command('grep -RqE \\'^[^#]*\\bpam_pwhistory\\\\.so\\b[^#]*\\buse_authtok\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
@@ -37,13 +44,13 @@
     "fr": "Imposer l'historique des mots de passe avec use_authtok"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `use_authtok` option lets `pam_pwhistory` reuse the new password already collected by an earlier module in the password stack, so multiple modules (quality, history, unix) validate the **same** token without re-prompting the user. Without it, the modules can fall out of sync and the history check may run against a different value than the one finally stored, weakening enforcement.",
-    "fr": "L'option `use_authtok` permet à `pam_pwhistory` de réutiliser le nouveau mot de passe déjà collecté par un module antérieur de la pile password, afin que plusieurs modules (qualité, historique, unix) valident le **même** jeton sans redemander à l'utilisateur. Sans elle, les modules peuvent se désynchroniser et la vérification d'historique peut porter sur une valeur différente de celle finalement stockée, affaiblissant le contrôle."
-  },
   "summary": {
     "en": "Enforces the `use_authtok` option on `pam_pwhistory.so` so it validates the password already provided to the stack instead of prompting again.",
     "fr": "Impose l'option `use_authtok` sur `pam_pwhistory.so` afin qu'il valide le mot de passe déjà fourni à la pile au lieu de le redemander."
+  },
+  "rationale": {
+    "en": "The `use_authtok` option lets `pam_pwhistory` reuse the new password already collected by an earlier module in the password stack, so multiple modules (quality, history, unix) validate the **same** token without re-prompting the user. Without it, the modules can fall out of sync and the history check may run against a different value than the one finally stored, weakening enforcement.",
+    "fr": "L'option `use_authtok` permet à `pam_pwhistory` de réutiliser le nouveau mot de passe déjà collecté par un module antérieur de la pile password, afin que plusieurs modules (qualité, historique, unix) valident le **même** jeton sans redemander à l'utilisateur. Sans elle, les modules peuvent se désynchroniser et la vérification d'historique peut porter sur une valeur différente de celle finalement stockée, affaiblissant le contrôle."
   },
   "check_note": {
     "en": "Pavois greps the **effective** PAM stack under `/etc/pam.d/` for a non-commented `pam_pwhistory.so` line carrying `use_authtok`. Reading the resolved password stack (with its `@include` chain and ordering) rather than a single file is essential here, because `use_authtok` only works correctly relative to the modules placed before it.",

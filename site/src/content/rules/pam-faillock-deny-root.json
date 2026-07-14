@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,31 +26,33 @@
   "reboot_survivable": "yes",
   "norms": {
     "bp28": "R31",
-    "cis": "5.3.3.1.3",
     "nist": [
       "AC-7(b)",
       "CM-6(a)",
       "IA-5(c)"
-    ]
+    ],
+    "cis": "5.3.3.1.3"
   },
   "check": [
-    "describe command('grep -rqE \\'^[^#]*\\bpam_faillock\\\\.so\\b[^#]*\\beven_deny_root\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
+    "describe command('grep -RqE \\'^[^#]*\\bpam_faillock\\.so\\' /etc/pam.d/ 2>/dev/null && { grep -RqE \\'^[^#]*\\bpam_faillock\\.so[^#]*\\beven_deny_root\\' /etc/pam.d/ 2>/dev/null || grep -qE \\'^[[:space:]]*even_deny_root\\b\\' /etc/security/faillock.conf 2>/dev/null; } && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "pam_faillock"
+  },
   "title": {
     "en": "Configure the root Account for Failed Password Attempts",
     "fr": "Configurer le verrouillage du compte root après des échecs de mot de passe"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "By limiting the number of failed logon attempts, the risk of unauthorized access through password guessing (brute-forcing) is reduced. By default `pam_faillock` exempts root, leaving the most privileged account open to unlimited guessing; `even_deny_root` closes that gap so the lockout policy applies to root as well.",
-    "fr": "En limitant le nombre d'échecs de connexion, le risque d'accès non autorisé par devinette de mot de passe (force brute) est réduit. Par défaut, `pam_faillock` exempte root, laissant le compte le plus privilégié exposé à des tentatives illimitées ; `even_deny_root` comble cette faille pour que la politique de verrouillage s'applique aussi à root."
-  },
   "summary": {
     "en": "Enforces the `even_deny_root` option on `pam_faillock.so` so the **root** account is also locked after repeated failed login attempts.",
     "fr": "Impose l'option `even_deny_root` sur `pam_faillock.so` afin que le compte **root** soit lui aussi verrouillé après plusieurs échecs de connexion."
+  },
+  "rationale": {
+    "en": "By limiting the number of failed logon attempts, the risk of unauthorized access through password guessing (brute-forcing) is reduced. By default `pam_faillock` exempts root, leaving the most privileged account open to unlimited guessing; `even_deny_root` closes that gap so the lockout policy applies to root as well.",
+    "fr": "En limitant le nombre d'échecs de connexion, le risque d'accès non autorisé par devinette de mot de passe (force brute) est réduit. Par défaut, `pam_faillock` exempte root, laissant le compte le plus privilégié exposé à des tentatives illimitées ; `even_deny_root` comble cette faille pour que la politique de verrouillage s'applique aussi à root."
   },
   "check_note": {
     "en": "Pavois greps the **effective** PAM stack under `/etc/pam.d/` for a non-commented `pam_faillock.so` line carrying `even_deny_root`. Reading the assembled stack (and its `@include` chains and drop-ins) rather than one file avoids the false pass where the option exists in a sample but not in the rule path PAM actually evaluates.",

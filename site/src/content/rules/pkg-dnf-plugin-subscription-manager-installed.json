@@ -1,10 +1,14 @@
 {
   "id": "pkg-dnf-plugin-subscription-manager-installed",
   "supported_os": [
-    "rhel8"
+    "rhel10",
+    "rhel8",
+    "rhel9"
   ],
   "os_versions": {
-    "rhel8": "4.0.0"
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
   },
   "severity": "medium",
   "domain": "Packages",
@@ -12,6 +16,7 @@
   "reboot_survivable": "yes",
   "norms": {},
   "check": [
+    "only_if { file('/etc/redhat-release').content.to_s =~ /Red Hat/ }",
     "describe package('dnf-plugin-subscription-manager') do",
     "  it { should be_installed }",
     "end"
@@ -26,13 +31,13 @@
     "fr": "Installer le paquet dnf-plugin-subscription-manager"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "This package provides plugins to interact with repositories and subscriptions from the Red Hat entitlement platform; it contains the subscription-manager and product-id plugins, which are required to receive supported security updates.",
-    "fr": "Ce paquet fournit des plugins pour interagir avec les dépôts et les abonnements de la plateforme d'habilitation Red Hat ; il contient les plugins subscription-manager et product-id, nécessaires pour recevoir les mises à jour de sécurité prises en charge."
-  },
   "summary": {
     "en": "Ensures the **dnf-plugin-subscription-manager** package is installed so RHEL can access entitled repositories and receive supported security updates.",
     "fr": "Garantit que le paquet **dnf-plugin-subscription-manager** est installé afin que RHEL puisse accéder aux dépôts habilités et recevoir les mises à jour de sécurité prises en charge."
+  },
+  "rationale": {
+    "en": "This package provides plugins to interact with repositories and subscriptions from the Red Hat entitlement platform; it contains the subscription-manager and product-id plugins, which are required to receive supported security updates.",
+    "fr": "Ce paquet fournit des plugins pour interagir avec les dépôts et les abonnements de la plateforme d'habilitation Red Hat ; il contient les plugins subscription-manager et product-id, nécessaires pour recevoir les mises à jour de sécurité prises en charge."
   },
   "check_note": {
     "en": "Pavois verifies that the `dnf-plugin-subscription-manager` package is present via `rpm`. Without the subscription-manager plugin, a registered RHEL host cannot resolve entitled repositories, so security patches never reach `dnf`, a silent supply gap that file scanners would not flag.",

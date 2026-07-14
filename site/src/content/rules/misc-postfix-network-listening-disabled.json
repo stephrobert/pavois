@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,8 +27,8 @@
   "norms": {
     "bp28": "R74",
     "cis": [
-      "2.1.21",
       "1.4.2",
+      "2.1.21",
       "2.1.23"
     ],
     "nist": [
@@ -38,23 +39,29 @@
     "pci-dss": "1.4.2"
   },
   "check": [
+    "only_if { command('command -v postconf').exit_status.zero? }",
     "describe command('postconf -h inet_interfaces 2>/dev/null | grep -qiE \\'loopback-only|localhost\\' && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "postconf -e 'inet_interfaces = loopback-only' 2>/dev/null && systemctl restart postfix 2>/dev/null; true",
+    "name": "postfix-loopback",
+    "not_if": "postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'",
+    "resource": "exec"
+  },
   "title": {
     "en": "Disable Postfix Network Listening",
     "fr": "Désactiver l'écoute réseau de Postfix"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Most systems run Postfix only to deliver internal mail (cron job output, system notifications). When `inet_interfaces` is left at `all`, Postfix listens on every interface and exposes an **open SMTP service** to the network. This widens the attack surface to remote exploitation, spam relay abuse and information disclosure. Binding to `loopback-only`/`localhost` removes that exposure while keeping local mail working.",
-    "fr": "La plupart des systèmes n'exécutent Postfix que pour distribuer du courrier interne (sorties de tâches cron, notifications système). Lorsque `inet_interfaces` reste à `all`, Postfix écoute sur toutes les interfaces et expose un **service SMTP ouvert** sur le réseau. Cela élargit la surface d'attaque à l'exploitation distante, à l'abus de relais de spam et à la fuite d'informations. La liaison à `loopback-only`/`localhost` supprime cette exposition tout en conservant le courrier local."
-  },
   "summary": {
     "en": "Restricts Postfix to listen only on the loopback interface so it delivers **local** mail (cron, system reports) and never accepts mail from the network.",
     "fr": "Restreint Postfix à l'écoute sur l'interface de bouclage uniquement, afin qu'il traite le courrier **local** (cron, rapports système) sans jamais accepter de courrier venant du réseau."
+  },
+  "rationale": {
+    "en": "Most systems run Postfix only to deliver internal mail (cron job output, system notifications). When `inet_interfaces` is left at `all`, Postfix listens on every interface and exposes an **open SMTP service** to the network. This widens the attack surface to remote exploitation, spam relay abuse and information disclosure. Binding to `loopback-only`/`localhost` removes that exposure while keeping local mail working.",
+    "fr": "La plupart des systèmes n'exécutent Postfix que pour distribuer du courrier interne (sorties de tâches cron, notifications système). Lorsque `inet_interfaces` reste à `all`, Postfix écoute sur toutes les interfaces et expose un **service SMTP ouvert** sur le réseau. Cela élargit la surface d'attaque à l'exploitation distante, à l'abus de relais de spam et à la fuite d'informations. La liaison à `loopback-only`/`localhost` supprime cette exposition tout en conservant le courrier local."
   },
   "check_note": {
     "en": "Pavois queries the **effective** Postfix parameter with `postconf -h inet_interfaces`, which returns the value actually resolved by Postfix after parsing `main.cf` and any included settings. Reading `/etc/postfix/main.cf` directly would miss overrides, multi-instance setups and the compiled-in default, producing false results; `postconf` reports what the daemon truly uses.",

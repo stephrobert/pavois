@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,8 +28,12 @@
     "bp28": "R7"
   },
   "check": [
+    "only_if('n/a in a virtualized guest: applied only on bare metal') { command('systemd-detect-virt -q').exit_status != 0 }",
     "describe command('cat /proc/cmdline') do",
     "  its('stdout') { should match(/(^| )iommu=force( |$)/) }",
+    "end",
+    "describe command(\"grep -hwsF 'iommu=force' /etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +46,13 @@
     "fr": "Directive de configuration de l'IOMMU"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "On x86 platforms the I/OMMU mediates Direct Memory Access from hardware devices. Without it, a malicious or compromised peripheral (PCIe card, Thunderbolt/USB4 device, firmware) can perform **arbitrary DMA reads/writes of system RAM**, bypassing OS memory protections entirely, the classic DMA attack used to extract keys or implant code. `iommu=force` enforces IOMMU translation even when firmware would otherwise leave it passthrough, closing that physical-access attack surface (ANSSI BP-028 R7).",
-    "fr": "Sur les plateformes x86, l'IOMMU mediatise l'acces direct a la memoire (DMA) des peripheriques materiels. Sans elle, un peripherique malveillant ou compromis (carte PCIe, peripherique Thunderbolt/USB4, micrologiciel) peut effectuer des **lectures/ecritures DMA arbitraires de la RAM systeme**, contournant entierement les protections memoire de l'OS, l'attaque DMA classique utilisee pour extraire des cles ou implanter du code. `iommu=force` impose la traduction IOMMU meme lorsque le micrologiciel la laisserait en passthrough, fermant cette surface d'attaque par acces physique (ANSSI BP-028 R7)."
-  },
   "summary": {
     "en": "Ensures the kernel booted with `iommu=force`, activating the I/O Memory Management Unit so DMA from peripheral devices is mediated and confined.",
     "fr": "Garantit que le noyau a demarre avec `iommu=force`, activant l'unite de gestion de la memoire d'E/S (IOMMU) afin que le DMA des peripheriques soit mediatise et confine."
+  },
+  "rationale": {
+    "en": "On x86 platforms the I/OMMU mediates Direct Memory Access from hardware devices. Without it, a malicious or compromised peripheral (PCIe card, Thunderbolt/USB4 device, firmware) can perform **arbitrary DMA reads/writes of system RAM**, bypassing OS memory protections entirely, the classic DMA attack used to extract keys or implant code. `iommu=force` enforces IOMMU translation even when firmware would otherwise leave it passthrough, closing that physical-access attack surface (ANSSI BP-028 R7).",
+    "fr": "Sur les plateformes x86, l'IOMMU mediatise l'acces direct a la memoire (DMA) des peripheriques materiels. Sans elle, un peripherique malveillant ou compromis (carte PCIe, peripherique Thunderbolt/USB4, micrologiciel) peut effectuer des **lectures/ecritures DMA arbitraires de la RAM systeme**, contournant entierement les protections memoire de l'OS, l'attaque DMA classique utilisee pour extraire des cles ou implanter du code. `iommu=force` impose la traduction IOMMU meme lorsque le micrologiciel la laisserait en passthrough, fermant cette surface d'attaque par acces physique (ANSSI BP-028 R7)."
   },
   "check_note": {
     "en": "Pavois reads `/proc/cmdline`, the line the **running** kernel booted with, and checks for `iommu=force`. Inspecting `/etc/default/grub` would only show intent for the next boot; `/proc/cmdline` proves the IOMMU directive is **active in the running kernel**, catching a botched bootloader regeneration or a drop-in that silently dropped the parameter.",

@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R22"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_SYN_COOKIES=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_SYN_COOKIES='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_SYN_COOKIES=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_SYN_COOKIES=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Enable TCP/IP syncookie support",
     "fr": "Activer la prise en charge des SYN cookies TCP/IP"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_SYN_COOKIES=y` compiles in the kernel's defense against TCP SYN-flood attacks. When the half-open connection (SYN) backlog overflows, the kernel encodes the connection state into the sequence number of the SYN-ACK (a \"cookie\") instead of allocating memory, so legitimate clients can still complete the handshake while an attacker flooding spoofed SYNs cannot exhaust the queue. Without this option the runtime knob `net.ipv4.tcp_syncookies` has no effect and the host stays vulnerable to a cheap denial-of-service.",
-    "fr": "`CONFIG_SYN_COOKIES=y` compile dans le noyau la défense contre les attaques par inondation de SYN TCP. Lorsque la file des connexions semi-ouvertes (SYN) déborde, le noyau encode l'état de la connexion dans le numéro de séquence du SYN-ACK (un « cookie ») au lieu d'allouer de la mémoire : les clients légitimes peuvent encore terminer la poignée de main tandis qu'un attaquant inondant de SYN usurpés ne peut pas épuiser la file. Sans cette option, le réglage à l'exécution `net.ipv4.tcp_syncookies` est sans effet et l'hôte reste vulnérable à un déni de service peu coûteux."
-  },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_SYN_COOKIES=y`, enabling SYN-cookie protection against TCP SYN-flood DoS.",
     "fr": "Exige un noyau compilé avec `CONFIG_SYN_COOKIES=y`, activant la protection par SYN cookies contre les attaques DoS par inondation de SYN TCP."
+  },
+  "rationale": {
+    "en": "`CONFIG_SYN_COOKIES=y` compiles in the kernel's defense against TCP SYN-flood attacks. When the half-open connection (SYN) backlog overflows, the kernel encodes the connection state into the sequence number of the SYN-ACK (a \"cookie\") instead of allocating memory, so legitimate clients can still complete the handshake while an attacker flooding spoofed SYNs cannot exhaust the queue. Without this option the runtime knob `net.ipv4.tcp_syncookies` has no effect and the host stays vulnerable to a cheap denial-of-service.",
+    "fr": "`CONFIG_SYN_COOKIES=y` compile dans le noyau la défense contre les attaques par inondation de SYN TCP. Lorsque la file des connexions semi-ouvertes (SYN) déborde, le noyau encode l'état de la connexion dans le numéro de séquence du SYN-ACK (un « cookie ») au lieu d'allouer de la mémoire : les clients légitimes peuvent encore terminer la poignée de main tandis qu'un attaquant inondant de SYN usurpés ne peut pas épuiser la file. Sans cette option, le réglage à l'exécution `net.ipv4.tcp_syncookies` est sans effet et l'hôte reste vulnérable à un déni de service peu coûteux."
   },
   "check_note": {
     "en": "Pavois reads the build configuration of the **running** kernel via `/boot/config-$(uname -r)` or `/proc/config.gz` and confirms `CONFIG_SYN_COOKIES=y`. Reading the booted kernel's effective config proves the SYN-cookie machinery is compiled into the kernel in use, a prerequisite without which the `net.ipv4.tcp_syncookies` sysctl is inert.",

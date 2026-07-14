@@ -20,22 +20,31 @@
   },
   "check": [
     "describe command('sshd -T') do",
-    "  its('stdout') { should match(/^banner\\s+\\/etc\\/issue$/i) }",
+    "  its('stdout') { should match(/^banner\\s+\\/etc\\/issue(\\.net)?$/i) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "directive": "Banner",
+    "notify": {
+      "action": "reload",
+      "service": "sshd.service"
+    },
+    "resource": "sshd_setting",
+    "value": "/etc/issue.net",
+    "verify": "sshd -t -f %{path}"
+  },
   "title": {
     "en": "Enable SSH Warning Banner",
     "fr": "Activer la bannière d'avertissement SSH"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "A pre-authentication warning banner reinforces policy awareness during login and supports possible legal action against intruders by removing any claim of unauthorized-access ambiguity. Many regulatory frameworks require such consent/notice text. Pointing **`Banner`** at `/etc/issue` ensures every interactive SSH session presents the approved notice. (Systems whose ownership should stay non-obvious can use a banner that avoids easy attribution.)",
-    "fr": "Une bannière d'avertissement affichée avant l'authentification renforce la sensibilisation à la politique lors de la connexion et facilite d'éventuelles poursuites judiciaires contre les intrus en supprimant toute ambiguïté sur l'accès non autorisé. De nombreux cadres réglementaires exigent ce texte de consentement/notification. Faire pointer **`Banner`** vers `/etc/issue` garantit que chaque session SSH interactive présente l'avis approuvé. (Les systèmes dont la propriété doit rester discrète peuvent utiliser une bannière qui évite toute attribution facile.)"
-  },
   "summary": {
     "en": "Configures `sshd` to display a legal warning banner before login by setting **`Banner /etc/issue`**.",
     "fr": "Configure `sshd` pour afficher une bannière d'avertissement légale avant la connexion en positionnant **`Banner /etc/issue`**."
+  },
+  "rationale": {
+    "en": "A pre-authentication warning banner reinforces policy awareness during login and supports possible legal action against intruders by removing any claim of unauthorized-access ambiguity. Many regulatory frameworks require such consent/notice text. Pointing **`Banner`** at `/etc/issue` ensures every interactive SSH session presents the approved notice. (Systems whose ownership should stay non-obvious can use a banner that avoids easy attribution.)",
+    "fr": "Une bannière d'avertissement affichée avant l'authentification renforce la sensibilisation à la politique lors de la connexion et facilite d'éventuelles poursuites judiciaires contre les intrus en supprimant toute ambiguïté sur l'accès non autorisé. De nombreux cadres réglementaires exigent ce texte de consentement/notification. Faire pointer **`Banner`** vers `/etc/issue` garantit que chaque session SSH interactive présente l'avis approuvé. (Les systèmes dont la propriété doit rester discrète peuvent utiliser une bannière qui évite toute attribution facile.)"
   },
   "check_note": {
     "en": "Pavois reads the **effective** `banner` value from `sshd -T`, the daemon's resolved configuration. A scan of `/etc/ssh/sshd_config` could miss a value set in an `Include`d drop-in under `/etc/ssh/sshd_config.d/`, `sshd -T` reflects exactly which banner the running daemon will present.",

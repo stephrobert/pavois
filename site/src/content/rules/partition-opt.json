@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -31,7 +33,7 @@
     "end"
   ],
   "remediation": {
-    "command": "# /opt should be its OWN filesystem (isolation + mount options). This needs (re)partitioning , \n# offline disk/LVM work, not a safe runtime change.\nfindmnt /opt >/dev/null 2>&1 && echo '/opt is already a mount point' || echo '/opt is NOT separate'\n# Then: dedicate an LVM volume / disk to /opt and add it to /etc/fstab.\n",
+    "command": "# /opt should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /opt >/dev/null 2>&1 && echo '/opt is already a mount point' || echo '/opt is NOT separate'\n# Then: dedicate an LVM volume / disk to /opt and add it to /etc/fstab.\n",
     "reason": "a separate /opt filesystem needs partitioning/LVM/tmpfs, not a safe runtime change",
     "resource": "manual"
   },
@@ -40,13 +42,13 @@
     "fr": "S'assurer que /opt est sur une partition separee"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/opt` holds additional software, often installed outside the package manager. Putting it on a separate partition lets you apply restrictions such as **`nosuid`** and **`nodev`** to that third-party code, isolates it from the root filesystem, and prevents an over-grown `/opt` from filling `/`.",
-    "fr": "`/opt` heberge des logiciels supplementaires, souvent installes en dehors du gestionnaire de paquets. Le placer sur une partition separee permet d'appliquer des restrictions comme **`nosuid`** et **`nodev`** a ce code tiers, l'isole du systeme de fichiers racine et empeche un `/opt` trop volumineux de saturer `/`."
-  },
   "summary": {
     "en": "Verifies that **`/opt`** is mounted on its own partition so restrictive options can be applied to third-party software.",
     "fr": "Verifie que **`/opt`** est monte sur sa propre partition afin d'appliquer des options restrictives aux logiciels tiers."
+  },
+  "rationale": {
+    "en": "`/opt` holds additional software, often installed outside the package manager. Putting it on a separate partition lets you apply restrictions such as **`nosuid`** and **`nodev`** to that third-party code, isolates it from the root filesystem, and prevents an over-grown `/opt` from filling `/`.",
+    "fr": "`/opt` heberge des logiciels supplementaires, souvent installes en dehors du gestionnaire de paquets. Le placer sur une partition separee permet d'appliquer des restrictions comme **`nosuid`** et **`nodev`** a ce code tiers, l'isole du systeme de fichiers racine et empeche un `/opt` trop volumineux de saturer `/`."
   },
   "check_note": {
     "en": "Pavois uses the InSpec `mount('/opt')` resource, reading the **effective** mount table (`/proc/self/mountinfo`) rather than `/etc/fstab`. It reflects what the kernel has actually mounted, distinguishing a real separate mount from an fstab entry that never took effect.",

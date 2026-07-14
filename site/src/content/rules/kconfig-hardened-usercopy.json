@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_HARDENED_USERCOPY=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_HARDENED_USERCOPY='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_HARDENED_USERCOPY=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_HARDENED_USERCOPY=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Harden memory copies between kernel and userspace",
     "fr": "Renforcer les copies mémoire entre le noyau et l'espace utilisateur"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_HARDENED_USERCOPY=y` makes the kernel validate every `copy_to_user`/`copy_from_user` against the bounds of the source/destination object. Without it, a copy that overruns a heap or stack object goes unchecked, turning ordinary bugs into **kernel memory disclosures** (leaking secrets, defeating KASLR) or **heap overflow** primitives that drive privilege-escalation exploits. Enabling it neutralizes entire classes of these attacks at low runtime cost.",
-    "fr": "`CONFIG_HARDENED_USERCOPY=y` fait valider par le noyau chaque `copy_to_user`/`copy_from_user` par rapport aux limites de l'objet source/destination. Sans cette option, une copie qui déborde un objet du tas ou de la pile n'est pas contrôlée, transformant des bugs ordinaires en **divulgations de mémoire noyau** (fuite de secrets, contournement de KASLR) ou en primitives de **dépassement de tas** utilisées pour l'élévation de privilèges. L'activer neutralise des classes entières d'attaques pour un coût d'exécution faible."
-  },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_HARDENED_USERCOPY=y` so userspace copies are bounds-checked against object size.",
     "fr": "Exige que le noyau soit compilé avec `CONFIG_HARDENED_USERCOPY=y` afin que les copies vers/depuis l'espace utilisateur soient bornées à la taille de l'objet."
+  },
+  "rationale": {
+    "en": "`CONFIG_HARDENED_USERCOPY=y` makes the kernel validate every `copy_to_user`/`copy_from_user` against the bounds of the source/destination object. Without it, a copy that overruns a heap or stack object goes unchecked, turning ordinary bugs into **kernel memory disclosures** (leaking secrets, defeating KASLR) or **heap overflow** primitives that drive privilege-escalation exploits. Enabling it neutralizes entire classes of these attacks at low runtime cost.",
+    "fr": "`CONFIG_HARDENED_USERCOPY=y` fait valider par le noyau chaque `copy_to_user`/`copy_from_user` par rapport aux limites de l'objet source/destination. Sans cette option, une copie qui déborde un objet du tas ou de la pile n'est pas contrôlée, transformant des bugs ordinaires en **divulgations de mémoire noyau** (fuite de secrets, contournement de KASLR) ou en primitives de **dépassement de tas** utilisées pour l'élévation de privilèges. L'activer neutralise des classes entières d'attaques pour un coût d'exécution faible."
   },
   "check_note": {
     "en": "Pavois reads the build configuration of the **running** kernel, `/boot/config-$(uname -r)` and the in-memory `/proc/config.gz`, and confirms `CONFIG_HARDENED_USERCOPY=y`. This targets the kernel actually booted, not a stale `/boot/config-*` left by a previous package, so a custom or vendor kernel that silently dropped the option is caught.",

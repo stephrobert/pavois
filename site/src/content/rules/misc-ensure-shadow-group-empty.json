@@ -2,11 +2,21 @@
   "id": "misc-ensure-shadow-group-empty",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -19,10 +29,7 @@
       "7.2.4",
       "8.3.2"
     ],
-    "pci-dss": [
-      "Req-8.2.1",
-      "8.3.2"
-    ]
+    "pci-dss": "8.3.2"
   },
   "check": [
     "describe command('awk -F: \\'($1==\"shadow\"){print $4}\\' /etc/group') do",
@@ -39,13 +46,13 @@
     "fr": "S'assurer que le groupe shadow est vide"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "On Debian/Ubuntu the `/etc/shadow` file is group-owned by `shadow` and readable by that group. Any user placed in the **shadow** group therefore gains read access to every account's hashed password and password-aging data. With that file in hand, an attacker can run an offline password-cracking tool against the hashes and use the aging/expiry fields to target additional accounts. The shadow group is meant to be used by daemons (via setgid binaries), not by people, so it should contain **no members**.",
-    "fr": "Sous Debian/Ubuntu, le fichier `/etc/shadow` appartient au groupe `shadow` et est lisible par ce groupe. Tout utilisateur placé dans le groupe **shadow** obtient donc un accès en lecture aux empreintes de mots de passe de tous les comptes ainsi qu'aux données de vieillissement. Avec ce fichier, un attaquant peut lancer un outil de cassage hors-ligne contre les empreintes et exploiter les champs d'expiration pour cibler d'autres comptes. Le groupe shadow est destiné aux démons (via des binaires setgid), pas à des personnes ; il ne doit donc avoir **aucun membre**."
-  },
   "summary": {
     "en": "Ensures the `shadow` group has **no members**, so no user gains read access to `/etc/shadow` and its password hashes.",
     "fr": "Garantit que le groupe `shadow` n'a **aucun membre**, afin qu'aucun utilisateur n'obtienne d'accès en lecture à `/etc/shadow` et à ses empreintes de mots de passe."
+  },
+  "rationale": {
+    "en": "On Debian/Ubuntu the `/etc/shadow` file is group-owned by `shadow` and readable by that group. Any user placed in the **shadow** group therefore gains read access to every account's hashed password and password-aging data. With that file in hand, an attacker can run an offline password-cracking tool against the hashes and use the aging/expiry fields to target additional accounts. The shadow group is meant to be used by daemons (via setgid binaries), not by people, so it should contain **no members**.",
+    "fr": "Sous Debian/Ubuntu, le fichier `/etc/shadow` appartient au groupe `shadow` et est lisible par ce groupe. Tout utilisateur placé dans le groupe **shadow** obtient donc un accès en lecture aux empreintes de mots de passe de tous les comptes ainsi qu'aux données de vieillissement. Avec ce fichier, un attaquant peut lancer un outil de cassage hors-ligne contre les empreintes et exploiter les champs d'expiration pour cibler d'autres comptes. Le groupe shadow est destiné aux démons (via des binaires setgid), pas à des personnes ; il ne doit donc avoir **aucun membre**."
   },
   "check_note": {
     "en": "Pavois inspects the member field of the `shadow` entry as resolved on the live system. Reading the **effective** group membership matters because a user can also be in `shadow` as their *primary* group or via an NSS backend; the goal state is that no human account lists `shadow` among its supplementary groups.",

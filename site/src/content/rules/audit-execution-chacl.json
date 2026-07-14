@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -29,19 +30,19 @@
       "R33"
     ],
     "cis": [
+      "6.2.3.17",
       "6.3.3.17",
       "6.3.3.15",
       "6.3.3.16",
-      "6.3.3.6",
-      "6.3.3.19",
       "6.3.3.18",
-      "6.2.3.17",
       "6.3.3.26",
       "6.3.3.24",
       "6.3.3.25",
       "6.3.3.10",
       "6.3.3.28",
       "6.3.3.27",
+      "6.3.3.6",
+      "6.3.3.19",
       "6.6.3.18"
     ],
     "nist": "3.1.7",
@@ -95,6 +96,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)privileged\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'privileged' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -106,13 +110,13 @@
     "fr": "Enregistrer toute tentative d'execution de chacl"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`chacl` changes POSIX Access Control Lists and can silently widen access to sensitive files. Without audit records specific to your security and mission needs, it is difficult to establish, correlate and investigate the events around an incident or identify who is responsible. Logging executions of privileged tools like `chacl` provides the evidence needed to reconstruct an attacker's actions.",
-    "fr": "`chacl` modifie les listes de controle d'acces POSIX et peut elargir silencieusement l'acces a des fichiers sensibles. Sans enregistrements d'audit adaptes a vos besoins de securite et de mission, il est difficile d'etablir, correler et investiguer les evenements autour d'un incident ou d'identifier le responsable. Journaliser les executions d'outils privilegies comme `chacl` fournit la preuve necessaire pour reconstituer les actions d'un attaquant."
-  },
   "summary": {
     "en": "Ensures `auditd` has an active rule tagged `privileged` that records every execution of `chacl` (and other privileged/setuid binaries) so ACL changes are traceable.",
     "fr": "Garantit que `auditd` possede une regle active taguee `privileged` qui enregistre chaque execution de `chacl` (et des autres binaires privilegies/setuid) afin que les changements d'ACL soient tracables."
+  },
+  "rationale": {
+    "en": "`chacl` changes POSIX Access Control Lists and can silently widen access to sensitive files. Without audit records specific to your security and mission needs, it is difficult to establish, correlate and investigate the events around an incident or identify who is responsible. Logging executions of privileged tools like `chacl` provides the evidence needed to reconstruct an attacker's actions.",
+    "fr": "`chacl` modifie les listes de controle d'acces POSIX et peut elargir silencieusement l'acces a des fichiers sensibles. Sans enregistrements d'audit adaptes a vos besoins de securite et de mission, il est difficile d'etablir, correler et investiguer les evenements autour d'un incident ou d'identifier le responsable. Journaliser les executions d'outils privilegies comme `chacl` fournit la preuve necessaire pour reconstituer les actions d'un attaquant."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks for a loaded rule carrying the `privileged` key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: privileged-command rules are generated per-binary and easy to miss in files, and a rule present in a file but never loaded gives a false sense of coverage. `auditctl -l` reflects only what the kernel enforces now.",

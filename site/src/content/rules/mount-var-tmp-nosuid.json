@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -30,21 +31,29 @@
   "check": [
     "describe mount('/var/tmp') do",
     "  its('options') { should include 'nosuid' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /var/tmp 2>/dev/null; grep -hsE '[[:space:]]/var/tmp[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /var/tmp 2>/dev/null) 2>/dev/null; } | grep -ow 'nosuid'\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "awk -v m=/var/tmp -v o=nosuid '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,\",\");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4\",\"o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var/tmp && mount -o remount,nosuid /var/tmp || true",
+    "name": "mount-var-tmp-nosuid",
+    "not_if": "awk -v m=/var/tmp '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\\n' | grep -qx nosuid",
+    "resource": "exec"
+  },
   "title": {
     "en": "Add nosuid Option to /var/tmp",
     "fr": "Ajouter l'option nosuid à /var/tmp"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "SUID and SGID executables run with elevated privileges and must be tightly controlled, users should never be able to run SUID/SGID binaries from temporary storage. Mounting `/var/tmp` with **`nosuid`** makes the kernel ignore those bits, so a SUID-root binary dropped into this world-writable directory cannot be used to escalate privileges.",
-    "fr": "Les exécutables SUID et SGID s'exécutent avec des privilèges élevés et doivent être strictement contrôlés, les utilisateurs ne devraient jamais pouvoir lancer de binaires SUID/SGID depuis un stockage temporaire. Monter `/var/tmp` avec **`nosuid`** force le noyau à ignorer ces bits : un binaire SUID-root déposé dans ce répertoire inscriptible par tous ne pourra pas servir à élever les privilèges."
-  },
   "summary": {
     "en": "Mount `/var/tmp` with the **`nosuid`** option so SUID/SGID bits on files there are ignored by the kernel.",
     "fr": "Monter `/var/tmp` avec l'option **`nosuid`** afin que les bits SUID/SGID des fichiers qui s'y trouvent soient ignorés par le noyau."
+  },
+  "rationale": {
+    "en": "SUID and SGID executables run with elevated privileges and must be tightly controlled, users should never be able to run SUID/SGID binaries from temporary storage. Mounting `/var/tmp` with **`nosuid`** makes the kernel ignore those bits, so a SUID-root binary dropped into this world-writable directory cannot be used to escalate privileges.",
+    "fr": "Les exécutables SUID et SGID s'exécutent avec des privilèges élevés et doivent être strictement contrôlés, les utilisateurs ne devraient jamais pouvoir lancer de binaires SUID/SGID depuis un stockage temporaire. Monter `/var/tmp` avec **`nosuid`** force le noyau à ignorer ces bits : un binaire SUID-root déposé dans ce répertoire inscriptible par tous ne pourra pas servir à élever les privilèges."
   },
   "check_note": {
     "en": "Pavois reads the **effective** mount options via `mount('/var/tmp')`, the live kernel view. Because `/var/tmp` is frequently a bind mount or systemd tmpfs, this catches runtime/bind configurations that parsing `/etc/fstab` alone would miss.",

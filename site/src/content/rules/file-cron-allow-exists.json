@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "2.4.1.8",
       "2.4.1.2",
+      "2.4.1.8",
       "2.4.1.9"
     ]
   },
@@ -37,8 +38,8 @@
   ],
   "remediation": {
     "content": "",
-    "group": "root",
-    "mode": "0600",
+    "group": "crontab",
+    "mode": "0640",
     "owner": "root",
     "path": "/etc/cron.allow",
     "resource": "file"
@@ -48,13 +49,13 @@
     "fr": "Garantir l'existence de /etc/cron.allow"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`crond` decides who may run `crontab` based on `cron.allow`/`cron.deny`. When `cron.allow` exists, only users listed in it (plus root) can install cron jobs, a default-deny posture. An allow list is safer than a deny list: forgetting to deny a new account silently grants it scheduling, whereas an allow list grants nothing by default. An empty, root-owned `cron.allow` blocks all non-root crontabs, limiting a foothold an attacker could use for persistence.",
-    "fr": "`crond` décide qui peut exécuter `crontab` selon `cron.allow`/`cron.deny`. Lorsque `cron.allow` existe, seuls les utilisateurs qui y figurent (et root) peuvent installer des tâches cron, une posture par défaut de refus. Une liste d'autorisation est plus sûre qu'une liste d'interdiction : oublier d'interdire un nouveau compte lui accorde silencieusement la planification, alors qu'une liste d'autorisation n'accorde rien par défaut. Un `cron.allow` vide appartenant à root bloque toutes les crontabs non-root, limitant un point d'appui qu'un attaquant pourrait utiliser pour la persistance."
-  },
   "summary": {
     "en": "Ensures `/etc/cron.allow` exists (owned by **root:root**, mode **0600**) so `crontab` use is restricted to an explicit allow list.",
     "fr": "Garantit l'existence de `/etc/cron.allow` (propriété **root:root**, mode **0600**) afin que l'usage de `crontab` soit limité à une liste d'autorisation explicite."
+  },
+  "rationale": {
+    "en": "`crond` decides who may run `crontab` based on `cron.allow`/`cron.deny`. When `cron.allow` exists, only users listed in it (plus root) can install cron jobs, a default-deny posture. An allow list is safer than a deny list: forgetting to deny a new account silently grants it scheduling, whereas an allow list grants nothing by default. An empty, root-owned `cron.allow` blocks all non-root crontabs, limiting a foothold an attacker could use for persistence.",
+    "fr": "`crond` décide qui peut exécuter `crontab` selon `cron.allow`/`cron.deny`. Lorsque `cron.allow` existe, seuls les utilisateurs qui y figurent (et root) peuvent installer des tâches cron, une posture par défaut de refus. Une liste d'autorisation est plus sûre qu'une liste d'interdiction : oublier d'interdire un nouveau compte lui accorde silencieusement la planification, alors qu'une liste d'autorisation n'accorde rien par défaut. Un `cron.allow` vide appartenant à root bloque toutes les crontabs non-root, limitant un point d'appui qu'un attaquant pourrait utiliser pour la persistance."
   },
   "check_note": {
     "en": "Pavois verifies the **actual** file `/etc/cron.allow` exists on the live system via the InSpec `file` resource, which queries the real inode rather than a config template. The presence of this file is the effective access-control state `crond` reads when a user runs `crontab`.",

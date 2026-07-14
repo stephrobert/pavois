@@ -1,0 +1,52 @@
+{
+  "id": "misc-postfix-banner",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (misc)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {},
+  "check": [
+    "describe command('if ! command -v /usr/sbin/postconf >/dev/null 2>&1; then echo ok; elif /usr/sbin/postconf -h smtpd_banner 2>/dev/null | grep -qi mail_name; then echo ko; else echo ok; fi') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "mkdir -p /etc/postfix; touch /etc/postfix/main.cf; if command -v postconf >/dev/null 2>&1; then postconf -e 'smtpd_banner = $myhostname ESMTP'; else sed -ri '/^smtpd_banner/d' /etc/postfix/main.cf; echo 'smtpd_banner = $myhostname ESMTP' >> /etc/postfix/main.cf; fi; systemctl reload postfix 2>/dev/null || true",
+    "name": "postfix-banner",
+    "not_if": "grep -qs '^smtpd_banner' /etc/postfix/main.cf && ! grep '^smtpd_banner' /etc/postfix/main.cf | grep -qi mail_name",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Hide Postfix SMTP Banner Software Name",
+    "fr": "Hide Postfix SMTP Banner Software Name"
+  },
+  "needs_translation": [
+    "title.fr"
+  ],
+  "needs_authoring": [
+    "summary",
+    "check_note",
+    "verify",
+    "logs",
+    "remediation_note",
+    "impact"
+  ]
+}

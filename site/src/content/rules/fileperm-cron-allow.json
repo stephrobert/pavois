@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "2.4.1.8",
       "2.2.6",
+      "2.4.1.8",
       "2.4.1.9"
     ],
     "pci-dss": "2.2.6"
@@ -46,7 +47,7 @@
     "end"
   ],
   "remediation": {
-    "mode": "0640",
+    "mode": "0600",
     "path": "/etc/cron.allow",
     "resource": "file"
   },
@@ -55,13 +56,13 @@
     "fr": "Vérifier les permissions du fichier /etc/cron.allow"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/cron.allow` is the allow-list that decides **which users may submit cron jobs**. If its permissions are not `0640` or more restrictive, an unauthorized user could **read** the list (information disclosure) or, worse, **modify** it to grant themselves cron access. Any command they then schedule runs under cron, often as a privileged user, opening a path to privilege escalation and persistence.",
-    "fr": "`/etc/cron.allow` est la liste d'autorisation qui décide **quels utilisateurs peuvent soumettre des tâches cron**. Si ses permissions ne sont pas `0640` ou plus restrictives, un utilisateur non autorisé pourrait **lire** la liste (divulgation d'information) ou, pire, la **modifier** pour s'octroyer l'accès à cron. Toute commande qu'il planifierait ensuite s'exécuterait via cron, souvent avec des privilèges élevés, ouvrant la voie à une élévation de privilèges et à de la persistance."
-  },
   "summary": {
     "en": "Ensures `/etc/cron.allow` is **not writable or readable by group/other** and carries no setuid/setgid/sticky or execute bits, so only the owner (root) controls who may schedule cron jobs.",
     "fr": "Garantit que `/etc/cron.allow` n'est **ni modifiable ni lisible par le groupe ou les autres** et ne porte aucun bit setuid/setgid/sticky ni exécution, afin que seul le propriétaire (root) contrôle qui peut planifier des tâches cron."
+  },
+  "rationale": {
+    "en": "`/etc/cron.allow` is the allow-list that decides **which users may submit cron jobs**. If its permissions are not `0640` or more restrictive, an unauthorized user could **read** the list (information disclosure) or, worse, **modify** it to grant themselves cron access. Any command they then schedule runs under cron, often as a privileged user, opening a path to privilege escalation and persistence.",
+    "fr": "`/etc/cron.allow` est la liste d'autorisation qui décide **quels utilisateurs peuvent soumettre des tâches cron**. Si ses permissions ne sont pas `0640` ou plus restrictives, un utilisateur non autorisé pourrait **lire** la liste (divulgation d'information) ou, pire, la **modifier** pour s'octroyer l'accès à cron. Toute commande qu'il planifierait ensuite s'exécuterait via cron, souvent avec des privilèges élevés, ouvrant la voie à une élévation de privilèges et à de la persistance."
   },
   "check_note": {
     "en": "Pavois reads the **actual file metadata** with `file('/etc/cron.allow')` and asserts the absence of insecure mode bits (no group/other write, no other read, no setuid/setgid/sticky/exec). It is gated by `only_if` so it is skipped when the file does not exist. Inspecting the live inode reflects the **effective** permissions on disk, including any change made out-of-band by a package, script or operator, rather than a value assumed from a config template.",

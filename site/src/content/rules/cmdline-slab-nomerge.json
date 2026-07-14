@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe command('cat /proc/cmdline') do",
     "  its('stdout') { should match(/(^| )slab_nomerge( |$)/) }",
+    "end",
+    "describe command(\"grep -hwsF 'slab_nomerge' /etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Désactiver la fusion des slabs de taille similaire"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "To save memory, the kernel by default **merges slab caches of similar object size** into a shared cache. This means a seemingly harmless but **vulnerable** cache can end up sharing memory with a valuable one, so a heap overflow in one object type can overwrite objects from another merged cache. `slab_nomerge` keeps every cache **isolated**: a heap overflow then only affects objects in the same cache, shrinking the kernel heap attack surface and making exploitation harder.",
-    "fr": "Pour économiser de la mémoire, le noyau **fusionne par défaut les caches slab de taille d'objet similaire** dans un cache partagé. Un cache apparemment anodin mais **vulnérable** peut ainsi finir par partager la mémoire avec un cache précieux, si bien qu'un débordement de tas dans un type d'objet peut écraser des objets d'un autre cache fusionné. `slab_nomerge` garde chaque cache **isolé** : un débordement de tas n'affecte alors que les objets du même cache, réduisant la surface d'attaque du tas noyau et compliquant l'exploitation."
-  },
   "summary": {
     "en": "Requires the **`slab_nomerge`** kernel boot parameter so slab caches of similar size are kept isolated instead of merged, containing kernel heap overflows.",
     "fr": "Exige le paramètre de démarrage noyau **`slab_nomerge`** afin que les caches slab de taille similaire restent isolés au lieu d'être fusionnés, confinant les débordements du tas noyau."
+  },
+  "rationale": {
+    "en": "To save memory, the kernel by default **merges slab caches of similar object size** into a shared cache. This means a seemingly harmless but **vulnerable** cache can end up sharing memory with a valuable one, so a heap overflow in one object type can overwrite objects from another merged cache. `slab_nomerge` keeps every cache **isolated**: a heap overflow then only affects objects in the same cache, shrinking the kernel heap attack surface and making exploitation harder.",
+    "fr": "Pour économiser de la mémoire, le noyau **fusionne par défaut les caches slab de taille d'objet similaire** dans un cache partagé. Un cache apparemment anodin mais **vulnérable** peut ainsi finir par partager la mémoire avec un cache précieux, si bien qu'un débordement de tas dans un type d'objet peut écraser des objets d'un autre cache fusionné. `slab_nomerge` garde chaque cache **isolé** : un débordement de tas n'affecte alors que les objets du même cache, réduisant la surface d'attaque du tas noyau et compliquant l'exploitation."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel command line** from `/proc/cmdline` and checks for the `slab_nomerge` token. This is the boot line the running kernel parsed, not `/etc/default/grub`, a GRUB edit that was never regenerated would falsely pass a file scan while caches are still merged at runtime.",

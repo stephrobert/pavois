@@ -21,23 +21,30 @@
     "pci-dss": "1.2.6"
   },
   "check": [
-    "describe command('cat /proc/cmdline') do",
-    "  its('stdout') { should match(/(^| )selinux=0( |$)/) }",
+    "describe file('/proc/cmdline') do",
+    "  its('content') { should_not match(/\\bselinux=0\\b/) }",
+    "  its('content') { should_not match(/\\benforcing=0\\b/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "grubby --update-kernel=ALL --remove-args=\"selinux=0 enforcing=0\" 2>/dev/null || true",
+    "name": "selinux-cmdline-clean",
+    "not_if": "! grep -Eqs \"selinux=0|enforcing=0\" /proc/cmdline",
+    "reboot_required": true,
+    "resource": "exec"
+  },
   "title": {
     "en": "Ensure SELinux Not Disabled in /etc/default/grub",
     "fr": "Vérifier que SELinux n'est pas désactivé dans /etc/default/grub"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "SELinux is a primary **mandatory access control (MAC)** layer that confines services so a compromised process cannot freely access the rest of the system. Disabling it at boot with `selinux=0` on the kernel command line stops SELinux from confining services from the very start, and once off at boot it is far more likely to **stay disabled** during normal operation, leaving the host without its main containment mechanism. SELinux must therefore not be turned off via the bootloader.",
-    "fr": "SELinux est une couche principale de **contrôle d'accès obligatoire (MAC)** qui confine les services afin qu'un processus compromis ne puisse pas accéder librement au reste du système. Le désactiver au démarrage avec `selinux=0` sur la ligne de commande noyau empêche SELinux de confiner les services dès le départ, et une fois désactivé au boot, il a de fortes chances de **rester désactivé** en fonctionnement normal, laissant l'hôte sans son principal mécanisme de confinement. SELinux ne doit donc pas être désactivé via le bootloader."
-  },
   "summary": {
     "en": "Ensures SELinux is **not disabled** via the kernel command line (no `selinux=0`), so its mandatory access control confines services from boot onward.",
     "fr": "Garantit que SELinux n'est **pas désactivé** via la ligne de commande noyau (pas de `selinux=0`), afin que son contrôle d'accès obligatoire confine les services dès le démarrage."
+  },
+  "rationale": {
+    "en": "SELinux is a primary **mandatory access control (MAC)** layer that confines services so a compromised process cannot freely access the rest of the system. Disabling it at boot with `selinux=0` on the kernel command line stops SELinux from confining services from the very start, and once off at boot it is far more likely to **stay disabled** during normal operation, leaving the host without its main containment mechanism. SELinux must therefore not be turned off via the bootloader.",
+    "fr": "SELinux est une couche principale de **contrôle d'accès obligatoire (MAC)** qui confine les services afin qu'un processus compromis ne puisse pas accéder librement au reste du système. Le désactiver au démarrage avec `selinux=0` sur la ligne de commande noyau empêche SELinux de confiner les services dès le départ, et une fois désactivé au boot, il a de fortes chances de **rester désactivé** en fonctionnement normal, laissant l'hôte sans son principal mécanisme de confinement. SELinux ne doit donc pas être désactivé via le bootloader."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel command line** from `/proc/cmdline`, the boot line the running kernel actually parsed, rather than `/etc/default/grub`. A file-based scan of GRUB can be misled by an edit that was never regenerated, or miss a `selinux=0` that an earlier drop-in added; `/proc/cmdline` shows the parameter that is truly in effect for this boot. Cross-check the resulting mode with `getenforce` / `sestatus`.",

@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,9 +26,9 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "5.1.9",
       "5.1.7",
-      "8.2.8"
+      "8.2.8",
+      "5.1.9"
     ],
     "nist": [
       "3.1.11",
@@ -45,17 +46,17 @@
   },
   "check": [
     "describe command('sshd -T') do",
-    "  its('stdout') { should match(/^clientalivecountmax\\s+0$/i) }",
+    "  its('stdout') { should match(/^clientalivecountmax\\s+[1-3]$/i) }",
     "end"
   ],
   "remediation": {
     "directive": "clientalivecountmax",
     "notify": {
       "action": "reload",
-      "service": "ssh"
+      "service": "ssh.service"
     },
     "resource": "sshd_setting",
-    "value": "0",
+    "value": "1",
     "verify": "sshd -t -f %{path}"
   },
   "title": {
@@ -63,13 +64,13 @@
     "fr": "Définir le nombre maximal de sondes d'activité du client SSH"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`ClientAliveCountMax` controls how many unanswered keepalive probes `sshd` tolerates before closing a session. Setting it to **`0`** means the session is terminated immediately when an idle period of `ClientAliveInterval` passes, guaranteeing the idle timeout is honored without grace and minimizing the window in which an unattended session can be hijacked. It is the companion of `ssh-set-idle-timeout`; together they enforce a strict server-side inactivity disconnect.",
-    "fr": "`ClientAliveCountMax` contrôle combien de sondes keepalive sans réponse `sshd` tolère avant de fermer une session. Le positionner à **`0`** signifie que la session est terminée immédiatement dès qu'une période d'inactivité de `ClientAliveInterval` s'écoule, garantissant que le délai d'inactivité est respecté sans tolérance et minimisant la fenêtre durant laquelle une session sans surveillance peut être détournée. C'est le pendant de `ssh-set-idle-timeout` ; ensemble, ils imposent une déconnexion stricte pour inactivité côté serveur."
-  },
   "summary": {
     "en": "Sets **`ClientAliveCountMax 0`** so a session is dropped as soon as the first `ClientAliveInterval` elapses with no response.",
     "fr": "Définit **`ClientAliveCountMax 0`** pour qu'une session soit fermée dès l'expiration du premier `ClientAliveInterval` sans réponse."
+  },
+  "rationale": {
+    "en": "`ClientAliveCountMax` controls how many unanswered keepalive probes `sshd` tolerates before closing a session. Setting it to **`0`** means the session is terminated immediately when an idle period of `ClientAliveInterval` passes, guaranteeing the idle timeout is honored without grace and minimizing the window in which an unattended session can be hijacked. It is the companion of `ssh-set-idle-timeout`; together they enforce a strict server-side inactivity disconnect.",
+    "fr": "`ClientAliveCountMax` contrôle combien de sondes keepalive sans réponse `sshd` tolère avant de fermer une session. Le positionner à **`0`** signifie que la session est terminée immédiatement dès qu'une période d'inactivité de `ClientAliveInterval` s'écoule, garantissant que le délai d'inactivité est respecté sans tolérance et minimisant la fenêtre durant laquelle une session sans surveillance peut être détournée. C'est le pendant de `ssh-set-idle-timeout` ; ensemble, ils imposent une déconnexion stricte pour inactivité côté serveur."
   },
   "check_note": {
     "en": "Pavois reads the **effective** `clientalivecountmax` value from `sshd -T`, the daemon's resolved configuration. A scan of `/etc/ssh/sshd_config` could miss a value set in an `Include`d drop-in under `/etc/ssh/sshd_config.d/` or a `Match` block, `sshd -T` reflects exactly what the running daemon enforces.",

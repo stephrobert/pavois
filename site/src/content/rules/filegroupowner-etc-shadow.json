@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,8 +27,8 @@
   "norms": {
     "bp28": "R50",
     "cis": [
-      "7.1.5",
-      "2.2.6"
+      "2.2.6",
+      "7.1.5"
     ],
     "nist": [
       "AC-6(1)",
@@ -38,11 +39,11 @@
   "check": [
     "only_if { file('/etc/shadow').exist? }",
     "describe file('/etc/shadow') do",
-    "  its('gid') { should eq 0 }",
+    "  its('gid') { should eq 42 }",
     "end"
   ],
   "remediation": {
-    "group": "root",
+    "group": "shadow",
     "path": "/etc/shadow",
     "resource": "file"
   },
@@ -51,13 +52,13 @@
     "fr": "Vérifier le groupe propriétaire du fichier shadow"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/etc/shadow` file stores password hashes for every local account. If its owning group is not **root** (gid `0`), an unprivileged group could be granted read access, exposing hashes to **offline cracking** and ultimately to account takeover. Restricting group ownership to root is a prerequisite for the strict permissions (typically `0640` root:shadow or `0000`) that keep the hashes secret.",
-    "fr": "Le fichier `/etc/shadow` stocke les empreintes des mots de passe de chaque compte local. Si son groupe propriétaire n'est pas **root** (gid `0`), un groupe non privilégié pourrait obtenir un accès en lecture, exposant les empreintes à un **cassage hors-ligne** puis à la compromission des comptes. Restreindre le groupe à root est un prérequis aux permissions strictes (typiquement `0640` root:shadow ou `0000`) qui gardent ces empreintes secrètes."
-  },
   "summary": {
     "en": "Ensures the `/etc/shadow` password-hash file is owned by group **root** (gid `0`).",
     "fr": "Garantit que le fichier d'empreintes `/etc/shadow` appartient au groupe **root** (gid `0`)."
+  },
+  "rationale": {
+    "en": "The `/etc/shadow` file stores password hashes for every local account. If its owning group is not **root** (gid `0`), an unprivileged group could be granted read access, exposing hashes to **offline cracking** and ultimately to account takeover. Restricting group ownership to root is a prerequisite for the strict permissions (typically `0640` root:shadow or `0000`) that keep the hashes secret.",
+    "fr": "Le fichier `/etc/shadow` stocke les empreintes des mots de passe de chaque compte local. Si son groupe propriétaire n'est pas **root** (gid `0`), un groupe non privilégié pourrait obtenir un accès en lecture, exposant les empreintes à un **cassage hors-ligne** puis à la compromission des comptes. Restreindre le groupe à root est un prérequis aux permissions strictes (typiquement `0640` root:shadow ou `0000`) qui gardent ces empreintes secrètes."
   },
   "check_note": {
     "en": "Pavois resolves the file's actual group id with InSpec's `file('/etc/shadow')` resource and asserts `gid == 0`. It reads the **effective** ownership recorded by the filesystem (the real `stat` value applied right now), not a packaging manifest or a hardening script that may have drifted, so a manual `chgrp` or a misbehaving package post-install that changed the group is caught immediately.",

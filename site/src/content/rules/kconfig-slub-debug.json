@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R17"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_SLUB_DEBUG=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_SLUB_DEBUG='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_SLUB_DEBUG=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_SLUB_DEBUG=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Enable SLUB debugging support",
     "fr": "Activer la prise en charge du débogage SLUB"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_SLUB_DEBUG=y` builds in the SLUB allocator's consistency-checking machinery: redzone and poison checks that detect heap corruption, plus the ability to validate freelist integrity. It is the prerequisite for runtime hardening such as `init_on_free`/`slub_debug` and lets the kernel catch use-after-free and overflow conditions instead of silently continuing with corrupted memory. The checks are dormant until requested, so the cost when unused is minimal.",
-    "fr": "`CONFIG_SLUB_DEBUG=y` intègre les mécanismes de vérification de cohérence de l'allocateur SLUB : contrôles de redzone et de poison qui détectent la corruption du tas, ainsi que la validation de l'intégrité de la freelist. C'est le prérequis du durcissement à l'exécution (`init_on_free`/`slub_debug`) et il permet au noyau de détecter use-after-free et débordements au lieu de poursuivre silencieusement avec une mémoire corrompue. Les contrôles restent inactifs tant qu'ils ne sont pas demandés, d'où un coût minimal hors usage."
-  },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_SLUB_DEBUG=y`, enabling the SLUB allocator's corruption-detection checks.",
     "fr": "Exige un noyau compilé avec `CONFIG_SLUB_DEBUG=y`, activant les contrôles de détection de corruption de l'allocateur SLUB."
+  },
+  "rationale": {
+    "en": "`CONFIG_SLUB_DEBUG=y` builds in the SLUB allocator's consistency-checking machinery: redzone and poison checks that detect heap corruption, plus the ability to validate freelist integrity. It is the prerequisite for runtime hardening such as `init_on_free`/`slub_debug` and lets the kernel catch use-after-free and overflow conditions instead of silently continuing with corrupted memory. The checks are dormant until requested, so the cost when unused is minimal.",
+    "fr": "`CONFIG_SLUB_DEBUG=y` intègre les mécanismes de vérification de cohérence de l'allocateur SLUB : contrôles de redzone et de poison qui détectent la corruption du tas, ainsi que la validation de l'intégrité de la freelist. C'est le prérequis du durcissement à l'exécution (`init_on_free`/`slub_debug`) et il permet au noyau de détecter use-after-free et débordements au lieu de poursuivre silencieusement avec une mémoire corrompue. Les contrôles restent inactifs tant qu'ils ne sont pas demandés, d'où un coût minimal hors usage."
   },
   "check_note": {
     "en": "Pavois reads the build configuration of the **running** kernel via `/boot/config-$(uname -r)` or `/proc/config.gz` and confirms `CONFIG_SLUB_DEBUG=y`. Reading the booted kernel's effective config proves the debugging support is compiled into the kernel in use, not just available in some installed image.",

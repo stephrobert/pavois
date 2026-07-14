@@ -2,14 +2,21 @@
   "id": "fileowner-etc-security-opasswd-old",
   "supported_os": [
     "debian12",
+    "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -36,13 +43,13 @@
     "fr": "Verifier l'utilisateur proprietaire du fichier /etc/security/opasswd.old"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/etc/security/opasswd.old` file is the **backup** PAM writes when rotating `/etc/security/opasswd`; it likewise contains **hashes of previous passwords**. Being a backup makes it just as sensitive: if a non-root account owns it, those hashes can be read for offline cracking or the history can be tampered with. Setting **`root` (UID 0)** as the owner keeps the backup under exclusive privileged control.",
-    "fr": "Le fichier `/etc/security/opasswd.old` est la **sauvegarde** ecrite par PAM lors de la rotation de `/etc/security/opasswd` ; il contient lui aussi des **empreintes d'anciens mots de passe**. Etant une sauvegarde, il est tout aussi sensible : si un compte non-root le possede, ces empreintes peuvent etre lues pour un cassage hors-ligne ou l'historique falsifie. Definir **`root` (UID 0)** comme proprietaire maintient la sauvegarde sous controle privilegie exclusif."
-  },
   "summary": {
     "en": "Ensures the password-history backup `/etc/security/opasswd.old` is owned by `root` (UID 0).",
     "fr": "Garantit que la sauvegarde de l'historique des mots de passe `/etc/security/opasswd.old` appartient a `root` (UID 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/security/opasswd.old` file is the **backup** PAM writes when rotating `/etc/security/opasswd`; it likewise contains **hashes of previous passwords**. Being a backup makes it just as sensitive: if a non-root account owns it, those hashes can be read for offline cracking or the history can be tampered with. Setting **`root` (UID 0)** as the owner keeps the backup under exclusive privileged control.",
+    "fr": "Le fichier `/etc/security/opasswd.old` est la **sauvegarde** ecrite par PAM lors de la rotation de `/etc/security/opasswd` ; il contient lui aussi des **empreintes d'anciens mots de passe**. Etant une sauvegarde, il est tout aussi sensible : si un compte non-root le possede, ces empreintes peuvent etre lues pour un cassage hors-ligne ou l'historique falsifie. Definir **`root` (UID 0)** comme proprietaire maintient la sauvegarde sous controle privilegie exclusif."
   },
   "check_note": {
     "en": "Pavois inspects the **live filesystem** with the InSpec `file('/etc/security/opasswd.old')` resource and asserts `uid == 0`, guarded by `only_if` so it is skipped when no backup exists yet. Reading the real inode owner reflects the **effective** on-disk state and catches a `chown` that would expose the backed-up hashes.",

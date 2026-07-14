@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "1.8.3",
       "1.7.3",
+      "1.8.3",
       "1.8.2"
     ],
     "nist": [
@@ -35,25 +36,28 @@
     ]
   },
   "check": [
+    "only_if { command('dconf').exist? }",
     "describe command('{ s=$(grep -rhE \\'^[[:space:]]*disable-user-list[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null | tail -1 | sed -E \\'s/^[^=]*=[[:space:]]*//\\' | tr -d \"\\'\\\\\"\"); [ \"$s\" = \"true\" ] && grep -rqxF \\'/org/gnome/login-screen/disable-user-list\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
   "remediation": {
-    "resource": "dconf"
+    "key": "org/gnome/login-screen/disable-user-list",
+    "resource": "dconf",
+    "value": "true"
   },
   "title": {
     "en": "Disable the GNOME3 Login User List",
     "fr": "Désactiver la liste des utilisateurs sur l'écran de connexion GNOME3"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "By default the GDM greeter shows a list of existing user accounts. Anyone with physical access can read these names and enumerate valid usernames without authenticating, giving an attacker half of every credential pair for free and aiding targeted phishing or brute-force attacks. Setting `disable-user-list=true` and locking it forces users to type their username, removing this free enumeration.",
-    "fr": "Par défaut, l'écran d'accueil GDM affiche la liste des comptes utilisateurs existants. Toute personne disposant d'un accès physique peut lire ces noms et énumérer les identifiants valides sans s'authentifier, offrant gratuitement à un attaquant la moitié de chaque paire d'identifiants et facilitant le phishing ciblé ou les attaques par force brute. Définir `disable-user-list=true` et le verrouiller oblige les utilisateurs à saisir leur nom, supprimant cette énumération gratuite."
-  },
   "summary": {
     "en": "Hides the list of user accounts on the GNOME (GDM) login screen by setting `disable-user-list=true` and locking the key.",
     "fr": "Masque la liste des comptes utilisateurs sur l'écran de connexion GNOME (GDM) en définissant `disable-user-list=true` et en verrouillant la clé."
+  },
+  "rationale": {
+    "en": "By default the GDM greeter shows a list of existing user accounts. Anyone with physical access can read these names and enumerate valid usernames without authenticating, giving an attacker half of every credential pair for free and aiding targeted phishing or brute-force attacks. Setting `disable-user-list=true` and locking it forces users to type their username, removing this free enumeration.",
+    "fr": "Par défaut, l'écran d'accueil GDM affiche la liste des comptes utilisateurs existants. Toute personne disposant d'un accès physique peut lire ces noms et énumérer les identifiants valides sans s'authentifier, offrant gratuitement à un attaquant la moitié de chaque paire d'identifiants et facilitant le phishing ciblé ou les attaques par force brute. Définir `disable-user-list=true` et le verrouiller oblige les utilisateurs à saisir leur nom, supprimant cette énumération gratuite."
   },
   "check_note": {
     "en": "Pavois checks the **effective** dconf state: the last definition of `disable-user-list` across `/etc/dconf/db/*.d/*` must resolve to `true`, **and** the key `/org/gnome/login-screen/disable-user-list` must appear in a dconf **lock** file. Evaluating resolved precedence (last drop-in wins) plus the lock matches how dconf computes the value, catching a later drop-in that re-enables the list or unlocks the key.",

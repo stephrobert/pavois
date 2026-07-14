@@ -1,14 +1,22 @@
 {
   "id": "ssh-disable-user-known-hosts",
   "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
-    "rhel9"
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "rhel10": "1.0.0",
     "rhel8": "4.0.0",
-    "rhel9": "2.0.0"
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
   },
   "severity": "medium",
   "domain": "SSH",
@@ -26,7 +34,7 @@
     "directive": "ignoreuserknownhosts",
     "notify": {
       "action": "reload",
-      "service": "ssh"
+      "service": "ssh.service"
     },
     "resource": "sshd_setting",
     "value": "yes",
@@ -37,13 +45,13 @@
     "fr": "Désactiver la prise en charge SSH des known_hosts utilisateur"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "When host-based authentication is allowed, a user-controlled `~/.ssh/known_hosts` file can be used to bypass the system's trusted host list. By setting **`IgnoreUserKnownHosts yes`**, `sshd` trusts only the system-wide `/etc/ssh/ssh_known_hosts`, so an attacker who plants entries in a user's file cannot authenticate as another user or impersonate a trusted host. It is a defense-in-depth measure that guarantees a remote login still requires a password even if host-based trust is misconfigured elsewhere.",
-    "fr": "Lorsque l'authentification par hôte (host-based) est autorisée, un fichier `~/.ssh/known_hosts` contrôlé par l'utilisateur peut servir à contourner la liste des hôtes de confiance du système. En positionnant **`IgnoreUserKnownHosts yes`**, `sshd` ne fait confiance qu'au fichier système `/etc/ssh/ssh_known_hosts` : un attaquant qui injecterait des entrées dans le fichier d'un utilisateur ne pourra ni s'authentifier en tant qu'un autre utilisateur ni usurper un hôte de confiance. C'est une mesure de défense en profondeur qui garantit qu'une connexion distante exige toujours un mot de passe même si la confiance par hôte est mal configurée ailleurs."
-  },
   "summary": {
     "en": "Forces `sshd` to ignore each user's `~/.ssh/known_hosts` file by setting **`IgnoreUserKnownHosts yes`**.",
     "fr": "Force `sshd` à ignorer le fichier `~/.ssh/known_hosts` de chaque utilisateur en positionnant **`IgnoreUserKnownHosts yes`**."
+  },
+  "rationale": {
+    "en": "When host-based authentication is allowed, a user-controlled `~/.ssh/known_hosts` file can be used to bypass the system's trusted host list. By setting **`IgnoreUserKnownHosts yes`**, `sshd` trusts only the system-wide `/etc/ssh/ssh_known_hosts`, so an attacker who plants entries in a user's file cannot authenticate as another user or impersonate a trusted host. It is a defense-in-depth measure that guarantees a remote login still requires a password even if host-based trust is misconfigured elsewhere.",
+    "fr": "Lorsque l'authentification par hôte (host-based) est autorisée, un fichier `~/.ssh/known_hosts` contrôlé par l'utilisateur peut servir à contourner la liste des hôtes de confiance du système. En positionnant **`IgnoreUserKnownHosts yes`**, `sshd` ne fait confiance qu'au fichier système `/etc/ssh/ssh_known_hosts` : un attaquant qui injecterait des entrées dans le fichier d'un utilisateur ne pourra ni s'authentifier en tant qu'un autre utilisateur ni usurper un hôte de confiance. C'est une mesure de défense en profondeur qui garantit qu'une connexion distante exige toujours un mot de passe même si la confiance par hôte est mal configurée ailleurs."
   },
   "check_note": {
     "en": "Pavois asserts the **runtime** value by parsing `sshd -T`, which prints the fully resolved effective configuration. Reading `/etc/ssh/sshd_config` alone would miss values set in `Include`d drop-ins under `/etc/ssh/sshd_config.d/` or contextual `Match` blocks, `sshd -T` reflects exactly what the running daemon enforces.",

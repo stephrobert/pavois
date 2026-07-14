@@ -3,12 +3,20 @@
   "supported_os": [
     "debian12",
     "debian13",
-    "rhel8"
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel8": "4.0.0"
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
   },
   "severity": "medium",
   "domain": "Sudo",
@@ -36,13 +44,13 @@
     "fr": "Vérifier que le umask de sudo est approprié - umask sudo"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `umask` controls the default permissions assigned to files created by a process. When commands are run through `sudo`, they execute with elevated privileges, so any file they create can end up with overly permissive modes if the `umask` is too loose. Setting `Defaults umask=0027` (plus `umask_override` to force it regardless of the caller's shell) ensures privileged commands create files that are not readable or writable by group/other, reducing the chance that sensitive data written by a root command is exposed to unauthorized users.",
-    "fr": "Le `umask` contrôle les permissions par défaut attribuées aux fichiers créés par un processus. Lorsque des commandes sont exécutées via `sudo`, elles tournent avec des privilèges élevés : tout fichier qu'elles créent peut donc hériter de droits trop permissifs si le `umask` est trop large. Définir `Defaults umask=0027` (avec `umask_override` pour le forcer quel que soit le shell appelant) garantit que les commandes privilégiées créent des fichiers non lisibles ni modifiables par le groupe ou les autres, réduisant le risque que des données sensibles écrites par une commande root soient exposées à des utilisateurs non autorisés."
-  },
   "summary": {
     "en": "Forces `sudo` to create files with a restrictive `umask` of `0027` so privileged commands do not leave group/world-readable files behind.",
     "fr": "Force `sudo` à créer les fichiers avec un `umask` restrictif de `0027`, afin que les commandes privilégiées ne laissent pas de fichiers lisibles par le groupe ou tous."
+  },
+  "rationale": {
+    "en": "The `umask` controls the default permissions assigned to files created by a process. When commands are run through `sudo`, they execute with elevated privileges, so any file they create can end up with overly permissive modes if the `umask` is too loose. Setting `Defaults umask=0027` (plus `umask_override` to force it regardless of the caller's shell) ensures privileged commands create files that are not readable or writable by group/other, reducing the chance that sensitive data written by a root command is exposed to unauthorized users.",
+    "fr": "Le `umask` contrôle les permissions par défaut attribuées aux fichiers créés par un processus. Lorsque des commandes sont exécutées via `sudo`, elles tournent avec des privilèges élevés : tout fichier qu'elles créent peut donc hériter de droits trop permissifs si le `umask` est trop large. Définir `Defaults umask=0027` (avec `umask_override` pour le forcer quel que soit le shell appelant) garantit que les commandes privilégiées créent des fichiers non lisibles ni modifiables par le groupe ou les autres, réduisant le risque que des données sensibles écrites par une commande root soient exposées à des utilisateurs non autorisés."
   },
   "check_note": {
     "en": "Pavois checks the **effective `sudo` policy** by grepping `/etc/sudoers` and every drop-in under `/etc/sudoers.d/` for an active `Defaults ... umask` line. Because `sudo` resolves its configuration from the main file **plus** all `@includedir` drop-ins, scanning the whole set (rather than a single file) reflects the policy `sudo` actually applies at runtime.",

@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -29,10 +30,14 @@
   "check": [
     "describe kernel_parameter('kernel.modules_disabled') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE 'kernel.modules_disabled[[:space:]]*=[[:space:]]*1' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf /etc/systemd/system/*.service 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
     "key": "kernel.modules_disabled",
+    "reboot_required": true,
     "resource": "sysctl",
     "value": "1"
   },
@@ -46,5 +51,13 @@
   "rationale": {
     "en": "Malicious kernel modules can have a significant impact on system security and availability. Disabling loading of kernel modules prevents this threat. Note that once this option has been set, it cannot be reverted without doing a system reboot. Make sure that all needed kernel modules are loaded before setting this option.",
     "fr": "Malicious kernel modules can have a significant impact on system security and availability. Disabling loading of kernel modules prevents this threat. Note that once this option has been set, it cannot be reverted without doing a system reboot. Make sure that all needed kernel modules are loaded before setting this option."
-  }
+  },
+  "needs_authoring": [
+    "summary",
+    "check_note",
+    "verify",
+    "logs",
+    "remediation_note",
+    "impact"
+  ]
 }

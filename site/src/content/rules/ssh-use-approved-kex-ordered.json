@@ -1,12 +1,10 @@
 {
   "id": "ssh-use-approved-kex-ordered",
   "supported_os": [
-    "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2204"
   ],
   "os_versions": {
-    "ubuntu2204": "3.0.0",
-    "ubuntu2404": "1.0.0"
+    "ubuntu2204": "3.0.0"
   },
   "severity": "medium",
   "domain": "SSH",
@@ -14,10 +12,7 @@
   "reboot_survivable": "yes",
   "norms": {
     "nist": "AC-17(2)",
-    "stig": [
-      "UBTU-22-255060",
-      "UBTU-24-100840"
-    ]
+    "stig": "UBTU-22-255060"
   },
   "check": [
     "describe command('sshd -T') do",
@@ -30,13 +25,13 @@
     "fr": "N'utiliser que des algorithmes d'échange de clés validés FIPS 140-2"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The SSH **key exchange** establishes the session keys that protect all subsequent traffic; a weak KEX undermines the whole connection regardless of the cipher. Only **FIPS-approved** algorithms may be offered. The list is pinned **strongest to weakest** (`ecdh-sha2-nistp256`, `ecdh-sha2-nistp384`, `ecdh-sha2-nistp521`, `diffie-hellman-group-exchange-sha256`) because `sshd` selects the first server algorithm the client also supports, ordering ensures the strongest mutually-supported KEX is negotiated and excludes weak or deprecated exchanges (e.g. SHA-1 or small DH groups).",
-    "fr": "L'**échange de clés** SSH établit les clés de session qui protègent tout le trafic ultérieur ; un échange faible compromet toute la connexion, quel que soit le chiffrement. Seuls des algorithmes **approuvés FIPS** peuvent être proposés. La liste est ordonnée **du plus fort au plus faible** (`ecdh-sha2-nistp256`, `ecdh-sha2-nistp384`, `ecdh-sha2-nistp521`, `diffie-hellman-group-exchange-sha256`) car `sshd` sélectionne le premier algorithme serveur pris en charge aussi par le client, cet ordre garantit la négociation du KEX le plus robuste commun et exclut les échanges faibles ou obsolètes (p. ex. SHA-1 ou petits groupes DH)."
-  },
   "summary": {
     "en": "Restrict `sshd` `KexAlgorithms` to the FIPS-validated set, ordered strongest first: `ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256`.",
     "fr": "Restreindre les `KexAlgorithms` de `sshd` à l'ensemble validé FIPS, ordonné du plus fort au plus faible : `ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256`."
+  },
+  "rationale": {
+    "en": "The SSH **key exchange** establishes the session keys that protect all subsequent traffic; a weak KEX undermines the whole connection regardless of the cipher. Only **FIPS-approved** algorithms may be offered. The list is pinned **strongest to weakest** (`ecdh-sha2-nistp256`, `ecdh-sha2-nistp384`, `ecdh-sha2-nistp521`, `diffie-hellman-group-exchange-sha256`) because `sshd` selects the first server algorithm the client also supports, ordering ensures the strongest mutually-supported KEX is negotiated and excludes weak or deprecated exchanges (e.g. SHA-1 or small DH groups).",
+    "fr": "L'**échange de clés** SSH établit les clés de session qui protègent tout le trafic ultérieur ; un échange faible compromet toute la connexion, quel que soit le chiffrement. Seuls des algorithmes **approuvés FIPS** peuvent être proposés. La liste est ordonnée **du plus fort au plus faible** (`ecdh-sha2-nistp256`, `ecdh-sha2-nistp384`, `ecdh-sha2-nistp521`, `diffie-hellman-group-exchange-sha256`) car `sshd` sélectionne le premier algorithme serveur pris en charge aussi par le client, cet ordre garantit la négociation du KEX le plus robuste commun et exclut les échanges faibles ou obsolètes (p. ex. SHA-1 ou petits groupes DH)."
   },
   "check_note": {
     "en": "Pavois asserts that the **effective** `sshd -T` output lists exactly `kexalgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256`, in that order. Querying the live daemon reflects the value after all `Include` directives, `/etc/ssh/sshd_config.d/` drop-ins **and** any system-wide crypto policy are merged, a file scan can miss a drop-in or policy that re-adds a weak KEX.",

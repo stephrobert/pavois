@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,9 +27,9 @@
   "norms": {
     "bp28": "R73",
     "cis": [
-      "6.3.3.4",
       "10.6.3",
-      "6.2.3.4"
+      "6.2.3.4",
+      "6.3.3.4"
     ],
     "nist": [
       "3.1.7",
@@ -42,6 +43,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)time\\-change\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'time\\-change' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -53,13 +57,13 @@
     "fr": "Enregistrer les tentatives de modification de l'heure via clock_settime"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "**Arbitrary changes to the system clock can be used to obfuscate nefarious activity in log files** (by skewing timestamps) and to confuse services that depend on accurate time, such as `sshd`, Kerberos and TLS certificate validation. The `clock_settime` syscall is one way to set the time directly, so every such call should be audited. A reliable, accurate timeline is the backbone of incident investigation.",
-    "fr": "**Des modifications arbitraires de l'horloge système peuvent servir à masquer une activité malveillante dans les journaux** (en faussant les horodatages) et à perturber des services dépendant d'une heure exacte, comme `sshd`, Kerberos et la validation des certificats TLS. L'appel système `clock_settime` est un moyen de régler l'heure directement : chacun de ces appels doit donc être audité. Une chronologie fiable et exacte est l'épine dorsale de toute investigation d'incident."
-  },
   "summary": {
     "en": "Enforces an **auditd** rule (key `time-change`) that records attempts to set the system clock via the `clock_settime` syscall.",
     "fr": "Impose une règle **auditd** (clé `time-change`) qui enregistre les tentatives de réglage de l'horloge système via l'appel système `clock_settime`."
+  },
+  "rationale": {
+    "en": "**Arbitrary changes to the system clock can be used to obfuscate nefarious activity in log files** (by skewing timestamps) and to confuse services that depend on accurate time, such as `sshd`, Kerberos and TLS certificate validation. The `clock_settime` syscall is one way to set the time directly, so every such call should be audited. A reliable, accurate timeline is the backbone of incident investigation.",
+    "fr": "**Des modifications arbitraires de l'horloge système peuvent servir à masquer une activité malveillante dans les journaux** (en faussant les horodatages) et à perturber des services dépendant d'une heure exacte, comme `sshd`, Kerberos et la validation des certificats TLS. L'appel système `clock_settime` est un moyen de régler l'heure directement : chacun de ces appels doit donc être audité. Une chronologie fiable et exacte est l'épine dorsale de toute investigation d'incident."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks a rule with the key `time-change` is loaded. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule on disk that was never loaded (no `augenrules --load`, syntax error, reload failure) would make a file scanner falsely **pass**. `auditctl -l` reflects what the kernel audits now.",

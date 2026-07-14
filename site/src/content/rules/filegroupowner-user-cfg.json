@@ -6,14 +6,17 @@
     "fedora",
     "rhel10",
     "rhel8",
-    "rhel9"
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel10": "1.0.0",
     "rhel8": "4.0.0",
-    "rhel9": "2.0.0"
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
   },
   "severity": "medium",
   "domain": "File ownership",
@@ -22,28 +25,25 @@
   "norms": {
     "bp28": "R29",
     "cis": [
-      "1.4.2",
-      "2.2.6"
+      "2.2.6",
+      "1.4.2"
     ],
     "nist": [
       "3.4.5",
       "AC-6(1)",
       "CM-6(a)"
     ],
-    "pci-dss": [
-      "2.2.6",
-      "Req-7.1"
-    ]
+    "pci-dss": "2.2.6"
   },
   "check": [
-    "only_if { file('/boot/grub2/user.cfg').exist? }",
-    "describe file('/boot/grub2/user.cfg') do",
+    "only_if { file('/boot/grub/user.cfg').exist? }",
+    "describe file('/boot/grub/user.cfg') do",
     "  its('gid') { should eq 0 }",
     "end"
   ],
   "remediation": {
     "group": "root",
-    "path": "/boot/grub2/user.cfg",
+    "path": "/boot/grub/user.cfg",
     "resource": "file"
   },
   "title": {
@@ -51,13 +51,13 @@
     "fr": "Verifier le groupe proprietaire de /boot/grub2/user.cfg"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/boot/grub2/user.cfg` stores the GRUB bootloader superuser password (as a PBKDF2 hash). That password gates editing boot entries and reaching single-user mode. If a non-root group owns the file, members could read the hash for offline cracking or tamper with it. Setting the group to `root` (GID 0) ensures only the most privileged group can access the bootloader credential.",
-    "fr": "`/boot/grub2/user.cfg` stocke le mot de passe superutilisateur du chargeur d'amorcage GRUB (sous forme de hachage PBKDF2). Ce mot de passe controle l'edition des entrees de demarrage et l'acces au mode mono-utilisateur. Si un groupe non root possede le fichier, ses membres pourraient lire le hachage pour le casser hors ligne ou l'alterer. Definir le groupe sur `root` (GID 0) garantit que seul le groupe le plus privilegie peut acceder a cette donnee d'authentification du chargeur d'amorcage."
-  },
   "summary": {
     "en": "Ensures `/boot/grub2/user.cfg` (the GRUB superuser password file) is group-owned by `root` (GID 0).",
     "fr": "Garantit que `/boot/grub2/user.cfg` (le fichier du mot de passe superutilisateur GRUB) appartient au groupe `root` (GID 0)."
+  },
+  "rationale": {
+    "en": "`/boot/grub2/user.cfg` stores the GRUB bootloader superuser password (as a PBKDF2 hash). That password gates editing boot entries and reaching single-user mode. If a non-root group owns the file, members could read the hash for offline cracking or tamper with it. Setting the group to `root` (GID 0) ensures only the most privileged group can access the bootloader credential.",
+    "fr": "`/boot/grub2/user.cfg` stocke le mot de passe superutilisateur du chargeur d'amorcage GRUB (sous forme de hachage PBKDF2). Ce mot de passe controle l'edition des entrees de demarrage et l'acces au mode mono-utilisateur. Si un groupe non root possede le fichier, ses membres pourraient lire le hachage pour le casser hors ligne ou l'alterer. Definir le groupe sur `root` (GID 0) garantit que seul le groupe le plus privilegie peut acceder a cette donnee d'authentification du chargeur d'amorcage."
   },
   "check_note": {
     "en": "Pavois reads the **resolved** numeric GID of `/boot/grub2/user.cfg` via the InSpec `file` resource and asserts it equals `0`. It checks the live inode metadata at audit time, so the result reflects the file's actual ownership rather than a documented default.",

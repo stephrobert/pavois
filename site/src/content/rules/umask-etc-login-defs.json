@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -41,19 +42,25 @@
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "file": "/etc/login.defs",
+    "key": "UMASK",
+    "resource": "conf_line",
+    "sep": "space",
+    "value": "077"
+  },
   "title": {
     "en": "Ensure the Default Umask is Set Correctly in login.defs",
     "fr": "S'assurer que l'umask par defaut est correctement configure dans login.defs"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The **umask** determines the permissions stripped from newly created files and directories. The `UMASK` directive in `/etc/login.defs` is the value the **login process and PAM (`pam_umask`)** hand to a session at sign-in, so it sets the baseline for **every login method** (console, ssh, su, cron), independent of which shell rc files exist. If left permissive, files are created **group- or world-readable/writable** by default. Setting it at least as strict as `0027` (CIS) / `0077` (ANSSI BP-028 R36) enforces least privilege at the source of the session.",
-    "fr": "L'**umask** determine les permissions retirees aux fichiers et repertoires nouvellement crees. La directive `UMASK` de `/etc/login.defs` est la valeur que le **processus de login et PAM (`pam_umask`)** transmettent a une session a la connexion ; elle fixe donc la base pour **toute methode de connexion** (console, ssh, su, cron), independamment des fichiers rc de shell presents. Laissee permissive, les fichiers sont crees par defaut **lisibles/inscriptibles par le groupe ou tous**. La fixer au moins aussi stricte que `0027` (CIS) / `0077` (ANSSI BP-028 R36) impose le moindre privilege a la source de la session."
-  },
   "summary": {
     "en": "Ensures the `UMASK` directive in `/etc/login.defs` sets a **restrictive default umask** (at least as strict as `0027`/`0077` per norm) for all login sessions.",
     "fr": "S'assure que la directive `UMASK` de `/etc/login.defs` definit un **umask par defaut restrictif** (au moins aussi strict que `0027`/`0077` selon la norme) pour toutes les sessions de connexion."
+  },
+  "rationale": {
+    "en": "The **umask** determines the permissions stripped from newly created files and directories. The `UMASK` directive in `/etc/login.defs` is the value the **login process and PAM (`pam_umask`)** hand to a session at sign-in, so it sets the baseline for **every login method** (console, ssh, su, cron), independent of which shell rc files exist. If left permissive, files are created **group- or world-readable/writable** by default. Setting it at least as strict as `0027` (CIS) / `0077` (ANSSI BP-028 R36) enforces least privilege at the source of the session.",
+    "fr": "L'**umask** determine les permissions retirees aux fichiers et repertoires nouvellement crees. La directive `UMASK` de `/etc/login.defs` est la valeur que le **processus de login et PAM (`pam_umask`)** transmettent a une session a la connexion ; elle fixe donc la base pour **toute methode de connexion** (console, ssh, su, cron), independamment des fichiers rc de shell presents. Laissee permissive, les fichiers sont crees par defaut **lisibles/inscriptibles par le groupe ou tous**. La fixer au moins aussi stricte que `0027` (CIS) / `0077` (ANSSI BP-028 R36) impose le moindre privilege a la source de la session."
   },
   "check_note": {
     "en": "Pavois reads the **last effective** `UMASK` line in `/etc/login.defs` and tests it against the norm target with a **bitmask comparison** (`(value & mask) == mask`), so `0077` satisfies `0027`. `login.defs` is the most authoritative of the umask sources because, via `pam_umask`, it governs **non-shell logins too** (cron, su, graphical sessions) that never read `bash.bashrc` or `/etc/profile` - making the effective default predictable regardless of the user's shell. Taking `tail -1` honors the last-wins semantics of the file.",

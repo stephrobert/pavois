@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,8 +27,8 @@
   "norms": {
     "bp28": "R73",
     "cis": [
-      "6.3.3.14",
       "10.3.4",
+      "6.3.3.14",
       "6.3.3.23",
       "6.2.3.14"
     ],
@@ -42,6 +43,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)MAC\\-policy\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'MAC\\-policy' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -53,13 +57,13 @@
     "fr": "Enregistrer les evenements modifiant les controles d'acces obligatoires du systeme"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The system's Mandatory Access Control policy (SELinux or AppArmor) is a core security boundary and should not be changed by anything other than deliberate administrator action. An attacker who weakens or disables MAC policy can escape confinement; auditing every change to it ensures such tampering is recorded and reviewable.",
-    "fr": "La politique de controle d'acces obligatoire du systeme (SELinux ou AppArmor) est une frontiere de securite essentielle et ne devrait etre modifiee que par une action deliberee de l'administrateur. Un attaquant qui affaiblit ou desactive la politique MAC peut s'evader du confinement ; auditer chaque changement garantit que toute alteration est enregistree et verifiable."
-  },
   "summary": {
     "en": "Ensures `auditd` has an active rule tagged `MAC-policy` that watches the Mandatory Access Control configuration directories (`/etc/selinux/` or `/etc/apparmor/`, `/etc/apparmor.d/`) for changes.",
     "fr": "Garantit que `auditd` possede une regle active taguee `MAC-policy` qui surveille les repertoires de configuration du controle d'acces obligatoire (`/etc/selinux/` ou `/etc/apparmor/`, `/etc/apparmor.d/`) pour detecter les changements."
+  },
+  "rationale": {
+    "en": "The system's Mandatory Access Control policy (SELinux or AppArmor) is a core security boundary and should not be changed by anything other than deliberate administrator action. An attacker who weakens or disables MAC policy can escape confinement; auditing every change to it ensures such tampering is recorded and reviewable.",
+    "fr": "La politique de controle d'acces obligatoire du systeme (SELinux ou AppArmor) est une frontiere de securite essentielle et ne devrait etre modifiee que par une action deliberee de l'administrateur. Un attaquant qui affaiblit ou desactive la politique MAC peut s'evader du confinement ; auditer chaque changement garantit que toute alteration est enregistree et verifiable."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks for a loaded rule carrying the `MAC-policy` key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule present in a file but not loaded gives false assurance. `auditctl -l` reflects only what the kernel enforces now.",

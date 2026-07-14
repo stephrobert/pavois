@@ -2,11 +2,21 @@
   "id": "groupowner-var-log-journal",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -37,13 +47,13 @@
     "fr": "Verifier le groupe proprietaire des fichiers /var/log/*.journal(~)"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/var/log/*.journal` files are the persistent system logs managed by `systemd-journald`. They record authentication, kernel, service and audit-relevant events. The `systemd-journal` group is the controlled boundary for who may read the journal; if these files are group-owned by an unexpected group, members could read sensitive event data or, if also writable, corrupt the journal and destroy forensic evidence. Restricting group ownership to `systemd-journal` (or `root`) preserves both confidentiality and integrity of the journal.",
-    "fr": "Les fichiers `/var/log/*.journal` sont les journaux systeme persistants geres par `systemd-journald`. Ils enregistrent les evenements d'authentification, noyau, services et pertinents pour l'audit. Le groupe `systemd-journal` est la frontiere controlee determinant qui peut lire le journal ; si ces fichiers ont pour groupe proprietaire un groupe inattendu, ses membres pourraient lire des donnees sensibles ou, s'ils sont aussi inscriptibles, corrompre le journal et detruire les preuves forensiques. Restreindre la propriete de groupe a `systemd-journal` (ou `root`) preserve la confidentialite et l'integrite du journal."
-  },
   "summary": {
     "en": "Ensures every file under `/var/log/journal` is group-owned by `systemd-journal` or `root` (when the directory exists).",
     "fr": "Garantit que chaque fichier sous `/var/log/journal` a pour groupe proprietaire `systemd-journal` ou `root` (lorsque le repertoire existe)."
+  },
+  "rationale": {
+    "en": "The `/var/log/*.journal` files are the persistent system logs managed by `systemd-journald`. They record authentication, kernel, service and audit-relevant events. The `systemd-journal` group is the controlled boundary for who may read the journal; if these files are group-owned by an unexpected group, members could read sensitive event data or, if also writable, corrupt the journal and destroy forensic evidence. Restricting group ownership to `systemd-journal` (or `root`) preserves both confidentiality and integrity of the journal.",
+    "fr": "Les fichiers `/var/log/*.journal` sont les journaux systeme persistants geres par `systemd-journald`. Ils enregistrent les evenements d'authentification, noyau, services et pertinents pour l'audit. Le groupe `systemd-journal` est la frontiere controlee determinant qui peut lire le journal ; si ces fichiers ont pour groupe proprietaire un groupe inattendu, ses membres pourraient lire des donnees sensibles ou, s'ils sont aussi inscriptibles, corrompre le journal et detruire les preuves forensiques. Restreindre la propriete de groupe a `systemd-journal` (ou `root`) preserve la confidentialite et l'integrite du journal."
   },
   "check_note": {
     "en": "Guarded by `only_if test -d /var/log/journal` so it is skipped when persistent journaling is off (volatile-only). Pavois then runs `find -P /var/log/journal -type f ! -group systemd-journal ! -group root` and expects empty output. Reading the real group on each `.journal` inode catches files rotated/created at runtime by journald, a static config audit of `journald.conf` cannot.",

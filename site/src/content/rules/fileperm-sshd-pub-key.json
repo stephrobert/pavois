@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,8 +27,8 @@
   "norms": {
     "bp28": "R50",
     "cis": [
-      "5.1.3",
       "2.2.6",
+      "5.1.3",
       "5.1.5"
     ],
     "nist": [
@@ -36,41 +37,31 @@
       "AC-6(1)",
       "CM-6(a)"
     ],
-    "pci-dss": [
-      "2.2.6",
-      "Req-2.2.4"
-    ]
+    "pci-dss": "2.2.6"
   },
   "check": [
-    "only_if { file('/etc/ssh').exist? }",
-    "describe file('/etc/ssh') do",
-    "  it { should_not be_executable.by('owner') }",
-    "  it { should_not be_setuid }",
-    "  it { should_not be_executable.by('group') }",
-    "  it { should_not be_writable.by('group') }",
-    "  it { should_not be_setgid }",
-    "  it { should_not be_executable.by('other') }",
-    "  it { should_not be_writable.by('other') }",
-    "  it { should_not be_sticky }",
+    "describe command(\"find /etc/ssh -maxdepth 1 -name '*.pub' -perm /133 2>/dev/null\") do",
+    "  its('stdout.strip') { should eq '' }",
     "end"
   ],
   "remediation": {
-    "mode": "0644",
-    "path": "/etc/ssh",
-    "resource": "file"
+    "command": "find /etc/ssh -maxdepth 1 -name '*.pub' -exec chmod 0644 {} + 2>/dev/null; true",
+    "name": "sshd-pubkey-perms",
+    "not_if": "test -z \"$(find /etc/ssh -maxdepth 1 -name '*.pub' -perm /133 2>/dev/null)\"",
+    "resource": "exec"
   },
   "title": {
     "en": "Verify Permissions on SSH Server Public *.pub Key Files",
     "fr": "Vérifier les permissions des fichiers de clés publiques *.pub du serveur SSH"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/etc/ssh` directory holds the SSH host key pairs, including the public `*.pub` host keys that clients use to authenticate the server. If a public host key file (or the directory containing it) is writable by a non-privileged user, an attacker could replace it to **facilitate man-in-the-middle attacks** or undermine host-key trust, compromising the SSH service. The directory must be owned by root with no write/execute for group or other and no special bits, so host-key material cannot be altered by unauthorised users.",
-    "fr": "Le répertoire `/etc/ssh` contient les paires de clés d'hôte SSH, dont les clés d'hôte publiques `*.pub` que les clients utilisent pour authentifier le serveur. Si un fichier de clé d'hôte publique (ou le répertoire qui le contient) est modifiable par un utilisateur non privilégié, un attaquant pourrait le remplacer pour **faciliter des attaques de l'homme du milieu** ou saper la confiance dans la clé d'hôte, compromettant le service SSH. Le répertoire doit appartenir à root sans écriture/exécution pour le groupe ou les autres ni bits spéciaux, afin que le matériel de clé d'hôte ne puisse être altéré par des utilisateurs non autorisés."
-  },
   "summary": {
     "en": "Ensures the `/etc/ssh` directory (holding the SSH host keys and `*.pub` files) is not writable or executable by group or other, protecting host-key integrity.",
     "fr": "Garantit que le répertoire `/etc/ssh` (qui contient les clés d'hôte SSH et les fichiers `*.pub`) n'est ni modifiable ni exécutable par le groupe ou les autres, protégeant l'intégrité des clés d'hôte."
+  },
+  "rationale": {
+    "en": "The `/etc/ssh` directory holds the SSH host key pairs, including the public `*.pub` host keys that clients use to authenticate the server. If a public host key file (or the directory containing it) is writable by a non-privileged user, an attacker could replace it to **facilitate man-in-the-middle attacks** or undermine host-key trust, compromising the SSH service. The directory must be owned by root with no write/execute for group or other and no special bits, so host-key material cannot be altered by unauthorised users.",
+    "fr": "Le répertoire `/etc/ssh` contient les paires de clés d'hôte SSH, dont les clés d'hôte publiques `*.pub` que les clients utilisent pour authentifier le serveur. Si un fichier de clé d'hôte publique (ou le répertoire qui le contient) est modifiable par un utilisateur non privilégié, un attaquant pourrait le remplacer pour **faciliter des attaques de l'homme du milieu** ou saper la confiance dans la clé d'hôte, compromettant le service SSH. Le répertoire doit appartenir à root sans écriture/exécution pour le groupe ou les autres ni bits spéciaux, afin que le matériel de clé d'hôte ne puisse être altéré par des utilisateurs non autorisés."
   },
   "check_note": {
     "en": "Pavois reads the **effective mode** of the `/etc/ssh` directory and asserts no write/execute for group or other and no `setuid`/`setgid`/`sticky` bits (public `*.pub` files are world-readable by design; the protection is against *writing* them). Guarded by `only_if { file('/etc/ssh').exist? }`. Checking the live directory inode reflects what an attacker could actually modify at runtime, regardless of what the package shipped.",

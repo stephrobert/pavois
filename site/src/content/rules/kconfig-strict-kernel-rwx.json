@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_STRICT_KERNEL_RWX=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_STRICT_KERNEL_RWX='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_STRICT_KERNEL_RWX=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_STRICT_KERNEL_RWX=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Make the kernel text and rodata read-only",
     "fr": "Rendre le texte et les rodata du noyau en lecture seule"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_STRICT_KERNEL_RWX=y` enforces strict W^X (write-xor-execute) on kernel memory: executable code (`.text`) is mapped read-only and non-writable, and read-only data (`.rodata`) is mapped non-executable. This blocks two cornerstone exploit techniques, patching kernel code in place to plant a rootkit, and executing data regions as code, forcing attackers to use far more constrained methods.",
-    "fr": "`CONFIG_STRICT_KERNEL_RWX=y` impose un W^X strict (écriture XOR exécution) sur la mémoire noyau : le code exécutable (`.text`) est mappé en lecture seule et non inscriptible, et les données en lecture seule (`.rodata`) sont mappées non exécutables. Cela bloque deux techniques d'exploitation majeures, modifier le code noyau en place pour implanter un rootkit, et exécuter des zones de données comme du code, forçant les attaquants à des méthodes bien plus contraintes."
-  },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_STRICT_KERNEL_RWX=y`, mapping kernel `.text` read-only and `.rodata` non-executable.",
     "fr": "Exige un noyau compilé avec `CONFIG_STRICT_KERNEL_RWX=y`, mappant le `.text` du noyau en lecture seule et les `.rodata` non exécutables."
+  },
+  "rationale": {
+    "en": "`CONFIG_STRICT_KERNEL_RWX=y` enforces strict W^X (write-xor-execute) on kernel memory: executable code (`.text`) is mapped read-only and non-writable, and read-only data (`.rodata`) is mapped non-executable. This blocks two cornerstone exploit techniques, patching kernel code in place to plant a rootkit, and executing data regions as code, forcing attackers to use far more constrained methods.",
+    "fr": "`CONFIG_STRICT_KERNEL_RWX=y` impose un W^X strict (écriture XOR exécution) sur la mémoire noyau : le code exécutable (`.text`) est mappé en lecture seule et non inscriptible, et les données en lecture seule (`.rodata`) sont mappées non exécutables. Cela bloque deux techniques d'exploitation majeures, modifier le code noyau en place pour implanter un rootkit, et exécuter des zones de données comme du code, forçant les attaquants à des méthodes bien plus contraintes."
   },
   "check_note": {
     "en": "Pavois reads the build configuration of the **running** kernel via `/boot/config-$(uname -r)` or `/proc/config.gz` and confirms `CONFIG_STRICT_KERNEL_RWX=y`. Reading the booted kernel's effective config proves the memory protections are compiled into the kernel actually in use, not just an installed default.",

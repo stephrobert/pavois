@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,34 +27,33 @@
   "norms": {
     "bp28": "R50",
     "cis": [
-      "5.1.2",
       "5.1.3",
       "5.1.5"
     ]
   },
   "check": [
-    "only_if { file('/etc/ssh').exist? }",
-    "describe file('/etc/ssh') do",
-    "  its('gid') { should eq 0 }",
+    "describe command('find /etc/ssh -name \"ssh_host_*_key.pub\" -type f ! -gid 0 2>/dev/null') do",
+    "  its('stdout.strip') { should eq '' }",
     "end"
   ],
   "remediation": {
-    "group": "root",
-    "path": "/etc/ssh",
-    "resource": "file"
+    "command": "chgrp root /etc/ssh/ssh_host_*_key.pub 2>/dev/null || true",
+    "name": "chgrp-sshd-pub-keys",
+    "not_if": "[ -z \"$(find /etc/ssh -name 'ssh_host_*_key.pub' -type f ! -gid 0 2>/dev/null)\" ]",
+    "resource": "exec"
   },
   "title": {
     "en": "Verify Group Ownership on SSH Server Public *.pub Key Files",
     "fr": "Vérifier le groupe propriétaire des clés publiques *.pub du serveur SSH"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The SSH host public keys (`/etc/ssh/ssh_host_*_key.pub`) are presented to clients to verify the server's identity. If an unauthorized user can modify a public key file, the SSH service can be **compromised**, for example a swapped public key paired with a rogue private key enables host impersonation. Group ownership by **root** (gid `0`) prevents non-privileged users from tampering with these files.",
-    "fr": "Les clés publiques d'hôte SSH (`/etc/ssh/ssh_host_*_key.pub`) sont présentées aux clients pour vérifier l'identité du serveur. Si un utilisateur non autorisé peut modifier un fichier de clé publique, le service SSH peut être **compromis**, par exemple une clé publique substituée associée à une clé privée malveillante permet l'usurpation d'identité de l'hôte. La propriété par le groupe **root** (gid `0`) empêche les utilisateurs non privilégiés d'altérer ces fichiers."
-  },
   "summary": {
     "en": "Ensures the SSH host public-key location `/etc/ssh` is owned by group **root** (gid `0`).",
     "fr": "Garantit que l'emplacement des clés publiques d'hôte SSH `/etc/ssh` appartient au groupe **root** (gid `0`)."
+  },
+  "rationale": {
+    "en": "The SSH host public keys (`/etc/ssh/ssh_host_*_key.pub`) are presented to clients to verify the server's identity. If an unauthorized user can modify a public key file, the SSH service can be **compromised**, for example a swapped public key paired with a rogue private key enables host impersonation. Group ownership by **root** (gid `0`) prevents non-privileged users from tampering with these files.",
+    "fr": "Les clés publiques d'hôte SSH (`/etc/ssh/ssh_host_*_key.pub`) sont présentées aux clients pour vérifier l'identité du serveur. Si un utilisateur non autorisé peut modifier un fichier de clé publique, le service SSH peut être **compromis**, par exemple une clé publique substituée associée à une clé privée malveillante permet l'usurpation d'identité de l'hôte. La propriété par le groupe **root** (gid `0`) empêche les utilisateurs non privilégiés d'altérer ces fichiers."
   },
   "check_note": {
     "en": "Pavois reads the real group id of `/etc/ssh` via InSpec's `file` resource and asserts `gid == 0`. It checks the **effective** ownership on disk, so a regenerated `.pub` file (e.g. after `ssh-keygen -A`) that landed with the wrong group is detected even when the deployment manifest still looks correct.",

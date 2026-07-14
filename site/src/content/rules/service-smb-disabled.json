@@ -2,11 +2,21 @@
   "id": "service-smb-disabled",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -18,7 +28,7 @@
     "cis": "2.1.14"
   },
   "check": [
-    "describe service('smb.service') do",
+    "describe service('smbd.service') do",
     "  it { should_not be_enabled }",
     "  it { should_not be_running }",
     "end"
@@ -28,7 +38,7 @@
       "disable",
       "stop"
     ],
-    "name": "smb",
+    "name": "smbd.service",
     "resource": "service"
   },
   "title": {
@@ -36,13 +46,13 @@
     "fr": "Désactiver Samba"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "**Samba** (`smbd`) implements the SMB/CIFS file-sharing protocol over ports **`139`** and **`445`**. SMB has a long history of severe, widely-exploited vulnerabilities (e.g. EternalBlue / `MS17-010`) and is a prime lateral-movement and ransomware vector inside networks. Running it where no Windows-style file sharing is needed **needlessly exposes a high-value, frequently-targeted service**. If the host is not a Samba file server, the service should be stopped and disabled to remove that exposure.",
-    "fr": "**Samba** (`smbd`) implémente le protocole de partage de fichiers SMB/CIFS sur les ports **`139`** et **`445`**. SMB a une longue histoire de vulnérabilités graves et largement exploitées (par ex. EternalBlue / `MS17-010`) et constitue un vecteur de prédilection de mouvement latéral et de rançongiciels au sein des réseaux. Le faire tourner là où aucun partage de fichiers de type Windows n'est nécessaire **expose inutilement un service de grande valeur et fréquemment ciblé**. Si l'hôte n'est pas un serveur de fichiers Samba, le service doit être arrêté et désactivé pour supprimer cette exposition."
-  },
   "summary": {
     "en": "Ensures the Samba file-sharing service (**`smb.service`** / `smbd`) is neither enabled at boot nor running, unless the host is intentionally a Windows-style file server.",
     "fr": "Garantit que le service de partage de fichiers Samba (**`smb.service`** / `smbd`) n'est ni activé au démarrage ni en cours d'exécution, sauf si l'hôte est volontairement un serveur de fichiers de type Windows."
+  },
+  "rationale": {
+    "en": "**Samba** (`smbd`) implements the SMB/CIFS file-sharing protocol over ports **`139`** and **`445`**. SMB has a long history of severe, widely-exploited vulnerabilities (e.g. EternalBlue / `MS17-010`) and is a prime lateral-movement and ransomware vector inside networks. Running it where no Windows-style file sharing is needed **needlessly exposes a high-value, frequently-targeted service**. If the host is not a Samba file server, the service should be stopped and disabled to remove that exposure.",
+    "fr": "**Samba** (`smbd`) implémente le protocole de partage de fichiers SMB/CIFS sur les ports **`139`** et **`445`**. SMB a une longue histoire de vulnérabilités graves et largement exploitées (par ex. EternalBlue / `MS17-010`) et constitue un vecteur de prédilection de mouvement latéral et de rançongiciels au sein des réseaux. Le faire tourner là où aucun partage de fichiers de type Windows n'est nécessaire **expose inutilement un service de grande valeur et fréquemment ciblé**. Si l'hôte n'est pas un serveur de fichiers Samba, le service doit être arrêté et désactivé pour supprimer cette exposition."
   },
   "check_note": {
     "en": "Pavois reads the **effective state** of `smb.service` from systemd, asserting it is neither *enabled* nor *running*. This reflects what is actually listening on 139/445 rather than whether `/etc/samba/smb.conf` happens to exist. On Debian/Ubuntu the unit may also be named `smbd.service`; auditing the resolved systemd state avoids guessing from package or config presence and catches drop-in overrides.",

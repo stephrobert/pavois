@@ -1,9 +1,23 @@
 {
   "id": "ssh-disable-tcp-forwarding",
   "supported_os": [
-    "fedora"
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
-  "os_versions": {},
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
+  },
   "severity": "medium",
   "domain": "SSH",
   "evidence_type": "effective-runtime",
@@ -20,7 +34,7 @@
     "directive": "allowtcpforwarding",
     "notify": {
       "action": "reload",
-      "service": "ssh"
+      "service": "ssh.service"
     },
     "resource": "sshd_setting",
     "value": "no",
@@ -31,13 +45,13 @@
     "fr": "Désactiver le forwarding TCP SSH"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "TCP forwarding (`ssh -L`/`-R`/`-D`) lets an authenticated user turn the SSH server into a relay: it can be used to **pivot** into otherwise-unreachable internal hosts, bypass firewall segmentation, or build a back-door tunnel for exfiltration. Unless there is an operational requirement, disabling TCP forwarding removes this tunneling and lateral-movement capability.",
-    "fr": "Le forwarding TCP (`ssh -L`/`-R`/`-D`) permet à un utilisateur authentifié de transformer le serveur SSH en relais : il peut servir à **rebondir** vers des hôtes internes autrement inaccessibles, contourner la segmentation pare-feu ou monter un tunnel dérobé pour l'exfiltration. Sauf besoin opérationnel, désactiver le forwarding TCP supprime cette capacité de tunnelisation et de mouvement latéral."
-  },
   "summary": {
     "en": "Forces **`AllowTcpForwarding no`** so authenticated SSH clients cannot tunnel arbitrary TCP connections through the server.",
     "fr": "Force **`AllowTcpForwarding no`** afin que les clients SSH authentifiés ne puissent pas tunneliser de connexions TCP arbitraires à travers le serveur."
+  },
+  "rationale": {
+    "en": "TCP forwarding (`ssh -L`/`-R`/`-D`) lets an authenticated user turn the SSH server into a relay: it can be used to **pivot** into otherwise-unreachable internal hosts, bypass firewall segmentation, or build a back-door tunnel for exfiltration. Unless there is an operational requirement, disabling TCP forwarding removes this tunneling and lateral-movement capability.",
+    "fr": "Le forwarding TCP (`ssh -L`/`-R`/`-D`) permet à un utilisateur authentifié de transformer le serveur SSH en relais : il peut servir à **rebondir** vers des hôtes internes autrement inaccessibles, contourner la segmentation pare-feu ou monter un tunnel dérobé pour l'exfiltration. Sauf besoin opérationnel, désactiver le forwarding TCP supprime cette capacité de tunnelisation et de mouvement latéral."
   },
   "check_note": {
     "en": "Pavois reads the **effective** value from `sshd -T`, after all `Include`s, `/etc/ssh/sshd_config.d/` drop-ins and `Match` blocks. A `Match` stanza can re-enable forwarding for specific users; only the resolved output reveals that, unlike a read of `/etc/ssh/sshd_config`.",

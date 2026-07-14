@@ -6,14 +6,17 @@
     "fedora",
     "rhel10",
     "rhel8",
-    "rhel9"
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel10": "1.0.0",
     "rhel8": "4.0.0",
-    "rhel9": "2.0.0"
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
   },
   "severity": "medium",
   "domain": "File ownership",
@@ -22,28 +25,25 @@
   "norms": {
     "bp28": "R29",
     "cis": [
-      "1.4.2",
-      "2.2.6"
+      "2.2.6",
+      "1.4.2"
     ],
     "nist": [
       "3.4.5",
       "AC-6(1)",
       "CM-6(a)"
     ],
-    "pci-dss": [
-      "2.2.6",
-      "Req-7.1"
-    ]
+    "pci-dss": "2.2.6"
   },
   "check": [
-    "only_if { file('/boot/grub2/user.cfg').exist? }",
-    "describe file('/boot/grub2/user.cfg') do",
+    "only_if { file('/boot/grub/user.cfg').exist? }",
+    "describe file('/boot/grub/user.cfg') do",
     "  its('uid') { should eq 0 }",
     "end"
   ],
   "remediation": {
     "owner": "root",
-    "path": "/boot/grub2/user.cfg",
+    "path": "/boot/grub/user.cfg",
     "resource": "file"
   },
   "title": {
@@ -51,13 +51,13 @@
     "fr": "Vérifier le propriétaire du fichier /boot/grub2/user.cfg"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Only **root** should be able to modify important boot parameters. The `/boot/grub2/user.cfg` file holds the **GRUB 2 superuser password hash** (PBKDF2). If a non-root user can read or rewrite it, they can extract the hash for offline cracking, or replace it to take unauthorized control of the boot menu, defeating the protection that prevents tampering with kernel command-line arguments (e.g. adding `init=/bin/bash` to obtain a root shell).",
-    "fr": "Seul **root** doit pouvoir modifier les paramètres de démarrage importants. Le fichier `/boot/grub2/user.cfg` contient le **hachage du mot de passe superutilisateur GRUB 2** (PBKDF2). Si un utilisateur non-root peut le lire ou le réécrire, il peut extraire le hachage pour le casser hors ligne, ou le remplacer pour prendre le contrôle non autorisé du menu de démarrage, ce qui annule la protection empêchant la falsification des arguments de la ligne de commande du noyau (par ex. ajouter `init=/bin/bash` pour obtenir un shell root)."
-  },
   "summary": {
     "en": "Ensures that `/boot/grub2/user.cfg`, which stores the GRUB 2 superuser password hash, is **owned by `root` (UID 0)**.",
     "fr": "Garantit que `/boot/grub2/user.cfg`, qui stocke le hachage du mot de passe superutilisateur GRUB 2, est **détenu par `root` (UID 0)**."
+  },
+  "rationale": {
+    "en": "Only **root** should be able to modify important boot parameters. The `/boot/grub2/user.cfg` file holds the **GRUB 2 superuser password hash** (PBKDF2). If a non-root user can read or rewrite it, they can extract the hash for offline cracking, or replace it to take unauthorized control of the boot menu, defeating the protection that prevents tampering with kernel command-line arguments (e.g. adding `init=/bin/bash` to obtain a root shell).",
+    "fr": "Seul **root** doit pouvoir modifier les paramètres de démarrage importants. Le fichier `/boot/grub2/user.cfg` contient le **hachage du mot de passe superutilisateur GRUB 2** (PBKDF2). Si un utilisateur non-root peut le lire ou le réécrire, il peut extraire le hachage pour le casser hors ligne, ou le remplacer pour prendre le contrôle non autorisé du menu de démarrage, ce qui annule la protection empêchant la falsification des arguments de la ligne de commande du noyau (par ex. ajouter `init=/bin/bash` pour obtenir un shell root)."
   },
   "check_note": {
     "en": "Pavois checks that the **owner UID of `/boot/grub2/user.cfg` is `0` (root)**, but only when the file actually exists (`only_if`), since it is created only when a GRUB password is configured. The control inspects the **effective owner reported by the filesystem** (the `stat` metadata CINC reads live on the target), not a configuration template or a packaging manifest, so it reflects the real state on disk regardless of how the file was created.",

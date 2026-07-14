@@ -16,22 +16,29 @@
   "norms": {},
   "check": [
     "describe command('cat /proc/cmdline') do",
-    "  its('stdout') { should match(/(^| )kernel=ALL( |$)/) }",
+    "  its('stdout') { should match(/(^| )nousb( |$)/) }",
+    "end",
+    "describe command(\"grep -hwsF 'nousb' /etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "param": "nousb",
+    "reboot_required": true,
+    "resource": "kernel_cmdline"
+  },
   "title": {
     "en": "Disable Kernel Support for USB via Bootloader Configuration",
     "fr": "Désactiver la prise en charge USB du noyau via la configuration du bootloader"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The USB subsystem is a common physical attack surface: a malicious USB device can impersonate a keyboard (BadUSB), exploit a buggy class driver, or exfiltrate data the moment it is plugged in. Disabling USB support **at the kernel boot level** removes that surface entirely, which is only practical on **specialized, fixed-function systems** (kiosks, appliances, air-gapped hosts) that have no legitimate need for USB peripherals.",
-    "fr": "Le sous-système USB est une surface d'attaque physique courante : un périphérique USB malveillant peut se faire passer pour un clavier (BadUSB), exploiter un pilote de classe bogué ou exfiltrer des données dès son branchement. Désactiver la prise en charge USB **au niveau du démarrage noyau** supprime entièrement cette surface, ce qui n'est réaliste que sur des **systèmes spécialisés à fonction figée** (bornes, appliances, hôtes isolés) sans besoin légitime de périphériques USB."
-  },
   "summary": {
     "en": "Disables kernel USB support through a bootloader parameter so the host rejects USB devices entirely, intended for specialized fixed-function systems.",
     "fr": "Désactive la prise en charge USB du noyau via un paramètre du bootloader afin que l'hôte rejette totalement les périphériques USB, destiné aux systèmes spécialisés à fonction figée."
+  },
+  "rationale": {
+    "en": "The USB subsystem is a common physical attack surface: a malicious USB device can impersonate a keyboard (BadUSB), exploit a buggy class driver, or exfiltrate data the moment it is plugged in. Disabling USB support **at the kernel boot level** removes that surface entirely, which is only practical on **specialized, fixed-function systems** (kiosks, appliances, air-gapped hosts) that have no legitimate need for USB peripherals.",
+    "fr": "Le sous-système USB est une surface d'attaque physique courante : un périphérique USB malveillant peut se faire passer pour un clavier (BadUSB), exploiter un pilote de classe bogué ou exfiltrer des données dès son branchement. Désactiver la prise en charge USB **au niveau du démarrage noyau** supprime entièrement cette surface, ce qui n'est réaliste que sur des **systèmes spécialisés à fonction figée** (bornes, appliances, hôtes isolés) sans besoin légitime de périphériques USB."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel command line** from `/proc/cmdline` rather than `/etc/default/grub`, so it reflects what the running kernel actually applied, a GRUB edit that was never regenerated would not fool the check. The live boot line is the authoritative source for any kernel parameter governing module/subsystem availability.",

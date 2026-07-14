@@ -1,11 +1,13 @@
 {
   "id": "audit-etc-cron-d",
   "supported_os": [
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "rhel10": "1.0.0",
@@ -27,6 +29,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)cronjobs\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'cronjobs' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -38,13 +43,13 @@
     "fr": "S'assurer qu'auditd collecte les modifications des tâches cron - /etc/cron.d/"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/cron.d/` is a classic **persistence and privilege-escalation foothold**: an attacker who drops or edits a file there can schedule arbitrary commands as root. Auditing changes to this directory keeps an accountable record of every modification, supporting both incident detection and forensic investigation. Without the watch, a malicious cron entry can be added and removed with no trace.",
-    "fr": "`/etc/cron.d/` est un point d'ancrage classique de **persistance et d'élévation de privilèges** : un attaquant qui y dépose ou modifie un fichier peut planifier des commandes arbitraires en tant que root. Auditer les modifications de ce répertoire conserve une trace responsabilisante de chaque changement, au service de la détection d'incident comme de l'investigation forensique. Sans cette surveillance, une entrée cron malveillante peut être ajoutée puis retirée sans laisser de trace."
-  },
   "summary": {
     "en": "Adds an audit watch on `/etc/cron.d/` (key `cronjobs`) so any change to scheduled jobs in that directory is recorded.",
     "fr": "Ajoute une surveillance d'audit sur `/etc/cron.d/` (clé `cronjobs`) afin que toute modification des tâches planifiées de ce répertoire soit enregistrée."
+  },
+  "rationale": {
+    "en": "`/etc/cron.d/` is a classic **persistence and privilege-escalation foothold**: an attacker who drops or edits a file there can schedule arbitrary commands as root. Auditing changes to this directory keeps an accountable record of every modification, supporting both incident detection and forensic investigation. Without the watch, a malicious cron entry can be added and removed with no trace.",
+    "fr": "`/etc/cron.d/` est un point d'ancrage classique de **persistance et d'élévation de privilèges** : un attaquant qui y dépose ou modifie un fichier peut planifier des commandes arbitraires en tant que root. Auditer les modifications de ce répertoire conserve une trace responsabilisante de chaque changement, au service de la détection d'incident comme de l'investigation forensique. Sans cette surveillance, une entrée cron malveillante peut être ajoutée puis retirée sans laisser de trace."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l`, the **effective, loaded** audit ruleset of the running kernel, and requires a rule keyed `cronjobs` watching `/etc/cron.d/`. Reading the live ruleset, not `/etc/audit/rules.d/*.rules`, is what makes this reliable: a rule sitting in a file but never loaded (no `augenrules --load`, or a syntax error) would falsely pass a file-based scan but correctly fail here.",

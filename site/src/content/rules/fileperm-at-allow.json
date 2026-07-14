@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "2.4.2.1",
-      "2.2.6"
+      "2.2.6",
+      "2.4.2.1"
     ],
     "pci-dss": "2.2.6"
   },
@@ -45,7 +46,7 @@
     "end"
   ],
   "remediation": {
-    "mode": "0640",
+    "mode": "0600",
     "path": "/etc/at.allow",
     "resource": "file"
   },
@@ -54,13 +55,13 @@
     "fr": "Verifier les permissions du fichier /etc/at.allow"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/at.allow` is the allow-list deciding **which users may schedule `at` jobs**. If it is world-readable or group/other-writable, an unauthorized user could read who is permitted or, worse, edit the list to **grant themselves the ability to run scheduled commands**, a foothold for privilege escalation and persistence. Permissions of `0640` or more restrictive keep the control of `at` access in the hands of root.",
-    "fr": "`/etc/at.allow` est la liste d'autorisation qui decide **quels utilisateurs peuvent planifier des taches `at`**. S'il est lisible par tous ou modifiable par le groupe/les autres, un utilisateur non autorise pourrait lire qui est autorise ou, pire, modifier la liste pour **s'octroyer l'execution de commandes planifiees**, un point d'appui pour l'escalade de privileges et la persistance. Des permissions `0640` ou plus restrictives gardent le controle de l'acces a `at` entre les mains de root."
-  },
   "summary": {
     "en": "Ensures `/etc/at.allow` is not writable/readable by other or writable by group, and carries no executable or special (setuid/setgid/sticky) bits, i.e. mode `0640` or stricter.",
     "fr": "Garantit que `/etc/at.allow` n'est ni accessible en ecriture/lecture par les autres ni en ecriture par le groupe, et ne porte aucun bit executable ou special (setuid/setgid/sticky), soit le mode `0640` ou plus strict."
+  },
+  "rationale": {
+    "en": "`/etc/at.allow` is the allow-list deciding **which users may schedule `at` jobs**. If it is world-readable or group/other-writable, an unauthorized user could read who is permitted or, worse, edit the list to **grant themselves the ability to run scheduled commands**, a foothold for privilege escalation and persistence. Permissions of `0640` or more restrictive keep the control of `at` access in the hands of root.",
+    "fr": "`/etc/at.allow` est la liste d'autorisation qui decide **quels utilisateurs peuvent planifier des taches `at`**. S'il est lisible par tous ou modifiable par le groupe/les autres, un utilisateur non autorise pourrait lire qui est autorise ou, pire, modifier la liste pour **s'octroyer l'execution de commandes planifiees**, un point d'appui pour l'escalade de privileges et la persistance. Des permissions `0640` ou plus restrictives gardent le controle de l'acces a `at` entre les mains de root."
   },
   "check_note": {
     "en": "Pavois queries the file's **live mode bits** through the InSpec `file` resource rather than assuming the package default. Each `should_not be_writable/readable/executable/setuid…` matcher inspects the actual inode the kernel enforces, so a permission loosened after install, by a script, a careless `chmod`, or a restored backup, is caught. The control is wrapped in `only_if { file('/etc/at.allow').exist? }` so it is skipped (not failed) when `at` is not configured.",

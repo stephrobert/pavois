@@ -2,14 +2,21 @@
   "id": "fileowner-etc-security-opasswd",
   "supported_os": [
     "debian12",
+    "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -36,13 +43,13 @@
     "fr": "Verifier l'utilisateur proprietaire du fichier /etc/security/opasswd"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/etc/security/opasswd` file is maintained by `pam_pwhistory`/`pam_unix` and stores **hashes of previous passwords** to enforce the password-reuse (history) policy. If a non-root account owns it, that user could read those hashes (feeding offline cracking) or tamper with the history to bypass reuse rules. Setting **`root` (UID 0)** as the owner keeps this sensitive file under exclusive privileged control.",
-    "fr": "Le fichier `/etc/security/opasswd` est maintenu par `pam_pwhistory`/`pam_unix` et stocke les **empreintes des anciens mots de passe** pour appliquer la politique de non-reutilisation (historique). Si un compte non-root le possede, cet utilisateur pourrait lire ces empreintes (alimentant un cassage hors-ligne) ou falsifier l'historique pour contourner les regles de reutilisation. Definir **`root` (UID 0)** comme proprietaire maintient ce fichier sensible sous controle privilegie exclusif."
-  },
   "summary": {
     "en": "Ensures the password-history file `/etc/security/opasswd` is owned by `root` (UID 0).",
     "fr": "Garantit que le fichier d'historique des mots de passe `/etc/security/opasswd` appartient a `root` (UID 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/security/opasswd` file is maintained by `pam_pwhistory`/`pam_unix` and stores **hashes of previous passwords** to enforce the password-reuse (history) policy. If a non-root account owns it, that user could read those hashes (feeding offline cracking) or tamper with the history to bypass reuse rules. Setting **`root` (UID 0)** as the owner keeps this sensitive file under exclusive privileged control.",
+    "fr": "Le fichier `/etc/security/opasswd` est maintenu par `pam_pwhistory`/`pam_unix` et stocke les **empreintes des anciens mots de passe** pour appliquer la politique de non-reutilisation (historique). Si un compte non-root le possede, cet utilisateur pourrait lire ces empreintes (alimentant un cassage hors-ligne) ou falsifier l'historique pour contourner les regles de reutilisation. Definir **`root` (UID 0)** comme proprietaire maintient ce fichier sensible sous controle privilegie exclusif."
   },
   "check_note": {
     "en": "Pavois inspects the **live filesystem** with the InSpec `file('/etc/security/opasswd')` resource and asserts `uid == 0`, guarded by `only_if` so it is skipped when the history file has not yet been created. Reading the real inode owner reflects the **effective** on-disk state, catching a `chown` an attacker might use to exfiltrate old password hashes.",

@@ -2,11 +2,14 @@
   "id": "filegroupowner-var-log-cloud-init",
   "supported_os": [
     "debian12",
+    "debian13",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -21,14 +24,14 @@
     ]
   },
   "check": [
-    "only_if { file('/var/log/cloud-init').exist? }",
-    "describe file('/var/log/cloud-init') do",
+    "only_if { file('/var/log/cloud-init.log').exist? }",
+    "describe file('/var/log/cloud-init.log') do",
     "  its('group') { should eq 'adm' }",
     "end"
   ],
   "remediation": {
     "group": "adm",
-    "path": "/var/log/cloud-init",
+    "path": "/var/log/cloud-init.log",
     "resource": "file"
   },
   "title": {
@@ -36,13 +39,13 @@
     "fr": "Verifier le groupe proprietaire des fichiers /var/log/cloud-init.log*"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/var/log/cloud-init` logs capture the full first-boot provisioning: user-data, network and SSH key setup, and sometimes injected credentials or metadata-server tokens. If a non-privileged group can read them, secrets and bootstrap details leak. Restricting them to the `adm` group keeps provisioning telemetry confidential.",
-    "fr": "Les journaux `/var/log/cloud-init` capturent l'ensemble du provisionnement au premier demarrage : user-data, configuration reseau et des cles SSH, et parfois des identifiants injectes ou des jetons du serveur de metadonnees. Si un groupe non privilegie peut les lire, des secrets et des details d'amorcage fuient. Les restreindre au groupe `adm` garde cette telemetrie de provisionnement confidentielle."
-  },
   "summary": {
     "en": "Ensures the `/var/log/cloud-init` logs are group-owned by `adm` so first-boot provisioning details stay confidential.",
     "fr": "Garantit que les journaux `/var/log/cloud-init` appartiennent au groupe `adm` afin que les details de provisionnement au premier demarrage restent confidentiels."
+  },
+  "rationale": {
+    "en": "The `/var/log/cloud-init` logs capture the full first-boot provisioning: user-data, network and SSH key setup, and sometimes injected credentials or metadata-server tokens. If a non-privileged group can read them, secrets and bootstrap details leak. Restricting them to the `adm` group keeps provisioning telemetry confidential.",
+    "fr": "Les journaux `/var/log/cloud-init` capturent l'ensemble du provisionnement au premier demarrage : user-data, configuration reseau et des cles SSH, et parfois des identifiants injectes ou des jetons du serveur de metadonnees. Si un groupe non privilegie peut les lire, des secrets et des details d'amorcage fuient. Les restreindre au groupe `adm` garde cette telemetrie de provisionnement confidentielle."
   },
   "check_note": {
     "en": "Pavois reads the **resolved** group ownership of `/var/log/cloud-init` via the InSpec `file` resource and asserts the group is `adm`. It inspects the live inode metadata, so it reflects the directory's actual state on disk after provisioning, not a packaged default.",

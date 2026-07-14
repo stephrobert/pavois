@@ -2,11 +2,21 @@
   "id": "service-tftp-disabled",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -23,7 +33,7 @@
     ]
   },
   "check": [
-    "describe service('tftp.service') do",
+    "describe service('tftpd-hpa.service') do",
     "  it { should_not be_enabled }",
     "  it { should_not be_running }",
     "end"
@@ -33,7 +43,7 @@
       "disable",
       "stop"
     ],
-    "name": "tftp",
+    "name": "tftpd-hpa.service",
     "resource": "service"
   },
   "title": {
@@ -41,13 +51,13 @@
     "fr": "Desactiver le service tftp"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "**TFTP** (Trivial File Transfer Protocol) provides **no authentication and no encryption**. A running TFTP server lets anyone on the network read or write the served files in cleartext, making it a frequent vector for retrieving configuration, exfiltrating data, or planting malicious payloads. Following the principle of least functionality, the service should be disabled unless a documented, network-restricted need (e.g. PXE boot) exists.",
-    "fr": "**TFTP** (Trivial File Transfer Protocol) n'offre **aucune authentification ni chiffrement**. Un serveur TFTP actif permet a quiconque sur le reseau de lire ou ecrire les fichiers servis en clair, en faisant un vecteur frequent pour recuperer des configurations, exfiltrer des donnees ou deposer des charges malveillantes. Conformement au principe de moindre fonctionnalite, le service doit etre desactive sauf besoin documente et restreint au reseau (par exemple amorcage PXE)."
-  },
   "summary": {
     "en": "Ensures the unauthenticated `tftp.service` is **disabled** and **not running** so the host does not act as a TFTP server.",
     "fr": "Garantit que le service `tftp.service` non authentifie est **desactive** et **arrete** afin que l'hote n'agisse pas comme serveur TFTP."
+  },
+  "rationale": {
+    "en": "**TFTP** (Trivial File Transfer Protocol) provides **no authentication and no encryption**. A running TFTP server lets anyone on the network read or write the served files in cleartext, making it a frequent vector for retrieving configuration, exfiltrating data, or planting malicious payloads. Following the principle of least functionality, the service should be disabled unless a documented, network-restricted need (e.g. PXE boot) exists.",
+    "fr": "**TFTP** (Trivial File Transfer Protocol) n'offre **aucune authentification ni chiffrement**. Un serveur TFTP actif permet a quiconque sur le reseau de lire ou ecrire les fichiers servis en clair, en faisant un vecteur frequent pour recuperer des configurations, exfiltrer des donnees ou deposer des charges malveillantes. Conformement au principe de moindre fonctionnalite, le service doit etre desactive sauf besoin documente et restreint au reseau (par exemple amorcage PXE)."
   },
   "check_note": {
     "en": "Pavois reads the **effective unit state** via `service('tftp.service')` (`systemctl is-enabled` / `is-active`). TFTP is commonly **socket-activated** (`tftp.socket`), so checking the running/enabled unit, including drop-ins, catches an on-demand server that a static file scan of `/etc/default/tftpd-hpa` would not reveal.",

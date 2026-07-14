@@ -2,11 +2,21 @@
   "id": "service-slapd-disabled",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -36,13 +46,13 @@
     "fr": "Désactiver le serveur LDAP (slapd)"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "**`slapd`** is the OpenLDAP directory daemon, listening on **`389`** (LDAP) and **`636`** (LDAPS). An LDAP directory typically holds **user accounts, group memberships and credential hashes**, making it a high-value target. Exposing it where no directory role is needed widens the attack surface and risks leaking the very identity data attackers want; a misconfigured `slapd` can allow **anonymous binds or unauthenticated reads** of the whole tree. If the host is not meant to serve a directory, the daemon should be stopped and disabled.",
-    "fr": "**`slapd`** est le démon d'annuaire OpenLDAP, en écoute sur les ports **`389`** (LDAP) et **`636`** (LDAPS). Un annuaire LDAP contient généralement des **comptes utilisateurs, des appartenances de groupes et des empreintes d'identifiants**, ce qui en fait une cible de grande valeur. L'exposer là où aucun rôle d'annuaire n'est requis élargit la surface d'attaque et risque de divulguer les données d'identité même que recherchent les attaquants ; un `slapd` mal configuré peut autoriser des **binds anonymes ou des lectures non authentifiées** de tout l'arbre. Si l'hôte n'a pas vocation à servir un annuaire, le démon doit être arrêté et désactivé."
-  },
   "summary": {
     "en": "Ensures the **`slapd.service`** (OpenLDAP directory server) is neither enabled at boot nor running, unless the host is intentionally an LDAP server.",
     "fr": "Garantit que le service **`slapd.service`** (serveur d'annuaire OpenLDAP) n'est ni activé au démarrage ni en cours d'exécution, sauf si l'hôte est volontairement un serveur LDAP."
+  },
+  "rationale": {
+    "en": "**`slapd`** is the OpenLDAP directory daemon, listening on **`389`** (LDAP) and **`636`** (LDAPS). An LDAP directory typically holds **user accounts, group memberships and credential hashes**, making it a high-value target. Exposing it where no directory role is needed widens the attack surface and risks leaking the very identity data attackers want; a misconfigured `slapd` can allow **anonymous binds or unauthenticated reads** of the whole tree. If the host is not meant to serve a directory, the daemon should be stopped and disabled.",
+    "fr": "**`slapd`** est le démon d'annuaire OpenLDAP, en écoute sur les ports **`389`** (LDAP) et **`636`** (LDAPS). Un annuaire LDAP contient généralement des **comptes utilisateurs, des appartenances de groupes et des empreintes d'identifiants**, ce qui en fait une cible de grande valeur. L'exposer là où aucun rôle d'annuaire n'est requis élargit la surface d'attaque et risque de divulguer les données d'identité même que recherchent les attaquants ; un `slapd` mal configuré peut autoriser des **binds anonymes ou des lectures non authentifiées** de tout l'arbre. Si l'hôte n'a pas vocation à servir un annuaire, le démon doit être arrêté et désactivé."
   },
   "check_note": {
     "en": "Pavois reads the **effective state** of `slapd.service` from systemd, asserting it is neither *enabled* nor *running*. This reflects what is actually listening on ports 389/636, regardless of whether `/etc/ldap/slapd.d/` config fragments exist. A file-based check could be fooled by leftover config from a removed role, or miss a daemon started by a drop-in override.",

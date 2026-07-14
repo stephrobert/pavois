@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -30,21 +31,29 @@
   "check": [
     "describe mount('/var/tmp') do",
     "  its('options') { should include 'noexec' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /var/tmp 2>/dev/null; grep -hsE '[[:space:]]/var/tmp[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /var/tmp 2>/dev/null) 2>/dev/null; } | grep -ow 'noexec'\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "awk -v m=/var/tmp -v o=noexec '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,\",\");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4\",\"o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var/tmp && mount -o remount,noexec /var/tmp || true",
+    "name": "mount-var-tmp-noexec",
+    "not_if": "awk -v m=/var/tmp '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\\n' | grep -qx noexec",
+    "resource": "exec"
+  },
   "title": {
     "en": "Add noexec Option to /var/tmp",
     "fr": "Ajouter l'option noexec à /var/tmp"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/var/tmp` is a world-writable temporary directory; executing binaries from it is never needed in normal operation. Mounting it **`noexec`** stops attackers and malware from running a dropped payload from this classic staging area, cutting off a very common privilege-escalation and persistence path.",
-    "fr": "`/var/tmp` est un répertoire temporaire inscriptible par tous ; y exécuter des binaires n'est jamais nécessaire en fonctionnement normal. Le monter en **`noexec`** empêche attaquants et logiciels malveillants de lancer une charge utile déposée dans cette zone de préparation classique, coupant un chemin très courant d'élévation de privilèges et de persistance."
-  },
   "summary": {
     "en": "Mount `/var/tmp` with the **`noexec`** option so binaries cannot be executed from this temporary directory.",
     "fr": "Monter `/var/tmp` avec l'option **`noexec`** afin qu'aucun binaire ne puisse être exécuté depuis ce répertoire temporaire."
+  },
+  "rationale": {
+    "en": "`/var/tmp` is a world-writable temporary directory; executing binaries from it is never needed in normal operation. Mounting it **`noexec`** stops attackers and malware from running a dropped payload from this classic staging area, cutting off a very common privilege-escalation and persistence path.",
+    "fr": "`/var/tmp` est un répertoire temporaire inscriptible par tous ; y exécuter des binaires n'est jamais nécessaire en fonctionnement normal. Le monter en **`noexec`** empêche attaquants et logiciels malveillants de lancer une charge utile déposée dans cette zone de préparation classique, coupant un chemin très courant d'élévation de privilèges et de persistance."
   },
   "check_note": {
     "en": "Pavois reads the **effective** mount options via `mount('/var/tmp')`, the live kernel view. Since `/var/tmp` is frequently a bind mount or systemd tmpfs, this catches runtime/bind configurations that parsing `/etc/fstab` alone would miss.",

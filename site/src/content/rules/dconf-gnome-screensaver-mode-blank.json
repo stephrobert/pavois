@@ -4,7 +4,8 @@
     "fedora",
     "rhel10",
     "rhel9",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "rhel10": "1.0.0",
@@ -27,25 +28,28 @@
     "stig": "UBTU-24-200043"
   },
   "check": [
+    "only_if { command('dconf').exist? }",
     "describe command('{ grep -rqE \\'^[[:space:]]*picture-uri[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null && grep -rqxF \\'/org/gnome/desktop/screensaver/picture-uri\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
   "remediation": {
-    "resource": "dconf"
+    "key": "org/gnome/desktop/screensaver/picture-uri",
+    "resource": "dconf",
+    "value": "''"
   },
   "title": {
     "en": "Implement Blank Screensaver",
     "fr": "Mettre en place un économiseur d'écran vide"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Setting the screensaver mode to blank-only conceals the contents of the display from passersby.",
-    "fr": "Régler l'économiseur d'écran sur un affichage vide masque le contenu de l'écran aux personnes de passage."
-  },
   "summary": {
     "en": "Forces the GNOME screensaver to display a **blank** screen (empty `picture-uri`) and **locks** that setting so users cannot override it.",
     "fr": "Force l'économiseur d'écran GNOME à afficher un écran **vide** (`picture-uri` vide) et **verrouille** ce réglage pour que les utilisateurs ne puissent pas le modifier."
+  },
+  "rationale": {
+    "en": "Setting the screensaver mode to blank-only conceals the contents of the display from passersby.",
+    "fr": "Régler l'économiseur d'écran sur un affichage vide masque le contenu de l'écran aux personnes de passage."
   },
   "check_note": {
     "en": "Pavois verifies, via the **effective** dconf database under `/etc/dconf/db/*.d/`, that the `picture-uri` key is set system-wide AND that `/org/gnome/desktop/screensaver/picture-uri` appears in a `locks/` file. Inspecting the compiled-source dconf keyfiles plus their lock entries is what proves the policy is both applied and non-overridable, a check that only read a user's `~/.config` would miss the mandatory system policy.",

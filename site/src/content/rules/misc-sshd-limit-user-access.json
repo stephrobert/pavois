@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,9 +26,9 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "5.1.7",
       "2.2.6",
       "5.1.4",
+      "5.1.7",
       "5.1.6"
     ],
     "nist": [
@@ -35,29 +36,30 @@
       "AC-3",
       "CM-6(a)"
     ],
-    "pci-dss": [
-      "2.2.6",
-      "Req-2.2.4"
-    ]
+    "pci-dss": "2.2.6"
   },
   "check": [
     "describe command('sshd -T 2>/dev/null | grep -qiE \\'^(allowusers|allowgroups|denyusers|denygroups) .\\' && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# Decide the allowed users/groups, then add to /etc/ssh/sshd_config.d/ a drop-in, e.g.:\n#   AllowGroups ssh-users\n# and: systemctl reload ssh\n",
+    "reason": "which users/groups may SSH is SITE-SPECIFIC, pavois cannot guess it",
+    "resource": "manual"
+  },
   "title": {
     "en": "Limit Users' SSH Access",
     "fr": "Limiter l'accès SSH des utilisateurs"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "By default any local account with a valid password or key can log in over SSH, including service and legacy accounts that should never have remote shell access. Explicitly allow-listing the few accounts (or groups) that need SSH, or deny-listing those that must not, shrinks the remote attack surface and limits the blast radius of a leaked credential, enforcing least privilege at the network entry point.",
-    "fr": "Par défaut, tout compte local disposant d'un mot de passe ou d'une clé valide peut se connecter en SSH, y compris les comptes de service ou hérités qui ne devraient jamais avoir d'accès shell distant. Lister explicitement les quelques comptes (ou groupes) nécessitant SSH, ou interdire ceux qui ne doivent pas l'utiliser, réduit la surface d'attaque distante et limite l'impact d'un identifiant compromis, en appliquant le moindre privilège au point d'entrée réseau."
-  },
   "summary": {
     "en": "Requires sshd to define an explicit access list, at least one of `AllowUsers`, `AllowGroups`, `DenyUsers` or `DenyGroups`, so only approved accounts can log in over SSH.",
     "fr": "Exige que sshd définisse une liste d'accès explicite, au moins l'une de `AllowUsers`, `AllowGroups`, `DenyUsers` ou `DenyGroups`, afin que seuls les comptes approuvés puissent se connecter en SSH."
+  },
+  "rationale": {
+    "en": "By default any local account with a valid password or key can log in over SSH, including service and legacy accounts that should never have remote shell access. Explicitly allow-listing the few accounts (or groups) that need SSH, or deny-listing those that must not, shrinks the remote attack surface and limits the blast radius of a leaked credential, enforcing least privilege at the network entry point.",
+    "fr": "Par défaut, tout compte local disposant d'un mot de passe ou d'une clé valide peut se connecter en SSH, y compris les comptes de service ou hérités qui ne devraient jamais avoir d'accès shell distant. Lister explicitement les quelques comptes (ou groupes) nécessitant SSH, ou interdire ceux qui ne doivent pas l'utiliser, réduit la surface d'attaque distante et limite l'impact d'un identifiant compromis, en appliquant le moindre privilège au point d'entrée réseau."
   },
   "check_note": {
     "en": "Pavois reads the **effective** sshd configuration with `sshd -T`, which prints the fully resolved directives after parsing `sshd_config`, every `Include` (e.g. `/etc/ssh/sshd_config.d/*.conf`) and any `Match` defaults. A file-based scan of `sshd_config` alone would miss directives placed in drop-ins or matched blocks, producing a false negative; `sshd -T` reflects what the daemon actually enforces.",

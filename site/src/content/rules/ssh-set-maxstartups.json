@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,9 +26,9 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "5.1.17",
       "2.2.6",
       "5.1.18",
+      "5.1.17",
       "5.1.20"
     ],
     "pci-dss": "2.2.6"
@@ -41,7 +42,7 @@
     "directive": "maxstartups",
     "notify": {
       "action": "reload",
-      "service": "ssh"
+      "service": "ssh.service"
     },
     "resource": "sshd_setting",
     "value": "10:30:60",
@@ -52,13 +53,13 @@
     "fr": "Configurer le MaxStartups de SSH"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`MaxStartups` rate-limits **concurrent unauthenticated connections** to `sshd`, the half-open sockets between TCP connect and successful login. The `10:30:60` form means: accept up to 10 pending connections, then start randomly dropping new ones at a 30% probability, and refuse all once 60 are pending. This blunts **connection-flood denial-of-service** at the login stage and limits how many brute-force slots an attacker can hold, preserving the **availability** of legitimate logins.",
-    "fr": "`MaxStartups` limite le débit des **connexions simultanées non authentifiées** à `sshd`, c'est-à-dire les sockets semi-ouverts entre la connexion TCP et l'authentification réussie. La forme `10:30:60` signifie : accepter jusqu'à 10 connexions en attente, puis rejeter aléatoirement les nouvelles avec une probabilité de 30 %, et toutes les refuser une fois 60 en attente. Cela atténue le **déni de service par inondation de connexions** au stade de la connexion et limite le nombre de créneaux de force brute qu'un attaquant peut mobiliser, préservant la **disponibilité** des connexions légitimes."
-  },
   "summary": {
     "en": "Rate-limit concurrent unauthenticated SSH connections with `MaxStartups` set to **`10:30:60`**.",
     "fr": "Limiter le débit des connexions SSH simultanées non authentifiées avec `MaxStartups` réglé sur **`10:30:60`**."
+  },
+  "rationale": {
+    "en": "`MaxStartups` rate-limits **concurrent unauthenticated connections** to `sshd`, the half-open sockets between TCP connect and successful login. The `10:30:60` form means: accept up to 10 pending connections, then start randomly dropping new ones at a 30% probability, and refuse all once 60 are pending. This blunts **connection-flood denial-of-service** at the login stage and limits how many brute-force slots an attacker can hold, preserving the **availability** of legitimate logins.",
+    "fr": "`MaxStartups` limite le débit des **connexions simultanées non authentifiées** à `sshd`, c'est-à-dire les sockets semi-ouverts entre la connexion TCP et l'authentification réussie. La forme `10:30:60` signifie : accepter jusqu'à 10 connexions en attente, puis rejeter aléatoirement les nouvelles avec une probabilité de 30 %, et toutes les refuser une fois 60 en attente. Cela atténue le **déni de service par inondation de connexions** au stade de la connexion et limite le nombre de créneaux de force brute qu'un attaquant peut mobiliser, préservant la **disponibilité** des connexions légitimes."
   },
   "check_note": {
     "en": "Pavois asserts that the **effective** `sshd -T` output reports `maxstartups 10:30:60`. Reading the live daemon reflects the value after all `Include` directives and `/etc/ssh/sshd_config.d/` drop-ins are merged, a file scan can miss an override and report a false result.",

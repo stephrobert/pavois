@@ -12,6 +12,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)user\\-modify\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'user\\-modify' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -23,13 +26,13 @@
     "fr": "Enregistrer les evenements modifiant les informations utilisateur/groupe via l'appel systeme open - /etc/group"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Creating or altering groups by editing `/etc/group` directly (instead of `groupadd`/`gpasswd`) can be a sign of malicious activity. Without an audit record of these writes, an attacker who adds themselves to a privileged group such as `sudo` or `wheel` leaves no trail, and incident responders cannot prove **when** or **by whom** the account database was tampered with.",
-    "fr": "Creer ou modifier des groupes en editant directement `/etc/group` (au lieu de `groupadd`/`gpasswd`) peut etre un signe d'activite malveillante. Sans trace d'audit de ces ecritures, un attaquant qui s'ajoute a un groupe privilegie comme `sudo` ou `wheel` ne laisse aucune trace, et les enqueteurs ne peuvent prouver **quand** ni **par qui** la base de comptes a ete alteree."
-  },
   "summary": {
     "en": "Ensures `auditd` has an active rule tagged `user-modify` that records any access to account databases such as `/etc/group`, `/etc/passwd` and `/etc/shadow`.",
     "fr": "Garantit que `auditd` possede une regle active taguee `user-modify` qui enregistre tout acces aux bases de comptes telles que `/etc/group`, `/etc/passwd` et `/etc/shadow`."
+  },
+  "rationale": {
+    "en": "Creating or altering groups by editing `/etc/group` directly (instead of `groupadd`/`gpasswd`) can be a sign of malicious activity. Without an audit record of these writes, an attacker who adds themselves to a privileged group such as `sudo` or `wheel` leaves no trail, and incident responders cannot prove **when** or **by whom** the account database was tampered with.",
+    "fr": "Creer ou modifier des groupes en editant directement `/etc/group` (au lieu de `groupadd`/`gpasswd`) peut etre un signe d'activite malveillante. Sans trace d'audit de ces ecritures, un attaquant qui s'ajoute a un groupe privilegie comme `sudo` ou `wheel` ne laisse aucune trace, et les enqueteurs ne peuvent prouver **quand** ni **par qui** la base de comptes a ete alteree."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks that a loaded rule carries the `user-modify` key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule present in a file but never loaded (syntax error, `augenrules` not run, service not restarted) gives a false sense of coverage. `auditctl -l` shows only what the kernel actually enforces right now.",

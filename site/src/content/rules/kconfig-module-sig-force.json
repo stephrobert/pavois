@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R18"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_MODULE_SIG_FORCE=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_MODULE_SIG_FORCE='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_MODULE_SIG_FORCE=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_MODULE_SIG_FORCE=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Require modules to be validly signed",
     "fr": "Exiger que les modules soient valablement signés"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_MODULE_SIG` only makes the kernel *able* to verify signatures; without `CONFIG_MODULE_SIG_FORCE=y` it still loads unsigned modules (it merely taints the kernel). Enforcement makes the kernel **refuse** any module that is unsigned or signed with an unknown key, closing the door an attacker would otherwise use to load arbitrary ring-0 code. This is the option that turns module signing from advisory into mandatory.",
-    "fr": "`CONFIG_MODULE_SIG` rend seulement le noyau *capable* de vérifier les signatures ; sans `CONFIG_MODULE_SIG_FORCE=y`, il charge tout de même les modules non signés (il se contente de marquer le noyau comme « taint »). L'application stricte fait que le noyau **refuse** tout module non signé ou signé avec une clé inconnue, fermant la porte qu'un attaquant utiliserait sinon pour charger du code arbitraire en ring 0. C'est l'option qui transforme la signature des modules d'indicative en obligatoire."
-  },
   "summary": {
     "en": "Requires the running kernel to be built with `CONFIG_MODULE_SIG_FORCE=y` so it rejects any module that is unsigned or signed with an untrusted key.",
     "fr": "Exige que le noyau en cours d'exécution soit compilé avec `CONFIG_MODULE_SIG_FORCE=y` afin qu'il rejette tout module non signé ou signé avec une clé non fiable."
+  },
+  "rationale": {
+    "en": "`CONFIG_MODULE_SIG` only makes the kernel *able* to verify signatures; without `CONFIG_MODULE_SIG_FORCE=y` it still loads unsigned modules (it merely taints the kernel). Enforcement makes the kernel **refuse** any module that is unsigned or signed with an unknown key, closing the door an attacker would otherwise use to load arbitrary ring-0 code. This is the option that turns module signing from advisory into mandatory.",
+    "fr": "`CONFIG_MODULE_SIG` rend seulement le noyau *capable* de vérifier les signatures ; sans `CONFIG_MODULE_SIG_FORCE=y`, il charge tout de même les modules non signés (il se contente de marquer le noyau comme « taint »). L'application stricte fait que le noyau **refuse** tout module non signé ou signé avec une clé inconnue, fermant la porte qu'un attaquant utiliserait sinon pour charger du code arbitraire en ring 0. C'est l'option qui transforme la signature des modules d'indicative en obligatoire."
   },
   "check_note": {
     "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)` with `/proc/config.gz` as a fallback, so the result reflects the kernel actually booted rather than a static file. Pavois expects `CONFIG_MODULE_SIG_FORCE=y`.",

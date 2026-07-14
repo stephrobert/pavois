@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -38,6 +39,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.conf.default.log_martians') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.default.log_martians[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -50,13 +54,13 @@
     "fr": "Activer le parametre noyau de journalisation des paquets martiens sur toutes les interfaces IPv4 par defaut"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "A \"martian\" packet has a source address that cannot legitimately appear on the interface where it arrived, impossible, spoofed, or source-routed addresses. Logging them (`log_martians=1`) creates a forensic trail of spoofing attempts, misconfigured neighbours, and reconnaissance, turning silent drops (e.g. from `rp_filter`) into actionable events. The `default` template should be **1** so every new interface inherits this visibility.",
-    "fr": "Un paquet « martien » possede une adresse source qui ne peut legitimement apparaitre sur l'interface ou il est arrive, adresses impossibles, usurpees ou a routage par la source. Les journaliser (`log_martians=1`) cree une trace forensique des tentatives d'usurpation, des voisins mal configures et de la reconnaissance, transformant des rejets silencieux (par ex. issus de `rp_filter`) en evenements exploitables. Le modele `default` doit valoir **1** afin que chaque nouvelle interface herite de cette visibilite."
-  },
   "summary": {
     "en": "Forces `net.ipv4.conf.default.log_martians` to **1** so newly created IPv4 interfaces log packets with impossible or spoofed source addresses by default.",
     "fr": "Force `net.ipv4.conf.default.log_martians` a **1** afin que les interfaces IPv4 nouvellement creees journalisent par defaut les paquets a adresse source impossible ou usurpee."
+  },
+  "rationale": {
+    "en": "A \"martian\" packet has a source address that cannot legitimately appear on the interface where it arrived, impossible, spoofed, or source-routed addresses. Logging them (`log_martians=1`) creates a forensic trail of spoofing attempts, misconfigured neighbours, and reconnaissance, turning silent drops (e.g. from `rp_filter`) into actionable events. The `default` template should be **1** so every new interface inherits this visibility.",
+    "fr": "Un paquet « martien » possede une adresse source qui ne peut legitimement apparaitre sur l'interface ou il est arrive, adresses impossibles, usurpees ou a routage par la source. Les journaliser (`log_martians=1`) cree une trace forensique des tentatives d'usurpation, des voisins mal configures et de la reconnaissance, transformant des rejets silencieux (par ex. issus de `rp_filter`) en evenements exploitables. Le modele `default` doit valoir **1** afin que chaque nouvelle interface herite de cette visibilite."
   },
   "check_note": {
     "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.default.log_martians` from the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not a `/etc/sysctl.d/` file. The `default` key only affects interfaces created after it is set, so the running value is what determines whether future interfaces log martians. A config file might say `1` while a later override left it at `0`; only the effective parameter is reliable.",

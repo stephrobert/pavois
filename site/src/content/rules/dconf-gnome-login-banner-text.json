@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "1.8.2",
       "1.7.2",
+      "1.8.2",
       "1.8.1"
     ],
     "nist": [
@@ -36,25 +37,28 @@
     ]
   },
   "check": [
+    "only_if { command('dconf').exist? }",
     "describe command('{ grep -rqE \\'^[[:space:]]*banner-message-text[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null && grep -rqxF \\'/org/gnome/login-screen/banner-message-text\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
   "remediation": {
-    "resource": "dconf"
+    "key": "org/gnome/login-screen/banner-message-text",
+    "resource": "dconf",
+    "value": "'Authorized access only. All activity is monitored and recorded.'"
   },
   "title": {
     "en": "Set the GNOME3 Login Warning Banner Text",
     "fr": "Définir le texte de la bannière d'avertissement de connexion GNOME3"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "A login banner is both a deterrent and a legal notice. Displaying an organization-approved warning at the GNOME login screen (`banner-message-text`) puts every user, and any intruder, on notice that access is monitored and unauthorized use is prohibited. Without it, attackers can later claim they had no notice of restrictions, **weakening any disciplinary or legal action**, and the system silently fails policy and accreditation requirements (NIST AC-8).",
-    "fr": "Une bannière de connexion est à la fois dissuasive et un avis légal. Afficher un avertissement approuvé par l'organisation sur l'écran de connexion GNOME (`banner-message-text`) informe chaque utilisateur, et tout intrus, que l'accès est surveillé et que l'usage non autorisé est interdit. Sans elle, un attaquant peut prétendre n'avoir reçu aucune notification des restrictions, **affaiblissant toute action disciplinaire ou judiciaire**, et le système échoue silencieusement aux exigences de politique et d'accréditation (NIST AC-8)."
-  },
   "summary": {
     "en": "Enforces an organization-defined warning banner on the GNOME login screen via `banner-message-text` in the system `dconf` database, locked against user override.",
     "fr": "Impose une bannière d'avertissement définie par l'organisation sur l'écran de connexion GNOME via `banner-message-text` dans la base `dconf` du système, verrouillée contre toute modification par l'utilisateur."
+  },
+  "rationale": {
+    "en": "A login banner is both a deterrent and a legal notice. Displaying an organization-approved warning at the GNOME login screen (`banner-message-text`) puts every user, and any intruder, on notice that access is monitored and unauthorized use is prohibited. Without it, attackers can later claim they had no notice of restrictions, **weakening any disciplinary or legal action**, and the system silently fails policy and accreditation requirements (NIST AC-8).",
+    "fr": "Une bannière de connexion est à la fois dissuasive et un avis légal. Afficher un avertissement approuvé par l'organisation sur l'écran de connexion GNOME (`banner-message-text`) informe chaque utilisateur, et tout intrus, que l'accès est surveillé et que l'usage non autorisé est interdit. Sans elle, un attaquant peut prétendre n'avoir reçu aucune notification des restrictions, **affaiblissant toute action disciplinaire ou judiciaire**, et le système échoue silencieusement aux exigences de politique et d'accréditation (NIST AC-8)."
   },
   "check_note": {
     "en": "Pavois verifies in the **effective** `dconf` configuration that a drop-in under `/etc/dconf/db/*.d/` actually sets `banner-message-text`, and that `/org/gnome/login-screen/banner-message-text` is listed in a `locks/` file so users cannot clear it. Inspecting the resolved dconf database catches the banner regardless of which keyfile defines it, a file-only scan of one path would miss values set in another drop-in.",

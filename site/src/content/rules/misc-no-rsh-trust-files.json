@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -24,13 +26,13 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "7.2.9",
-      "7.2.10"
+      "7.2.10",
+      "7.2.9"
     ],
     "nist": [
-      "CM-6(a)",
       "CM-7(a)",
-      "CM-7(b)"
+      "CM-7(b)",
+      "CM-6(a)"
     ]
   },
   "check": [
@@ -38,19 +40,23 @@
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "find /home /root -maxdepth 2 -name .rhosts 2>/dev/null; ls -l /etc/hosts.equiv 2>/dev/null\n# rm -f each after review\n",
+    "reason": "removing .rhosts/hosts.equiv kills rsh trust, review (rsh should not be used)",
+    "resource": "manual"
+  },
   "title": {
     "en": "Remove Rsh Trust Files",
     "fr": "Supprimer les fichiers de confiance Rsh"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "A `~/.rhosts` file declares remote host/user pairs that may log in or run commands as the local user **without a password**, via the legacy R-services (`rlogin`, `rsh`, `rcp`). If `.rhosts`/`pam_rhosts` support is enabled, these files grant host-based, unauthenticated access that is trivially spoofable on the network, a classic remote-compromise vector. Even when R-services look disabled, leftover trust files are a latent backdoor, which is why this rule is rated **high**. No `.rhosts` file should exist under `/root` or `/home`.",
-    "fr": "Un fichier `~/.rhosts` déclare des couples hôte/utilisateur distants autorisés à se connecter ou exécuter des commandes en tant qu'utilisateur local **sans mot de passe**, via les R-services hérités (`rlogin`, `rsh`, `rcp`). Si le support de `.rhosts`/`pam_rhosts` est activé, ces fichiers accordent un accès non authentifié basé sur l'hôte, trivialement usurpable sur le réseau, un vecteur classique de compromission distante. Même quand les R-services semblent désactivés, des fichiers de confiance résiduels constituent une porte dérobée latente, d'où la sévérité **haute**. Aucun fichier `.rhosts` ne doit exister sous `/root` ni `/home`."
-  },
   "summary": {
     "en": "Ensures **no `.rhosts` trust file** exists under `/root` or `/home`, removing any host-based unauthenticated R-services access.",
     "fr": "Garantit qu'**aucun fichier de confiance `.rhosts`** n'existe sous `/root` ou `/home`, supprimant tout accès R-services non authentifié basé sur l'hôte."
+  },
+  "rationale": {
+    "en": "A `~/.rhosts` file declares remote host/user pairs that may log in or run commands as the local user **without a password**, via the legacy R-services (`rlogin`, `rsh`, `rcp`). If `.rhosts`/`pam_rhosts` support is enabled, these files grant host-based, unauthenticated access that is trivially spoofable on the network, a classic remote-compromise vector. Even when R-services look disabled, leftover trust files are a latent backdoor, which is why this rule is rated **high**. No `.rhosts` file should exist under `/root` or `/home`.",
+    "fr": "Un fichier `~/.rhosts` déclare des couples hôte/utilisateur distants autorisés à se connecter ou exécuter des commandes en tant qu'utilisateur local **sans mot de passe**, via les R-services hérités (`rlogin`, `rsh`, `rcp`). Si le support de `.rhosts`/`pam_rhosts` est activé, ces fichiers accordent un accès non authentifié basé sur l'hôte, trivialement usurpable sur le réseau, un vecteur classique de compromission distante. Même quand les R-services semblent désactivés, des fichiers de confiance résiduels constituent une porte dérobée latente, d'où la sévérité **haute**. Aucun fichier `.rhosts` ne doit exister sous `/root` ni `/home`."
   },
   "check_note": {
     "en": "Pavois runs a live `find` over `/root` and `/home` (single filesystem via `-xdev`) for any `.rhosts` file. Enumerating files actually on disk catches trust files in every home directory, including dormant ones an attacker may have planted, rather than trusting a static account list.",

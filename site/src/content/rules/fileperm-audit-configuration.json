@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -29,21 +30,18 @@
   },
   "check": [
     "only_if { file('/etc/audit').exist? }",
-    "describe file('/etc/audit') do",
-    "  it { should be_directory }",
-    "  it { should be_executable.by('owner') }",
+    "describe file('/etc/audit/auditd.conf') do",
+    "  it { should_not be_executable }",
     "  it { should_not be_writable.by('group') }",
     "  it { should_not be_readable.by('other') }",
     "  it { should_not be_writable.by('other') }",
-    "  it { should_not be_executable.by('other') }",
-    "  it { should_not be_setuid }",
-    "  it { should_not be_setgid }",
-    "  it { should_not be_sticky }",
     "end"
   ],
   "remediation": {
-    "mode": "0750",
-    "path": "/etc/audit",
+    "group": "root",
+    "mode": "0640",
+    "owner": "root",
+    "path": "/etc/audit/auditd.conf",
     "resource": "file"
   },
   "title": {
@@ -51,13 +49,13 @@
     "fr": "Les permissions des fichiers de configuration d'audit sont 640 ou plus restrictives"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The audit configuration under `/etc/audit` (`auditd.conf`, `audit.rules`, `rules.d/`, `plugins.d/`) defines **which events are recorded and how**. If these files are group/other-writable, an attacker could **silently disable rules** so their actions go unlogged; if they are other-readable they reveal exactly what is, and is not, monitored, helping an intruder evade detection. Restricting to `0640` (or stricter for the directory) keeps audit policy under root's exclusive control and preserves the integrity of the audit trail.",
-    "fr": "La configuration d'audit sous `/etc/audit` (`auditd.conf`, `audit.rules`, `rules.d/`, `plugins.d/`) definit **quels evenements sont enregistres et comment**. Si ces fichiers sont modifiables par le groupe/les autres, un attaquant pourrait **desactiver silencieusement des regles** pour que ses actions ne soient pas journalisees ; s'ils sont lisibles par les autres, ils revelent exactement ce qui est, et n'est pas, surveille, aidant un intrus a echapper a la detection. Les restreindre a `0640` (ou plus strict pour le repertoire) garde la politique d'audit sous le controle exclusif de root et preserve l'integrite de la piste d'audit."
-  },
   "summary": {
     "en": "Ensures the audit configuration tree `/etc/audit` is not other-readable, not group/other-writable, and carries no executable or special (setuid/setgid/sticky) bits, i.e. mode `0640` or stricter.",
     "fr": "Garantit que l'arborescence de configuration d'audit `/etc/audit` n'est ni lisible par les autres, ni modifiable par le groupe/les autres, et ne porte aucun bit executable ou special (setuid/setgid/sticky), soit le mode `0640` ou plus strict."
+  },
+  "rationale": {
+    "en": "The audit configuration under `/etc/audit` (`auditd.conf`, `audit.rules`, `rules.d/`, `plugins.d/`) defines **which events are recorded and how**. If these files are group/other-writable, an attacker could **silently disable rules** so their actions go unlogged; if they are other-readable they reveal exactly what is, and is not, monitored, helping an intruder evade detection. Restricting to `0640` (or stricter for the directory) keeps audit policy under root's exclusive control and preserves the integrity of the audit trail.",
+    "fr": "La configuration d'audit sous `/etc/audit` (`auditd.conf`, `audit.rules`, `rules.d/`, `plugins.d/`) definit **quels evenements sont enregistres et comment**. Si ces fichiers sont modifiables par le groupe/les autres, un attaquant pourrait **desactiver silencieusement des regles** pour que ses actions ne soient pas journalisees ; s'ils sont lisibles par les autres, ils revelent exactement ce qui est, et n'est pas, surveille, aidant un intrus a echapper a la detection. Les restreindre a `0640` (ou plus strict pour le repertoire) garde la politique d'audit sous le controle exclusif de root et preserve l'integrite de la piste d'audit."
   },
   "check_note": {
     "en": "Pavois reads the **live mode bits** of `/etc/audit` via the InSpec `file` resource, the permissions the kernel actually enforces, rather than a packaging assumption. This catches a config loosened after install. Note: this control inspects the `/etc/audit` node; a thorough hardening also applies `0640` recursively to `rules.d/*.rules`. The `only_if` guard skips the check when audit is not installed.",

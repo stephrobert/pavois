@@ -2,11 +2,14 @@
   "id": "fileowner-var-log-auth",
   "supported_os": [
     "debian12",
+    "debian13",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -22,27 +25,29 @@
   },
   "check": [
     "only_if { file('/var/log/auth.log').exist? }",
-    "describe file('/var/log/auth.log') do",
-    "  its('owner') { should eq 'syslog' }",
+    "describe command(\"stat -c %U /var/log/auth.log 2>/dev/null\") do",
+    "  its('stdout.strip') { should be_in ['root', 'syslog'] }",
     "end"
   ],
   "remediation": {
-    "owner": "syslog",
+    "command": "chown root /var/log/auth.log 2>/dev/null; true",
+    "name": "log-owner-var-log-auth.log",
+    "not_if": "stat -c %U /var/log/auth.log 2>/dev/null | grep -qxE 'root|syslog'",
     "path": "/var/log/auth.log",
-    "resource": "file"
+    "resource": "exec"
   },
   "title": {
     "en": "Verify User Who Owns /var/log/auth.log File",
     "fr": "Vérifier l'utilisateur propriétaire du fichier /var/log/auth.log"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/var/log/auth.log` records **login attempts, sudo use and PAM authentication events**, exactly the data an attacker wants to read (to harvest usernames and timing) or write (to forge or erase traces of an intrusion). If the file is not owned by the dedicated `syslog` account, an unprivileged or compromised process could tamper with the authentication trail, destroying the evidence needed for forensic investigation and accountability.",
-    "fr": "`/var/log/auth.log` enregistre les **tentatives de connexion, l'usage de sudo et les événements d'authentification PAM**, précisément les données qu'un attaquant veut lire (pour récolter des noms d'utilisateurs et des horaires) ou écrire (pour falsifier ou effacer les traces d'une intrusion). Si le fichier n'appartient pas au compte dédié `syslog`, un processus non privilégié ou compromis pourrait altérer la piste d'authentification, détruisant les preuves nécessaires à l'investigation forensique et à la traçabilité."
-  },
   "summary": {
     "en": "Ensures the authentication log `/var/log/auth.log` is **owned by the `syslog` user** so only the logging daemon can write it.",
     "fr": "Garantit que le journal d'authentification `/var/log/auth.log` est **détenu par l'utilisateur `syslog`**, afin que seul le démon de journalisation puisse y écrire."
+  },
+  "rationale": {
+    "en": "`/var/log/auth.log` records **login attempts, sudo use and PAM authentication events**, exactly the data an attacker wants to read (to harvest usernames and timing) or write (to forge or erase traces of an intrusion). If the file is not owned by the dedicated `syslog` account, an unprivileged or compromised process could tamper with the authentication trail, destroying the evidence needed for forensic investigation and accountability.",
+    "fr": "`/var/log/auth.log` enregistre les **tentatives de connexion, l'usage de sudo et les événements d'authentification PAM**, précisément les données qu'un attaquant veut lire (pour récolter des noms d'utilisateurs et des horaires) ou écrire (pour falsifier ou effacer les traces d'une intrusion). Si le fichier n'appartient pas au compte dédié `syslog`, un processus non privilégié ou compromis pourrait altérer la piste d'authentification, détruisant les preuves nécessaires à l'investigation forensique et à la traçabilité."
   },
   "check_note": {
     "en": "Pavois checks that the **owner of `/var/log/auth.log` is `syslog`**, but only when the file exists (`only_if`). It reads the **live owner reported by the filesystem** (`stat`) on the target, not a packaging default or a logrotate template, so even if a misbehaving cron job, log-shipping agent or rotation hook `chown`-ed the file, the control reflects the **effective on-disk state** at scan time.",

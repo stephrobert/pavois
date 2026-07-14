@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R20"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_SECURITY=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_SECURITY='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_SECURITY=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_SECURITY=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Enable different security models",
     "fr": "Activer la prise en charge des modèles de sécurité"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "This enables kernel security primitives required by the **LSM** framework. `CONFIG_SECURITY` is the master switch for Linux Security Modules; without it, **SELinux, AppArmor, SMACK, Yama and the LSM hooks** cannot exist, leaving the system with only classic DAC permissions and no mandatory-access-control layer to contain a compromised or over-privileged process.",
-    "fr": "Ceci active les primitives de sécurité du noyau requises par le cadre **LSM**. `CONFIG_SECURITY` est l'interrupteur maître des Linux Security Modules ; sans lui, **SELinux, AppArmor, SMACK, Yama et les hooks LSM** ne peuvent exister, laissant le système avec les seules permissions DAC classiques et aucune couche de contrôle d'accès obligatoire pour contenir un processus compromis ou surdoté en privilèges."
-  },
   "summary": {
     "en": "Requires the kernel to be built with **`CONFIG_SECURITY=y`**, the master switch that enables the Linux Security Modules (LSM) framework.",
     "fr": "Exige que le noyau soit compilé avec **`CONFIG_SECURITY=y`**, l'interrupteur maître activant le cadre des Linux Security Modules (LSM)."
+  },
+  "rationale": {
+    "en": "This enables kernel security primitives required by the **LSM** framework. `CONFIG_SECURITY` is the master switch for Linux Security Modules; without it, **SELinux, AppArmor, SMACK, Yama and the LSM hooks** cannot exist, leaving the system with only classic DAC permissions and no mandatory-access-control layer to contain a compromised or over-privileged process.",
+    "fr": "Ceci active les primitives de sécurité du noyau requises par le cadre **LSM**. `CONFIG_SECURITY` est l'interrupteur maître des Linux Security Modules ; sans lui, **SELinux, AppArmor, SMACK, Yama et les hooks LSM** ne peuvent exister, laissant le système avec les seules permissions DAC classiques et aucune couche de contrôle d'accès obligatoire pour contenir un processus compromis ou surdoté en privilèges."
   },
   "check_note": {
     "en": "Pavois reads the build options of the **running** kernel, `grep '^CONFIG_SECURITY=' /boot/config-$(uname -r)` or `zcat /proc/config.gz`, and requires `y`. Reading the live kernel's own config (keyed on `uname -r`) reflects exactly the booted kernel, which a package-name guess or generic file cannot.",

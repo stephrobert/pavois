@@ -130,4 +130,29 @@ for rid, items in sorted(by_id.items()):
     out.write_text(json.dumps(entry, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     gen += 1
 
+# A fiche for a control the scanner no longer runs is a page that documents a rule nobody can fail:
+# merging two duplicate ids used to leave the loser's fiche behind, live and indexable. The site is
+# a DERIVED artifact — what is not in the reference has no page.
+stale = sorted(p for p in OUT.glob("*.json") if p.stem not in by_id)
+for p in stale:
+    p.unlink()
+
+# The 5 rich fields are hand-written expertise; a freshly generated fiche has none of them. Say so
+# in the data (needs_authoring), so the gap is a queryable fact and not something you discover by
+# reading 800 pages.
+todo = 0
+for p in sorted(OUT.glob("*.json")):
+    d = json.loads(p.read_text(encoding="utf-8"))
+    missing = [k for k in RICH if k not in d]
+    if missing:
+        d["needs_authoring"] = missing
+        p.write_text(json.dumps(d, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        todo += 1
+    elif "needs_authoring" in d:
+        del d["needs_authoring"]
+        p.write_text(json.dumps(d, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
 print(f"wrote {gen} fiches ({kept} kept their authored prose), from {len(oses)} OSes")
+gone = ", ".join(p.stem for p in stale) or "-"
+print(f"removed {len(stale)} stale fiche(s) whose control is gone: {gone}")
+print(f"{todo} fiche(s) still need authored prose (needs_authoring)")

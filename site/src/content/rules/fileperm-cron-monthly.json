@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "2.4.1.6",
-      "2.2.6"
+      "2.2.6",
+      "2.4.1.6"
     ],
     "nist": [
       "AC-6(1)",
@@ -38,7 +39,6 @@
     "only_if { file('/etc/cron.monthly').exist? }",
     "describe file('/etc/cron.monthly') do",
     "  it { should_not be_setuid }",
-    "  it { should_not be_executable.by('group') }",
     "  it { should_not be_writable.by('group') }",
     "  it { should_not be_readable.by('group') }",
     "  it { should_not be_setgid }",
@@ -49,22 +49,24 @@
     "end"
   ],
   "remediation": {
+    "group": "root",
     "mode": "0700",
+    "owner": "root",
     "path": "/etc/cron.monthly",
-    "resource": "file"
+    "resource": "directory"
   },
   "title": {
     "en": "Verify Permissions on cron.monthly",
     "fr": "Vérifier les permissions de cron.monthly"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/cron.monthly` holds scripts the cron daemon runs **once a month as root**. If the directory is writable by group or other, an unauthorized user can plant or modify a script that runs with root privileges, full compromise. If it is readable by group/other, the jobs can be enumerated for reconnaissance. Restricting it to the owner prevents both unauthorized changes and disclosure.",
-    "fr": "`/etc/cron.monthly` contient les scripts que le démon cron exécute **une fois par mois en tant que root**. Si le répertoire est modifiable par le groupe ou les autres, un utilisateur non autorisé peut y déposer ou y modifier un script qui s'exécutera avec les privilèges root, compromission totale. S'il est lisible par le groupe/les autres, les tâches peuvent être énumérées à des fins de reconnaissance. Le restreindre au propriétaire empêche à la fois les modifications non autorisées et la divulgation."
-  },
   "summary": {
     "en": "Ensures the `/etc/cron.monthly` directory is owned by root and is **not readable, writable or executable by group or other**, with no setuid/setgid/sticky bits, so only root can add or change monthly cron scripts.",
     "fr": "Garantit que le répertoire `/etc/cron.monthly` appartient à root et n'est **ni lisible, ni modifiable, ni exécutable par le groupe ou les autres**, sans bits setuid/setgid/sticky, afin que seul root puisse ajouter ou modifier les scripts cron mensuels."
+  },
+  "rationale": {
+    "en": "`/etc/cron.monthly` holds scripts the cron daemon runs **once a month as root**. If the directory is writable by group or other, an unauthorized user can plant or modify a script that runs with root privileges, full compromise. If it is readable by group/other, the jobs can be enumerated for reconnaissance. Restricting it to the owner prevents both unauthorized changes and disclosure.",
+    "fr": "`/etc/cron.monthly` contient les scripts que le démon cron exécute **une fois par mois en tant que root**. Si le répertoire est modifiable par le groupe ou les autres, un utilisateur non autorisé peut y déposer ou y modifier un script qui s'exécutera avec les privilèges root, compromission totale. S'il est lisible par le groupe/les autres, les tâches peuvent être énumérées à des fins de reconnaissance. Le restreindre au propriétaire empêche à la fois les modifications non autorisées et la divulgation."
   },
   "check_note": {
     "en": "Pavois reads the **live inode** with `file('/etc/cron.monthly')` and asserts no group/other access and no special mode bits, gated by `only_if` to skip when absent. Inspecting effective on-disk permissions catches drift from package upgrades, manual `chmod`, or backup restores that a config-template assumption would miss.",

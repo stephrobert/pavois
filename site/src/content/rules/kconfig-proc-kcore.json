@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_PROC_KCORE=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_PROC_KCORE='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_PROC_KCORE=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should_not match(/^CONFIG_PROC_KCORE=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Disable support for /proc/kcore",
     "fr": "Désactiver la prise en charge de /proc/kcore"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/proc/kcore` is a pseudo-file that exposes the running kernel's memory as an ELF core image. To a privileged attacker (or a tool aiding privilege escalation) it is a map of kernel structures and a way to read live kernel memory, helping defeat KASLR and discover attack vectors. Building the kernel without `CONFIG_PROC_KCORE` removes this introspection surface entirely. This is a defence-in-depth, low-severity hardening: it shrinks what an attacker who already has elevated rights can learn.",
-    "fr": "`/proc/kcore` est un pseudo-fichier qui expose la mémoire du noyau en cours d'exécution sous forme d'image core ELF. Pour un attaquant privilégié (ou un outil facilitant l'élévation de privilèges), c'est une carte des structures du noyau et un moyen de lire la mémoire noyau en direct, aidant à contourner KASLR et à découvrir des vecteurs d'attaque. Compiler le noyau sans `CONFIG_PROC_KCORE` supprime entièrement cette surface d'introspection. C'est un durcissement de défense en profondeur, de faible sévérité : il réduit ce qu'un attaquant disposant déjà de droits élevés peut apprendre."
-  },
   "summary": {
     "en": "Requires the running kernel to be built **without** `CONFIG_PROC_KCORE` so the `/proc/kcore` view of live kernel memory does not exist.",
     "fr": "Exige que le noyau en cours d'exécution soit compilé **sans** `CONFIG_PROC_KCORE` afin que la vue `/proc/kcore` de la mémoire noyau en direct n'existe pas."
+  },
+  "rationale": {
+    "en": "`/proc/kcore` is a pseudo-file that exposes the running kernel's memory as an ELF core image. To a privileged attacker (or a tool aiding privilege escalation) it is a map of kernel structures and a way to read live kernel memory, helping defeat KASLR and discover attack vectors. Building the kernel without `CONFIG_PROC_KCORE` removes this introspection surface entirely. This is a defence-in-depth, low-severity hardening: it shrinks what an attacker who already has elevated rights can learn.",
+    "fr": "`/proc/kcore` est un pseudo-fichier qui expose la mémoire du noyau en cours d'exécution sous forme d'image core ELF. Pour un attaquant privilégié (ou un outil facilitant l'élévation de privilèges), c'est une carte des structures du noyau et un moyen de lire la mémoire noyau en direct, aidant à contourner KASLR et à découvrir des vecteurs d'attaque. Compiler le noyau sans `CONFIG_PROC_KCORE` supprime entièrement cette surface d'introspection. C'est un durcissement de défense en profondeur, de faible sévérité : il réduit ce qu'un attaquant disposant déjà de droits élevés peut apprendre."
   },
   "check_note": {
     "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)`, falling back to `/proc/config.gz`, so the result reflects the booted kernel. Unlike the other rules in this domain, this check asserts the option is **not** set to `y` (`should_not match`), because `/proc/kcore` should be absent.",

@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R27"
   },
   "check": [
+    "only_if('arm64 only') { os.arch.to_s =~ /aarch64|arm/ }",
     "describe command(\"grep -h '^CONFIG_ARM64_SW_TTBR0_PAN=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_ARM64_SW_TTBR0_PAN='\") do",
     "  its('stdout') { should match(/^CONFIG_ARM64_SW_TTBR0_PAN=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Emulate Privileged Access Never (PAN)",
     "fr": "Émuler Privileged Access Never (PAN)"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Privileged Access Never (PAN) is the ARM equivalent of x86 **SMAP**: it stops the kernel from accidentally (or maliciously, via an exploit) dereferencing user-space addresses while running in privileged mode. On ARM64 hardware that lacks the hardware PAN feature, `CONFIG_ARM64_SW_TTBR0_PAN=y` emulates it in software by switching `TTBR0`. Without it, classic exploit techniques like **ret2usr**, placing attacker-controlled code/data in user memory and tricking the kernel into using it, become viable, turning a kernel bug into full compromise.",
-    "fr": "Privileged Access Never (PAN) est l'équivalent ARM du **SMAP** x86 : il empêche le noyau de déréférencer accidentellement (ou de façon malveillante, via un exploit) des adresses de l'espace utilisateur lorsqu'il s'exécute en mode privilégié. Sur le matériel ARM64 dépourvu de la fonction PAN matérielle, `CONFIG_ARM64_SW_TTBR0_PAN=y` l'émule en logiciel en basculant `TTBR0`. Sans lui, des techniques d'exploitation classiques comme **ret2usr**, placer du code/des données contrôlés par l'attaquant en mémoire utilisateur et tromper le noyau pour qu'il les utilise, deviennent viables, transformant un bug noyau en compromission totale."
-  },
   "summary": {
     "en": "Ensures the ARM64 kernel is built with `CONFIG_ARM64_SW_TTBR0_PAN=y`, providing software emulation of Privileged Access Never (PAN) on CPUs without hardware PAN.",
     "fr": "Garantit que le noyau ARM64 est compilé avec `CONFIG_ARM64_SW_TTBR0_PAN=y`, fournissant une émulation logicielle de Privileged Access Never (PAN) sur les CPU sans PAN matériel."
+  },
+  "rationale": {
+    "en": "Privileged Access Never (PAN) is the ARM equivalent of x86 **SMAP**: it stops the kernel from accidentally (or maliciously, via an exploit) dereferencing user-space addresses while running in privileged mode. On ARM64 hardware that lacks the hardware PAN feature, `CONFIG_ARM64_SW_TTBR0_PAN=y` emulates it in software by switching `TTBR0`. Without it, classic exploit techniques like **ret2usr**, placing attacker-controlled code/data in user memory and tricking the kernel into using it, become viable, turning a kernel bug into full compromise.",
+    "fr": "Privileged Access Never (PAN) est l'équivalent ARM du **SMAP** x86 : il empêche le noyau de déréférencer accidentellement (ou de façon malveillante, via un exploit) des adresses de l'espace utilisateur lorsqu'il s'exécute en mode privilégié. Sur le matériel ARM64 dépourvu de la fonction PAN matérielle, `CONFIG_ARM64_SW_TTBR0_PAN=y` l'émule en logiciel en basculant `TTBR0`. Sans lui, des techniques d'exploitation classiques comme **ret2usr**, placer du code/des données contrôlés par l'attaquant en mémoire utilisateur et tromper le noyau pour qu'il les utilise, deviennent viables, transformant un bug noyau en compromission totale."
   },
   "check_note": {
     "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)` (fallback `/proc/config.gz`) and asserts `CONFIG_ARM64_SW_TTBR0_PAN=y`. Reading the live kernel's effective config, keyed on `uname -r`, is more reliable than guessing from a `/boot/config-*` file, because it matches the exact image GRUB booted even when several kernels coexist. This option only applies on ARM64; on x86 systems the line is simply absent (the equivalent protection is SMAP).",

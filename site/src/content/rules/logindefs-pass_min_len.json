@@ -3,18 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
-    "rhel10",
-    "rhel8",
-    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
-    "rhel8": "4.0.0",
-    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -33,22 +28,28 @@
   },
   "check": [
     "describe login_defs do",
-    "  its('PASS_MIN_LEN') { should cmp >= 15 }",
+    "  its('PASS_MIN_LEN') { should cmp >= {'bp28'=>15,'nist'=>12}.fetch(input('pavois_standard', value: '_default'), 15) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "file": "/etc/login.defs",
+    "key": "PASS_MIN_LEN",
+    "resource": "conf_line",
+    "sep": "space",
+    "value": "15"
+  },
   "title": {
     "en": "Set Password Minimum Length in login.defs",
     "fr": "Définir la longueur minimale des mots de passe dans login.defs"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Requiring a minimum password length makes password-cracking (brute-force and dictionary) attacks far harder by enlarging the search space an attacker must explore. Short passwords are trivially guessed offline once a hash leaks. Any benefit from an onerous length requirement must still be weighed against usability and support costs, but a 15-character floor is a widely accepted baseline.",
-    "fr": "Exiger une longueur minimale de mot de passe rend les attaques par cassage (force brute et dictionnaire) bien plus difficiles en agrandissant l'espace de recherche que l'attaquant doit explorer. Les mots de passe courts sont devinés trivialement hors ligne dès qu'un hachage fuit. Le bénéfice d'une exigence de longueur contraignante doit être pondéré par le coût en ergonomie et en support, mais un plancher de 15 caractères est une base largement admise."
-  },
   "summary": {
     "en": "Enforces a minimum password length of **15 characters** via the `PASS_MIN_LEN` directive in `/etc/login.defs`.",
     "fr": "Impose une longueur minimale de mot de passe de **15 caractères** via la directive `PASS_MIN_LEN` dans `/etc/login.defs`."
+  },
+  "rationale": {
+    "en": "Requiring a minimum password length makes password-cracking (brute-force and dictionary) attacks far harder by enlarging the search space an attacker must explore. Short passwords are trivially guessed offline once a hash leaks. Any benefit from an onerous length requirement must still be weighed against usability and support costs, but a 15-character floor is a widely accepted baseline.",
+    "fr": "Exiger une longueur minimale de mot de passe rend les attaques par cassage (force brute et dictionnaire) bien plus difficiles en agrandissant l'espace de recherche que l'attaquant doit explorer. Les mots de passe courts sont devinés trivialement hors ligne dès qu'un hachage fuit. Le bénéfice d'une exigence de longueur contraignante doit être pondéré par le coût en ergonomie et en support, mais un plancher de 15 caractères est une base largement admise."
   },
   "check_note": {
     "en": "Pavois reads the resolved `PASS_MIN_LEN` value from `/etc/login.defs` through the InSpec `login_defs` resource and asserts it is **>= 15**. This is the value `useradd`/`passwd` actually consult, so Pavois reports the effective policy rather than guessing from a comment or a stale documentation file.",

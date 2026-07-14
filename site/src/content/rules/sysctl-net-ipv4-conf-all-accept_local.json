@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.conf.all.accept_local') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.all.accept_local[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Désactiver l'acceptation des paquets routés entre interfaces locales"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "When `net.ipv4.conf.all.accept_local=1`, the kernel accepts packets arriving on an interface whose **source address is one of the host's own local addresses** (including the `127.0.0.0/8` loopback block). An attacker on the wire can craft such spoofed packets to impersonate the host to itself and bypass filters that trust local source addresses. Setting it to `0` makes the kernel treat these as **invalid (martian) packets** and drop them, closing a local-address spoofing vector. This is rarely needed outside of specific routing setups.",
-    "fr": "Lorsque `net.ipv4.conf.all.accept_local=1`, le noyau accepte les paquets arrivant sur une interface dont l'**adresse source est l'une des adresses locales de l'hôte** (y compris le bloc de bouclage `127.0.0.0/8`). Un attaquant sur le réseau peut forger de tels paquets usurpés pour faire passer l'hôte pour lui-même et contourner des filtres qui font confiance aux adresses sources locales. Le mettre à `0` fait que le noyau les considère comme des **paquets invalides (martiens)** et les rejette, fermant un vecteur d'usurpation d'adresse locale. Ce comportement est rarement nécessaire hors de configurations de routage spécifiques."
-  },
   "summary": {
     "en": "Sets `net.ipv4.conf.all.accept_local=0` so the kernel rejects inbound packets that spoof one of the host's own local source addresses.",
     "fr": "Définit `net.ipv4.conf.all.accept_local=0` pour que le noyau rejette les paquets entrants usurpant l'une des adresses sources locales de l'hôte."
+  },
+  "rationale": {
+    "en": "When `net.ipv4.conf.all.accept_local=1`, the kernel accepts packets arriving on an interface whose **source address is one of the host's own local addresses** (including the `127.0.0.0/8` loopback block). An attacker on the wire can craft such spoofed packets to impersonate the host to itself and bypass filters that trust local source addresses. Setting it to `0` makes the kernel treat these as **invalid (martian) packets** and drop them, closing a local-address spoofing vector. This is rarely needed outside of specific routing setups.",
+    "fr": "Lorsque `net.ipv4.conf.all.accept_local=1`, le noyau accepte les paquets arrivant sur une interface dont l'**adresse source est l'une des adresses locales de l'hôte** (y compris le bloc de bouclage `127.0.0.0/8`). Un attaquant sur le réseau peut forger de tels paquets usurpés pour faire passer l'hôte pour lui-même et contourner des filtres qui font confiance aux adresses sources locales. Le mettre à `0` fait que le noyau les considère comme des **paquets invalides (martiens)** et les rejette, fermant un vecteur d'usurpation d'adresse locale. Ce comportement est rarement nécessaire hors de configurations de routage spécifiques."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** via `kernel_parameter('net.ipv4.conf.all.accept_local')` and asserts it equals `0`. The `all` key sets the effective default the kernel applies; reading the running value catches a drop-in that was written but never reloaded, or one overridden by a later file. A file-only scan of `sysctl.d` cannot prove what the kernel is actually enforcing on incoming packets.",

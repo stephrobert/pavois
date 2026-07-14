@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -40,6 +41,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.conf.default.secure_redirects') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.default.secure_redirects[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -52,13 +56,13 @@
     "fr": "Configurer le paramètre noyau d'acceptation des redirections sécurisées par défaut"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Accepting \"secure\" ICMP redirects (from those gateways listed as default gateways) has few legitimate uses. A redirect from a default gateway can still be used to alter a host's routing table and reroute traffic through an attacker-controlled path (man-in-the-middle). Unless the system genuinely relies on dynamic redirects, this should be disabled.",
-    "fr": "Accepter les redirections ICMP « sécurisées » (provenant des passerelles déclarées comme passerelles par défaut) n'a que peu d'usages légitimes. Une redirection issue d'une passerelle par défaut peut tout de même servir à modifier la table de routage de l'hôte et à dérouter le trafic vers un chemin contrôlé par un attaquant (homme du milieu). Sauf dépendance réelle aux redirections dynamiques, ce comportement doit être désactivé."
-  },
   "summary": {
     "en": "Forces the kernel to **reject** ICMP secure redirects on newly created IPv4 interfaces by setting `net.ipv4.conf.default.secure_redirects` to **0**.",
     "fr": "Force le noyau à **rejeter** les redirections ICMP sécurisées sur les nouvelles interfaces IPv4 en positionnant `net.ipv4.conf.default.secure_redirects` à **0**."
+  },
+  "rationale": {
+    "en": "Accepting \"secure\" ICMP redirects (from those gateways listed as default gateways) has few legitimate uses. A redirect from a default gateway can still be used to alter a host's routing table and reroute traffic through an attacker-controlled path (man-in-the-middle). Unless the system genuinely relies on dynamic redirects, this should be disabled.",
+    "fr": "Accepter les redirections ICMP « sécurisées » (provenant des passerelles déclarées comme passerelles par défaut) n'a que peu d'usages légitimes. Une redirection issue d'une passerelle par défaut peut tout de même servir à modifier la table de routage de l'hôte et à dérouter le trafic vers un chemin contrôlé par un attaquant (homme du milieu). Sauf dépendance réelle aux redirections dynamiques, ce comportement doit être désactivé."
   },
   "check_note": {
     "en": "Pavois reads the **live** kernel value via `kernel_parameter('net.ipv4.conf.default.secure_redirects')`, which reflects the running setting after every `sysctl.conf`, drop-in under `/etc/sysctl.d/`, kernel command line and runtime override has been merged. A file-based scanner that only greps `/etc/sysctl.conf` misses values set in drop-ins or applied at runtime, producing false results.",

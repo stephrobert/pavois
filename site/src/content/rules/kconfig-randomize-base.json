@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R25"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_RANDOMIZE_BASE=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_RANDOMIZE_BASE='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_RANDOMIZE_BASE=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_RANDOMIZE_BASE=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Randomize the address of the kernel image (KASLR)",
     "fr": "Randomiser l'adresse de l'image du noyau (KASLR)"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "An unpredictable kernel address makes it more difficult to succeed with exploits that rely on knowledge of the location of kernel code internals. Without **KASLR** (`CONFIG_RANDOMIZE_BASE`), the kernel is mapped at a fixed, well-known virtual address, so any information leak immediately hands an attacker reliable targets for **ROP/return-to-kernel** payloads and turns a memory-corruption bug into a dependable privilege-escalation exploit.",
-    "fr": "Une adresse de noyau imprévisible rend plus difficile la réussite des exploits qui reposent sur la connaissance de l'emplacement du code interne du noyau. Sans **KASLR** (`CONFIG_RANDOMIZE_BASE`), le noyau est mappé à une adresse virtuelle fixe et bien connue : la moindre fuite d'information fournit immédiatement à un attaquant des cibles fiables pour des charges **ROP / return-to-kernel**, transformant un bug de corruption mémoire en exploit d'élévation de privilèges fiable."
-  },
   "summary": {
     "en": "Requires the kernel to be built with **`CONFIG_RANDOMIZE_BASE=y`** so the kernel image is loaded at a randomized base address (KASLR).",
     "fr": "Exige que le noyau soit compilé avec **`CONFIG_RANDOMIZE_BASE=y`** afin que l'image du noyau soit chargée à une adresse de base randomisée (KASLR)."
+  },
+  "rationale": {
+    "en": "An unpredictable kernel address makes it more difficult to succeed with exploits that rely on knowledge of the location of kernel code internals. Without **KASLR** (`CONFIG_RANDOMIZE_BASE`), the kernel is mapped at a fixed, well-known virtual address, so any information leak immediately hands an attacker reliable targets for **ROP/return-to-kernel** payloads and turns a memory-corruption bug into a dependable privilege-escalation exploit.",
+    "fr": "Une adresse de noyau imprévisible rend plus difficile la réussite des exploits qui reposent sur la connaissance de l'emplacement du code interne du noyau. Sans **KASLR** (`CONFIG_RANDOMIZE_BASE`), le noyau est mappé à une adresse virtuelle fixe et bien connue : la moindre fuite d'information fournit immédiatement à un attaquant des cibles fiables pour des charges **ROP / return-to-kernel**, transformant un bug de corruption mémoire en exploit d'élévation de privilèges fiable."
   },
   "check_note": {
     "en": "Pavois reads the build options of the **running** kernel, `grep '^CONFIG_RANDOMIZE_BASE=' /boot/config-$(uname -r)` or `zcat /proc/config.gz`, and requires the value `y`. Inspecting the live kernel's own config (keyed on `uname -r`) is more reliable than guessing from a package name or a generic config file: it reflects exactly the kernel that is booted, including vendor or custom builds.",

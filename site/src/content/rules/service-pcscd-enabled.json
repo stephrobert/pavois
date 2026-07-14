@@ -1,6 +1,7 @@
 {
   "id": "service-pcscd-enabled",
   "supported_os": [
+    "fedora",
     "rhel10",
     "rhel9"
   ],
@@ -14,31 +15,29 @@
   "reboot_survivable": "no",
   "norms": {},
   "check": [
+    "only_if { command('authselect current 2>/dev/null | grep -q with-smartcard').exit_status == 0 }",
     "describe service('pcscd.service') do",
     "  it { should be_enabled }",
     "  it { should be_running }",
     "end"
   ],
   "remediation": {
-    "action": [
-      "enable",
-      "start"
-    ],
-    "name": "pcscd",
-    "resource": "service"
+    "command": "# pcscd is the smartcard daemon: it is only relevant with a reader and smartcard auth.\n#   authselect select sssd with-smartcard   then: systemctl enable --now pcscd\n",
+    "reason": "the smartcard stack needs hardware and an auth profile: starting the daemon alone proves nothing",
+    "resource": "manual"
   },
   "title": {
     "en": "Enable the pcscd Service",
     "fr": "Activer le service pcscd"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The **PC/SC Smart Card Daemon** (`pcscd`) is the middleware that lets the system talk to smart-card readers and hardware tokens (CAC/PIV, YubiKey PIV, etc.). When this daemon is **stopped or disabled**, multifactor authentication backed by a physical device silently fails, the reader is invisible to PAM/`sssd`, so logins fall back to password-only or break entirely. Keeping it enabled is a prerequisite for **hardware-backed MFA**, which keeps credentials off the host: even a fully compromised system cannot extract the private key held on the card.",
-    "fr": "Le **démon de cartes à puce PC/SC** (`pcscd`) est l'intergiciel qui permet au système de dialoguer avec les lecteurs de cartes à puce et les tokens matériels (CAC/PIV, YubiKey PIV, etc.). Lorsque ce démon est **arrêté ou désactivé**, l'authentification multifacteur adossée à un dispositif physique échoue silencieusement, le lecteur est invisible pour PAM/`sssd`, et les connexions retombent sur le mot de passe seul ou échouent complètement. Le garder activé est un prérequis pour la **MFA matérielle**, qui maintient les identifiants hors de l'hôte : même un système entièrement compromis ne peut extraire la clé privée détenue sur la carte."
-  },
   "summary": {
     "en": "Ensures the **`pcscd.service`** (PC/SC smart card daemon) is enabled at boot and running, so smart-card and hardware-token authentication works.",
     "fr": "Garantit que le service **`pcscd.service`** (démon de cartes à puce PC/SC) est activé au démarrage et en cours d'exécution, afin que l'authentification par carte à puce et token matériel fonctionne."
+  },
+  "rationale": {
+    "en": "The **PC/SC Smart Card Daemon** (`pcscd`) is the middleware that lets the system talk to smart-card readers and hardware tokens (CAC/PIV, YubiKey PIV, etc.). When this daemon is **stopped or disabled**, multifactor authentication backed by a physical device silently fails, the reader is invisible to PAM/`sssd`, so logins fall back to password-only or break entirely. Keeping it enabled is a prerequisite for **hardware-backed MFA**, which keeps credentials off the host: even a fully compromised system cannot extract the private key held on the card.",
+    "fr": "Le **démon de cartes à puce PC/SC** (`pcscd`) est l'intergiciel qui permet au système de dialoguer avec les lecteurs de cartes à puce et les tokens matériels (CAC/PIV, YubiKey PIV, etc.). Lorsque ce démon est **arrêté ou désactivé**, l'authentification multifacteur adossée à un dispositif physique échoue silencieusement, le lecteur est invisible pour PAM/`sssd`, et les connexions retombent sur le mot de passe seul ou échouent complètement. Le garder activé est un prérequis pour la **MFA matérielle**, qui maintient les identifiants hors de l'hôte : même un système entièrement compromis ne peut extraire la clé privée détenue sur la carte."
   },
   "check_note": {
     "en": "Pavois reads the **effective state** of `pcscd.service` from systemd via `service('pcscd.service')`, asserting both *enabled* (will start at boot) and *running* (active now). Unlike checking that the `pcsc-lite` package is installed, this catches a daemon that is installed but masked, crashed, or socket-activated-but-never-triggered, the exact failure modes that silently break smart-card login.",

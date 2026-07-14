@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,19 +26,19 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "7.1.6",
-      "2.2.6"
+      "2.2.6",
+      "7.1.6"
     ],
     "pci-dss": "2.2.6"
   },
   "check": [
     "only_if { file('/etc/shadow-').exist? }",
     "describe file('/etc/shadow-') do",
-    "  its('gid') { should eq 0 }",
+    "  its('gid') { should eq 42 }",
     "end"
   ],
   "remediation": {
-    "group": "root",
+    "group": "shadow",
     "path": "/etc/shadow-",
     "resource": "file"
   },
@@ -46,13 +47,13 @@
     "fr": "Vérifier le groupe propriétaire du fichier de sauvegarde shadow"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/shadow-` is the **backup of** `/etc/shadow` and contains the **password hashes** of every local account. If its group owner is not the expected privileged group (gid `0`), an unprivileged group could read those hashes for offline cracking, or tamper with the backup so a later restore weakens authentication on the live file. This is among the most sensitive files on the system.",
-    "fr": "`/etc/shadow-` est la **sauvegarde de** `/etc/shadow` et contient les **empreintes des mots de passe** de chaque compte local. Si son groupe propriétaire n'est pas le groupe privilégié attendu (gid `0`), un groupe non privilégié pourrait lire ces empreintes pour un cassage hors ligne, ou altérer la sauvegarde afin qu'une restauration ultérieure affaiblisse l'authentification du fichier actif. C'est l'un des fichiers les plus sensibles du système."
-  },
   "summary": {
     "en": "Ensures `/etc/shadow-`, the backup copy of `/etc/shadow` (account password hashes), is group-owned by gid `0`.",
     "fr": "Garantit que `/etc/shadow-`, la copie de sauvegarde de `/etc/shadow` (empreintes des mots de passe), a le gid `0` pour groupe propriétaire."
+  },
+  "rationale": {
+    "en": "`/etc/shadow-` is the **backup of** `/etc/shadow` and contains the **password hashes** of every local account. If its group owner is not the expected privileged group (gid `0`), an unprivileged group could read those hashes for offline cracking, or tamper with the backup so a later restore weakens authentication on the live file. This is among the most sensitive files on the system.",
+    "fr": "`/etc/shadow-` est la **sauvegarde de** `/etc/shadow` et contient les **empreintes des mots de passe** de chaque compte local. Si son groupe propriétaire n'est pas le groupe privilégié attendu (gid `0`), un groupe non privilégié pourrait lire ces empreintes pour un cassage hors ligne, ou altérer la sauvegarde afin qu'une restauration ultérieure affaiblisse l'authentification du fichier actif. C'est l'un des fichiers les plus sensibles du système."
   },
   "check_note": {
     "en": "Pavois reads the **effective ownership** of `/etc/shadow-` from the inode (via `stat`) and asserts `gid == 0`. Checking the live inode catches drift from manual restores or backup tooling rather than trusting a template. The `only_if` guard skips the check when the backup is absent.",

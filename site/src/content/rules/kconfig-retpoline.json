@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_RETPOLINE=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_RETPOLINE='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_RETPOLINE=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_RETPOLINE=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Avoid speculative indirect branches in kernel",
     "fr": "Eviter les branches indirectes spéculatives dans le noyau"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "This is required to enable protection against **Spectre v2** (branch target injection, CVE-2017-5715). `CONFIG_RETPOLINE` builds the kernel with *retpoline* thunks that replace vulnerable indirect branches with a construct the CPU cannot mis-speculate, denying an attacker the ability to steer speculative execution toward a gadget and **leak kernel memory** (passwords, keys) across privilege boundaries.",
-    "fr": "Ceci est requis pour activer la protection contre **Spectre v2** (injection de cible de branchement, CVE-2017-5715). `CONFIG_RETPOLINE` compile le noyau avec des thunks *retpoline* qui remplacent les branches indirectes vulnérables par une construction que le CPU ne peut pas mal-spéculer, privant l'attaquant de la possibilité d'orienter l'exécution spéculative vers un gadget et de **lire la mémoire du noyau** (mots de passe, clés) au-delà des frontières de privilèges."
-  },
   "summary": {
     "en": "Requires the kernel to be built with **`CONFIG_RETPOLINE=y`** so indirect branches use retpoline thunks that mitigate Spectre v2.",
     "fr": "Exige que le noyau soit compilé avec **`CONFIG_RETPOLINE=y`** afin que les branches indirectes utilisent des thunks retpoline atténuant Spectre v2."
+  },
+  "rationale": {
+    "en": "This is required to enable protection against **Spectre v2** (branch target injection, CVE-2017-5715). `CONFIG_RETPOLINE` builds the kernel with *retpoline* thunks that replace vulnerable indirect branches with a construct the CPU cannot mis-speculate, denying an attacker the ability to steer speculative execution toward a gadget and **leak kernel memory** (passwords, keys) across privilege boundaries.",
+    "fr": "Ceci est requis pour activer la protection contre **Spectre v2** (injection de cible de branchement, CVE-2017-5715). `CONFIG_RETPOLINE` compile le noyau avec des thunks *retpoline* qui remplacent les branches indirectes vulnérables par une construction que le CPU ne peut pas mal-spéculer, privant l'attaquant de la possibilité d'orienter l'exécution spéculative vers un gadget et de **lire la mémoire du noyau** (mots de passe, clés) au-delà des frontières de privilèges."
   },
   "check_note": {
     "en": "Pavois reads the build options of the **running** kernel, `grep '^CONFIG_RETPOLINE=' /boot/config-$(uname -r)` or `zcat /proc/config.gz`, and requires `y`. Reading the live kernel's own config (keyed on `uname -r`) reflects exactly the booted kernel, including vendor builds, which a package-name guess or generic file cannot.",

@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "7.2.8",
-      "7.2.9"
+      "7.2.9",
+      "7.2.8"
     ]
   },
   "check": [
@@ -34,19 +35,23 @@
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# Find interactive users whose home directory is missing, then create it deliberately:\nawk -F: '($3>=1000 && $7!~/(nologin|false)/){print $1\" \"$6}' /etc/passwd\n# mkdir -p <home>; chown <user>:<group> <home>; chmod 750 <home>\n",
+    "reason": "creating/relocating a user's home is per-user and may need data migration",
+    "resource": "manual"
+  },
   "title": {
     "en": "All Interactive Users Home Directories Must Exist",
     "fr": "Les répertoires personnels de tous les utilisateurs interactifs doivent exister"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "If an interactive user has a home directory defined that does not exist, on login the user may land in the **`/` directory** as their working directory. This can cause a denial of service (their shell init and config files are unreadable) and may expose system files they should not normally see, while user dotfiles get created in unexpected places.",
-    "fr": "Si un utilisateur interactif a un répertoire personnel défini mais inexistant, sa session démarre avec le répertoire **`/`** comme dossier de travail. Cela peut provoquer un déni de service (ses fichiers d'initialisation et de configuration sont illisibles) et exposer des fichiers système qu'il ne devrait pas voir, tandis que ses fichiers de configuration sont créés à des emplacements imprévus."
-  },
   "summary": {
     "en": "Ensures every interactive account (**UID ≥ 1000**, excluding `nobody`) has the home directory declared in `/etc/passwd` actually present on disk.",
     "fr": "Garantit que chaque compte interactif (**UID ≥ 1000**, hors `nobody`) possède réellement sur le disque le répertoire personnel déclaré dans `/etc/passwd`."
+  },
+  "rationale": {
+    "en": "If an interactive user has a home directory defined that does not exist, on login the user may land in the **`/` directory** as their working directory. This can cause a denial of service (their shell init and config files are unreadable) and may expose system files they should not normally see, while user dotfiles get created in unexpected places.",
+    "fr": "Si un utilisateur interactif a un répertoire personnel défini mais inexistant, sa session démarre avec le répertoire **`/`** comme dossier de travail. Cela peut provoquer un déni de service (ses fichiers d'initialisation et de configuration sont illisibles) et exposer des fichiers système qu'il ne devrait pas voir, tandis que ses fichiers de configuration sont créés à des emplacements imprévus."
   },
   "check_note": {
     "en": "Pavois resolves the **live account database** with `awk` over `/etc/passwd`, selecting real interactive users (UID ≥ 1000, not `65534`, home ≠ `/`), then tests each declared home with `[ -d \"$h\" ]`. It reports the first missing directory. This reflects the **effective state** (passwd entries plus on-disk reality) rather than assuming `/home` layout from a config template.",

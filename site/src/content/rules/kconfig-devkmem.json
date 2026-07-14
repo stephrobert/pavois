@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_DEVKMEM=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_DEVKMEM='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_DEVKMEM=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should_not match(/^CONFIG_DEVKMEM=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Disable /dev/kmem virtual device support",
     "fr": "Désactiver la prise en charge du périphérique virtuel /dev/kmem"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The /dev/kmem device is rarely used, but can be used for certain kind of kernel debugging operations.",
-    "fr": "Le périphérique /dev/kmem est rarement utilisé, mais il peut servir à certaines opérations de débogage du noyau."
-  },
   "summary": {
     "en": "Requires the kernel to be built **without** `CONFIG_DEVKMEM`, removing the `/dev/kmem` interface that exposes kernel virtual memory.",
     "fr": "Exige que le noyau soit compilé **sans** `CONFIG_DEVKMEM`, supprimant l'interface `/dev/kmem` qui expose la mémoire virtuelle du noyau."
+  },
+  "rationale": {
+    "en": "The /dev/kmem device is rarely used, but can be used for certain kind of kernel debugging operations.",
+    "fr": "Le périphérique /dev/kmem est rarement utilisé, mais il peut servir à certaines opérations de débogage du noyau."
   },
   "check_note": {
     "en": "Pavois reads the **effective** build flag of the running kernel via `/boot/config-$(uname -r)` or `/proc/config.gz`, keyed on `$(uname -r)`. The control asserts the flag is *not* `=y`, reflecting the actually booted image rather than a stray `.config` a fixed-path file scan could match.",

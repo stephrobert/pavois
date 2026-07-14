@@ -60,6 +60,30 @@ def main():
     for cid, e in sorted(d.items()):
         if not isinstance(e, dict) or "applicable_os" not in e:
             continue
+
+        # A control no OS runs is dead weight: it inflates the base, gets no page, and reads like a
+        # missing fiche on the site.
+        if not e.get("applicable_os"):
+            findings["dead-rule"].append(f"{cid}: applicable_os is empty — no OS runs it")
+
+        # YAML 1.1 (what pyyaml, hence gen.py, speaks) reads a bare `yes` as the BOOLEAN true. So
+        # `reboot_survivable: yes` rendered as `true`, and the site — whose schema is the enum
+        # yes|no|unknown — refused the whole build 800 pages later. Enum fields must be quoted.
+        for f, allowed in (
+            ("reboot_survivable", {"yes", "no", "unknown"}),
+            ("remediation_class", {"auto", "dangerous", "install-time", "kernel-build", "manual"}),
+            ("severity", {"low", "medium", "high", "critical"}),
+        ):
+            v = e.get(f)
+            if v is None:
+                continue
+            if not isinstance(v, str):
+                findings["enum-type"].append(
+                    f"{cid}: {f} is {v!r} ({type(v).__name__}) — quote it: "
+                    "a bare `yes` is a BOOLEAN in YAML 1.1"
+                )
+            elif v not in allowed:
+                findings["enum-type"].append(f"{cid}: {f}={v!r} is not one of {sorted(allowed)}")
         checks = per_os(e, "check")
         rems = per_os(e, "remediation")
         for os, tpl in per_os(e, "template").items():  # a templated check is still a check
@@ -191,6 +215,8 @@ def main():
 
     total = 0
     for kind in (
+        "enum-type",
+        "dead-rule",
         "group-default",
         "dead-check",
         "pkg-mismatch",

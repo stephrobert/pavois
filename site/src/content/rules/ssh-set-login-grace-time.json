@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,9 +26,9 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "5.1.14",
       "2.2.6",
       "5.1.13",
+      "5.1.14",
       "5.1.15"
     ],
     "pci-dss": "2.2.6"
@@ -41,7 +42,7 @@
     "directive": "logingracetime",
     "notify": {
       "action": "reload",
-      "service": "ssh"
+      "service": "ssh.service"
     },
     "resource": "sshd_setting",
     "value": "60",
@@ -52,13 +53,13 @@
     "fr": "Configurer le LoginGraceTime de SSH"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`LoginGraceTime` caps the time a connection may stay open without authenticating. Leaving it at the default (`120` seconds) keeps half-open, unauthenticated sockets alive longer, which lets an attacker hold many concurrent slots and slowly run **brute-force or password-guessing** attempts. Setting it to **`60`** shrinks that window, frees the daemon faster and reduces exposure to login-stage denial-of-service.",
-    "fr": "`LoginGraceTime` limite la durée pendant laquelle une connexion peut rester ouverte sans s'authentifier. Le laisser à sa valeur par défaut (`120` secondes) maintient plus longtemps des sockets semi-ouverts et non authentifiés, ce qui permet à un attaquant de mobiliser de nombreux créneaux simultanés et de mener lentement des attaques par **force brute ou par devinette de mot de passe**. Le fixer à **`60`** réduit cette fenêtre, libère le démon plus vite et diminue l'exposition au déni de service au stade de la connexion."
-  },
   "summary": {
     "en": "Limit the SSH authentication grace period to **`60`** seconds via `LoginGraceTime`.",
     "fr": "Limiter le délai de grâce d'authentification SSH à **`60`** secondes via `LoginGraceTime`."
+  },
+  "rationale": {
+    "en": "`LoginGraceTime` caps the time a connection may stay open without authenticating. Leaving it at the default (`120` seconds) keeps half-open, unauthenticated sockets alive longer, which lets an attacker hold many concurrent slots and slowly run **brute-force or password-guessing** attempts. Setting it to **`60`** shrinks that window, frees the daemon faster and reduces exposure to login-stage denial-of-service.",
+    "fr": "`LoginGraceTime` limite la durée pendant laquelle une connexion peut rester ouverte sans s'authentifier. Le laisser à sa valeur par défaut (`120` secondes) maintient plus longtemps des sockets semi-ouverts et non authentifiés, ce qui permet à un attaquant de mobiliser de nombreux créneaux simultanés et de mener lentement des attaques par **force brute ou par devinette de mot de passe**. Le fixer à **`60`** réduit cette fenêtre, libère le démon plus vite et diminue l'exposition au déni de service au stade de la connexion."
   },
   "check_note": {
     "en": "Pavois asserts that the **effective** value reported by `sshd -T` is `logingracetime 60`. Reading the live daemon output (rather than `/etc/ssh/sshd_config`) captures the value that actually applies after every `Include` and every drop-in under `/etc/ssh/sshd_config.d/` has been merged, a file-based scan can miss an override and report a false pass or false fail.",

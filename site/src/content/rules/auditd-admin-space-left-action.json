@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,9 +26,9 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "6.3.2.4",
       "10.5.1",
-      "6.2.2.4"
+      "6.2.2.4",
+      "6.3.2.4"
     ],
     "nist": [
       "3.3.1",
@@ -37,13 +38,10 @@
       "AU-5(b)",
       "CM-6(a)"
     ],
-    "pci-dss": [
-      "10.5.1",
-      "Req-10.7"
-    ]
+    "pci-dss": "10.5.1"
   },
   "check": [
-    "describe command('grep -qiE \\'^[[:space:]]*admin_space_left_action[[:space:]]*=[[:space:]]*(single|halt)\\b\\' /etc/audit/auditd.conf 2>/dev/null && echo ok || echo ko') do",
+    "describe command('grep -qiE \\'^[[:space:]]*admin_space_left_action[[:space:]]*=[[:space:]]*(syslog|email|exec|single|halt)\\b\\' /etc/audit/auditd.conf 2>/dev/null && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
@@ -52,20 +50,20 @@
     "key": "admin_space_left_action",
     "resource": "conf_line",
     "service": "auditd",
-    "value": "halt"
+    "value": "syslog"
   },
   "title": {
     "en": "Configure auditd admin_space_left Action on Low Disk Space",
     "fr": "Configurer l'action auditd admin_space_left en cas d'espace disque faible"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Administrators should be made aware of an inability to record audit records. If a separate partition or logical volume of adequate size is used, running low on space for audit records should never occur.",
-    "fr": "Les administrateurs doivent être informés d'une incapacité à enregistrer les événements d'audit. Si une partition ou un volume logique dédié et correctement dimensionné est utilisé, l'espace pour les enregistrements d'audit ne devrait jamais venir à manquer."
-  },
   "summary": {
     "en": "Sets `admin_space_left_action` in `/etc/audit/auditd.conf` to a hard reaction (**`single`** or **`halt`**) when audit storage hits the admin threshold.",
     "fr": "Définit `admin_space_left_action` dans `/etc/audit/auditd.conf` sur une réaction stricte (**`single`** ou **`halt`**) lorsque le stockage d'audit atteint le seuil administrateur."
+  },
+  "rationale": {
+    "en": "Administrators should be made aware of an inability to record audit records. If a separate partition or logical volume of adequate size is used, running low on space for audit records should never occur.",
+    "fr": "Les administrateurs doivent être informés d'une incapacité à enregistrer les événements d'audit. Si une partition ou un volume logique dédié et correctement dimensionné est utilisé, l'espace pour les enregistrements d'audit ne devrait jamais venir à manquer."
   },
   "check_note": {
     "en": "Pavois greps `/etc/audit/auditd.conf` for `admin_space_left_action = single|halt` and expects `ok`. Reading the daemon's own config file reflects the effective policy auditd enforces, the action it will actually take when the critical low-space threshold is reached.",

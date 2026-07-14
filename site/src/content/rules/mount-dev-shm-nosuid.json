@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -37,21 +38,30 @@
   "check": [
     "describe mount('/dev/shm') do",
     "  its('options') { should include 'nosuid' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /dev/shm 2>/dev/null; grep -hsE '[[:space:]]/dev/shm[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /dev/shm 2>/dev/null) 2>/dev/null; } | grep -ow 'nosuid'\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "device": "tmpfs",
+    "fstype": "tmpfs",
+    "mount_point": "/dev/shm",
+    "option": "nosuid",
+    "resource": "mount"
+  },
   "title": {
     "en": "Add nosuid Option to /dev/shm",
     "fr": "Ajouter l'option nosuid à /dev/shm"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The presence of **SUID** and **SGID** executables must be tightly controlled. `/dev/shm` is a world-writable temporary (shared-memory) filesystem where users should never be able to run setuid/setgid programs. Mounting it with `nosuid` makes the kernel ignore those bits, so a SUID-root binary copied there cannot be used to escalate privileges.",
-    "fr": "La présence d'exécutables **SUID** et **SGID** doit être strictement contrôlée. `/dev/shm` est un système de fichiers temporaire (mémoire partagée) accessible en écriture à tous, où les utilisateurs ne devraient jamais pouvoir exécuter de programmes setuid/setgid. Le monter avec `nosuid` force le noyau à ignorer ces bits, de sorte qu'un binaire SUID-root copié à cet endroit ne puisse servir à élever les privilèges."
-  },
   "summary": {
     "en": "Mounts the `/dev/shm` shared-memory tmpfs with the `nosuid` option so setuid/setgid bits on its files are ignored.",
     "fr": "Monte le tmpfs de mémoire partagée `/dev/shm` avec l'option `nosuid` afin que les bits setuid/setgid de ses fichiers soient ignorés."
+  },
+  "rationale": {
+    "en": "The presence of **SUID** and **SGID** executables must be tightly controlled. `/dev/shm` is a world-writable temporary (shared-memory) filesystem where users should never be able to run setuid/setgid programs. Mounting it with `nosuid` makes the kernel ignore those bits, so a SUID-root binary copied there cannot be used to escalate privileges.",
+    "fr": "La présence d'exécutables **SUID** et **SGID** doit être strictement contrôlée. `/dev/shm` est un système de fichiers temporaire (mémoire partagée) accessible en écriture à tous, où les utilisateurs ne devraient jamais pouvoir exécuter de programmes setuid/setgid. Le monter avec `nosuid` force le noyau à ignorer ces bits, de sorte qu'un binaire SUID-root copié à cet endroit ne puisse servir à élever les privilèges."
   },
   "check_note": {
     "en": "Pavois reads the **effective** mount via `mount('/dev/shm')` and asserts the resolved options include `nosuid`. Since `/dev/shm` is mounted by `systemd` (`dev-shm.mount`) and may be absent from `/etc/fstab`, only the **live** mount table shows its true options, file-based scanning can pass falsely or miss the mount.",

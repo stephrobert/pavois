@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -31,22 +33,27 @@
   },
   "check": [
     "describe command('timeout 90 find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type d ! -user root 2>/dev/null') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# Review ownership/permissions of system command directories (e.g. /bin /sbin /usr/bin /usr/sbin):\nfind /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -xdev \\( -perm -0002 -o ! -user root \\) 2>/dev/null\n# fix each after review: chown root <path> ; chmod o-w <path>\n",
+    "reason": "tightening perms on system command dirs can break packaged tooling, review",
+    "resource": "manual"
+  },
   "title": {
     "en": "Verify that system commands directories have root as a group owner",
     "fr": "Vérifier que les répertoires des commandes système ont root comme propriétaire"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "These directories hold the system's executables and privileged programs. If a directory is owned by a **non-root account**, that account can add, replace or remove binaries, letting it **inject a trojaned command** that other users (including root) will later run, bypassing change-management and escalating privilege. Software libraries and interpreted-language binaries here run with elevated rights, so only root must control these paths.",
-    "fr": "Ces répertoires contiennent les exécutables du système et des programmes privilégiés. Si un répertoire appartient à un **compte non-root**, ce compte peut ajouter, remplacer ou supprimer des binaires, lui permettant d'**injecter une commande piégée** que d'autres utilisateurs (root inclus) exécuteront ensuite, contournant la gestion du changement et élevant les privilèges. Les bibliothèques logicielles et les binaires de langages interprétés ici s'exécutent avec des droits élevés ; seul root doit donc contrôler ces chemins."
-  },
   "summary": {
     "en": "Ensure every directory under the system command paths (`/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin`, `/usr/local/sbin`) is owned by **root**, so only root can manage the binaries they hold.",
     "fr": "Garantit que chaque répertoire sous les chemins de commandes système (`/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin`, `/usr/local/sbin`) appartient à **root**, afin que seul root puisse gérer les binaires qu'ils contiennent."
+  },
+  "rationale": {
+    "en": "These directories hold the system's executables and privileged programs. If a directory is owned by a **non-root account**, that account can add, replace or remove binaries, letting it **inject a trojaned command** that other users (including root) will later run, bypassing change-management and escalating privilege. Software libraries and interpreted-language binaries here run with elevated rights, so only root must control these paths.",
+    "fr": "Ces répertoires contiennent les exécutables du système et des programmes privilégiés. Si un répertoire appartient à un **compte non-root**, ce compte peut ajouter, remplacer ou supprimer des binaires, lui permettant d'**injecter une commande piégée** que d'autres utilisateurs (root inclus) exécuteront ensuite, contournant la gestion du changement et élevant les privilèges. Les bibliothèques logicielles et les binaires de langages interprétés ici s'exécutent avec des droits élevés ; seul root doit donc contrôler ces chemins."
   },
   "check_note": {
     "en": "Pavois runs `find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type d ! -user root` and asserts the output is empty, i.e. **no** directory in the command paths has a non-root owner. `2>/dev/null` and `timeout 90` keep the live scan bounded. This walks the **actual filesystem ownership** instead of trusting package metadata, so it catches directories whose owner drifted after a manual `chown`, a sloppy installer or an unpacked archive. (Note: the check tests the *owner* via `! -user root`; the title's wording is preserved for compatibility.)",

@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,28 +27,33 @@
   "norms": {
     "bp28": "R50",
     "cis": [
-      "7.2.9",
-      "7.2.10"
+      "7.2.10",
+      "7.2.9"
     ]
   },
   "check": [
     "describe command('awk -F: \\'($3>=1000 && $3!=65534 && $6!=\"/\"){print $3\":\"$4\":\"$6}\\' /etc/passwd | while IFS=: read u g h; do [ -d \"$h\" ] && timeout 60 find -P \"$h\" -maxdepth 1 -type f -name \\'.[^.]*\\' ! -gid \"$g\" -print 2>/dev/null; done | head -1') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "for d in $(awk -F: '($3>=1000){print $6}' /etc/passwd); do find \"$d\" -maxdepth 1 -name '.*' 2>/dev/null; done\n# chgrp <user-group> per file after review\n",
+    "reason": "fixing dot-file group is per-user, verify before chgrp'ing a user's files",
+    "resource": "manual"
+  },
   "title": {
     "en": "User Initialization Files Must Be Group-Owned By The Primary Group",
     "fr": "Les fichiers d'initialisation utilisateur doivent appartenir au groupe primaire"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Local initialization files configure a user's shell environment at login. If a dotfile is group-owned by a group the user does not control, a member of that group could **modify the file and execute code in the victim's session** the next time they log in, a privilege/account compromise on logon.",
-    "fr": "Les fichiers d'initialisation locaux configurent l'environnement shell de l'utilisateur à la connexion. Si un fichier caché appartient à un groupe que l'utilisateur ne maîtrise pas, un membre de ce groupe pourrait **modifier le fichier et exécuter du code dans la session de la victime** à sa prochaine connexion, une compromission du compte au logon."
-  },
   "summary": {
     "en": "Ensures the dotfiles (e.g. `.bashrc`, `.profile`) at the top level of each interactive user's home are group-owned by that user's **primary group**.",
     "fr": "Garantit que les fichiers cachés (par ex. `.bashrc`, `.profile`) à la racine du home de chaque utilisateur interactif appartiennent au **groupe primaire** de cet utilisateur."
+  },
+  "rationale": {
+    "en": "Local initialization files configure a user's shell environment at login. If a dotfile is group-owned by a group the user does not control, a member of that group could **modify the file and execute code in the victim's session** the next time they log in, a privilege/account compromise on logon.",
+    "fr": "Les fichiers d'initialisation locaux configurent l'environnement shell de l'utilisateur à la connexion. Si un fichier caché appartient à un groupe que l'utilisateur ne maîtrise pas, un membre de ce groupe pourrait **modifier le fichier et exécuter du code dans la session de la victime** à sa prochaine connexion, une compromission du compte au logon."
   },
   "check_note": {
     "en": "Pavois reads the **live** `/etc/passwd` to learn each interactive user's UID, primary GID and home, then runs `find -maxdepth 1 -type f -name '.[^.]*' ! -gid \"$g\"` against the home that actually exists on disk. It compares against the **effective primary GID** from passwd, so it catches dotfiles left group-owned by a stale or shared group, regardless of any skeleton template.",

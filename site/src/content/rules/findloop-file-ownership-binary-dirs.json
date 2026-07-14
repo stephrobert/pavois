@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -38,22 +39,28 @@
   },
   "check": [
     "describe command('timeout 90 find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f ! -user root 2>/dev/null') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \\( ! -user root -o ! -group root \\) -exec chown root:root {} + 2>/dev/null; true",
+    "name": "fix-bindir-ownership",
+    "not_if": "test -z \"$(find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \\( ! -user root -o ! -group root \\) 2>/dev/null | head -1)\"",
+    "resource": "exec"
+  },
   "title": {
     "en": "Verify that system executables have root ownership",
     "fr": "Vérifier que les exécutables système appartiennent à root"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "System binaries are executed by privileged users and by system services, often with escalated rights. If an executable in a system command directory is owned by a non-root user, that user can overwrite the binary and have their code run with the privileges of the next caller, a textbook privilege-escalation and persistence vector. Restricting ownership to **root** ensures these programs cannot be co-opted.",
-    "fr": "Les binaires système sont exécutés par des utilisateurs privilégiés et par des services système, souvent avec des droits élevés. Si un exécutable d'un répertoire de commandes système appartient à un utilisateur non root, celui-ci peut réécrire le binaire et faire exécuter son code avec les privilèges du prochain appelant, un vecteur classique d'élévation de privilèges et de persistance. Restreindre la propriété à **root** garantit que ces programmes ne peuvent être détournés."
-  },
   "summary": {
     "en": "Ensures every executable in the system command directories (`/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin`, `/usr/local/sbin`) is owned by **root**.",
     "fr": "Garantit que chaque exécutable des répertoires de commandes système (`/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin`, `/usr/local/sbin`) appartient à **root**."
+  },
+  "rationale": {
+    "en": "System binaries are executed by privileged users and by system services, often with escalated rights. If an executable in a system command directory is owned by a non-root user, that user can overwrite the binary and have their code run with the privileges of the next caller, a textbook privilege-escalation and persistence vector. Restricting ownership to **root** ensures these programs cannot be co-opted.",
+    "fr": "Les binaires système sont exécutés par des utilisateurs privilégiés et par des services système, souvent avec des droits élevés. Si un exécutable d'un répertoire de commandes système appartient à un utilisateur non root, celui-ci peut réécrire le binaire et faire exécuter son code avec les privilèges du prochain appelant, un vecteur classique d'élévation de privilèges et de persistance. Restreindre la propriété à **root** garantit que ces programmes ne peuvent être détournés."
   },
   "check_note": {
     "en": "Pavois runs `find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f ! -user root` and expects **empty output**, any returned path is a binary owned by a non-root user. Scanning the real on-disk files (not the package database) catches manually installed tools, scripts dropped into `/usr/local/bin` and binaries whose owner was changed after install, which a package-manifest audit would never report.",

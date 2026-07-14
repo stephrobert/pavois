@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,37 +28,29 @@
     "bp28": "R29"
   },
   "check": [
-    "only_if { file('/boot').exist? }",
-    "describe file('/boot') do",
-    "  it { should_not be_executable.by('owner') }",
-    "  it { should_not be_setuid }",
-    "  it { should_not be_executable.by('group') }",
-    "  it { should_not be_writable.by('group') }",
-    "  it { should_not be_readable.by('group') }",
-    "  it { should_not be_setgid }",
-    "  it { should_not be_executable.by('other') }",
-    "  it { should_not be_writable.by('other') }",
-    "  it { should_not be_readable.by('other') }",
-    "  it { should_not be_sticky }",
+    "describe command(\"find /boot -maxdepth 1 -name 'System.map-*' -perm /077 2>/dev/null\") do",
+    "  its('exit_status') { should_not cmp 124 }",
+    "  its('stdout.strip') { should eq '' }",
     "end"
   ],
   "remediation": {
-    "mode": "0600",
-    "path": "/boot",
-    "resource": "file"
+    "command": "find /boot -maxdepth 1 -name 'System.map-*' -exec chmod 0600 {} + 2>/dev/null; true",
+    "name": "systemmap-perms",
+    "not_if": "test -z \"$(find /boot -maxdepth 1 -name 'System.map-*' -perm /077 2>/dev/null)\"",
+    "resource": "exec"
   },
   "title": {
     "en": "Verify Permissions on System.map Files",
     "fr": "Verifier les permissions sur les fichiers System.map"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`System.map` files map kernel symbol names to memory addresses and are used for debugging and profiling the kernel. Disclosing them hands an attacker the exact addresses of kernel functions and structures, which **defeats KASLR** and makes kernel exploits far more reliable. Restricting access to `root` (no read for group/other) keeps this sensitive layout secret.",
-    "fr": "Les fichiers `System.map` associent les noms de symboles du noyau a des adresses memoire et servent au debogage et au profilage du noyau. Les divulguer fournit a un attaquant les adresses exactes des fonctions et structures du noyau, ce qui **contourne KASLR** et rend les exploits noyau bien plus fiables. Restreindre l'acces a `root` (aucune lecture pour le groupe/les autres) garde cette disposition sensible secrete."
-  },
   "summary": {
     "en": "Ensures `/boot` (which holds the `System.map` kernel symbol files) is not readable, writable or executable by group or other.",
     "fr": "Garantit que `/boot` (qui contient les fichiers de symboles noyau `System.map`) n'est ni lisible, ni modifiable, ni executable par le groupe ou les autres."
+  },
+  "rationale": {
+    "en": "`System.map` files map kernel symbol names to memory addresses and are used for debugging and profiling the kernel. Disclosing them hands an attacker the exact addresses of kernel functions and structures, which **defeats KASLR** and makes kernel exploits far more reliable. Restricting access to `root` (no read for group/other) keeps this sensitive layout secret.",
+    "fr": "Les fichiers `System.map` associent les noms de symboles du noyau a des adresses memoire et servent au debogage et au profilage du noyau. Les divulguer fournit a un attaquant les adresses exactes des fonctions et structures du noyau, ce qui **contourne KASLR** et rend les exploits noyau bien plus fiables. Restreindre l'acces a `root` (aucune lecture pour le groupe/les autres) garde cette disposition sensible secrete."
   },
   "check_note": {
     "en": "Pavois checks the **effective inode permissions** of `/boot`, where the kernel's `System.map-*` files live, asserting no access for group/other and no setuid/setgid/sticky bits. Reading the live mode (not a packaging record) catches drift introduced by manual `chmod`, bad images, or post-install scripts that a file-based manifest would miss.",

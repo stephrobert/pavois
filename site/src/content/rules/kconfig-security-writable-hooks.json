@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R20"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_SECURITY_WRITABLE_HOOKS=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_SECURITY_WRITABLE_HOOKS='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_SECURITY_WRITABLE_HOOKS=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should_not match(/^CONFIG_SECURITY_WRITABLE_HOOKS=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Disable mutable hooks",
     "fr": "Désactiver les hooks modifiables"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "If `CONFIG_SECURITY_WRITABLE_HOOKS` is enabled, then hooks can be loaded at runtime and being able to manipulate hooks is a way to bypass all LSMs. When the LSM hook table is kept **read-only** (`CONFIG_SECURITY_WRITABLE_HOOKS` *not* set, paired with `__ro_after_init`), an attacker who gains a kernel write primitive cannot overwrite the security hooks to silently neutralize SELinux/AppArmor, removing a powerful tampering avenue that would defeat every mandatory-access-control protection at once.",
-    "fr": "Si `CONFIG_SECURITY_WRITABLE_HOOKS` est activé, les hooks peuvent être chargés à l'exécution et la possibilité de les manipuler est un moyen de contourner tous les LSM. Lorsque la table des hooks LSM reste **en lecture seule** (`CONFIG_SECURITY_WRITABLE_HOOKS` *non* défini, associé à `__ro_after_init`), un attaquant qui obtient une primitive d'écriture noyau ne peut pas réécrire les hooks de sécurité pour neutraliser silencieusement SELinux/AppArmor, supprimant une voie de falsification puissante qui mettrait en échec toutes les protections de contrôle d'accès obligatoire d'un coup."
-  },
   "summary": {
     "en": "Requires the kernel **not** to be built with `CONFIG_SECURITY_WRITABLE_HOOKS=y`, so the LSM hook table stays read-only after init.",
     "fr": "Exige que le noyau ne soit **pas** compilé avec `CONFIG_SECURITY_WRITABLE_HOOKS=y`, afin que la table des hooks LSM reste en lecture seule après l'initialisation."
+  },
+  "rationale": {
+    "en": "If `CONFIG_SECURITY_WRITABLE_HOOKS` is enabled, then hooks can be loaded at runtime and being able to manipulate hooks is a way to bypass all LSMs. When the LSM hook table is kept **read-only** (`CONFIG_SECURITY_WRITABLE_HOOKS` *not* set, paired with `__ro_after_init`), an attacker who gains a kernel write primitive cannot overwrite the security hooks to silently neutralize SELinux/AppArmor, removing a powerful tampering avenue that would defeat every mandatory-access-control protection at once.",
+    "fr": "Si `CONFIG_SECURITY_WRITABLE_HOOKS` est activé, les hooks peuvent être chargés à l'exécution et la possibilité de les manipuler est un moyen de contourner tous les LSM. Lorsque la table des hooks LSM reste **en lecture seule** (`CONFIG_SECURITY_WRITABLE_HOOKS` *non* défini, associé à `__ro_after_init`), un attaquant qui obtient une primitive d'écriture noyau ne peut pas réécrire les hooks de sécurité pour neutraliser silencieusement SELinux/AppArmor, supprimant une voie de falsification puissante qui mettrait en échec toutes les protections de contrôle d'accès obligatoire d'un coup."
   },
   "check_note": {
     "en": "Pavois reads the build options of the **running** kernel, `grep '^CONFIG_SECURITY_WRITABLE_HOOKS=' /boot/config-$(uname -r)` or `zcat /proc/config.gz`, and requires that the value is *not* `y` (the symbol is normally absent). Reading the live kernel's own config (keyed on `uname -r`) reflects exactly the booted kernel, which a package-name guess or generic file cannot.",

@@ -2,11 +2,21 @@
   "id": "filegroupowner-at-deny",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -24,22 +34,23 @@
     "end"
   ],
   "remediation": {
-    "group": "root",
-    "path": "/etc/at.deny",
-    "resource": "file"
+    "command": "test -e /etc/at.deny && { chown root:root /etc/at.deny; chmod 0640 /etc/at.deny; }; true",
+    "name": "at-deny-perms",
+    "not_if": "! test -e /etc/at.deny",
+    "resource": "exec"
   },
   "title": {
     "en": "Verify Group Who Owns /etc/at.deny file",
     "fr": "Vérifier le groupe propriétaire du fichier /etc/at.deny"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/at.deny` lists the users **forbidden** from scheduling jobs with `at`. If its group owner is not `root` (gid `0`), a non-privileged group could edit the file to remove its own entry and regain access to the `at` scheduler, defeating the deny list.",
-    "fr": "`/etc/at.deny` liste les utilisateurs **interdits** de planifier des tâches avec `at`. Si son groupe propriétaire n'est pas `root` (gid `0`), un groupe non privilégié pourrait modifier le fichier pour retirer sa propre entrée et retrouver l'accès au planificateur `at`, contournant la liste d'interdiction."
-  },
   "summary": {
     "en": "Ensures `/etc/at.deny`, the list of users denied use of the `at` scheduler, is group-owned by `root` (gid `0`).",
     "fr": "Garantit que `/etc/at.deny`, la liste des utilisateurs privés du planificateur `at`, a `root` (gid `0`) pour groupe propriétaire."
+  },
+  "rationale": {
+    "en": "`/etc/at.deny` lists the users **forbidden** from scheduling jobs with `at`. If its group owner is not `root` (gid `0`), a non-privileged group could edit the file to remove its own entry and regain access to the `at` scheduler, defeating the deny list.",
+    "fr": "`/etc/at.deny` liste les utilisateurs **interdits** de planifier des tâches avec `at`. Si son groupe propriétaire n'est pas `root` (gid `0`), un groupe non privilégié pourrait modifier le fichier pour retirer sa propre entrée et retrouver l'accès au planificateur `at`, contournant la liste d'interdiction."
   },
   "check_note": {
     "en": "Pavois reads the **effective ownership** of `/etc/at.deny` from the inode (via `stat`) and asserts `gid == 0`. This reflects the real on-disk state at scan time rather than a configuration template's intent, catching ownership drift from package updates or manual edits. Many hardened systems prefer an allow-list and delete `at.deny`; the `only_if` guard skips the check when the file is absent.",

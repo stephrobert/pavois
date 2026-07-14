@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe command('cat /proc/cmdline') do",
     "  its('stdout') { should match(/(^| )spectre_v2=on( |$)/) }",
+    "end",
+    "describe command(\"grep -hwsF 'spectre_v2=on' /etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Imposer la mitigation Spectre v2"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The Spectre v2 vulnerability (branch target injection / CVE-2017-5715) lets an attacker steer the CPU's speculative execution to read memory they should not have access to, leaking kernel or cross-process secrets through a side channel. Setting `spectre_v2=on` forces the strongest available mitigation (e.g. retpolines / IBRS / IBPB) instead of the kernel's default `auto`, which may leave gaps depending on microcode and CPU.",
-    "fr": "La vulnérabilité Spectre v2 (injection de cible de branchement / CVE-2017-5715) permet à un attaquant d'orienter l'exécution spéculative du processeur pour lire de la mémoire à laquelle il ne devrait pas avoir accès, exfiltrant des secrets du noyau ou d'autres processus via un canal auxiliaire. Définir `spectre_v2=on` force la mitigation la plus forte disponible (retpolines / IBRS / IBPB) au lieu du mode `auto` par défaut du noyau, qui peut laisser des failles selon le microcode et le processeur."
-  },
   "summary": {
     "en": "Enforces the kernel parameter `spectre_v2=on` to apply the strongest available Spectre v2 (branch target injection) CPU mitigation.",
     "fr": "Impose le paramètre noyau `spectre_v2=on` pour appliquer la mitigation processeur Spectre v2 (injection de cible de branchement) la plus forte disponible."
+  },
+  "rationale": {
+    "en": "The Spectre v2 vulnerability (branch target injection / CVE-2017-5715) lets an attacker steer the CPU's speculative execution to read memory they should not have access to, leaking kernel or cross-process secrets through a side channel. Setting `spectre_v2=on` forces the strongest available mitigation (e.g. retpolines / IBRS / IBPB) instead of the kernel's default `auto`, which may leave gaps depending on microcode and CPU.",
+    "fr": "La vulnérabilité Spectre v2 (injection de cible de branchement / CVE-2017-5715) permet à un attaquant d'orienter l'exécution spéculative du processeur pour lire de la mémoire à laquelle il ne devrait pas avoir accès, exfiltrant des secrets du noyau ou d'autres processus via un canal auxiliaire. Définir `spectre_v2=on` force la mitigation la plus forte disponible (retpolines / IBRS / IBPB) au lieu du mode `auto` par défaut du noyau, qui peut laisser des failles selon le microcode et le processeur."
   },
   "check_note": {
     "en": "Pavois reads the **effective** boot command line from `/proc/cmdline`, which is exactly what the running kernel was booted with. Grepping `/etc/default/grub` or `grub.cfg` is unreliable: edits may not be regenerated, drop-ins under `/etc/default/grub.d/` can override them, and the file may not match the actual bootloader entry. Only `/proc/cmdline` proves the mitigation is enforced on this boot.",

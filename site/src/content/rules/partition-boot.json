@@ -3,12 +3,20 @@
   "supported_os": [
     "debian12",
     "debian13",
-    "rhel8"
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel8": "4.0.0"
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
   },
   "severity": "medium",
   "domain": "Mounts",
@@ -23,7 +31,7 @@
     "end"
   ],
   "remediation": {
-    "command": "# /boot should be its OWN filesystem (isolation + mount options). This needs (re)partitioning , \n# offline disk/LVM work, not a safe runtime change.\nfindmnt /boot >/dev/null 2>&1 && echo '/boot is already a mount point' || echo '/boot is NOT separate'\n# Then: dedicate an LVM volume / disk to /boot and add it to /etc/fstab.\n",
+    "command": "# /boot should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /boot >/dev/null 2>&1 && echo '/boot is already a mount point' || echo '/boot is NOT separate'\n# Then: dedicate an LVM volume / disk to /boot and add it to /etc/fstab.\n",
     "reason": "a separate /boot filesystem needs partitioning/LVM/tmpfs, not a safe runtime change",
     "resource": "manual"
   },
@@ -32,13 +40,13 @@
     "fr": "S'assurer que /boot est sur une partition separee"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/boot` partition holds the kernel, initramfs and bootloader files. Mounting it separately lets you apply restrictive mount options (`nodev`, `nosuid`, `noexec`, and read-only outside upgrades), limiting tampering with the boot chain, and keeps the boot files isolated from a full root filesystem.",
-    "fr": "La partition `/boot` contient le noyau, l'initramfs et les fichiers du chargeur d'amorcage. La monter separement permet d'appliquer des options de montage restrictives (`nodev`, `nosuid`, `noexec`, voire lecture seule hors mises a jour), limitant l'alteration de la chaine de demarrage et isolant les fichiers de boot d'un systeme de fichiers racine sature."
-  },
   "summary": {
     "en": "Verifies that **`/boot`** is mounted on its own partition so restrictive mount options can protect the kernel and bootloader.",
     "fr": "Verifie que **`/boot`** est monte sur sa propre partition afin que des options de montage restrictives protegent le noyau et le chargeur d'amorcage."
+  },
+  "rationale": {
+    "en": "The `/boot` partition holds the kernel, initramfs and bootloader files. Mounting it separately lets you apply restrictive mount options (`nodev`, `nosuid`, `noexec`, and read-only outside upgrades), limiting tampering with the boot chain, and keeps the boot files isolated from a full root filesystem.",
+    "fr": "La partition `/boot` contient le noyau, l'initramfs et les fichiers du chargeur d'amorcage. La monter separement permet d'appliquer des options de montage restrictives (`nodev`, `nosuid`, `noexec`, voire lecture seule hors mises a jour), limitant l'alteration de la chaine de demarrage et isolant les fichiers de boot d'un systeme de fichiers racine sature."
   },
   "check_note": {
     "en": "Pavois uses the InSpec `mount('/boot')` resource, which reads the **effective** mount table (`/proc/self/mountinfo`) rather than parsing `/etc/fstab`. This reflects what the running kernel has actually mounted, catching mounts added at runtime or fstab entries that never took effect, which a file-only check would report incorrectly.",

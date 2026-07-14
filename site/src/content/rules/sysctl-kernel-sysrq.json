@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe kernel_parameter('kernel.sysrq') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*kernel.sysrq[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Interdire la touche magique SysRq"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The magic SysRq key sends commands directly to the running kernel, bypassing normal access controls. It can dump system and process state (potentially leaking sensitive information) and can immediately reboot, halt, kill all processes or sync/remount filesystems, disrupting availability. Anyone with physical or serial-console access (and in some setups via `/proc/sysrq-trigger`) could abuse it. Setting `kernel.sysrq = 0` disables these functions.",
-    "fr": "La touche magique SysRq envoie des commandes directement au noyau en cours d'exécution, contournant les contrôles d'accès normaux. Elle peut vider l'état du système et des processus (divulguant potentiellement des informations sensibles) et peut redémarrer, arrêter, tuer tous les processus ou synchroniser/remonter les systèmes de fichiers immédiatement, perturbant la disponibilité. Quiconque dispose d'un accès physique ou à la console série (et dans certains cas via `/proc/sysrq-trigger`) pourrait en abuser. Fixer `kernel.sysrq = 0` désactive ces fonctions."
-  },
   "summary": {
     "en": "Sets `kernel.sysrq = 0` to disable the magic SysRq key and its direct-to-kernel commands.",
     "fr": "Fixe `kernel.sysrq = 0` pour désactiver la touche magique SysRq et ses commandes directes vers le noyau."
+  },
+  "rationale": {
+    "en": "The magic SysRq key sends commands directly to the running kernel, bypassing normal access controls. It can dump system and process state (potentially leaking sensitive information) and can immediately reboot, halt, kill all processes or sync/remount filesystems, disrupting availability. Anyone with physical or serial-console access (and in some setups via `/proc/sysrq-trigger`) could abuse it. Setting `kernel.sysrq = 0` disables these functions.",
+    "fr": "La touche magique SysRq envoie des commandes directement au noyau en cours d'exécution, contournant les contrôles d'accès normaux. Elle peut vider l'état du système et des processus (divulguant potentiellement des informations sensibles) et peut redémarrer, arrêter, tuer tous les processus ou synchroniser/remonter les systèmes de fichiers immédiatement, perturbant la disponibilité. Quiconque dispose d'un accès physique ou à la console série (et dans certains cas via `/proc/sysrq-trigger`) pourrait en abuser. Fixer `kernel.sysrq = 0` désactive ces fonctions."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** with `kernel_parameter('kernel.sysrq')` (equivalent to `sysctl kernel.sysrq`), not a `/etc/sysctl.d/*.conf` line. The value is a bitmask: distributions often ship a non-zero default and a later drop-in may re-enable specific functions, so a config file alone does not reveal what is currently allowed. Only the effective parameter shows the kernel's actual SysRq policy.",

@@ -6,7 +6,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "rhel10": "1.0.0",
@@ -27,28 +28,28 @@
     ]
   },
   "check": [
-    "only_if { file('/etc/ssh').exist? }",
-    "describe file('/etc/ssh') do",
-    "  its('group') { should eq 'ssh_keys' }",
+    "describe command('find /etc/ssh -name \"ssh_host_*_key\" -type f ! -group root ! -group ssh_keys 2>/dev/null') do",
+    "  its('stdout.strip') { should eq '' }",
     "end"
   ],
   "remediation": {
-    "group": "ssh_keys",
-    "path": "/etc/ssh",
-    "resource": "file"
+    "command": "chgrp ssh_keys /etc/ssh/ssh_host_*_key 2>/dev/null || chgrp root /etc/ssh/ssh_host_*_key 2>/dev/null || true",
+    "name": "chgrp-sshd-private-keys",
+    "not_if": "[ -z \"$(find /etc/ssh -name 'ssh_host_*_key' -type f ! -group root ! -group ssh_keys 2>/dev/null)\" ]",
+    "resource": "exec"
   },
   "title": {
     "en": "Verify Group Ownership on SSH Server Private *_key Key Files",
     "fr": "Vérifier le groupe propriétaire des clés privées *_key du serveur SSH"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The SSH host private keys (`/etc/ssh/ssh_host_*_key`) prove the server's identity. If an unauthorized user reads a private host key, they can **impersonate the host** in a man-in-the-middle attack and silently capture sessions. On these distributions the keys are protected by the dedicated **`ssh_keys`** group combined with restrictive permissions; setting the correct group ownership on `/etc/ssh` is the basis of that protection.",
-    "fr": "Les clés privées d'hôte SSH (`/etc/ssh/ssh_host_*_key`) attestent l'identité du serveur. Si un utilisateur non autorisé lit une clé privée d'hôte, il peut **usurper l'identité de l'hôte** lors d'une attaque de l'intercepteur et capturer silencieusement les sessions. Sur ces distributions, les clés sont protégées par le groupe dédié **`ssh_keys`** combiné à des permissions restrictives ; définir le bon groupe propriétaire sur `/etc/ssh` est le socle de cette protection."
-  },
   "summary": {
     "en": "Ensures the SSH host private-key location `/etc/ssh` is owned by the dedicated **`ssh_keys`** group.",
     "fr": "Garantit que l'emplacement des clés privées d'hôte SSH `/etc/ssh` appartient au groupe dédié **`ssh_keys`**."
+  },
+  "rationale": {
+    "en": "The SSH host private keys (`/etc/ssh/ssh_host_*_key`) prove the server's identity. If an unauthorized user reads a private host key, they can **impersonate the host** in a man-in-the-middle attack and silently capture sessions. On these distributions the keys are protected by the dedicated **`ssh_keys`** group combined with restrictive permissions; setting the correct group ownership on `/etc/ssh` is the basis of that protection.",
+    "fr": "Les clés privées d'hôte SSH (`/etc/ssh/ssh_host_*_key`) attestent l'identité du serveur. Si un utilisateur non autorisé lit une clé privée d'hôte, il peut **usurper l'identité de l'hôte** lors d'une attaque de l'intercepteur et capturer silencieusement les sessions. Sur ces distributions, les clés sont protégées par le groupe dédié **`ssh_keys`** combiné à des permissions restrictives ; définir le bon groupe propriétaire sur `/etc/ssh` est le socle de cette protection."
   },
   "check_note": {
     "en": "Pavois reads the real owning group of `/etc/ssh` via InSpec's `file` resource and asserts `group == 'ssh_keys'`. It checks the **effective** ownership on disk, so a regenerated host key (e.g. after `ssh-keygen -A` or a re-provision) that landed with the wrong group is detected even when the deployment manifest still looks correct.",

@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,8 +27,8 @@
   "norms": {
     "bp28": "R12",
     "cis": [
-      "3.3.7",
       "1.4.3",
+      "3.3.7",
       "3.3.1.12"
     ],
     "nist": [
@@ -37,14 +38,14 @@
       "CM-7(b)",
       "SC-7(a)"
     ],
-    "pci-dss": [
-      "1.4.3",
-      "Req-1.4.3"
-    ]
+    "pci-dss": "1.4.3"
   },
   "check": [
     "describe kernel_parameter('net.ipv4.conf.all.rp_filter') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.all.rp_filter[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -57,13 +58,13 @@
     "fr": "Activer le parametre noyau de filtrage par chemin inverse sur toutes les interfaces IPv4"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Reverse Path Filtering (RPF) makes the kernel verify that an incoming packet's source address is reachable through the interface it arrived on; if not, the packet is dropped. This blocks IP spoofing and asymmetric-route attacks where a forged source address is used to bypass network controls or to hide the real origin of traffic. Strict RPF (`1`) is appropriate for end hosts and routers on simple, symmetric topologies; on multi-homed routers with asymmetric routing it can drop legitimate traffic, so loose mode (`2`) may be required there.",
-    "fr": "Le filtrage par chemin inverse (RPF) fait verifier au noyau que l'adresse source d'un paquet entrant est joignable via l'interface par laquelle il est arrive ; sinon, le paquet est rejete. Cela bloque l'usurpation d'adresse IP et les attaques par route asymetrique ou une source falsifiee sert a contourner les controles reseau ou a masquer l'origine reelle du trafic. Le RPF strict (`1`) convient aux hotes terminaux et aux routeurs sur des topologies simples et symetriques ; sur des routeurs multi-rattaches a routage asymetrique il peut rejeter du trafic legitime, et le mode souple (`2`) peut alors etre necessaire."
-  },
   "summary": {
     "en": "Forces `net.ipv4.conf.all.rp_filter` to **1** (strict reverse path filtering) so the kernel drops packets whose source address is not reachable via the receiving interface.",
     "fr": "Force `net.ipv4.conf.all.rp_filter` a **1** (filtrage strict par chemin inverse) afin que le noyau rejette les paquets dont l'adresse source n'est pas joignable via l'interface de reception."
+  },
+  "rationale": {
+    "en": "Reverse Path Filtering (RPF) makes the kernel verify that an incoming packet's source address is reachable through the interface it arrived on; if not, the packet is dropped. This blocks IP spoofing and asymmetric-route attacks where a forged source address is used to bypass network controls or to hide the real origin of traffic. Strict RPF (`1`) is appropriate for end hosts and routers on simple, symmetric topologies; on multi-homed routers with asymmetric routing it can drop legitimate traffic, so loose mode (`2`) may be required there.",
+    "fr": "Le filtrage par chemin inverse (RPF) fait verifier au noyau que l'adresse source d'un paquet entrant est joignable via l'interface par laquelle il est arrive ; sinon, le paquet est rejete. Cela bloque l'usurpation d'adresse IP et les attaques par route asymetrique ou une source falsifiee sert a contourner les controles reseau ou a masquer l'origine reelle du trafic. Le RPF strict (`1`) convient aux hotes terminaux et aux routeurs sur des topologies simples et symetriques ; sur des routeurs multi-rattaches a routage asymetrique il peut rejeter du trafic legitime, et le mode souple (`2`) peut alors etre necessaire."
   },
   "check_note": {
     "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.all.rp_filter` from the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not the text of a `/etc/sysctl.d/` file. The `all` key takes the maximum of itself and each per-interface setting, so the effective behaviour can differ from any single config line. Auditing the running parameter reflects what the kernel actually enforces; reading a file misses overrides from later drop-ins or `sysctl -w`.",

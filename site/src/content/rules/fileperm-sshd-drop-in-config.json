@@ -5,7 +5,8 @@
     "rhel10",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "rhel10": "1.0.0",
@@ -50,13 +51,13 @@
     "fr": "Vérifier les permissions du répertoire de drop-ins du serveur SSH"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "On Ubuntu and RHEL 9 / Fedora the main `sshd_config` includes every fragment under `/etc/ssh/sshd_config.d`, so these **drop-ins define the effective SSH policy** (e.g. Ubuntu's `50-cloud-init.conf`). If the directory is writable by group or other, a non-privileged user can add a fragment that re-enables root login, weakens ciphers or installs a backdoor on the next reload; if readable beyond root, the policy is disclosed. The directory must be owned by root with no read/write/execute for group or other and no special bits.",
-    "fr": "Sur Ubuntu et RHEL 9 / Fedora, le `sshd_config` principal inclut chaque fragment de `/etc/ssh/sshd_config.d`, ces **drop-ins définissent donc la politique SSH effective** (par ex. `50-cloud-init.conf` d'Ubuntu). Si le répertoire est modifiable par le groupe ou les autres, un utilisateur non privilégié peut y ajouter un fragment qui réactive la connexion root, affaiblit les chiffrements ou installe une porte dérobée au prochain rechargement ; s'il est lisible au-delà de root, la politique est divulguée. Le répertoire doit appartenir à root sans lecture/écriture/exécution pour le groupe ou les autres ni bits spéciaux."
-  },
   "summary": {
     "en": "Ensures the `/etc/ssh/sshd_config.d` drop-in directory is owned by root with no access for group or other, so SSH policy fragments cannot be injected or read by unprivileged users.",
     "fr": "Garantit que le répertoire de drop-ins `/etc/ssh/sshd_config.d` appartient à root sans accès pour le groupe ou les autres, afin que les fragments de politique SSH ne puissent être injectés ni lus par des utilisateurs non privilégiés."
+  },
+  "rationale": {
+    "en": "On Ubuntu and RHEL 9 / Fedora the main `sshd_config` includes every fragment under `/etc/ssh/sshd_config.d`, so these **drop-ins define the effective SSH policy** (e.g. Ubuntu's `50-cloud-init.conf`). If the directory is writable by group or other, a non-privileged user can add a fragment that re-enables root login, weakens ciphers or installs a backdoor on the next reload; if readable beyond root, the policy is disclosed. The directory must be owned by root with no read/write/execute for group or other and no special bits.",
+    "fr": "Sur Ubuntu et RHEL 9 / Fedora, le `sshd_config` principal inclut chaque fragment de `/etc/ssh/sshd_config.d`, ces **drop-ins définissent donc la politique SSH effective** (par ex. `50-cloud-init.conf` d'Ubuntu). Si le répertoire est modifiable par le groupe ou les autres, un utilisateur non privilégié peut y ajouter un fragment qui réactive la connexion root, affaiblit les chiffrements ou installe une porte dérobée au prochain rechargement ; s'il est lisible au-delà de root, la politique est divulguée. Le répertoire doit appartenir à root sans lecture/écriture/exécution pour le groupe ou les autres ni bits spéciaux."
   },
   "check_note": {
     "en": "Pavois reads the **effective directory mode** of `/etc/ssh/sshd_config.d` and asserts no read/write/execute for group or other and no `setuid`/`setgid`/`sticky` bits. Guarded by `only_if { file('/etc/ssh/sshd_config.d').exist? }`. This is precisely the Pavois angle: a file-based scanner that only checks `sshd_config` misses the `Include`d drop-ins that actually set the policy, securing this directory closes the injection path, and `sshd -T` confirms the resolved result.",

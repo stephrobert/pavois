@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R17"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_SLAB_MERGE_DEFAULT=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_SLAB_MERGE_DEFAULT='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_SLAB_MERGE_DEFAULT=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should_not match(/^CONFIG_SLAB_MERGE_DEFAULT=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Disallow merge of slab caches",
     "fr": "Interdire la fusion des caches slab"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "By default the kernel merges slab caches of similar size to save memory. Merging mixes unrelated kernel objects into the same cache, so a heap overflow in one object type can corrupt objects of a completely different, security-sensitive type. Keeping caches separate (`CONFIG_SLAB_MERGE_DEFAULT` not set to `y`, or `slab_nomerge` on the boot line) isolates an overflow to objects of the same type, shrinking the kernel's attack surface.",
-    "fr": "Par défaut, le noyau fusionne les caches slab de taille similaire pour économiser la mémoire. La fusion mélange des objets noyau sans rapport dans un même cache : un débordement de tas affectant un type d'objet peut alors corrompre des objets d'un type tout autre, sensible pour la sécurité. Garder les caches séparés (`CONFIG_SLAB_MERGE_DEFAULT` non positionné à `y`, ou `slab_nomerge` sur la ligne de boot) confine un débordement aux objets du même type, réduisant la surface d'attaque du noyau."
-  },
   "summary": {
     "en": "Requires the kernel **not** to merge slab caches by default (`CONFIG_SLAB_MERGE_DEFAULT` is not `y`), keeping unrelated object types isolated.",
     "fr": "Exige que le noyau **ne fusionne pas** les caches slab par défaut (`CONFIG_SLAB_MERGE_DEFAULT` n'est pas à `y`), gardant isolés les types d'objets sans rapport."
+  },
+  "rationale": {
+    "en": "By default the kernel merges slab caches of similar size to save memory. Merging mixes unrelated kernel objects into the same cache, so a heap overflow in one object type can corrupt objects of a completely different, security-sensitive type. Keeping caches separate (`CONFIG_SLAB_MERGE_DEFAULT` not set to `y`, or `slab_nomerge` on the boot line) isolates an overflow to objects of the same type, shrinking the kernel's attack surface.",
+    "fr": "Par défaut, le noyau fusionne les caches slab de taille similaire pour économiser la mémoire. La fusion mélange des objets noyau sans rapport dans un même cache : un débordement de tas affectant un type d'objet peut alors corrompre des objets d'un type tout autre, sensible pour la sécurité. Garder les caches séparés (`CONFIG_SLAB_MERGE_DEFAULT` non positionné à `y`, ou `slab_nomerge` sur la ligne de boot) confine un débordement aux objets du même type, réduisant la surface d'attaque du noyau."
   },
   "check_note": {
     "en": "Pavois reads the build configuration of the **running** kernel via `/boot/config-$(uname -r)` or `/proc/config.gz` and confirms `CONFIG_SLAB_MERGE_DEFAULT` is **not** set to `y` (the compliant value is `n`/unset). Reading the effective config of the booted kernel proves whether merging is the default for the kernel actually running. Note that the `slab_nomerge` boot parameter can also disable merging at runtime regardless of this build default.",

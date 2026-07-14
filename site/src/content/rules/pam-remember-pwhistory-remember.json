@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -29,23 +30,27 @@
     "pci-dss": "8.3.7"
   },
   "check": [
-    "describe command('v=$(grep -rhoE \\'remember=[0-9]+\\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \\'[0-9]+\\' | sort -n | tail -1); { [ -n \"$v\" ] && [ \"$v\" -ge 24 ] && echo ok; } || echo ko') do",
+    "describe command('v=$(grep -RhoE \\'remember[[:space:]]*=[[:space:]]*[0-9]+\\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \\'[0-9]+\\' | sort -n | tail -1); { [ -n \"$v\" ] && [ \"$v\" -ge 24 ] && echo ok; } || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# Enforce password history via pam_pwhistory. Set in /etc/security/pwhistory.conf:  remember = 5\n# and ensure pam_pwhistory is enabled:  pam-auth-update --enable pwhistory\n",
+    "reason": "password-history policy choice, set the depth deliberately",
+    "resource": "manual"
+  },
   "title": {
     "en": "Limit Password Reuse: password-auth",
     "fr": "Limiter la réutilisation des mots de passe : password-auth"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Preventing reuse of previous passwords helps ensure that a compromised password is not reinstated by a user. A deep history (24) makes it impractical to bounce back to a familiar password after a forced change, so periodic expiry actually forces genuinely new secrets rather than a short rotation through a few favorites.",
-    "fr": "Empêcher la réutilisation d'anciens mots de passe garantit qu'un mot de passe compromis n'est pas réinstauré par un utilisateur. Un historique profond (24) rend impraticable le retour à un mot de passe familier après un changement forcé, de sorte que l'expiration périodique impose réellement de nouveaux secrets plutôt qu'une courte rotation entre quelques favoris."
-  },
   "summary": {
     "en": "Requires a password history depth of at least **24** (`remember>=24`) so users cannot cycle back to any of their last 24 passwords.",
     "fr": "Exige une profondeur d'historique des mots de passe d'au moins **24** (`remember>=24`) afin que les utilisateurs ne puissent pas revenir à l'un de leurs 24 derniers mots de passe."
+  },
+  "rationale": {
+    "en": "Preventing reuse of previous passwords helps ensure that a compromised password is not reinstated by a user. A deep history (24) makes it impractical to bounce back to a familiar password after a forced change, so periodic expiry actually forces genuinely new secrets rather than a short rotation through a few favorites.",
+    "fr": "Empêcher la réutilisation d'anciens mots de passe garantit qu'un mot de passe compromis n'est pas réinstauré par un utilisateur. Un historique profond (24) rend impraticable le retour à un mot de passe familier après un changement forcé, de sorte que l'expiration périodique impose réellement de nouveaux secrets plutôt qu'une courte rotation entre quelques favoris."
   },
   "check_note": {
     "en": "Pavois reads the **effective** value by scanning both `/etc/pam.d/` and `/etc/security/pwhistory.conf` for every `remember=N`, taking the **highest** N and requiring it to be at least 24. Looking at the resolved configuration (PAM line option and the pwhistory.conf default together) matches what the system actually enforces, a single file might show a weaker value that is in fact overridden, or vice versa.",

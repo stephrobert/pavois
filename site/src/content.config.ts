@@ -56,7 +56,12 @@ const rules = defineCollection({
     // applied by `pavois harden apply`, NOT SSG bash/ansible.
     remediation: z.record(z.string(), z.any()).default({}),
 
-    needs_authoring: z.array(z.string()).optional(),
+    // Honesty flags, both written by tools/generate_rule_pages.py. They were being dropped: the
+    // generator has been emitting `needs_translation` on 785 fiches, the schema did not declare it,
+    // so Astro stripped it at load and no page could ever show it — the label was even sitting
+    // unused in i18n/ui.ts. A gap you cannot query is a gap you never close.
+    needs_authoring: z.array(z.string()).optional(), // rich prose still to write
+    needs_translation: z.array(z.string()).optional(), // FR field still echoing the EN one
   }),
 });
 

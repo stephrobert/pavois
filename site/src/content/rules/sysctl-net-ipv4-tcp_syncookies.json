@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,8 +27,8 @@
   "norms": {
     "bp28": "R12",
     "cis": [
-      "3.3.10",
       "1.4.3",
+      "3.3.10",
       "3.3.1.18"
     ],
     "nist": [
@@ -39,10 +40,7 @@
       "SC-5(2)",
       "SC-5(3)(a)"
     ],
-    "pci-dss": [
-      "1.4.3",
-      "Req-1.4.1"
-    ],
+    "pci-dss": "1.4.3",
     "stig": [
       "UBTU-22-253010",
       "UBTU-24-600190"
@@ -51,6 +49,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.tcp_syncookies') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.tcp_syncookies[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -63,13 +64,13 @@
     "fr": "Activer le paramètre noyau pour utiliser les SYN cookies TCP sur les interfaces réseau"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "A TCP SYN flood attack causes denial of service by filling the system's TCP connection table with half-open connections in the `SYN_RCVD` state. SYN cookies let the kernel validate a connection from the subsequent ACK without keeping per-connection state, confirming the initiator is making a valid connection rather than a flood source. The mechanism only activates under flood conditions, so the system keeps servicing legitimate connection requests.",
-    "fr": "Une attaque par inondation TCP SYN provoque un déni de service en saturant la table de connexions TCP du système de connexions semi-ouvertes dans l'état `SYN_RCVD`. Les SYN cookies permettent au noyau de valider une connexion à partir de l'ACK suivant sans conserver d'état par connexion, confirmant que l'initiateur établit une connexion valide et n'est pas une source d'inondation. Le mécanisme ne s'active qu'en situation d'inondation, de sorte que le système continue de traiter les demandes de connexion légitimes."
-  },
   "summary": {
     "en": "Enables TCP SYN cookies as a SYN-flood defense by setting `net.ipv4.tcp_syncookies` to **1**.",
     "fr": "Active les SYN cookies TCP comme défense contre les inondations SYN en positionnant `net.ipv4.tcp_syncookies` à **1**."
+  },
+  "rationale": {
+    "en": "A TCP SYN flood attack causes denial of service by filling the system's TCP connection table with half-open connections in the `SYN_RCVD` state. SYN cookies let the kernel validate a connection from the subsequent ACK without keeping per-connection state, confirming the initiator is making a valid connection rather than a flood source. The mechanism only activates under flood conditions, so the system keeps servicing legitimate connection requests.",
+    "fr": "Une attaque par inondation TCP SYN provoque un déni de service en saturant la table de connexions TCP du système de connexions semi-ouvertes dans l'état `SYN_RCVD`. Les SYN cookies permettent au noyau de valider une connexion à partir de l'ACK suivant sans conserver d'état par connexion, confirmant que l'initiateur établit une connexion valide et n'est pas une source d'inondation. Le mécanisme ne s'active qu'en situation d'inondation, de sorte que le système continue de traiter les demandes de connexion légitimes."
   },
   "check_note": {
     "en": "Pavois reads the **live** value via `kernel_parameter('net.ipv4.tcp_syncookies')`, reflecting the running kernel after all `sysctl.conf` / `/etc/sysctl.d/` drop-ins and runtime overrides are merged. A static read of `/etc/sysctl.conf` can miss a drop-in or `sysctl -w` that changed the effective value.",

@@ -19,21 +19,28 @@
   "check": [
     "describe command('cat /proc/cmdline') do",
     "  its('stdout') { should match(/(^| )vsyscall=none( |$)/) }",
+    "end",
+    "describe command(\"grep -hwsF 'vsyscall=none' /etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "param": "vsyscall=none",
+    "reboot_required": true,
+    "resource": "kernel_cmdline"
+  },
   "title": {
     "en": "Disable vsyscalls",
     "fr": "Désactiver les vsyscalls"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The legacy vsyscall mechanism maps a small, fixed, executable region of kernel code at a predictable address in every process. Because its location is static, it provides a reliable target (ROP gadgets) for an attacker who already controls the return instruction pointer, weakening ASLR. Setting `vsyscall=none` removes this fixed mapping; modern glibc uses the vDSO instead and is unaffected.",
-    "fr": "L'ancien mécanisme vsyscall mappe une petite région fixe et exécutable de code noyau à une adresse prévisible dans chaque processus. Comme son emplacement est statique, il fournit une cible fiable (gadgets ROP) à un attaquant qui contrôle déjà le pointeur d'instruction de retour, affaiblissant l'ASLR. Définir `vsyscall=none` supprime ce mappage fixe ; la glibc moderne utilise le vDSO à la place et n'est pas affectée."
-  },
   "summary": {
     "en": "Enforces the kernel parameter `vsyscall=none` to remove the legacy fixed-address vsyscall page from process memory.",
     "fr": "Impose le paramètre noyau `vsyscall=none` pour supprimer la page vsyscall héritée à adresse fixe de la mémoire des processus."
+  },
+  "rationale": {
+    "en": "The legacy vsyscall mechanism maps a small, fixed, executable region of kernel code at a predictable address in every process. Because its location is static, it provides a reliable target (ROP gadgets) for an attacker who already controls the return instruction pointer, weakening ASLR. Setting `vsyscall=none` removes this fixed mapping; modern glibc uses the vDSO instead and is unaffected.",
+    "fr": "L'ancien mécanisme vsyscall mappe une petite région fixe et exécutable de code noyau à une adresse prévisible dans chaque processus. Comme son emplacement est statique, il fournit une cible fiable (gadgets ROP) à un attaquant qui contrôle déjà le pointeur d'instruction de retour, affaiblissant l'ASLR. Définir `vsyscall=none` supprime ce mappage fixe ; la glibc moderne utilise le vDSO à la place et n'est pas affectée."
   },
   "check_note": {
     "en": "Pavois reads the **effective** boot command line from `/proc/cmdline`, the arguments the running kernel truly started with. This is more reliable than grepping `/etc/default/grub` or `grub.cfg`, which may be edited without regeneration, overridden by drop-ins under `/etc/default/grub.d/`, or out of sync with the active bootloader entry. Only `/proc/cmdline` proves `vsyscall=none` is in force on this boot.",

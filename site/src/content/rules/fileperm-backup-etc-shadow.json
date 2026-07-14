@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "7.1.6",
-      "2.2.6"
+      "2.2.6",
+      "7.1.6"
     ],
     "nist": "AC-6 (1)",
     "pci-dss": "2.2.6"
@@ -35,12 +36,9 @@
     "only_if { file('/etc/shadow-').exist? }",
     "describe file('/etc/shadow-') do",
     "  it { should_not be_executable.by('owner') }",
-    "  it { should_not be_writable.by('owner') }",
-    "  it { should_not be_readable.by('owner') }",
     "  it { should_not be_setuid }",
     "  it { should_not be_executable.by('group') }",
     "  it { should_not be_writable.by('group') }",
-    "  it { should_not be_readable.by('group') }",
     "  it { should_not be_setgid }",
     "  it { should_not be_executable.by('other') }",
     "  it { should_not be_writable.by('other') }",
@@ -49,7 +47,7 @@
     "end"
   ],
   "remediation": {
-    "mode": "0000",
+    "mode": "0640",
     "path": "/etc/shadow-",
     "resource": "file"
   },
@@ -58,13 +56,13 @@
     "fr": "Verifier les permissions du fichier de sauvegarde shadow"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/shadow-` is the backup of `/etc/shadow` and contains the **password hashes** of every local account. Any read access by group or other exposes those hashes to **offline brute-force/dictionary cracking**, and any write access lets an attacker clear or replace a password (e.g. blank out root's) that becomes live if the backup is restored. This file must be **mode `0000`** (accessed only by root through privileged tools) and owned by `root`.",
-    "fr": "`/etc/shadow-` est la sauvegarde de `/etc/shadow` et contient les **hachages de mots de passe** de chaque compte local. Tout acces en lecture par le groupe ou les autres expose ces hachages a un **cassage hors ligne par force brute/dictionnaire**, et tout acces en ecriture permet a un attaquant d'effacer ou de remplacer un mot de passe (par ex. vider celui de root) qui devient effectif si la sauvegarde est restauree. Ce fichier doit etre en **mode `0000`** (accede uniquement par root via des outils privilegies) et appartenir a `root`."
-  },
   "summary": {
     "en": "Ensures the backup file `/etc/shadow-` is unreadable, unwritable and non-executable by owner, group and other, with no special bits, i.e. mode `0000`.",
     "fr": "Garantit que le fichier de sauvegarde `/etc/shadow-` n'est ni lisible, ni modifiable, ni executable par le proprietaire, le groupe et les autres, sans bit special, soit le mode `0000`."
+  },
+  "rationale": {
+    "en": "`/etc/shadow-` is the backup of `/etc/shadow` and contains the **password hashes** of every local account. Any read access by group or other exposes those hashes to **offline brute-force/dictionary cracking**, and any write access lets an attacker clear or replace a password (e.g. blank out root's) that becomes live if the backup is restored. This file must be **mode `0000`** (accessed only by root through privileged tools) and owned by `root`.",
+    "fr": "`/etc/shadow-` est la sauvegarde de `/etc/shadow` et contient les **hachages de mots de passe** de chaque compte local. Tout acces en lecture par le groupe ou les autres expose ces hachages a un **cassage hors ligne par force brute/dictionnaire**, et tout acces en ecriture permet a un attaquant d'effacer ou de remplacer un mot de passe (par ex. vider celui de root) qui devient effectif si la sauvegarde est restauree. Ce fichier doit etre en **mode `0000`** (accede uniquement par root via des outils privilegies) et appartenir a `root`."
   },
   "check_note": {
     "en": "Pavois reads the **live mode bits** of `/etc/shadow-` via the InSpec `file` resource. The matchers are deliberately strict, even **owner** read/write is rejected, because the file is meant to be reached only by root through setuid tools (`passwd`, `vipw -s`), which bypass DAC. Inspecting the real inode catches a backup left readable by a careless copy or restore. The `only_if` guard skips the check when no backup exists.",

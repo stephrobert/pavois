@@ -2,13 +2,21 @@
   "id": "fileperm-etc-audit-rulesd",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -28,6 +36,7 @@
     ]
   },
   "check": [
+    "only_if { file('/etc/audit/rules.d').exist? }",
     "describe command('find /etc/audit/rules.d -name \"*.rules\" -perm /0137 2>/dev/null') do",
     "  its('stdout') { should eq '' }",
     "end"
@@ -43,13 +52,13 @@
     "fr": "Vérifier les permissions de /etc/audit/rules.d/*.rules"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `*.rules` fragments under `/etc/audit/rules.d/` declare **which syscalls, files and events auditd watches**, they are compiled into the active ruleset at boot. If they are **writable by group or other**, an attacker can delete or weaken rules to blind the system to their actions; if **readable by other**, they reveal exactly what is (and is not) monitored, helping evasion. Restricting them to **root** keeps the audit policy tamper-proof and confidential.",
-    "fr": "Les fragments `*.rules` de `/etc/audit/rules.d/` déclarent **quels appels système, fichiers et événements auditd surveille**, ils sont compilés en jeu de règles actif au démarrage. S'ils sont **modifiables par le groupe ou les autres**, un attaquant peut supprimer ou affaiblir des règles pour rendre le système aveugle à ses actions ; s'ils sont **lisibles par les autres**, ils révèlent exactement ce qui est (ou non) surveillé, facilitant l'évasion. Les restreindre à **root** rend la politique d'audit inaltérable et confidentielle."
-  },
   "summary": {
     "en": "Ensures every `*.rules` file in `/etc/audit/rules.d/` is no more permissive than **0640** (no group/other write, no other read, no special bits).",
     "fr": "Garantit que chaque fichier `*.rules` de `/etc/audit/rules.d/` n'est pas plus permissif que **0640** (aucun droit d'écriture groupe/autres, aucune lecture autres, aucun bit spécial)."
+  },
+  "rationale": {
+    "en": "The `*.rules` fragments under `/etc/audit/rules.d/` declare **which syscalls, files and events auditd watches**, they are compiled into the active ruleset at boot. If they are **writable by group or other**, an attacker can delete or weaken rules to blind the system to their actions; if **readable by other**, they reveal exactly what is (and is not) monitored, helping evasion. Restricting them to **root** keeps the audit policy tamper-proof and confidential.",
+    "fr": "Les fragments `*.rules` de `/etc/audit/rules.d/` déclarent **quels appels système, fichiers et événements auditd surveille**, ils sont compilés en jeu de règles actif au démarrage. S'ils sont **modifiables par le groupe ou les autres**, un attaquant peut supprimer ou affaiblir des règles pour rendre le système aveugle à ses actions ; s'ils sont **lisibles par les autres**, ils révèlent exactement ce qui est (ou non) surveillé, facilitant l'évasion. Les restreindre à **root** rend la politique d'audit inaltérable et confidentielle."
   },
   "check_note": {
     "en": "Pavois runs `find /etc/audit/rules.d -name \"*.rules\" -perm /0137` and expects an **empty result**: the `/0137` mask matches any file carrying group-write, other-read, other-write or any execute bit. Because it scans the directory at audit time rather than trusting a packaged template, it catches new fragments dropped in by Ansible, a cookbook or an operator, the same drop-in blind spot that file-template scanners miss.",

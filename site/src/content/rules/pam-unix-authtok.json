@@ -2,14 +2,21 @@
   "id": "pam-unix-authtok",
   "supported_os": [
     "debian12",
+    "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -21,7 +28,7 @@
     "cis": "5.3.3.4.4"
   },
   "check": [
-    "describe command('grep -rqE \\'^[^#]*\\bpam_unix\\\\.so\\b[^#]*\\buse_authtok\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
+    "describe command('grep -RqE \\'^[^#]*\\bpam_unix\\\\.so\\b[^#]*\\buse_authtok\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
@@ -35,13 +42,13 @@
     "fr": "Exiger use_authtok pour pam_unix.so"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Without **`use_authtok`**, the `pam_unix.so` module prompts for a brand-new password instead of reusing the token already validated by the earlier complexity modules (`pam_pwquality` / `pam_cracklib`). The result is a password that bypasses the configured strength, history and dictionary checks, silently defeating the whole password policy stack.",
-    "fr": "Sans **`use_authtok`**, le module `pam_unix.so` redemande un nouveau mot de passe au lieu de reutiliser le jeton deja valide par les modules de complexite precedents (`pam_pwquality` / `pam_cracklib`). On obtient un mot de passe qui contourne les controles de robustesse, d'historique et de dictionnaire configures, annulant silencieusement toute la politique de mot de passe."
-  },
   "summary": {
     "en": "Forces `pam_unix.so` to reuse the password token already validated by the complexity modules, via the **`use_authtok`** option in the PAM password stack.",
     "fr": "Force `pam_unix.so` a reutiliser le jeton de mot de passe deja valide par les modules de complexite, via l'option **`use_authtok`** dans la pile PAM `password`."
+  },
+  "rationale": {
+    "en": "Without **`use_authtok`**, the `pam_unix.so` module prompts for a brand-new password instead of reusing the token already validated by the earlier complexity modules (`pam_pwquality` / `pam_cracklib`). The result is a password that bypasses the configured strength, history and dictionary checks, silently defeating the whole password policy stack.",
+    "fr": "Sans **`use_authtok`**, le module `pam_unix.so` redemande un nouveau mot de passe au lieu de reutiliser le jeton deja valide par les modules de complexite precedents (`pam_pwquality` / `pam_cracklib`). On obtient un mot de passe qui contourne les controles de robustesse, d'historique et de dictionnaire configures, annulant silencieusement toute la politique de mot de passe."
   },
   "check_note": {
     "en": "Pavois greps the **effective** PAM password stack under `/etc/pam.d/` for a non-commented `pam_unix.so` line carrying `use_authtok`. Reading the live PAM tree (including `common-password` and any service files that `@include` it) catches the option wherever it is actually wired, which a check pinned to a single hard-coded file would miss.",

@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.conf.all.arp_ignore') do",
     "  its('value') { should cmp 2 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.all.arp_ignore[[:space:]]*=[[:space:]]*2([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Configurer le mode de réponse aux requêtes ARP pour toutes les interfaces IPv4"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`net.ipv4.conf.all.arp_ignore` decides which ARP requests the host answers. In the default mode (`0`) the host replies to an ARP request for **any** of its local addresses regardless of which interface the request arrived on, which on a multi-homed host causes **ARP flux**: a neighbor can learn the host's IP behind the wrong MAC/interface, and an attacker can exploit the ambiguity to map and target the host. Setting it to `2` makes the host reply **only when the target IP is local to the receiving interface and the sender is on the same subnet**, producing deterministic, harder-to-abuse ARP behavior.",
-    "fr": "`net.ipv4.conf.all.arp_ignore` détermine à quelles requêtes ARP l'hôte répond. Dans le mode par défaut (`0`), l'hôte répond à une requête ARP pour **n'importe laquelle** de ses adresses locales quelle que soit l'interface de réception, ce qui provoque sur un hôte multi-rattaché un **flux ARP** : un voisin peut apprendre l'IP de l'hôte derrière la mauvaise MAC/interface, et un attaquant peut exploiter cette ambiguïté pour cartographier et cibler l'hôte. Le mettre à `2` fait que l'hôte ne répond **que lorsque l'IP cible est locale à l'interface de réception et que l'émetteur est sur le même sous-réseau**, produisant un comportement ARP déterministe et plus difficile à détourner."
-  },
   "summary": {
     "en": "Sets `net.ipv4.conf.all.arp_ignore=2` so the host answers ARP only for the receiving interface's own IP from a same-subnet sender.",
     "fr": "Définit `net.ipv4.conf.all.arp_ignore=2` pour que l'hôte ne réponde aux requêtes ARP que pour l'IP propre à l'interface de réception, depuis un émetteur du même sous-réseau."
+  },
+  "rationale": {
+    "en": "`net.ipv4.conf.all.arp_ignore` decides which ARP requests the host answers. In the default mode (`0`) the host replies to an ARP request for **any** of its local addresses regardless of which interface the request arrived on, which on a multi-homed host causes **ARP flux**: a neighbor can learn the host's IP behind the wrong MAC/interface, and an attacker can exploit the ambiguity to map and target the host. Setting it to `2` makes the host reply **only when the target IP is local to the receiving interface and the sender is on the same subnet**, producing deterministic, harder-to-abuse ARP behavior.",
+    "fr": "`net.ipv4.conf.all.arp_ignore` détermine à quelles requêtes ARP l'hôte répond. Dans le mode par défaut (`0`), l'hôte répond à une requête ARP pour **n'importe laquelle** de ses adresses locales quelle que soit l'interface de réception, ce qui provoque sur un hôte multi-rattaché un **flux ARP** : un voisin peut apprendre l'IP de l'hôte derrière la mauvaise MAC/interface, et un attaquant peut exploiter cette ambiguïté pour cartographier et cibler l'hôte. Le mettre à `2` fait que l'hôte ne répond **que lorsque l'IP cible est locale à l'interface de réception et que l'émetteur est sur le même sous-réseau**, produisant un comportement ARP déterministe et plus difficile à détourner."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** via `kernel_parameter('net.ipv4.conf.all.arp_ignore')` and asserts it equals `2`. ARP reply behavior is governed by the running kernel value, so a `sysctl.d` entry written but not reloaded, or overridden by a per-interface key, would leave the host answering ARP differently than the file suggests. Only the effective value confirms the actual ARP response mode in force.",

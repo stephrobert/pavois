@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -24,11 +25,10 @@
   "evidence_type": "effective-runtime",
   "reboot_survivable": "yes",
   "norms": {
-    "bp28": "R73",
     "cis": [
-      "6.3.3.5",
       "10.3.4",
       "6.2.3.5",
+      "6.3.3.5",
       "6.3.3.7",
       "6.3.3.6",
       "6.3.3.8",
@@ -41,11 +41,15 @@
       "AU-2(d)",
       "CM-6(a)"
     ],
-    "pci-dss": "10.3.4"
+    "pci-dss": "10.3.4",
+    "bp28": "R73"
   },
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)(audit_rules_networkconfig_modification|system-locale)\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE '(audit_rules_networkconfig_modification|system-locale)' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -57,13 +61,13 @@
     "fr": "Enregistrer les evenements modifiant l'environnement reseau du systeme"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The network environment (hostname, domain, hosts file, interface configuration) should not be modified by anything other than deliberate administrator action. An attacker altering DNS resolution, the hostname or routing can redirect traffic or evade detection. Auditing every change to network parameters preserves a record for review and investigation.",
-    "fr": "L'environnement reseau (nom d'hote, domaine, fichier hosts, configuration des interfaces) ne devrait etre modifie que par une action deliberee de l'administrateur. Un attaquant alterant la resolution DNS, le nom d'hote ou le routage peut rediriger le trafic ou echapper a la detection. Auditer chaque changement des parametres reseau preserve une trace pour revue et investigation."
-  },
   "summary": {
     "en": "Ensures `auditd` has an active rule tagged `system-locale` (or `audit_rules_networkconfig_modification`) that records changes to network identity and configuration (`sethostname`/`setdomainname` syscalls and files like `/etc/hosts`, `/etc/hostname`, `/etc/issue`, network config dirs).",
     "fr": "Garantit que `auditd` possede une regle active taguee `system-locale` (ou `audit_rules_networkconfig_modification`) qui enregistre les changements d'identite et de configuration reseau (appels systeme `sethostname`/`setdomainname` et fichiers comme `/etc/hosts`, `/etc/hostname`, `/etc/issue`, repertoires de configuration reseau)."
+  },
+  "rationale": {
+    "en": "The network environment (hostname, domain, hosts file, interface configuration) should not be modified by anything other than deliberate administrator action. An attacker altering DNS resolution, the hostname or routing can redirect traffic or evade detection. Auditing every change to network parameters preserves a record for review and investigation.",
+    "fr": "L'environnement reseau (nom d'hote, domaine, fichier hosts, configuration des interfaces) ne devrait etre modifie que par une action deliberee de l'administrateur. Un attaquant alterant la resolution DNS, le nom d'hote ou le routage peut rediriger le trafic ou echapper a la detection. Auditer chaque changement des parametres reseau preserve une trace pour revue et investigation."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks for a loaded rule carrying the `system-locale` (or `audit_rules_networkconfig_modification`) key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule present in a file but not loaded gives false assurance. `auditctl -l` reflects only what the kernel enforces now.",

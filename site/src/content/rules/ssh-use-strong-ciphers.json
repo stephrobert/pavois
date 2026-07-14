@@ -2,11 +2,21 @@
   "id": "ssh-use-strong-ciphers",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -24,21 +34,26 @@
   ],
   "remediation": {
     "directive": "Ciphers",
+    "notify": {
+      "action": "reload",
+      "service": "ssh.service"
+    },
     "resource": "sshd_setting",
-    "value": "aes128-ctr,aes192-ctr,aes256-ctr,chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com"
+    "value": "aes128-ctr,aes192-ctr,aes256-ctr,chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com",
+    "verify": "sshd -t -f %{path}"
   },
   "title": {
     "en": "Use Only Strong Ciphers",
     "fr": "N'utiliser que des algorithmes de chiffrement robustes"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Research on the SSH Transport Protocol (RFC 4253) showed that the **Cipher Block Chaining (CBC)** mode has security weaknesses that allowed recovery of up to 32 bits of plaintext from a ciphertext block. The **Counter (CTR)** mode ciphers (RFC 4344) and modern **AEAD** ciphers (GCM, ChaCha20-Poly1305) are not vulnerable to these attacks and are recommended for standard use. Leaving CBC or arcfour ciphers enabled exposes the session to plaintext-recovery and downgrade attacks against the encrypted tunnel.",
-    "fr": "Les recherches sur le protocole de transport SSH (RFC 4253) ont montré que le mode **CBC (Cipher Block Chaining)** présente des faiblesses permettant de récupérer jusqu'à 32 bits de texte clair à partir d'un bloc de chiffré. Les algorithmes en mode **compteur (CTR)** (RFC 4344) et les chiffrements **AEAD** modernes (GCM, ChaCha20-Poly1305) ne sont pas vulnérables à ces attaques et sont recommandés pour un usage standard. Laisser CBC ou arcfour activés expose la session à des attaques de récupération de texte clair et de déclassement contre le tunnel chiffré."
-  },
   "summary": {
     "en": "Restrict the SSH server to strong symmetric `Ciphers` only, AES in **CTR** and **GCM** modes plus `chacha20-poly1305@openssh.com`, excluding CBC and other weak ciphers.",
     "fr": "Restreint le serveur SSH aux seuls algorithmes de chiffrement symétrique robustes (`Ciphers`), AES en modes **CTR** et **GCM** ainsi que `chacha20-poly1305@openssh.com`, en excluant CBC et les autres algorithmes faibles."
+  },
+  "rationale": {
+    "en": "Research on the SSH Transport Protocol (RFC 4253) showed that the **Cipher Block Chaining (CBC)** mode has security weaknesses that allowed recovery of up to 32 bits of plaintext from a ciphertext block. The **Counter (CTR)** mode ciphers (RFC 4344) and modern **AEAD** ciphers (GCM, ChaCha20-Poly1305) are not vulnerable to these attacks and are recommended for standard use. Leaving CBC or arcfour ciphers enabled exposes the session to plaintext-recovery and downgrade attacks against the encrypted tunnel.",
+    "fr": "Les recherches sur le protocole de transport SSH (RFC 4253) ont montré que le mode **CBC (Cipher Block Chaining)** présente des faiblesses permettant de récupérer jusqu'à 32 bits de texte clair à partir d'un bloc de chiffré. Les algorithmes en mode **compteur (CTR)** (RFC 4344) et les chiffrements **AEAD** modernes (GCM, ChaCha20-Poly1305) ne sont pas vulnérables à ces attaques et sont recommandés pour un usage standard. Laisser CBC ou arcfour activés expose la session à des attaques de récupération de texte clair et de déclassement contre le tunnel chiffré."
   },
   "check_note": {
     "en": "Pavois runs `sshd -T` and matches the **effective** `ciphers` line against the strong list. `sshd -T` reports the cipher set the daemon actually resolved, after every `Include`, `Match` block and drop-in in `/etc/ssh/sshd_config.d/`, so a CBC cipher re-enabled by a drop-in is detected. Parsing `/etc/ssh/sshd_config` alone would miss those includes and yield a **false negative**.",

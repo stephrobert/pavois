@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -27,7 +28,7 @@
     "cis": "5.3.3.4.2"
   },
   "check": [
-    "describe command('grep -rE \\'^[^#]*\\bpam_unix\\\\.so\\b\\' /etc/pam.d/ 2>/dev/null | grep -q \\'remember=\\' && echo ko || echo ok') do",
+    "describe command('grep -RE \\'^[^#]*\\bpam_unix\\\\.so\\b\\' /etc/pam.d/ 2>/dev/null | grep -q \\'remember=\\' && echo ko || echo ok') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
@@ -41,13 +42,13 @@
     "fr": "Eviter l'option remember dans le module pam_unix"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Password history must be enforced by **`pam_pwhistory.so`**, not by the `remember=` argument on `pam_unix.so`. When `pam_unix` handles history it writes the old hashes to `/etc/security/opasswd` using its own (weaker) hashing, undermining the stronger algorithm and rounds used elsewhere. Removing `remember=` from `pam_unix` keeps history handling in the module designed for it and preserves a robust hash, making cracking of stored passwords harder.",
-    "fr": "L'historique des mots de passe doit etre gere par **`pam_pwhistory.so`**, et non par l'argument `remember=` de `pam_unix.so`. Lorsque `pam_unix` gere l'historique, il ecrit les anciens condensats dans `/etc/security/opasswd` avec son propre hachage (plus faible), affaiblissant l'algorithme et le nombre de tours utilises ailleurs. Retirer `remember=` de `pam_unix` laisse la gestion de l'historique au module concu pour cela et preserve un hachage robuste, rendant plus difficile le cassage des mots de passe stockes."
-  },
   "summary": {
     "en": "Ensures the **`remember=`** argument is not set on `pam_unix.so`, so password history is left to `pam_pwhistory.so` and the strong password hash is preserved.",
     "fr": "Garantit que l'argument **`remember=`** n'est pas pose sur `pam_unix.so`, afin que l'historique des mots de passe soit confie a `pam_pwhistory.so` et que le hachage fort soit preserve."
+  },
+  "rationale": {
+    "en": "Password history must be enforced by **`pam_pwhistory.so`**, not by the `remember=` argument on `pam_unix.so`. When `pam_unix` handles history it writes the old hashes to `/etc/security/opasswd` using its own (weaker) hashing, undermining the stronger algorithm and rounds used elsewhere. Removing `remember=` from `pam_unix` keeps history handling in the module designed for it and preserves a robust hash, making cracking of stored passwords harder.",
+    "fr": "L'historique des mots de passe doit etre gere par **`pam_pwhistory.so`**, et non par l'argument `remember=` de `pam_unix.so`. Lorsque `pam_unix` gere l'historique, il ecrit les anciens condensats dans `/etc/security/opasswd` avec son propre hachage (plus faible), affaiblissant l'algorithme et le nombre de tours utilises ailleurs. Retirer `remember=` de `pam_unix` laisse la gestion de l'historique au module concu pour cela et preserve un hachage robuste, rendant plus difficile le cassage des mots de passe stockes."
   },
   "check_note": {
     "en": "Pavois greps the **effective** PAM tree under `/etc/pam.d/` for active `pam_unix.so` lines and fails if any carries `remember=`. Inspecting the resolved stack (with `@include`d files) catches the argument wherever it is actually applied, unlike a check tied to one assumed file.",

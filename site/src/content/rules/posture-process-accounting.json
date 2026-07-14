@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,11 +26,16 @@
   "reboot_survivable": "no",
   "norms": {},
   "check": [
-    "describe command('systemctl is-active auditd acct psacct 2>/dev/null | grep -q \\'^active\\' && echo ok || echo ko') do",
+    "describe command('systemctl is-active acct psacct 2>/dev/null | grep -qx active && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "DEBIAN_FRONTEND=noninteractive apt-get install -y acct >/dev/null 2>&1; systemctl enable --now acct 2>/dev/null || true",
+    "name": "enable-process-accounting",
+    "not_if": "systemctl is-active acct psacct 2>/dev/null | grep -qx active",
+    "resource": "exec"
+  },
   "title": {
     "en": "Process accounting enabled",
     "fr": "Comptabilité des processus activée"

@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R25"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_PAGE_TABLE_ISOLATION=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_PAGE_TABLE_ISOLATION='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_PAGE_TABLE_ISOLATION=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_PAGE_TABLE_ISOLATION=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Remove the kernel mapping in user mode",
     "fr": "Supprimer la cartographie du noyau en mode utilisateur"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Page Table Isolation (PTI/KPTI) is the primary defence against **Meltdown** (CVE-2017-5754), a CPU side-channel that lets an unprivileged process read arbitrary kernel memory, including passwords, keys and other secrets. PTI keeps the kernel's page tables out of the user-space mapping, so even if the CPU speculatively accesses kernel addresses, they are not present to leak. Without `CONFIG_PAGE_TABLE_ISOLATION=y`, vulnerable CPUs expose all kernel memory to any local process, which is why this rule is **high** severity.",
-    "fr": "L'isolation des tables de pages (PTI/KPTI) est la défense principale contre **Meltdown** (CVE-2017-5754), un canal auxiliaire CPU qui permet à un processus non privilégié de lire une mémoire noyau arbitraire, y compris mots de passe, clés et autres secrets. PTI maintient les tables de pages du noyau hors de la cartographie de l'espace utilisateur, de sorte que même si le CPU accède spéculativement à des adresses noyau, elles ne sont pas présentes pour fuir. Sans `CONFIG_PAGE_TABLE_ISOLATION=y`, les CPU vulnérables exposent toute la mémoire noyau à n'importe quel processus local, d'où la sévérité **élevée** de cette règle."
-  },
   "summary": {
     "en": "Requires the running kernel to be built with `CONFIG_PAGE_TABLE_ISOLATION=y` to mitigate the Meltdown CPU vulnerability by isolating kernel page tables from user mode.",
     "fr": "Exige que le noyau en cours d'exécution soit compilé avec `CONFIG_PAGE_TABLE_ISOLATION=y` pour atténuer la vulnérabilité CPU Meltdown en isolant les tables de pages du noyau du mode utilisateur."
+  },
+  "rationale": {
+    "en": "Page Table Isolation (PTI/KPTI) is the primary defence against **Meltdown** (CVE-2017-5754), a CPU side-channel that lets an unprivileged process read arbitrary kernel memory, including passwords, keys and other secrets. PTI keeps the kernel's page tables out of the user-space mapping, so even if the CPU speculatively accesses kernel addresses, they are not present to leak. Without `CONFIG_PAGE_TABLE_ISOLATION=y`, vulnerable CPUs expose all kernel memory to any local process, which is why this rule is **high** severity.",
+    "fr": "L'isolation des tables de pages (PTI/KPTI) est la défense principale contre **Meltdown** (CVE-2017-5754), un canal auxiliaire CPU qui permet à un processus non privilégié de lire une mémoire noyau arbitraire, y compris mots de passe, clés et autres secrets. PTI maintient les tables de pages du noyau hors de la cartographie de l'espace utilisateur, de sorte que même si le CPU accède spéculativement à des adresses noyau, elles ne sont pas présentes pour fuir. Sans `CONFIG_PAGE_TABLE_ISOLATION=y`, les CPU vulnérables exposent toute la mémoire noyau à n'importe quel processus local, d'où la sévérité **élevée** de cette règle."
   },
   "check_note": {
     "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)`, falling back to `/proc/config.gz`, so the result reflects the booted kernel. Pavois expects `CONFIG_PAGE_TABLE_ISOLATION=y`. Note the feature can still be disabled at runtime via the `pti=off`/`nopti` boot parameter even when compiled in.",
