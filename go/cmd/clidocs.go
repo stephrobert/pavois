@@ -25,6 +25,21 @@ type cliFlag struct {
 	Type      string `json:"type"`
 }
 
+// The exit codes are a CONTRACT with every pipeline that calls pavois, and the site stated three
+// different versions of them: 0/1/2 on one page, "0 pass, 100 failures, 101 error" on another. The
+// truth is here, in the code that produces them (root.go Execute): CINC's own 100/101 are swallowed
+// internally (a failing control is a normal outcome, not an error), so they never reach the shell.
+type cliExit struct {
+	Code    int    `json:"code"`
+	Meaning string `json:"meaning"`
+}
+
+var exitCodes = []cliExit{
+	{0, "compliant: the run succeeded and, if --fail-under was set, the grade met the threshold"},
+	{1, "non-compliance: the grade is below --fail-under (the gate a CI job acts on)"},
+	{2, "technical error: pavois or the engine could not complete the run"},
+}
+
 type cliCmd struct {
 	Name     string    `json:"name"`
 	Path     string    `json:"path"`  // "pavois harden apply"
@@ -86,7 +101,11 @@ var clidocsCmd = &cobra.Command{
 	RunE: func(_ *cobra.Command, _ []string) error {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		return enc.Encode(describe(rootCmd, ""))
+		root := describe(rootCmd, "")
+		return enc.Encode(struct {
+			cliCmd
+			ExitCodes []cliExit `json:"exit_codes"`
+		}{root, exitCodes})
 	},
 }
 

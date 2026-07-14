@@ -148,6 +148,19 @@ const crumbs = [
       </details>
 
       <h1 class="book-h1">{page.title[lang]}</h1>
+      {/* feature-status promises "the page carries a dateModified so you can see when it was last
+          reviewed" — and the date only existed in the JSON-LD, invisible to the reader it was
+          promised to. A page whose argument is "we tell you when we reviewed it" must show it. */}
+      {(page.dateModified ?? page.datePublished) && (
+        <p class="hb-date">
+          {lang === 'fr' ? 'Revu le ' : 'Last reviewed '}
+          <time datetime={page.dateModified ?? page.datePublished}>
+            {new Intl.DateTimeFormat(lang === 'fr' ? 'fr-FR' : 'en-GB', {
+              year: 'numeric', month: 'long', day: 'numeric',
+            }).format(new Date(page.dateModified ?? page.datePublished!))}
+          </time>
+        </p>
+      )}
       {page.summary && <p class="book-lede" set:html={ledeHtml} />}
 
       <div class="prose" set:html={bodyHtml} />

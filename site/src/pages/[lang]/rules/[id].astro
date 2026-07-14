@@ -131,7 +131,14 @@ const normMeta: Record<string, string> = {
 const cxNorms = Object.entries(data.norms).filter(([, v]) => (Array.isArray(v) ? v.length > 0 : !!v));
 // Mapping strength, derived: prescriptive line-level standards (CIS/STIG/PCI/ANSSI) are a direct
 // match; NIST families are abstract -> a supporting cross-reference. See /handbook/the-standards.
-const mappingType = (n: string): 'direct' | 'supporting' => (n === 'nist' ? 'supporting' : 'direct');
+// Mapping strength, derived. CIS, STIG and ANSSI BP-028 prescribe the SETTING, line by line: a
+// passing check satisfies the clause on its own, so the mapping is direct. NIST 800-53/171 and
+// PCI-DSS do not: they state an OUTCOME ("system security parameters are configured to prevent
+// misuse", PCI 2.2.6) that an assessor validates through testing procedures. Calling that "direct"
+// claimed an equivalence the site explicitly disowns everywhere else, and a QSA would refuse it.
+// A passing check is EVIDENCE TOWARD those requirements, not a certification of them.
+const mappingType = (n: string): 'direct' | 'supporting' =>
+  n === 'nist' || n === 'pci-dss' ? 'supporting' : 'direct';
 const mtLabel: Record<string, { en: string; fr: string }> = {
   direct: { en: 'direct', fr: 'direct' },
   supporting: { en: 'supporting', fr: 'support' },

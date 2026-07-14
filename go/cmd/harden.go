@@ -60,6 +60,8 @@ var (
 	haStandard string
 
 	haSudoPrompt        bool
+	haRestorePoint      string
+	haNoRestorePoint    bool
 	haIUnderstandDanger bool
 )
 
@@ -89,6 +91,8 @@ func init() {
 	hardenApplyCmd.Flags().BoolVar(&haReboot, "reboot", false, "when changes need it, reboot the target via a Chef `reboot` resource at the end of the run")
 	hardenApplyCmd.Flags().StringVar(&haStandard, "standard", "", "apply each rule's value for THIS standard (bp28|cis|nist|…); default = the most-secure value")
 	hardenApplyCmd.Flags().BoolVar(&haSudoPrompt, "sudo-prompt", false, "prompt for the sudo password (no echo; also reads PAVOIS_SUDO_PASSWORD) — for a least-privilege target account without NOPASSWD")
+	hardenApplyCmd.Flags().StringVar(&haRestorePoint, "restore-point", "", "where to write the restore point (default: restore-points/<target>-<timestamp>)")
+	hardenApplyCmd.Flags().BoolVar(&haNoRestorePoint, "no-restore-point", false, "do NOT photograph the prior state before converging (you lose `harden rollback`)")
 	hardenApplyCmd.Flags().BoolVar(&haIUnderstandDanger, "i-understand-danger", false, "acknowledge ALL `danger:` items at once (brick/lockout risk); otherwise set `acknowledged: true` per item in the plan")
 	hardenCmd.AddCommand(hardenApplyCmd)
 
@@ -1654,6 +1658,25 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("install cinc-client: %w", err)
 		}
 	}
+	// PHOTOGRAPH THE PRIOR STATE, before a single resource converges. The plan is declarative, so
+	// what the run will touch is knowable in advance: every file it writes, every package it
+	// installs, every service it enables. That is exactly what `harden rollback` needs, and no other
+	// hardening tool captures it (oscap hands you a bash script; Lynis only advises).
+	if !haNoRestorePoint {
+		dir := haRestorePoint
+		if dir == "" {
+			dir = filepath.Join(findRoot(), "restore-points",
+				fmt.Sprintf("%s-%s", strings.NewReplacer("@", "_", ".", "-", ":", "-").Replace(target),
+					time.Now().UTC().Format("20060102-1504")))
+		}
+		_, _ = fmt.Fprintln(os.Stderr, "pavois: photographing the prior state (restore point)…")
+		if got, err := writeRestorePoint(p, target, args[0], dir, sshOpts(), sudoPass); err != nil {
+			return fmt.Errorf("restore point: %w (re-run with --no-restore-point to skip, but you lose the rollback)", err)
+		} else {
+			_, _ = fmt.Fprintf(out, "pavois: 📸 restore point → %s   (undo with: pavois harden rollback %s --yes)\n", got, got)
+		}
+	}
+
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: copying recipe…")
 	if err := run("scp", append(append(sshOpts(), tmp.Name()), target+":/tmp/pavois-harden.rb")...); err != nil {
 		return fmt.Errorf("copy recipe: %w", err)

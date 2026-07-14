@@ -21,6 +21,8 @@ const sections = [
   { slug: 'limits', en: '5. What an apply cannot close', fr: '5. Ce qu’un apply ne peut pas fermer' },
   { slug: 'survive', en: '6. Prove the host survived', fr: '6. Prouver que l’hôte a survécu' },
   { slug: 'ci', en: '7. In CI', fr: '7. En CI' },
+  { slug: 'revert', en: '8. Reverting a change', fr: '8. Revenir en arrière' },
+  { slug: 'fleet', en: '9. A whole fleet', fr: '9. Toute une flotte' },
   { slug: 'takeaways', en: 'Key takeaways', fr: 'À retenir' },
   { slug: 'next', en: 'Next steps', fr: 'Prochaines étapes' },
 ];
@@ -38,7 +40,7 @@ const crumbs = [
 
 <Base title={title} description={desc} lang={lang} breadcrumbs={crumbs}>
   <div class="wrap page-head">
-    <h1>{fr ? 'De la source au verdict en trois commandes' : 'From source to verdict in three commands'}</h1>
+    <h1>{fr ? 'De la source au verdict, puis à la preuve' : 'From source to verdict, then to proof'}</h1>
     <p class="lede">{desc}</p>
   </div>
   <div class="wrap layout-doc">
@@ -48,7 +50,10 @@ const crumbs = [
     <p>{fr
       ? 'Le chemin le plus court, sur l’hôte courant (la config effective exige root). Build une fois, puis vérifie, scanne, consulte :'
       : 'The shortest path, on the current host (effective config needs root). Build once, then check, scan, browse:'}</p>
-    <Fragment set:html={highlight(`git clone https://github.com/stephrobert/pavois.git && cd pavois
+    <Fragment set:html={highlight(`# ${fr ? 'mise epingle la chaine d outils (Go, Node, Python). Une ligne, une fois :' : 'mise pins the toolchain (Go, Node, Python). One line, once:'}
+curl https://mise.run | sh && export PATH="$HOME/.local/bin:$PATH"
+
+git clone https://github.com/stephrobert/pavois.git && cd pavois
 mise trust && mise install && mise run build && mise run regen
 ./go/pavois doctor                          # ${fr ? 'tout est-il prêt ?' : 'is everything ready?'}
 ./go/pavois scan local --sudo --format html # ${fr ? 'audite cet hôte, note A à E' : 'audit this host, A to E grade'}
@@ -56,6 +61,14 @@ mise trust && mise install && mise run build && mise run regen
     <p class="muted">{fr
       ? 'Une fois la première release publiée, remplace le build par le téléchargement du binaire signé (section ci-dessous). Pour une cible distante : '
       : 'Once the first release ships, swap the build for the signed binary download (section below). For a remote target: '}<code>scan user@host</code>.</p>
+
+    <p class="muted">{fr
+      ? 'Tu refuses d’installer un gestionnaire de chaîne d’outils pour essayer un scanner ? C’est légitime : avec Go 1.22+ déjà présent, '
+      : 'Do not want to install a toolchain manager just to try a scanner? Fair: with Go 1.22+ already present, '}
+      <code>cd go && go build -o pavois .</code>
+      {fr
+        ? ' suffit à produire le binaire ; il te manquera seulement les tâches mise (rendu du corpus, site).'
+        : ' produces the binary; you only lose the mise tasks (corpus rendering, site).'}</p>
 
     <h2 id="prerequisites">{fr ? 'Prérequis' : 'Prerequisites'}</h2>
     <p>
@@ -95,7 +108,7 @@ mise run regen               # ${fr ? 'corpus .rb + OSCAL depuis la référence'
     <Fragment set:html={highlight(`# ${fr ? 'tout est prêt' : 'all set'}
 [OK  ] CINC engine (native)   /usr/bin/cinc-auditor
 [OK  ] sudo / ssh             /usr/bin/sudo /usr/bin/ssh
-[OK  ] rule corpus            263 controls rendered under profiles/linux/
+[OK  ] rule corpus            620 controls rendered for debian12 (789 across all 9 OSes)
 [OK  ] local OS detected      debian 12
 ready - try:  pavois scan local --sudo
 
@@ -110,7 +123,7 @@ ready - try:  pavois scan local --sudo
     <p>{fr ? 'Pour une cible distante via SSH (ton ~/.ssh/config et ta clé) :' : 'For a remote target over SSH (your ~/.ssh/config and key):'}</p>
     <Fragment set:html={highlight(`./go/pavois scan user@host --key ~/.ssh/id_ed25519 --sudo`, 'bash')} />
     <p class="muted">{fr ? 'Le profil (OS) est auto-détecté ; --profile ne sert que pour un profil custom.' : 'The OS profile is auto-detected; --profile is only for a custom profile.'}</p>
-    <Fragment set:html={highlight(`# (profil custom, optionnel)
+    <Fragment set:html={highlight(`# ${fr ? '(profil custom, optionnel)' : '(custom profile, optional)'}
 # ./go/pavois scan user@host --key ~/.ssh/id_ed25519 --sudo --profile profiles/linux/debian12`, 'bash')} />
     <p>
       {fr
@@ -182,8 +195,8 @@ ready - try:  pavois scan local --sudo
         : 'That is why the report prints TWO grades: the raw grade, and the '}
       <b>{fr ? 'posture remédiable' : 'remediable posture'}</b>
       {fr
-        ? ' (ce que pavois peut atteindre par lui-même, hors install-time et kernel-build). Sur une debian 12 sortie d’une image cloud, la campagne complète donne note B, remédiable A, indice lynis 89.'
-        : ' (what pavois can reach on its own, excluding install-time and kernel-build). On a debian 12 straight out of a cloud image, the full campaign lands at grade B, remediable A, lynis index 89.'}
+        ? ' (ce que pavois peut atteindre par lui-même, hors install-time et kernel-build). Sur une debian 12 sortie d’une image cloud, la campagne complète (noyau KSPP, partitions LVM, apply convergé) donne note B et remédiable A, mesurés le 13 juillet 2026 sur une VM neuve. Un lynis lancé ensuite sur la même machine affiche un indice de durcissement de 89 : c’est un contrôle croisé par un outil indépendant, pas un verdict de conformité (lynis n’en produit pas).'
+        : ' (what pavois can reach on its own, excluding install-time and kernel-build). On a debian 12 straight out of a cloud image, the full campaign (KSPP kernel, LVM partitions, converged apply) lands at grade B and remediable A, measured on 13 July 2026 on a fresh VM. Running lynis afterwards on the same host reports a hardening index of 89: an independent tool cross-checking the result, not a compliance verdict (lynis does not produce one).'}
     </p>
 
     <h2 id="survive">{fr ? '6. Prouver que l’hôte a survécu' : '6. Prove the host survived'}</h2>
@@ -215,6 +228,72 @@ ready - try:  pavois scan local --sudo
       {fr
         ? 'Codes de sortie : 0 conforme, 1 sous le seuil, 2 erreur technique. Formats : table, json, sarif, junit, csv, html.'
         : 'Exit codes: 0 compliant, 1 below the threshold, 2 technical error. Formats: table, json, sarif, junit, csv, html.'}
+    </p>
+
+
+    <h2 id="revert">{fr ? '8. Revenir en arrière' : '8. Reverting a change'}</h2>
+    <p>
+      <b>{fr ? 'Il n’existe pas de commande d’annulation.' : 'There is no revert command.'}</b>
+      {fr
+        ? ' Autant le dire avant que tu ne le découvres sur un serveur de production : '
+        : ' Better said before you find out on a production box: '}
+      <code>pavois harden</code>
+      {fr ? ' n’a que ' : ' has only '}<code>plan</code>{fr ? ' et ' : ' and '}<code>apply</code>
+      {fr ? ', et n’écrit aucune sauvegarde des fichiers qu’il modifie.' : ', and it writes no backup of the files it changes.'}
+    </p>
+    <p>{fr ? 'Ce qui est réversible, et ce qui ne l’est pas :' : 'What is reversible, and what is not:'}</p>
+    <ul>
+      <li>
+        <b>{fr ? 'Les drop-ins sont réversibles.' : 'Drop-ins are reversible.'}</b>
+        {fr
+          ? ' Pavois dépose des fichiers qui portent son nom, et le retrait du fichier annule le réglage : '
+          : ' Pavois drops files that carry its name, and removing the file undoes the setting: '}
+        <code>/etc/ssh/sshd_config.d/99-pavois.conf</code>, <code>/etc/sysctl.d/zz-pavois.conf</code>,
+        <code>/etc/audit/rules.d/99-pavois.rules</code>, <code>/etc/systemd/journald.conf.d/99-pavois-*.conf</code>,
+        <code>/etc/modprobe.d/pavois-*.conf</code>, <code>/etc/profile.d/99-pavois-*.sh</code>.
+      </li>
+      <li>
+        <b>{fr ? 'Les éditions en place ne le sont pas.' : 'In-place edits are not.'}</b>
+        {fr
+          ? ' Une ligne réécrite dans /etc/login.defs, une pile PAM modifiée, un chmod : rien ne mémorise la valeur d’origine. Un retour arrière consiste à ré-appliquer l’ancienne valeur, à la main.'
+          : ' A line rewritten in /etc/login.defs, a modified PAM stack, a chmod: nothing remembers the original value. Rolling back means re-applying the old value, by hand.'}
+      </li>
+    </ul>
+    <p>
+      {fr
+        ? 'La conséquence pratique est simple, et c’est la seule recommandation honnête : '
+        : 'The practical consequence is simple, and it is the only honest recommendation: '}
+      <b>{fr ? 'prends un instantané (snapshot VM, ou une sauvegarde de /etc) avant le premier apply' : 'take a snapshot (VM snapshot, or a backup of /etc) before the first apply'}</b>
+      {fr
+        ? ', et fais ton premier essai sur un clone, pas sur la production. Le plan est déclaratif et opt-in précisément pour que tu puisses n’activer que ce que tu comprends.'
+        : ', and make your first run on a clone, not on production. The plan is declarative and opt-in precisely so you can enable only what you understand.'}
+    </p>
+    <Fragment set:html={highlight(`# ${fr ? 'annuler les reglages deposes en drop-in (le gros du durcissement)' : 'undo the drop-in settings (the bulk of the hardening)'}
+sudo rm -f /etc/ssh/sshd_config.d/99-pavois.conf /etc/sysctl.d/zz-pavois.conf \\
+           /etc/systemd/journald.conf.d/99-pavois-*.conf /etc/modprobe.d/pavois-*.conf
+sudo systemctl reload ssh && sudo sysctl --system`, 'bash')} />
+
+    <h2 id="fleet">{fr ? '9. Toute une flotte' : '9. A whole fleet'}</h2>
+    <p>
+      {fr
+        ? 'Un run de pavois audite UNE cible. Il n’y a pas d’agrégation de flotte intégrée : c’est un manque assumé, pas une fonction cachée.'
+        : 'One pavois run audits ONE target. There is no built-in fleet aggregation: that is a stated gap, not a hidden feature.'}
+      {fr
+        ? ' En pratique, une boucle et un dossier de rapports suffisent, parce que chaque scan émet un JSON complet et autoporté.'
+        : ' In practice a loop and a report directory are enough, because every scan emits a complete, self-contained JSON.'}
+    </p>
+    <Fragment set:html={highlight(`# ${fr ? 'un scan par hote, un JSON par hote' : 'one scan per host, one JSON per host'}
+while read -r host; do
+  ./go/pavois scan "$host" --key ~/.ssh/id_ed25519 --sudo --on-target \\
+     --format json --out reports/ --fail-under 70 || echo "$host below threshold"
+done < inventory.txt
+
+# ${fr ? 'la note et les echecs de chaque hote, en une ligne' : 'each host grade and failures, one line each'}
+jq -r '.grade + " " + (.failed|tostring) + " " + .target' reports/*.json`, 'bash')} />
+    <p class="muted">
+      {fr
+        ? 'Le durcissement suit la même logique : un plan par hôte, revu, puis appliqué. Rien n’empêche de piloter la boucle depuis Ansible ou Rundeck : pavois est un binaire sans agent, qui utilise ton ssh_config et ton sudo.'
+        : 'Hardening follows the same shape: one plan per host, reviewed, then applied. Nothing stops you driving the loop from Ansible or Rundeck: pavois is an agentless binary that uses your ssh_config and your sudo.'}
     </p>
 
     <h2 id="takeaways">{fr ? 'À retenir' : 'Key takeaways'}</h2>
