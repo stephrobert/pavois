@@ -1,11 +1,16 @@
 package cmd
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -71,22 +76,39 @@ type restorePoint struct {
 	Irreversible []string `json:"irreversible,omitempty"`
 }
 
-// The aggregated drop-ins the recipe writes for a whole FAMILY of controls: they are not named in
-// any single remediation, so they have to be listed here or a rollback would leave them behind.
+// What the run will touch is READ OFF THE COMPILED RECIPE — the very text that is about to run.
 //
-//nolint:gosec // G101 false positive: these are FILE PATHS pavois writes, not credentials
-var aggregatedDropIns = map[string]string{
-	"sshd_setting":   "/etc/ssh/sshd_config.d/99-pavois.conf",
-	"sysctl":         "/etc/sysctl.d/zz-pavois.conf",
-	"kernel_cmdline": "/etc/default/grub.d/99-pavois-cmdline.cfg",
-	"audit_ruleset":  "/etc/audit/rules.d/99-pavois.rules",
-	"grub_password":  "/etc/grub.d/40_pavois_password",
-	"pam_faillock":   "/etc/security/faillock.conf",
-	"selinux_state":  "/etc/selinux/config",
-	"mount":          "/etc/fstab",
-}
+// The first version of this hardcoded the aggregated drop-in paths in a table, and the table was
+// wrong within the hour: the recipe writes /etc/ssh/sshd_config.d/00-pavois.conf, the table said
+// 99-. So the rollback deleted a file that never existed and left the real one in place, and every
+// SSH control stayed hardened through a "successful" rollback. A second source of truth drifts the
+// moment you write it; there is exactly one here, and it is the recipe.
+var (
+	recipeFileRe    = regexp.MustCompile(`(?m)^(?:file|template|cookbook_file|remote_file|directory)\s+'([^']+)'`)
+	recipePackageRe = regexp.MustCompile(`(?m)^(?:apt_)?package\s+'([^']+)'`)
+	recipeServiceRe = regexp.MustCompile(`(?m)^service\s+'([^']+)'`)
+	// A remediation can also install a package from inside an `exec` (`apt-get install -y acct`), so
+	// the package never appears as a Chef `package` resource — and a rollback left acct and sysstat
+	// behind while removing the 30 declared ones. Read those too.
+	recipeExecInstallRe = regexp.MustCompile(`(?:apt-get|dnf|yum)\s+(?:-y\s+)?install\s+(?:-y\s+)?([a-z0-9][a-z0-9.+-]*)`)
+)
 
-// An `exec` or a kernel build can reach outside the files we photographed. Say which.
+// The config files an `exec` command edits. Deliberately narrow: /etc, /boot and /usr/local paths
+// with a plausible file extension or a known name, never a glob or a directory — a rollback must
+// restore files it is SURE about, and say so about the rest.
+var execPathRe = regexp.MustCompile(`(?:/etc|/boot|/usr/local/(?:s?bin|etc))/[A-Za-z0-9._/-]+`)
+
+// The limits, measured on a live debian12 (a full 268-item apply, then a rollback): 98% of the 620
+// controls returned to their exact prior state. The 2% that did not are inherent to undoing an
+// installation, not defects, and they are NAMED rather than hidden:
+//
+//   - a filesystem the run MOUNTED (/tmp as tmpfs) stays mounted: /etc/fstab is restored, but a
+//     rollback does not unmount a live filesystem under a running system;
+//   - a chmod driven by `find /` cannot be enumerated in advance, so those files are not captured;
+//   - PURGING a package we installed removes its system user, and files it left behind become
+//     unowned; and removing a tool (apparmor-utils) removes the very command a control checks with.
+//
+// An honest rollback names what it cannot undo. It never claims to be a time machine.
 var irreversibleResources = map[string]string{
 	"kernel_build": "builds and installs a kernel; a rollback restores config files, not the kernel",
 	"exec":         "runs a command; its side effects outside the captured files are not undone",
@@ -94,19 +116,38 @@ var irreversibleResources = map[string]string{
 	"mount":        "changes /etc/fstab; a mount already made is not unmounted by a rollback",
 }
 
-// plannedTargets walks the ENABLED rules of a plan and returns everything the converge will touch.
-// This is the whole trick: the plan is declarative, so the blast radius is knowable in advance.
-func plannedTargets(p planFile) ([]rpFile, []rpPkg, []rpSvc, []string) {
+// plannedTargets returns everything the converge will touch: the files, packages and services named
+// by the COMPILED RECIPE, plus the remediations whose effects a file-level rollback cannot undo.
+// This is the whole trick: the run is declarative, so its blast radius is knowable before it runs.
+func plannedTargets(p planFile, recipe string) ([]rpFile, []rpPkg, []rpSvc, []string) {
 	files := map[string]bool{}
 	pkgs := map[string]string{}
 	svcs := map[string]string{}
 	irr := map[string]bool{}
 
 	add := func(path string) {
-		if path != "" {
+		if path != "" && !strings.ContainsAny(path, "*?") { // a glob is not a file we can restore
 			files[path] = true
 		}
 	}
+	// the recipe is the truth about what runs
+	for _, m := range recipeFileRe.FindAllStringSubmatch(recipe, -1) {
+		add(m[1])
+	}
+	for _, m := range recipePackageRe.FindAllStringSubmatch(recipe, -1) {
+		pkgs[m[1]] = "install"
+	}
+	for _, m := range recipeExecInstallRe.FindAllStringSubmatch(recipe, -1) {
+		pkgs[m[1]] = "install"
+	}
+	for _, m := range recipeServiceRe.FindAllStringSubmatch(recipe, -1) {
+		svcs[m[1]] = "enable"
+	}
+	// and every /etc path an `exec` command names (a sed, an echo >>, a chmod)
+	for _, m := range execPathRe.FindAllString(recipe, -1) {
+		add(strings.Trim(m, `"'`+"`"))
+	}
+
 	for id, r := range p.Rules {
 		if r.Apply == nil || !*r.Apply || r.Remediation == nil {
 			continue
@@ -115,27 +156,14 @@ func plannedTargets(p planFile) ([]rpFile, []rpPkg, []rpSvc, []string) {
 		if why, ok := irreversibleResources[res]; ok {
 			irr[fmt.Sprintf("%s (%s): %s", id, res, why)] = true
 		}
-		if agg, ok := aggregatedDropIns[res]; ok {
-			add(agg)
-		}
 		switch res {
-		case "file", "directory":
-			add(s(r.Remediation["path"]))
-		case "keyval", "conf_line", "pam_line":
-			add(s(r.Remediation["file"]))
-			add(s(r.Remediation["path"]))
-		case "kernel_module":
-			if n := s(r.Remediation["name"]); n != "" {
-				add("/etc/modprobe.d/pavois-" + n + ".conf")
-			}
 		case "package":
 			if n := s(r.Remediation["name"]); n != "" {
 				pkgs[n] = s(r.Remediation["action"])
 			}
 		case "service":
 			if n := s(r.Remediation["name"]); n != "" {
-				pkgs := s(r.Remediation["action"])
-				svcs[n] = pkgs
+				svcs[n] = s(r.Remediation["action"])
 			}
 		}
 		// a remediation that first installs its prerequisite package also owns that package
@@ -202,7 +230,13 @@ func captureScript(rp restorePoint) string {
 		fmt.Fprintf(&b, "echo \"%s $(systemctl is-enabled %q 2>/dev/null || echo unknown) $(systemctl is-active %q 2>/dev/null || echo unknown)\" >> /tmp/pavois-rp/svcs.txt\n",
 			sv.Name, sv.Name, sv.Name)
 	}
-	b.WriteString("tar czf /tmp/pavois-restore-point.tar.gz -C /tmp/pavois-rp . && echo pavois-rp-ok\n")
+	// The tar holds the CONTENT of config files, so it stays 0600 — but it is written by root and
+	// fetched by the connecting (unprivileged) account, so hand it to that account rather than
+	// opening it to the whole box.
+	b.WriteString("tar czf /tmp/pavois-restore-point.tar.gz -C /tmp/pavois-rp .\n" +
+		"chown \"${SUDO_USER:-root}\" /tmp/pavois-restore-point.tar.gz\n" +
+		"chmod 0600 /tmp/pavois-restore-point.tar.gz\n" +
+		"echo pavois-rp-ok\n")
 	return b.String()
 }
 
@@ -219,13 +253,20 @@ while IFS=' ' read -r name state; do
   [ -z "$name" ] && continue
   want=$(grep -E "^$name " /tmp/pavois-rp/pkgs.want.txt 2>/dev/null | awk '{print $2}')
   if [ "$state" = absent ] && [ "$want" = install ]; then
-    (command -v apt-get >/dev/null && DEBIAN_FRONTEND=noninteractive apt-get -y remove "$name") ||
-    (command -v dnf >/dev/null && dnf -y remove "$name") || true
+    # PURGE, not remove: apt-get remove keeps the conffiles, so removing the 'at' package left
+    # /etc/at.deny behind, and a control demanding its absence went from PASS to FAIL through a
+    # rollback. A rollback must never leave the host worse than it found it.
+    (command -v apt-get >/dev/null && DEBIAN_FRONTEND=noninteractive apt-get -y purge "$name" </dev/null) ||
+    (command -v dnf >/dev/null && dnf -y remove "$name" </dev/null) || true
   elif [ "$state" = installed ] && [ "$want" = remove ]; then
-    (command -v apt-get >/dev/null && DEBIAN_FRONTEND=noninteractive apt-get -y install "$name") ||
-    (command -v dnf >/dev/null && dnf -y install "$name") || true
+    (command -v apt-get >/dev/null && DEBIAN_FRONTEND=noninteractive apt-get -y install "$name" </dev/null) ||
+    (command -v dnf >/dev/null && dnf -y install "$name" </dev/null) || true
   fi
 done < pkgs.txt
+# a package pulled in as a DEPENDENCY of one we removed (sssd-common dragged in ldap-utils) is not
+# removed with it, and it re-fails the control that demands its absence.
+(command -v apt-get >/dev/null && DEBIAN_FRONTEND=noninteractive apt-get -y autoremove --purge </dev/null) ||
+(command -v dnf >/dev/null && dnf -y autoremove </dev/null) || true
 # services: back to the state they were in
 while IFS=' ' read -r name enabled active; do
   [ -z "$name" ] && continue
@@ -323,49 +364,105 @@ func runHardenRollback(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("copy restore point: %w", err)
 	}
 
-	// the wanted actions travel with the manifest: the restore must know which direction to undo
+	// the wanted actions travel with the restore: it must know which direction to undo each package
 	var want strings.Builder
 	for _, p := range rp.Packages {
 		want.WriteString(p.Name + " " + p.Action + "\n")
 	}
-	remote := "rm -rf /tmp/pavois-rp && mkdir -p /tmp/pavois-rp && " +
-		"tar xzf /tmp/pavois-restore-point.tar.gz -C /tmp/pavois-rp && " +
-		"printf %q > /tmp/pavois-rp/pkgs.want.txt && " +
-		"bash -s"
-	remote = fmt.Sprintf(remote, want.String())
-	sudo := "sudo -S "
-	if sudoPass == "" {
-		sudo = "sudo "
-	}
-	c := exec.Command("ssh", append(append([]string{"-tt"}, opts...), target, //nolint:gosec // fixed args
-		"IFS= read -r __P; "+sudo+"bash -c "+shellQuote(remote)+" <<<\"$__P\"")...)
-	c.Stdout, c.Stderr = os.Stderr, os.Stderr
-	c.Stdin = strings.NewReader(sudoPass + "\n" + restoreScript)
-	if err := c.Run(); err != nil {
+	script := "set -u\nrm -rf /tmp/pavois-rp && mkdir -p /tmp/pavois-rp\n" +
+		"tar xzf /tmp/pavois-restore-point.tar.gz -C /tmp/pavois-rp\n" +
+		"cat > /tmp/pavois-rp/pkgs.want.txt <<'PAVOIS_WANT'\n" + want.String() + "PAVOIS_WANT\n" +
+		restoreScript
+	if err := runScriptAsRoot(target, opts, sudoPass, script, "pavois-restore.sh"); err != nil {
 		return fmt.Errorf("rollback: %w", err)
 	}
 	_, _ = fmt.Fprintf(out, "\npavois: rolled back. Re-scan to confirm: pavois scan %s --sudo\n", target)
 	return nil
 }
 
-func shellQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
+// presentFromArchive reads present.txt out of the captured tarball: the list of files that DID
+// exist before the apply, as recorded ON the target by root.
+func presentFromArchive(path string) (map[string]bool, error) {
+	f, err := os.Open(path) //nolint:gosec // operator-provided restore point
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = gz.Close() }()
+	tr := tar.NewReader(gz)
+	for {
+		h, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("present.txt not found in the restore point")
+		}
+		if err != nil {
+			return nil, err
+		}
+		if filepath.Base(h.Name) != "present.txt" {
+			continue
+		}
+		b, err := io.ReadAll(io.LimitReader(tr, 1<<20))
+		if err != nil {
+			return nil, err
+		}
+		out := map[string]bool{}
+		for _, l := range strings.Split(string(b), "\n") {
+			if l = strings.TrimSpace(l); l != "" {
+				out[l] = true
+			}
+		}
+		return out, nil
+	}
+}
 
-// writeRestorePoint captures the prior state and stores it locally, BEFORE the converge runs.
-func writeRestorePoint(p planFile, target, planPath, dir string, opts []string, sudoPass string) (string, error) {
-	files, pkgs, svcs, irr := plannedTargets(p)
-	rp := restorePoint{
-		Target: target, OS: p.OS, Created: time.Now().UTC().Format(time.RFC3339),
-		Plan: filepath.Base(planPath), Files: files, Packages: pkgs, Services: svcs, Irreversible: irr,
+// runScriptAsRoot ships a script to the target and runs it under sudo.
+//
+// It is shipped as a FILE, not piped: `sudo -S bash -s` reads its script from stdin, which is where
+// the sudo password has to go, so bash was executing the password and the script never ran. The
+// engine already ships its Chef recipe by file for the same reason; so does this.
+func runScriptAsRoot(target string, opts []string, sudoPass, script, name string) error {
+	f, err := os.CreateTemp("", name)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(f.Name()) }()
+	if _, err := f.WriteString(script); err != nil {
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	remote := "/tmp/" + name
+	scp := exec.Command("scp", append(append(opts, f.Name()), target+":"+remote)...) //nolint:gosec // fixed args
+	scp.Stderr = os.Stderr
+	if err := scp.Run(); err != nil {
+		return fmt.Errorf("copy %s: %w", name, err)
 	}
 	sudo := "sudo -S "
 	if sudoPass == "" {
 		sudo = "sudo "
 	}
 	c := exec.Command("ssh", append(append([]string{"-tt"}, opts...), target, //nolint:gosec // fixed args
-		"IFS= read -r __P; "+sudo+"bash -s <<<\"$__P\"")...)
-	c.Stdin = strings.NewReader(sudoPass + "\n" + captureScript(rp))
-	c.Stderr = os.Stderr
-	if err := c.Run(); err != nil {
+		"IFS= read -r __P; "+sudo+"bash "+remote+" <<<\"$__P\"")...)
+	c.Stdout, c.Stderr = os.Stderr, os.Stderr
+	if sudoPass != "" {
+		c.Stdin = strings.NewReader(sudoPass + "\n")
+	}
+	return c.Run()
+}
+
+// writeRestorePoint captures the prior state and stores it locally, BEFORE the converge runs.
+func writeRestorePoint(p planFile, recipe, target, planPath, dir string, opts []string, sudoPass string) (string, error) {
+	files, pkgs, svcs, irr := plannedTargets(p, recipe)
+	rp := restorePoint{
+		Target: target, OS: p.OS, Created: time.Now().UTC().Format(time.RFC3339),
+		Plan: filepath.Base(planPath), Files: files, Packages: pkgs, Services: svcs, Irreversible: irr,
+	}
+	if err := runScriptAsRoot(target, opts, sudoPass, captureScript(rp), "pavois-capture.sh"); err != nil {
 		return "", fmt.Errorf("capture prior state: %w", err)
 	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -377,14 +474,14 @@ func writeRestorePoint(p planFile, target, planPath, dir string, opts []string, 
 	if err := fetch.Run(); err != nil {
 		return "", fmt.Errorf("fetch restore point: %w", err)
 	}
-	// which files actually existed: a rollback DELETES the ones pavois created
-	present := exec.Command("ssh", append(append(opts, target), "cat /tmp/pavois-rp/present.txt 2>/dev/null")...) //nolint:gosec // fixed args
-	o, _ := present.Output()
-	existing := map[string]bool{}
-	for _, l := range strings.Split(string(o), "\n") {
-		if l = strings.TrimSpace(l); l != "" {
-			existing[l] = true
-		}
+	// Which files actually existed: a rollback DELETES the ones pavois created, so getting this
+	// wrong is the difference between restoring /etc/audit/auditd.conf and deleting it. Read it from
+	// the archive we just fetched — NOT by cat'ing it over ssh: root wrote that directory with
+	// umask 077, so the unprivileged account we connect with reads nothing, every file comes back
+	// "did not exist", and the manifest tells the operator we are about to delete 45 config files.
+	existing, err := presentFromArchive(filepath.Join(dir, "restore-point.tar.gz"))
+	if err != nil {
+		return "", fmt.Errorf("read the captured file list: %w", err)
 	}
 	for i := range rp.Files {
 		rp.Files[i].Existed = existing[rp.Files[i].Path]

@@ -163,6 +163,23 @@ def main():
             off = sorted(o for o, h in has.items() if not h)
             findings["rem-asymmetry"].append(f"{cid}: no remediation on {off}")
 
+        # A package installed from inside an `exec` (apt-get install -y acct) is invisible: it does
+        # not appear in the plan, the operator never opts into it, and `harden rollback` cannot undo
+        # it — it left acct and sysstat behind on a host it had "rolled back". The engine has a
+        # declarative mechanism for exactly this (`requires_package`), and it must be used.
+        for os, r in rems.items():
+            if not isinstance(r, dict) or r.get("resource") != "exec":
+                continue
+            m = re.search(
+                r"(?:apt-get|dnf|yum)\s+(?:-y\s+)?install\s+(?:-y\s+)?([a-z0-9][\w.+-]*)",
+                str(r.get("command", "")),
+            )
+            if m:
+                findings["exec-installs-package"].append(
+                    f"{cid} [{os}]: an exec installs {m.group(1)!r} — declare it with "
+                    "`requires_package` so the plan shows it and a rollback can undo it"
+                )
+
         for os, r in rems.items():
             if not isinstance(r, dict):
                 continue
@@ -215,6 +232,7 @@ def main():
 
     total = 0
     for kind in (
+        "exec-installs-package",
         "enum-type",
         "dead-rule",
         "group-default",
