@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,10 +26,10 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "1.8.6",
       "1.7.6",
       "1.7.7",
       "3.4.2",
+      "1.8.6",
       "1.8.4"
     ],
     "nist": [
@@ -41,25 +42,28 @@
     "stig": "UBTU-24-200040"
   },
   "check": [
+    "only_if { command('dconf').exist? }",
     "describe command('{ s=$(grep -rhE \\'^[[:space:]]*automount-open[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null | tail -1 | sed -E \\'s/^[^=]*=[[:space:]]*//\\' | tr -d \"\\'\\\\\"\"); [ \"$s\" = \"false\" ] && grep -rqxF \\'/org/gnome/desktop/media-handling/automount-open\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
   "remediation": {
-    "resource": "dconf"
+    "key": "org/gnome/desktop/media-handling/automount-open",
+    "resource": "dconf",
+    "value": "false"
   },
   "title": {
     "en": "Disable GNOME3 Automount Opening",
     "fr": "Désactiver l'ouverture automatique des supports montés GNOME3"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Beyond auto-mounting, GNOME can automatically **open** a file-manager window for newly inserted media, which triggers thumbnailers and previewers that parse untrusted file content. This widens the attack surface for malicious removable devices. Setting `automount-open=false` and locking it forces the user to open media deliberately. The trade-off is reduced convenience for legitimate removable-media use.",
-    "fr": "Au-delà du montage automatique, GNOME peut **ouvrir** automatiquement une fenêtre du gestionnaire de fichiers pour les supports nouvellement insérés, ce qui déclenche les générateurs de vignettes et les prévisualiseurs qui analysent du contenu non fiable. Cela élargit la surface d'attaque des périphériques amovibles malveillants. Définir `automount-open=false` et le verrouiller impose à l'utilisateur d'ouvrir les supports délibérément. En contrepartie, l'usage légitime des supports amovibles est moins pratique."
-  },
   "summary": {
     "en": "Prevents GNOME from automatically opening a file-manager window for inserted media by setting `automount-open=false` and locking the key.",
     "fr": "Empêche GNOME d'ouvrir automatiquement une fenêtre du gestionnaire de fichiers pour les supports insérés en définissant `automount-open=false` et en verrouillant la clé."
+  },
+  "rationale": {
+    "en": "Beyond auto-mounting, GNOME can automatically **open** a file-manager window for newly inserted media, which triggers thumbnailers and previewers that parse untrusted file content. This widens the attack surface for malicious removable devices. Setting `automount-open=false` and locking it forces the user to open media deliberately. The trade-off is reduced convenience for legitimate removable-media use.",
+    "fr": "Au-delà du montage automatique, GNOME peut **ouvrir** automatiquement une fenêtre du gestionnaire de fichiers pour les supports nouvellement insérés, ce qui déclenche les générateurs de vignettes et les prévisualiseurs qui analysent du contenu non fiable. Cela élargit la surface d'attaque des périphériques amovibles malveillants. Définir `automount-open=false` et le verrouiller impose à l'utilisateur d'ouvrir les supports délibérément. En contrepartie, l'usage légitime des supports amovibles est moins pratique."
   },
   "check_note": {
     "en": "Pavois checks the **effective** dconf state: the last definition of `automount-open` across `/etc/dconf/db/*.d/*` must resolve to `false`, **and** the key `/org/gnome/desktop/media-handling/automount-open` must appear in a dconf **lock** file. Evaluating resolved precedence (last drop-in wins) plus the lock matches how dconf computes the real value, so a later drop-in re-enabling auto-open or unlocking the key is flagged.",

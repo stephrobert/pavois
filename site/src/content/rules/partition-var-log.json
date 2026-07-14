@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -37,19 +38,23 @@
     "  it { should be_mounted }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# /var/log should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /var/log >/dev/null 2>&1 && echo '/var/log is already a mount point' || echo '/var/log is NOT separate'\n# Then: dedicate an LVM volume / disk to /var/log and add it to /etc/fstab.\n",
+    "reason": "a separate /var/log filesystem needs partitioning/LVM/tmpfs, not a safe runtime change",
+    "resource": "manual"
+  },
   "title": {
     "en": "Ensure /var/log Located On Separate Partition",
     "fr": "Placer /var/log sur une partition distincte"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Mounting `/var/log` on its own partition separates log files from other data in `/var` and prevents **runaway logging from filling the root filesystem**, which would crash services and lock out administrators. A dedicated partition also lets you apply restrictive mount options and preserves logs needed for incident investigation.",
-    "fr": "Monter `/var/log` sur sa propre partition sépare les journaux des autres données de `/var` et empêche qu'une **journalisation incontrôlée ne sature le système de fichiers racine**, ce qui ferait planter les services et exclurait les administrateurs. Une partition dédiée permet aussi d'appliquer des options de montage restrictives et préserve les journaux nécessaires aux investigations d'incident."
-  },
   "summary": {
     "en": "Mounts `/var/log` on a **dedicated filesystem** so log growth is contained and cannot exhaust the root partition.",
     "fr": "Monte `/var/log` sur un **système de fichiers dédié** afin de contenir la croissance des journaux et d'éviter qu'elle ne sature la partition racine."
+  },
+  "rationale": {
+    "en": "Mounting `/var/log` on its own partition separates log files from other data in `/var` and prevents **runaway logging from filling the root filesystem**, which would crash services and lock out administrators. A dedicated partition also lets you apply restrictive mount options and preserves logs needed for incident investigation.",
+    "fr": "Monter `/var/log` sur sa propre partition sépare les journaux des autres données de `/var` et empêche qu'une **journalisation incontrôlée ne sature le système de fichiers racine**, ce qui ferait planter les services et exclurait les administrateurs. Une partition dédiée permet aussi d'appliquer des options de montage restrictives et préserve les journaux nécessaires aux investigations d'incident."
   },
   "check_note": {
     "en": "Pavois reads the **effective** mount table via the `mount('/var/log')` resource (`findmnt` / `/proc/self/mountinfo`), not `/etc/fstab`. `fstab` only records intent, a mount can fail at boot or be shadowed by another mount. Inspecting the live kernel state proves `/var/log` is **currently** a separate mounted filesystem.",

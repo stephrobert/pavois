@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "2.4.1.8",
       "2.2.6",
+      "2.4.1.8",
       "2.4.1.9"
     ],
     "pci-dss": "2.2.6"
@@ -36,19 +37,23 @@
     "  it { should_not exist }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "action": "delete",
+    "path": "/etc/cron.deny",
+    "resource": "file"
+  },
   "title": {
     "en": "Ensure that /etc/cron.deny does not exist",
     "fr": "Garantir l'absence de /etc/cron.deny"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "When `cron.allow` is present, `crond` ignores `cron.deny`, but a leftover `cron.deny` is misleading and becomes a permissive fallback if `cron.allow` is ever removed. A deny list is inherently risky: any account not explicitly listed is allowed, so a forgotten or newly created user silently gains the ability to schedule jobs. Removing `cron.deny` forces reliance on the safer allow-list model.",
-    "fr": "Lorsque `cron.allow` est présent, `crond` ignore `cron.deny`, mais un `cron.deny` résiduel est trompeur et devient un repli permissif si `cron.allow` venait à être supprimé. Une liste d'interdiction est intrinsèquement risquée : tout compte non explicitement listé est autorisé, si bien qu'un utilisateur oublié ou nouvellement créé obtient silencieusement la capacité de planifier des tâches. Supprimer `cron.deny` force le recours au modèle de liste d'autorisation, plus sûr."
-  },
   "summary": {
     "en": "Ensures `/etc/cron.deny` does **not** exist, so `crontab` access is governed solely by the allow list (`/etc/cron.allow`) under a default-deny model.",
     "fr": "Garantit que `/etc/cron.deny` n'existe **pas**, afin que l'accès à `crontab` soit régi uniquement par la liste d'autorisation (`/etc/cron.allow`) selon un modèle de refus par défaut."
+  },
+  "rationale": {
+    "en": "When `cron.allow` is present, `crond` ignores `cron.deny`, but a leftover `cron.deny` is misleading and becomes a permissive fallback if `cron.allow` is ever removed. A deny list is inherently risky: any account not explicitly listed is allowed, so a forgotten or newly created user silently gains the ability to schedule jobs. Removing `cron.deny` forces reliance on the safer allow-list model.",
+    "fr": "Lorsque `cron.allow` est présent, `crond` ignore `cron.deny`, mais un `cron.deny` résiduel est trompeur et devient un repli permissif si `cron.allow` venait à être supprimé. Une liste d'interdiction est intrinsèquement risquée : tout compte non explicitement listé est autorisé, si bien qu'un utilisateur oublié ou nouvellement créé obtient silencieusement la capacité de planifier des tâches. Supprimer `cron.deny` force le recours au modèle de liste d'autorisation, plus sûr."
   },
   "check_note": {
     "en": "Pavois verifies the **actual** absence of `/etc/cron.deny` on the live system via the InSpec `file` resource, which queries the real filesystem rather than any template. This absence is the effective access-control state read by `crond`.",

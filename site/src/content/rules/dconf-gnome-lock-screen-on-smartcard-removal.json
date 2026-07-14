@@ -1,10 +1,12 @@
 {
   "id": "dconf-gnome-lock-screen-on-smartcard-removal",
   "supported_os": [
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "rhel10": "1.0.0",
@@ -20,25 +22,28 @@
     "stig": "UBTU-24-200042"
   },
   "check": [
+    "only_if { command('dconf').exist? }",
     "describe command('{ grep -rqE \\'^[[:space:]]*removal-action[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null && grep -rqxF \\'/org/gnome/settings-daemon/peripherals/smartcard/removal-action\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
   "remediation": {
-    "resource": "dconf"
+    "key": "org/gnome/settings-daemon/peripherals/smartcard/removal-action",
+    "resource": "dconf",
+    "value": "'lock-screen'"
   },
   "title": {
     "en": "Enable the GNOME3 Screen Locking On Smartcard Removal",
     "fr": "Activer le verrouillage de l'écran GNOME3 au retrait de la carte à puce"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "On smartcard-authenticated workstations, the card is the user's physical token of presence. If removing it does not lock the session, a user who walks away while pocketing their badge leaves an **unlocked, authenticated session** exposed to anyone nearby. Setting `removal-action='lock-screen'` ties the session lock to the physical token, closing the window of unattended access.",
-    "fr": "Sur les postes authentifiés par carte à puce, la carte est le jeton physique de présence de l'utilisateur. Si son retrait ne verrouille pas la session, un utilisateur qui s'éloigne en récupérant son badge laisse une **session ouverte et authentifiée** exposée à toute personne à proximité. Définir `removal-action='lock-screen'` lie le verrouillage de session au jeton physique, supprimant la fenêtre d'accès non surveillé."
-  },
   "summary": {
     "en": "Configures GNOME to lock the screen automatically when the user's smartcard is removed, enforced system-wide via the `dconf` database and locked against user override.",
     "fr": "Configure GNOME pour verrouiller automatiquement l'écran au retrait de la carte à puce de l'utilisateur, appliqué à tout le système via la base `dconf` et verrouillé contre toute modification par l'utilisateur."
+  },
+  "rationale": {
+    "en": "On smartcard-authenticated workstations, the card is the user's physical token of presence. If removing it does not lock the session, a user who walks away while pocketing their badge leaves an **unlocked, authenticated session** exposed to anyone nearby. Setting `removal-action='lock-screen'` ties the session lock to the physical token, closing the window of unattended access.",
+    "fr": "Sur les postes authentifiés par carte à puce, la carte est le jeton physique de présence de l'utilisateur. Si son retrait ne verrouille pas la session, un utilisateur qui s'éloigne en récupérant son badge laisse une **session ouverte et authentifiée** exposée à toute personne à proximité. Définir `removal-action='lock-screen'` lie le verrouillage de session au jeton physique, supprimant la fenêtre d'accès non surveillé."
   },
   "check_note": {
     "en": "Pavois confirms two things in the **effective** `dconf` configuration: that a key file under `/etc/dconf/db/*.d/` actually sets `removal-action`, and that `/org/gnome/settings-daemon/peripherals/smartcard/removal-action` appears in a `locks/` file so users cannot override it. Reading the resolved dconf database (not a single GUI dialog) catches the value wherever a drop-in defines it.",

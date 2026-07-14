@@ -1,11 +1,13 @@
 {
   "id": "findloop-file-owner-var-log",
   "supported_os": [
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "rhel10": "1.0.0",
@@ -21,10 +23,11 @@
   "norms": {
     "bp28": "R71",
     "cis": [
-      "6.2.3.1",
+      "6.1.4.1",
       "6.2.4.1",
-      "6.2.2.1",
-      "6.1.4.1"
+      "6.2.6.1",
+      "6.2.3.1",
+      "6.2.2.1"
     ],
     "pci-dss": "10.3.2",
     "stig": [
@@ -33,23 +36,29 @@
     ]
   },
   "check": [
-    "describe command('timeout 90 find /var/log -type f ! -user root ! -user syslog 2>/dev/null') do",
+    "describe command('timeout 90 find /var/log -type f ! -user root ! -user syslog ! -user _aide 2>/dev/null') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true",
+    "name": "fix-varlog-ownership",
+    "not_if": "test -z \"$(find /var/log -type f \\( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \\) 2>/dev/null | head -1)\"",
+    "resource": "exec"
+  },
   "title": {
     "en": "Verify the user owning the /var/log directory",
     "fr": "Vérifier l'utilisateur propriétaire du répertoire /var/log"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/var/log` tree holds system, authentication and audit logs that must only be reachable by authorized personnel. A log file owned by a user other than **root** or **syslog** can be read by that user, exposing error messages, credentials or session data, or rewritten to erase evidence of an attack. Restricting the file owner preserves the confidentiality and integrity of the audit trail.",
-    "fr": "L'arborescence `/var/log` contient les journaux système, d'authentification et d'audit qui ne doivent être accessibles qu'au personnel autorisé. Un fichier de journal appartenant à un utilisateur autre que **root** ou **syslog** peut être lu par cet utilisateur, exposant des messages d'erreur, des identifiants ou des données de session, ou réécrit pour effacer les traces d'une attaque. Restreindre le propriétaire du fichier préserve la confidentialité et l'intégrité de la piste d'audit."
-  },
   "summary": {
     "en": "Ensures every file under `/var/log` is owned by the **root** or **syslog** user.",
     "fr": "Garantit que chaque fichier sous `/var/log` appartient à l'utilisateur **root** ou **syslog**."
+  },
+  "rationale": {
+    "en": "The `/var/log` tree holds system, authentication and audit logs that must only be reachable by authorized personnel. A log file owned by a user other than **root** or **syslog** can be read by that user, exposing error messages, credentials or session data, or rewritten to erase evidence of an attack. Restricting the file owner preserves the confidentiality and integrity of the audit trail.",
+    "fr": "L'arborescence `/var/log` contient les journaux système, d'authentification et d'audit qui ne doivent être accessibles qu'au personnel autorisé. Un fichier de journal appartenant à un utilisateur autre que **root** ou **syslog** peut être lu par cet utilisateur, exposant des messages d'erreur, des identifiants ou des données de session, ou réécrit pour effacer les traces d'une attaque. Restreindre le propriétaire du fichier préserve la confidentialité et l'intégrité de la piste d'audit."
   },
   "check_note": {
     "en": "Pavois runs `find /var/log -type f ! -user root ! -user syslog` and expects **empty output**. Auditing the live filesystem catches logs created at runtime by daemons, rotated files and operator-dropped files that a static file-list or package check would miss.",

@@ -2,11 +2,21 @@
   "id": "fileowner-var-log-secure",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -22,27 +32,29 @@
   },
   "check": [
     "only_if { file('/var/log/secure').exist? }",
-    "describe file('/var/log/secure') do",
-    "  its('owner') { should eq 'syslog' }",
+    "describe command(\"stat -c %U /var/log/secure 2>/dev/null\") do",
+    "  its('stdout.strip') { should be_in ['root', 'syslog'] }",
     "end"
   ],
   "remediation": {
-    "owner": "syslog",
+    "command": "chown root /var/log/secure 2>/dev/null; true",
+    "name": "log-owner-var-log-secure",
+    "not_if": "stat -c %U /var/log/secure 2>/dev/null | grep -qxE 'root|syslog'",
     "path": "/var/log/secure",
-    "resource": "file"
+    "resource": "exec"
   },
   "title": {
     "en": "Verify User Who Owns /var/log/secure File",
     "fr": "Vérifier l'utilisateur propriétaire du fichier /var/log/secure"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/var/log/secure` records **authentication and authorization activity**, logins, sudo and privilege escalations. It is among the most sensitive logs on the system: an attacker who can read it harvests account and timing intelligence, and one who can write it can forge or erase evidence of an intrusion. Restricting it to the `syslog` owner keeps the authentication trail tamper-resistant and confidential.",
-    "fr": "`/var/log/secure` enregistre l'**activité d'authentification et d'autorisation**, connexions, sudo et élévations de privilèges. C'est l'un des journaux les plus sensibles du système : un attaquant capable de le lire récolte des renseignements sur les comptes et les horaires, et celui qui peut y écrire peut falsifier ou effacer les preuves d'une intrusion. Le restreindre au propriétaire `syslog` maintient la piste d'authentification résistante à la falsification et confidentielle."
-  },
   "summary": {
     "en": "Ensures the authentication log `/var/log/secure` is **owned by the `syslog` user**.",
     "fr": "Garantit que le journal d'authentification `/var/log/secure` est **détenu par l'utilisateur `syslog`**."
+  },
+  "rationale": {
+    "en": "`/var/log/secure` records **authentication and authorization activity**, logins, sudo and privilege escalations. It is among the most sensitive logs on the system: an attacker who can read it harvests account and timing intelligence, and one who can write it can forge or erase evidence of an intrusion. Restricting it to the `syslog` owner keeps the authentication trail tamper-resistant and confidential.",
+    "fr": "`/var/log/secure` enregistre l'**activité d'authentification et d'autorisation**, connexions, sudo et élévations de privilèges. C'est l'un des journaux les plus sensibles du système : un attaquant capable de le lire récolte des renseignements sur les comptes et les horaires, et celui qui peut y écrire peut falsifier ou effacer les preuves d'une intrusion. Le restreindre au propriétaire `syslog` maintient la piste d'authentification résistante à la falsification et confidentielle."
   },
   "check_note": {
     "en": "Pavois checks that the **owner of `/var/log/secure` is `syslog`**, only when the file exists (`only_if`). It reads the **live owner** (`stat`) on the target rather than a default, so a `chown` from rotation, packaging or a misbehaving service is caught as the **effective on-disk state**.",

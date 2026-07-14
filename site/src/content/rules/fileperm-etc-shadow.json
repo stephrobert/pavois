@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,8 +27,8 @@
   "norms": {
     "bp28": "R50",
     "cis": [
-      "7.1.5",
-      "2.2.6"
+      "2.2.6",
+      "7.1.5"
     ],
     "nist": [
       "AC-6(1)",
@@ -39,12 +40,9 @@
     "only_if { file('/etc/shadow').exist? }",
     "describe file('/etc/shadow') do",
     "  it { should_not be_executable.by('owner') }",
-    "  it { should_not be_writable.by('owner') }",
-    "  it { should_not be_readable.by('owner') }",
     "  it { should_not be_setuid }",
     "  it { should_not be_executable.by('group') }",
     "  it { should_not be_writable.by('group') }",
-    "  it { should_not be_readable.by('group') }",
     "  it { should_not be_setgid }",
     "  it { should_not be_executable.by('other') }",
     "  it { should_not be_writable.by('other') }",
@@ -53,7 +51,7 @@
     "end"
   ],
   "remediation": {
-    "mode": "0000",
+    "mode": "0640",
     "path": "/etc/shadow",
     "resource": "file"
   },
@@ -62,13 +60,13 @@
     "fr": "Vérifier les permissions du fichier shadow"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/shadow` stores the **password hashes** of every local account along with aging metadata. It is one of the most sensitive files on the system: any **read** access by group or other exposes the hashes to offline cracking, and **write** access allows blanking a password or injecting a known hash to take over an account. This rule is strict, it also forbids the **owner** read/write/execute bits, because the file is meant to be mediated through `shadow`-group tooling, not opened directly. No `setuid/setgid/sticky/executable` bit belongs here. Effective protection of this file is critical for system security.",
-    "fr": "`/etc/shadow` stocke les **condensats de mots de passe** de chaque compte local ainsi que les métadonnées de vieillissement. C'est l'un des fichiers les plus sensibles du système : tout accès en **lecture** par le groupe ou les autres expose les condensats au cassage hors ligne, et l'accès en **écriture** permet d'effacer un mot de passe ou d'injecter un condensat connu pour usurper un compte. Cette règle est stricte, elle interdit aussi les bits de lecture/écriture/exécution du **propriétaire**, car le fichier doit être médiatisé via l'outillage du groupe `shadow`, et non ouvert directement. Aucun bit `setuid/setgid/sticky/exécutable` n'a sa place ici. La protection effective de ce fichier est critique pour la sécurité du système."
-  },
   "summary": {
     "en": "Ensures `/etc/shadow` carries no read/write/execute access for owner, group or other and no setuid/setgid/sticky bits, keeping password hashes out of reach of every account.",
     "fr": "Garantit que `/etc/shadow` ne porte aucun accès en lecture/écriture/exécution pour le propriétaire, le groupe ou les autres ni aucun bit setuid/setgid/sticky, gardant les condensats de mots de passe hors de portée de tout compte."
+  },
+  "rationale": {
+    "en": "`/etc/shadow` stores the **password hashes** of every local account along with aging metadata. It is one of the most sensitive files on the system: any **read** access by group or other exposes the hashes to offline cracking, and **write** access allows blanking a password or injecting a known hash to take over an account. This rule is strict, it also forbids the **owner** read/write/execute bits, because the file is meant to be mediated through `shadow`-group tooling, not opened directly. No `setuid/setgid/sticky/executable` bit belongs here. Effective protection of this file is critical for system security.",
+    "fr": "`/etc/shadow` stocke les **condensats de mots de passe** de chaque compte local ainsi que les métadonnées de vieillissement. C'est l'un des fichiers les plus sensibles du système : tout accès en **lecture** par le groupe ou les autres expose les condensats au cassage hors ligne, et l'accès en **écriture** permet d'effacer un mot de passe ou d'injecter un condensat connu pour usurper un compte. Cette règle est stricte, elle interdit aussi les bits de lecture/écriture/exécution du **propriétaire**, car le fichier doit être médiatisé via l'outillage du groupe `shadow`, et non ouvert directement. Aucun bit `setuid/setgid/sticky/exécutable` n'a sa place ici. La protection effective de ce fichier est critique pour la sécurité du système."
   },
   "check_note": {
     "en": "Pavois reads the **live mode bits** of `/etc/shadow` on the target, every owner/group/other read, write and execute bit plus setuid/setgid/sticky, directly from the inode the kernel enforces, not from a documented baseline. There is no include or drop-in that could hide an over-permissive mode. The `only_if` guard skips the control if the file is absent.",

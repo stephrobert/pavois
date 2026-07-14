@@ -856,15 +856,14 @@ audit-kernel-module-loading:
   norms:
     bp28: R73
     cis:
-    - '@os':
+      '@os':
         fedora:
-        - 6.3.3.31
-        - 6.3.3.30
         - 6.3.3.29
+        - 6.3.3.30
+        - 6.3.3.31
         rhel8: 6.3.3.19
         rhel9: 6.3.3.19
         rhel10: 6.3.3.19
-    - '@os':
         debian12: 6.2.3.19
         debian13: 6.3.3.19
         ubuntu2404: 6.3.3.19
@@ -1548,18 +1547,17 @@ audit-sysadmin-actions:
   norms:
     bp28: R73
     cis:
-    - '@os':
+      '@os':
         debian12:
         - 10.2.1.5
         - 6.2.3.1
-    - '@os':
-        fedora: 6.3.3.1
-        rhel8: 6.3.3.1
-        rhel9: 6.3.3.1
-        rhel10: 6.3.3.1
-        ubuntu2204: 6.3.3.1
         ubuntu2404: 6.2.3.1
         ubuntu2604: 6.2.3.1
+        rhel8: 6.3.3.1
+        rhel10: 6.3.3.1
+        fedora: 6.3.3.1
+        rhel9: 6.3.3.1
+        ubuntu2204: 6.3.3.1
     nist:
     - 3.1.7
     - AC-2(7)(b)
@@ -3910,52 +3908,6 @@ dconf-gnome-login-retries:
   socle: SOCLE-CLD-GEN-013
   ssg: dconf_gnome_login_retries
   title: Set the GNOME3 Login Number of Failures
-  remediation_class: auto
-dconf-gnome-remote-access-credential-prompt:
-  applicable_os: []
-  check:
-  - only_if { command('dconf').exist? }
-  - describe command('{ grep -rqE \'^[[:space:]]*authentication-methods[[:space:]]*=\' /etc/dconf/db/*.d/* 2>/dev/null && grep -rqxF \'/org/gnome/Vino/authentication-methods\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do
-  - '  its(''stdout.strip'') { should eq ''ok'' }'
-  - end
-  domain: GNOME desktop (dconf)
-  evidence_type: persistent-config
-  impact: 0.5
-  levels: {}
-  norms:
-    nist: 3.1.12
-  reboot_survivable: 'yes'
-  remediation:
-    key: org/gnome/Vino/authentication-methods
-    resource: dconf
-    value: '[''vnc'']'
-  severity: medium
-  socle: SOCLE-CLD-GEN-014
-  ssg: dconf_gnome_remote_access_credential_prompt
-  title: Require Credential Prompting for Remote Access in GNOME3
-  remediation_class: auto
-dconf-gnome-remote-access-encryption:
-  applicable_os: []
-  check:
-  - only_if { command('dconf').exist? }
-  - describe command('{ s=$(grep -rhE \'^[[:space:]]*require-encryption[[:space:]]*=\' /etc/dconf/db/*.d/* 2>/dev/null | tail -1 | sed -E \'s/^[^=]*=[[:space:]]*//\' | tr -d "\'\\""); [ "$s" = "true" ] && grep -rqxF \'/org/gnome/Vino/require-encryption\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do
-  - '  its(''stdout.strip'') { should eq ''ok'' }'
-  - end
-  domain: GNOME desktop (dconf)
-  evidence_type: persistent-config
-  impact: 0.5
-  levels: {}
-  norms:
-    nist: 3.1.13
-  reboot_survivable: 'yes'
-  remediation:
-    key: org/gnome/Vino/require-encryption
-    resource: dconf
-    value: 'true'
-  severity: medium
-  socle: SOCLE-CLD-GEN-015
-  ssg: dconf_gnome_remote_access_encryption
-  title: Require Encryption for Remote Access in GNOME3
   remediation_class: auto
 dconf-gnome-screensaver:
   applicable_os:
@@ -7462,31 +7414,6 @@ filegroupowner-var-log-waagent:
     value: '''adm'''
   title: Verify Group Who Owns /var/log/waagent.log File
   remediation_class: auto
-filegroupowner-var-log-wbtmp:
-  applicable_os: []
-  domain: File ownership
-  evidence_type: filesystem-state
-  impact: 0.5
-  levels:
-    cis: '1'
-  norms:
-    cis:
-      '@os': {}
-  reboot_survivable: 'yes'
-  remediation:
-    group: utmp
-    path: /var/log/wbtmp
-    resource: file
-  severity: medium
-  socle: SOCLE-CLD-FSP-050
-  ssg: file_groupowner_var_log_wbtmp
-  template:
-    attr: group
-    name: file_owner
-    path: /var/log/wbtmp
-    value: '''utmp'''
-  title: Verify Group Who Owns /var/log/(b|w)tmp(.*|-*) File
-  remediation_class: auto
 filegroupownership-audit-binaries:
   applicable_os:
   - debian12
@@ -10140,31 +10067,6 @@ fileowner-var-log-waagent:
   - describe command("stat -c %U /var/log/waagent.log 2>/dev/null") do
   - "  its('stdout.strip') { should be_in ['root', '@{usr.varlog}'] }"
   - end
-fileowner-var-log-wbtmp:
-  applicable_os: []
-  domain: File ownership
-  evidence_type: filesystem-state
-  impact: 0.5
-  levels:
-    cis: '1'
-  norms:
-    cis:
-      '@os': {}
-  reboot_survivable: 'yes'
-  remediation:
-    owner: root
-    path: /var/log/wbtmp
-    resource: file
-  severity: medium
-  socle: SOCLE-CLD-FSP-106
-  ssg: file_owner_var_log_wbtmp
-  template:
-    attr: uid
-    name: file_owner
-    path: /var/log/wbtmp
-    value: '0'
-  title: Verify User Who Owns /var/log/(b|w)tmp(.*|-*) File
-  remediation_class: auto
 fileownership-audit-binaries:
   applicable_os:
   - debian12
@@ -15703,37 +15605,6 @@ fileperm-var-log-waagent:
   ssg: file_permissions_var_log_waagent
   title: Verify Permissions on /var/log/waagent.log(.*) Files
   remediation_class: auto
-fileperm-var-log-wbtmp:
-  applicable_os: []
-  check:
-  - only_if { file('/var/log/wbtmp').exist? }
-  - describe file('/var/log/wbtmp') do
-  - '  it { should_not be_executable.by(''owner'') }'
-  - '  it { should_not be_setuid }'
-  - '  it { should_not be_executable.by(''group'') }'
-  - '  it { should_not be_setgid }'
-  - '  it { should_not be_executable.by(''other'') }'
-  - '  it { should_not be_writable.by(''other'') }'
-  - '  it { should_not be_sticky }'
-  - end
-  domain: File permissions
-  evidence_type: persistent-config
-  impact: 0.5
-  levels:
-    cis: '1'
-  norms:
-    cis:
-      '@os': {}
-  reboot_survivable: 'yes'
-  remediation:
-    mode: '0664'
-    path: /var/log/wbtmp
-    resource: file
-  severity: medium
-  socle: SOCLE-CLD-FSP-178
-  ssg: file_permissions_var_log_wbtmp
-  title: Verify Permissions on /var/log/wtmp(.*) Files
-  remediation_class: auto
 findloop-dir-perms-world-writable-sticky-bits:
   applicable_os:
   - debian12
@@ -15876,21 +15747,29 @@ findloop-file-groupowner-var-log:
   norms:
     bp28: R71
     cis:
-    - '@os':
-        rhel8: 6.2.3.1
-        rhel9: 6.2.4.1
-        rhel10: 6.2.4.1
-        ubuntu2204: 6.2.2.1
+      '@os':
+        rhel8:
+        - 6.1.4.1
+        - 6.2.3.1
+        rhel9:
+        - 6.1.4.1
+        - 6.2.4.1
+        rhel10:
+        - 6.1.4.1
+        - 6.2.4.1
+        fedora:
+        - 6.1.4.1
+        - 6.2.4.1
+        - 6.2.6.1
+        ubuntu2204:
+        - 6.1.4.1
+        - 6.2.2.1
         ubuntu2404:
         - 6.1.4.1
         - 6.2.4.1
         ubuntu2604:
         - 6.1.4.1
         - 6.2.4.1
-        fedora: 6.2.4.1
-    - 6.1.4.1
-    - '@os':
-        fedora: 6.2.6.1
     pci-dss: 10.3.2
     stig:
       '@os':
@@ -15975,21 +15854,29 @@ findloop-file-owner-var-log:
   norms:
     bp28: R71
     cis:
-    - '@os':
-        rhel8: 6.2.3.1
-        rhel9: 6.2.4.1
-        rhel10: 6.2.4.1
-        ubuntu2204: 6.2.2.1
+      '@os':
+        rhel8:
+        - 6.1.4.1
+        - 6.2.3.1
+        rhel9:
+        - 6.1.4.1
+        - 6.2.4.1
+        rhel10:
+        - 6.1.4.1
+        - 6.2.4.1
+        fedora:
+        - 6.1.4.1
+        - 6.2.4.1
+        - 6.2.6.1
+        ubuntu2204:
+        - 6.1.4.1
+        - 6.2.2.1
         ubuntu2404:
         - 6.1.4.1
         - 6.2.4.1
         ubuntu2604:
         - 6.1.4.1
         - 6.2.4.1
-        fedora: 6.2.4.1
-    - 6.1.4.1
-    - '@os':
-        fedora: 6.2.6.1
     pci-dss: 10.3.2
     stig:
       '@os':
@@ -16513,22 +16400,42 @@ findloop-permissions-local-var-log:
   norms:
     bp28: R71
     cis:
-    - 10.3.1
-    - 6.1.4.1
-    - '@os':
-        rhel8: 6.2.3.1
-        rhel9: 6.2.4.1
-        rhel10: 6.2.4.1
-        ubuntu2204: 6.2.2.1
+      '@os':
+        debian12:
+        - 10.3.1
+        - 6.1.4.1
+        debian13:
+        - 10.3.1
+        - 6.1.4.1
         ubuntu2404:
+        - 10.3.1
         - 6.1.4.1
         - 6.2.4.1
         ubuntu2604:
+        - 10.3.1
         - 6.1.4.1
         - 6.2.4.1
-        fedora: 6.2.4.1
-    - '@os':
-        fedora: 6.2.6.1
+        rhel8:
+        - 10.3.1
+        - 6.1.4.1
+        - 6.2.3.1
+        rhel10:
+        - 10.3.1
+        - 6.1.4.1
+        - 6.2.4.1
+        fedora:
+        - 10.3.1
+        - 6.1.4.1
+        - 6.2.4.1
+        - 6.2.6.1
+        rhel9:
+        - 10.3.1
+        - 6.1.4.1
+        - 6.2.4.1
+        ubuntu2204:
+        - 10.3.1
+        - 6.1.4.1
+        - 6.2.2.1
     nist:
     - SI-11(a)
     - SI-11(b)
@@ -27922,17 +27829,28 @@ pkg-ldap-utils-removed:
     cis: '1'
   norms:
     cis:
-    - 2.2.5
-    - '@os':
+      '@os':
         debian12: 2.2.5
-        debian13: 2.2.2
-        fedora: 2.2.2
-        rhel8: 2.2.2
-        rhel9: 2.2.2
-        rhel10: 2.2.2
-        ubuntu2204: 2.2.2
+        debian13:
+        - 2.2.2
+        - 2.2.5
+        ubuntu2204:
+        - 2.2.2
+        - 2.2.5
         ubuntu2404: 2.2.5
         ubuntu2604: 2.2.5
+        fedora:
+        - 2.2.2
+        - 2.2.5
+        rhel8:
+        - 2.2.2
+        - 2.2.5
+        rhel9:
+        - 2.2.2
+        - 2.2.5
+        rhel10:
+        - 2.2.2
+        - 2.2.5
   reboot_survivable: 'yes'
   remediation:
     action: remove
@@ -40740,7 +40658,7 @@ growth-journal-bounded:
   severity: medium
   impact: 0.5
   evidence_type: effective-runtime
-  reboot_survivable: yes
+  reboot_survivable: 'yes'
   remediation_class: auto
   note: "An unbounded journal fills /var/log, which pavois's own partition recipe makes a SEPARATE filesystem. journald defaults to 10% of the filesystem, but the value must be EXPLICIT and audited: a filesystem pavois carves out is pavois's responsibility."
   check:
@@ -40770,7 +40688,7 @@ growth-logrotate-active:
   severity: medium
   impact: 0.5
   evidence_type: effective-runtime
-  reboot_survivable: yes
+  reboot_survivable: 'yes'
   remediation_class: auto
   note: A logrotate configuration that is never EXECUTED bounds nothing. Audit the schedule (the timer or the cron entry), not the config file.
   check:
@@ -40798,7 +40716,7 @@ growth-tmp-cleaned:
   severity: low
   impact: 0.3
   evidence_type: effective-runtime
-  reboot_survivable: yes
+  reboot_survivable: 'yes'
   remediation_class: auto
   note: "/tmp and /var/tmp are separate filesystems in pavois's partition recipe: without the cleanup timer they fill up and stay full."
   check:
@@ -40848,5 +40766,5 @@ journald-forward-to-running-syslog:
     not_if: '! test -e /etc/systemd/journald.conf.d/99-pavois.conf && ! systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*ForwardToSyslog[[:space:]]*=" | tail -1 | grep -qiE "=[[:space:]]*(no|false|0)"'
   impact: 0.7
   evidence_type: effective-runtime
-  reboot_survivable: true
+  reboot_survivable: 'yes'
   note: "A host whose syslog daemon takes its lines from journald's forwarding (imuxsock, the Debian/Ubuntu default) stops writing /var/log/syslog the moment that forwarding is turned off: the daemon still reports active, every log-content control stays green, and the file pipeline (SIEM shipping, logrotate, forensics) is silently dead. A daemon that reads the journal DIRECTLY (imjournal, the RHEL default) does not depend on it, and is not audited here. This is the other half of the CIS rule that allows ForwardToSyslog=no ONLY when journald is the sole log store."

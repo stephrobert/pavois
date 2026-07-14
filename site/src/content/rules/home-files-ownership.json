@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -27,22 +29,27 @@
   },
   "check": [
     "describe command('awk -F: \\'($3>=1000 && $3!=65534 && $6!=\"/\"){print $3\":\"$4\":\"$6}\\' /etc/passwd | while IFS=: read u g h; do [ -d \"$h\" ] && timeout 60 find -P \"$h\" ! -uid \"$u\" ! -type l -print 2>/dev/null; done | head -1') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# Files under each home should be owned by that user: review, then chown -R deliberately per user.\nawk -F: '($3>=1000){print $1\" \"$6}' /etc/passwd\n",
+    "reason": "re-owning a user's whole home is per-user and risky, verify before acting",
+    "resource": "manual"
+  },
   "title": {
     "en": "All User Files and Directories In The Home Directory Must Have a Valid Owner",
     "fr": "Tous les fichiers et répertoires du home doivent avoir un propriétaire valide"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "If interactive users do not own all files within their home, unauthorized users may be able to access them. Files owned by another (or orphaned) UID are also a strong indicator of **system compromise**, for example malware dropped by a different account or leftovers from a deleted user.",
-    "fr": "Si les utilisateurs interactifs ne possèdent pas tous les fichiers de leur home, des utilisateurs non autorisés peuvent y accéder. Des fichiers appartenant à un autre UID (ou orphelins) sont aussi un fort indicateur de **compromission**, par exemple un logiciel malveillant déposé par un autre compte ou des restes d'un utilisateur supprimé."
-  },
   "summary": {
     "en": "Ensures **every** file and directory (recursively) inside each interactive user's home is **owned by that user**.",
     "fr": "Garantit que **tous** les fichiers et répertoires (récursivement) du home de chaque utilisateur interactif **appartiennent à cet utilisateur**."
+  },
+  "rationale": {
+    "en": "If interactive users do not own all files within their home, unauthorized users may be able to access them. Files owned by another (or orphaned) UID are also a strong indicator of **system compromise**, for example malware dropped by a different account or leftovers from a deleted user.",
+    "fr": "Si les utilisateurs interactifs ne possèdent pas tous les fichiers de leur home, des utilisateurs non autorisés peuvent y accéder. Des fichiers appartenant à un autre UID (ou orphelins) sont aussi un fort indicateur de **compromission**, par exemple un logiciel malveillant déposé par un autre compte ou des restes d'un utilisateur supprimé."
   },
   "check_note": {
     "en": "Pavois reads each interactive user's UID and home from the **live** `/etc/passwd`, then runs a **recursive** `find -P \"$h\" ! -uid \"$u\" ! -type l` (symlinks excluded). Matching against the **effective UID** of the owner catches deep files owned by another or now-deleted account anywhere in the tree, which file-template checks would miss.",

@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,11 +26,16 @@
   "reboot_survivable": "yes",
   "norms": {},
   "check": [
-    "describe command('for c in gcc cc clang g++ tcc; do command -v $c >/dev/null 2>&1 && echo $c; done') do",
+    "describe command('for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; p=$(readlink -f \\\"$p\\\"); find \\\"$p\\\" -perm -o+x 2>/dev/null; done') do",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "for p in gcc cpp g++ gcc-12 g++-12 cpp-12 clang tcc tcc-dev; do dpkg -l \"$p\" 2>/dev/null | grep -q '^ii' && DEBIAN_FRONTEND=noninteractive apt-get purge -y \"$p\" >/dev/null 2>&1; done; true; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x \"$p\" 2>/dev/null; don; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x \"$(readlink -f \"$p\")\" 2>/dev/null; done; true",
+    "name": "purge-compilers",
+    "not_if": "test -z \"$(for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; p=$(readlink -f \\\"$p\\\"); find \\\"$p\\\" -perm -o+x 2>/dev/null; done)\"",
+    "resource": "exec"
+  },
   "title": {
     "en": "No compiler available (attack surface)",
     "fr": "Aucun compilateur disponible (surface d'attaque)"

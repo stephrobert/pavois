@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,28 +28,28 @@
     "bp28": "R29"
   },
   "check": [
-    "only_if { file('/boot').exist? }",
-    "describe file('/boot') do",
-    "  its('group') { should eq 'root' }",
+    "describe command(\"find /boot -maxdepth 1 -name 'System.map-*' ! -group root 2>/dev/null\") do",
+    "  its('stdout.strip') { should eq '' }",
     "end"
   ],
   "remediation": {
-    "group": "root",
-    "path": "/boot",
-    "resource": "file"
+    "command": "find /boot -maxdepth 1 -name 'System.map-*' -exec chgrp root {} + 2>/dev/null; true",
+    "name": "systemmap-group",
+    "not_if": "test -z \"$(find /boot -maxdepth 1 -name 'System.map-*' ! -group root 2>/dev/null)\"",
+    "resource": "exec"
   },
   "title": {
     "en": "Verify Group Who Owns System.map Files",
     "fr": "Verifier le groupe proprietaire des fichiers System.map"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/boot` directory contains the kernel, initramfs and `System.map` symbol tables used for kernel debugging and profiling. The symbol map exposes kernel memory addresses that help an attacker defeat protections like KASLR and craft precise exploits. Restricting `/boot` to the `root` group keeps these boot-time and kernel internals away from ordinary users.",
-    "fr": "Le repertoire `/boot` contient le noyau, l'initramfs et les tables de symboles `System.map` utilisees pour le debogage et le profilage du noyau. La table de symboles expose des adresses memoire du noyau qui aident un attaquant a contourner des protections comme KASLR et a concevoir des exploits precis. Restreindre `/boot` au groupe `root` garde ces internes de demarrage et de noyau hors de portee des utilisateurs ordinaires."
-  },
   "summary": {
     "en": "Ensures the `/boot` directory (holding the kernel and `System.map` symbol tables) is group-owned by `root`.",
     "fr": "Garantit que le repertoire `/boot` (contenant le noyau et les tables de symboles `System.map`) appartient au groupe `root`."
+  },
+  "rationale": {
+    "en": "The `/boot` directory contains the kernel, initramfs and `System.map` symbol tables used for kernel debugging and profiling. The symbol map exposes kernel memory addresses that help an attacker defeat protections like KASLR and craft precise exploits. Restricting `/boot` to the `root` group keeps these boot-time and kernel internals away from ordinary users.",
+    "fr": "Le repertoire `/boot` contient le noyau, l'initramfs et les tables de symboles `System.map` utilisees pour le debogage et le profilage du noyau. La table de symboles expose des adresses memoire du noyau qui aident un attaquant a contourner des protections comme KASLR et a concevoir des exploits precis. Restreindre `/boot` au groupe `root` garde ces internes de demarrage et de noyau hors de portee des utilisateurs ordinaires."
   },
   "check_note": {
     "en": "Pavois reads the **resolved** group ownership of `/boot` via the InSpec `file` resource and asserts the group is `root`. It inspects the live inode metadata, so the result reflects how the partition is actually mounted and owned, not a defaults table.",

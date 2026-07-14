@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -36,21 +38,29 @@
   "check": [
     "describe mount('/boot') do",
     "  its('options') { should include 'nosuid' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /boot 2>/dev/null; grep -hsE '[[:space:]]/boot[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /boot 2>/dev/null) 2>/dev/null; } | grep -ow 'nosuid'\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "awk -v m=/boot -v o=nosuid '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,\",\");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4\",\"o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /boot && mount -o remount,nosuid /boot || true",
+    "name": "mount-boot-nosuid",
+    "not_if": "awk -v m=/boot '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\\n' | grep -qx nosuid",
+    "resource": "exec"
+  },
   "title": {
     "en": "Add nosuid Option to /boot",
     "fr": "Ajouter l'option nosuid à /boot"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The presence of **SUID** and **SGID** executables must be tightly controlled, because they run with the privileges of their owner (often root). The `/boot` partition should never legitimately host such binaries. Mounting it with `nosuid` makes the kernel **ignore the setuid/setgid bits** on any file there, so a planted SUID-root binary cannot be used to escalate privileges.",
-    "fr": "La présence d'exécutables **SUID** et **SGID** doit être strictement contrôlée, car ils s'exécutent avec les privilèges de leur propriétaire (souvent root). La partition `/boot` ne devrait jamais légitimement héberger de tels binaires. La monter avec `nosuid` force le noyau à **ignorer les bits setuid/setgid** sur tout fichier qui s'y trouve, empêchant ainsi qu'un binaire SUID-root déposé serve à élever les privilèges."
-  },
   "summary": {
     "en": "Mounts the `/boot` partition with the `nosuid` option so setuid/setgid bits on its files are ignored.",
     "fr": "Monte la partition `/boot` avec l'option `nosuid` afin que les bits setuid/setgid de ses fichiers soient ignorés."
+  },
+  "rationale": {
+    "en": "The presence of **SUID** and **SGID** executables must be tightly controlled, because they run with the privileges of their owner (often root). The `/boot` partition should never legitimately host such binaries. Mounting it with `nosuid` makes the kernel **ignore the setuid/setgid bits** on any file there, so a planted SUID-root binary cannot be used to escalate privileges.",
+    "fr": "La présence d'exécutables **SUID** et **SGID** doit être strictement contrôlée, car ils s'exécutent avec les privilèges de leur propriétaire (souvent root). La partition `/boot` ne devrait jamais légitimement héberger de tels binaires. La monter avec `nosuid` force le noyau à **ignorer les bits setuid/setgid** sur tout fichier qui s'y trouve, empêchant ainsi qu'un binaire SUID-root déposé serve à élever les privilèges."
   },
   "check_note": {
     "en": "Pavois reads the **effective** mount table via `mount('/boot')` and asserts the resolved option list contains `nosuid`. This captures the live kernel state, including options applied by `systemd` mount units or a later remount, which a static read of `/etc/fstab` would miss. If `/boot` is not a separate mount point, there is no dedicated partition to harden.",

@@ -3,11 +3,19 @@
   "supported_os": [
     "debian12",
     "debian13",
-    "ubuntu2404"
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2404": "1.0.0"
   },
   "severity": "medium",
@@ -25,14 +33,11 @@
       "SI-7(1)",
       "CM-6(a)"
     ],
-    "pci-dss": [
-      "Req-11.5",
-      "11.5.2"
-    ],
+    "pci-dss": "11.5.2",
     "stig": "UBTU-24-100120"
   },
   "check": [
-    "describe command('systemctl is-enabled aidecheck.timer dailyaidecheck.timer 2>/dev/null | grep -q enabled && echo ok || echo ko') do",
+    "describe command('for t in aidecheck.timer dailyaidecheck.timer aide.timer; do systemctl is-enabled \"$t\" 2>/dev/null; done | grep -q enabled && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
@@ -46,13 +51,13 @@
     "fr": "Configurer l'exécution périodique d'AIDE par un timer systemd"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "AIDE only detects tampering when it actually runs and compares against its baseline; it does not schedule itself. A systemd service to perform the check plus a timer to fire it regularly turns AIDE from a one-off snapshot into continuous integrity monitoring. Without periodic execution, an unauthorized change could persist undetected indefinitely.",
-    "fr": "AIDE ne détecte une altération que lorsqu'il s'exécute réellement et compare à sa référence ; il ne se planifie pas lui-même. Un service systemd qui effectue la vérification, plus un timer qui le déclenche régulièrement, transforme AIDE d'un instantané ponctuel en une surveillance d'intégrité continue. Sans exécution périodique, une modification non autorisée pourrait persister indétectée indéfiniment."
-  },
   "summary": {
     "en": "Ensures AIDE runs on a schedule via an **enabled systemd timer** (`aidecheck.timer` or `dailyaidecheck.timer`).",
     "fr": "Garantit qu'AIDE s'exécute selon un planning via un **timer systemd activé** (`aidecheck.timer` ou `dailyaidecheck.timer`)."
+  },
+  "rationale": {
+    "en": "AIDE only detects tampering when it actually runs and compares against its baseline; it does not schedule itself. A systemd service to perform the check plus a timer to fire it regularly turns AIDE from a one-off snapshot into continuous integrity monitoring. Without periodic execution, an unauthorized change could persist undetected indefinitely.",
+    "fr": "AIDE ne détecte une altération que lorsqu'il s'exécute réellement et compare à sa référence ; il ne se planifie pas lui-même. Un service systemd qui effectue la vérification, plus un timer qui le déclenche régulièrement, transforme AIDE d'un instantané ponctuel en une surveillance d'intégrité continue. Sans exécution périodique, une modification non autorisée pourrait persister indétectée indéfiniment."
   },
   "check_note": {
     "en": "Pavois queries `systemctl is-enabled` for `aidecheck.timer`/`dailyaidecheck.timer` and requires at least one to be **enabled**. Querying systemd reflects the effective scheduling state resolved from unit files and drop-ins, which a file-based scan of `/etc/cron*` would miss entirely since the schedule lives in systemd here, not in cron.",

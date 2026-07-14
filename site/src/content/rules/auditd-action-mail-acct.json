@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "6.3.2.4",
-      "6.2.2.4"
+      "6.2.2.4",
+      "6.3.2.4"
     ],
     "nist": [
       "3.3.1",
@@ -45,19 +46,25 @@
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "file": "/etc/audit/auditd.conf",
+    "key": "action_mail_acct",
+    "resource": "conf_line",
+    "service": "auditd",
+    "value": "root"
+  },
   "title": {
     "en": "Configure auditd mail_acct Action on Low Disk Space",
     "fr": "Configurer le compte de notification auditd (action_mail_acct) en cas d'espace disque faible"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Email sent to the root account is typically aliased to the administrators of the system, who can take appropriate action.",
-    "fr": "Le courrier envoyé au compte root est généralement redirigé vers les administrateurs du système, qui peuvent alors prendre les mesures appropriées."
-  },
   "summary": {
     "en": "Ensures `action_mail_acct = root` in `/etc/audit/auditd.conf` so auditd emails an administrator when audit disk space runs low.",
     "fr": "Garantit que `action_mail_acct = root` dans `/etc/audit/auditd.conf` afin qu'auditd envoie un courriel à un administrateur lorsque l'espace disque d'audit devient faible."
+  },
+  "rationale": {
+    "en": "Email sent to the root account is typically aliased to the administrators of the system, who can take appropriate action.",
+    "fr": "Le courrier envoyé au compte root est généralement redirigé vers les administrateurs du système, qui peuvent alors prendre les mesures appropriées."
   },
   "check_note": {
     "en": "Pavois greps `/etc/audit/auditd.conf` for `action_mail_acct = root` and expects `ok`. `auditd.conf` is the daemon's single configuration file (no drop-in fragmentation), so reading it reflects exactly what auditd will use after its next reload, the effective notification target.",

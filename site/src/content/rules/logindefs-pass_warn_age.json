@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -34,29 +35,32 @@
       "IA-5(1)(d)",
       "IA-5(f)"
     ],
-    "pci-dss": [
-      "8.3.9",
-      "Req-8.2.4"
-    ]
+    "pci-dss": "8.3.9"
   },
   "check": [
     "describe login_defs do",
     "  its('PASS_WARN_AGE') { should cmp >= 7 }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "file": "/etc/login.defs",
+    "key": "PASS_WARN_AGE",
+    "resource": "conf_line",
+    "sep": "space",
+    "value": "7"
+  },
   "title": {
     "en": "Set Password Warning Age",
     "fr": "Définir le délai d'avertissement d'expiration des mots de passe"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Warning users in advance of password expiration lets them change it at a convenient time rather than being locked out unexpectedly. Without a warning window, a password can silently expire mid-task, forcing rushed (often weaker) replacements or generating help-desk tickets and lost access.",
-    "fr": "Avertir les utilisateurs à l'avance de l'expiration leur permet de changer leur mot de passe à un moment opportun plutôt que d'être verrouillés à l'improviste. Sans fenêtre d'avertissement, un mot de passe peut expirer silencieusement en pleine tâche, forçant des remplacements précipités (souvent plus faibles) ou générant des tickets de support et des pertes d'accès."
-  },
   "summary": {
     "en": "Sets `PASS_WARN_AGE` in `/etc/login.defs` so users are warned at least **7 days** before their password expires.",
     "fr": "Définit `PASS_WARN_AGE` dans `/etc/login.defs` pour que les utilisateurs soient avertis au moins **7 jours** avant l'expiration de leur mot de passe."
+  },
+  "rationale": {
+    "en": "Warning users in advance of password expiration lets them change it at a convenient time rather than being locked out unexpectedly. Without a warning window, a password can silently expire mid-task, forcing rushed (often weaker) replacements or generating help-desk tickets and lost access.",
+    "fr": "Avertir les utilisateurs à l'avance de l'expiration leur permet de changer leur mot de passe à un moment opportun plutôt que d'être verrouillés à l'improviste. Sans fenêtre d'avertissement, un mot de passe peut expirer silencieusement en pleine tâche, forçant des remplacements précipités (souvent plus faibles) ou générant des tickets de support et des pertes d'accès."
   },
   "check_note": {
     "en": "Pavois reads the resolved `PASS_WARN_AGE` from `/etc/login.defs` via the InSpec `login_defs` resource and asserts it is **>= 7**. This is the default applied to newly created accounts; per-account overrides live in `/etc/shadow` (field 6). Reading the effective directive avoids relying on documentation or assumptions.",

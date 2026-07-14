@@ -17,31 +17,30 @@
   "reboot_survivable": "yes",
   "norms": {},
   "check": [
-    "describe service('systemd-coredump.service') do",
-    "  it { should_not be_enabled }",
-    "  it { should_not be_running }",
+    "describe command('systemd-analyze cat-config systemd/coredump.conf 2>/dev/null | grep -iE \"^[[:space:]]*Storage[[:space:]]*=\" | tail -1') do",
+    "  its('stdout') { should match(/=\\s*none/i) }",
     "end"
   ],
   "remediation": {
-    "action": [
-      "disable",
-      "stop"
-    ],
-    "name": "systemd-coredump",
-    "resource": "service"
+    "content": "[Coredump]\nStorage=none\nProcessSizeMax=0\n",
+    "group": "root",
+    "mode": "0644",
+    "owner": "root",
+    "path": "/etc/systemd/coredump.conf.d/99-pavois.conf",
+    "resource": "file"
   },
   "title": {
     "en": "Disable acquiring, saving, and processing core dumps",
     "fr": "Desactiver l'acquisition, l'enregistrement et le traitement des vidages memoire (core dumps)"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "A **core dump** is a memory image captured when the OS terminates a crashing application. That image can contain highly sensitive data, passwords, encryption keys, tokens, personal data, and is generally useful only to developers debugging the program. Leaving `systemd-coredump` active means such memory snapshots are written to disk where they can be read by an attacker or leak secrets. Disabling core dump collection reduces the exposure of in-memory secrets and removes a vector for information disclosure.",
-    "fr": "Un **vidage memoire (core dump)** est une image de la memoire capturee lorsque le systeme termine une application en cours de plantage. Cette image peut contenir des donnees tres sensibles, mots de passe, cles de chiffrement, jetons, donnees personnelles, et n'est generalement utile qu'aux developpeurs deboguant le programme. Laisser `systemd-coredump` actif signifie que ces instantanes memoire sont ecrits sur disque ou ils peuvent etre lus par un attaquant ou divulguer des secrets. Desactiver la collecte des core dumps reduit l'exposition des secrets en memoire et supprime un vecteur de divulgation d'informations."
-  },
   "summary": {
     "en": "Ensures `systemd-coredump.service` is **disabled** and **not running** so application core dumps are not acquired, saved, or processed.",
     "fr": "Garantit que `systemd-coredump.service` est **desactive** et **arrete** afin que les vidages memoire des applications ne soient ni acquis, ni enregistres, ni traites."
+  },
+  "rationale": {
+    "en": "A **core dump** is a memory image captured when the OS terminates a crashing application. That image can contain highly sensitive data, passwords, encryption keys, tokens, personal data, and is generally useful only to developers debugging the program. Leaving `systemd-coredump` active means such memory snapshots are written to disk where they can be read by an attacker or leak secrets. Disabling core dump collection reduces the exposure of in-memory secrets and removes a vector for information disclosure.",
+    "fr": "Un **vidage memoire (core dump)** est une image de la memoire capturee lorsque le systeme termine une application en cours de plantage. Cette image peut contenir des donnees tres sensibles, mots de passe, cles de chiffrement, jetons, donnees personnelles, et n'est generalement utile qu'aux developpeurs deboguant le programme. Laisser `systemd-coredump` actif signifie que ces instantanes memoire sont ecrits sur disque ou ils peuvent etre lus par un attaquant ou divulguer des secrets. Desactiver la collecte des core dumps reduit l'exposition des secrets en memoire et supprime un vecteur de divulgation d'informations."
   },
   "check_note": {
     "en": "Pavois reads the **effective unit state** with `service('systemd-coredump.service')` (`systemctl is-enabled` / `is-active`). On most systems this is socket-activated (`systemd-coredump.socket`), so the check confirms it will not be triggered. This is more reliable than grepping `/etc/sysctl.d/` for `kernel.core_pattern`, because the effective state accounts for masking and drop-in overrides under `/etc/systemd/system/`.",

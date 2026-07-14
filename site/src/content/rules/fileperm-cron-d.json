@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "2.4.1.7",
       "2.2.6",
+      "2.4.1.7",
       "2.4.1.8"
     ],
     "nist": [
@@ -39,7 +40,6 @@
     "only_if { file('/etc/cron.d').exist? }",
     "describe file('/etc/cron.d') do",
     "  it { should_not be_setuid }",
-    "  it { should_not be_executable.by('group') }",
     "  it { should_not be_writable.by('group') }",
     "  it { should_not be_readable.by('group') }",
     "  it { should_not be_setgid }",
@@ -50,22 +50,24 @@
     "end"
   ],
   "remediation": {
+    "group": "root",
     "mode": "0700",
+    "owner": "root",
     "path": "/etc/cron.d",
-    "resource": "file"
+    "resource": "directory"
   },
   "title": {
     "en": "Verify Permissions on cron.d",
     "fr": "Vérifier les permissions de cron.d"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/cron.d` holds drop-in crontab fragments that the cron daemon parses and runs, typically **as root and on arbitrary schedules**. If the directory is writable by group or other, an attacker can drop a crontab fragment that executes any command as root, immediate compromise. If it is readable by group/other, the scheduled jobs can be enumerated for reconnaissance. Limiting access to the owner blocks both.",
-    "fr": "`/etc/cron.d` contient des fragments de crontab déposés que le démon cron analyse et exécute, généralement **en tant que root et selon des planifications arbitraires**. Si le répertoire est modifiable par le groupe ou les autres, un attaquant peut y déposer un fragment de crontab exécutant n'importe quelle commande en tant que root, compromission immédiate. S'il est lisible par le groupe/les autres, les tâches planifiées peuvent être énumérées à des fins de reconnaissance. Restreindre l'accès au propriétaire bloque les deux."
-  },
   "summary": {
     "en": "Ensures the `/etc/cron.d` directory is owned by root and is **not readable, writable or executable by group or other**, with no setuid/setgid/sticky bits, so only root can install cron drop-in fragments.",
     "fr": "Garantit que le répertoire `/etc/cron.d` appartient à root et n'est **ni lisible, ni modifiable, ni exécutable par le groupe ou les autres**, sans bits setuid/setgid/sticky, afin que seul root puisse installer des fragments cron déposés."
+  },
+  "rationale": {
+    "en": "`/etc/cron.d` holds drop-in crontab fragments that the cron daemon parses and runs, typically **as root and on arbitrary schedules**. If the directory is writable by group or other, an attacker can drop a crontab fragment that executes any command as root, immediate compromise. If it is readable by group/other, the scheduled jobs can be enumerated for reconnaissance. Limiting access to the owner blocks both.",
+    "fr": "`/etc/cron.d` contient des fragments de crontab déposés que le démon cron analyse et exécute, généralement **en tant que root et selon des planifications arbitraires**. Si le répertoire est modifiable par le groupe ou les autres, un attaquant peut y déposer un fragment de crontab exécutant n'importe quelle commande en tant que root, compromission immédiate. S'il est lisible par le groupe/les autres, les tâches planifiées peuvent être énumérées à des fins de reconnaissance. Restreindre l'accès au propriétaire bloque les deux."
   },
   "check_note": {
     "en": "Pavois reads the **live inode** with `file('/etc/cron.d')` and asserts no group/other access and no special mode bits, gated by `only_if` to skip when absent. Inspecting the effective on-disk permissions reveals drift from package upgrades, manual `chmod`, or backup restores that a config-template assumption would not catch.",

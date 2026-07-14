@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe kernel_parameter('vm.mmap_min_addr') do",
     "  its('value') { should cmp 65536 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*vm.mmap_min_addr[[:space:]]*=[[:space:]]*65536([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Empecher les applications de mapper la portion basse de la memoire virtuelle"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `vm.mmap_min_addr` parameter specifies the **minimum virtual address** a process is allowed to `mmap`. Leaving the low end of virtual memory mappable lets an attacker place controlled data at address **0**, turning otherwise harmless **kernel NULL-pointer dereference** bugs into reliable, exploitable privilege escalations. Reserving the first 64 KiB (`65536`) removes that mapping window and neutralizes a whole class of NULL-deref exploits.",
-    "fr": "Le parametre `vm.mmap_min_addr` definit l'**adresse virtuelle minimale** qu'un processus peut `mmap`er. Laisser le bas de la memoire virtuelle mappable permet a un attaquant de placer des donnees controlees a l'adresse **0**, transformant des bugs anodins de **dereference de pointeur NULL dans le noyau** en escalades de privileges exploitables de maniere fiable. Reserver les 64 premiers Kio (`65536`) supprime cette fenetre de mapping et neutralise toute une classe d'exploits NULL-deref."
-  },
   "summary": {
     "en": "Reserves the low **64 KiB** of virtual memory so processes cannot `mmap` near address **0**, by setting `vm.mmap_min_addr=65536`.",
     "fr": "Reserve les 64 **Kio** bas de la memoire virtuelle pour empecher les processus de `mmap`er pres de l'adresse **0**, via `vm.mmap_min_addr=65536`."
+  },
+  "rationale": {
+    "en": "The `vm.mmap_min_addr` parameter specifies the **minimum virtual address** a process is allowed to `mmap`. Leaving the low end of virtual memory mappable lets an attacker place controlled data at address **0**, turning otherwise harmless **kernel NULL-pointer dereference** bugs into reliable, exploitable privilege escalations. Reserving the first 64 KiB (`65536`) removes that mapping window and neutralizes a whole class of NULL-deref exploits.",
+    "fr": "Le parametre `vm.mmap_min_addr` definit l'**adresse virtuelle minimale** qu'un processus peut `mmap`er. Laisser le bas de la memoire virtuelle mappable permet a un attaquant de placer des donnees controlees a l'adresse **0**, transformant des bugs anodins de **dereference de pointeur NULL dans le noyau** en escalades de privileges exploitables de maniere fiable. Reserver les 64 premiers Kio (`65536`) supprime cette fenetre de mapping et neutralise toute une classe d'exploits NULL-deref."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** through `kernel_parameter('vm.mmap_min_addr')` (equivalent to `sysctl vm.mmap_min_addr`), not a `.conf` file. This is decisive: the runtime value is the merge of `/etc/sysctl.conf`, every `/etc/sysctl.d/*.conf` and `/run/sysctl.d/*.conf` drop-in, **plus** any in-flight override applied by `sysctl -w`. A file-based scanner can be fooled by a later drop-in or a manual override; reading the effective parameter cannot.",

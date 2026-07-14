@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -39,6 +40,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.all.accept_source_route') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.all.accept_source_route[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -51,13 +55,13 @@
     "fr": "Désactiver le paramètre noyau d'acceptation des paquets à routage par la source sur toutes les interfaces IPv6"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Source-routed packets let the **sender dictate the path** a packet takes, overriding the routing the network would normally choose. An attacker can use this to bypass firewalls and routing-based security controls, reach otherwise unreachable hosts, or spoof return paths. Accepting source-routed traffic has almost no legitimate use on modern hosts and should be disabled unless explicitly required.",
-    "fr": "Les paquets à routage par la source permettent à **l'émetteur de dicter le chemin** emprunté par un paquet, contournant le routage que le réseau choisirait normalement. Un attaquant peut s'en servir pour contourner les pare-feu et les contrôles de sécurité fondés sur le routage, atteindre des hôtes autrement inaccessibles ou usurper les chemins de retour. Accepter le trafic à routage par la source n'a presque aucun usage légitime sur les hôtes modernes et doit être désactivé sauf nécessité explicite."
-  },
   "summary": {
     "en": "Sets `net.ipv6.conf.all.accept_source_route` to `0` so the host refuses source-routed IPv6 packets on all interfaces.",
     "fr": "Fixe `net.ipv6.conf.all.accept_source_route` à `0` afin que l'hôte refuse les paquets IPv6 à routage par la source sur toutes les interfaces."
+  },
+  "rationale": {
+    "en": "Source-routed packets let the **sender dictate the path** a packet takes, overriding the routing the network would normally choose. An attacker can use this to bypass firewalls and routing-based security controls, reach otherwise unreachable hosts, or spoof return paths. Accepting source-routed traffic has almost no legitimate use on modern hosts and should be disabled unless explicitly required.",
+    "fr": "Les paquets à routage par la source permettent à **l'émetteur de dicter le chemin** emprunté par un paquet, contournant le routage que le réseau choisirait normalement. Un attaquant peut s'en servir pour contourner les pare-feu et les contrôles de sécurité fondés sur le routage, atteindre des hôtes autrement inaccessibles ou usurper les chemins de retour. Accepter le trafic à routage par la source n'a presque aucun usage légitime sur les hôtes modernes et doit être désactivé sauf nécessité explicite."
   },
   "check_note": {
     "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.all.accept_source_route`) and asserts it is `0`. The live value is authoritative: a value in `/etc/sysctl.d/*` may be **overridden** by a later drop-in or never applied, so a file-based scanner can falsely report compliance while the kernel still accepts source routing.",

@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R25"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_IA32_EMULATION=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_IA32_EMULATION='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_IA32_EMULATION=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should_not match(/^CONFIG_IA32_EMULATION=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Disable IA32 emulation",
     "fr": "Désactiver l'émulation IA32"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_IA32_EMULATION` lets a 64-bit kernel run **32-bit binaries** through a compatibility layer that exposes the legacy `int 0x80` syscall path and 32-bit ABI. This compatibility code is a recurring source of kernel vulnerabilities (it has hosted several privilege-escalation CVEs) and broadens the syscall attack surface for little benefit on modern systems. Building the kernel without it removes the 32-bit entry points entirely.",
-    "fr": "`CONFIG_IA32_EMULATION` permet à un noyau 64 bits d'exécuter des **binaires 32 bits** via une couche de compatibilité qui expose le chemin d'appel système hérité `int 0x80` et l'ABI 32 bits. Ce code de compatibilité est une source récurrente de vulnérabilités noyau (il a hébergé plusieurs CVE d'élévation de privilèges) et élargit la surface d'attaque des appels système pour peu de bénéfice sur les systèmes modernes. Compiler le noyau sans cette option supprime entièrement les points d'entrée 32 bits."
-  },
   "summary": {
     "en": "Requires the kernel to be built **without** `CONFIG_IA32_EMULATION=y`, removing the 32-bit binary compatibility layer.",
     "fr": "Exige que le noyau soit compilé **sans** `CONFIG_IA32_EMULATION=y`, supprimant la couche de compatibilité pour les binaires 32 bits."
+  },
+  "rationale": {
+    "en": "`CONFIG_IA32_EMULATION` lets a 64-bit kernel run **32-bit binaries** through a compatibility layer that exposes the legacy `int 0x80` syscall path and 32-bit ABI. This compatibility code is a recurring source of kernel vulnerabilities (it has hosted several privilege-escalation CVEs) and broadens the syscall attack surface for little benefit on modern systems. Building the kernel without it removes the 32-bit entry points entirely.",
+    "fr": "`CONFIG_IA32_EMULATION` permet à un noyau 64 bits d'exécuter des **binaires 32 bits** via une couche de compatibilité qui expose le chemin d'appel système hérité `int 0x80` et l'ABI 32 bits. Ce code de compatibilité est une source récurrente de vulnérabilités noyau (il a hébergé plusieurs CVE d'élévation de privilèges) et élargit la surface d'attaque des appels système pour peu de bénéfice sur les systèmes modernes. Compiler le noyau sans cette option supprime entièrement les points d'entrée 32 bits."
   },
   "check_note": {
     "en": "Pavois reads the build configuration of the **running** kernel, `/boot/config-$(uname -r)` and the in-memory `/proc/config.gz`, and confirms `CONFIG_IA32_EMULATION` is not set to `y`. Looking at the booted kernel's real config catches a vendor or custom kernel that still ships the compat layer even when userspace is fully 64-bit.",

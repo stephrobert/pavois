@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -30,6 +31,9 @@
   "check": [
     "describe command('cat /proc/cmdline') do",
     "  its('stdout') { should match(/(^| )slub_debug=P( |$)/) }",
+    "end",
+    "describe command(\"grep -hwsF 'slub_debug=P' /etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -42,13 +46,13 @@
     "fr": "Activer l'empoisonnement de l'allocateur SLUB/SLAB"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`slub_debug=P` enables **poisoning of SLUB allocator objects**: a known pattern is written into objects as they are freed, so any read or write to an object after it is freed (or before it is re-initialized) is detected and prevented. This neutralizes many **use-after-free** vulnerabilities at little performance cost, and additionally **scrubs sensitive data** left in freed objects so it cannot leak to the next allocation. The `P` flag enables only poisoning (not the full, costlier debug suite).",
-    "fr": "`slub_debug=P` active l'**empoisonnement des objets de l'allocateur SLUB** : un motif connu est écrit dans les objets au moment de leur libération, si bien que toute lecture ou écriture sur un objet après sa libération (ou avant sa réinitialisation) est détectée et empêchée. Cela neutralise de nombreuses vulnérabilités **use-after-free** à faible coût de performance, et **efface les données sensibles** restées dans les objets libérés afin qu'elles ne fuient pas vers l'allocation suivante. Le drapeau `P` n'active que l'empoisonnement (et non la suite de débogage complète, plus coûteuse)."
-  },
   "summary": {
     "en": "Requires the **`slub_debug=P`** kernel boot parameter so the SLUB allocator poisons freed objects, catching use-after-free and scrubbing leftover data.",
     "fr": "Exige le paramètre de démarrage noyau **`slub_debug=P`** afin que l'allocateur SLUB empoisonne les objets libérés, détectant les use-after-free et effaçant les données résiduelles."
+  },
+  "rationale": {
+    "en": "`slub_debug=P` enables **poisoning of SLUB allocator objects**: a known pattern is written into objects as they are freed, so any read or write to an object after it is freed (or before it is re-initialized) is detected and prevented. This neutralizes many **use-after-free** vulnerabilities at little performance cost, and additionally **scrubs sensitive data** left in freed objects so it cannot leak to the next allocation. The `P` flag enables only poisoning (not the full, costlier debug suite).",
+    "fr": "`slub_debug=P` active l'**empoisonnement des objets de l'allocateur SLUB** : un motif connu est écrit dans les objets au moment de leur libération, si bien que toute lecture ou écriture sur un objet après sa libération (ou avant sa réinitialisation) est détectée et empêchée. Cela neutralise de nombreuses vulnérabilités **use-after-free** à faible coût de performance, et **efface les données sensibles** restées dans les objets libérés afin qu'elles ne fuient pas vers l'allocation suivante. Le drapeau `P` n'active que l'empoisonnement (et non la suite de débogage complète, plus coûteuse)."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel command line** from `/proc/cmdline` and checks for `slub_debug=P`. This is the boot line the running kernel parsed, not `/etc/default/grub`, a GRUB edit never regenerated would falsely pass a file scan while object poisoning is still off at runtime. Per-cache state is visible under `/sys/kernel/slab/*/`.",

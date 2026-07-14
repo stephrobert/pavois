@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.all.router_solicitations') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.all.router_solicitations[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Configurer le refus des sollicitations de routeur sur toutes les interfaces IPv6"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Router Solicitations are sent by a host to actively ask local routers to send Router Advertisements. Emitting them **announces the host's presence** on the segment and triggers RA-based autoconfiguration that a rogue router could answer. A statically configured host has no need to solicit routers; suppressing these messages reduces its visibility and removes an autoconfiguration trigger.",
-    "fr": "Les sollicitations de routeur sont envoyées par un hôte pour demander activement aux routeurs locaux d'émettre des annonces de routeur. Les émettre **annonce la présence de l'hôte** sur le segment et déclenche l'autoconfiguration par RA qu'un routeur malveillant pourrait honorer. Un hôte configuré statiquement n'a pas besoin de solliciter les routeurs ; supprimer ces messages réduit sa visibilité et élimine un déclencheur d'autoconfiguration."
-  },
   "summary": {
     "en": "Sets `net.ipv6.conf.all.router_solicitations` to `0` so the host sends no IPv6 Router Solicitation messages on any interface.",
     "fr": "Fixe `net.ipv6.conf.all.router_solicitations` à `0` afin que l'hôte n'émette aucun message de sollicitation de routeur IPv6 sur aucune interface."
+  },
+  "rationale": {
+    "en": "Router Solicitations are sent by a host to actively ask local routers to send Router Advertisements. Emitting them **announces the host's presence** on the segment and triggers RA-based autoconfiguration that a rogue router could answer. A statically configured host has no need to solicit routers; suppressing these messages reduces its visibility and removes an autoconfiguration trigger.",
+    "fr": "Les sollicitations de routeur sont envoyées par un hôte pour demander activement aux routeurs locaux d'émettre des annonces de routeur. Les émettre **annonce la présence de l'hôte** sur le segment et déclenche l'autoconfiguration par RA qu'un routeur malveillant pourrait honorer. Un hôte configuré statiquement n'a pas besoin de solliciter les routeurs ; supprimer ces messages réduit sa visibilité et élimine un déclencheur d'autoconfiguration."
   },
   "check_note": {
     "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.all.router_solicitations`) and asserts it is `0`. The live value is authoritative: a value in `/etc/sysctl.d/*` may be **overridden** by a later drop-in or never applied, so reading the running parameter avoids the false pass a file-based scanner (OVAL/oscap) can give.",

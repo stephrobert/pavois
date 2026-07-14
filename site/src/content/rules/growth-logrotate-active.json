@@ -1,0 +1,54 @@
+{
+  "id": "growth-logrotate-active",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (posture)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe command('systemctl is-active logrotate.timer 2>/dev/null | grep -qx active || test -x /etc/cron.daily/logrotate && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "systemctl list-unit-files logrotate.timer --no-legend 2>/dev/null | grep -q . && systemctl enable --now logrotate.timer 2>/dev/null; test -f /etc/cron.daily/logrotate && chmod +x /etc/cron.daily/logrotate; true",
+    "name": "logrotate-scheduled",
+    "not_if": "systemctl is-active logrotate.timer 2>/dev/null | grep -qx active || test -x /etc/cron.daily/logrotate",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Log rotation actually runs (logrotate is scheduled)",
+    "fr": "Log rotation actually runs (logrotate is scheduled)"
+  },
+  "needs_translation": [
+    "title.fr"
+  ],
+  "needs_authoring": [
+    "summary",
+    "check_note",
+    "verify",
+    "logs",
+    "remediation_note",
+    "impact"
+  ]
+}

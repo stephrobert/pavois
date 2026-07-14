@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,29 +26,33 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "5.2.7",
-      "2.2.6"
+      "2.2.6",
+      "5.2.7"
     ],
     "pci-dss": "2.2.6"
   },
   "check": [
-    "describe command('g=$(grep -rhoE \\'pam_wheel.so.*group=[a-z]+\\' /etc/pam.d/su 2>/dev/null | grep -oE \\'group=[a-z]+\\' | cut -d= -f2 | head -1); { [ -n \"$g\" ] && [ -z \"$(getent group \"$g\" | cut -d: -f4)\" ] && echo ok; } || echo ko') do",
+    "describe command('g=$(grep -RhoE \\'pam_wheel.so.*group=[a-z]+\\' /etc/pam.d/su 2>/dev/null | grep -oE \\'group=[a-z]+\\' | cut -d= -f2 | head -1); { [ -n \"$g\" ] && [ -z \"$(getent group \"$g\" | cut -d: -f4)\" ] && echo ok; } || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "getent group wheel\n# gpasswd -d <user> wheel   for each unexpected member\n",
+    "reason": "removing wheel members revokes their su access, confirm each",
+    "resource": "manual"
+  },
   "title": {
     "en": "Ensure the Group Used by pam_wheel.so Module Exists on System and is Empty",
     "fr": "S'assurer que le groupe utilisé par le module pam_wheel.so existe et est vide"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `su` program runs commands with a substitute user and group ID, and is the classic way to become **root**. The `pam_wheel.so` module restricts who may run `su` to members of a named group (e.g. `wheel` or `sugroup`). If that group is configured but **empty**, no unprivileged user can pivot to root through `su`, privilege escalation must go through `sudo`, which is logged and per-command. A populated wheel group silently grants its members an unaudited path to full root.",
-    "fr": "Le programme `su` exécute des commandes avec un utilisateur et un groupe de substitution ; c'est la manière classique de devenir **root**. Le module `pam_wheel.so` restreint l'usage de `su` aux membres d'un groupe nommé (par ex. `wheel` ou `sugroup`). Si ce groupe est configuré mais **vide**, aucun utilisateur non privilégié ne peut basculer vers root via `su` : l'élévation passe alors par `sudo`, qui est journalisé et limité à chaque commande. Un groupe wheel peuplé accorde silencieusement à ses membres une voie non auditée vers root."
-  },
   "summary": {
     "en": "Ensures the group referenced by `pam_wheel.so` in `/etc/pam.d/su` exists and has **no members**, so no user can escalate to root through `su`.",
     "fr": "Garantit que le groupe référencé par `pam_wheel.so` dans `/etc/pam.d/su` existe et n'a **aucun membre**, afin qu'aucun utilisateur ne puisse devenir root via `su`."
+  },
+  "rationale": {
+    "en": "The `su` program runs commands with a substitute user and group ID, and is the classic way to become **root**. The `pam_wheel.so` module restricts who may run `su` to members of a named group (e.g. `wheel` or `sugroup`). If that group is configured but **empty**, no unprivileged user can pivot to root through `su`, privilege escalation must go through `sudo`, which is logged and per-command. A populated wheel group silently grants its members an unaudited path to full root.",
+    "fr": "Le programme `su` exécute des commandes avec un utilisateur et un groupe de substitution ; c'est la manière classique de devenir **root**. Le module `pam_wheel.so` restreint l'usage de `su` aux membres d'un groupe nommé (par ex. `wheel` ou `sugroup`). Si ce groupe est configuré mais **vide**, aucun utilisateur non privilégié ne peut basculer vers root via `su` : l'élévation passe alors par `sudo`, qui est journalisé et limité à chaque commande. Un groupe wheel peuplé accorde silencieusement à ses membres une voie non auditée vers root."
   },
   "check_note": {
     "en": "Pavois reads the **effective** PAM configuration: it extracts the `group=` argument actually passed to `pam_wheel.so` in `/etc/pam.d/su`, then resolves that group through `getent group` (NSS) and checks its member field is empty. Resolving via `getent` rather than only parsing `/etc/group` is what catches members coming from **LDAP, SSSD or other NSS backends** that a flat file scan would miss.",

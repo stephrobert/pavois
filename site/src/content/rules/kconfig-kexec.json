@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R23"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_KEXEC=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_KEXEC='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_KEXEC=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should_not match(/^CONFIG_KEXEC=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Disable kexec system call",
     "fr": "Désactiver l'appel système kexec"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`kexec` lets a privileged process load and boot a **new kernel image directly from the running one**, skipping the firmware and bootloader. An attacker who reaches root can use it to boot an unsigned, malicious kernel, bypassing Secure Boot and module-signature enforcement, or to wipe forensic state. Building the kernel without `CONFIG_KEXEC` removes this kernel-replacement primitive entirely.",
-    "fr": "`kexec` permet à un processus privilégié de charger et démarrer une **nouvelle image de noyau directement depuis le noyau en cours**, en court-circuitant le firmware et le chargeur d'amorçage. Un attaquant ayant obtenu root peut l'utiliser pour démarrer un noyau malveillant non signé, contournant Secure Boot et l'application de la signature des modules, ou pour effacer l'état forensique. Compiler le noyau sans `CONFIG_KEXEC` supprime entièrement cette primitive de remplacement du noyau."
-  },
   "summary": {
     "en": "Requires the kernel to be built **without** `CONFIG_KEXEC=y`, removing the kexec kernel-load-and-boot syscall.",
     "fr": "Exige que le noyau soit compilé **sans** `CONFIG_KEXEC=y`, supprimant l'appel système kexec de chargement et démarrage de noyau."
+  },
+  "rationale": {
+    "en": "`kexec` lets a privileged process load and boot a **new kernel image directly from the running one**, skipping the firmware and bootloader. An attacker who reaches root can use it to boot an unsigned, malicious kernel, bypassing Secure Boot and module-signature enforcement, or to wipe forensic state. Building the kernel without `CONFIG_KEXEC` removes this kernel-replacement primitive entirely.",
+    "fr": "`kexec` permet à un processus privilégié de charger et démarrer une **nouvelle image de noyau directement depuis le noyau en cours**, en court-circuitant le firmware et le chargeur d'amorçage. Un attaquant ayant obtenu root peut l'utiliser pour démarrer un noyau malveillant non signé, contournant Secure Boot et l'application de la signature des modules, ou pour effacer l'état forensique. Compiler le noyau sans `CONFIG_KEXEC` supprime entièrement cette primitive de remplacement du noyau."
   },
   "check_note": {
     "en": "Pavois reads the build configuration of the **running** kernel, `/boot/config-$(uname -r)` and the in-memory `/proc/config.gz`, and confirms `CONFIG_KEXEC` is not set to `y`. Reading the booted kernel's real config (not a leftover `/boot/config-*`) reflects whether the kexec syscall is actually compiled in.",

@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,10 +27,10 @@
   "norms": {
     "bp28": "R73",
     "cis": [
-      "6.3.3.20",
       "10.3.2",
       "6.2.3.20",
       "6.3.3.33",
+      "6.3.3.20",
       "6.3.3.21"
     ],
     "nist": [
@@ -54,13 +55,13 @@
     "fr": "Rendre la configuration de auditd immuable"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Making the audit configuration immutable prevents both accidental and malicious modification of the audit rules at runtime. An attacker who gains root could otherwise disable auditing (`auditctl -e 0`) or delete rules to operate undetected. With `-e 2`, any change requires a reboot, which itself is an auditable, noticeable event. The trade-off: legitimate rule changes also require a reboot.",
-    "fr": "Rendre la configuration d'audit immuable empeche toute modification accidentelle comme malveillante des regles d'audit a chaud. Un attaquant ayant obtenu les droits root pourrait sinon desactiver l'audit (`auditctl -e 0`) ou supprimer des regles pour agir sans etre detecte. Avec `-e 2`, tout changement exige un redemarrage, lui-meme un evenement auditable et remarquable. Le compromis : les changements legitimes de regles necessitent aussi un redemarrage."
-  },
   "summary": {
     "en": "Ensures the audit subsystem is locked with `-e 2` so the loaded ruleset is **immutable** until the next reboot and cannot be changed at runtime.",
     "fr": "Garantit que le sous-systeme d'audit est verrouille avec `-e 2` afin que le jeu de regles charge soit **immuable** jusqu'au prochain redemarrage et ne puisse etre modifie a chaud."
+  },
+  "rationale": {
+    "en": "Making the audit configuration immutable prevents both accidental and malicious modification of the audit rules at runtime. An attacker who gains root could otherwise disable auditing (`auditctl -e 0`) or delete rules to operate undetected. With `-e 2`, any change requires a reboot, which itself is an auditable, noticeable event. The trade-off: legitimate rule changes also require a reboot.",
+    "fr": "Rendre la configuration d'audit immuable empeche toute modification accidentelle comme malveillante des regles d'audit a chaud. Un attaquant ayant obtenu les droits root pourrait sinon desactiver l'audit (`auditctl -e 0`) ou supprimer des regles pour agir sans etre detecte. Avec `-e 2`, tout changement exige un redemarrage, lui-meme un evenement auditable et remarquable. Le compromis : les changements legitimes de regles necessitent aussi un redemarrage."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -s` and checks that the kernel reports `enabled 2`. Reading the **live audit status** beats inspecting the trailing `-e 2` line in a rules file: the immutable flag is only effective once the kernel has applied it. A file containing `-e 2` that was never loaded leaves the system mutable; `auditctl -s` shows the real, enforced state.",

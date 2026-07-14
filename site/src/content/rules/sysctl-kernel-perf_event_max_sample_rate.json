@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe kernel_parameter('kernel.perf_event_max_sample_rate') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*kernel.perf_event_max_sample_rate[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Limiter la fréquence d'échantillonnage du sous-système Perf"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`kernel.perf_event_max_sample_rate` sets the maximum frequency, in samples per second, at which the Perf subsystem collects events. A very high sample rate forces the kernel to spend more time servicing performance interrupts, which can be abused to degrade availability. Restricting the rate (here to **1** sample/s) decreases the risk of availability problems from excessive Perf activity.",
-    "fr": "`kernel.perf_event_max_sample_rate` définit la fréquence maximale, en échantillons par seconde, à laquelle le sous-système Perf collecte les événements. Une fréquence très élevée force le noyau à passer plus de temps à traiter les interruptions de performance, ce qui peut être détourné pour dégrader la disponibilité. Restreindre la fréquence (ici à **1** échantillon/s) réduit le risque de problèmes de disponibilité dus à une activité Perf excessive."
-  },
   "summary": {
     "en": "Sets `kernel.perf_event_max_sample_rate = 1` to cap how many Perf samples per second the kernel collects, protecting availability.",
     "fr": "Fixe `kernel.perf_event_max_sample_rate = 1` pour plafonner le nombre d'échantillons Perf par seconde collectés par le noyau, protégeant la disponibilité."
+  },
+  "rationale": {
+    "en": "`kernel.perf_event_max_sample_rate` sets the maximum frequency, in samples per second, at which the Perf subsystem collects events. A very high sample rate forces the kernel to spend more time servicing performance interrupts, which can be abused to degrade availability. Restricting the rate (here to **1** sample/s) decreases the risk of availability problems from excessive Perf activity.",
+    "fr": "`kernel.perf_event_max_sample_rate` définit la fréquence maximale, en échantillons par seconde, à laquelle le sous-système Perf collecte les événements. Une fréquence très élevée force le noyau à passer plus de temps à traiter les interruptions de performance, ce qui peut être détourné pour dégrader la disponibilité. Restreindre la fréquence (ici à **1** échantillon/s) réduit le risque de problèmes de disponibilité dus à une activité Perf excessive."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** with `kernel_parameter('kernel.perf_event_max_sample_rate')` (equivalent to `sysctl kernel.perf_event_max_sample_rate`), not a `/etc/sysctl.d/*.conf` line. The kernel can also auto-adjust this value at runtime when it self-throttles, so a static file would not reflect reality. Only the effective parameter shows the rate the kernel currently enforces.",

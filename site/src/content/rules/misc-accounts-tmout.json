@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -47,19 +48,26 @@
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "content": "TMOUT=900\nreadonly TMOUT\nexport TMOUT\n",
+    "group": "root",
+    "mode": "0644",
+    "owner": "root",
+    "path": "/etc/profile.d/99-pavois-tmout.sh",
+    "resource": "file"
+  },
   "title": {
     "en": "Set Interactive Session Timeout",
     "fr": "Définir un délai d'expiration des sessions interactives"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Automatically terminating an idle session reduces the window in which an unattended console or SSH session left logged in can be hijacked by unauthorized personnel. Without `TMOUT`, a forgotten root shell on a screen-locked-but-not-logged-out terminal is a standing risk.",
-    "fr": "Terminer automatiquement une session inactive réduit la fenêtre durant laquelle une console ou une session SSH laissée connectée sans surveillance peut être détournée par une personne non autorisée. Sans `TMOUT`, un shell root oublié sur un terminal verrouillé mais non déconnecté constitue un risque permanent."
-  },
   "summary": {
     "en": "Defines a shell `TMOUT` value in `/etc/profile`, `/etc/profile.d/` or `/etc/bashrc` so idle interactive shells are automatically logged out.",
     "fr": "Définit une valeur `TMOUT` du shell dans `/etc/profile`, `/etc/profile.d/` ou `/etc/bashrc` afin que les shells interactifs inactifs soient automatiquement déconnectés."
+  },
+  "rationale": {
+    "en": "Automatically terminating an idle session reduces the window in which an unattended console or SSH session left logged in can be hijacked by unauthorized personnel. Without `TMOUT`, a forgotten root shell on a screen-locked-but-not-logged-out terminal is a standing risk.",
+    "fr": "Terminer automatiquement une session inactive réduit la fenêtre durant laquelle une console ou une session SSH laissée connectée sans surveillance peut être détournée par une personne non autorisée. Sans `TMOUT`, un shell root oublié sur un terminal verrouillé mais non déconnecté constitue un risque permanent."
   },
   "check_note": {
     "en": "Pavois greps the shell init files (`/etc/profile`, `/etc/profile.d/*`, `/etc/bashrc`) for an uncommented `TMOUT=` assignment. Because `TMOUT` is a shell builtin set at login through these scripts (there is no service to query), the effective source of truth is the init files themselves, Pavois checks the very files the shell sources, including drop-ins under `/etc/profile.d/`.",

@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,26 +26,26 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "5.1.18",
       "2.2.6",
       "5.1.17",
+      "5.1.18",
       "5.1.19"
     ],
     "pci-dss": "2.2.6"
   },
   "check": [
     "describe command('sshd -T') do",
-    "  its('stdout') { should match(/^maxsessions\\s+10$/i) }",
+    "  its('stdout') { should match(/^maxsessions\\s+([1-9]|10)$/i) }",
     "end"
   ],
   "remediation": {
     "directive": "maxsessions",
     "notify": {
       "action": "reload",
-      "service": "ssh"
+      "service": "ssh.service"
     },
     "resource": "sshd_setting",
-    "value": "10",
+    "value": "2",
     "verify": "sshd -t -f %{path}"
   },
   "title": {
@@ -52,13 +53,13 @@
     "fr": "Définir la limite SSH MaxSessions"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`MaxSessions` bounds how many open shell, login or subsystem channels may be **multiplexed over a single SSH connection**. Without a sane cap, a client (or an attacker abusing a foothold) can open a large number of concurrent sessions on one connection and consume daemon resources, threatening the **availability** of legitimate logins. Setting it to **`10`** keeps normal multiplexing usable while preventing channel-flood denial-of-service.",
-    "fr": "`MaxSessions` borne le nombre de canaux shell, de connexion ou de sous-système ouverts pouvant être **multiplexés sur une seule connexion SSH**. Sans plafond raisonnable, un client (ou un attaquant exploitant un point d'appui) peut ouvrir un grand nombre de sessions simultanées sur une connexion et consommer les ressources du démon, menaçant la **disponibilité** des connexions légitimes. Le fixer à **`10`** préserve un multiplexage normal tout en empêchant un déni de service par inondation de canaux."
-  },
   "summary": {
     "en": "Cap the number of multiplexed sessions per SSH connection at **`10`** via `MaxSessions`.",
     "fr": "Plafonner à **`10`** le nombre de sessions multiplexées par connexion SSH via `MaxSessions`."
+  },
+  "rationale": {
+    "en": "`MaxSessions` bounds how many open shell, login or subsystem channels may be **multiplexed over a single SSH connection**. Without a sane cap, a client (or an attacker abusing a foothold) can open a large number of concurrent sessions on one connection and consume daemon resources, threatening the **availability** of legitimate logins. Setting it to **`10`** keeps normal multiplexing usable while preventing channel-flood denial-of-service.",
+    "fr": "`MaxSessions` borne le nombre de canaux shell, de connexion ou de sous-système ouverts pouvant être **multiplexés sur une seule connexion SSH**. Sans plafond raisonnable, un client (ou un attaquant exploitant un point d'appui) peut ouvrir un grand nombre de sessions simultanées sur une connexion et consommer les ressources du démon, menaçant la **disponibilité** des connexions légitimes. Le fixer à **`10`** préserve un multiplexage normal tout en empêchant un déni de service par inondation de canaux."
   },
   "check_note": {
     "en": "Pavois asserts that the **effective** `sshd -T` output reports `maxsessions 10`. Reading the live daemon reflects the value after all `Include` directives and `/etc/ssh/sshd_config.d/` drop-ins are merged, a file scan can miss an override and report a false result.",

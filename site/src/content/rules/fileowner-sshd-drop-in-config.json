@@ -2,7 +2,8 @@
   "id": "fileowner-sshd-drop-in-config",
   "supported_os": [
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "ubuntu2204": "3.0.0",
@@ -36,13 +37,13 @@
     "fr": "Vérifier le propriétaire des fichiers de configuration du serveur SSH"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "On modern Ubuntu, `/etc/ssh/sshd_config` ends with `Include /etc/ssh/sshd_config.d/*.conf`, so drop-in files in that directory override the main policy. This is exactly the surface a file-based scanner misses. If a non-root user owns `/etc/ssh/sshd_config.d`, they can drop in a `.conf` that re-enables root login or weakens authentication, silently overriding a hardened main config. Restricting ownership to **root** (uid 0) ensures only the superuser can introduce SSH policy overrides.",
-    "fr": "Sur Ubuntu moderne, `/etc/ssh/sshd_config` se termine par `Include /etc/ssh/sshd_config.d/*.conf`, de sorte que les fichiers drop-in de ce répertoire surchargent la politique principale. C'est précisément la surface qu'un scanner basé sur les fichiers manque. Si un utilisateur non-root possède `/etc/ssh/sshd_config.d`, il peut y déposer un `.conf` qui réactive la connexion root ou affaiblit l'authentification, surchargeant silencieusement une configuration principale durcie. Restreindre la propriété à **root** (uid 0) garantit que seul le superutilisateur peut introduire des surcharges de politique SSH."
-  },
   "summary": {
     "en": "Ensures the SSH drop-in directory `/etc/ssh/sshd_config.d` is owned by **root** (uid 0).",
     "fr": "Garantit que le répertoire drop-in SSH `/etc/ssh/sshd_config.d` appartient à **root** (uid 0)."
+  },
+  "rationale": {
+    "en": "On modern Ubuntu, `/etc/ssh/sshd_config` ends with `Include /etc/ssh/sshd_config.d/*.conf`, so drop-in files in that directory override the main policy. This is exactly the surface a file-based scanner misses. If a non-root user owns `/etc/ssh/sshd_config.d`, they can drop in a `.conf` that re-enables root login or weakens authentication, silently overriding a hardened main config. Restricting ownership to **root** (uid 0) ensures only the superuser can introduce SSH policy overrides.",
+    "fr": "Sur Ubuntu moderne, `/etc/ssh/sshd_config` se termine par `Include /etc/ssh/sshd_config.d/*.conf`, de sorte que les fichiers drop-in de ce répertoire surchargent la politique principale. C'est précisément la surface qu'un scanner basé sur les fichiers manque. Si un utilisateur non-root possède `/etc/ssh/sshd_config.d`, il peut y déposer un `.conf` qui réactive la connexion root ou affaiblit l'authentification, surchargeant silencieusement une configuration principale durcie. Restreindre la propriété à **root** (uid 0) garantit que seul le superutilisateur peut introduire des surcharges de politique SSH."
   },
   "check_note": {
     "en": "Pavois asserts that the live directory `/etc/ssh/sshd_config.d` has owner uid `0`, skipped via `only_if` if it does not exist. This rule embodies Pavois's edge: file-based scanners check only `sshd_config` and miss the `Include`d drop-ins that can silently override it. Pavois reads the **effective** owner of the override directory from the filesystem, catching drift that OVAL/oscap would not even look at.",

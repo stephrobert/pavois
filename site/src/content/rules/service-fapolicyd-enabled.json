@@ -1,6 +1,7 @@
 {
   "id": "service-fapolicyd-enabled",
   "supported_os": [
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9"
@@ -22,25 +23,23 @@
     "end"
   ],
   "remediation": {
-    "action": [
-      "enable",
-      "start"
-    ],
-    "name": "fapolicyd",
-    "resource": "service"
+    "command": "fapolicyd-cli --update 2>/dev/null; systemctl enable --now fapolicyd",
+    "name": "enable-fapolicyd",
+    "not_if": "systemctl is-active --quiet fapolicyd",
+    "resource": "exec"
   },
   "title": {
     "en": "Enable the File Access Policy Service",
     "fr": "Activer le service de politique d'accès aux fichiers (fapolicyd)"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The fapolicyd (File Access Policy Daemon) service implements application allow-listing: it decides which executables and libraries may run based on policy. Running it blocks the execution of untrusted or unauthorized binaries, a strong defense against malware and supply-chain tampering.",
-    "fr": "Le service fapolicyd (File Access Policy Daemon) met en œuvre une liste blanche d'applications : il décide quels exécutables et bibliothèques peuvent s'exécuter selon une politique. Son exécution bloque le lancement de binaires non approuvés ou non autorisés, une défense solide contre les logiciels malveillants et les altérations de la chaîne d'approvisionnement."
-  },
   "summary": {
     "en": "Ensures the application allow-listing daemon `fapolicyd.service` is **enabled** and **running** so only authorized executables can run.",
     "fr": "Garantit que le démon de liste blanche d'applications `fapolicyd.service` est **activé** et **en cours d'exécution**, afin que seuls les exécutables autorisés puissent s'exécuter."
+  },
+  "rationale": {
+    "en": "The fapolicyd (File Access Policy Daemon) service implements application allow-listing: it decides which executables and libraries may run based on policy. Running it blocks the execution of untrusted or unauthorized binaries, a strong defense against malware and supply-chain tampering.",
+    "fr": "Le service fapolicyd (File Access Policy Daemon) met en œuvre une liste blanche d'applications : il décide quels exécutables et bibliothèques peuvent s'exécuter selon une politique. Son exécution bloque le lancement de binaires non approuvés ou non autorisés, une défense solide contre les logiciels malveillants et les altérations de la chaîne d'approvisionnement."
   },
   "check_note": {
     "en": "Pavois queries the **resolved unit state** with `systemctl is-enabled` / `is-active` for `fapolicyd.service`. Reading the effective state confirms the daemon is actually active now, not just installed or enabled in a unit file that could be masked or failing to start.",

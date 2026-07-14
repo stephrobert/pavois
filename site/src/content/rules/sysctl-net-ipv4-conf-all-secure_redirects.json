@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,8 +27,8 @@
   "norms": {
     "bp28": "R12",
     "cis": [
-      "3.3.6",
       "1.4.3",
+      "3.3.6",
       "3.3.1.10"
     ],
     "nist": [
@@ -37,14 +38,14 @@
       "CM-7(b)",
       "SC-7(a)"
     ],
-    "pci-dss": [
-      "1.4.3",
-      "Req-1.4.3"
-    ]
+    "pci-dss": "1.4.3"
   },
   "check": [
     "describe kernel_parameter('net.ipv4.conf.all.secure_redirects') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.all.secure_redirects[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -57,13 +58,13 @@
     "fr": "Desactiver le parametre noyau d'acceptation des redirections ICMP securisees sur toutes les interfaces IPv4"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`secure_redirects` lets the host accept ICMP redirect messages, but only from gateways listed in its default-gateway list. Even this restricted form rewrites the routing table on the basis of unauthenticated ICMP packets. A spoofed redirect from (or appearing to come from) a known gateway can divert traffic through an attacker-controlled hop, enabling a man-in-the-middle. Legitimate uses are rare, so it should be disabled (**0**) unless absolutely required.",
-    "fr": "`secure_redirects` permet a l'hote d'accepter des messages de redirection ICMP, mais uniquement depuis les passerelles figurant dans sa liste de passerelles par defaut. Meme cette forme restreinte reecrit la table de routage sur la base de paquets ICMP non authentifies. Une redirection usurpee provenant (ou semblant provenir) d'une passerelle connue peut detourner le trafic via un saut controle par un attaquant, permettant un homme du milieu. Les usages legitimes sont rares ; il convient donc de la desactiver (**0**) sauf necessite absolue."
-  },
   "summary": {
     "en": "Forces `net.ipv4.conf.all.secure_redirects` to **0** so the host rejects even \"secure\" ICMP redirects (those from listed default gateways) on every IPv4 interface.",
     "fr": "Force `net.ipv4.conf.all.secure_redirects` a **0** afin que l'hote rejette meme les redirections ICMP « securisees » (celles des passerelles par defaut repertoriees) sur chaque interface IPv4."
+  },
+  "rationale": {
+    "en": "`secure_redirects` lets the host accept ICMP redirect messages, but only from gateways listed in its default-gateway list. Even this restricted form rewrites the routing table on the basis of unauthenticated ICMP packets. A spoofed redirect from (or appearing to come from) a known gateway can divert traffic through an attacker-controlled hop, enabling a man-in-the-middle. Legitimate uses are rare, so it should be disabled (**0**) unless absolutely required.",
+    "fr": "`secure_redirects` permet a l'hote d'accepter des messages de redirection ICMP, mais uniquement depuis les passerelles figurant dans sa liste de passerelles par defaut. Meme cette forme restreinte reecrit la table de routage sur la base de paquets ICMP non authentifies. Une redirection usurpee provenant (ou semblant provenir) d'une passerelle connue peut detourner le trafic via un saut controle par un attaquant, permettant un homme du milieu. Les usages legitimes sont rares ; il convient donc de la desactiver (**0**) sauf necessite absolue."
   },
   "check_note": {
     "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.all.secure_redirects` from the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not a `/etc/sysctl.d/` file. A drop-in could declare `0` while a later file or a runtime `sysctl -w` re-enabled it. Auditing the effective parameter shows what the kernel actually applies to incoming ICMP redirects; reading a file misses such overrides.",

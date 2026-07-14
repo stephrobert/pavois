@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -34,10 +35,7 @@
       "IA-5(1)(c)",
       "IA-5(c)"
     ],
-    "pci-dss": [
-      "8.3.2",
-      "Req-8.2.1"
-    ],
+    "pci-dss": "8.3.2",
     "stig": [
       "UBTU-22-611070",
       "UBTU-24-400400"
@@ -45,22 +43,28 @@
   },
   "check": [
     "describe login_defs do",
-    "  its('ENCRYPT_METHOD') { should cmp 'SHA512' }",
+    "  its('ENCRYPT_METHOD') { should match(/\\A(SHA512|YESCRYPT)\\z/i) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "file": "/etc/login.defs",
+    "key": "ENCRYPT_METHOD",
+    "resource": "conf_line",
+    "sep": "space",
+    "value": "YESCRYPT"
+  },
   "title": {
     "en": "Set Password Hashing Algorithm in /etc/login.defs",
     "fr": "Définir l'algorithme de hachage des mots de passe dans /etc/login.defs"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Passwords must be protected at all times, and hashing is the standard method for protecting them. A password hashed with a weak algorithm is no better protected than plaintext. Setting `ENCRYPT_METHOD` to **SHA512** ensures new and changed passwords use a strong hash, making offline password-cracking attacks far more expensive.",
-    "fr": "Les mots de passe doivent être protégés en permanence, et le hachage est la méthode standard pour les protéger. Un mot de passe haché avec un algorithme faible n'est pas mieux protégé qu'en clair. Définir `ENCRYPT_METHOD` sur **SHA512** garantit que les mots de passe nouveaux ou modifiés utilisent un hachage fort, rendant les attaques de cassage hors-ligne beaucoup plus coûteuses."
-  },
   "summary": {
     "en": "Ensures `ENCRYPT_METHOD` in `/etc/login.defs` is set to **`SHA512`**, so new password hashes use a strong algorithm.",
     "fr": "Garantit que `ENCRYPT_METHOD` dans `/etc/login.defs` vaut **`SHA512`**, afin que les nouveaux hachages de mots de passe utilisent un algorithme fort."
+  },
+  "rationale": {
+    "en": "Passwords must be protected at all times, and hashing is the standard method for protecting them. A password hashed with a weak algorithm is no better protected than plaintext. Setting `ENCRYPT_METHOD` to **SHA512** ensures new and changed passwords use a strong hash, making offline password-cracking attacks far more expensive.",
+    "fr": "Les mots de passe doivent être protégés en permanence, et le hachage est la méthode standard pour les protéger. Un mot de passe haché avec un algorithme faible n'est pas mieux protégé qu'en clair. Définir `ENCRYPT_METHOD` sur **SHA512** garantit que les mots de passe nouveaux ou modifiés utilisent un hachage fort, rendant les attaques de cassage hors-ligne beaucoup plus coûteuses."
   },
   "check_note": {
     "en": "Pavois uses the InSpec `login_defs` resource to read the **effective resolved value** of `ENCRYPT_METHOD`, parsing `/etc/login.defs` as the password tools actually interpret it (last setting wins, comments ignored). This reflects the value `passwd`/`chpasswd` will use, rather than a naive grep that could match a commented or overridden line.",

@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,8 +27,8 @@
   "norms": {
     "bp28": "R33",
     "cis": [
-      "5.1.20",
       "2.2.6",
+      "5.1.20",
       "5.1.22"
     ],
     "nist": [
@@ -40,10 +41,7 @@
       "IA-2",
       "IA-2(5)"
     ],
-    "pci-dss": [
-      "2.2.6",
-      "Req-2.2.4"
-    ]
+    "pci-dss": "2.2.6"
   },
   "check": [
     "describe command('sshd -T') do",
@@ -54,7 +52,7 @@
     "directive": "permitrootlogin",
     "notify": {
       "action": "reload",
-      "service": "ssh"
+      "service": "ssh.service"
     },
     "resource": "sshd_setting",
     "value": "no",
@@ -65,13 +63,13 @@
     "fr": "Désactiver la connexion SSH en root"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Allowing direct `root` SSH login removes individual accountability (everyone logs in as the same all-powerful account) and makes `root` a single, well-known target for online password-guessing and brute-force attacks. Requiring users to log in under their own account and then escalate via `sudo` provides per-user audit trails, enables least-privilege, and removes the most valuable credential from the network-facing login surface.",
-    "fr": "Autoriser la connexion SSH directe en `root` supprime la responsabilité individuelle (tout le monde se connecte sous le même compte tout-puissant) et fait de `root` une cible unique et bien connue pour les attaques par devinette de mot de passe et force brute. Exiger que les utilisateurs se connectent sous leur propre compte puis escaladent via `sudo` fournit des pistes d'audit par utilisateur, permet le moindre privilège et retire l'identifiant le plus précieux de la surface de connexion exposée au réseau."
-  },
   "summary": {
     "en": "Forces **`PermitRootLogin no`** so the `root` account can never authenticate directly over SSH.",
     "fr": "Force **`PermitRootLogin no`** afin que le compte `root` ne puisse jamais s'authentifier directement en SSH."
+  },
+  "rationale": {
+    "en": "Allowing direct `root` SSH login removes individual accountability (everyone logs in as the same all-powerful account) and makes `root` a single, well-known target for online password-guessing and brute-force attacks. Requiring users to log in under their own account and then escalate via `sudo` provides per-user audit trails, enables least-privilege, and removes the most valuable credential from the network-facing login surface.",
+    "fr": "Autoriser la connexion SSH directe en `root` supprime la responsabilité individuelle (tout le monde se connecte sous le même compte tout-puissant) et fait de `root` une cible unique et bien connue pour les attaques par devinette de mot de passe et force brute. Exiger que les utilisateurs se connectent sous leur propre compte puis escaladent via `sudo` fournit des pistes d'audit par utilisateur, permet le moindre privilège et retire l'identifiant le plus précieux de la surface de connexion exposée au réseau."
   },
   "check_note": {
     "en": "Pavois reads the **effective** value from `sshd -T`, after all `Include`s, `/etc/ssh/sshd_config.d/` drop-ins and `Match` blocks. Cloud images frequently ship a drop-in that re-enables `PermitRootLogin prohibit-password`; only the resolved output catches it, where a read of `/etc/ssh/sshd_config` would report a stale value.",

@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -34,10 +35,7 @@
       "IA-5(1)(d)",
       "IA-5(f)"
     ],
-    "pci-dss": [
-      "8.3.9",
-      "Req-8.2.4"
-    ],
+    "pci-dss": "8.3.9",
     "stig": [
       "UBTU-22-411030",
       "UBTU-24-400310"
@@ -48,19 +46,25 @@
     "  its('PASS_MAX_DAYS') { should cmp <= 365 }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "file": "/etc/login.defs",
+    "key": "PASS_MAX_DAYS",
+    "resource": "conf_line",
+    "sep": "space",
+    "value": "365"
+  },
   "title": {
     "en": "Set Password Maximum Age",
     "fr": "Définir l'âge maximal des mots de passe"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Any password can eventually be cracked, so passwords must be changed periodically. If the system never forces a password change, a compromised credential stays valid indefinitely. Setting `PASS_MAX_DAYS` to **365 or fewer** bounds how long a leaked or guessed password remains usable. (Setting it too low is counterproductive, encouraging users to write passwords down.)",
-    "fr": "Tout mot de passe finit par être cassé, ils doivent donc être changés périodiquement. Si le système ne force jamais le changement, un identifiant compromis reste valide indéfiniment. Définir `PASS_MAX_DAYS` à **365 ou moins** borne la durée pendant laquelle un mot de passe fuité ou deviné reste utilisable. (Le fixer trop bas est contre-productif et incite à noter les mots de passe.)"
-  },
   "summary": {
     "en": "Ensures `PASS_MAX_DAYS` in `/etc/login.defs` is **365 or fewer**, forcing periodic password changes for new accounts.",
     "fr": "Garantit que `PASS_MAX_DAYS` dans `/etc/login.defs` vaut **365 ou moins**, imposant un changement périodique des mots de passe pour les nouveaux comptes."
+  },
+  "rationale": {
+    "en": "Any password can eventually be cracked, so passwords must be changed periodically. If the system never forces a password change, a compromised credential stays valid indefinitely. Setting `PASS_MAX_DAYS` to **365 or fewer** bounds how long a leaked or guessed password remains usable. (Setting it too low is counterproductive, encouraging users to write passwords down.)",
+    "fr": "Tout mot de passe finit par être cassé, ils doivent donc être changés périodiquement. Si le système ne force jamais le changement, un identifiant compromis reste valide indéfiniment. Définir `PASS_MAX_DAYS` à **365 ou moins** borne la durée pendant laquelle un mot de passe fuité ou deviné reste utilisable. (Le fixer trop bas est contre-productif et incite à noter les mots de passe.)"
   },
   "check_note": {
     "en": "Pavois uses the InSpec `login_defs` resource to read the **effective resolved value** of `PASS_MAX_DAYS`, parsing `/etc/login.defs` the way `useradd`/`chage` interpret it (last uncommented setting wins). This is the default applied to newly created accounts; per-user values in `/etc/shadow` may differ and are governed separately.",

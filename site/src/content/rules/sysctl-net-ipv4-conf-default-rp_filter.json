@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -40,6 +41,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.conf.default.rp_filter') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.default.rp_filter[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -52,13 +56,13 @@
     "fr": "Activer le parametre noyau de filtrage par chemin inverse sur toutes les interfaces IPv4 par defaut"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Reverse Path Filtering (RPF) makes the kernel verify that an incoming packet's source address is reachable through the interface it arrived on; otherwise the packet is dropped. This defeats IP spoofing and asymmetric-route attacks. The `default` template should be **1** (strict) so every interface created after boot inherits spoofing protection. Strict RPF suits end hosts and routers on simple, symmetric topologies; multi-homed routers with asymmetric routing may need loose mode (`2`) to avoid dropping legitimate return traffic.",
-    "fr": "Le filtrage par chemin inverse (RPF) fait verifier au noyau que l'adresse source d'un paquet entrant est joignable via l'interface par laquelle il est arrive ; sinon, le paquet est rejete. Cela contre l'usurpation d'adresse IP et les attaques par route asymetrique. Le modele `default` doit valoir **1** (strict) afin que chaque interface creee apres le demarrage herite de la protection contre l'usurpation. Le RPF strict convient aux hotes terminaux et aux routeurs sur des topologies simples et symetriques ; les routeurs multi-rattaches a routage asymetrique peuvent avoir besoin du mode souple (`2`) pour ne pas rejeter le trafic de retour legitime."
-  },
   "summary": {
     "en": "Forces `net.ipv4.conf.default.rp_filter` to **1** (strict reverse path filtering) so newly created IPv4 interfaces drop packets with unverifiable source addresses by default.",
     "fr": "Force `net.ipv4.conf.default.rp_filter` a **1** (filtrage strict par chemin inverse) afin que les interfaces IPv4 nouvellement creees rejettent par defaut les paquets a adresse source non verifiable."
+  },
+  "rationale": {
+    "en": "Reverse Path Filtering (RPF) makes the kernel verify that an incoming packet's source address is reachable through the interface it arrived on; otherwise the packet is dropped. This defeats IP spoofing and asymmetric-route attacks. The `default` template should be **1** (strict) so every interface created after boot inherits spoofing protection. Strict RPF suits end hosts and routers on simple, symmetric topologies; multi-homed routers with asymmetric routing may need loose mode (`2`) to avoid dropping legitimate return traffic.",
+    "fr": "Le filtrage par chemin inverse (RPF) fait verifier au noyau que l'adresse source d'un paquet entrant est joignable via l'interface par laquelle il est arrive ; sinon, le paquet est rejete. Cela contre l'usurpation d'adresse IP et les attaques par route asymetrique. Le modele `default` doit valoir **1** (strict) afin que chaque interface creee apres le demarrage herite de la protection contre l'usurpation. Le RPF strict convient aux hotes terminaux et aux routeurs sur des topologies simples et symetriques ; les routeurs multi-rattaches a routage asymetrique peuvent avoir besoin du mode souple (`2`) pour ne pas rejeter le trafic de retour legitime."
   },
   "check_note": {
     "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.default.rp_filter` from the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not a `/etc/sysctl.d/` file. The `default` key sets the template inherited by interfaces created later, so the running value is what determines future interfaces' spoofing protection. A drop-in might declare `1` while a later override left it at `0` or `2`; only the effective parameter is authoritative.",

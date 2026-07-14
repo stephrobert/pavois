@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R16"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_DEBUG_NOTIFIERS=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_DEBUG_NOTIFIERS='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_DEBUG_NOTIFIERS=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_DEBUG_NOTIFIERS=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Enable checks on notifier call chains",
     "fr": "Activer les vérifications sur les chaînes d'appel de notifiers"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "This provides validation of notifier chains, it checks whether the notifiers are from the kernel or a module that is still loaded prior to being invoked.",
-    "fr": "Cette validation des chaînes de notifiers vérifie que chaque notifier provient bien du noyau ou d'un module toujours chargé avant d'être invoqué."
-  },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_DEBUG_NOTIFIERS=y`, which validates notifier call chains at runtime.",
     "fr": "Exige que le noyau soit compilé avec `CONFIG_DEBUG_NOTIFIERS=y`, ce qui valide les chaînes d'appel de notifiers à l'exécution."
+  },
+  "rationale": {
+    "en": "This provides validation of notifier chains, it checks whether the notifiers are from the kernel or a module that is still loaded prior to being invoked.",
+    "fr": "Cette validation des chaînes de notifiers vérifie que chaque notifier provient bien du noyau ou d'un module toujours chargé avant d'être invoqué."
   },
   "check_note": {
     "en": "Pavois reads the **effective** kernel build flag from the running kernel: `/boot/config-$(uname -r)` (the config of the booted image) or `/proc/config.gz` when exposed. It keys on `$(uname -r)`, so it inspects the kernel that is actually live, not a `.config` left over from a build tree or a different installed image. A file-based scan that just greps a fixed path could report a stale or unrelated config.",

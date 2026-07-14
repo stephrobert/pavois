@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -31,19 +32,23 @@
     "  it { should be_mounted }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# /dev/shm should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /dev/shm >/dev/null 2>&1 && echo '/dev/shm is already a mount point' || echo '/dev/shm is NOT separate'\n# Then: dedicate an LVM volume / disk to /dev/shm and add it to /etc/fstab.\n# /dev/shm can instead be a tmpfs, add:  tmpfs /dev/shm tmpfs defaults,rw,nosuid,nodev,noexec 0 0\n",
+    "reason": "a separate /dev/shm filesystem needs partitioning/LVM/tmpfs, not a safe runtime change",
+    "resource": "manual"
+  },
   "title": {
     "en": "Ensure /dev/shm is configured",
     "fr": "S'assurer que /dev/shm est configure"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/dev/shm` is a world-writable shared-memory tmpfs where any user can drop and run files, much like `/tmp`. Mounting it explicitly lets you apply **`nodev`, `nosuid` and `noexec`**, making it useless for installing executable code, blocking hardlink races against setuid binaries, and reducing it as a staging ground for attacks.",
-    "fr": "`/dev/shm` est un tmpfs de memoire partagee accessible en ecriture a tous, ou n'importe quel utilisateur peut deposer et executer des fichiers, comme `/tmp`. Le monter explicitement permet d'appliquer **`nodev`, `nosuid` et `noexec`**, le rendant inutile pour installer du code executable, bloquant les courses sur liens physiques contre des binaires setuid et reduisant son usage comme rampe de lancement d'attaques."
-  },
   "summary": {
     "en": "Verifies that **`/dev/shm`** is explicitly mounted so hardening options (`nodev`, `nosuid`, `noexec`) can be enforced on shared memory.",
     "fr": "Verifie que **`/dev/shm`** est monte explicitement afin que des options de durcissement (`nodev`, `nosuid`, `noexec`) puissent etre appliquees a la memoire partagee."
+  },
+  "rationale": {
+    "en": "`/dev/shm` is a world-writable shared-memory tmpfs where any user can drop and run files, much like `/tmp`. Mounting it explicitly lets you apply **`nodev`, `nosuid` and `noexec`**, making it useless for installing executable code, blocking hardlink races against setuid binaries, and reducing it as a staging ground for attacks.",
+    "fr": "`/dev/shm` est un tmpfs de memoire partagee accessible en ecriture a tous, ou n'importe quel utilisateur peut deposer et executer des fichiers, comme `/tmp`. Le monter explicitement permet d'appliquer **`nodev`, `nosuid` et `noexec`**, le rendant inutile pour installer du code executable, bloquant les courses sur liens physiques contre des binaires setuid et reduisant son usage comme rampe de lancement d'attaques."
   },
   "check_note": {
     "en": "Pavois uses the InSpec `mount('/dev/shm')` resource, reading the **effective** mount table (`/proc/self/mountinfo`) rather than `/etc/fstab`. This shows the tmpfs as the kernel actually mounted it, including options applied at runtime or via systemd, which a file-only parse of fstab could not confirm.",

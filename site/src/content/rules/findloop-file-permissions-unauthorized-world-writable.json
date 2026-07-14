@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,8 +27,8 @@
   "norms": {
     "bp28": "R54",
     "cis": [
-      "7.1.11",
-      "2.2.6"
+      "2.2.6",
+      "7.1.11"
     ],
     "nist": [
       "AC-6(1)",
@@ -37,22 +38,27 @@
   },
   "check": [
     "describe command('timeout 90 find / -xdev -type f -perm -0002 2>/dev/null') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# List world-writable files (excluding the sticky-bit dirs), then fix each after review:\nfind / -xdev -type f -perm -0002 2>/dev/null\n# for each legitimate-to-fix: chmod o-w <file>\n",
+    "reason": "auto-chmod over a find risks breaking apps that rely on a world-writable path, review each",
+    "resource": "manual"
+  },
   "title": {
     "en": "Ensure no world-writable files exist",
     "fr": "Vérifier qu'aucun fichier accessible en écriture par tous n'existe"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "A world-writable file (`o+w`, the `0002` permission bit) can be modified by **any** user on the system. An attacker or a compromised low-privilege account can overwrite such a file to inject malicious content, tamper with data or stage a privilege-escalation payload. Almost all legitimate sharing needs can be met with user and group permissions, so world-writable files are gratuitous risk and should not exist on local filesystems.",
-    "fr": "Un fichier accessible en écriture par tous (`o+w`, le bit de permission `0002`) peut être modifié par **n'importe quel** utilisateur du système. Un attaquant ou un compte peu privilégié compromis peut réécrire un tel fichier pour injecter du contenu malveillant, falsifier des données ou préparer une charge d'élévation de privilèges. Presque tous les besoins légitimes de partage se satisfont avec des permissions utilisateur et groupe, donc les fichiers en écriture pour tous constituent un risque gratuit qui ne doit pas exister sur les systèmes de fichiers locaux."
-  },
   "summary": {
     "en": "Ensures no file on a local filesystem is world-writable (the `o+w` / `0002` permission bit set).",
     "fr": "Garantit qu'aucun fichier d'un système de fichiers local n'est accessible en écriture par tous (bit de permission `o+w` / `0002`)."
+  },
+  "rationale": {
+    "en": "A world-writable file (`o+w`, the `0002` permission bit) can be modified by **any** user on the system. An attacker or a compromised low-privilege account can overwrite such a file to inject malicious content, tamper with data or stage a privilege-escalation payload. Almost all legitimate sharing needs can be met with user and group permissions, so world-writable files are gratuitous risk and should not exist on local filesystems.",
+    "fr": "Un fichier accessible en écriture par tous (`o+w`, le bit de permission `0002`) peut être modifié par **n'importe quel** utilisateur du système. Un attaquant ou un compte peu privilégié compromis peut réécrire un tel fichier pour injecter du contenu malveillant, falsifier des données ou préparer une charge d'élévation de privilèges. Presque tous les besoins légitimes de partage se satisfont avec des permissions utilisateur et groupe, donc les fichiers en écriture pour tous constituent un risque gratuit qui ne doit pas exister sur les systèmes de fichiers locaux."
   },
   "check_note": {
     "en": "Pavois runs `find / -xdev -type f -perm -0002` and expects **empty output**, any path returned is a world-writable file. The `-xdev` flag keeps the scan on the local filesystem (skipping mounted network or pseudo filesystems). Auditing actual inode permissions catches files created at runtime, extracted from archives or `chmod`-ed by an operator, which a package-manifest or config-file audit cannot detect.",

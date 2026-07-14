@@ -1,6 +1,7 @@
 {
   "id": "auditd-flush",
   "supported_os": [
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9"
@@ -18,7 +19,7 @@
     "nist": "3.3.1"
   },
   "check": [
-    "describe command('grep -qiE \\'^[[:space:]]*flush[[:space:]]*=[[:space:]]*(data)\\b\\' /etc/audit/auditd.conf 2>/dev/null && echo ok || echo ko') do",
+    "describe command('grep -qiE \\'^[[:space:]]*flush[[:space:]]*=[[:space:]]*(incremental_async)\\b\\' /etc/audit/auditd.conf 2>/dev/null && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
@@ -28,13 +29,13 @@
     "fr": "Configurer la priorité de synchronisation (flush) d'auditd"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Audit records held only in memory are **lost on a crash, power failure or kernel panic**, exactly the moments when an attacker may try to cover their tracks. Setting `flush = data` forces every audit event's data to be synchronised to the log file on disk, guaranteeing the integrity and completeness of the trail even if the system goes down abruptly.",
-    "fr": "Les enregistrements d'audit conservés uniquement en mémoire sont **perdus lors d'un crash, d'une coupure de courant ou d'un kernel panic**, précisément les moments où un attaquant peut tenter d'effacer ses traces. Définir `flush = data` force la synchronisation sur disque des données de chaque événement d'audit, garantissant l'intégrité et l'exhaustivité de la piste même en cas d'arrêt brutal."
-  },
   "summary": {
     "en": "Sets `flush = data` in `/etc/audit/auditd.conf` so audit records are written to disk synchronously rather than left in memory.",
     "fr": "Définit `flush = data` dans `/etc/audit/auditd.conf` pour que les enregistrements d'audit soient écrits sur disque de façon synchrone plutôt que conservés en mémoire."
+  },
+  "rationale": {
+    "en": "Audit records held only in memory are **lost on a crash, power failure or kernel panic**, exactly the moments when an attacker may try to cover their tracks. Setting `flush = data` forces every audit event's data to be synchronised to the log file on disk, guaranteeing the integrity and completeness of the trail even if the system goes down abruptly.",
+    "fr": "Les enregistrements d'audit conservés uniquement en mémoire sont **perdus lors d'un crash, d'une coupure de courant ou d'un kernel panic**, précisément les moments où un attaquant peut tenter d'effacer ses traces. Définir `flush = data` force la synchronisation sur disque des données de chaque événement d'audit, garantissant l'intégrité et l'exhaustivité de la piste même en cas d'arrêt brutal."
   },
   "check_note": {
     "en": "Pavois reads the effective `flush` directive from `/etc/audit/auditd.conf` and requires `data`. This directive controls how aggressively the running daemon syncs records, so the configured value is the authoritative indicator of durability.",

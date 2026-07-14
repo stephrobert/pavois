@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_HARDENED_USERCOPY_FALLBACK=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_HARDENED_USERCOPY_FALLBACK='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_HARDENED_USERCOPY_FALLBACK=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should_not match(/^CONFIG_HARDENED_USERCOPY_FALLBACK=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Do not allow usercopy whitelist violations to fallback to object size",
     "fr": "Interdire le repli sur la taille de l'objet en cas de violation de la liste blanche usercopy"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "When `CONFIG_HARDENED_USERCOPY_FALLBACK=y`, a usercopy that violates a slab cache's allow-list is **permitted anyway** (only a warning is logged) and validated against the coarse object size instead. This soft-fail mode was a migration aid; leaving it on weakens hardened usercopy back toward an advisory check, so a heap object that should never be copied to userspace can still leak its full contents. Disabling the fallback turns violations into hard rejections, restoring the full protection of `CONFIG_HARDENED_USERCOPY`.",
-    "fr": "Quand `CONFIG_HARDENED_USERCOPY_FALLBACK=y`, une copie usercopy qui viole la liste d'autorisation d'un cache slab est **tout de même autorisée** (un simple avertissement est journalisé) et validée par rapport à la taille grossière de l'objet. Ce mode de tolérance servait à la migration ; le laisser actif ramène le durcissement usercopy à un simple contrôle indicatif, si bien qu'un objet du tas qui ne devrait jamais être copié vers l'espace utilisateur peut quand même divulguer tout son contenu. Désactiver le repli transforme les violations en rejets stricts, rétablissant la pleine protection de `CONFIG_HARDENED_USERCOPY`."
-  },
   "summary": {
     "en": "Requires the kernel to be built **without** `CONFIG_HARDENED_USERCOPY_FALLBACK=y`, so usercopy allow-list violations are blocked rather than allowed with a warning.",
     "fr": "Exige que le noyau soit compilé **sans** `CONFIG_HARDENED_USERCOPY_FALLBACK=y`, afin que les violations de la liste d'autorisation usercopy soient bloquées au lieu d'être tolérées avec un avertissement."
+  },
+  "rationale": {
+    "en": "When `CONFIG_HARDENED_USERCOPY_FALLBACK=y`, a usercopy that violates a slab cache's allow-list is **permitted anyway** (only a warning is logged) and validated against the coarse object size instead. This soft-fail mode was a migration aid; leaving it on weakens hardened usercopy back toward an advisory check, so a heap object that should never be copied to userspace can still leak its full contents. Disabling the fallback turns violations into hard rejections, restoring the full protection of `CONFIG_HARDENED_USERCOPY`.",
+    "fr": "Quand `CONFIG_HARDENED_USERCOPY_FALLBACK=y`, une copie usercopy qui viole la liste d'autorisation d'un cache slab est **tout de même autorisée** (un simple avertissement est journalisé) et validée par rapport à la taille grossière de l'objet. Ce mode de tolérance servait à la migration ; le laisser actif ramène le durcissement usercopy à un simple contrôle indicatif, si bien qu'un objet du tas qui ne devrait jamais être copié vers l'espace utilisateur peut quand même divulguer tout son contenu. Désactiver le repli transforme les violations en rejets stricts, rétablissant la pleine protection de `CONFIG_HARDENED_USERCOPY`."
   },
   "check_note": {
     "en": "Pavois reads the build configuration of the **running** kernel, `/boot/config-$(uname -r)` and the in-memory `/proc/config.gz`, and confirms `CONFIG_HARDENED_USERCOPY_FALLBACK` is not set to `y`. Inspecting the booted kernel's config (not a leftover `/boot/config-*`) ensures the answer reflects the kernel actually enforcing usercopy checks.",

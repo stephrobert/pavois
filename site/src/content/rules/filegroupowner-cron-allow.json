@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "2.4.1.8",
       "2.2.6",
+      "2.4.1.8",
       "2.4.1.9"
     ],
     "nist": [
@@ -38,11 +39,11 @@
   "check": [
     "only_if { file('/etc/cron.allow').exist? }",
     "describe file('/etc/cron.allow') do",
-    "  its('gid') { should eq 0 }",
+    "  its('group') { should eq 'crontab' }",
     "end"
   ],
   "remediation": {
-    "group": "root",
+    "group": "crontab",
     "path": "/etc/cron.allow",
     "resource": "file"
   },
@@ -51,13 +52,13 @@
     "fr": "Vérifier le groupe propriétaire du fichier /etc/cron.allow"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/cron.allow` decides **which users may create cron jobs**. If its group owner is not `root` (gid `0`), a non-privileged group could add itself to the allow list and schedule recurring commands, or read the list of authorized users. Because cron jobs run unattended, this is a common persistence and privilege-escalation vector.",
-    "fr": "`/etc/cron.allow` décide **quels utilisateurs peuvent créer des tâches cron**. Si son groupe propriétaire n'est pas `root` (gid `0`), un groupe non privilégié pourrait s'ajouter à la liste d'autorisation et planifier des commandes récurrentes, ou lire la liste des utilisateurs autorisés. Comme les tâches cron s'exécutent sans surveillance, c'est un vecteur courant de persistance et d'élévation de privilèges."
-  },
   "summary": {
     "en": "Ensures `/etc/cron.allow`, the list of users permitted to use `cron`, is group-owned by `root` (gid `0`).",
     "fr": "Garantit que `/etc/cron.allow`, la liste des utilisateurs autorisés à utiliser `cron`, a `root` (gid `0`) pour groupe propriétaire."
+  },
+  "rationale": {
+    "en": "`/etc/cron.allow` decides **which users may create cron jobs**. If its group owner is not `root` (gid `0`), a non-privileged group could add itself to the allow list and schedule recurring commands, or read the list of authorized users. Because cron jobs run unattended, this is a common persistence and privilege-escalation vector.",
+    "fr": "`/etc/cron.allow` décide **quels utilisateurs peuvent créer des tâches cron**. Si son groupe propriétaire n'est pas `root` (gid `0`), un groupe non privilégié pourrait s'ajouter à la liste d'autorisation et planifier des commandes récurrentes, ou lire la liste des utilisateurs autorisés. Comme les tâches cron s'exécutent sans surveillance, c'est un vecteur courant de persistance et d'élévation de privilèges."
   },
   "check_note": {
     "en": "Pavois reads the **effective ownership** of `/etc/cron.allow` from the inode (via `stat`) and asserts `gid == 0`. Checking the live inode catches drift from package updates or manual edits rather than trusting a template. The `only_if` guard skips the check when the file is absent (some systems rely solely on `cron.deny`).",

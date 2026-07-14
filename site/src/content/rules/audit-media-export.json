@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,10 +27,10 @@
   "norms": {
     "bp28": "R73",
     "cis": [
-      "6.3.3.10",
       "10.2.1.7",
       "6.2.3.10",
-      "6.3.3.19"
+      "6.3.3.19",
+      "6.3.3.10"
     ],
     "nist": [
       "3.1.7",
@@ -43,6 +44,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)export\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'export' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -54,13 +58,13 @@
     "fr": "Garantir que auditd collecte les informations sur l'export vers des supports (reussi)"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Unauthorized exportation of data to external media can cause information leaks where classified data, personal data and intellectual property are lost. Creating an audit record each time a filesystem is mounted helps identify and guard against such loss and supports investigation of data-exfiltration attempts.",
-    "fr": "L'exportation non autorisee de donnees vers des supports externes peut provoquer des fuites d'informations ou des donnees classifiees, personnelles et de la propriete intellectuelle sont perdues. Creer un enregistrement d'audit a chaque montage de systeme de fichiers aide a identifier et a se premunir contre ces pertes et facilite l'investigation des tentatives d'exfiltration."
-  },
   "summary": {
     "en": "Ensures `auditd` has an active rule tagged `export` that records successful `mount` syscalls by ordinary users, so exporting data to external/removable media is traceable.",
     "fr": "Garantit que `auditd` possede une regle active taguee `export` qui enregistre les appels systeme `mount` reussis par les utilisateurs ordinaires, afin que l'export de donnees vers des supports externes/amovibles soit tracable."
+  },
+  "rationale": {
+    "en": "Unauthorized exportation of data to external media can cause information leaks where classified data, personal data and intellectual property are lost. Creating an audit record each time a filesystem is mounted helps identify and guard against such loss and supports investigation of data-exfiltration attempts.",
+    "fr": "L'exportation non autorisee de donnees vers des supports externes peut provoquer des fuites d'informations ou des donnees classifiees, personnelles et de la propriete intellectuelle sont perdues. Creer un enregistrement d'audit a chaque montage de systeme de fichiers aide a identifier et a se premunir contre ces pertes et facilite l'investigation des tentatives d'exfiltration."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks for a loaded rule carrying the `export` key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule present in a file but not loaded gives false assurance. `auditctl -l` reflects only what the kernel enforces now.",

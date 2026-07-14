@@ -2,14 +2,21 @@
   "id": "journald-forwardtosyslog",
   "supported_os": [
     "debian12",
+    "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -25,16 +32,17 @@
     ]
   },
   "check": [
-    "describe command('grep -rqiE \\'^[[:space:]]*ForwardToSyslog[[:space:]]*=[[:space:]]*no\\b\\' /etc/systemd/journald.conf /etc/systemd/journald.conf.d/ 2>/dev/null && echo ok || echo ko') do",
-    "  its('stdout.strip') { should eq 'ok' }",
+    "only_if { !service('rsyslog').running? && !service('syslog-ng').running? }",
+    "describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE \"^[[:space:]]*ForwardToSyslog[[:space:]]*=\" | tail -1') do",
+    "  its('stdout') { should match(/=\\s*no/i) }",
     "end"
   ],
   "remediation": {
-    "content": "[Journal]\nCompress=yes\nForwardToSyslog=no\nStorage=persistent\n",
+    "content": "[Journal]\nForwardToSyslog=no\n",
     "group": "root",
     "mode": "0644",
     "owner": "root",
-    "path": "/etc/systemd/journald.conf.d/99-pavois.conf",
+    "path": "/etc/systemd/journald.conf.d/99-pavois-forward.conf",
     "resource": "file"
   },
   "title": {
@@ -42,13 +50,13 @@
     "fr": "S'assurer que journald est configuré pour la transmission des journaux vers rsyslog"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "When journald forwards everything to syslog as well, records are written twice, wasting disk and I/O and creating divergent copies. The hardened baseline keeps one authoritative pipeline; centralized/remote shipping should be configured explicitly (e.g. an rsyslog `@@remote` rule) rather than relying on blanket forwarding. Storing log data on a remote host also protects integrity: if an attacker gains root locally, they can tamper with or delete local logs, so a single, intentionally-configured forwarding path is easier to secure and reason about.",
-    "fr": "Quand journald transmet aussi tout vers syslog, les enregistrements sont écrits deux fois, gaspillant disque et E/S et créant des copies divergentes. La base durcie conserve un seul pipeline faisant autorité ; l'envoi centralisé/distant doit être configuré explicitement (par ex. une règle rsyslog `@@distant`) plutôt que de s'appuyer sur une transmission systématique. Stocker les journaux sur un hôte distant protège aussi leur intégrité : si un attaquant obtient root localement, il peut altérer ou supprimer les logs locaux ; un unique chemin de transmission configuré à dessein est plus simple à sécuriser et à maîtriser."
-  },
   "summary": {
     "en": "Sets `ForwardToSyslog=no` so journald does **not** duplicate every record into syslog, leaving a single deliberate logging pipeline.",
     "fr": "Définit `ForwardToSyslog=no` afin que journald ne **duplique pas** chaque enregistrement vers syslog, ne laissant qu'un seul pipeline de journalisation maîtrisé."
+  },
+  "rationale": {
+    "en": "When journald forwards everything to syslog as well, records are written twice, wasting disk and I/O and creating divergent copies. The hardened baseline keeps one authoritative pipeline; centralized/remote shipping should be configured explicitly (e.g. an rsyslog `@@remote` rule) rather than relying on blanket forwarding. Storing log data on a remote host also protects integrity: if an attacker gains root locally, they can tamper with or delete local logs, so a single, intentionally-configured forwarding path is easier to secure and reason about.",
+    "fr": "Quand journald transmet aussi tout vers syslog, les enregistrements sont écrits deux fois, gaspillant disque et E/S et créant des copies divergentes. La base durcie conserve un seul pipeline faisant autorité ; l'envoi centralisé/distant doit être configuré explicitement (par ex. une règle rsyslog `@@distant`) plutôt que de s'appuyer sur une transmission systématique. Stocker les journaux sur un hôte distant protège aussi leur intégrité : si un attaquant obtient root localement, il peut altérer ou supprimer les logs locaux ; un unique chemin de transmission configuré à dessein est plus simple à sécuriser et à maîtriser."
   },
   "check_note": {
     "en": "Pavois greps `/etc/systemd/journald.conf` **and the `journald.conf.d/` drop-ins** for an active `ForwardToSyslog=no`. Since journald merges drop-ins over the base file, scanning both yields the **effective value**, a drop-in setting `no` correctly overrides a base `yes`.",

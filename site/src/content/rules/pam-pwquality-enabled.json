@@ -2,11 +2,21 @@
   "id": "pam-pwquality-enabled",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -18,7 +28,7 @@
     "cis": "5.3.2.3"
   },
   "check": [
-    "describe command('grep -rqE \\'^[^#]*\\bpam_pwquality\\\\.so\\b\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
+    "describe command('grep -RqE \\'^[^#]*\\bpam_pwquality\\\\.so\\b\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
@@ -32,13 +42,13 @@
     "fr": "Vérifier que le module pam_pwquality est activé"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Strong passwords significantly increase the time and effort required for unauthorized access, improving overall system security. `pam_pwquality` is the module that enforces composition rules at password-set time; without it, users can choose trivially weak or dictionary passwords that fall instantly to guessing or cracking.",
-    "fr": "Des mots de passe forts augmentent considérablement le temps et l'effort nécessaires à un accès non autorisé, améliorant la sécurité globale du système. `pam_pwquality` est le module qui applique les règles de composition au moment de la définition du mot de passe ; sans lui, les utilisateurs peuvent choisir des mots de passe trivialement faibles ou de dictionnaire, qui cèdent instantanément à la devinette ou au cassage."
-  },
   "summary": {
     "en": "Ensures `pam_pwquality.so` is present in the PAM password stack so new passwords are checked for strength (length, complexity, dictionary words).",
     "fr": "Garantit que `pam_pwquality.so` est présent dans la pile password de PAM afin que les nouveaux mots de passe soient contrôlés en robustesse (longueur, complexité, mots de dictionnaire)."
+  },
+  "rationale": {
+    "en": "Strong passwords significantly increase the time and effort required for unauthorized access, improving overall system security. `pam_pwquality` is the module that enforces composition rules at password-set time; without it, users can choose trivially weak or dictionary passwords that fall instantly to guessing or cracking.",
+    "fr": "Des mots de passe forts augmentent considérablement le temps et l'effort nécessaires à un accès non autorisé, améliorant la sécurité globale du système. `pam_pwquality` est le module qui applique les règles de composition au moment de la définition du mot de passe ; sans lui, les utilisateurs peuvent choisir des mots de passe trivialement faibles ou de dictionnaire, qui cèdent instantanément à la devinette ou au cassage."
   },
   "check_note": {
     "en": "Pavois greps the **effective** PAM stack under `/etc/pam.d/` for an active (non-commented) `pam_pwquality.so` line. The password stack is built from `common-password` and its `@include` chain, so reading the resolved files catches the case where the module is declared in a sample but absent from the path PAM actually applies, a gap a single-file scan misses.",

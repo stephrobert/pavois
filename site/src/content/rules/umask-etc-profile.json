@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -41,19 +42,26 @@
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "content": "umask 077\n",
+    "group": "root",
+    "mode": "0755",
+    "owner": "root",
+    "path": "/etc/profile.d/99-pavois-umask.sh",
+    "resource": "file"
+  },
   "title": {
     "en": "Ensure the Default Umask is Set Correctly in /etc/profile",
     "fr": "S'assurer que l'umask par defaut est correctement configure dans /etc/profile"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The **umask** determines the permissions stripped from newly created files and directories. `/etc/profile` and its `/etc/profile.d/*.sh` drop-ins set the system-wide umask for **login shells** (and POSIX `sh` sessions). A permissive value here means files created by users default to **group- or world-readable/writable**, exposing data to unauthorized accounts. Enforcing at least `0027` (CIS) / `0077` (ANSSI BP-028 R36) applies least privilege to file creation for the login-shell path.",
-    "fr": "L'**umask** determine les permissions retirees aux fichiers et repertoires nouvellement crees. `/etc/profile` et ses drop-ins `/etc/profile.d/*.sh` definissent l'umask global des **shells de connexion** (et des sessions `sh` POSIX). Une valeur permissive ici signifie que les fichiers crees par les utilisateurs sont par defaut **lisibles/inscriptibles par le groupe ou tous**, exposant des donnees a des comptes non autorises. Imposer au moins `0027` (CIS) / `0077` (ANSSI BP-028 R36) applique le moindre privilege a la creation de fichiers pour le chemin shell de connexion."
-  },
   "summary": {
     "en": "Ensures `/etc/profile` (and any `/etc/profile.d/*.sh` drop-in) sets a **restrictive `umask`** at least as strict as `0027`/`0077` per norm.",
     "fr": "S'assure que `/etc/profile` (et tout drop-in `/etc/profile.d/*.sh`) definit un **`umask` restrictif** au moins aussi strict que `0027`/`0077` selon la norme."
+  },
+  "rationale": {
+    "en": "The **umask** determines the permissions stripped from newly created files and directories. `/etc/profile` and its `/etc/profile.d/*.sh` drop-ins set the system-wide umask for **login shells** (and POSIX `sh` sessions). A permissive value here means files created by users default to **group- or world-readable/writable**, exposing data to unauthorized accounts. Enforcing at least `0027` (CIS) / `0077` (ANSSI BP-028 R36) applies least privilege to file creation for the login-shell path.",
+    "fr": "L'**umask** determine les permissions retirees aux fichiers et repertoires nouvellement crees. `/etc/profile` et ses drop-ins `/etc/profile.d/*.sh` definissent l'umask global des **shells de connexion** (et des sessions `sh` POSIX). Une valeur permissive ici signifie que les fichiers crees par les utilisateurs sont par defaut **lisibles/inscriptibles par le groupe ou tous**, exposant des donnees a des comptes non autorises. Imposer au moins `0027` (CIS) / `0077` (ANSSI BP-028 R36) applique le moindre privilege a la creation de fichiers pour le chemin shell de connexion."
   },
   "check_note": {
     "en": "pavois scans **both** `/etc/profile` **and every `/etc/profile.d/*.sh` drop-in**, takes the **last effective** `umask` line (`tail -1`), and tests it against the norm target with a **bitmask comparison** (`(value & mask) == mask`), so `0077` satisfies `0027`. Including the `profile.d` drop-ins is what a file-by-file check misses: many distributions ship the real umask in a drop-in (e.g. `/etc/profile.d/umask.sh`), and a later drop-in can override `/etc/profile` - reading the **merged, last-wins** result reflects what a login shell actually applies.",

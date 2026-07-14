@@ -1,6 +1,7 @@
 {
   "id": "cmdline-init-on-alloc",
   "supported_os": [
+    "fedora",
     "rhel10",
     "rhel9"
   ],
@@ -16,21 +17,28 @@
   "check": [
     "describe command('cat /proc/cmdline') do",
     "  its('stdout') { should match(/(^| )init_on_alloc=1( |$)/) }",
+    "end",
+    "describe command(\"grep -hwsF 'init_on_alloc=1' /etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "param": "init_on_alloc=1",
+    "reboot_required": true,
+    "resource": "kernel_cmdline"
+  },
   "title": {
     "en": "Configure kernel to zero out memory before allocation",
     "fr": "Configurer le noyau pour remettre la memoire a zero avant allocation"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "With `init_on_alloc=1`, all page-allocator and slab-allocator memory is **zeroed when allocated**. This eliminates a whole class of \"uninitialised heap memory\" bugs where freshly allocated buffers expose leftover data from a previous owner, a common vector for **information disclosure** (leaking secrets, keys, or pointers that defeat ASLR) and for turning use-of-uninitialised-memory bugs into exploitable conditions.",
-    "fr": "Avec `init_on_alloc=1`, toute la memoire de l'allocateur de pages et de l'allocateur de slabs est **remise a zero a l'allocation**. Cela elimine toute une classe de bugs de \"memoire de tas non initialisee\" ou des tampons fraichement alloues exposent des donnees residuelles d'un proprietaire precedent, un vecteur courant de **divulgation d'information** (fuite de secrets, de cles ou de pointeurs contournant l'ASLR) et de transformation de bugs de memoire non initialisee en conditions exploitables."
-  },
   "summary": {
     "en": "Ensures the kernel booted with `init_on_alloc=1`, which zero-fills page and slab allocations so freshly allocated memory never carries stale data.",
     "fr": "Garantit que le noyau a demarre avec `init_on_alloc=1`, qui remplit de zeros les allocations de pages et de slabs afin que la memoire fraichement allouee ne contienne jamais de donnees residuelles."
+  },
+  "rationale": {
+    "en": "With `init_on_alloc=1`, all page-allocator and slab-allocator memory is **zeroed when allocated**. This eliminates a whole class of \"uninitialised heap memory\" bugs where freshly allocated buffers expose leftover data from a previous owner, a common vector for **information disclosure** (leaking secrets, keys, or pointers that defeat ASLR) and for turning use-of-uninitialised-memory bugs into exploitable conditions.",
+    "fr": "Avec `init_on_alloc=1`, toute la memoire de l'allocateur de pages et de l'allocateur de slabs est **remise a zero a l'allocation**. Cela elimine toute une classe de bugs de \"memoire de tas non initialisee\" ou des tampons fraichement alloues exposent des donnees residuelles d'un proprietaire precedent, un vecteur courant de **divulgation d'information** (fuite de secrets, de cles ou de pointeurs contournant l'ASLR) et de transformation de bugs de memoire non initialisee en conditions exploitables."
   },
   "check_note": {
     "en": "Pavois reads `/proc/cmdline`, the line the **running** kernel booted with, and checks for `init_on_alloc=1`. This is more reliable than reading `/etc/default/grub`: the config file states what *should* boot, while `/proc/cmdline` proves the mitigation is **active in the running kernel**. Note some distributions build the kernel with `CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y`, in which case the behaviour is on even without the parameter, but the explicit flag guarantees it.",

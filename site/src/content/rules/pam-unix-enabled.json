@@ -2,14 +2,21 @@
   "id": "pam-unix-enabled",
   "supported_os": [
     "debian12",
+    "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -24,7 +31,7 @@
     ]
   },
   "check": [
-    "describe command('grep -rqE \\'^[^#]*\\bpam_unix\\\\.so\\b\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
+    "describe command('grep -RqE \\'^[^#]*\\bpam_unix\\\\.so\\b\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
@@ -38,13 +45,13 @@
     "fr": "Verifier que le module pam_unix est active"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`pam_unix.so` is the module that actually checks credentials against the local password database (`/etc/shadow`). If it is missing from the PAM stack, the system may grant access **without performing any local authentication**, breaking the most basic security guarantee that access follows a successful identity check.",
-    "fr": "`pam_unix.so` est le module qui verifie reellement les identifiants face a la base de mots de passe locale (`/etc/shadow`). S'il est absent de la pile PAM, le systeme peut accorder l'acces **sans effectuer aucune authentification locale**, rompant la garantie la plus fondamentale : l'acces n'est accorde qu'apres une verification d'identite reussie."
-  },
   "summary": {
     "en": "Confirms the core **`pam_unix.so`** module is present in the PAM stack so that local credential checks against `/etc/shadow` are actually performed.",
     "fr": "Confirme que le module central **`pam_unix.so`** est present dans la pile PAM, afin que les verifications d'identifiants locaux face a `/etc/shadow` soient reellement effectuees."
+  },
+  "rationale": {
+    "en": "`pam_unix.so` is the module that actually checks credentials against the local password database (`/etc/shadow`). If it is missing from the PAM stack, the system may grant access **without performing any local authentication**, breaking the most basic security guarantee that access follows a successful identity check.",
+    "fr": "`pam_unix.so` est le module qui verifie reellement les identifiants face a la base de mots de passe locale (`/etc/shadow`). S'il est absent de la pile PAM, le systeme peut accorder l'acces **sans effectuer aucune authentification locale**, rompant la garantie la plus fondamentale : l'acces n'est accorde qu'apres une verification d'identite reussie."
   },
   "check_note": {
     "en": "Pavois greps the **effective** PAM tree under `/etc/pam.d/` for a non-commented `pam_unix.so` line. Scanning the resolved configuration, including files pulled in by `@include`/`substack`, proves the module is wired into the live authentication path, not just present in some unreferenced file a file-by-file check might wrongly trust.",

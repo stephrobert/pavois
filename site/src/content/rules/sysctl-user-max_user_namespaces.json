@@ -19,6 +19,9 @@
   "check": [
     "describe kernel_parameter('user.max_user_namespaces') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*user.max_user_namespaces[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -31,13 +34,13 @@
     "fr": "Désactiver l'utilisation des espaces de noms utilisateur"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "User namespaces let an unprivileged process gain full **root capabilities inside an isolated namespace**. While powerful for unprivileged containers, they have repeatedly been a source of **local privilege-escalation** vulnerabilities, because they expose otherwise root-only kernel code paths to ordinary users. Providing functionality beyond what the system actually needs widens the attack surface. On systems that do not run rootless containers, setting `user.max_user_namespaces = 0` disables the feature entirely and removes this class of exploit primitives.",
-    "fr": "Les espaces de noms utilisateur permettent à un processus non privilégié d'obtenir l'ensemble des **capacités root au sein d'un espace de noms isolé**. Bien que puissants pour les conteneurs sans privilège, ils ont été à maintes reprises une source de vulnérabilités d'**élévation de privilèges locale**, car ils exposent à des utilisateurs ordinaires des chemins de code noyau normalement réservés à root. Fournir une fonctionnalité au-delà de ce dont le système a réellement besoin élargit la surface d'attaque. Sur les systèmes qui n'exécutent pas de conteneurs sans privilège, régler `user.max_user_namespaces = 0` désactive entièrement la fonctionnalité et supprime cette classe de primitives d'exploitation."
-  },
   "summary": {
     "en": "Disables unprivileged user namespaces by capping `user.max_user_namespaces` at `0`.",
     "fr": "Désactive les espaces de noms utilisateur non privilégiés en plafonnant `user.max_user_namespaces` à `0`."
+  },
+  "rationale": {
+    "en": "User namespaces let an unprivileged process gain full **root capabilities inside an isolated namespace**. While powerful for unprivileged containers, they have repeatedly been a source of **local privilege-escalation** vulnerabilities, because they expose otherwise root-only kernel code paths to ordinary users. Providing functionality beyond what the system actually needs widens the attack surface. On systems that do not run rootless containers, setting `user.max_user_namespaces = 0` disables the feature entirely and removes this class of exploit primitives.",
+    "fr": "Les espaces de noms utilisateur permettent à un processus non privilégié d'obtenir l'ensemble des **capacités root au sein d'un espace de noms isolé**. Bien que puissants pour les conteneurs sans privilège, ils ont été à maintes reprises une source de vulnérabilités d'**élévation de privilèges locale**, car ils exposent à des utilisateurs ordinaires des chemins de code noyau normalement réservés à root. Fournir une fonctionnalité au-delà de ce dont le système a réellement besoin élargit la surface d'attaque. Sur les systèmes qui n'exécutent pas de conteneurs sans privilège, régler `user.max_user_namespaces = 0` désactive entièrement la fonctionnalité et supprime cette classe de primitives d'exploitation."
   },
   "check_note": {
     "en": "Pavois reads the **effective** kernel value of `user.max_user_namespaces`, not a config file. The live value merges `/etc/sysctl.conf`, drop-ins in `/etc/sysctl.d/` and `/run/sysctl.d/`, kernel boot parameters and any runtime `sysctl -w` (container engines and Podman may raise this at runtime). A clean file can coexist with a kernel that still allows user namespaces; Pavois reports the value actually enforced.",

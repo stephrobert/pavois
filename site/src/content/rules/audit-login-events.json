@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,10 +27,10 @@
   "norms": {
     "bp28": "R73",
     "cis": [
-      "6.3.3.12",
       "10.2.1.3",
       "6.2.3.12",
-      "6.3.3.21"
+      "6.3.3.21",
+      "6.3.3.12"
     ],
     "nist": [
       "3.1.7",
@@ -49,6 +50,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)logins\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'logins' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -60,13 +64,13 @@
     "fr": "Enregistrer les tentatives d'alteration des evenements de connexion et deconnexion - faillock"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The files that track login/logout activity and failed-login counters (`faillock`) are prime targets for attackers covering their tracks. Manual editing of these files may indicate nefarious activity, such as an intruder removing evidence of an intrusion or resetting lockout counters. Auditing writes to them preserves the forensic record.",
-    "fr": "Les fichiers qui suivent l'activite de connexion/deconnexion et les compteurs d'echecs (`faillock`) sont des cibles de choix pour les attaquants effacant leurs traces. L'edition manuelle de ces fichiers peut indiquer une activite malveillante, comme un intrus supprimant la preuve d'une intrusion ou reinitialisant les compteurs de verrouillage. Auditer les ecritures sur ces fichiers preserve la trace forensique."
-  },
   "summary": {
     "en": "Ensures `auditd` has an active rule tagged `logins` that watches the login records (`/var/log/lastlog`, `/var/run/faillock`) so any tampering with logon/logout history is recorded.",
     "fr": "Garantit que `auditd` possede une regle active taguee `logins` qui surveille les enregistrements de connexion (`/var/log/lastlog`, `/var/run/faillock`) afin que toute alteration de l'historique de connexion/deconnexion soit enregistree."
+  },
+  "rationale": {
+    "en": "The files that track login/logout activity and failed-login counters (`faillock`) are prime targets for attackers covering their tracks. Manual editing of these files may indicate nefarious activity, such as an intruder removing evidence of an intrusion or resetting lockout counters. Auditing writes to them preserves the forensic record.",
+    "fr": "Les fichiers qui suivent l'activite de connexion/deconnexion et les compteurs d'echecs (`faillock`) sont des cibles de choix pour les attaquants effacant leurs traces. L'edition manuelle de ces fichiers peut indiquer une activite malveillante, comme un intrus supprimant la preuve d'une intrusion ou reinitialisant les compteurs de verrouillage. Auditer les ecritures sur ces fichiers preserve la trace forensique."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks for a loaded rule carrying the `logins` key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule present in a file but not loaded gives false assurance. `auditctl -l` reflects only what the kernel enforces now.",

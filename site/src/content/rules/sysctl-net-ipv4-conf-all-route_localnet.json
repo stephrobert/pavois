@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.conf.all.route_localnet') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.all.route_localnet[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Empecher le routage du trafic externe vers la boucle locale sur toutes les interfaces IPv4"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "By default the kernel treats the `127.0.0.0/8` loopback range as non-routable (martian). Setting `net.ipv4.conf.all.route_localnet=1` lifts that protection and lets the kernel route packets to and from `127.0.0.0/8` on real interfaces. An attacker on the local segment could then reach services bound to `127.0.0.1`, databases, admin sockets, metrics endpoints, that the operator deliberately exposed only to localhost. Keeping it at **0** preserves the loopback boundary as a trust boundary.",
-    "fr": "Par defaut, le noyau traite la plage de boucle locale `127.0.0.0/8` comme non routable (martian). Definir `net.ipv4.conf.all.route_localnet=1` leve cette protection et autorise le noyau a router des paquets vers et depuis `127.0.0.0/8` sur de vraies interfaces. Un attaquant present sur le segment local pourrait alors atteindre des services lies a `127.0.0.1`, bases de donnees, sockets d'administration, endpoints de metriques, que l'operateur n'exposait volontairement qu'a localhost. Maintenir la valeur a **0** preserve la boucle locale comme frontiere de confiance."
-  },
   "summary": {
     "en": "Forces `net.ipv4.conf.all.route_localnet` to **0** so the kernel refuses to route external traffic to or from the `127.0.0.0/8` loopback range on every IPv4 interface.",
     "fr": "Force `net.ipv4.conf.all.route_localnet` a **0** afin que le noyau refuse de router du trafic externe vers ou depuis la plage de boucle locale `127.0.0.0/8` sur chaque interface IPv4."
+  },
+  "rationale": {
+    "en": "By default the kernel treats the `127.0.0.0/8` loopback range as non-routable (martian). Setting `net.ipv4.conf.all.route_localnet=1` lifts that protection and lets the kernel route packets to and from `127.0.0.0/8` on real interfaces. An attacker on the local segment could then reach services bound to `127.0.0.1`, databases, admin sockets, metrics endpoints, that the operator deliberately exposed only to localhost. Keeping it at **0** preserves the loopback boundary as a trust boundary.",
+    "fr": "Par defaut, le noyau traite la plage de boucle locale `127.0.0.0/8` comme non routable (martian). Definir `net.ipv4.conf.all.route_localnet=1` leve cette protection et autorise le noyau a router des paquets vers et depuis `127.0.0.0/8` sur de vraies interfaces. Un attaquant present sur le segment local pourrait alors atteindre des services lies a `127.0.0.1`, bases de donnees, sockets d'administration, endpoints de metriques, que l'operateur n'exposait volontairement qu'a localhost. Maintenir la valeur a **0** preserve la boucle locale comme frontiere de confiance."
   },
   "check_note": {
     "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.all.route_localnet` via the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not the text of `/etc/sysctl.conf` or any drop-in. A file under `/etc/sysctl.d/` can declare `0` while the running kernel still holds `1` because a later drop-in, a boot-time service, or a manual `sysctl -w` overrode it. Auditing the effective parameter catches that drift; reading a file would not.",

@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -34,18 +36,16 @@
     ]
   },
   "check": [
+    "only_if { file('/etc/sssd/sssd.conf').exist? }",
     "describe service('sssd.service') do",
     "  it { should be_enabled }",
     "  it { should be_running }",
     "end"
   ],
   "remediation": {
-    "action": [
-      "enable",
-      "start"
-    ],
-    "name": "sssd",
-    "resource": "service"
+    "command": "# SSSD only makes sense once the host is joined to a domain (IdM / AD / LDAP).\n#   realm join ...   (or write /etc/sssd/sssd.conf), then: systemctl enable --now sssd\n",
+    "reason": "sssd refuses to start without a domain configuration: enabling it would just fail",
+    "resource": "manual"
   },
   "title": {
     "en": "Enable the SSSD Service",

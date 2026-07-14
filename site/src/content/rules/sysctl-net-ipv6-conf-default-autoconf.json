@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.default.autoconf') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.default.autoconf[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Configurer l'autoconfiguration sur toutes les interfaces IPv6 par défaut"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`net.ipv6.conf.default.autoconf` controls **stateless address autoconfiguration (SLAAC)**: when enabled, the host automatically derives global IPv6 addresses from prefixes advertised in Router Advertisements. An attacker who can inject forged RAs can drive the host to configure addresses on rogue prefixes and route through a malicious gateway, a **man-in-the-middle** vector. On hosts that should use static or DHCPv6 addressing, disabling autoconfiguration by default removes this exposure and keeps addressing under administrative control.",
-    "fr": "`net.ipv6.conf.default.autoconf` contrôle l'**autoconfiguration d'adresse sans état (SLAAC)** : lorsqu'elle est activée, l'hôte dérive automatiquement des adresses IPv6 globales à partir des préfixes annoncés dans les annonces de routeur. Un attaquant capable d'injecter de fausses RA peut amener l'hôte à configurer des adresses sur des préfixes malveillants et à router via une passerelle malveillante, un vecteur d'**homme du milieu**. Sur les hôtes qui devraient utiliser un adressage statique ou DHCPv6, désactiver l'autoconfiguration par défaut supprime cette exposition et garde l'adressage sous contrôle administratif."
-  },
   "summary": {
     "en": "Disables IPv6 **stateless address autoconfiguration (SLAAC)** for new interfaces by setting `net.ipv6.conf.default.autoconf = 0`.",
     "fr": "Désactive l'**autoconfiguration d'adresse IPv6 sans état (SLAAC)** pour les nouvelles interfaces en réglant `net.ipv6.conf.default.autoconf = 0`."
+  },
+  "rationale": {
+    "en": "`net.ipv6.conf.default.autoconf` controls **stateless address autoconfiguration (SLAAC)**: when enabled, the host automatically derives global IPv6 addresses from prefixes advertised in Router Advertisements. An attacker who can inject forged RAs can drive the host to configure addresses on rogue prefixes and route through a malicious gateway, a **man-in-the-middle** vector. On hosts that should use static or DHCPv6 addressing, disabling autoconfiguration by default removes this exposure and keeps addressing under administrative control.",
+    "fr": "`net.ipv6.conf.default.autoconf` contrôle l'**autoconfiguration d'adresse sans état (SLAAC)** : lorsqu'elle est activée, l'hôte dérive automatiquement des adresses IPv6 globales à partir des préfixes annoncés dans les annonces de routeur. Un attaquant capable d'injecter de fausses RA peut amener l'hôte à configurer des adresses sur des préfixes malveillants et à router via une passerelle malveillante, un vecteur d'**homme du milieu**. Sur les hôtes qui devraient utiliser un adressage statique ou DHCPv6, désactiver l'autoconfiguration par défaut supprime cette exposition et garde l'adressage sous contrôle administratif."
   },
   "check_note": {
     "en": "Pavois reads the **effective** kernel value of `net.ipv6.conf.default.autoconf`, not a config file. The live value merges `/etc/sysctl.conf`, drop-ins in `/etc/sysctl.d/` and `/run/sysctl.d/`, kernel boot parameters and any runtime `sysctl -w` (NetworkManager and systemd-networkd both touch this). A clean file can coexist with a kernel that still autoconfigures; Pavois reports the enforced value.",

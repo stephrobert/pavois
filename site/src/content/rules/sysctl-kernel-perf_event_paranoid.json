@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -30,6 +31,9 @@
   "check": [
     "describe kernel_parameter('kernel.perf_event_paranoid') do",
     "  its('value') { should cmp 2 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*kernel.perf_event_paranoid[[:space:]]*=[[:space:]]*2([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -42,13 +46,13 @@
     "fr": "Interdire le profilage du noyau aux utilisateurs non privilégiés"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The Perf subsystem can expose detailed CPU, memory and instruction-level behaviour. If unprivileged users can profile the kernel, that telemetry can reveal sensitive information about kernel internals and side channels usable in exploitation. `kernel.perf_event_paranoid = 2` disallows raw tracepoint, kernel and CPU-event access for unprivileged users, restricting profiling to privileged contexts.",
-    "fr": "Le sous-système Perf peut exposer le comportement détaillé du CPU, de la mémoire et au niveau des instructions. Si des utilisateurs non privilégiés peuvent profiler le noyau, cette télémétrie peut révéler des informations sensibles sur les internes du noyau et des canaux auxiliaires exploitables. `kernel.perf_event_paranoid = 2` interdit l'accès brut aux tracepoints, au noyau et aux événements CPU pour les utilisateurs non privilégiés, restreignant le profilage aux contextes privilégiés."
-  },
   "summary": {
     "en": "Sets `kernel.perf_event_paranoid = 2` so unprivileged users cannot profile the kernel or raw CPU events.",
     "fr": "Fixe `kernel.perf_event_paranoid = 2` afin que les utilisateurs non privilégiés ne puissent pas profiler le noyau ni les événements CPU bruts."
+  },
+  "rationale": {
+    "en": "The Perf subsystem can expose detailed CPU, memory and instruction-level behaviour. If unprivileged users can profile the kernel, that telemetry can reveal sensitive information about kernel internals and side channels usable in exploitation. `kernel.perf_event_paranoid = 2` disallows raw tracepoint, kernel and CPU-event access for unprivileged users, restricting profiling to privileged contexts.",
+    "fr": "Le sous-système Perf peut exposer le comportement détaillé du CPU, de la mémoire et au niveau des instructions. Si des utilisateurs non privilégiés peuvent profiler le noyau, cette télémétrie peut révéler des informations sensibles sur les internes du noyau et des canaux auxiliaires exploitables. `kernel.perf_event_paranoid = 2` interdit l'accès brut aux tracepoints, au noyau et aux événements CPU pour les utilisateurs non privilégiés, restreignant le profilage aux contextes privilégiés."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** with `kernel_parameter('kernel.perf_event_paranoid')` (equivalent to `sysctl kernel.perf_event_paranoid`), not a `/etc/sysctl.d/*.conf` line. A file declaring `2` is irrelevant if a later drop-in, a boot parameter, or a runtime `sysctl -w` left the kernel at a more permissive `1`, `0` or `-1`. Only the effective parameter proves what unprivileged users are actually allowed to do.",

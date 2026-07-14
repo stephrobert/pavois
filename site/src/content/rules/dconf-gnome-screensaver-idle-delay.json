@@ -2,7 +2,8 @@
   "id": "dconf-gnome-screensaver-idle-delay",
   "supported_os": [
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "ubuntu2204": "3.0.0",
@@ -31,25 +32,28 @@
     ]
   },
   "check": [
+    "only_if { command('dconf').exist? }",
     "describe command('{ grep -rqE \\'^[[:space:]]*idle-delay[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null && grep -rqxF \\'/org/gnome/desktop/session/idle-delay\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
   "remediation": {
-    "resource": "dconf"
+    "key": "org/gnome/desktop/session/idle-delay",
+    "resource": "dconf",
+    "value": "uint32 900"
   },
   "title": {
     "en": "Set GNOME3 Screensaver Inactivity Timeout",
     "fr": "Définir le délai d'inactivité du screensaver GNOME3"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The idle delay (`idle-delay`) is how long a session may sit untouched before GNOME marks it idle and starts the screensaver/lock chain. A session time-out lock protects a workstation when a user steps away without logging out. If `idle-delay` is unset or too long, **an unattended desktop stays open well past the policy window** (commonly 15 minutes / 900 s), exposing the live session to anyone nearby.",
-    "fr": "Le délai d'inactivité (`idle-delay`) est la durée pendant laquelle une session peut rester inactive avant que GNOME ne la marque comme inactive et déclenche la chaîne screensaver/verrouillage. Un verrouillage par temporisation protège un poste lorsqu'un utilisateur s'éloigne sans se déconnecter. Si `idle-delay` n'est pas défini ou trop long, **un bureau laissé sans surveillance reste ouvert bien au-delà de la fenêtre de politique** (souvent 15 minutes / 900 s), exposant la session active à toute personne à proximité."
-  },
   "summary": {
     "en": "Sets the session inactivity timeout that triggers the screensaver via `idle-delay` in the system `dconf` database, locked against user override.",
     "fr": "Définit le délai d'inactivité de session qui déclenche le screensaver via `idle-delay` dans la base `dconf` du système, verrouillé contre toute modification par l'utilisateur."
+  },
+  "rationale": {
+    "en": "The idle delay (`idle-delay`) is how long a session may sit untouched before GNOME marks it idle and starts the screensaver/lock chain. A session time-out lock protects a workstation when a user steps away without logging out. If `idle-delay` is unset or too long, **an unattended desktop stays open well past the policy window** (commonly 15 minutes / 900 s), exposing the live session to anyone nearby.",
+    "fr": "Le délai d'inactivité (`idle-delay`) est la durée pendant laquelle une session peut rester inactive avant que GNOME ne la marque comme inactive et déclenche la chaîne screensaver/verrouillage. Un verrouillage par temporisation protège un poste lorsqu'un utilisateur s'éloigne sans se déconnecter. Si `idle-delay` n'est pas défini ou trop long, **un bureau laissé sans surveillance reste ouvert bien au-delà de la fenêtre de politique** (souvent 15 minutes / 900 s), exposant la session active à toute personne à proximité."
   },
   "check_note": {
     "en": "Pavois verifies in the **effective** `dconf` configuration that a drop-in under `/etc/dconf/db/*.d/` sets `idle-delay`, and that `/org/gnome/desktop/session/idle-delay` is in a `locks/` file so users cannot lengthen or clear it. Reading the resolved dconf database catches the value wherever a keyfile defines it.",

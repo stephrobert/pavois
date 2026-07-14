@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -41,19 +42,24 @@
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "file": "/etc/bash.bashrc",
+    "line": "umask 077",
+    "module": "umask 077",
+    "resource": "pam_line"
+  },
   "title": {
     "en": "Ensure the Default Bash Umask is Set Correctly",
     "fr": "S'assurer que l'umask Bash par defaut est correctement configure"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The **umask** determines the permissions stripped from newly created files and directories. The system-wide Bash umask in `/etc/bash.bashrc` applies to interactive Bash shells; if it is too permissive, every file a user creates is **world- or group-readable/writable** by default, exposing data and config to unauthorized accounts. A restrictive umask (`0027` for CIS, `0077` for ANSSI BP-028 R36) enforces least privilege on file creation across all users.",
-    "fr": "L'**umask** determine les permissions retirees aux fichiers et repertoires nouvellement crees. L'umask Bash global dans `/etc/bash.bashrc` s'applique aux shells Bash interactifs ; s'il est trop permissif, chaque fichier cree par un utilisateur est par defaut **lisible/inscriptible par le groupe ou tous**, exposant donnees et configuration a des comptes non autorises. Un umask restrictif (`0027` pour CIS, `0077` pour ANSSI BP-028 R36) impose le moindre privilege a la creation de fichiers pour tous les utilisateurs."
-  },
   "summary": {
     "en": "Ensures the system-wide Bash startup file `/etc/bash.bashrc` sets a **restrictive `umask`** (at least as strict as `0027`/`0077` per norm).",
     "fr": "S'assure que le fichier de demarrage Bash global `/etc/bash.bashrc` definit un **`umask` restrictif** (au moins aussi strict que `0027`/`0077` selon la norme)."
+  },
+  "rationale": {
+    "en": "The **umask** determines the permissions stripped from newly created files and directories. The system-wide Bash umask in `/etc/bash.bashrc` applies to interactive Bash shells; if it is too permissive, every file a user creates is **world- or group-readable/writable** by default, exposing data and config to unauthorized accounts. A restrictive umask (`0027` for CIS, `0077` for ANSSI BP-028 R36) enforces least privilege on file creation across all users.",
+    "fr": "L'**umask** determine les permissions retirees aux fichiers et repertoires nouvellement crees. L'umask Bash global dans `/etc/bash.bashrc` s'applique aux shells Bash interactifs ; s'il est trop permissif, chaque fichier cree par un utilisateur est par defaut **lisible/inscriptible par le groupe ou tous**, exposant donnees et configuration a des comptes non autorises. Un umask restrictif (`0027` pour CIS, `0077` pour ANSSI BP-028 R36) impose le moindre privilege a la creation de fichiers pour tous les utilisateurs."
   },
   "check_note": {
     "en": "Pavois reads the **last effective** `umask` line in `/etc/bash.bashrc` and verifies it is at least as strict as the norm target with a **bitmask test** (`(value & mask) == mask`), so `0077` satisfies a `0027` requirement. Because shell rc files allow repeated assignments and the last one wins, Pavois takes the **final** matching line (`tail -1`) rather than the first - this mirrors what an interactive Bash shell actually applies, which a naive first-match grep would get wrong.",

@@ -2,11 +2,21 @@
   "id": "ownerships-var-log-sssd",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -22,7 +32,8 @@
   },
   "check": [
     "only_if { command('test -d /var/log/sssd').exit_status.zero? }",
-    "describe command('timeout 60 find -P /var/log/sssd -type f ! -user sssd ! -user root 2>/dev/null | head -1') do",
+    "describe command('timeout 60 find -P /var/log/sssd -type f ! -user sssd ! -user root -print -quit 2>/dev/null') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
@@ -36,13 +47,13 @@
     "fr": "Vérifier l'appartenance des fichiers dans /var/log/sssd"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/var/log/sssd` directory holds debug logs for the System Security Services Daemon (SSSD), which mediates authentication against LDAP/Active Directory and can record account and credential details. Files must be owned only by `sssd` or `root`; any other owner could read or tamper with authentication logs, undermining the audit trail.",
-    "fr": "Le répertoire `/var/log/sssd` contient les journaux de débogage du démon de services de sécurité système (SSSD), qui assure l'authentification auprès de LDAP/Active Directory et peut enregistrer des détails de comptes et d'identifiants. Les fichiers ne doivent appartenir qu'à `sssd` ou `root` ; tout autre propriétaire pourrait lire ou altérer les journaux d'authentification, compromettant la piste d'audit."
-  },
   "summary": {
     "en": "Ensure every file under `/var/log/sssd` is **owned by `sssd` or `root`** and by no other user.",
     "fr": "S'assurer que chaque fichier sous `/var/log/sssd` **appartient à `sssd` ou `root`** et à aucun autre utilisateur."
+  },
+  "rationale": {
+    "en": "The `/var/log/sssd` directory holds debug logs for the System Security Services Daemon (SSSD), which mediates authentication against LDAP/Active Directory and can record account and credential details. Files must be owned only by `sssd` or `root`; any other owner could read or tamper with authentication logs, undermining the audit trail.",
+    "fr": "Le répertoire `/var/log/sssd` contient les journaux de débogage du démon de services de sécurité système (SSSD), qui assure l'authentification auprès de LDAP/Active Directory et peut enregistrer des détails de comptes et d'identifiants. Les fichiers ne doivent appartenir qu'à `sssd` ou `root` ; tout autre propriétaire pourrait lire ou altérer les journaux d'authentification, compromettant la piste d'audit."
   },
   "check_note": {
     "en": "Pavois runs `find -P /var/log/sssd -type f ! -user sssd ! -user root` (only if the directory exists) and expects **no output**, any file owned by something other than `sssd` or `root` is a finding. It checks the real inodes' effective ownership, catching files re-owned at runtime that a static config check would miss.",

@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "no",
   "norms": {
     "cis": [
-      "3.1.2",
-      "1.3.3"
+      "1.3.3",
+      "3.1.2"
     ],
     "nist": [
       "3.1.16",
@@ -37,33 +38,35 @@
       "CM-7(b)",
       "MP-7"
     ],
-    "pci-dss": [
-      "1.3.3",
-      "Req-1.3.3"
-    ],
+    "pci-dss": "1.3.3",
     "stig": [
       "UBTU-22-291015",
       "UBTU-24-600230"
     ]
   },
   "check": [
+    "only_if { command('ls -d /sys/class/net/*/wireless 2>/dev/null | grep -q .').exit_status == 0 }",
     "describe command('nmcli radio all 2>/dev/null | grep -qiw enabled && echo ko || echo ok') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "nmcli radio all 2>/dev/null || rfkill list\n# nmcli radio all off   (or: rfkill block wifi), only on hosts that must not use wireless\n",
+    "reason": "disabling wireless can cut connectivity, confirm the host is wired",
+    "resource": "manual"
+  },
   "title": {
     "en": "Deactivate Wireless Network Interfaces",
     "fr": "Désactiver les interfaces réseau sans fil"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "An enabled wireless radio on a server is an uncontrolled network edge. Attackers can stand up a rogue access point and lure the host into a **malicious association** or **ad hoc** connection, then run man-in-the-middle interception, traffic capture or denial of service, entirely bypassing the wired perimeter and firewall. On systems that only need wired networking, turning off all radios removes this attack surface completely.",
-    "fr": "Une radio sans fil activée sur un serveur constitue une bordure réseau non contrôlée. Un attaquant peut déployer un point d'accès pirate et attirer l'hôte vers une **association malveillante** ou une connexion **ad hoc**, puis mener une interception de type homme du milieu, une capture de trafic ou un déni de service, contournant totalement le périmètre filaire et le pare-feu. Sur les systèmes ne nécessitant que le réseau filaire, éteindre toutes les radios supprime entièrement cette surface d'attaque."
-  },
   "summary": {
     "en": "Disables all wireless radios (Wi-Fi, etc.) so the host has no active wireless interface, via `nmcli radio` reporting every radio as off.",
     "fr": "Désactive toutes les radios sans fil (Wi-Fi, etc.) afin que l'hôte n'ait aucune interface sans fil active, `nmcli radio` signalant chaque radio comme éteinte."
+  },
+  "rationale": {
+    "en": "An enabled wireless radio on a server is an uncontrolled network edge. Attackers can stand up a rogue access point and lure the host into a **malicious association** or **ad hoc** connection, then run man-in-the-middle interception, traffic capture or denial of service, entirely bypassing the wired perimeter and firewall. On systems that only need wired networking, turning off all radios removes this attack surface completely.",
+    "fr": "Une radio sans fil activée sur un serveur constitue une bordure réseau non contrôlée. Un attaquant peut déployer un point d'accès pirate et attirer l'hôte vers une **association malveillante** ou une connexion **ad hoc**, puis mener une interception de type homme du milieu, une capture de trafic ou un déni de service, contournant totalement le périmètre filaire et le pare-feu. Sur les systèmes ne nécessitant que le réseau filaire, éteindre toutes les radios supprime entièrement cette surface d'attaque."
   },
   "check_note": {
     "en": "Pavois asks NetworkManager for the **live** radio state with `nmcli radio all` and passes only when nothing reports `enabled`. This reflects the actual runtime status of the radios, including ones brought up after boot, which a static check of config files or kernel module blacklists could miss; the running state is what an attacker can reach.",

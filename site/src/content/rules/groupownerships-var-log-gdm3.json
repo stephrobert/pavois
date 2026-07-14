@@ -2,11 +2,14 @@
   "id": "groupownerships-var-log-gdm3",
   "supported_os": [
     "debian12",
+    "debian13",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -22,7 +25,8 @@
   },
   "check": [
     "only_if { command('test -d /var/log/gdm3').exit_status.zero? }",
-    "describe command('timeout 60 find -P /var/log/gdm3 -type f ! -group gdm ! -group gdm3 ! -group root 2>/dev/null | head -1') do",
+    "describe command('timeout 60 find -P /var/log/gdm3 -type f ! -group gdm ! -group gdm3 ! -group root -print -quit 2>/dev/null') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
@@ -36,13 +40,13 @@
     "fr": "Verifier la propriete de groupe des fichiers dans /var/log/gdm3"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/var/log/gdm3` directory holds logs of the GNOME Display Manager, which can include session, authentication and X server diagnostics. If these files are group-owned by an unexpected group, members of that group could read sensitive display-manager details or tamper with the logs. Restricting group ownership to the display manager's own groups (`gdm`/`gdm3`) or `root` keeps this information accessible only to authorized personnel.",
-    "fr": "Le repertoire `/var/log/gdm3` contient les journaux du gestionnaire d'affichage GNOME, qui peuvent inclure des diagnostics de session, d'authentification et du serveur X. Si ces fichiers ont pour groupe proprietaire un groupe inattendu, ses membres pourraient lire des details sensibles du gestionnaire d'affichage ou alterer les journaux. Restreindre la propriete de groupe aux groupes propres au gestionnaire (`gdm`/`gdm3`) ou a `root` reserve ces informations au personnel autorise."
-  },
   "summary": {
     "en": "Ensures every file under `/var/log/gdm3` is group-owned by `gdm`, `gdm3`, or `root` (when the directory exists).",
     "fr": "Garantit que chaque fichier sous `/var/log/gdm3` a pour groupe proprietaire `gdm`, `gdm3` ou `root` (lorsque le repertoire existe)."
+  },
+  "rationale": {
+    "en": "The `/var/log/gdm3` directory holds logs of the GNOME Display Manager, which can include session, authentication and X server diagnostics. If these files are group-owned by an unexpected group, members of that group could read sensitive display-manager details or tamper with the logs. Restricting group ownership to the display manager's own groups (`gdm`/`gdm3`) or `root` keeps this information accessible only to authorized personnel.",
+    "fr": "Le repertoire `/var/log/gdm3` contient les journaux du gestionnaire d'affichage GNOME, qui peuvent inclure des diagnostics de session, d'authentification et du serveur X. Si ces fichiers ont pour groupe proprietaire un groupe inattendu, ses membres pourraient lire des details sensibles du gestionnaire d'affichage ou alterer les journaux. Restreindre la propriete de groupe aux groupes propres au gestionnaire (`gdm`/`gdm3`) ou a `root` reserve ces informations au personnel autorise."
   },
   "check_note": {
     "en": "Guarded by `only_if test -d /var/log/gdm3` so it is skipped on headless servers without GDM. Pavois then runs `find -P /var/log/gdm3 -type f ! -group gdm ! -group gdm3 ! -group root` and expects empty output. Reading the actual group on each inode catches runtime-created logs that a packaging or config check would not see.",

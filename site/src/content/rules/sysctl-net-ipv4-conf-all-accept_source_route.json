@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -41,6 +42,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.conf.all.accept_source_route') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.all.accept_source_route[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -53,13 +57,13 @@
     "fr": "Désactiver l'acceptation des paquets à routage par la source sur toutes les interfaces IPv4"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Source-routed packets carry an option that lets the **sender dictate the path** the packet takes through the network, instead of letting routers decide. An attacker can use this to steer traffic around firewalls and access controls, reach hosts that should be unreachable, or make spoofed packets return to them. Source routing has essentially no legitimate use on modern networks, so `net.ipv4.conf.all.accept_source_route=0` should be set to drop such packets and prevent attackers from bypassing network security measures.",
-    "fr": "Les paquets à routage par la source portent une option qui permet à l'**émetteur de dicter le chemin** que le paquet emprunte dans le réseau, au lieu de laisser les routeurs décider. Un attaquant peut s'en servir pour contourner pare-feux et contrôles d'accès, atteindre des hôtes censés être inaccessibles, ou faire revenir vers lui des paquets usurpés. Le routage par la source n'a pratiquement aucun usage légitime sur les réseaux modernes ; il faut donc définir `net.ipv4.conf.all.accept_source_route=0` pour rejeter ces paquets et empêcher les attaquants de contourner les mesures de sécurité réseau."
-  },
   "summary": {
     "en": "Sets `net.ipv4.conf.all.accept_source_route=0` so the kernel drops packets whose sender tries to dictate their network path.",
     "fr": "Définit `net.ipv4.conf.all.accept_source_route=0` pour que le noyau rejette les paquets dont l'émetteur tente d'imposer leur chemin réseau."
+  },
+  "rationale": {
+    "en": "Source-routed packets carry an option that lets the **sender dictate the path** the packet takes through the network, instead of letting routers decide. An attacker can use this to steer traffic around firewalls and access controls, reach hosts that should be unreachable, or make spoofed packets return to them. Source routing has essentially no legitimate use on modern networks, so `net.ipv4.conf.all.accept_source_route=0` should be set to drop such packets and prevent attackers from bypassing network security measures.",
+    "fr": "Les paquets à routage par la source portent une option qui permet à l'**émetteur de dicter le chemin** que le paquet emprunte dans le réseau, au lieu de laisser les routeurs décider. Un attaquant peut s'en servir pour contourner pare-feux et contrôles d'accès, atteindre des hôtes censés être inaccessibles, ou faire revenir vers lui des paquets usurpés. Le routage par la source n'a pratiquement aucun usage légitime sur les réseaux modernes ; il faut donc définir `net.ipv4.conf.all.accept_source_route=0` pour rejeter ces paquets et empêcher les attaquants de contourner les mesures de sécurité réseau."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** via `kernel_parameter('net.ipv4.conf.all.accept_source_route')` and asserts it equals `0`. The effective value is what governs whether source-routed packets are dropped at this moment; a `sysctl.d` entry that was never reloaded, or overridden by a later drop-in, leaves the host exposed despite a config file that reads `0`. Auditing the running value (not the file) is the only reliable proof.",

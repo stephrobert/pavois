@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_SECURITY_DMESG_RESTRICT=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_SECURITY_DMESG_RESTRICT='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_SECURITY_DMESG_RESTRICT=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_SECURITY_DMESG_RESTRICT=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Restrict unprivileged access to the kernel syslog",
     "fr": "Restreindre l'accès non privilégié au journal du noyau"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Prevents unprivileged users from retrieving kernel addresses with `dmesg`. `CONFIG_SECURITY_DMESG_RESTRICT` sets the default of `kernel.dmesg_restrict` to `1`, so only `CAP_SYSLOG` processes can read the kernel ring buffer. Kernel log lines routinely leak **pointers, stack contents and addresses** that defeat KASLR; restricting them denies a local attacker an easy information-disclosure stepping stone toward reliable exploitation.",
-    "fr": "Empêche les utilisateurs non privilégiés de récupérer des adresses du noyau via `dmesg`. `CONFIG_SECURITY_DMESG_RESTRICT` fixe la valeur par défaut de `kernel.dmesg_restrict` à `1`, de sorte que seuls les processus disposant de `CAP_SYSLOG` peuvent lire le tampon circulaire du noyau. Les lignes de journal du noyau divulguent régulièrement des **pointeurs, contenus de pile et adresses** qui contournent KASLR ; les restreindre prive un attaquant local d'un tremplin facile de divulgation d'informations vers une exploitation fiable."
-  },
   "summary": {
     "en": "Requires the kernel to be built with **`CONFIG_SECURITY_DMESG_RESTRICT=y`** so `kernel.dmesg_restrict` defaults to `1` and only privileged processes can read the kernel log.",
     "fr": "Exige que le noyau soit compilé avec **`CONFIG_SECURITY_DMESG_RESTRICT=y`** afin que `kernel.dmesg_restrict` vaille `1` par défaut et que seuls les processus privilégiés puissent lire le journal du noyau."
+  },
+  "rationale": {
+    "en": "Prevents unprivileged users from retrieving kernel addresses with `dmesg`. `CONFIG_SECURITY_DMESG_RESTRICT` sets the default of `kernel.dmesg_restrict` to `1`, so only `CAP_SYSLOG` processes can read the kernel ring buffer. Kernel log lines routinely leak **pointers, stack contents and addresses** that defeat KASLR; restricting them denies a local attacker an easy information-disclosure stepping stone toward reliable exploitation.",
+    "fr": "Empêche les utilisateurs non privilégiés de récupérer des adresses du noyau via `dmesg`. `CONFIG_SECURITY_DMESG_RESTRICT` fixe la valeur par défaut de `kernel.dmesg_restrict` à `1`, de sorte que seuls les processus disposant de `CAP_SYSLOG` peuvent lire le tampon circulaire du noyau. Les lignes de journal du noyau divulguent régulièrement des **pointeurs, contenus de pile et adresses** qui contournent KASLR ; les restreindre prive un attaquant local d'un tremplin facile de divulgation d'informations vers une exploitation fiable."
   },
   "check_note": {
     "en": "Pavois reads the build options of the **running** kernel, `grep '^CONFIG_SECURITY_DMESG_RESTRICT=' /boot/config-$(uname -r)` or `zcat /proc/config.gz`, and requires `y`. Reading the live kernel's own config (keyed on `uname -r`) reflects exactly the booted kernel; note the build flag only sets the *default*, which `kernel.dmesg_restrict` can still override at runtime.",

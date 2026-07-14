@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R20"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_SECCOMP_FILTER=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_SECCOMP_FILTER='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_SECCOMP_FILTER=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_SECCOMP_FILTER=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Enable use of Berkeley Packet Filter with seccomp",
     "fr": "Activer l'usage du Berkeley Packet Filter avec seccomp"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Use of BPF filters allows for expressive filtering of system calls using a filter program language with a long history of being exposed to userland. `CONFIG_SECCOMP_FILTER` enables **seccomp-bpf**, the mode that lets a process install a fine-grained allowlist of syscalls; this is what container runtimes, systemd `SystemCallFilter=`, browsers and `sandbox` daemons rely on to shrink a compromised process's reach into the kernel, directly reducing the **kernel attack surface** exposed to untrusted code.",
-    "fr": "L'usage de filtres BPF permet un filtrage expressif des appels système via un langage de programmation de filtres éprouvé et exposé de longue date à l'espace utilisateur. `CONFIG_SECCOMP_FILTER` active **seccomp-bpf**, le mode qui permet à un processus d'installer une liste d'autorisation fine d'appels système ; c'est ce sur quoi reposent les runtimes de conteneurs, `SystemCallFilter=` de systemd, les navigateurs et les démons de bac à sable pour réduire la portée d'un processus compromis vers le noyau, diminuant directement la **surface d'attaque du noyau** exposée au code non fiable."
-  },
   "summary": {
     "en": "Requires the kernel to be built with **`CONFIG_SECCOMP_FILTER=y`** so processes can install BPF-based syscall filters (seccomp-bpf).",
     "fr": "Exige que le noyau soit compilé avec **`CONFIG_SECCOMP_FILTER=y`** afin que les processus puissent installer des filtres d'appels système basés sur BPF (seccomp-bpf)."
+  },
+  "rationale": {
+    "en": "Use of BPF filters allows for expressive filtering of system calls using a filter program language with a long history of being exposed to userland. `CONFIG_SECCOMP_FILTER` enables **seccomp-bpf**, the mode that lets a process install a fine-grained allowlist of syscalls; this is what container runtimes, systemd `SystemCallFilter=`, browsers and `sandbox` daemons rely on to shrink a compromised process's reach into the kernel, directly reducing the **kernel attack surface** exposed to untrusted code.",
+    "fr": "L'usage de filtres BPF permet un filtrage expressif des appels système via un langage de programmation de filtres éprouvé et exposé de longue date à l'espace utilisateur. `CONFIG_SECCOMP_FILTER` active **seccomp-bpf**, le mode qui permet à un processus d'installer une liste d'autorisation fine d'appels système ; c'est ce sur quoi reposent les runtimes de conteneurs, `SystemCallFilter=` de systemd, les navigateurs et les démons de bac à sable pour réduire la portée d'un processus compromis vers le noyau, diminuant directement la **surface d'attaque du noyau** exposée au code non fiable."
   },
   "check_note": {
     "en": "Pavois reads the build options of the **running** kernel, `grep '^CONFIG_SECCOMP_FILTER=' /boot/config-$(uname -r)` or `zcat /proc/config.gz`, and requires `y`. Reading the live kernel's own config (keyed on `uname -r`) reflects exactly the booted kernel, which a package-name guess or generic file cannot.",

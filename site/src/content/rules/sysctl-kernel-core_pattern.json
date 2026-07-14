@@ -21,6 +21,9 @@
   "check": [
     "describe kernel_parameter('kernel.core_pattern') do",
     "  its('value') { should cmp '|/bin/false' }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*kernel.core_pattern[[:space:]]*=[[:space:]]*\\|/bin/false([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -33,13 +36,13 @@
     "fr": "Désactiver l'enregistrement des vidages mémoire (core dumps)"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "A core dump is a memory image written when the kernel terminates an application after a crash. That image can hold passwords, keys, tokens, or other sensitive in-memory data, and is generally useful only to developers debugging a fault. Setting `kernel.core_pattern=|/bin/false` pipes every core to `/bin/false`, which immediately exits without writing anything, so no core file is ever stored on disk, eliminating a common avenue for sensitive-data leakage.",
-    "fr": "Un core dump est une image mémoire écrite lorsque le noyau termine une application après un plantage. Cette image peut contenir des mots de passe, des clés, des jetons ou d'autres données sensibles en mémoire, et n'est généralement utile qu'aux développeurs qui déboguent une panne. Définir `kernel.core_pattern=|/bin/false` redirige chaque core vers `/bin/false`, qui se termine immédiatement sans rien écrire, aucun fichier de core n'est donc jamais stocké sur disque, éliminant une voie courante de fuite de données sensibles."
-  },
   "summary": {
     "en": "Sets `kernel.core_pattern=|/bin/false` so crashing processes pipe their core to a no-op handler and no core dump is ever written to disk.",
     "fr": "Définit `kernel.core_pattern=|/bin/false` pour que les processus qui plantent redirigent leur core vers un gestionnaire sans effet, de sorte qu'aucun core dump n'est jamais écrit sur disque."
+  },
+  "rationale": {
+    "en": "A core dump is a memory image written when the kernel terminates an application after a crash. That image can hold passwords, keys, tokens, or other sensitive in-memory data, and is generally useful only to developers debugging a fault. Setting `kernel.core_pattern=|/bin/false` pipes every core to `/bin/false`, which immediately exits without writing anything, so no core file is ever stored on disk, eliminating a common avenue for sensitive-data leakage.",
+    "fr": "Un core dump est une image mémoire écrite lorsque le noyau termine une application après un plantage. Cette image peut contenir des mots de passe, des clés, des jetons ou d'autres données sensibles en mémoire, et n'est généralement utile qu'aux développeurs qui déboguent une panne. Définir `kernel.core_pattern=|/bin/false` redirige chaque core vers `/bin/false`, qui se termine immédiatement sans rien écrire, aucun fichier de core n'est donc jamais stocké sur disque, éliminant une voie courante de fuite de données sensibles."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** via the `kernel_parameter` resource (equivalent to `sysctl kernel.core_pattern`), not `/etc/sysctl.conf` or any `*.conf` drop-in. On systemd hosts the pattern is often set to `|/usr/lib/systemd/systemd-coredump ...` at boot, which can silently override a file-declared value; reading the running kernel reveals the handler that is actually in effect.",

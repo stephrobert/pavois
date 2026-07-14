@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -40,6 +41,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.conf.default.accept_source_route') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.default.accept_source_route[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -52,13 +56,13 @@
     "fr": "Desactiver le parametre noyau d'acceptation des paquets a routage par la source sur les interfaces IPv4 par defaut"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Source-routed packets carry an explicit path chosen by the sender, instructing routers to forward them along a route other than the one the routing table would pick. Attackers use this to bypass firewalls and routing-based controls, reach otherwise unreachable hosts, and spoof return paths. Legitimate uses are essentially limited to deliberate routers; an ordinary host should set the `default` template to **0** so every new interface refuses source-routed packets.",
-    "fr": "Les paquets a routage par la source transportent un chemin explicite choisi par l'emetteur, ordonnant aux routeurs de les acheminer par une route autre que celle qu'aurait choisie la table de routage. Les attaquants s'en servent pour contourner les pare-feu et les controles fondes sur le routage, atteindre des hotes autrement injoignables et usurper les chemins de retour. Les usages legitimes se limitent essentiellement aux routeurs deliberes ; un hote ordinaire doit definir le modele `default` a **0** afin que chaque nouvelle interface refuse les paquets a routage par la source."
-  },
   "summary": {
     "en": "Forces `net.ipv4.conf.default.accept_source_route` to **0** so every newly created IPv4 interface refuses source-routed packets by default.",
     "fr": "Force `net.ipv4.conf.default.accept_source_route` a **0** afin que chaque interface IPv4 nouvellement creee refuse par defaut les paquets a routage par la source."
+  },
+  "rationale": {
+    "en": "Source-routed packets carry an explicit path chosen by the sender, instructing routers to forward them along a route other than the one the routing table would pick. Attackers use this to bypass firewalls and routing-based controls, reach otherwise unreachable hosts, and spoof return paths. Legitimate uses are essentially limited to deliberate routers; an ordinary host should set the `default` template to **0** so every new interface refuses source-routed packets.",
+    "fr": "Les paquets a routage par la source transportent un chemin explicite choisi par l'emetteur, ordonnant aux routeurs de les acheminer par une route autre que celle qu'aurait choisie la table de routage. Les attaquants s'en servent pour contourner les pare-feu et les controles fondes sur le routage, atteindre des hotes autrement injoignables et usurper les chemins de retour. Les usages legitimes se limitent essentiellement aux routeurs deliberes ; un hote ordinaire doit definir le modele `default` a **0** afin que chaque nouvelle interface refuse les paquets a routage par la source."
   },
   "check_note": {
     "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.default.accept_source_route` from the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not a `/etc/sysctl.d/` file. The `default` key sets the template for interfaces created later, so only the running value reflects the posture future interfaces will inherit. A drop-in might declare `0` while a later file or `sysctl -w` overrode it; the effective parameter is authoritative.",

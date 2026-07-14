@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "5.1.8",
       "5.1.5",
+      "5.1.8",
       "5.1.7"
     ],
     "nist": [
@@ -46,19 +47,28 @@
     "  its('stdout') { should match(/^banner\\s+\\/etc\\/issue\\.net$/i) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "directive": "Banner",
+    "notify": {
+      "action": "reload",
+      "service": "ssh.service"
+    },
+    "resource": "sshd_setting",
+    "value": "/etc/issue.net",
+    "verify": "sshd -t -f %{path}"
+  },
   "title": {
     "en": "Enable SSH Warning Banner (issue.net)",
     "fr": "Activer la bannière d'avertissement SSH (issue.net)"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "A pre-authentication banner reinforces policy awareness during login and supports possible legal action against intruders by removing any ambiguity about unauthorized access. For network logins the dedicated `/etc/issue.net` file is used so the message shown to remote SSH clients can differ from the local console `/etc/issue`. (Systems whose ownership should stay non-obvious can use a banner that avoids easy attribution.)",
-    "fr": "Une bannière affichée avant l'authentification renforce la sensibilisation à la politique lors de la connexion et facilite d'éventuelles poursuites contre les intrus en supprimant toute ambiguïté sur l'accès non autorisé. Pour les connexions réseau, le fichier dédié `/etc/issue.net` est utilisé afin que le message présenté aux clients SSH distants puisse différer de la console locale `/etc/issue`. (Les systèmes dont la propriété doit rester discrète peuvent utiliser une bannière qui évite toute attribution facile.)"
-  },
   "summary": {
     "en": "Configures `sshd` to present a legal warning banner to remote clients before login by setting **`Banner /etc/issue.net`**.",
     "fr": "Configure `sshd` pour présenter une bannière d'avertissement légale aux clients distants avant la connexion en positionnant **`Banner /etc/issue.net`**."
+  },
+  "rationale": {
+    "en": "A pre-authentication banner reinforces policy awareness during login and supports possible legal action against intruders by removing any ambiguity about unauthorized access. For network logins the dedicated `/etc/issue.net` file is used so the message shown to remote SSH clients can differ from the local console `/etc/issue`. (Systems whose ownership should stay non-obvious can use a banner that avoids easy attribution.)",
+    "fr": "Une bannière affichée avant l'authentification renforce la sensibilisation à la politique lors de la connexion et facilite d'éventuelles poursuites contre les intrus en supprimant toute ambiguïté sur l'accès non autorisé. Pour les connexions réseau, le fichier dédié `/etc/issue.net` est utilisé afin que le message présenté aux clients SSH distants puisse différer de la console locale `/etc/issue`. (Les systèmes dont la propriété doit rester discrète peuvent utiliser une bannière qui évite toute attribution facile.)"
   },
   "check_note": {
     "en": "Pavois reads the **effective** `banner` value from `sshd -T`, the daemon's resolved configuration. A scan of `/etc/ssh/sshd_config` could miss a value set in an `Include`d drop-in under `/etc/ssh/sshd_config.d/` (Ubuntu/Debian ship several), `sshd -T` reflects exactly which banner the running daemon presents to remote clients.",

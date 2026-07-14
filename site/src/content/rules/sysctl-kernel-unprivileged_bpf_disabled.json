@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -32,7 +33,10 @@
   },
   "check": [
     "describe kernel_parameter('kernel.unprivileged_bpf_disabled') do",
-    "  its('value') { should cmp 1 }",
+    "  its('value') { should cmp >= 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*kernel.unprivileged_bpf_disabled[[:space:]]*=[[:space:]]*[12]([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -45,13 +49,13 @@
     "fr": "Désactiver l'accès à l'appel système bpf() pour les processus non privilégiés"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Loading and accessing packet-filter programs and maps via the `bpf()` syscall can leak sensitive information about kernel state, and the in-kernel eBPF subsystem has been a recurring source of privilege-escalation vulnerabilities. Exposing `bpf()` to unprivileged processes greatly widens the kernel attack surface. Setting `kernel.unprivileged_bpf_disabled = 1` restricts `bpf()` to privileged (`CAP_BPF`/`CAP_SYS_ADMIN`) processes.",
-    "fr": "Le chargement et l'accès aux programmes et cartes de filtrage de paquets via l'appel système `bpf()` peuvent divulguer des informations sensibles sur l'état du noyau, et le sous-système eBPF intégré au noyau a été une source récurrente de vulnérabilités d'élévation de privilèges. Exposer `bpf()` aux processus non privilégiés élargit considérablement la surface d'attaque du noyau. Fixer `kernel.unprivileged_bpf_disabled = 1` restreint `bpf()` aux processus privilégiés (`CAP_BPF`/`CAP_SYS_ADMIN`)."
-  },
   "summary": {
     "en": "Sets `kernel.unprivileged_bpf_disabled = 1` so the `bpf()` syscall is restricted to privileged processes.",
     "fr": "Fixe `kernel.unprivileged_bpf_disabled = 1` afin que l'appel système `bpf()` soit restreint aux processus privilégiés."
+  },
+  "rationale": {
+    "en": "Loading and accessing packet-filter programs and maps via the `bpf()` syscall can leak sensitive information about kernel state, and the in-kernel eBPF subsystem has been a recurring source of privilege-escalation vulnerabilities. Exposing `bpf()` to unprivileged processes greatly widens the kernel attack surface. Setting `kernel.unprivileged_bpf_disabled = 1` restricts `bpf()` to privileged (`CAP_BPF`/`CAP_SYS_ADMIN`) processes.",
+    "fr": "Le chargement et l'accès aux programmes et cartes de filtrage de paquets via l'appel système `bpf()` peuvent divulguer des informations sensibles sur l'état du noyau, et le sous-système eBPF intégré au noyau a été une source récurrente de vulnérabilités d'élévation de privilèges. Exposer `bpf()` aux processus non privilégiés élargit considérablement la surface d'attaque du noyau. Fixer `kernel.unprivileged_bpf_disabled = 1` restreint `bpf()` aux processus privilégiés (`CAP_BPF`/`CAP_SYS_ADMIN`)."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** with `kernel_parameter('kernel.unprivileged_bpf_disabled')` (equivalent to `sysctl kernel.unprivileged_bpf_disabled`), not a `/etc/sysctl.d/*.conf` line. Defaults vary by distribution and kernel build, and this value can be locked (`2`) once set; only reading the effective parameter reveals what unprivileged processes are actually permitted to do right now. A config file that was never applied or was overridden by a drop-in would mislead a file-based scanner.",

@@ -1,6 +1,7 @@
 {
   "id": "umask-etc-csh-cshrc",
   "supported_os": [
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9"
@@ -16,23 +17,28 @@
   "reboot_survivable": "yes",
   "norms": {},
   "check": [
-    "describe command('v=$(grep -hiE \\'^[[:space:]]*umask[[:space:]]+[0-7]+\\' /etc/csh.cshrc 2>/dev/null | grep -oE \\'[0-7]+\\' | tail -1); { [ -n \"$v\" ] && [ $((0$v & 0027)) -eq $((0027)) ] && echo ok; } || echo ko') do",
+    "describe command('v=$(grep -hiE \\'^[[:space:]]*umask[[:space:]]+[0-7]+\\' /etc/csh.cshrc 2>/dev/null | grep -oE \\'[0-7]+\\' | tail -1); { [ -n \"$v\" ] && [ $((0$v & 0077)) -eq $((0077)) ] && echo ok; } || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "grep -qE '^[[:space:]]*umask[[:space:]]+0?77' /etc/csh.cshrc || echo 'umask 077' >> /etc/csh.cshrc",
+    "name": "umask-csh",
+    "not_if": "grep -qE '^[[:space:]]*umask[[:space:]]+0?77' /etc/csh.cshrc",
+    "resource": "exec"
+  },
   "title": {
     "en": "Ensure the Default C Shell Umask is Set Correctly",
     "fr": "S'assurer que l'umask C Shell par defaut est correctement configure"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The **umask** determines the permissions stripped from newly created files and directories. `/etc/csh.cshrc` sets the system-wide umask for **C shell / tcsh** sessions; if it is too permissive, files created in those shells are **group- or world-accessible** by default, exposing data to unauthorized accounts. Setting the C shell umask at least as strict as `0027` enforces least privilege so that the protection cannot be bypassed simply by logging in with `csh`/`tcsh` instead of Bash.",
-    "fr": "L'**umask** determine les permissions retirees aux fichiers et repertoires nouvellement crees. `/etc/csh.cshrc` definit l'umask global des sessions **C shell / tcsh** ; s'il est trop permissif, les fichiers crees dans ces shells sont par defaut **accessibles au groupe ou a tous**, exposant des donnees a des comptes non autorises. Fixer l'umask C shell au moins aussi strict que `0027` impose le moindre privilege, de sorte que la protection ne puisse etre contournee en se connectant simplement avec `csh`/`tcsh` au lieu de Bash."
-  },
   "summary": {
     "en": "Ensures the system-wide C shell startup file `/etc/csh.cshrc` sets a **restrictive `umask`** at least as strict as `0027`.",
     "fr": "S'assure que le fichier de demarrage C shell global `/etc/csh.cshrc` definit un **`umask` restrictif** au moins aussi strict que `0027`."
+  },
+  "rationale": {
+    "en": "The **umask** determines the permissions stripped from newly created files and directories. `/etc/csh.cshrc` sets the system-wide umask for **C shell / tcsh** sessions; if it is too permissive, files created in those shells are **group- or world-accessible** by default, exposing data to unauthorized accounts. Setting the C shell umask at least as strict as `0027` enforces least privilege so that the protection cannot be bypassed simply by logging in with `csh`/`tcsh` instead of Bash.",
+    "fr": "L'**umask** determine les permissions retirees aux fichiers et repertoires nouvellement crees. `/etc/csh.cshrc` definit l'umask global des sessions **C shell / tcsh** ; s'il est trop permissif, les fichiers crees dans ces shells sont par defaut **accessibles au groupe ou a tous**, exposant des donnees a des comptes non autorises. Fixer l'umask C shell au moins aussi strict que `0027` impose le moindre privilege, de sorte que la protection ne puisse etre contournee en se connectant simplement avec `csh`/`tcsh` au lieu de Bash."
   },
   "check_note": {
     "en": "Pavois reads the **last effective** `umask` line in `/etc/csh.cshrc` and tests it against `0027` with a **bitmask comparison** (`(value & 0027) == 0027`), so `0077` also passes. Taking the **final** matching line (`tail -1`) matches how a real `csh`/`tcsh` session resolves repeated assignments - covering this shell family closes a gap that file-only Bash checks would leave open. (This rule ships only on RHEL 8/9, where csh/tcsh are commonly present.)",

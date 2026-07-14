@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,21 +30,29 @@
   "check": [
     "describe mount('/var') do",
     "  its('options') { should include 'noexec' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /var 2>/dev/null; grep -hsE '[[:space:]]/var[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /var 2>/dev/null) 2>/dev/null; } | grep -ow 'noexec'\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "awk -v m=/var -v o=noexec '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,\",\");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4\",\"o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var && mount -o remount,noexec /var || true",
+    "name": "mount-var-noexec",
+    "not_if": "awk -v m=/var '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\\n' | grep -qx noexec",
+    "resource": "exec"
+  },
   "title": {
     "en": "Add noexec Option to /var",
     "fr": "Ajouter l'option noexec à /var"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/var` directory holds variable, frequently writable system data (logs, mail spools, caches). Mounting it **`noexec`** removes a common foothold: an attacker who drops a payload into a writable `/var` subtree (e.g. a web cache or spool) cannot execute it directly, blocking a typical privilege-escalation or persistence step.",
-    "fr": "Le répertoire `/var` contient des données système variables et souvent inscriptibles (journaux, files de courrier, caches). Le monter en **`noexec`** supprime un point d'appui courant : un attaquant qui dépose une charge utile dans une partie inscriptible de `/var` (cache web, file d'attente) ne peut pas l'exécuter directement, ce qui bloque une étape typique d'élévation de privilèges ou de persistance."
-  },
   "summary": {
     "en": "Mount `/var` with the **`noexec`** option so binaries cannot be executed from it.",
     "fr": "Monter `/var` avec l'option **`noexec`** afin qu'aucun binaire ne puisse y être exécuté."
+  },
+  "rationale": {
+    "en": "The `/var` directory holds variable, frequently writable system data (logs, mail spools, caches). Mounting it **`noexec`** removes a common foothold: an attacker who drops a payload into a writable `/var` subtree (e.g. a web cache or spool) cannot execute it directly, blocking a typical privilege-escalation or persistence step.",
+    "fr": "Le répertoire `/var` contient des données système variables et souvent inscriptibles (journaux, files de courrier, caches). Le monter en **`noexec`** supprime un point d'appui courant : un attaquant qui dépose une charge utile dans une partie inscriptible de `/var` (cache web, file d'attente) ne peut pas l'exécuter directement, ce qui bloque une étape typique d'élévation de privilèges ou de persistance."
   },
   "check_note": {
     "en": "Pavois reads the **effective** mount options via `mount('/var')`, which reflects the kernel's live view of the filesystem. This catches options applied at runtime (remounts, systemd mount units, `/etc/fstab` overrides by drop-ins) that a scanner parsing `/etc/fstab` alone would miss.",

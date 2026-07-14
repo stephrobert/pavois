@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -31,7 +33,7 @@
     "end"
   ],
   "remediation": {
-    "command": "# /usr should be its OWN filesystem (isolation + mount options). This needs (re)partitioning , \n# offline disk/LVM work, not a safe runtime change.\nfindmnt /usr >/dev/null 2>&1 && echo '/usr is already a mount point' || echo '/usr is NOT separate'\n# Then: dedicate an LVM volume / disk to /usr and add it to /etc/fstab.\n",
+    "command": "# /usr should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /usr >/dev/null 2>&1 && echo '/usr is already a mount point' || echo '/usr is NOT separate'\n# Then: dedicate an LVM volume / disk to /usr and add it to /etc/fstab.\n",
     "reason": "a separate /usr filesystem needs partitioning/LVM/tmpfs, not a safe runtime change",
     "resource": "manual"
   },
@@ -40,13 +42,13 @@
     "fr": "Placer /usr sur une partition distincte"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/usr` directory holds system software, utilities and shared files. Hosting it on its own partition lets you cap its size and, above all, enforce restrictive mount options. Because `/usr` is largely read-only at runtime, it is a prime candidate for **`ro`** or **`nodev`** mounts that block device-node tricks and unexpected writes to the binaries an attacker would love to tamper with.",
-    "fr": "Le répertoire `/usr` contient les logiciels système, les utilitaires et les fichiers partagés. Le placer sur sa propre partition permet d'en limiter la taille et, surtout, d'appliquer des options de montage restrictives. Comme `/usr` est en grande partie en lecture seule à l'exécution, c'est un candidat idéal pour un montage **`ro`** ou **`nodev`**, qui bloque les ruses de nœuds de périphériques et les écritures inattendues sur les binaires qu'un attaquant chercherait à altérer."
-  },
   "summary": {
     "en": "Mounts `/usr` on a **dedicated filesystem** so the system binaries can be isolated and protected with restrictive mount options.",
     "fr": "Monte `/usr` sur un **système de fichiers dédié** afin d'isoler les binaires système et de les protéger par des options de montage restrictives."
+  },
+  "rationale": {
+    "en": "The `/usr` directory holds system software, utilities and shared files. Hosting it on its own partition lets you cap its size and, above all, enforce restrictive mount options. Because `/usr` is largely read-only at runtime, it is a prime candidate for **`ro`** or **`nodev`** mounts that block device-node tricks and unexpected writes to the binaries an attacker would love to tamper with.",
+    "fr": "Le répertoire `/usr` contient les logiciels système, les utilitaires et les fichiers partagés. Le placer sur sa propre partition permet d'en limiter la taille et, surtout, d'appliquer des options de montage restrictives. Comme `/usr` est en grande partie en lecture seule à l'exécution, c'est un candidat idéal pour un montage **`ro`** ou **`nodev`**, qui bloque les ruses de nœuds de périphériques et les écritures inattendues sur les binaires qu'un attaquant chercherait à altérer."
   },
   "check_note": {
     "en": "Pavois checks the **effective** mount table via the `mount('/usr')` resource (backed by `findmnt` / `/proc/self/mountinfo`), not `/etc/fstab`. This matters because `fstab` describes *intent*: a line can be present yet the mount may have failed at boot, been overridden by a systemd `.mount` unit, or bind-mounted elsewhere. Auditing the live kernel mount state confirms `/usr` is **actually** a separate mounted filesystem right now.",

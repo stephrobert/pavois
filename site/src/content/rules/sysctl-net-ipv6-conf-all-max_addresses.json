@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.all.max_addresses') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.all.max_addresses[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Configurer le nombre maximal d'adresses autoconfigurées sur toutes les interfaces IPv6"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Each interface should hold only the IPv6 addresses it actually needs, ideally exactly the statically configured ones. An unbounded count lets autoconfiguration or a flood of forged Router Advertisements pile up many global addresses on an interface, which **consumes resources and complicates monitoring** by making it harder to know which addresses are legitimate. Capping the count keeps the address set predictable.",
-    "fr": "Chaque interface ne devrait détenir que les adresses IPv6 dont elle a réellement besoin, idéalement exactement celles configurées statiquement. Un nombre non borné permet à l'autoconfiguration ou à un flot de fausses annonces de routeur d'accumuler de nombreuses adresses globales sur une interface, ce qui **consomme des ressources et complique la supervision** en rendant difficile de savoir quelles adresses sont légitimes. Plafonner ce nombre garde l'ensemble d'adresses prévisible."
-  },
   "summary": {
     "en": "Sets `net.ipv6.conf.all.max_addresses` to `1`, capping the number of autoconfigured IPv6 addresses an interface may hold to match a static, single-address policy.",
     "fr": "Fixe `net.ipv6.conf.all.max_addresses` à `1`, limitant le nombre d'adresses IPv6 autoconfigurées qu'une interface peut détenir pour correspondre à une politique statique à une seule adresse."
+  },
+  "rationale": {
+    "en": "Each interface should hold only the IPv6 addresses it actually needs, ideally exactly the statically configured ones. An unbounded count lets autoconfiguration or a flood of forged Router Advertisements pile up many global addresses on an interface, which **consumes resources and complicates monitoring** by making it harder to know which addresses are legitimate. Capping the count keeps the address set predictable.",
+    "fr": "Chaque interface ne devrait détenir que les adresses IPv6 dont elle a réellement besoin, idéalement exactement celles configurées statiquement. Un nombre non borné permet à l'autoconfiguration ou à un flot de fausses annonces de routeur d'accumuler de nombreuses adresses globales sur une interface, ce qui **consomme des ressources et complique la supervision** en rendant difficile de savoir quelles adresses sont légitimes. Plafonner ce nombre garde l'ensemble d'adresses prévisible."
   },
   "check_note": {
     "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.all.max_addresses`) and asserts it is `1`. The live kernel value is authoritative: a value declared in `/etc/sysctl.d/*` may be **overridden** by a later drop-in or never applied, so reading the running parameter avoids the false pass a file-based scanner can give.",

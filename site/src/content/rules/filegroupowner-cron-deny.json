@@ -1,6 +1,7 @@
 {
   "id": "filegroupowner-cron-deny",
   "supported_os": [
+    "fedora",
     "rhel10",
     "rhel9"
   ],
@@ -29,13 +30,13 @@
     "fr": "Vérifier le groupe propriétaire de cron.deny"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/cron.deny` lists the users **forbidden** from creating cron jobs. If its group owner is not `root` (gid `0`), a non-privileged group could edit the file to remove its own entry and regain cron access, defeating the deny list. Because cron jobs run unattended, this enables persistence and privilege escalation.",
-    "fr": "`/etc/cron.deny` liste les utilisateurs **interdits** de créer des tâches cron. Si son groupe propriétaire n'est pas `root` (gid `0`), un groupe non privilégié pourrait modifier le fichier pour retirer sa propre entrée et retrouver l'accès à cron, contournant la liste d'interdiction. Comme les tâches cron s'exécutent sans surveillance, cela permet la persistance et l'élévation de privilèges."
-  },
   "summary": {
     "en": "Ensures `/etc/cron.deny`, the list of users denied use of `cron`, is group-owned by `root` (gid `0`).",
     "fr": "Garantit que `/etc/cron.deny`, la liste des utilisateurs privés de `cron`, a `root` (gid `0`) pour groupe propriétaire."
+  },
+  "rationale": {
+    "en": "`/etc/cron.deny` lists the users **forbidden** from creating cron jobs. If its group owner is not `root` (gid `0`), a non-privileged group could edit the file to remove its own entry and regain cron access, defeating the deny list. Because cron jobs run unattended, this enables persistence and privilege escalation.",
+    "fr": "`/etc/cron.deny` liste les utilisateurs **interdits** de créer des tâches cron. Si son groupe propriétaire n'est pas `root` (gid `0`), un groupe non privilégié pourrait modifier le fichier pour retirer sa propre entrée et retrouver l'accès à cron, contournant la liste d'interdiction. Comme les tâches cron s'exécutent sans surveillance, cela permet la persistance et l'élévation de privilèges."
   },
   "check_note": {
     "en": "Pavois reads the **effective ownership** of `/etc/cron.deny` from the inode (via `stat`) and asserts `gid == 0`. Checking the live inode catches drift from package updates or manual edits rather than trusting a template. The `only_if` guard skips the check when the file is absent (hardened systems often use `cron.allow` instead and delete `cron.deny`).",

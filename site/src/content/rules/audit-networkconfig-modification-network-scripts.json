@@ -1,10 +1,15 @@
 {
   "id": "audit-networkconfig-modification-network-scripts",
   "supported_os": [
-    "rhel8"
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9"
   ],
   "os_versions": {
-    "rhel8": "4.0.0"
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
   },
   "severity": "medium",
   "domain": "Audit (auditd)",
@@ -16,6 +21,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)system\\-locale\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'system\\-locale' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -27,13 +35,13 @@
     "fr": "Enregistrer les evenements modifiant l'environnement reseau du systeme - /etc/sysconfig/network-scripts"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "On RHEL-family systems, network interfaces are configured through `ifcfg-*` files under `/etc/sysconfig/network-scripts/`. These should not be modified by anything other than deliberate administrator action, tampering can redirect traffic, change addressing or open the host to attack. Auditing every change to this directory preserves a record for review and investigation.",
-    "fr": "Sur les systemes de la famille RHEL, les interfaces reseau sont configurees via des fichiers `ifcfg-*` sous `/etc/sysconfig/network-scripts/`. Ils ne devraient etre modifies que par une action deliberee de l'administrateur, une alteration peut rediriger le trafic, changer l'adressage ou exposer l'hote a une attaque. Auditer chaque changement de ce repertoire preserve une trace pour revue et investigation."
-  },
   "summary": {
     "en": "Ensures `auditd` has an active rule tagged `system-locale` that watches the legacy RHEL/AlmaLinux interface configuration directory `/etc/sysconfig/network-scripts/` for changes.",
     "fr": "Garantit que `auditd` possede une regle active taguee `system-locale` qui surveille le repertoire de configuration d'interfaces hérité de RHEL/AlmaLinux `/etc/sysconfig/network-scripts/` pour detecter les changements."
+  },
+  "rationale": {
+    "en": "On RHEL-family systems, network interfaces are configured through `ifcfg-*` files under `/etc/sysconfig/network-scripts/`. These should not be modified by anything other than deliberate administrator action, tampering can redirect traffic, change addressing or open the host to attack. Auditing every change to this directory preserves a record for review and investigation.",
+    "fr": "Sur les systemes de la famille RHEL, les interfaces reseau sont configurees via des fichiers `ifcfg-*` sous `/etc/sysconfig/network-scripts/`. Ils ne devraient etre modifies que par une action deliberee de l'administrateur, une alteration peut rediriger le trafic, changer l'adressage ou exposer l'hote a une attaque. Auditer chaque changement de ce repertoire preserve une trace pour revue et investigation."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks for a loaded rule carrying the `system-locale` key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule present in a file but not loaded gives false assurance. `auditctl -l` reflects only what the kernel enforces now.",

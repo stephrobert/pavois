@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -36,19 +37,23 @@
     "  it { should be_mounted }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# /var should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /var >/dev/null 2>&1 && echo '/var is already a mount point' || echo '/var is NOT separate'\n# Then: dedicate an LVM volume / disk to /var and add it to /etc/fstab.\n",
+    "reason": "a separate /var filesystem needs partitioning/LVM/tmpfs, not a safe runtime change",
+    "resource": "manual"
+  },
   "title": {
     "en": "Ensure /var Located On Separate Partition",
     "fr": "Placer /var sur une partition distincte"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Mounting `/var` on its own partition lets you set more restrictive mount options (e.g. **`nodev`**, **`nosuid`**) and protects the system services (daemons and other programs) that write there. `/var` commonly holds world-writable directories shipped by other packages, and isolating it prevents a flood of files there from **filling the root filesystem** and crashing the whole system.",
-    "fr": "Monter `/var` sur sa propre partition permet d'appliquer des options de montage plus restrictives (par ex. **`nodev`**, **`nosuid`**) et protège les services système (démons et autres programmes) qui y écrivent. `/var` contient fréquemment des répertoires accessibles en écriture à tous, installés par d'autres paquets ; l'isoler empêche qu'un afflux de fichiers ne **sature le système de fichiers racine** et ne fasse planter tout le système."
-  },
   "summary": {
     "en": "Mounts `/var` on a **dedicated filesystem** so variable data is isolated and growth there cannot exhaust the root partition.",
     "fr": "Monte `/var` sur un **système de fichiers dédié** afin d'isoler les données variables et d'empêcher que leur croissance ne sature la partition racine."
+  },
+  "rationale": {
+    "en": "Mounting `/var` on its own partition lets you set more restrictive mount options (e.g. **`nodev`**, **`nosuid`**) and protects the system services (daemons and other programs) that write there. `/var` commonly holds world-writable directories shipped by other packages, and isolating it prevents a flood of files there from **filling the root filesystem** and crashing the whole system.",
+    "fr": "Monter `/var` sur sa propre partition permet d'appliquer des options de montage plus restrictives (par ex. **`nodev`**, **`nosuid`**) et protège les services système (démons et autres programmes) qui y écrivent. `/var` contient fréquemment des répertoires accessibles en écriture à tous, installés par d'autres paquets ; l'isoler empêche qu'un afflux de fichiers ne **sature le système de fichiers racine** et ne fasse planter tout le système."
   },
   "check_note": {
     "en": "Pavois reads the **effective** mount table through the `mount('/var')` resource (`findmnt` / `/proc/self/mountinfo`), not `/etc/fstab`. `fstab` only records intent, a mount can fail silently at boot or be shadowed by a systemd `.mount` unit. Checking the live kernel state proves `/var` is **currently** a separate mounted filesystem.",

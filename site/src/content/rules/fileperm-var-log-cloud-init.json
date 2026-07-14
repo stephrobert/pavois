@@ -2,11 +2,14 @@
   "id": "fileperm-var-log-cloud-init",
   "supported_os": [
     "debian12",
+    "debian13",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -21,35 +24,36 @@
     ]
   },
   "check": [
-    "only_if { file('/var/log/cloud-init').exist? }",
-    "describe file('/var/log/cloud-init') do",
-    "  it { should_not be_executable.by('owner') }",
-    "  it { should_not be_setuid }",
-    "  it { should_not be_executable.by('group') }",
-    "  it { should_not be_writable.by('group') }",
-    "  it { should_not be_setgid }",
-    "  it { should_not be_executable.by('other') }",
-    "  it { should_not be_writable.by('other') }",
-    "  it { should_not be_sticky }",
+    "['/var/log/cloud-init.log', '/var/log/cloud-init-output.log'].each do |f|",
+    "  next unless file(f).exist?",
+    "  describe file(f) do",
+    "    it { should_not be_writable.by('group') }",
+    "    it { should_not be_readable.by('other') }",
+    "    it { should_not be_writable.by('other') }",
+    "    it { should_not be_executable.by('other') }",
+    "    it { should_not be_setuid }",
+    "    it { should_not be_setgid }",
+    "  end",
     "end"
   ],
   "remediation": {
-    "mode": "0644",
-    "path": "/var/log/cloud-init",
-    "resource": "file"
+    "command": "for f in /var/log/cloud-init.log /var/log/cloud-init-output.log; do [ -e \"$f\" ] && chmod g-wx,o-rwx \"$f\"; done; true",
+    "name": "fileperm-var-log-cloud-init-tighten",
+    "not_if": "! find /var/log/cloud-init.log /var/log/cloud-init-output.log -maxdepth 0 \\( -perm /g=wx -o -perm /o=rwx \\) 2>/dev/null | grep -q .",
+    "resource": "exec"
   },
   "title": {
     "en": "Verify Permissions on /var/log/cloud-init.log(.*) Files",
     "fr": "Verifier les permissions des fichiers /var/log/cloud-init.log(.*)"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "cloud-init logs the entire first-boot provisioning: user-data, network config, and sometimes **secrets injected at deployment** (passwords, tokens, SSH keys, instance metadata). If non-root users can write to these logs they can tamper with provisioning evidence; if the logs are over-exposed, sensitive bootstrap data leaks. Access must be confined to `root` so this debugging detail stays with authorized personnel.",
-    "fr": "cloud-init journalise tout l'approvisionnement au premier demarrage : user-data, configuration reseau et parfois des **secrets injectes au deploiement** (mots de passe, jetons, cles SSH, metadonnees d'instance). Si des utilisateurs non-root peuvent ecrire dans ces journaux, ils peuvent alterer les preuves d'approvisionnement ; si les journaux sont trop exposes, des donnees d'amorcage sensibles fuitent. L'acces doit etre confine a `root` afin que ces details de debogage restent reserves au personnel autorise."
-  },
   "summary": {
     "en": "Ensures `/var/log/cloud-init` (and its log files) is not writable by group/other and carries no execute/setuid/setgid/sticky bits.",
     "fr": "Garantit que `/var/log/cloud-init` (et ses fichiers de journaux) n'est pas modifiable par le groupe/les autres et ne porte aucun bit d'execution/setuid/setgid/sticky."
+  },
+  "rationale": {
+    "en": "cloud-init logs the entire first-boot provisioning: user-data, network config, and sometimes **secrets injected at deployment** (passwords, tokens, SSH keys, instance metadata). If non-root users can write to these logs they can tamper with provisioning evidence; if the logs are over-exposed, sensitive bootstrap data leaks. Access must be confined to `root` so this debugging detail stays with authorized personnel.",
+    "fr": "cloud-init journalise tout l'approvisionnement au premier demarrage : user-data, configuration reseau et parfois des **secrets injectes au deploiement** (mots de passe, jetons, cles SSH, metadonnees d'instance). Si des utilisateurs non-root peuvent ecrire dans ces journaux, ils peuvent alterer les preuves d'approvisionnement ; si les journaux sont trop exposes, des donnees d'amorcage sensibles fuitent. L'acces doit etre confine a `root` afin que ces details de debogage restent reserves au personnel autorise."
   },
   "check_note": {
     "en": "Pavois reads the **effective inode mode** of `/var/log/cloud-init` and asserts no group/other write and no special bits. Reading the live mode catches the common case where a custom cloud image or a provisioning script created the log world-readable or group-writable, drift that a static packaging manifest would never reveal.",

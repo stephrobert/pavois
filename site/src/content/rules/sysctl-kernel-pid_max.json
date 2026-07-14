@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -27,26 +29,26 @@
   },
   "check": [
     "describe kernel_parameter('kernel.pid_max') do",
-    "  its('value') { should cmp 65536 }",
+    "  its('value') { should cmp >= 65536 }",
     "end"
   ],
   "remediation": {
     "key": "kernel.pid_max",
     "resource": "sysctl",
-    "value": "65536"
+    "value": "4194304"
   },
   "title": {
     "en": "Configure maximum number of process identifiers",
     "fr": "Configurer le nombre maximal d'identifiants de processus"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`kernel.pid_max` sets the upper limit on process identifiers (PIDs). If this ceiling is too low, the system can exhaust all available PIDs and become **unable to fork new processes**, which is both an availability hazard and a target for a fork-bomb style denial of service. Raising it to at least **65536** enlarges the PID space and improves availability under load.",
-    "fr": "`kernel.pid_max` définit la limite supérieure des identifiants de processus (PID). Si ce plafond est trop bas, le système peut épuiser tous les PID disponibles et devenir **incapable de créer de nouveaux processus**, ce qui constitue à la fois un risque de disponibilité et une cible pour un déni de service de type fork-bomb. Le porter à au moins **65536** agrandit l'espace de PID et améliore la disponibilité sous charge."
-  },
   "summary": {
     "en": "Sets `kernel.pid_max = 65536` so the system has a sufficiently large PID space and is less likely to exhaust process identifiers.",
     "fr": "Fixe `kernel.pid_max = 65536` afin que le système dispose d'un espace de PID suffisamment grand et soit moins susceptible d'épuiser les identifiants de processus."
+  },
+  "rationale": {
+    "en": "`kernel.pid_max` sets the upper limit on process identifiers (PIDs). If this ceiling is too low, the system can exhaust all available PIDs and become **unable to fork new processes**, which is both an availability hazard and a target for a fork-bomb style denial of service. Raising it to at least **65536** enlarges the PID space and improves availability under load.",
+    "fr": "`kernel.pid_max` définit la limite supérieure des identifiants de processus (PID). Si ce plafond est trop bas, le système peut épuiser tous les PID disponibles et devenir **incapable de créer de nouveaux processus**, ce qui constitue à la fois un risque de disponibilité et une cible pour un déni de service de type fork-bomb. Le porter à au moins **65536** agrandit l'espace de PID et améliore la disponibilité sous charge."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** with `kernel_parameter('kernel.pid_max')` (equivalent to `sysctl kernel.pid_max`), not a `/etc/sysctl.d/*.conf` line. A config file is meaningless if it was never applied or a later drop-in overrode it; only the effective parameter reflects the PID ceiling the kernel currently enforces.",

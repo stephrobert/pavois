@@ -155,6 +155,25 @@ def pick(v, os):
     return v
 
 
+def assert_resolved(cid, os, field, val):
+    """No `@os` may survive the render, wherever it hides.
+
+    `pick()` only resolves a block that IS the value. Unioning the norm refs of two merged controls
+    left blocks INSIDE a list (`cis: [{'@os': {...}}, '6.1.4.1']`), which pick() handed straight
+    through: the raw dict travelled into the per-OS reference, into the site's JSON, and only
+    surfaced as an Astro schema error 800 pages later. An unresolved @os is a generator bug, so it
+    stops the generator.
+    """
+    if isinstance(val, dict):
+        if "@os" in val:
+            raise SystemExit(f"{cid} [{os}] {field}: an @os block survived the render (nested?)")
+        for k, v in val.items():
+            assert_resolved(cid, os, f"{field}.{k}", v)
+    elif isinstance(val, (list, tuple)):
+        for v in val:
+            assert_resolved(cid, os, field, v)
+
+
 def render(lib):
     # OS set comes from the SOURCE (rules.yml), never from the (derived) output dir —
     # so render works on a fresh clone where pavois-content/ does not exist yet.
@@ -176,6 +195,8 @@ def render(lib):
                 t = pick(entry["template"], os)
                 if t is not None:
                     ctrl["check"] = templates.expand(subst(t, os, cid))
+            for f, v in ctrl.items():
+                assert_resolved(cid, os, f, v)
             out[os][cid] = ctrl
     return out
 

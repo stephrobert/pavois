@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,9 +27,9 @@
   "norms": {
     "bp28": "R73",
     "cis": [
-      "6.3.3.8",
       "10.2.1.5",
       "6.2.3.8",
+      "6.3.3.8",
       "6.3.3.12",
       "6.3.3.14",
       "6.3.3.16",
@@ -61,6 +62,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)audit_rules_usergroup_modification\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'audit_rules_usergroup_modification' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -72,13 +76,13 @@
     "fr": "Enregistrer les evenements qui modifient les informations d'utilisateurs/groupes - /etc/group"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Beyond auditing the **creation** of users and groups, these watches alert administrators to any **modification** of the account databases. Any unexpected user, group, or change to `/etc/passwd`, `/etc/shadow` or `/etc/group` should be investigated for legitimacy. Without these rules, an attacker who adds a backdoor account or escalates a UID to 0 leaves **no trace** in the audit trail, defeating forensic reconstruction of a compromise.",
-    "fr": "Au-dela de l'audit de la **creation** d'utilisateurs et de groupes, ces surveillances alertent les administrateurs de toute **modification** des bases de comptes. Tout utilisateur, groupe ou changement inattendu dans `/etc/passwd`, `/etc/shadow` ou `/etc/group` doit etre examine pour en verifier la legitimite. Sans ces regles, un attaquant qui ajoute un compte derobe ou eleve un UID a 0 ne laisse **aucune trace** dans la piste d'audit, rendant impossible la reconstruction forensique d'une compromission."
-  },
   "summary": {
     "en": "Installs **auditd** watches keyed `audit_rules_usergroup_modification` on the account databases (`/etc/group`, `/etc/passwd`, `/etc/shadow`, `/etc/gshadow`, `/etc/security/opasswd`) so every change is recorded.",
     "fr": "Installe des surveillances **auditd** avec la cle `audit_rules_usergroup_modification` sur les bases de comptes (`/etc/group`, `/etc/passwd`, `/etc/shadow`, `/etc/gshadow`, `/etc/security/opasswd`) afin que chaque modification soit enregistree."
+  },
+  "rationale": {
+    "en": "Beyond auditing the **creation** of users and groups, these watches alert administrators to any **modification** of the account databases. Any unexpected user, group, or change to `/etc/passwd`, `/etc/shadow` or `/etc/group` should be investigated for legitimacy. Without these rules, an attacker who adds a backdoor account or escalates a UID to 0 leaves **no trace** in the audit trail, defeating forensic reconstruction of a compromise.",
+    "fr": "Au-dela de l'audit de la **creation** d'utilisateurs et de groupes, ces surveillances alertent les administrateurs de toute **modification** des bases de comptes. Tout utilisateur, groupe ou changement inattendu dans `/etc/passwd`, `/etc/shadow` ou `/etc/group` doit etre examine pour en verifier la legitimite. Sans ces regles, un attaquant qui ajoute un compte derobe ou eleve un UID a 0 ne laisse **aucune trace** dans la piste d'audit, rendant impossible la reconstruction forensique d'une compromission."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks the **loaded, live** kernel ruleset for a rule keyed `audit_rules_usergroup_modification`. Reading the live ruleset is decisive: a rule can sit in `/etc/audit/rules.d/*.rules` yet **never be loaded** (syntax error, `augenrules` not run, service not reloaded). Only `auditctl -l` proves the kernel is actually watching the files right now.",

@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_SCHED_STACK_END_CHECK=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_SCHED_STACK_END_CHECK='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_SCHED_STACK_END_CHECK=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_SCHED_STACK_END_CHECK=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Detect stack corruption on calls to schedule()",
     "fr": "Détecter la corruption de pile lors des appels à schedule()"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "This ensures no erroneous behaviour occurs which could result in data corruption or a sporadic crash at a later stage once the region is examined. `CONFIG_SCHED_STACK_END_CHECK` makes the kernel verify the **stack canary at the end of the kernel stack** every time `schedule()` is called; a deep recursion or a stack-overflowing exploit is caught immediately with a panic, turning a silent **kernel-stack overflow** (a corruption primitive attackers leverage) into a clean, contained failure.",
-    "fr": "Ceci garantit qu'aucun comportement erroné ne survient, qui pourrait entraîner une corruption de données ou un plantage sporadique ultérieur une fois la région examinée. `CONFIG_SCHED_STACK_END_CHECK` fait vérifier au noyau le **canari en fin de pile noyau** à chaque appel de `schedule()` ; une récursion profonde ou un exploit débordant la pile est détecté immédiatement par une panic, transformant un **débordement de pile noyau** silencieux (primitive de corruption exploitée par les attaquants) en une défaillance propre et contenue."
-  },
   "summary": {
     "en": "Requires the kernel to be built with **`CONFIG_SCHED_STACK_END_CHECK=y`** so the end-of-stack canary is verified on every call to `schedule()`.",
     "fr": "Exige que le noyau soit compilé avec **`CONFIG_SCHED_STACK_END_CHECK=y`** afin que le canari de fin de pile soit vérifié à chaque appel de `schedule()`."
+  },
+  "rationale": {
+    "en": "This ensures no erroneous behaviour occurs which could result in data corruption or a sporadic crash at a later stage once the region is examined. `CONFIG_SCHED_STACK_END_CHECK` makes the kernel verify the **stack canary at the end of the kernel stack** every time `schedule()` is called; a deep recursion or a stack-overflowing exploit is caught immediately with a panic, turning a silent **kernel-stack overflow** (a corruption primitive attackers leverage) into a clean, contained failure.",
+    "fr": "Ceci garantit qu'aucun comportement erroné ne survient, qui pourrait entraîner une corruption de données ou un plantage sporadique ultérieur une fois la région examinée. `CONFIG_SCHED_STACK_END_CHECK` fait vérifier au noyau le **canari en fin de pile noyau** à chaque appel de `schedule()` ; une récursion profonde ou un exploit débordant la pile est détecté immédiatement par une panic, transformant un **débordement de pile noyau** silencieux (primitive de corruption exploitée par les attaquants) en une défaillance propre et contenue."
   },
   "check_note": {
     "en": "Pavois reads the build options of the **running** kernel, `grep '^CONFIG_SCHED_STACK_END_CHECK=' /boot/config-$(uname -r)` or `zcat /proc/config.gz`, and requires `y`. Reading the live kernel's own config (keyed on `uname -r`) reflects exactly the booted kernel, which a package-name guess or generic file cannot.",

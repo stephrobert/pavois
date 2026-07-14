@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_X86_VSYSCALL_EMULATION=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_X86_VSYSCALL_EMULATION='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_X86_VSYSCALL_EMULATION=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should_not match(/^CONFIG_X86_VSYSCALL_EMULATION=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Disable x86 vsyscall emulation",
     "fr": "Désactiver l'émulation vsyscall x86"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The legacy **vsyscall** page sits at a fixed address in every process and is obsolete (replaced by the randomized **vDSO**). Leaving `CONFIG_X86_VSYSCALL_EMULATION=y` keeps an executable region at a predictable location that supplies reliable **ROP/JOP gadgets**, undermining ASLR and easing exploitation. Disabling it removes that fixed attack primitive.",
-    "fr": "L'ancienne page **vsyscall** se trouve à une adresse fixe dans chaque processus et est obsolète (remplacée par le **vDSO** randomisé). Laisser `CONFIG_X86_VSYSCALL_EMULATION=y` maintient une région exécutable à un emplacement prévisible fournissant des **gadgets ROP/JOP** fiables, ce qui affaiblit l'ASLR et facilite l'exploitation. La désactiver supprime cette primitive d'attaque à adresse fixe."
-  },
   "summary": {
     "en": "Requires the kernel to be built **without** `CONFIG_X86_VSYSCALL_EMULATION=y`, removing the fixed-address legacy vsyscall page that offers ROP gadgets.",
     "fr": "Exige que le noyau soit compilé **sans** `CONFIG_X86_VSYSCALL_EMULATION=y`, supprimant la page vsyscall héritée à adresse fixe offrant des gadgets ROP."
+  },
+  "rationale": {
+    "en": "The legacy **vsyscall** page sits at a fixed address in every process and is obsolete (replaced by the randomized **vDSO**). Leaving `CONFIG_X86_VSYSCALL_EMULATION=y` keeps an executable region at a predictable location that supplies reliable **ROP/JOP gadgets**, undermining ASLR and easing exploitation. Disabling it removes that fixed attack primitive.",
+    "fr": "L'ancienne page **vsyscall** se trouve à une adresse fixe dans chaque processus et est obsolète (remplacée par le **vDSO** randomisé). Laisser `CONFIG_X86_VSYSCALL_EMULATION=y` maintient une région exécutable à un emplacement prévisible fournissant des **gadgets ROP/JOP** fiables, ce qui affaiblit l'ASLR et facilite l'exploitation. La désactiver supprime cette primitive d'attaque à adresse fixe."
   },
   "check_note": {
     "en": "Pavois reads the **running kernel's build config** (`/boot/config-$(uname -r)` or `/proc/config.gz`) and asserts the option is **not** set to `y`. Inspecting the live kernel rather than a possibly-stale config file ensures the result matches the kernel that is actually executing.",

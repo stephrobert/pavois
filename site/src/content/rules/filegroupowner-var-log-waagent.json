@@ -2,11 +2,14 @@
   "id": "filegroupowner-var-log-waagent",
   "supported_os": [
     "debian12",
+    "debian13",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -21,14 +24,14 @@
     ]
   },
   "check": [
-    "only_if { file('/var/log/waagent').exist? }",
-    "describe file('/var/log/waagent') do",
+    "only_if { file('/var/log/waagent.log').exist? }",
+    "describe file('/var/log/waagent.log') do",
     "  its('group') { should eq 'adm' }",
     "end"
   ],
   "remediation": {
     "group": "adm",
-    "path": "/var/log/waagent",
+    "path": "/var/log/waagent.log",
     "resource": "file"
   },
   "title": {
@@ -36,13 +39,13 @@
     "fr": "Vérifier le groupe propriétaire du fichier /var/log/waagent.log"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/var/log/waagent.log` file records events from the **Azure Linux Guest Agent**, useful for troubleshooting but also containing provisioning details, endpoint URLs and host metadata. It must be restricted to the **`adm`** group so only authorized personnel can read it; otherwise it leaks cloud-provisioning context that aids an attacker.",
-    "fr": "Le fichier `/var/log/waagent.log` enregistre les événements de l'**agent invité Linux Azure**, utiles au dépannage mais contenant aussi des détails de provisionnement, des URL de points de terminaison et des métadonnées d'hôte. Il doit être restreint au groupe **`adm`** afin que seul le personnel autorisé puisse le lire ; sinon il divulgue un contexte de provisionnement cloud qui aide un attaquant."
-  },
   "summary": {
     "en": "Ensures the `/var/log/waagent.log` Azure agent log is owned by the **`adm`** group.",
     "fr": "Garantit que le journal de l'agent Azure `/var/log/waagent.log` appartient au groupe **`adm`**."
+  },
+  "rationale": {
+    "en": "The `/var/log/waagent.log` file records events from the **Azure Linux Guest Agent**, useful for troubleshooting but also containing provisioning details, endpoint URLs and host metadata. It must be restricted to the **`adm`** group so only authorized personnel can read it; otherwise it leaks cloud-provisioning context that aids an attacker.",
+    "fr": "Le fichier `/var/log/waagent.log` enregistre les événements de l'**agent invité Linux Azure**, utiles au dépannage mais contenant aussi des détails de provisionnement, des URL de points de terminaison et des métadonnées d'hôte. Il doit être restreint au groupe **`adm`** afin que seul le personnel autorisé puisse le lire ; sinon il divulgue un contexte de provisionnement cloud qui aide un attaquant."
   },
   "check_note": {
     "en": "Pavois reads the file's **effective owning group** with the InSpec `file` resource and asserts it is `adm`, only when the file exists (the agent is present only on Azure VMs). Reading live filesystem metadata reflects the permissions enforced right now, catching drift from rotation or manual changes a static scan would miss.",

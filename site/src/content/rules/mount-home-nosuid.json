@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -38,21 +39,29 @@
   "check": [
     "describe mount('/home') do",
     "  its('options') { should include 'nosuid' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /home 2>/dev/null; grep -hsE '[[:space:]]/home[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /home 2>/dev/null) 2>/dev/null; } | grep -ow 'nosuid'\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "awk -v m=/home -v o=nosuid '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,\",\");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4\",\"o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /home && mount -o remount,nosuid /home || true",
+    "name": "mount-home-nosuid",
+    "not_if": "awk -v m=/home '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\\n' | grep -qx nosuid",
+    "resource": "exec"
+  },
   "title": {
     "en": "Add nosuid Option to /home",
     "fr": "Ajouter l'option nosuid à /home"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The presence of **SUID** and **SGID** executables must be tightly controlled. `/home` is user-writable space where setuid/setgid binaries have no legitimate purpose. Mounting `/home` with `nosuid` makes the kernel ignore those bits, so a user (or an attacker on their account) cannot place a SUID-root binary in a home directory to escalate privileges.",
-    "fr": "La présence d'exécutables **SUID** et **SGID** doit être strictement contrôlée. `/home` est un espace inscriptible par les utilisateurs où les binaires setuid/setgid n'ont aucune raison d'être. Monter `/home` avec `nosuid` force le noyau à ignorer ces bits, de sorte qu'un utilisateur (ou un attaquant sur son compte) ne puisse pas placer un binaire SUID-root dans un répertoire personnel pour élever ses privilèges."
-  },
   "summary": {
     "en": "Mounts the `/home` partition with the `nosuid` option so setuid/setgid bits on files in user directories are ignored.",
     "fr": "Monte la partition `/home` avec l'option `nosuid` afin que les bits setuid/setgid des fichiers dans les répertoires des utilisateurs soient ignorés."
+  },
+  "rationale": {
+    "en": "The presence of **SUID** and **SGID** executables must be tightly controlled. `/home` is user-writable space where setuid/setgid binaries have no legitimate purpose. Mounting `/home` with `nosuid` makes the kernel ignore those bits, so a user (or an attacker on their account) cannot place a SUID-root binary in a home directory to escalate privileges.",
+    "fr": "La présence d'exécutables **SUID** et **SGID** doit être strictement contrôlée. `/home` est un espace inscriptible par les utilisateurs où les binaires setuid/setgid n'ont aucune raison d'être. Monter `/home` avec `nosuid` force le noyau à ignorer ces bits, de sorte qu'un utilisateur (ou un attaquant sur son compte) ne puisse pas placer un binaire SUID-root dans un répertoire personnel pour élever ses privilèges."
   },
   "check_note": {
     "en": "Pavois reads the **effective** mount via `mount('/home')` and asserts the resolved options include `nosuid`. The live mount table reflects the kernel's actual state, including options from `systemd` mount units or a remount, which a static read of `/etc/fstab` could misrepresent. If `/home` is not a separate mount point, there is no dedicated partition to harden.",

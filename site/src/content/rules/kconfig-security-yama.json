@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R20"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_SECURITY_YAMA=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_SECURITY_YAMA='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_SECURITY_YAMA=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_SECURITY_YAMA=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Enable Yama support",
     "fr": "Activer la prise en charge de Yama"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Unrestricted use of `ptrace` lets any compromised process attach to and inspect the memory of other processes owned by the same user. The **Yama** LSM (`CONFIG_SECURITY_YAMA=y`) is the kernel building block that makes the `kernel.yama.ptrace_scope` restriction available, blocking a hijacked binary (e.g. a browser or mail client) from scraping credentials, SSH keys or session tokens out of sibling processes.",
-    "fr": "L'usage non restreint de `ptrace` permet à tout processus compromis de s'attacher à d'autres processus du même utilisateur et d'en inspecter la mémoire. Le LSM **Yama** (`CONFIG_SECURITY_YAMA=y`) est la brique noyau qui rend disponible la restriction `kernel.yama.ptrace_scope`, empêchant un binaire détourné (navigateur, client mail, etc.) d'extraire identifiants, clés SSH ou jetons de session de processus voisins."
-  },
   "summary": {
     "en": "Requires the kernel to be built with the **Yama** LSM (`CONFIG_SECURITY_YAMA=y`), which enables `ptrace` scope restrictions.",
     "fr": "Exige un noyau compilé avec le LSM **Yama** (`CONFIG_SECURITY_YAMA=y`), qui active les restrictions de portée `ptrace`."
+  },
+  "rationale": {
+    "en": "Unrestricted use of `ptrace` lets any compromised process attach to and inspect the memory of other processes owned by the same user. The **Yama** LSM (`CONFIG_SECURITY_YAMA=y`) is the kernel building block that makes the `kernel.yama.ptrace_scope` restriction available, blocking a hijacked binary (e.g. a browser or mail client) from scraping credentials, SSH keys or session tokens out of sibling processes.",
+    "fr": "L'usage non restreint de `ptrace` permet à tout processus compromis de s'attacher à d'autres processus du même utilisateur et d'en inspecter la mémoire. Le LSM **Yama** (`CONFIG_SECURITY_YAMA=y`) est la brique noyau qui rend disponible la restriction `kernel.yama.ptrace_scope`, empêchant un binaire détourné (navigateur, client mail, etc.) d'extraire identifiants, clés SSH ou jetons de session de processus voisins."
   },
   "check_note": {
     "en": "Pavois reads the kernel build configuration of the **running** kernel, via `/boot/config-$(uname -r)` or the in-kernel `/proc/config.gz`, and confirms `CONFIG_SECURITY_YAMA=y`. Querying the live kernel (not a packaged default config) guarantees that the kernel actually booted with Yama compiled in, a kernel installed but not yet booted, or an out-of-tree build, would otherwise give a false sense of compliance.",

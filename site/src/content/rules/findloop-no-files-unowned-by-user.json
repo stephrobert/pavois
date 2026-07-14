@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,8 +27,8 @@
   "norms": {
     "bp28": "R53",
     "cis": [
-      "7.1.12",
-      "2.2.6"
+      "2.2.6",
+      "7.1.12"
     ],
     "nist": [
       "AC-6(1)",
@@ -36,23 +37,28 @@
     "pci-dss": "2.2.6"
   },
   "check": [
-    "describe command('timeout 90 find / -xdev -type f -nouser 2>/dev/null') do",
+    "describe command(\"timeout 90 find / -xdev -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null\") do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "find / -xdev -nouser 2>/dev/null\n# review each, then assign a real owner: chown <user> <file>  (or remove if orphaned)\n",
+    "reason": "an unowned file usually signals a deleted user, assign ownership deliberately, do not blindly chown",
+    "resource": "manual"
+  },
   "title": {
     "en": "Ensure All Files Are Owned by a User",
     "fr": "S'assurer que tous les fichiers appartiennent a un utilisateur"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Unowned files do not directly imply a security problem, but they are generally a sign that something is amiss. They may be caused by an intruder, by an incorrect software installation or incomplete removal, or by failure to delete every file belonging to a removed account. A file with no owner becomes a hidden liability: when a new account is created and happens to reuse the orphaned **UID**, that account silently inherits all of those files, which can leak data or grant unintended write access. The files should be repaired and the root cause investigated.",
-    "fr": "Les fichiers sans proprietaire n'impliquent pas directement un probleme de securite, mais ils signalent generalement une anomalie. Ils peuvent provenir d'un intrus, d'une installation logicielle incorrecte ou d'une suppression incomplete, ou de l'oubli de supprimer tous les fichiers d'un compte retire. Un fichier sans proprietaire devient un risque cache : lorsqu'un nouveau compte est cree et reutilise l'**UID** orphelin, ce compte herite silencieusement de tous ces fichiers, ce qui peut exposer des donnees ou accorder un acces en ecriture imprevu. Les fichiers doivent etre corriges et la cause profonde investiguee."
-  },
   "summary": {
     "en": "Ensures every regular file on local filesystems is owned by a valid user account (no `-nouser` files).",
     "fr": "Garantit que chaque fichier ordinaire des systemes de fichiers locaux appartient a un compte utilisateur valide (aucun fichier `-nouser`)."
+  },
+  "rationale": {
+    "en": "Unowned files do not directly imply a security problem, but they are generally a sign that something is amiss. They may be caused by an intruder, by an incorrect software installation or incomplete removal, or by failure to delete every file belonging to a removed account. A file with no owner becomes a hidden liability: when a new account is created and happens to reuse the orphaned **UID**, that account silently inherits all of those files, which can leak data or grant unintended write access. The files should be repaired and the root cause investigated.",
+    "fr": "Les fichiers sans proprietaire n'impliquent pas directement un probleme de securite, mais ils signalent generalement une anomalie. Ils peuvent provenir d'un intrus, d'une installation logicielle incorrecte ou d'une suppression incomplete, ou de l'oubli de supprimer tous les fichiers d'un compte retire. Un fichier sans proprietaire devient un risque cache : lorsqu'un nouveau compte est cree et reutilise l'**UID** orphelin, ce compte herite silencieusement de tous ces fichiers, ce qui peut exposer des donnees ou accorder un acces en ecriture imprevu. Les fichiers doivent etre corriges et la cause profonde investiguee."
   },
   "check_note": {
     "en": "Pavois runs `find / -xdev -type f -nouser` and expects empty output, meaning no file references a UID without a matching entry in `/etc/passwd`. The `-xdev` flag keeps the scan on the local filesystem (it does not cross mount points), so network mounts and pseudo-filesystems are not flagged. This is a live scan of the real inodes on disk, not a guess from a config file.",

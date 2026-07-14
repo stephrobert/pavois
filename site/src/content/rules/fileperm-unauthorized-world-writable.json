@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,8 +27,8 @@
   "norms": {
     "bp28": "R54",
     "cis": [
-      "7.1.11",
-      "2.2.6"
+      "2.2.6",
+      "7.1.11"
     ],
     "nist": [
       "AC-6(1)",
@@ -36,28 +37,28 @@
     "pci-dss": "2.2.6"
   },
   "check": [
-    "only_if { file('/tmp').exist? }",
-    "describe file('/tmp') do",
-    "  it { should_not be_writable.by('other') }",
+    "describe command('find / -xdev -type f -perm -0002 2>/dev/null | head -1') do",
+    "  its('stdout') { should eq '' }",
     "end"
   ],
   "remediation": {
-    "mode": "0775",
-    "path": "/tmp",
-    "resource": "file"
+    "command": "find / -xdev -type f -perm -0002 -exec chmod o-w {} + 2>/dev/null || true",
+    "name": "fix-world-writable",
+    "not_if": "test -z \"$(find / -xdev -type f -perm -0002 2>/dev/null | head -1)\"",
+    "resource": "exec"
   },
   "title": {
     "en": "Ensure No World-Writable Files Exist",
     "fr": "S'assurer qu'aucun fichier accessible en ecriture par tous n'existe"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Data in **world-writable** files and directories can be modified by any user on the system. An attacker (or a compromised low-privilege account) can tamper with content, plant scripts, or overwrite trusted data, eroding integrity. On a world-writable directory like `/tmp` the absence of the **sticky bit** is especially dangerous: any user could delete or rename another user's files. Legitimate access can almost always be granted through user/group permissions instead, without exposing the file to everyone.",
-    "fr": "Les donnees dans les fichiers et repertoires **accessibles en ecriture par tous** peuvent etre modifiees par n'importe quel utilisateur du systeme. Un attaquant (ou un compte peu privilegie compromis) peut alterer le contenu, deposer des scripts ou ecraser des donnees de confiance, compromettant l'integrite. Sur un repertoire accessible en ecriture par tous comme `/tmp`, l'absence du **sticky bit** est particulierement dangereuse : tout utilisateur pourrait supprimer ou renommer les fichiers d'autrui. Un acces legitime peut presque toujours etre accorde via des permissions utilisateur/groupe, sans exposer le fichier a tout le monde."
-  },
   "summary": {
     "en": "Verifies that the shared `/tmp` directory is not writable by **other**, the canary for the broader policy of having no unauthorized world-writable files.",
     "fr": "Verifie que le repertoire partage `/tmp` n'est pas accessible en ecriture par les **autres**, sentinelle de la politique plus large d'absence de fichiers accessibles en ecriture par tous non autorises."
+  },
+  "rationale": {
+    "en": "Data in **world-writable** files and directories can be modified by any user on the system. An attacker (or a compromised low-privilege account) can tamper with content, plant scripts, or overwrite trusted data, eroding integrity. On a world-writable directory like `/tmp` the absence of the **sticky bit** is especially dangerous: any user could delete or rename another user's files. Legitimate access can almost always be granted through user/group permissions instead, without exposing the file to everyone.",
+    "fr": "Les donnees dans les fichiers et repertoires **accessibles en ecriture par tous** peuvent etre modifiees par n'importe quel utilisateur du systeme. Un attaquant (ou un compte peu privilegie compromis) peut alterer le contenu, deposer des scripts ou ecraser des donnees de confiance, compromettant l'integrite. Sur un repertoire accessible en ecriture par tous comme `/tmp`, l'absence du **sticky bit** est particulierement dangereuse : tout utilisateur pourrait supprimer ou renommer les fichiers d'autrui. Un acces legitime peut presque toujours etre accorde via des permissions utilisateur/groupe, sans exposer le fichier a tout le monde."
   },
   "check_note": {
     "en": "Pavois reads the **live mode** of `/tmp` and asserts the world-write bit is not set. Note: a correctly hardened `/tmp` is typically `1777`, world-writable **with** the sticky bit. Where this control fails, it signals `/tmp` was reconfigured insecurely (e.g. lost its protection) and serves as a representative check that the system's world-writable surface is controlled. Inspecting the effective inode beats parsing fstab or a manifest, which would not reflect a runtime `chmod`.",

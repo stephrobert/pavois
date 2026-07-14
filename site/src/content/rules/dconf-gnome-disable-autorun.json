@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,9 +26,9 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "1.8.8",
       "1.7.8",
       "1.7.9",
+      "1.8.8",
       "1.8.5"
     ],
     "nist": [
@@ -39,25 +40,28 @@
     "stig": "UBTU-24-200041"
   },
   "check": [
+    "only_if { command('dconf').exist? }",
     "describe command('{ s=$(grep -rhE \\'^[[:space:]]*autorun-never[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null | tail -1 | sed -E \\'s/^[^=]*=[[:space:]]*//\\' | tr -d \"\\'\\\\\"\"); [ \"$s\" = \"true\" ] && grep -rqxF \\'/org/gnome/desktop/media-handling/autorun-never\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
   "remediation": {
-    "resource": "dconf"
+    "key": "org/gnome/desktop/media-handling/autorun-never",
+    "resource": "dconf",
+    "value": "true"
   },
   "title": {
     "en": "Disable GNOME3 Automount running",
     "fr": "Désactiver l'exécution automatique (autorun) GNOME3"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "GNOME's autorun feature can execute software shipped on removable media when it is inserted, allowing an attacker to run code on the system simply by getting a user to plug in a crafted device. Setting `autorun-never=true` and locking it disables this automatic execution. Legitimate auto-run convenience is lost, which is an acceptable trade-off for the reduced risk.",
-    "fr": "La fonction autorun de GNOME peut exécuter des logiciels présents sur un support amovible lors de son insertion, permettant à un attaquant d'exécuter du code sur le système simplement en incitant un utilisateur à brancher un périphérique piégé. Définir `autorun-never=true` et le verrouiller désactive cette exécution automatique. On perd le confort de l'exécution automatique légitime, compromis acceptable face à la réduction du risque."
-  },
   "summary": {
     "en": "Disables GNOME autorun of software on inserted removable media by setting `autorun-never=true` and locking the key.",
     "fr": "Désactive l'exécution automatique par GNOME des logiciels présents sur les supports amovibles insérés en définissant `autorun-never=true` et en verrouillant la clé."
+  },
+  "rationale": {
+    "en": "GNOME's autorun feature can execute software shipped on removable media when it is inserted, allowing an attacker to run code on the system simply by getting a user to plug in a crafted device. Setting `autorun-never=true` and locking it disables this automatic execution. Legitimate auto-run convenience is lost, which is an acceptable trade-off for the reduced risk.",
+    "fr": "La fonction autorun de GNOME peut exécuter des logiciels présents sur un support amovible lors de son insertion, permettant à un attaquant d'exécuter du code sur le système simplement en incitant un utilisateur à brancher un périphérique piégé. Définir `autorun-never=true` et le verrouiller désactive cette exécution automatique. On perd le confort de l'exécution automatique légitime, compromis acceptable face à la réduction du risque."
   },
   "check_note": {
     "en": "Pavois checks the **effective** dconf state: the last definition of `autorun-never` across `/etc/dconf/db/*.d/*` must resolve to `true`, **and** the key `/org/gnome/desktop/media-handling/autorun-never` must appear in a dconf **lock** file. Evaluating resolved precedence (last drop-in wins) plus the lock matches how dconf actually computes the value, catching a later drop-in that re-enables autorun or unlocks the key.",

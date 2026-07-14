@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R17"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_SLAB_FREELIST_HARDENED=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_SLAB_FREELIST_HARDENED='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_SLAB_FREELIST_HARDENED=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_SLAB_FREELIST_HARDENED=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Harden slab freelist metadata",
     "fr": "Durcir les métadonnées de la freelist du slab"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Many kernel heap exploits target slab cache metadata. `CONFIG_SLAB_FREELIST_HARDENED=y` obfuscates the slab allocator's freelist pointers (XOR-ing them with a per-cache secret and the pointer location) and adds sanity checks, so an attacker who corrupts a freed object can no longer reliably forge a freelist pointer to redirect allocations to an arbitrary address. The cost is a minor performance overhead.",
-    "fr": "De nombreux exploits du tas noyau ciblent les métadonnées des caches slab. `CONFIG_SLAB_FREELIST_HARDENED=y` obfusque les pointeurs de freelist de l'allocateur slab (XOR avec un secret par cache et l'adresse du pointeur) et ajoute des contrôles de cohérence : un attaquant corrompant un objet libéré ne peut plus forger de façon fiable un pointeur de freelist pour rediriger les allocations vers une adresse arbitraire. Le coût est un léger surcoût de performance."
-  },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_SLAB_FREELIST_HARDENED=y`, obfuscating and validating slab freelist pointers.",
     "fr": "Exige un noyau compilé avec `CONFIG_SLAB_FREELIST_HARDENED=y`, qui obfusque et valide les pointeurs de freelist du slab."
+  },
+  "rationale": {
+    "en": "Many kernel heap exploits target slab cache metadata. `CONFIG_SLAB_FREELIST_HARDENED=y` obfuscates the slab allocator's freelist pointers (XOR-ing them with a per-cache secret and the pointer location) and adds sanity checks, so an attacker who corrupts a freed object can no longer reliably forge a freelist pointer to redirect allocations to an arbitrary address. The cost is a minor performance overhead.",
+    "fr": "De nombreux exploits du tas noyau ciblent les métadonnées des caches slab. `CONFIG_SLAB_FREELIST_HARDENED=y` obfusque les pointeurs de freelist de l'allocateur slab (XOR avec un secret par cache et l'adresse du pointeur) et ajoute des contrôles de cohérence : un attaquant corrompant un objet libéré ne peut plus forger de façon fiable un pointeur de freelist pour rediriger les allocations vers une adresse arbitraire. Le coût est un léger surcoût de performance."
   },
   "check_note": {
     "en": "Pavois reads the build configuration of the **running** kernel via `/boot/config-$(uname -r)` or `/proc/config.gz` and confirms `CONFIG_SLAB_FREELIST_HARDENED=y`. Reading the live kernel's effective config, not a packaged or default file, proves the hardening is actually compiled into the kernel that booted, not merely present in an installed-but-unbooted image.",

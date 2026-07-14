@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "6.2.2.4",
       "6.1.2.4",
+      "6.2.2.4",
       "6.2.1.1.5"
     ]
   },
@@ -35,19 +36,26 @@
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "content": "[Journal]\nStorage=persistent\n",
+    "group": "root",
+    "mode": "0644",
+    "owner": "root",
+    "path": "/etc/systemd/journald.conf.d/99-pavois-storage.conf",
+    "resource": "file"
+  },
   "title": {
     "en": "Ensure journald is configured to write log files to persistent disk",
     "fr": "S'assurer que journald est configuré pour écrire les journaux sur un disque persistant"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "With the default `auto`/`volatile` behavior journals can live only in `/run` and **vanish on reboot**. Logs hold valuable forensic data: if they are not persistent, a crash, power loss or an attacker-triggered reboot wipes the evidence needed to investigate an incident.",
-    "fr": "Avec le comportement par défaut `auto`/`volatile`, les journaux peuvent ne résider que dans `/run` et **disparaître au redémarrage**. Les logs contiennent des données forensiques précieuses : s'ils ne sont pas persistants, un plantage, une coupure de courant ou un redémarrage provoqué par un attaquant efface les preuves nécessaires à l'investigation."
-  },
   "summary": {
     "en": "Sets `Storage=persistent` so journald writes logs to `/var/log/journal` and they **survive reboots** instead of living only in volatile memory.",
     "fr": "Définit `Storage=persistent` afin que journald écrive les journaux dans `/var/log/journal` et qu'ils **survivent aux redémarrages** au lieu de ne résider qu'en mémoire volatile."
+  },
+  "rationale": {
+    "en": "With the default `auto`/`volatile` behavior journals can live only in `/run` and **vanish on reboot**. Logs hold valuable forensic data: if they are not persistent, a crash, power loss or an attacker-triggered reboot wipes the evidence needed to investigate an incident.",
+    "fr": "Avec le comportement par défaut `auto`/`volatile`, les journaux peuvent ne résider que dans `/run` et **disparaître au redémarrage**. Les logs contiennent des données forensiques précieuses : s'ils ne sont pas persistants, un plantage, une coupure de courant ou un redémarrage provoqué par un attaquant efface les preuves nécessaires à l'investigation."
   },
   "check_note": {
     "en": "Pavois greps `/etc/systemd/journald.conf` **and the `journald.conf.d/` drop-ins** for an active `Storage=persistent`. journald merges drop-ins over the base file, so scanning both gives the **effective storage mode**, a drop-in setting `persistent` correctly overrides a base `auto`/`volatile`.",

@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -38,6 +39,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.all.accept_ra') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.all.accept_ra[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -50,13 +54,13 @@
     "fr": "Configurer l'acceptation des annonces de routeur sur toutes les interfaces IPv6"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "IPv6 Router Advertisements are unauthenticated. A rogue node on the local segment can broadcast forged RAs to advertise itself as the default gateway, then **intercept, reroute or modify traffic** (man-in-the-middle). Accepting RAs also lets an attacker push prefixes and routes that reshape the host's routing table. On a server with statically configured addressing, RA processing brings no benefit and only widens the attack surface.",
-    "fr": "Les annonces de routeur (RA) IPv6 ne sont pas authentifiées. Un nœud malveillant sur le segment local peut diffuser de fausses RA pour se faire passer pour la passerelle par défaut, puis **intercepter, dérouter ou modifier le trafic** (attaque de l'homme du milieu). Accepter les RA permet aussi à un attaquant d'injecter des préfixes et des routes qui réécrivent la table de routage de l'hôte. Sur un serveur à adressage statique, le traitement des RA n'apporte aucun bénéfice et ne fait qu'élargir la surface d'attaque."
-  },
   "summary": {
     "en": "Sets the kernel parameter `net.ipv6.conf.all.accept_ra` to `0` so the host ignores IPv6 Router Advertisement (RA) messages on all interfaces.",
     "fr": "Fixe le paramètre noyau `net.ipv6.conf.all.accept_ra` à `0` afin que l'hôte ignore les messages d'annonce de routeur (RA) IPv6 sur toutes les interfaces."
+  },
+  "rationale": {
+    "en": "IPv6 Router Advertisements are unauthenticated. A rogue node on the local segment can broadcast forged RAs to advertise itself as the default gateway, then **intercept, reroute or modify traffic** (man-in-the-middle). Accepting RAs also lets an attacker push prefixes and routes that reshape the host's routing table. On a server with statically configured addressing, RA processing brings no benefit and only widens the attack surface.",
+    "fr": "Les annonces de routeur (RA) IPv6 ne sont pas authentifiées. Un nœud malveillant sur le segment local peut diffuser de fausses RA pour se faire passer pour la passerelle par défaut, puis **intercepter, dérouter ou modifier le trafic** (attaque de l'homme du milieu). Accepter les RA permet aussi à un attaquant d'injecter des préfixes et des routes qui réécrivent la table de routage de l'hôte. Sur un serveur à adressage statique, le traitement des RA n'apporte aucun bénéfice et ne fait qu'élargir la surface d'attaque."
   },
   "check_note": {
     "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.all.accept_ra`) and asserts it is `0`. Reading the live kernel value beats grepping `/etc/sysctl.conf` or `/etc/sysctl.d/*`: a setting can be present in a file yet **overridden** by a later drop-in, a `GRUB` boot argument, or a network manager, and a file can declare the value without it ever being applied. The effective read reflects what the kernel is actually doing now.",

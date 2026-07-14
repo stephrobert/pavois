@@ -3,19 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
-    "fedora",
-    "rhel10",
-    "rhel8",
-    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
-    "rhel8": "4.0.0",
-    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -25,35 +19,40 @@
   "reboot_survivable": "yes",
   "norms": {
     "bp28": "R33",
+    "cis": [
+      "8.6.1",
+      "5.4.2.4"
+    ],
     "nist": [
       "3.1.1",
       "CM-6(a)",
       "IA-2"
     ],
-    "pci-dss": "8.6.1",
-    "cis": [
-      "8.6.1",
-      "5.4.2.4"
-    ]
+    "pci-dss": "8.6.1"
   },
   "check": [
     "describe command('[ -s /etc/securetty ] && echo ko || echo ok') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": ": > /etc/securetty",
+    "name": "empty-securetty",
+    "not_if": "test ! -s /etc/securetty",
+    "resource": "exec"
+  },
   "title": {
     "en": "Direct root Logins Not Allowed",
     "fr": "Connexions root directes interdites"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "When users can log in **directly as root** on consoles and terminals, all administrative actions collapse into one shared, anonymous identity, you cannot tell *who* did what. The secure model is: each admin authenticates as themselves, then escalates with `su`/`sudo`, which produces an accountable, multi-factor-capable, per-command audit trail. The `/etc/securetty` file lists the TTYs on which root may log in; an **empty** file means no terminal allows a direct root login. This control is required for FISMA Low and Moderate baselines.",
-    "fr": "Lorsque les utilisateurs peuvent se connecter **directement en root** sur les consoles et terminaux, toutes les actions d'administration se fondent dans une seule identité partagée et anonyme, on ne peut savoir *qui* a fait quoi. Le modèle sûr est : chaque administrateur s'authentifie en son nom, puis élève ses droits avec `su`/`sudo`, ce qui produit une piste d'audit traçable, compatible multi-facteurs et par commande. Le fichier `/etc/securetty` liste les TTY sur lesquels root peut se connecter ; un fichier **vide** signifie qu'aucun terminal n'autorise une connexion root directe. Ce contrôle est requis pour les socles FISMA Low et Moderate."
-  },
   "summary": {
     "en": "Ensures `/etc/securetty` is **empty** so root cannot log in directly on any console; admins must authenticate then escalate via `su`/`sudo`.",
     "fr": "Garantit que `/etc/securetty` est **vide** afin que root ne puisse se connecter directement sur aucune console ; les administrateurs doivent s'authentifier puis élever leurs droits via `su`/`sudo`."
+  },
+  "rationale": {
+    "en": "When users can log in **directly as root** on consoles and terminals, all administrative actions collapse into one shared, anonymous identity, you cannot tell *who* did what. The secure model is: each admin authenticates as themselves, then escalates with `su`/`sudo`, which produces an accountable, multi-factor-capable, per-command audit trail. The `/etc/securetty` file lists the TTYs on which root may log in; an **empty** file means no terminal allows a direct root login. This control is required for FISMA Low and Moderate baselines.",
+    "fr": "Lorsque les utilisateurs peuvent se connecter **directement en root** sur les consoles et terminaux, toutes les actions d'administration se fondent dans une seule identité partagée et anonyme, on ne peut savoir *qui* a fait quoi. Le modèle sûr est : chaque administrateur s'authentifie en son nom, puis élève ses droits avec `su`/`sudo`, ce qui produit une piste d'audit traçable, compatible multi-facteurs et par commande. Le fichier `/etc/securetty` liste les TTY sur lesquels root peut se connecter ; un fichier **vide** signifie qu'aucun terminal n'autorise une connexion root directe. Ce contrôle est requis pour les socles FISMA Low et Moderate."
   },
   "check_note": {
     "en": "Pavois verifies that `/etc/securetty` exists but holds no entries (zero size). An empty `securetty` is the effective signal consulted by `pam_securetty.so` at login time: PAM denies a direct root login on any TTY that is not listed, and an empty list denies them all.",

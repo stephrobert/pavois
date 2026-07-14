@@ -2,11 +2,21 @@
   "id": "pam-pwhistory-enforce",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -18,7 +28,7 @@
     "cis": "5.3.3.3.2"
   },
   "check": [
-    "describe command('grep -rqE \\'^[^#]*\\bpam_pwhistory\\\\.so\\b[^#]*\\benforce_for_root\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
+    "describe command('grep -RqE \\'^[^#]*\\bpam_pwhistory\\.so\\' /etc/pam.d/ 2>/dev/null && { grep -RqE \\'^[^#]*\\bpam_pwhistory\\.so[^#]*\\benforce_for_root\\' /etc/pam.d/ 2>/dev/null || grep -qE \\'^[[:space:]]*enforce_for_root\\b\\' /etc/security/pwhistory.conf 2>/dev/null; } && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
@@ -34,13 +44,13 @@
     "fr": "Limiter la réutilisation des mots de passe"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Preventing reuse of previous passwords helps ensure that a compromised password is not silently reinstated by a user. `pam_pwhistory` exempts root by default, leaving a hole for the most powerful account; `enforce_for_root` makes the reuse policy universal so password history is genuinely enforced across the system.",
-    "fr": "Empêcher la réutilisation d'anciens mots de passe garantit qu'un mot de passe compromis n'est pas silencieusement réinstauré par un utilisateur. `pam_pwhistory` exempte root par défaut, laissant une faille pour le compte le plus puissant ; `enforce_for_root` rend la politique anti-réutilisation universelle pour que l'historique soit réellement appliqué sur tout le système."
-  },
   "summary": {
     "en": "Enforces the `enforce_for_root` option on `pam_pwhistory.so` so the password-reuse restriction applies to every account, including root.",
     "fr": "Impose l'option `enforce_for_root` sur `pam_pwhistory.so` afin que la restriction de réutilisation des mots de passe s'applique à tous les comptes, root compris."
+  },
+  "rationale": {
+    "en": "Preventing reuse of previous passwords helps ensure that a compromised password is not silently reinstated by a user. `pam_pwhistory` exempts root by default, leaving a hole for the most powerful account; `enforce_for_root` makes the reuse policy universal so password history is genuinely enforced across the system.",
+    "fr": "Empêcher la réutilisation d'anciens mots de passe garantit qu'un mot de passe compromis n'est pas silencieusement réinstauré par un utilisateur. `pam_pwhistory` exempte root par défaut, laissant une faille pour le compte le plus puissant ; `enforce_for_root` rend la politique anti-réutilisation universelle pour que l'historique soit réellement appliqué sur tout le système."
   },
   "check_note": {
     "en": "Pavois greps the **effective** PAM stack under `/etc/pam.d/` for a non-commented `pam_pwhistory.so` line carrying `enforce_for_root`. Resolving the assembled password stack (its `common-password` plus `@include` chain) instead of one file prevents a false pass where the flag is in a sample but not in the rule PAM actually applies.",

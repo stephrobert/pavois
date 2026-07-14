@@ -1,0 +1,52 @@
+{
+  "id": "misc-postfix-anti-vrfy",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (misc)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {},
+  "check": [
+    "describe command('if ! command -v /usr/sbin/postconf >/dev/null 2>&1; then echo ok; elif /usr/sbin/postconf -h disable_vrfy_command 2>/dev/null | grep -qi ''^yes''; then echo ok; else echo ko; fi') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "mkdir -p /etc/postfix; touch /etc/postfix/main.cf; if command -v postconf >/dev/null 2>&1; then postconf -e 'disable_vrfy_command = yes'; else sed -ri '/^disable_vrfy_command/d' /etc/postfix/main.cf; echo 'disable_vrfy_command = yes' >> /etc/postfix/main.cf; fi; systemctl reload postfix 2>/dev/null || true",
+    "name": "postfix-anti-vrfy",
+    "not_if": "grep -Eqs '^disable_vrfy_command[[:space:]]*=[[:space:]]*yes' /etc/postfix/main.cf",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Disable Postfix SMTP VRFY Command",
+    "fr": "Disable Postfix SMTP VRFY Command"
+  },
+  "needs_translation": [
+    "title.fr"
+  ],
+  "needs_authoring": [
+    "summary",
+    "check_note",
+    "verify",
+    "logs",
+    "remediation_note",
+    "impact"
+  ]
+}

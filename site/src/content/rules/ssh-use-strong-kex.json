@@ -2,11 +2,21 @@
   "id": "ssh-use-strong-kex",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -16,33 +26,38 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "5.1.5",
       "2.2.7",
       "5.1.12"
     ],
-    "pci-dss": [
-      "2.2.7",
-      "Req-2.3"
-    ]
+    "pci-dss": "2.2.7"
   },
   "check": [
     "describe command('sshd -T') do",
-    "  its('stdout') { should match(/^kexalgorithms\\s+\\-diffie\\-hellman\\-group1\\-sha1,diffie\\-hellman\\-group14\\-sha1,diffie\\-hellman\\-group\\-exchange\\-sha1$/i) }",
+    "  its('stdout') { should match(/^kexalgorithms\\s+sntrup761x25519\\-sha512@openssh\\.com,curve25519\\-sha256,curve25519\\-sha256@libssh\\.org,ecdh\\-sha2\\-nistp256,ecdh\\-sha2\\-nistp384,ecdh\\-sha2\\-nistp521,diffie\\-hellman\\-group\\-exchange\\-sha256,diffie\\-hellman\\-group16\\-sha512,diffie\\-hellman\\-group18\\-sha512,diffie\\-hellman\\-group14\\-sha256$/i) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "directive": "KexAlgorithms",
+    "notify": {
+      "action": "reload",
+      "service": "ssh.service"
+    },
+    "resource": "sshd_setting",
+    "value": "sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256",
+    "verify": "sshd -t -f %{path}"
+  },
   "title": {
     "en": "Use Only Strong Key Exchange algorithms",
     "fr": "N'utiliser que des algorithmes d'échange de clés robustes"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Key exchange is the method by which the client and server agree on the cryptographic keys protecting the session. SHA-1-based Diffie-Hellman groups (especially the 1024-bit `group1`) are weak: SHA-1 is collision-prone and small DH groups are within reach of well-resourced attackers (Logjam-style precomputation). A compromised key exchange lets an attacker in a **man-in-the-middle** position derive the session keys, decrypt the tunnel and steal credentials. Removing these legacy KEX algorithms forces use of strong curves (Curve25519) and SHA-2 groups.",
-    "fr": "L'échange de clés est la méthode par laquelle le client et le serveur s'accordent sur les clés cryptographiques protégeant la session. Les groupes Diffie-Hellman basés sur SHA-1 (en particulier `group1` à 1024 bits) sont faibles : SHA-1 est sujet aux collisions et les petits groupes DH sont à la portée d'attaquants disposant de moyens (précalcul de type Logjam). Un échange de clés compromis permet à un attaquant en position d'**homme du milieu** de dériver les clés de session, déchiffrer le tunnel et voler des identifiants. Le retrait de ces algorithmes KEX hérités impose l'usage de courbes robustes (Curve25519) et de groupes SHA-2."
-  },
   "summary": {
     "en": "Disable weak SSH key-exchange (`KexAlgorithms`) methods, the SHA-1-based Diffie-Hellman groups (`diffie-hellman-group1-sha1`, `diffie-hellman-group14-sha1`, `diffie-hellman-group-exchange-sha1`), so only strong KEX algorithms remain.",
     "fr": "Désactive les méthodes d'échange de clés SSH (`KexAlgorithms`) faibles, les groupes Diffie-Hellman basés sur SHA-1 (`diffie-hellman-group1-sha1`, `diffie-hellman-group14-sha1`, `diffie-hellman-group-exchange-sha1`), afin de ne conserver que des algorithmes KEX robustes."
+  },
+  "rationale": {
+    "en": "Key exchange is the method by which the client and server agree on the cryptographic keys protecting the session. SHA-1-based Diffie-Hellman groups (especially the 1024-bit `group1`) are weak: SHA-1 is collision-prone and small DH groups are within reach of well-resourced attackers (Logjam-style precomputation). A compromised key exchange lets an attacker in a **man-in-the-middle** position derive the session keys, decrypt the tunnel and steal credentials. Removing these legacy KEX algorithms forces use of strong curves (Curve25519) and SHA-2 groups.",
+    "fr": "L'échange de clés est la méthode par laquelle le client et le serveur s'accordent sur les clés cryptographiques protégeant la session. Les groupes Diffie-Hellman basés sur SHA-1 (en particulier `group1` à 1024 bits) sont faibles : SHA-1 est sujet aux collisions et les petits groupes DH sont à la portée d'attaquants disposant de moyens (précalcul de type Logjam). Un échange de clés compromis permet à un attaquant en position d'**homme du milieu** de dériver les clés de session, déchiffrer le tunnel et voler des identifiants. Le retrait de ces algorithmes KEX hérités impose l'usage de courbes robustes (Curve25519) et de groupes SHA-2."
   },
   "check_note": {
     "en": "Pavois runs `sshd -T` and matches the **effective** `kexalgorithms` line, which begins with the `-` exclusion of the weak SHA-1 groups. `sshd -T` prints the daemon's resolved configuration, after all `Include`, `Match` blocks and drop-ins, so a weak KEX re-enabled downstream is caught. Reading `/etc/ssh/sshd_config` directly would miss those includes and produce a **false negative**.",

@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -34,6 +35,9 @@
   "check": [
     "describe kernel_parameter('kernel.yama.ptrace_scope') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*kernel.yama.ptrace_scope[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -46,13 +50,13 @@
     "fr": "Restreindre l'usage de ptrace aux processus descendants"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Unrestricted use of `ptrace` lets any process owned by a user inspect and manipulate the memory of every other process of that same user. A compromised binary could therefore attach to a running **SSH client, browser or password manager** and steal credentials, session keys or secrets **without any extra privilege and without tricking the user**. Setting `kernel.yama.ptrace_scope=1` confines `ptrace` to the **direct descendants** of the tracing process (the classic debugger model), which neutralizes this whole class of process-injection and credential-theft attacks.",
-    "fr": "Un usage non restreint de `ptrace` permet à n'importe quel processus appartenant à un utilisateur d'inspecter et de manipuler la mémoire de tous les autres processus de ce même utilisateur. Un binaire compromis peut ainsi s'attacher à un **client SSH, un navigateur ou un gestionnaire de mots de passe** en cours d'exécution et voler identifiants, clés de session ou secrets, **sans privilège supplémentaire et sans piéger l'utilisateur**. Définir `kernel.yama.ptrace_scope=1` confine `ptrace` aux **descendants directs** du processus traceur (le modèle classique du débogueur), ce qui neutralise toute cette catégorie d'attaques par injection de processus et vol d'identifiants."
-  },
   "summary": {
     "en": "Sets `kernel.yama.ptrace_scope=1` so a process can only `ptrace` its own descendants, blocking cross-process memory snooping.",
     "fr": "Définit `kernel.yama.ptrace_scope=1` pour qu'un processus ne puisse `ptrace` que ses propres descendants, bloquant l'espionnage mémoire entre processus."
+  },
+  "rationale": {
+    "en": "Unrestricted use of `ptrace` lets any process owned by a user inspect and manipulate the memory of every other process of that same user. A compromised binary could therefore attach to a running **SSH client, browser or password manager** and steal credentials, session keys or secrets **without any extra privilege and without tricking the user**. Setting `kernel.yama.ptrace_scope=1` confines `ptrace` to the **direct descendants** of the tracing process (the classic debugger model), which neutralizes this whole class of process-injection and credential-theft attacks.",
+    "fr": "Un usage non restreint de `ptrace` permet à n'importe quel processus appartenant à un utilisateur d'inspecter et de manipuler la mémoire de tous les autres processus de ce même utilisateur. Un binaire compromis peut ainsi s'attacher à un **client SSH, un navigateur ou un gestionnaire de mots de passe** en cours d'exécution et voler identifiants, clés de session ou secrets, **sans privilège supplémentaire et sans piéger l'utilisateur**. Définir `kernel.yama.ptrace_scope=1` confine `ptrace` aux **descendants directs** du processus traceur (le modèle classique du débogueur), ce qui neutralise toute cette catégorie d'attaques par injection de processus et vol d'identifiants."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** via `kernel_parameter('kernel.yama.ptrace_scope')`, i.e. what the running kernel actually enforces, and asserts it equals `1`. Reading the running value catches the case where a drop-in in `/etc/sysctl.d/` or a `/etc/sysctl.conf` line sets the key but it was never reloaded, or where a later drop-in overrides it. A file-based scanner that only greps `sysctl.conf` would report a value that is **not** the one the kernel is applying.",

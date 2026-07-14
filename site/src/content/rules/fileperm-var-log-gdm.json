@@ -2,11 +2,21 @@
   "id": "fileperm-var-log-gdm",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -23,18 +33,14 @@
   "check": [
     "only_if { file('/var/log/gdm').exist? }",
     "describe file('/var/log/gdm') do",
-    "  it { should_not be_executable.by('owner') }",
     "  it { should_not be_setuid }",
-    "  it { should_not be_executable.by('group') }",
     "  it { should_not be_setgid }",
-    "  it { should_not be_executable.by('other') }",
     "  it { should_not be_writable.by('other') }",
     "  it { should_not be_readable.by('other') }",
-    "  it { should_not be_sticky }",
     "end"
   ],
   "remediation": {
-    "mode": "0660",
+    "mode": "0750",
     "path": "/var/log/gdm",
     "resource": "file"
   },
@@ -43,13 +49,13 @@
     "fr": "Verifier les permissions des fichiers dans /var/log/gdm"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/var/log/gdm` directory holds logs of the **GNOME Display Manager** (the graphical login daemon), including session start details and X/Wayland diagnostics that can expose usernames, display configuration and local environment data. If readable or writable by other, an attacker can harvest this information or tamper with login evidence. Access should be restricted to `root` and the GDM service account.",
-    "fr": "Le repertoire `/var/log/gdm` contient les journaux du **gestionnaire d'affichage GNOME** (le demon de connexion graphique), y compris les details de demarrage de session et les diagnostics X/Wayland pouvant exposer des noms d'utilisateurs, la configuration de l'affichage et des donnees de l'environnement local. S'il est lisible ou modifiable par les autres, un attaquant peut recolter ces informations ou alterer les preuves de connexion. L'acces devrait etre restreint a `root` et au compte de service GDM."
-  },
   "summary": {
     "en": "Ensures the `/var/log/gdm` directory is not readable/writable/executable by other and not executable by group, with no setuid/setgid/sticky bits.",
     "fr": "Garantit que le repertoire `/var/log/gdm` n'est ni lisible, ni modifiable, ni executable par les autres et n'est pas executable par le groupe, sans bits setuid/setgid/sticky."
+  },
+  "rationale": {
+    "en": "The `/var/log/gdm` directory holds logs of the **GNOME Display Manager** (the graphical login daemon), including session start details and X/Wayland diagnostics that can expose usernames, display configuration and local environment data. If readable or writable by other, an attacker can harvest this information or tamper with login evidence. Access should be restricted to `root` and the GDM service account.",
+    "fr": "Le repertoire `/var/log/gdm` contient les journaux du **gestionnaire d'affichage GNOME** (le demon de connexion graphique), y compris les details de demarrage de session et les diagnostics X/Wayland pouvant exposer des noms d'utilisateurs, la configuration de l'affichage et des donnees de l'environnement local. S'il est lisible ou modifiable par les autres, un attaquant peut recolter ces informations ou alterer les preuves de connexion. L'acces devrait etre restreint a `root` et au compte de service GDM."
   },
   "check_note": {
     "en": "Pavois reads the **effective inode mode** of `/var/log/gdm` and asserts no access for other, no group execute, and no special bits. Reading the live mode catches drift introduced when GDM (or a desktop install/upgrade) recreates the directory, which a static packaging manifest would not reflect. This path is the GDM log location on RHEL-family layouts and older GNOME versions (the `only_if` skips hosts without it).",

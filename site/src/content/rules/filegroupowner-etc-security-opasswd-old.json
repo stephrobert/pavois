@@ -2,14 +2,21 @@
   "id": "filegroupowner-etc-security-opasswd-old",
   "supported_os": [
     "debian12",
+    "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -36,13 +43,13 @@
     "fr": "Verifier le groupe proprietaire du fichier /etc/security/opasswd.old"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/security/opasswd.old` is the **backup of the password-history file** that PAM writes before updating `/etc/security/opasswd`. It holds the same crackable old password hashes. If a non-root group could read it, that secondary copy would leak the same sensitive material the primary file protects. Group ownership by **root** (GID 0) keeps the backup confidential and tamper-proof.",
-    "fr": "`/etc/security/opasswd.old` est la **sauvegarde du fichier d'historique des mots de passe** que PAM ecrit avant de mettre a jour `/etc/security/opasswd`. Elle contient les memes anciennes empreintes cassables. Si un groupe non root pouvait la lire, cette copie secondaire divulguerait le meme materiel sensible que le fichier principal protege. La propriete de groupe par **root** (GID 0) maintient la sauvegarde confidentielle et inalterable."
-  },
   "summary": {
     "en": "Ensures the password-history backup `/etc/security/opasswd.old` is group-owned by **root** (GID 0).",
     "fr": "Garantit que la sauvegarde de l'historique des mots de passe `/etc/security/opasswd.old` appartient au groupe **root** (GID 0)."
+  },
+  "rationale": {
+    "en": "`/etc/security/opasswd.old` is the **backup of the password-history file** that PAM writes before updating `/etc/security/opasswd`. It holds the same crackable old password hashes. If a non-root group could read it, that secondary copy would leak the same sensitive material the primary file protects. Group ownership by **root** (GID 0) keeps the backup confidential and tamper-proof.",
+    "fr": "`/etc/security/opasswd.old` est la **sauvegarde du fichier d'historique des mots de passe** que PAM ecrit avant de mettre a jour `/etc/security/opasswd`. Elle contient les memes anciennes empreintes cassables. Si un groupe non root pouvait la lire, cette copie secondaire divulguerait le meme materiel sensible que le fichier principal protege. La propriete de groupe par **root** (GID 0) maintient la sauvegarde confidentielle et inalterable."
   },
   "check_note": {
     "en": "Pavois reads the **effective** group ID of `/etc/security/opasswd.old` via the InSpec `file` resource and asserts `gid == 0`, skipping it (via `only_if`) when the backup does not exist. Reading the live inode is what proves the backup is protected right now, PAM re-creates it on each password change, so an install-time manifest cannot vouch for its current owner.",

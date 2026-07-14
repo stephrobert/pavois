@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -29,7 +30,12 @@
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "DEBIAN_FRONTEND=noninteractive apt-get install -y sysstat >/dev/null 2>&1; sed -ri 's/^ENABLED=.*/ENABLED=\"true\"/' /etc/default/sysstat 2>/dev/null; systemctl enable --now sysstat sysstat.service 2>/dev/null; true",
+    "name": "enable-sysstat-collection",
+    "not_if": "grep -q '^ENABLED=\"true\"' /etc/default/sysstat 2>/dev/null",
+    "resource": "exec"
+  },
   "title": {
     "en": "System statistics collection (sysstat)",
     "fr": "Collecte des statistiques système (sysstat)"

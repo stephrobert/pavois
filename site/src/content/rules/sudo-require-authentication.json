@@ -1,10 +1,22 @@
 {
   "id": "sudo-require-authentication",
   "supported_os": [
-    "debian12"
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "debian12": "1.1.0"
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
   },
   "severity": "medium",
   "domain": "Sudo",
@@ -12,30 +24,34 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": "5.2.4",
-    "pci-dss": "2.2.6",
     "nist": [
       "IA-11",
       "CM-6(a)"
-    ]
+    ],
+    "pci-dss": "2.2.6"
   },
   "check": [
-    "describe command('grep -rqE \\'^[^#]*!authenticate\\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do",
+    "describe command('grep -rqE \\'^[^#]*\\bNOPASSWD\\b\\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# Remove NOPASSWD so sudo always authenticates. WARNING: breaks any automation relying on passwordless\n# sudo (including pavois's own management user), repoint it to a key/password FIRST.\ngrep -rl 'NOPASSWD' /etc/sudoers /etc/sudoers.d/ 2>/dev/null\n# then edit each with: visudo  (or visudo -f /etc/sudoers.d/<file>) and delete the NOPASSWD tag\n",
+    "reason": "dropping NOPASSWD breaks passwordless automation (incl. pavois), repoint it first",
+    "resource": "manual"
+  },
   "title": {
     "en": "Ensure Users Re-Authenticate for Privilege Escalation - sudo",
     "fr": "S'assurer que les utilisateurs se ré-authentifient pour l'élévation de privilèges - sudo"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "An `!authenticate` (or `NOPASSWD`) rule allows privilege escalation **without re-authentication**. If a session is left unlocked or hijacked, anyone present, or a malicious process within that session, can run root commands silently. Requiring re-authentication confirms the escalating user is the legitimate, authorised one and produces an authentication record for accountability.",
-    "fr": "Une règle `!authenticate` (ou `NOPASSWD`) autorise l'élévation de privilèges **sans ré-authentification**. Si une session reste déverrouillée ou est détournée, toute personne présente, ou un processus malveillant dans cette session, peut exécuter des commandes root en silence. Exiger la ré-authentification confirme que l'utilisateur qui élève ses droits est bien le légitime et l'autorisé, et produit un enregistrement d'authentification pour la traçabilité."
-  },
   "summary": {
     "en": "Ensure no `!authenticate` directive appears in the sudoers policy, so every `sudo` privilege escalation requires the user to re-enter their password.",
     "fr": "S'assure qu'aucune directive `!authenticate` ne figure dans la politique sudoers, afin que chaque élévation de privilèges via `sudo` exige que l'utilisateur ressaisisse son mot de passe."
+  },
+  "rationale": {
+    "en": "An `!authenticate` (or `NOPASSWD`) rule allows privilege escalation **without re-authentication**. If a session is left unlocked or hijacked, anyone present, or a malicious process within that session, can run root commands silently. Requiring re-authentication confirms the escalating user is the legitimate, authorised one and produces an authentication record for accountability.",
+    "fr": "Une règle `!authenticate` (ou `NOPASSWD`) autorise l'élévation de privilèges **sans ré-authentification**. Si une session reste déverrouillée ou est détournée, toute personne présente, ou un processus malveillant dans cette session, peut exécuter des commandes root en silence. Exiger la ré-authentification confirme que l'utilisateur qui élève ses droits est bien le légitime et l'autorisé, et produit un enregistrement d'authentification pour la traçabilité."
   },
   "check_note": {
     "en": "Pavois greps the **active sudoers tree**, `/etc/sudoers` and every file under `/etc/sudoers.d/`, and the rule passes only when **no** uncommented `!authenticate` is present. Because `sudo` merges the main file with all drop-ins, scanning the whole tree catches an exemption hidden in any drop-in, reflecting the **effective** policy rather than one file.",

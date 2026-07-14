@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -34,11 +35,11 @@
   "check": [
     "only_if { file('/etc/gshadow').exist? }",
     "describe file('/etc/gshadow') do",
-    "  its('gid') { should eq 0 }",
+    "  its('gid') { should eq 42 }",
     "end"
   ],
   "remediation": {
-    "group": "root",
+    "group": "shadow",
     "path": "/etc/gshadow",
     "resource": "file"
   },
@@ -47,13 +48,13 @@
     "fr": "Vérifier le groupe propriétaire du fichier gshadow"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/gshadow` holds the hashed passwords for groups. If it is group-owned by anything other than **GID 0** (or the dedicated `shadow` group on Debian/Ubuntu), members of that group could read the hashes and attempt to crack group passwords offline, escalating their access. Restricting group ownership keeps these secrets under root/`shadow` control.",
-    "fr": "`/etc/gshadow` contient les mots de passe hachés des groupes. S'il appartient à un groupe autre que le **GID 0** (ou le groupe dédié `shadow` sur Debian/Ubuntu), les membres de ce groupe pourraient lire les hachages et tenter de casser les mots de passe de groupe hors ligne, élevant leur accès. Restreindre l'appartenance de groupe maintient ces secrets sous le contrôle de root/`shadow`."
-  },
   "summary": {
     "en": "Ensures `/etc/gshadow` is group-owned by **GID 0** (root).",
     "fr": "Garantit que `/etc/gshadow` appartient au groupe **GID 0** (root)."
+  },
+  "rationale": {
+    "en": "`/etc/gshadow` holds the hashed passwords for groups. If it is group-owned by anything other than **GID 0** (or the dedicated `shadow` group on Debian/Ubuntu), members of that group could read the hashes and attempt to crack group passwords offline, escalating their access. Restricting group ownership keeps these secrets under root/`shadow` control.",
+    "fr": "`/etc/gshadow` contient les mots de passe hachés des groupes. S'il appartient à un groupe autre que le **GID 0** (ou le groupe dédié `shadow` sur Debian/Ubuntu), les membres de ce groupe pourraient lire les hachages et tenter de casser les mots de passe de groupe hors ligne, élevant leur accès. Restreindre l'appartenance de groupe maintient ces secrets sous le contrôle de root/`shadow`."
   },
   "check_note": {
     "en": "Pavois asks the `file` resource for the resolved numeric `gid` of `/etc/gshadow` and requires it to be `0`. The check is skipped if the file does not exist. Querying the file's effective group ownership directly (the kernel-resolved gid) is exact and avoids guessing from a name that could differ across distributions.",

@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -27,7 +29,7 @@
   },
   "check": [
     "describe kernel_parameter('net.ipv4.ip_local_port_range') do",
-    "  its('value') { should cmp '32768 65535' }",
+    "  its('value') { should match(/32768\\s+65535/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +42,13 @@
     "fr": "Définir le paramètre noyau pour élargir la plage de ports locaux"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "This setting defines the ephemeral port range used by TCP and UDP to choose the local (source) port for outbound connections; the first number is the lowest and the second the highest port. A range starting at **32768** keeps ephemeral ports well clear of the privileged (`<1024`) and registered service ports, avoiding collisions with listening services and providing a larger, less predictable pool of source ports.",
-    "fr": "Ce réglage définit la plage de ports éphémères utilisée par TCP et UDP pour choisir le port local (source) des connexions sortantes ; le premier nombre est le port le plus bas, le second le plus haut. Une plage commençant à **32768** maintient les ports éphémères bien à l'écart des ports privilégiés (`<1024`) et des ports de services enregistrés, évitant les collisions avec les services en écoute et offrant un réservoir de ports source plus large et moins prévisible."
-  },
   "summary": {
     "en": "Sets the ephemeral source-port range to **`32768 65535`** via `net.ipv4.ip_local_port_range`, keeping outbound ports away from privileged and service ports.",
     "fr": "Définit la plage de ports source éphémères à **`32768 65535`** via `net.ipv4.ip_local_port_range`, en éloignant les ports sortants des ports privilégiés et de services."
+  },
+  "rationale": {
+    "en": "This setting defines the ephemeral port range used by TCP and UDP to choose the local (source) port for outbound connections; the first number is the lowest and the second the highest port. A range starting at **32768** keeps ephemeral ports well clear of the privileged (`<1024`) and registered service ports, avoiding collisions with listening services and providing a larger, less predictable pool of source ports.",
+    "fr": "Ce réglage définit la plage de ports éphémères utilisée par TCP et UDP pour choisir le port local (source) des connexions sortantes ; le premier nombre est le port le plus bas, le second le plus haut. Une plage commençant à **32768** maintient les ports éphémères bien à l'écart des ports privilégiés (`<1024`) et des ports de services enregistrés, évitant les collisions avec les services en écoute et offrant un réservoir de ports source plus large et moins prévisible."
   },
   "check_note": {
     "en": "Pavois reads the **live** value via `kernel_parameter('net.ipv4.ip_local_port_range')`, which returns the running range after all `sysctl.conf` / `/etc/sysctl.d/` drop-ins and runtime overrides are merged. A file scan of `/etc/sysctl.conf` could report a range that a later drop-in or `sysctl -w` has changed.",

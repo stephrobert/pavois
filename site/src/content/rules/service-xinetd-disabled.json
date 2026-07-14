@@ -2,13 +2,18 @@
   "id": "service-xinetd-disabled",
   "supported_os": [
     "debian12",
+    "debian13",
     "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -44,13 +49,13 @@
     "fr": "Desactiver le service xinetd"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`xinetd` is a legacy super-server that listens on behalf of other programs and launches them on demand. Modern systems use systemd socket activation instead, so xinetd is rarely necessary. Keeping it running can silently expose obsolete or insecure services configured under `/etc/xinetd.d/` (telnet, tftp, rsh, etc.) and adds the xinetd daemon itself as an attack surface. Disabling it enforces least functionality and removes a path to legacy network services.",
-    "fr": "`xinetd` est un super-serveur historique qui ecoute pour le compte d'autres programmes et les lance a la demande. Les systemes modernes utilisent l'activation par socket de systemd a la place, donc xinetd est rarement necessaire. Le laisser actif peut exposer silencieusement des services obsoletes ou non securises configures sous `/etc/xinetd.d/` (telnet, tftp, rsh, etc.) et ajoute le demon xinetd lui-meme comme surface d'attaque. Le desactiver applique le principe de moindre fonctionnalite et supprime une voie vers des services reseau historiques."
-  },
   "summary": {
     "en": "Ensures the legacy super-server `xinetd.service` is **disabled** and **not running** so on-demand legacy network services are not exposed.",
     "fr": "Garantit que le super-serveur historique `xinetd.service` est **desactive** et **arrete** afin que les services reseau historiques a la demande ne soient pas exposes."
+  },
+  "rationale": {
+    "en": "`xinetd` is a legacy super-server that listens on behalf of other programs and launches them on demand. Modern systems use systemd socket activation instead, so xinetd is rarely necessary. Keeping it running can silently expose obsolete or insecure services configured under `/etc/xinetd.d/` (telnet, tftp, rsh, etc.) and adds the xinetd daemon itself as an attack surface. Disabling it enforces least functionality and removes a path to legacy network services.",
+    "fr": "`xinetd` est un super-serveur historique qui ecoute pour le compte d'autres programmes et les lance a la demande. Les systemes modernes utilisent l'activation par socket de systemd a la place, donc xinetd est rarement necessaire. Le laisser actif peut exposer silencieusement des services obsoletes ou non securises configures sous `/etc/xinetd.d/` (telnet, tftp, rsh, etc.) et ajoute le demon xinetd lui-meme comme surface d'attaque. Le desactiver applique le principe de moindre fonctionnalite et supprime une voie vers des services reseau historiques."
   },
   "check_note": {
     "en": "Pavois reads the **effective unit state** via `service('xinetd.service')` (`systemctl is-enabled` / `is-active`), including drop-in overrides. Because xinetd itself spawns other listeners from `/etc/xinetd.d/`, confirming the daemon is not running is the only reliable way to know none of those sub-services can be launched, a file scan would have to parse every fragment, while the effective unit state settles it in one check.",

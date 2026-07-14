@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R18"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_MODULE_SIG_SHA512=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_MODULE_SIG_SHA512='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_MODULE_SIG_SHA512=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_MODULE_SIG_SHA512=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Sign kernel modules with SHA-512",
     "fr": "Signer les modules du noyau avec SHA-512"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The hash algorithm chosen for module signatures determines how hard it is to forge one. Weak hashes (SHA-1, MD5) are vulnerable to collision attacks that could let an attacker craft a counterfeit signature and load a malicious module. Selecting `CONFIG_MODULE_SIG_SHA512=y` uses SHA-512, a strong hash with no practical collision attack, making forged module signatures infeasible.",
-    "fr": "L'algorithme de hachage choisi pour les signatures de modules détermine la difficulté d'en forger une. Les hachages faibles (SHA-1, MD5) sont vulnérables aux attaques par collision qui pourraient permettre à un attaquant de fabriquer une signature contrefaite et de charger un module malveillant. Sélectionner `CONFIG_MODULE_SIG_SHA512=y` utilise SHA-512, un hachage robuste sans attaque par collision pratique, rendant la contrefaçon de signatures de modules irréalisable."
-  },
   "summary": {
     "en": "Requires the running kernel to be built with `CONFIG_MODULE_SIG_SHA512=y` so module signatures use the strong SHA-512 hash.",
     "fr": "Exige que le noyau en cours d'exécution soit compilé avec `CONFIG_MODULE_SIG_SHA512=y` afin que les signatures de modules utilisent le hachage robuste SHA-512."
+  },
+  "rationale": {
+    "en": "The hash algorithm chosen for module signatures determines how hard it is to forge one. Weak hashes (SHA-1, MD5) are vulnerable to collision attacks that could let an attacker craft a counterfeit signature and load a malicious module. Selecting `CONFIG_MODULE_SIG_SHA512=y` uses SHA-512, a strong hash with no practical collision attack, making forged module signatures infeasible.",
+    "fr": "L'algorithme de hachage choisi pour les signatures de modules détermine la difficulté d'en forger une. Les hachages faibles (SHA-1, MD5) sont vulnérables aux attaques par collision qui pourraient permettre à un attaquant de fabriquer une signature contrefaite et de charger un module malveillant. Sélectionner `CONFIG_MODULE_SIG_SHA512=y` utilise SHA-512, un hachage robuste sans attaque par collision pratique, rendant la contrefaçon de signatures de modules irréalisable."
   },
   "check_note": {
     "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)`, falling back to `/proc/config.gz`, so the result reflects the booted kernel rather than a static file. Pavois expects `CONFIG_MODULE_SIG_SHA512=y`.",

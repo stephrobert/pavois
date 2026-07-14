@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -36,19 +37,23 @@
     "  it { should be_mounted }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# /home should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /home >/dev/null 2>&1 && echo '/home is already a mount point' || echo '/home is NOT separate'\n# Then: dedicate an LVM volume / disk to /home and add it to /etc/fstab.\n",
+    "reason": "a separate /home filesystem needs partitioning/LVM/tmpfs, not a safe runtime change",
+    "resource": "manual"
+  },
   "title": {
     "en": "Ensure /home Located On Separate Partition",
     "fr": "S'assurer que /home est sur une partition separee"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Mounting `/home` on its own partition lets you apply restrictive options such as **`nodev`** and **`nosuid`** to user-owned data, and prevents users from filling the root or log/audit filesystems by writing large files in their home directories, a simple but effective denial-of-service safeguard.",
-    "fr": "Monter `/home` sur sa propre partition permet d'appliquer des options restrictives comme **`nodev`** et **`nosuid`** aux donnees des utilisateurs, et empeche ceux-ci de saturer le systeme de fichiers racine ou de logs/audit en ecrivant de gros fichiers dans leur repertoire personnel, une protection simple mais efficace contre le deni de service."
-  },
   "summary": {
     "en": "Verifies that **`/home`** is mounted on its own partition so restrictive mount options apply and users cannot fill the root or log filesystems.",
     "fr": "Verifie que **`/home`** est monte sur sa propre partition, afin d'appliquer des options restrictives et d'empecher les utilisateurs de saturer le systeme de fichiers racine ou de logs."
+  },
+  "rationale": {
+    "en": "Mounting `/home` on its own partition lets you apply restrictive options such as **`nodev`** and **`nosuid`** to user-owned data, and prevents users from filling the root or log/audit filesystems by writing large files in their home directories, a simple but effective denial-of-service safeguard.",
+    "fr": "Monter `/home` sur sa propre partition permet d'appliquer des options restrictives comme **`nodev`** et **`nosuid`** aux donnees des utilisateurs, et empeche ceux-ci de saturer le systeme de fichiers racine ou de logs/audit en ecrivant de gros fichiers dans leur repertoire personnel, une protection simple mais efficace contre le deni de service."
   },
   "check_note": {
     "en": "Pavois uses the InSpec `mount('/home')` resource, which reads the **effective** mount table (`/proc/self/mountinfo`) instead of parsing `/etc/fstab`. It reports what the kernel has actually mounted, catching runtime mounts or fstab entries that failed to mount, distinctions a file-only check cannot make.",

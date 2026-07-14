@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe command('cat /proc/cmdline') do",
     "  its('stdout') { should match(/(^| )rng_core\\.default_quality=500( |$)/) }",
+    "end",
+    "describe command(\"grep -hwsF 'rng_core\\.default_quality=500' /etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Configurer le niveau de confiance dans le TPM pour l'entropie"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Early in boot a system can **starve for entropy**, blocking cryptographic operations (key generation, TLS, `getrandom()`) until the random pool is seeded. `rng_core.default_quality=500` tells the kernel to **credit entropy from hardware RNGs** (such as a TPM) at a moderate confidence level, helping fill the pool faster so the system reaches a usable cryptographic state sooner. A non-zero value below the maximum strikes a balance between availability and not fully trusting a single hardware source.",
-    "fr": "Au début du démarrage, un système peut **manquer d'entropie**, bloquant les opérations cryptographiques (génération de clés, TLS, `getrandom()`) jusqu'à ce que le pool aléatoire soit alimenté. `rng_core.default_quality=500` indique au noyau de **créditer l'entropie issue des RNG matériels** (tel qu'un TPM) à un niveau de confiance modéré, aidant à remplir le pool plus vite afin que le système atteigne plus tôt un état cryptographique exploitable. Une valeur non nulle inférieure au maximum équilibre disponibilité et confiance partielle envers une source matérielle unique."
-  },
   "summary": {
     "en": "Requires the **`rng_core.default_quality=500`** kernel boot parameter so the kernel credits a moderate amount of entropy from hardware RNGs (e.g. a TPM) to avoid entropy starvation at boot.",
     "fr": "Exige le paramètre de démarrage noyau **`rng_core.default_quality=500`** afin que le noyau crédite une quantité modérée d'entropie issue des RNG matériels (par ex. un TPM) pour éviter la pénurie d'entropie au démarrage."
+  },
+  "rationale": {
+    "en": "Early in boot a system can **starve for entropy**, blocking cryptographic operations (key generation, TLS, `getrandom()`) until the random pool is seeded. `rng_core.default_quality=500` tells the kernel to **credit entropy from hardware RNGs** (such as a TPM) at a moderate confidence level, helping fill the pool faster so the system reaches a usable cryptographic state sooner. A non-zero value below the maximum strikes a balance between availability and not fully trusting a single hardware source.",
+    "fr": "Au début du démarrage, un système peut **manquer d'entropie**, bloquant les opérations cryptographiques (génération de clés, TLS, `getrandom()`) jusqu'à ce que le pool aléatoire soit alimenté. `rng_core.default_quality=500` indique au noyau de **créditer l'entropie issue des RNG matériels** (tel qu'un TPM) à un niveau de confiance modéré, aidant à remplir le pool plus vite afin que le système atteigne plus tôt un état cryptographique exploitable. Une valeur non nulle inférieure au maximum équilibre disponibilité et confiance partielle envers une source matérielle unique."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel command line** from `/proc/cmdline` and checks for `rng_core.default_quality=500`. This is the boot line the running kernel parsed, not `/etc/default/grub`, a file edit never regenerated would falsely pass while the running kernel still credits zero entropy from hardware. The runtime value is exposed at `/sys/module/rng_core/parameters/default_quality`.",

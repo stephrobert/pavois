@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -33,6 +34,9 @@
   "check": [
     "describe kernel_parameter('net.core.bpf_jit_harden') do",
     "  its('value') { should cmp 2 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.core.bpf_jit_harden[[:space:]]*=[[:space:]]*2([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -45,13 +49,13 @@
     "fr": "Durcir le fonctionnement du compilateur à la volée (JIT) de BPF"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The eBPF just-in-time (JIT) compiler turns BPF bytecode into native machine code for speed, but that generated code lives in kernel space and its addresses can leak via `/proc/kallsyms`. Attackers have abused the JIT to build **JIT-spraying** primitives and to defeat kernel ASLR, turning a BPF program into a stepping stone for kernel exploitation. Setting `net.core.bpf_jit_harden=2` enables hardening for **all** users (not just unprivileged ones): it randomizes/blinds constants in the emitted code and stops exposing JIT addresses, removing these exploitation aids.",
-    "fr": "Le compilateur à la volée (JIT) d'eBPF transforme le bytecode BPF en code machine natif pour la performance, mais ce code généré réside dans l'espace noyau et ses adresses peuvent fuiter via `/proc/kallsyms`. Des attaquants ont détourné le JIT pour construire des primitives de **JIT-spraying** et contourner l'ASLR du noyau, transformant un programme BPF en tremplin d'exploitation. Définir `net.core.bpf_jit_harden=2` active le durcissement pour **tous** les utilisateurs (pas seulement les non privilégiés) : il randomise/aveugle les constantes du code émis et cesse d'exposer les adresses du JIT, supprimant ces aides à l'exploitation."
-  },
   "summary": {
     "en": "Sets `net.core.bpf_jit_harden=2` to blind constants and hide addresses in JIT-compiled BPF code for all users.",
     "fr": "Définit `net.core.bpf_jit_harden=2` pour aveugler les constantes et masquer les adresses du code BPF compilé en JIT, pour tous les utilisateurs."
+  },
+  "rationale": {
+    "en": "The eBPF just-in-time (JIT) compiler turns BPF bytecode into native machine code for speed, but that generated code lives in kernel space and its addresses can leak via `/proc/kallsyms`. Attackers have abused the JIT to build **JIT-spraying** primitives and to defeat kernel ASLR, turning a BPF program into a stepping stone for kernel exploitation. Setting `net.core.bpf_jit_harden=2` enables hardening for **all** users (not just unprivileged ones): it randomizes/blinds constants in the emitted code and stops exposing JIT addresses, removing these exploitation aids.",
+    "fr": "Le compilateur à la volée (JIT) d'eBPF transforme le bytecode BPF en code machine natif pour la performance, mais ce code généré réside dans l'espace noyau et ses adresses peuvent fuiter via `/proc/kallsyms`. Des attaquants ont détourné le JIT pour construire des primitives de **JIT-spraying** et contourner l'ASLR du noyau, transformant un programme BPF en tremplin d'exploitation. Définir `net.core.bpf_jit_harden=2` active le durcissement pour **tous** les utilisateurs (pas seulement les non privilégiés) : il randomise/aveugle les constantes du code émis et cesse d'exposer les adresses du JIT, supprimant ces aides à l'exploitation."
   },
   "check_note": {
     "en": "Pavois reads the **running kernel value** via `kernel_parameter('net.core.bpf_jit_harden')` and asserts it equals `2`. The effective value is what governs how the JIT actually emits code right now; a key written in `/etc/sysctl.d/` but not reloaded, or shadowed by another drop-in, would leave the kernel at its default. Only reading the live value (not the config files) proves the hardening is truly in force.",

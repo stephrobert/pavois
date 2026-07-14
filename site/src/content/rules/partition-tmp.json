@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -35,19 +36,23 @@
     "  it { should be_mounted }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# /tmp must be its own filesystem. Simplest without repartitioning: make it a tmpfs via systemd:\nsystemctl unmask tmp.mount && systemctl enable --now tmp.mount\n# (review /usr/share/systemd/tmp.mount first). A real disk partition requires offline disk work.\n",
+    "reason": "a separate /tmp filesystem needs partitioning/tmpfs, not a safe runtime change",
+    "resource": "manual"
+  },
   "title": {
     "en": "Ensure /tmp Located On Separate Partition",
     "fr": "S'assurer que /tmp est sur une partition separee"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/tmp` is world-writable temporary storage used by many programs and any user. Mounting it separately (a dedicated partition or a `tmpfs` unit) lets you enforce **`nodev`, `nosuid` and `noexec`**, blocking execution of dropped payloads and setuid abuse, and prevents a flood of temp files from filling the root filesystem.",
-    "fr": "`/tmp` est un stockage temporaire accessible en ecriture a tous, utilise par de nombreux programmes et tout utilisateur. Le monter separement (partition dediee ou unite `tmpfs`) permet d'imposer **`nodev`, `nosuid` et `noexec`**, bloquant l'execution de charges deposees et l'abus de setuid, et empeche un afflux de fichiers temporaires de saturer le systeme de fichiers racine."
-  },
   "summary": {
     "en": "Verifies that **`/tmp`** is mounted on its own partition or `tmpfs` so restrictive options (`nodev`, `nosuid`, `noexec`) can protect temporary storage.",
     "fr": "Verifie que **`/tmp`** est monte sur sa propre partition ou un `tmpfs`, afin que des options restrictives (`nodev`, `nosuid`, `noexec`) protegent le stockage temporaire."
+  },
+  "rationale": {
+    "en": "`/tmp` is world-writable temporary storage used by many programs and any user. Mounting it separately (a dedicated partition or a `tmpfs` unit) lets you enforce **`nodev`, `nosuid` and `noexec`**, blocking execution of dropped payloads and setuid abuse, and prevents a flood of temp files from filling the root filesystem.",
+    "fr": "`/tmp` est un stockage temporaire accessible en ecriture a tous, utilise par de nombreux programmes et tout utilisateur. Le monter separement (partition dediee ou unite `tmpfs`) permet d'imposer **`nodev`, `nosuid` et `noexec`**, bloquant l'execution de charges deposees et l'abus de setuid, et empeche un afflux de fichiers temporaires de saturer le systeme de fichiers racine."
   },
   "check_note": {
     "en": "Pavois uses the InSpec `mount('/tmp')` resource, reading the **effective** mount table (`/proc/self/mountinfo`) rather than `/etc/fstab`. This catches a `/tmp` provided by the systemd `tmp.mount` unit or a runtime tmpfs, mounts a plain fstab parse would miss, and confirms what the kernel actually mounted.",

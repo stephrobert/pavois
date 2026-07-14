@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -45,13 +47,13 @@
     "fr": "Vérifier les permissions du répertoire /etc/sysctl.d"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `/etc/sysctl.d` directory hosts **kernel tuning drop-ins** that are applied at boot (and by `sysctl --system`). These settings govern security-sensitive behaviour such as IP forwarding, ASLR, `kptr_restrict` and network hardening. If the directory is writable by group or other, a non-privileged user could drop in a file that **disables a kernel protection** on the next boot. Restricting write access to **root only** (no group/other write, no `setuid`/`setgid`/`sticky`) ensures exclusive control over the kernel configuration.",
-    "fr": "Le répertoire `/etc/sysctl.d` héberge des **drop-ins de réglage du noyau** appliqués au démarrage (et par `sysctl --system`). Ces réglages gouvernent des comportements sensibles comme le forwarding IP, l'ASLR, `kptr_restrict` et le durcissement réseau. Si le répertoire est modifiable par le groupe ou les autres, un utilisateur non privilégié pourrait y déposer un fichier qui **désactive une protection du noyau** au prochain démarrage. Restreindre l'écriture à **root seul** (pas d'écriture groupe/autres, pas de `setuid`/`setgid`/`sticky`) garantit le contrôle exclusif de la configuration du noyau."
-  },
   "summary": {
     "en": "Ensures the `/etc/sysctl.d` drop-in directory is writable only by **root**, so kernel-hardening parameters cannot be silently overridden at boot.",
     "fr": "Garantit que le répertoire de drop-ins `/etc/sysctl.d` n'est modifiable que par **root**, afin que les paramètres de durcissement du noyau ne puissent être discrètement écrasés au démarrage."
+  },
+  "rationale": {
+    "en": "The `/etc/sysctl.d` directory hosts **kernel tuning drop-ins** that are applied at boot (and by `sysctl --system`). These settings govern security-sensitive behaviour such as IP forwarding, ASLR, `kptr_restrict` and network hardening. If the directory is writable by group or other, a non-privileged user could drop in a file that **disables a kernel protection** on the next boot. Restricting write access to **root only** (no group/other write, no `setuid`/`setgid`/`sticky`) ensures exclusive control over the kernel configuration.",
+    "fr": "Le répertoire `/etc/sysctl.d` héberge des **drop-ins de réglage du noyau** appliqués au démarrage (et par `sysctl --system`). Ces réglages gouvernent des comportements sensibles comme le forwarding IP, l'ASLR, `kptr_restrict` et le durcissement réseau. Si le répertoire est modifiable par le groupe ou les autres, un utilisateur non privilégié pourrait y déposer un fichier qui **désactive une protection du noyau** au prochain démarrage. Restreindre l'écriture à **root seul** (pas d'écriture groupe/autres, pas de `setuid`/`setgid`/`sticky`) garantit le contrôle exclusif de la configuration du noyau."
   },
   "check_note": {
     "en": "Pavois reads the **effective directory mode** of `/etc/sysctl.d` and asserts no write bit for group or other and no `setuid`/`setgid`/`sticky` bits. Guarded by `only_if { file('/etc/sysctl.d').exist? }`. Because sysctl is a *drop-in* mechanism, the security of the directory itself matters as much as individual files: a writable directory lets anyone add a new `.conf` that the kernel will honour, checking the live inode catches exactly that exposure.",

@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe command('cat /proc/cmdline') do",
     "  its('stdout') { should match(/(^| )mce=0( |$)/) }",
+    "end",
+    "describe command(\"grep -hwsF 'mce=0' /etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Forcer un kernel panic sur les MCE non corrigées"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "An uncorrected **Machine Check Exception (MCE)** signals memory or CPU corruption. By default the kernel tolerates such errors by sending a `SIGBUS` to the affected process and continuing to run. Leaving the system alive after corruption lets an attacker **retry a hardware fault-injection attack** (such as **Rowhammer**) repeatedly until a bit-flip lands in a useful location. Forcing a kernel panic on uncorrected MCEs (`mce=0`) turns each corruption event into a hard stop, removing the attacker's ability to iterate.",
-    "fr": "Une **Machine Check Exception (MCE)** non corrigée signale une corruption mémoire ou CPU. Par défaut, le noyau tolère ces erreurs en envoyant un `SIGBUS` au processus concerné puis poursuit son exécution. Laisser le système en vie après une corruption permet à un attaquant de **rejouer une attaque par injection de faute matérielle** (telle que **Rowhammer**) jusqu'à ce qu'un bit-flip atteigne un emplacement utile. Forcer un kernel panic sur les MCE non corrigées (`mce=0`) transforme chaque corruption en arrêt brutal, supprimant la capacité de l'attaquant à itérer."
-  },
   "summary": {
     "en": "Requires the **`mce=0`** kernel boot parameter so an uncorrected Machine Check Exception triggers an immediate kernel panic instead of a recoverable `SIGBUS`.",
     "fr": "Exige le paramètre de démarrage noyau **`mce=0`** afin qu'une Machine Check Exception non corrigée déclenche un kernel panic immédiat au lieu d'un `SIGBUS` récupérable."
+  },
+  "rationale": {
+    "en": "An uncorrected **Machine Check Exception (MCE)** signals memory or CPU corruption. By default the kernel tolerates such errors by sending a `SIGBUS` to the affected process and continuing to run. Leaving the system alive after corruption lets an attacker **retry a hardware fault-injection attack** (such as **Rowhammer**) repeatedly until a bit-flip lands in a useful location. Forcing a kernel panic on uncorrected MCEs (`mce=0`) turns each corruption event into a hard stop, removing the attacker's ability to iterate.",
+    "fr": "Une **Machine Check Exception (MCE)** non corrigée signale une corruption mémoire ou CPU. Par défaut, le noyau tolère ces erreurs en envoyant un `SIGBUS` au processus concerné puis poursuit son exécution. Laisser le système en vie après une corruption permet à un attaquant de **rejouer une attaque par injection de faute matérielle** (telle que **Rowhammer**) jusqu'à ce qu'un bit-flip atteigne un emplacement utile. Forcer un kernel panic sur les MCE non corrigées (`mce=0`) transforme chaque corruption en arrêt brutal, supprimant la capacité de l'attaquant à itérer."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel command line** from `/proc/cmdline` and checks that `mce=0` is present. `/proc/cmdline` is the **effective** boot line the running kernel actually parsed, not `/etc/default/grub` or a drop-in in `/etc/default/grub.d/`, which may have been edited without rebuilding the bootloader config. Reading the file would report a value that is not yet in effect; reading `/proc/cmdline` cannot be fooled.",

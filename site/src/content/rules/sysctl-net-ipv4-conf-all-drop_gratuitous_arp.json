@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.conf.all.drop_gratuitous_arp') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.all.drop_gratuitous_arp[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Rejeter les trames ARP gratuites sur toutes les interfaces IPv4"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Gratuitous ARP frames are unsolicited ARP announcements (\"this IP is now at this MAC\") that a host broadcasts without anyone asking. Because ARP is unauthenticated, an attacker can flood the segment with forged gratuitous ARP to **poison neighbors' ARP caches** and redirect their traffic to themselves, the core technique of **ARP-spoofing man-in-the-middle** attacks. Setting `net.ipv4.conf.all.drop_gratuitous_arp=1` makes the kernel ignore these unsolicited announcements, neutralizing this poisoning vector. Legitimate use of gratuitous ARP (e.g. failover IP takeover) is the main thing to weigh against it.",
-    "fr": "Les trames ARP gratuites sont des annonces ARP non sollicitées (« cette IP est désormais à cette MAC ») qu'un hôte diffuse sans que personne ne le demande. L'ARP n'étant pas authentifié, un attaquant peut inonder le segment de trames ARP gratuites forgées pour **empoisonner les caches ARP des voisins** et rediriger leur trafic vers lui, la technique de base des attaques d'**homme du milieu par usurpation ARP**. Définir `net.ipv4.conf.all.drop_gratuitous_arp=1` fait que le noyau ignore ces annonces non sollicitées, neutralisant ce vecteur d'empoisonnement. L'usage légitime de l'ARP gratuit (ex. reprise d'IP lors d'un basculement) est le principal élément à mettre en balance."
-  },
   "summary": {
     "en": "Sets `net.ipv4.conf.all.drop_gratuitous_arp=1` so the kernel ignores unsolicited ARP announcements used for cache poisoning.",
     "fr": "Définit `net.ipv4.conf.all.drop_gratuitous_arp=1` pour que le noyau ignore les annonces ARP non sollicitées servant à l'empoisonnement de cache."
+  },
+  "rationale": {
+    "en": "Gratuitous ARP frames are unsolicited ARP announcements (\"this IP is now at this MAC\") that a host broadcasts without anyone asking. Because ARP is unauthenticated, an attacker can flood the segment with forged gratuitous ARP to **poison neighbors' ARP caches** and redirect their traffic to themselves, the core technique of **ARP-spoofing man-in-the-middle** attacks. Setting `net.ipv4.conf.all.drop_gratuitous_arp=1` makes the kernel ignore these unsolicited announcements, neutralizing this poisoning vector. Legitimate use of gratuitous ARP (e.g. failover IP takeover) is the main thing to weigh against it.",
+    "fr": "Les trames ARP gratuites sont des annonces ARP non sollicitées (« cette IP est désormais à cette MAC ») qu'un hôte diffuse sans que personne ne le demande. L'ARP n'étant pas authentifié, un attaquant peut inonder le segment de trames ARP gratuites forgées pour **empoisonner les caches ARP des voisins** et rediriger leur trafic vers lui, la technique de base des attaques d'**homme du milieu par usurpation ARP**. Définir `net.ipv4.conf.all.drop_gratuitous_arp=1` fait que le noyau ignore ces annonces non sollicitées, neutralisant ce vecteur d'empoisonnement. L'usage légitime de l'ARP gratuit (ex. reprise d'IP lors d'un basculement) est le principal élément à mettre en balance."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** via `kernel_parameter('net.ipv4.conf.all.drop_gratuitous_arp')` and asserts it equals `1`. Whether gratuitous ARP is actually dropped depends on the running kernel value, not on a config file: a `sysctl.d` entry written but not reloaded, or overridden by a per-interface key, would leave the host still accepting poison frames. Reading the effective value is the only proof the protection is live.",

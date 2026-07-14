@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,20 +26,20 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "2.1.14",
       "2.1.15",
-      "2.2.4"
+      "2.2.4",
+      "2.1.14"
     ],
     "pci-dss": "2.2.4"
   },
   "check": [
-    "describe package('net-snmp') do",
+    "describe package('snmpd') do",
     "  it { should_not be_installed }",
     "end"
   ],
   "remediation": {
     "action": "remove",
-    "name": "net-snmp",
+    "name": "snmpd",
     "resource": "package"
   },
   "title": {
@@ -46,13 +47,13 @@
     "fr": "Desinstaller le paquet net-snmp"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The **net-snmp** package provides the `snmpd` SNMP agent. SNMP, especially v1/v2c with community strings, exposes detailed system information over the network and is a frequent target: weak or default community strings allow attackers to enumerate and sometimes reconfigure the host. If there is no need to run an SNMP server, removing the package provides a safeguard **against its activation** and removes a listening network service from the attack surface.",
-    "fr": "Le paquet **net-snmp** fournit l'agent SNMP `snmpd`. SNMP, surtout en v1/v2c avec chaines de communaute, expose des informations systeme detaillees sur le reseau et constitue une cible frequente : des chaines de communaute faibles ou par defaut permettent a un attaquant d'enumerer et parfois de reconfigurer l'hote. Si aucun serveur SNMP n'est necessaire, supprimer le paquet protege **contre son activation** et retire un service reseau en ecoute de la surface d'attaque."
-  },
   "summary": {
     "en": "Removes the **net-snmp** package (the `snmpd` SNMP agent) when no SNMP server is required.",
     "fr": "Supprime le paquet **net-snmp** (l'agent SNMP `snmpd`) lorsque aucun serveur SNMP n'est requis."
+  },
+  "rationale": {
+    "en": "The **net-snmp** package provides the `snmpd` SNMP agent. SNMP, especially v1/v2c with community strings, exposes detailed system information over the network and is a frequent target: weak or default community strings allow attackers to enumerate and sometimes reconfigure the host. If there is no need to run an SNMP server, removing the package provides a safeguard **against its activation** and removes a listening network service from the attack surface.",
+    "fr": "Le paquet **net-snmp** fournit l'agent SNMP `snmpd`. SNMP, surtout en v1/v2c avec chaines de communaute, expose des informations systeme detaillees sur le reseau et constitue une cible frequente : des chaines de communaute faibles ou par defaut permettent a un attaquant d'enumerer et parfois de reconfigurer l'hote. Si aucun serveur SNMP n'est necessaire, supprimer le paquet protege **contre son activation** et retire un service reseau en ecoute de la surface d'attaque."
   },
   "check_note": {
     "en": "Pavois queries the package database through the InSpec `package('net-snmp')` resource and asserts `should_not be_installed`, resolving via `dpkg`/`rpm`. Reading the **effective** package inventory is more reliable than checking whether `snmpd` is currently listening: a stopped service can still be installed and re-enabled, and a leftover `/etc/snmp/snmpd.conf` does not prove the daemon is gone. The package state is the ground truth.",

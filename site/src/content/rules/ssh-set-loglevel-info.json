@@ -2,14 +2,18 @@
   "id": "ssh-set-loglevel-info",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
@@ -36,7 +40,7 @@
     "directive": "loglevel",
     "notify": {
       "action": "reload",
-      "service": "ssh"
+      "service": "ssh.service"
     },
     "resource": "sshd_setting",
     "value": "verbose",
@@ -47,13 +51,13 @@
     "fr": "Définir LogLevel sur INFO"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "SSH offers several logging verbosities. **`DEBUG`** is discouraged outside protocol troubleshooting: it floods the log with data that buries security-relevant events. At least **`INFO`** (or the stronger `VERBOSE`) records SSH login and logout activity, which is essential for **incident response**, being able to tell when a given user was active, and to discount sessions that simply disconnected, narrows an investigation. Without adequate logging, account misuse and intrusions go unnoticed and unattributable.",
-    "fr": "SSH propose plusieurs niveaux de verbosité de journalisation. **`DEBUG`** est déconseillé en dehors du dépannage du protocole : il noie le journal sous des données qui masquent les événements pertinents pour la sécurité. Au minimum **`INFO`** (ou le plus complet `VERBOSE`) enregistre l'activité de connexion et de déconnexion SSH, indispensable à la **réponse à incident**, pouvoir déterminer quand un utilisateur donné était actif, et écarter les sessions simplement déconnectées, restreint le champ d'une investigation. Sans journalisation adéquate, les abus de comptes et les intrusions passent inaperçus et ne peuvent être attribués."
-  },
   "summary": {
     "en": "Ensure `sshd` logs at **`INFO`** level or higher so login and logout events are recorded.",
     "fr": "Garantir que `sshd` journalise au niveau **`INFO`** ou supérieur afin d'enregistrer les connexions et déconnexions."
+  },
+  "rationale": {
+    "en": "SSH offers several logging verbosities. **`DEBUG`** is discouraged outside protocol troubleshooting: it floods the log with data that buries security-relevant events. At least **`INFO`** (or the stronger `VERBOSE`) records SSH login and logout activity, which is essential for **incident response**, being able to tell when a given user was active, and to discount sessions that simply disconnected, narrows an investigation. Without adequate logging, account misuse and intrusions go unnoticed and unattributable.",
+    "fr": "SSH propose plusieurs niveaux de verbosité de journalisation. **`DEBUG`** est déconseillé en dehors du dépannage du protocole : il noie le journal sous des données qui masquent les événements pertinents pour la sécurité. Au minimum **`INFO`** (ou le plus complet `VERBOSE`) enregistre l'activité de connexion et de déconnexion SSH, indispensable à la **réponse à incident**, pouvoir déterminer quand un utilisateur donné était actif, et écarter les sessions simplement déconnectées, restreint le champ d'une investigation. Sans journalisation adéquate, les abus de comptes et les intrusions passent inaperçus et ne peuvent être attribués."
   },
   "check_note": {
     "en": "Pavois asserts that the **effective** `sshd -T` output reports `loglevel info` or `loglevel verbose`. Querying the running daemon reflects the value resolved after all `Include` directives and `/etc/ssh/sshd_config.d/` drop-ins are merged, a file scan can miss a drop-in that silently lowers the level to `QUIET` or `DEBUG`.",

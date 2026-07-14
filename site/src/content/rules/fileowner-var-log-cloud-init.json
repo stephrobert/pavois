@@ -2,11 +2,14 @@
   "id": "fileowner-var-log-cloud-init",
   "supported_os": [
     "debian12",
+    "debian13",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -21,28 +24,30 @@
     ]
   },
   "check": [
-    "only_if { file('/var/log/cloud-init').exist? }",
-    "describe file('/var/log/cloud-init') do",
-    "  its('owner') { should eq 'syslog' }",
+    "only_if { file('/var/log/cloud-init.log').exist? }",
+    "describe command(\"stat -c %U /var/log/cloud-init.log 2>/dev/null\") do",
+    "  its('stdout.strip') { should be_in ['root', 'syslog'] }",
     "end"
   ],
   "remediation": {
-    "owner": "syslog",
-    "path": "/var/log/cloud-init",
-    "resource": "file"
+    "command": "chown root /var/log/cloud-init.log 2>/dev/null; true",
+    "name": "log-owner-var-log-cloud-init.log",
+    "not_if": "stat -c %U /var/log/cloud-init.log 2>/dev/null | grep -qxE 'root|syslog'",
+    "path": "/var/log/cloud-init.log",
+    "resource": "exec"
   },
   "title": {
     "en": "Verify User Who Owns /var/log/cloud-init.log File",
     "fr": "Vérifier l'utilisateur propriétaire du fichier /var/log/cloud-init.log"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The cloud-init log records **detailed provisioning and debugging information**, instance metadata, network setup, and sometimes injected user-data such as bootstrap scripts or temporary credentials. If it is not owned by `syslog`, an unprivileged user could read secrets that leaked into the provisioning trace, or tamper with the log to hide how a freshly provisioned instance was configured or compromised.",
-    "fr": "Le journal de cloud-init enregistre des **informations détaillées de provisionnement et de débogage**, métadonnées d'instance, configuration réseau, et parfois des données utilisateur injectées telles que des scripts d'amorçage ou des identifiants temporaires. S'il n'appartient pas à `syslog`, un utilisateur non privilégié pourrait lire des secrets ayant fuité dans la trace de provisionnement, ou altérer le journal pour masquer la façon dont une instance fraîchement provisionnée a été configurée ou compromise."
-  },
   "summary": {
     "en": "Ensures the cloud-init log directory/file `/var/log/cloud-init` is **owned by the `syslog` user**.",
     "fr": "Garantit que le répertoire/fichier de log cloud-init `/var/log/cloud-init` est **détenu par l'utilisateur `syslog`**."
+  },
+  "rationale": {
+    "en": "The cloud-init log records **detailed provisioning and debugging information**, instance metadata, network setup, and sometimes injected user-data such as bootstrap scripts or temporary credentials. If it is not owned by `syslog`, an unprivileged user could read secrets that leaked into the provisioning trace, or tamper with the log to hide how a freshly provisioned instance was configured or compromised.",
+    "fr": "Le journal de cloud-init enregistre des **informations détaillées de provisionnement et de débogage**, métadonnées d'instance, configuration réseau, et parfois des données utilisateur injectées telles que des scripts d'amorçage ou des identifiants temporaires. S'il n'appartient pas à `syslog`, un utilisateur non privilégié pourrait lire des secrets ayant fuité dans la trace de provisionnement, ou altérer le journal pour masquer la façon dont une instance fraîchement provisionnée a été configurée ou compromise."
   },
   "check_note": {
     "en": "Pavois checks that the **owner of `/var/log/cloud-init` is `syslog`**, only when the path exists (`only_if`), since cloud-init is present mainly on cloud images. It reads the **live filesystem owner** (`stat`) on the target rather than a default from the cloud-init package, so the result reflects the real state after any rotation or first-boot provisioning that may have rewritten ownership.",

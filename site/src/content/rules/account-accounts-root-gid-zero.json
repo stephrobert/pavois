@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,29 +29,30 @@
       "5.4.2.2",
       "8.2.1"
     ],
-    "pci-dss": [
-      "8.2.1",
-      "Req-8.1.1"
-    ]
+    "pci-dss": "8.2.1"
   },
   "check": [
     "describe command('awk -F: \\'($1==\"root\" && $4!=0){print}\\' /etc/passwd') do",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "id -g root\nusermod -g 0 root   # set root's primary GID to 0 (only if the audit flagged it)\n",
+    "reason": "changing root's primary group is sensitive, confirm before applying",
+    "resource": "manual"
+  },
   "title": {
     "en": "Verify Root Has A Primary GID 0",
     "fr": "Vérifier que root a le GID principal 0"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `root` account must have primary group **GID 0** (the `root` group). If root's primary GID points to a shared or user group instead, files that root creates inherit that group, exposing them to every member of it. Keeping root's primary GID at `0` guarantees that root-owned files stay under exclusive root-group control.",
-    "fr": "Le compte `root` doit avoir le groupe principal **GID 0** (le groupe `root`). Si le GID principal de root pointe vers un groupe partagé ou un groupe utilisateur, les fichiers créés par root héritent de ce groupe et deviennent accessibles à tous ses membres. Maintenir le GID principal de root à `0` garantit que les fichiers appartenant à root restent sous le contrôle exclusif du groupe root."
-  },
   "summary": {
     "en": "Ensures the `root` account's primary group (4th field of its `/etc/passwd` line) is **GID 0**.",
     "fr": "Garantit que le groupe principal du compte `root` (4e champ de sa ligne `/etc/passwd`) est le **GID 0**."
+  },
+  "rationale": {
+    "en": "The `root` account must have primary group **GID 0** (the `root` group). If root's primary GID points to a shared or user group instead, files that root creates inherit that group, exposing them to every member of it. Keeping root's primary GID at `0` guarantees that root-owned files stay under exclusive root-group control.",
+    "fr": "Le compte `root` doit avoir le groupe principal **GID 0** (le groupe `root`). Si le GID principal de root pointe vers un groupe partagé ou un groupe utilisateur, les fichiers créés par root héritent de ce groupe et deviennent accessibles à tous ses membres. Maintenir le GID principal de root à `0` garantit que les fichiers appartenant à root restent sous le contrôle exclusif du groupe root."
   },
   "check_note": {
     "en": "Pavois uses `awk` to print root's `/etc/passwd` line only when its 4th field (primary GID) is not `0`. The check passes only when nothing is printed. Reading the resolved account database confirms the effective primary group rather than assuming a default.",

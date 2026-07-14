@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -28,6 +30,9 @@
   "check": [
     "describe command('cat /proc/cmdline') do",
     "  its('stdout') { should match(/(^| )spec_store_bypass_disable=on( |$)/) }",
+    "end",
+    "describe command(\"grep -hwsF 'spec_store_bypass_disable=on' /etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -40,13 +45,13 @@
     "fr": "Configurer la mitigation Speculative Store Bypass"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "On vulnerable processors, a speculatively forwarded store can be exploited through a cache side-channel attack. This allows an attacker to read memory they should not be able to reach directly, for example, leaking secrets from inside sandboxed or JIT-compiled code (Spectre variant 4 / CVE-2018-3639). Forcing `spec_store_bypass_disable=on` enables the kernel mitigation system-wide instead of leaving it to per-process opt-in.",
-    "fr": "Sur les processeurs vulnérables, un store transmis de manière spéculative peut être exploité via une attaque par canal auxiliaire sur le cache. Cela permet à un attaquant de lire de la mémoire qu'il ne devrait pas pouvoir atteindre directement, par exemple en exfiltrant des secrets depuis du code sandboxé ou compilé en JIT (Spectre variante 4 / CVE-2018-3639). Forcer `spec_store_bypass_disable=on` active la mitigation du noyau pour tout le système au lieu de la laisser au choix de chaque processus."
-  },
   "summary": {
     "en": "Enforces the kernel parameter `spec_store_bypass_disable=on` to enable the Speculative Store Bypass (SSB) CPU mitigation system-wide.",
     "fr": "Impose le paramètre noyau `spec_store_bypass_disable=on` pour activer la mitigation processeur Speculative Store Bypass (SSB) sur l'ensemble du système."
+  },
+  "rationale": {
+    "en": "On vulnerable processors, a speculatively forwarded store can be exploited through a cache side-channel attack. This allows an attacker to read memory they should not be able to reach directly, for example, leaking secrets from inside sandboxed or JIT-compiled code (Spectre variant 4 / CVE-2018-3639). Forcing `spec_store_bypass_disable=on` enables the kernel mitigation system-wide instead of leaving it to per-process opt-in.",
+    "fr": "Sur les processeurs vulnérables, un store transmis de manière spéculative peut être exploité via une attaque par canal auxiliaire sur le cache. Cela permet à un attaquant de lire de la mémoire qu'il ne devrait pas pouvoir atteindre directement, par exemple en exfiltrant des secrets depuis du code sandboxé ou compilé en JIT (Spectre variante 4 / CVE-2018-3639). Forcer `spec_store_bypass_disable=on` active la mitigation du noyau pour tout le système au lieu de la laisser au choix de chaque processus."
   },
   "check_note": {
     "en": "Pavois reads the **effective** boot command line from `/proc/cmdline`, which reflects the kernel arguments the running system was actually started with. This beats grepping `/etc/default/grub` or `grub.cfg`: those may be edited but not regenerated, may be overridden by drop-ins under `/etc/default/grub.d/`, or may differ from what the bootloader truly passed. Only `/proc/cmdline` proves the mitigation is live on the current boot.",

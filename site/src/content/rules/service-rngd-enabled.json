@@ -2,10 +2,12 @@
   "id": "service-rngd-enabled",
   "supported_os": [
     "fedora",
-    "rhel8"
+    "rhel8",
+    "rhel9"
   ],
   "os_versions": {
-    "rhel8": "4.0.0"
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
   },
   "severity": "low",
   "domain": "systemd services",
@@ -23,7 +25,7 @@
       "enable",
       "start"
     ],
-    "name": "rngd",
+    "name": "rngd.service",
     "resource": "service"
   },
   "title": {
@@ -31,13 +33,13 @@
     "fr": "Activer le service collecteur d'entropie du générateur matériel d'aléa (RNG)"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "**`rngd`** transfers randomness from a hardware source (CPU `RDRAND`, a TPM, or a dedicated HWRNG) into the kernel's random device. Adequate entropy is the foundation of all cryptography: TLS session keys, SSH host keys, password hashing salts and token generation all draw from it. On servers and especially in VMs, the entropy pool can starve at boot, causing **slow or blocking key generation** and, in the worst case, **predictable random values** that weaken keys. Running `rngd` keeps the pool healthy so cryptographic operations are both fast and strong.",
-    "fr": "**`rngd`** transfère de l'aléa depuis une source matérielle (instruction CPU `RDRAND`, un TPM ou un HWRNG dédié) vers le périphérique aléatoire du noyau. Une entropie suffisante est le socle de toute la cryptographie : clés de session TLS, clés d'hôte SSH, sels de hachage de mots de passe et génération de tokens en dépendent tous. Sur les serveurs et surtout dans les VM, le pool d'entropie peut s'épuiser au démarrage, provoquant une **génération de clés lente ou bloquante** et, dans le pire des cas, des **valeurs aléatoires prévisibles** qui affaiblissent les clés. Faire tourner `rngd` maintient le pool en bonne santé pour des opérations cryptographiques à la fois rapides et robustes."
-  },
   "summary": {
     "en": "Ensures the **`rngd.service`** (hardware RNG entropy gatherer) is enabled at boot and running, feeding hardware randomness into the kernel entropy pool.",
     "fr": "Garantit que le service **`rngd.service`** (collecteur d'entropie du RNG matériel) est activé au démarrage et en cours d'exécution, alimentant le pool d'entropie du noyau avec de l'aléa matériel."
+  },
+  "rationale": {
+    "en": "**`rngd`** transfers randomness from a hardware source (CPU `RDRAND`, a TPM, or a dedicated HWRNG) into the kernel's random device. Adequate entropy is the foundation of all cryptography: TLS session keys, SSH host keys, password hashing salts and token generation all draw from it. On servers and especially in VMs, the entropy pool can starve at boot, causing **slow or blocking key generation** and, in the worst case, **predictable random values** that weaken keys. Running `rngd` keeps the pool healthy so cryptographic operations are both fast and strong.",
+    "fr": "**`rngd`** transfère de l'aléa depuis une source matérielle (instruction CPU `RDRAND`, un TPM ou un HWRNG dédié) vers le périphérique aléatoire du noyau. Une entropie suffisante est le socle de toute la cryptographie : clés de session TLS, clés d'hôte SSH, sels de hachage de mots de passe et génération de tokens en dépendent tous. Sur les serveurs et surtout dans les VM, le pool d'entropie peut s'épuiser au démarrage, provoquant une **génération de clés lente ou bloquante** et, dans le pire des cas, des **valeurs aléatoires prévisibles** qui affaiblissent les clés. Faire tourner `rngd` maintient le pool en bonne santé pour des opérations cryptographiques à la fois rapides et robustes."
   },
   "check_note": {
     "en": "Pavois asserts the **effective state** of `rngd.service` via systemd (`service('rngd.service')`), checking it is both *enabled* and *running*. This catches a daemon that is installed but never started or has crashed, a file or package check would report success while the entropy pool actually receives nothing.",

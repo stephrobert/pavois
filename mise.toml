@@ -122,6 +122,16 @@ run = "echo 'regen complete: corpus + OSCAL rebuilt from docs/reference/'"
 description = "Run the norm-studio MCP server (surfaces official sources, exploits reference docs)"
 run = "uv run --with fastmcp --with pyyaml tools/norm_studio/server.py"
 
+[tasks."gen:pages"]
+description = "Generate the site's rule fiches from the rule base (one per neutral id, authored prose preserved)"
+depends = ["gen"]
+run = "uv run --with pyyaml --with fastmcp python3 tools/generate_rule_pages.py"
+
+[tasks."site:verify"]
+description = "FAIL if the site content has drifted from the rule base (missing fiche, stale fiche, uncovered OS)"
+depends = ["gen"]
+run = "uv run --with pyyaml python3 tools/verify_site_content.py"
+
 # ---- Bilingual Astro site -------------------------------------------------------------------
 [tasks."site:dev"]
 description = "Dev server for the hardening site (FR/EN)"
@@ -130,7 +140,7 @@ run = "npm install && npm run dev"
 
 [tasks."site:build"]
 description = "Build the static hardening site"
-depends = ["oscal"]
+depends = ["gen:pages", "oscal", "site:verify"]
 dir = "{{config_root}}/site"
 run = "npm install && npm run build"
 

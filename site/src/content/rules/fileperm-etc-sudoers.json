@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -50,13 +52,13 @@
     "fr": "Vérifier les permissions du fichier /etc/sudoers"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Setting correct permissions on the `/etc/sudoers` file is important because this file defines which users can run commands as **root** via `sudo`. If the file is writable by a non-privileged user, that user could grant themselves unrestricted `sudo` access and obtain full root privileges. If it is world-readable beyond what is required, the privilege map of the system is exposed, helping an attacker target accounts. Restricting permissions to **owner read/write only** (no write or execute for group/other, no read for other) ensures exclusive control of the sudo policy.",
-    "fr": "Définir des permissions correctes sur le fichier `/etc/sudoers` est important car ce fichier définit quels utilisateurs peuvent exécuter des commandes en tant que **root** via `sudo`. Si le fichier est modifiable par un utilisateur non privilégié, celui-ci pourrait s'octroyer un accès `sudo` illimité et obtenir les pleins privilèges root. S'il est lisible par tous au-delà du nécessaire, la cartographie des privilèges du système est exposée, aidant un attaquant à cibler des comptes. Restreindre les permissions à **lecture/écriture pour le propriétaire uniquement** (aucune écriture ni exécution pour le groupe/autres, aucune lecture pour les autres) garantit le contrôle exclusif de la politique sudo."
-  },
   "summary": {
     "en": "Ensures `/etc/sudoers` is not writable, executable or readable beyond the **root** owner, so the sudo privilege policy cannot be tampered with or disclosed.",
     "fr": "Garantit que `/etc/sudoers` n'est ni modifiable, ni exécutable, ni lisible au-delà du propriétaire **root**, afin que la politique de privilèges sudo ne puisse être altérée ni divulguée."
+  },
+  "rationale": {
+    "en": "Setting correct permissions on the `/etc/sudoers` file is important because this file defines which users can run commands as **root** via `sudo`. If the file is writable by a non-privileged user, that user could grant themselves unrestricted `sudo` access and obtain full root privileges. If it is world-readable beyond what is required, the privilege map of the system is exposed, helping an attacker target accounts. Restricting permissions to **owner read/write only** (no write or execute for group/other, no read for other) ensures exclusive control of the sudo policy.",
+    "fr": "Définir des permissions correctes sur le fichier `/etc/sudoers` est important car ce fichier définit quels utilisateurs peuvent exécuter des commandes en tant que **root** via `sudo`. Si le fichier est modifiable par un utilisateur non privilégié, celui-ci pourrait s'octroyer un accès `sudo` illimité et obtenir les pleins privilèges root. S'il est lisible par tous au-delà du nécessaire, la cartographie des privilèges du système est exposée, aidant un attaquant à cibler des comptes. Restreindre les permissions à **lecture/écriture pour le propriétaire uniquement** (aucune écriture ni exécution pour le groupe/autres, aucune lecture pour les autres) garantit le contrôle exclusif de la politique sudo."
   },
   "check_note": {
     "en": "Pavois inspects the **effective metadata** of `/etc/sudoers` and asserts that the **group** and **other** classes have no write/execute bits, no read bit for *other*, and that no `setuid`/`setgid`/`sticky` bits are set. The control is guarded by `only_if { file('/etc/sudoers').exist? }` so it is skipped where the file is absent. Reading the live inode (mode, ownership) reflects the state the kernel actually enforces at `sudo` invocation, including any drift introduced after install.",

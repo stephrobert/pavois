@@ -2,13 +2,20 @@
   "id": "kmod-overlayfs-disabled",
   "supported_os": [
     "debian12",
+    "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
-    "ubuntu2404"
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2404": "1.0.0"
   },
   "severity": "low",
@@ -19,14 +26,14 @@
     "cis": "1.1.1.6"
   },
   "check": [
-    "describe kernel_module('overlayfs') do",
+    "describe kernel_module('overlay') do",
     "  it { should_not be_loaded }",
     "  it { should be_disabled }",
     "end"
   ],
   "remediation": {
     "action": "blacklist",
-    "name": "overlayfs",
+    "name": "overlay",
     "reboot_required": true,
     "resource": "kernel_module"
   },
@@ -35,13 +42,13 @@
     "fr": "Garantir que le module noyau overlayfs n'est pas disponible"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The `overlay`/`overlayfs` filesystem has a history of known CVEs, several allowing local privilege escalation through mishandling of setuid files and namespace interactions. Disabling it reduces the local attack surface by removing support for an unnecessary filesystem type and mitigates unauthorized execution of setuid files. **Important caveat:** overlayfs is the storage backend for Docker, Podman and most container runtimes, blacklisting it will break containers, so this rule applies only to hosts that run no container workloads.",
-    "fr": "Le système de fichiers `overlay`/`overlayfs` a un historique de CVE connues, dont plusieurs permettent une élévation de privilèges locale via une mauvaise gestion des fichiers setuid et des interactions de namespaces. Le désactiver réduit la surface d'attaque locale en retirant la prise en charge d'un type de système de fichiers inutile et atténue l'exécution non autorisée de fichiers setuid. **Réserve importante :** overlayfs est le backend de stockage de Docker, Podman et de la plupart des moteurs de conteneurs, le mettre en blacklist cassera les conteneurs, donc cette règle ne s'applique qu'aux hôtes n'exécutant aucune charge conteneurisée."
-  },
   "summary": {
     "en": "Ensures the `overlay`/`overlayfs` kernel module cannot be loaded, removing the overlay filesystem on hosts that do not run containers.",
     "fr": "Garantit que le module noyau `overlay`/`overlayfs` ne peut pas être chargé, retirant le système de fichiers overlay sur les hôtes qui n'exécutent pas de conteneurs."
+  },
+  "rationale": {
+    "en": "The `overlay`/`overlayfs` filesystem has a history of known CVEs, several allowing local privilege escalation through mishandling of setuid files and namespace interactions. Disabling it reduces the local attack surface by removing support for an unnecessary filesystem type and mitigates unauthorized execution of setuid files. **Important caveat:** overlayfs is the storage backend for Docker, Podman and most container runtimes, blacklisting it will break containers, so this rule applies only to hosts that run no container workloads.",
+    "fr": "Le système de fichiers `overlay`/`overlayfs` a un historique de CVE connues, dont plusieurs permettent une élévation de privilèges locale via une mauvaise gestion des fichiers setuid et des interactions de namespaces. Le désactiver réduit la surface d'attaque locale en retirant la prise en charge d'un type de système de fichiers inutile et atténue l'exécution non autorisée de fichiers setuid. **Réserve importante :** overlayfs est le backend de stockage de Docker, Podman et de la plupart des moteurs de conteneurs, le mettre en blacklist cassera les conteneurs, donc cette règle ne s'applique qu'aux hôtes n'exécutant aucune charge conteneurisée."
   },
   "check_note": {
     "en": "Pavois uses the InSpec `kernel_module('overlayfs')` resource to confirm the module is **not loaded** and is **disabled** (blacklist plus an `install ... /bin/true` override). This reflects the **effective** kernel state via `lsmod` and `modprobe --showconfig`, important here because a container runtime can autoload `overlay` on demand, which a static read of `/etc/modprobe.d/` would miss.",

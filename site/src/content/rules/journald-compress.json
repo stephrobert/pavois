@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -25,8 +26,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "6.2.2.3",
       "6.1.2.3",
+      "6.2.2.3",
       "6.2.1.1.6"
     ]
   },
@@ -35,19 +36,26 @@
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "content": "[Journal]\nCompress=yes\n",
+    "group": "root",
+    "mode": "0644",
+    "owner": "root",
+    "path": "/etc/systemd/journald.conf.d/99-pavois-compress.conf",
+    "resource": "file"
+  },
   "title": {
     "en": "Ensure journald is configured to compress large log files",
     "fr": "S'assurer que journald est configuré pour compresser les gros fichiers de journaux"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Uncompressed journals can grow large enough to **fill the log partition**. Once the partition is full, journald drops new records and valuable logging information, including evidence of an attack in progress, is lost. Compression stretches the retained history within the same disk budget.",
-    "fr": "Des journaux non compressés peuvent grossir au point de **remplir la partition de logs**. Une fois la partition pleine, journald abandonne les nouveaux enregistrements et des informations de journalisation précieuses, y compris des traces d'une attaque en cours, sont perdues. La compression allonge l'historique conservé pour un même budget disque."
-  },
   "summary": {
     "en": "Sets `Compress=yes` for **systemd-journald** so large journal objects are compressed on disk.",
     "fr": "Définit `Compress=yes` pour **systemd-journald** afin que les gros objets de journaux soient compressés sur le disque."
+  },
+  "rationale": {
+    "en": "Uncompressed journals can grow large enough to **fill the log partition**. Once the partition is full, journald drops new records and valuable logging information, including evidence of an attack in progress, is lost. Compression stretches the retained history within the same disk budget.",
+    "fr": "Des journaux non compressés peuvent grossir au point de **remplir la partition de logs**. Une fois la partition pleine, journald abandonne les nouveaux enregistrements et des informations de journalisation précieuses, y compris des traces d'une attaque en cours, sont perdues. La compression allonge l'historique conservé pour un même budget disque."
   },
   "check_note": {
     "en": "Pavois greps `/etc/systemd/journald.conf` **and the `journald.conf.d/` drop-in directory** for an active `Compress=yes`. Because journald merges drop-ins over the main file, scanning both reflects the **effective setting**: a base file saying `no` overridden by a drop-in saying `yes` is correctly seen as enabled.",

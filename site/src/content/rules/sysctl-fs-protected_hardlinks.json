@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -34,6 +35,9 @@
   "check": [
     "describe kernel_parameter('fs.protected_hardlinks') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*fs.protected_hardlinks[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -46,13 +50,13 @@
     "fr": "Activer le paramètre noyau pour appliquer le DAC sur les liens physiques"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "With `fs.protected_hardlinks=1`, a user may create a hard link to a file only if they own the source file or already have read and write access to it. Without this protection, an unprivileged user can hard-link a sensitive file (one they cannot read) into a writable directory and trick a privileged program into following it, a classic **TOCTOU / hardlink** exploitation vector against unsafe use of `open()` or `creat()`. Enforcing DAC on hardlink creation closes this avenue.",
-    "fr": "Avec `fs.protected_hardlinks=1`, un utilisateur ne peut créer un lien physique vers un fichier que s'il possède le fichier source ou qu'il dispose déjà d'un accès en lecture et écriture sur celui-ci. Sans cette protection, un utilisateur non privilégié peut créer un lien physique vers un fichier sensible (qu'il ne peut pas lire) dans un répertoire accessible en écriture et tromper un programme privilégié pour qu'il le suive, un vecteur d'exploitation **TOCTOU / lien physique** classique contre un usage non sûr de `open()` ou `creat()`. Appliquer le DAC à la création de liens physiques ferme cette voie."
-  },
   "summary": {
     "en": "Sets `fs.protected_hardlinks=1` so users can only hard-link files they own or can read/write, blocking hardlink-based privilege-escalation tricks.",
     "fr": "Définit `fs.protected_hardlinks=1` pour que les utilisateurs ne puissent créer des liens physiques que vers des fichiers qu'ils possèdent ou peuvent lire/écrire, bloquant les détournements de privilèges par lien physique."
+  },
+  "rationale": {
+    "en": "With `fs.protected_hardlinks=1`, a user may create a hard link to a file only if they own the source file or already have read and write access to it. Without this protection, an unprivileged user can hard-link a sensitive file (one they cannot read) into a writable directory and trick a privileged program into following it, a classic **TOCTOU / hardlink** exploitation vector against unsafe use of `open()` or `creat()`. Enforcing DAC on hardlink creation closes this avenue.",
+    "fr": "Avec `fs.protected_hardlinks=1`, un utilisateur ne peut créer un lien physique vers un fichier que s'il possède le fichier source ou qu'il dispose déjà d'un accès en lecture et écriture sur celui-ci. Sans cette protection, un utilisateur non privilégié peut créer un lien physique vers un fichier sensible (qu'il ne peut pas lire) dans un répertoire accessible en écriture et tromper un programme privilégié pour qu'il le suive, un vecteur d'exploitation **TOCTOU / lien physique** classique contre un usage non sûr de `open()` ou `creat()`. Appliquer le DAC à la création de liens physiques ferme cette voie."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** via the `kernel_parameter` resource (equivalent to `sysctl fs.protected_hardlinks`), not `/etc/sysctl.conf` or any `*.conf` drop-in. A configured file may never have been applied (typo, load ordering, an overriding drop-in); reading the running kernel shows what is actually enforced.",

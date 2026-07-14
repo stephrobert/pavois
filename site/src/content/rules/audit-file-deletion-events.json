@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,10 +27,10 @@
   "norms": {
     "bp28": "R73",
     "cis": [
-      "6.3.3.13",
       "10.2.1.7",
       "6.2.3.13",
-      "6.3.3.22"
+      "6.3.3.22",
+      "6.3.3.13"
     ],
     "nist": [
       "3.1.7",
@@ -46,6 +47,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)delete\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'delete' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -57,13 +61,13 @@
     "fr": "Garantir que auditd collecte les evenements de suppression de fichiers par utilisateur - rename"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Auditing file deletions creates a trail for files removed from the system. That trail aids troubleshooting and, crucially, helps detect malicious processes that delete or `rename` log files and artifacts to conceal their presence. Without it, an attacker can erase evidence and you cannot tell what was removed, when, or by whom.",
-    "fr": "Auditer les suppressions de fichiers cree une trace des fichiers retires du systeme. Cette trace aide au depannage et, surtout, permet de detecter les processus malveillants qui suppriment ou renomment (`rename`) des journaux et artefacts pour dissimuler leur presence. Sans elle, un attaquant peut effacer les preuves et vous ne pouvez savoir ce qui a ete retire, quand, ni par qui."
-  },
   "summary": {
     "en": "Ensures `auditd` has an active rule tagged `delete` that records file-removal syscalls (`unlink`, `unlinkat`, `rename`, `renameat`) performed by ordinary users.",
     "fr": "Garantit que `auditd` possede une regle active taguee `delete` qui enregistre les appels systeme de suppression de fichiers (`unlink`, `unlinkat`, `rename`, `renameat`) effectues par les utilisateurs ordinaires."
+  },
+  "rationale": {
+    "en": "Auditing file deletions creates a trail for files removed from the system. That trail aids troubleshooting and, crucially, helps detect malicious processes that delete or `rename` log files and artifacts to conceal their presence. Without it, an attacker can erase evidence and you cannot tell what was removed, when, or by whom.",
+    "fr": "Auditer les suppressions de fichiers cree une trace des fichiers retires du systeme. Cette trace aide au depannage et, surtout, permet de detecter les processus malveillants qui suppriment ou renomment (`rename`) des journaux et artefacts pour dissimuler leur presence. Sans elle, un attaquant peut effacer les preuves et vous ne pouvez savoir ce qui a ete retire, quand, ni par qui."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks for a loaded rule carrying the `delete` key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule present in a file but not loaded (no `augenrules`, syntax error, service not restarted) gives false assurance. `auditctl -l` shows exactly what the kernel enforces now.",

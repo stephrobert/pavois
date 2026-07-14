@@ -2,11 +2,14 @@
   "id": "fileowner-var-log-syslog",
   "supported_os": [
     "debian12",
+    "debian13",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -26,23 +29,29 @@
   },
   "check": [
     "only_if { file('/var/log/syslog').exist? }",
-    "describe file('/var/log/syslog') do",
-    "  its('owner') { should be_in ['root', 'syslog'] }",
+    "describe command(\"stat -c %U /var/log/syslog 2>/dev/null\") do",
+    "  its('stdout.strip') { should be_in ['root', 'syslog'] }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "chown root /var/log/syslog 2>/dev/null; true",
+    "name": "log-owner-var-log-syslog",
+    "not_if": "stat -c %U /var/log/syslog 2>/dev/null | grep -qxE 'root|syslog'",
+    "path": "/var/log/syslog",
+    "resource": "exec"
+  },
   "title": {
     "en": "Verify User Who Owns /var/log/syslog File",
     "fr": "Vérifier l'utilisateur propriétaire du fichier /var/log/syslog"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`/var/log/syslog` is the **main catch-all system log on Debian/Ubuntu**, aggregating messages from the kernel, services and daemons. If it is not owned by **root**, an unprivileged or compromised process could read operational details or alter and delete entries, hiding faults or the activity of an attacker and crippling forensic analysis.",
-    "fr": "`/var/log/syslog` est le **journal système fourre-tout principal sur Debian/Ubuntu**, agrégeant les messages du noyau, des services et des démons. S'il n'appartient pas à **root**, un processus non privilégié ou compromis pourrait lire des détails opérationnels ou modifier et supprimer des entrées, masquant les pannes ou l'activité d'un attaquant et paralysant l'analyse forensique."
-  },
   "summary": {
     "en": "Ensures the main system log `/var/log/syslog` is **owned by `root`**.",
     "fr": "Garantit que le journal système principal `/var/log/syslog` est **détenu par `root`**."
+  },
+  "rationale": {
+    "en": "`/var/log/syslog` is the **main catch-all system log on Debian/Ubuntu**, aggregating messages from the kernel, services and daemons. If it is not owned by **root**, an unprivileged or compromised process could read operational details or alter and delete entries, hiding faults or the activity of an attacker and crippling forensic analysis.",
+    "fr": "`/var/log/syslog` est le **journal système fourre-tout principal sur Debian/Ubuntu**, agrégeant les messages du noyau, des services et des démons. S'il n'appartient pas à **root**, un processus non privilégié ou compromis pourrait lire des détails opérationnels ou modifier et supprimer des entrées, masquant les pannes ou l'activité d'un attaquant et paralysant l'analyse forensique."
   },
   "check_note": {
     "en": "Pavois checks that the **owner of `/var/log/syslog` is `root`**, only when the file exists (`only_if`). It reads the **live owner** (`stat`) on the target rather than a logrotate/packaging default, so a `chown` introduced by rotation or a deployment script is caught as the **effective on-disk state**.",

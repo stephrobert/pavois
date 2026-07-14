@@ -6,7 +6,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "rhel10": "1.0.0",
@@ -48,13 +49,13 @@
     "fr": "Vérifier que les bibliothèques partagées ont des permissions restrictives"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Files in the shared-library directories (such as `/lib`) are loaded into the address space of processes, including privileged ones, and sometimes of the kernel itself at runtime. If the library directory is writable by group or other, an unprivileged user could replace or add a `.so` that is then loaded by a root process, achieving **arbitrary code execution as root**. Restrictive permissions (no write for group or other) are necessary to protect the integrity of every program that links against these libraries.",
-    "fr": "Les fichiers des répertoires de bibliothèques partagées (comme `/lib`) sont chargés dans l'espace d'adressage des processus, y compris privilégiés, et parfois du noyau lui-même à l'exécution. Si le répertoire de bibliothèques est modifiable par le groupe ou les autres, un utilisateur non privilégié pourrait remplacer ou ajouter un `.so` ensuite chargé par un processus root, obtenant une **exécution de code arbitraire en tant que root**. Des permissions restrictives (aucune écriture pour le groupe ou les autres) sont nécessaires pour protéger l'intégrité de chaque programme qui se lie à ces bibliothèques."
-  },
   "summary": {
     "en": "Ensures the shared-library directory `/lib` is not writable by group or other, preventing injection of malicious libraries into privileged processes.",
     "fr": "Garantit que le répertoire de bibliothèques partagées `/lib` n'est pas modifiable par le groupe ou les autres, empêchant l'injection de bibliothèques malveillantes dans des processus privilégiés."
+  },
+  "rationale": {
+    "en": "Files in the shared-library directories (such as `/lib`) are loaded into the address space of processes, including privileged ones, and sometimes of the kernel itself at runtime. If the library directory is writable by group or other, an unprivileged user could replace or add a `.so` that is then loaded by a root process, achieving **arbitrary code execution as root**. Restrictive permissions (no write for group or other) are necessary to protect the integrity of every program that links against these libraries.",
+    "fr": "Les fichiers des répertoires de bibliothèques partagées (comme `/lib`) sont chargés dans l'espace d'adressage des processus, y compris privilégiés, et parfois du noyau lui-même à l'exécution. Si le répertoire de bibliothèques est modifiable par le groupe ou les autres, un utilisateur non privilégié pourrait remplacer ou ajouter un `.so` ensuite chargé par un processus root, obtenant une **exécution de code arbitraire en tant que root**. Des permissions restrictives (aucune écriture pour le groupe ou les autres) sont nécessaires pour protéger l'intégrité de chaque programme qui se lie à ces bibliothèques."
   },
   "check_note": {
     "en": "Pavois reads the **effective directory mode** of `/lib` and asserts no write bit for group or other. Guarded by `only_if { file('/lib').exist? }`. On modern distros `/lib` is typically a symlink into `/usr/lib`; checking the live inode follows the path the dynamic loader actually uses, so the assertion reflects what `ld.so` will trust at runtime rather than a packaging assumption.",

@@ -1,10 +1,22 @@
 {
   "id": "findloop-permissions-local-var-log",
   "supported_os": [
-    "debian12"
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "debian12": "1.1.0"
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
   },
   "severity": "medium",
   "domain": "Filesystem (scan)",
@@ -14,24 +26,30 @@
     "bp28": "R71",
     "cis": [
       "10.3.1",
-      "6.1.4.1"
+      "6.1.4.1",
+      "6.2.4.1",
+      "6.2.6.1",
+      "6.2.3.1"
     ],
     "nist": [
       "SI-11(a)",
       "SI-11(b)",
       "SI-11"
     ],
-    "pci-dss": "10.3.1"
+    "pci-dss": "10.3.1",
+    "stig": "UBTU-24-700120"
   },
   "check": [
-    "describe command('timeout 90 find /var/log -type f -perm /037 2>/dev/null') do",
+    "describe command('timeout 90 find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
   "remediation": {
-    "command": "find /var/log -type f -perm /037 -exec chmod g-wx,o-rwx {} + 2>/dev/null; true",
+    "command": "if [ -f /etc/sysstat/sysstat ]; then sed -ri 's/^[[:space:]]*UMASK=.*/UMASK=0027/' /etc/sysstat/sysstat; grep -q '^UMASK=' /etc/sysstat/sysstat || echo UMASK=0027 >> /etc/sysstat/sysstat; fi; for u in apt-daily apt-daily-upgrade unattended-upgrades sysstat-collect sysstat-summary; do systemctl list-unit-files ${u}.service --no-legend 2>/dev/null | grep -q . || continue; mkdir -p /etc/systemd/system/${u}.service.d; printf '[Service]\\nUMask=0027\\n' > /etc/systemd/system/${u}.service.d/pavois-umask.conf; done; systemctl daemon-reload; find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal -exec chmod g-wx,o-rwx {} + 2>/dev/null; true",
     "name": "fix-varlog-perms",
-    "not_if": "test -z \"$(find /var/log -type f -perm /037 2>/dev/null | head -1)\"",
+    "not_if": "test -z \"$(find /var/log -type f -perm /037 ! -group utmp ! -group systemd-journal 2>/dev/null | head -1)\" && { ! test -f /etc/sysstat/sysstat || grep -q '^UMASK=0027' /etc/sysstat/sysstat; }",
+    "reason": "the chmod alone does not hold: the files are RE-CREATED by the services that write them. Two sources must be fixed, not one: the systemd units (UMask=0027 drop-in, for apt-daily / unattended-upgrades / dnf-makecache) AND sysstat's own UMASK knob in /etc/sysstat/sysstat, which overrides the unit's umask. The chmod only repairs what already exists.",
     "resource": "exec"
   },
   "title": {
@@ -39,13 +57,13 @@
     "fr": "Verifier les permissions des fichiers journaux"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Log files record system configuration, authentication events and application activity. If they are world-readable, an unprivileged user can mine them for usernames, internal hostnames, paths and error messages that aid an attack; if they are group- or world-writable, an attacker can tamper with or wipe entries to destroy forensic evidence. Restricting `/var/log` to owner (and the dedicated log group) keeps error messages useful for defenders without revealing information that adversaries could exploit.",
-    "fr": "Les fichiers journaux consignent la configuration systeme, les evenements d'authentification et l'activite applicative. S'ils sont lisibles par tous, un utilisateur non privilegie peut y recolter noms d'utilisateurs, noms d'hotes internes, chemins et messages d'erreur facilitant une attaque ; s'ils sont inscriptibles par le groupe ou par tous, un attaquant peut alterer ou effacer des entrees pour detruire les preuves forensiques. Restreindre `/var/log` au proprietaire (et au groupe de journalisation dedie) maintient des messages d'erreur utiles aux defenseurs sans reveler d'informations exploitables par un adversaire."
-  },
   "summary": {
     "en": "Ensures no file under `/var/log` is group-writable/executable or readable/writable/executable by others (no bit in mask `/037`).",
     "fr": "Garantit qu'aucun fichier sous `/var/log` n'est inscriptible/executable par le groupe ni accessible aux autres en lecture/ecriture/execution (aucun bit du masque `/037`)."
+  },
+  "rationale": {
+    "en": "Log files record system configuration, authentication events and application activity. If they are world-readable, an unprivileged user can mine them for usernames, internal hostnames, paths and error messages that aid an attack; if they are group- or world-writable, an attacker can tamper with or wipe entries to destroy forensic evidence. Restricting `/var/log` to owner (and the dedicated log group) keeps error messages useful for defenders without revealing information that adversaries could exploit.",
+    "fr": "Les fichiers journaux consignent la configuration systeme, les evenements d'authentification et l'activite applicative. S'ils sont lisibles par tous, un utilisateur non privilegie peut y recolter noms d'utilisateurs, noms d'hotes internes, chemins et messages d'erreur facilitant une attaque ; s'ils sont inscriptibles par le groupe ou par tous, un attaquant peut alterer ou effacer des entrees pour detruire les preuves forensiques. Restreindre `/var/log` au proprietaire (et au groupe de journalisation dedie) maintient des messages d'erreur utiles aux defenseurs sans reveler d'informations exploitables par un adversaire."
   },
   "check_note": {
     "en": "Pavois runs `find /var/log -type f -perm /037` and expects empty output. The mask `/037` matches any file that has **any** of: group-write, group-execute, or any of other-read/write/execute. Empty output means every log file is at most `0640` (owner rw, group r, others none). Scanning the live inodes catches files created at runtime by daemons and logrotate, which a static config audit would miss.",

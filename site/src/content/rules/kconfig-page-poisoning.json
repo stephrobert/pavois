@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R17"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_PAGE_POISONING=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_PAGE_POISONING='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_PAGE_POISONING=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_PAGE_POISONING=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Enable poison of pages after freeing",
     "fr": "Activer l'empoisonnement des pages après libération"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "When memory is freed, its contents remain in RAM until reused. If that memory previously held secrets (keys, passwords, tokens), a later use-after-free bug or a fresh allocation that reads stale data can leak it. `CONFIG_PAGE_POISONING=y` overwrites freed pages with a known pattern, so stale sensitive data is destroyed and use-after-free conditions are easier to detect and harder to exploit.",
-    "fr": "Lorsqu'une mémoire est libérée, son contenu reste en RAM jusqu'à réutilisation. Si cette mémoire contenait auparavant des secrets (clés, mots de passe, jetons), un bug d'utilisation après libération ultérieur ou une nouvelle allocation lisant des données obsolètes peut les divulguer. `CONFIG_PAGE_POISONING=y` écrase les pages libérées avec un motif connu, de sorte que les données sensibles obsolètes sont détruites et que les conditions d'utilisation après libération sont plus faciles à détecter et plus difficiles à exploiter."
-  },
   "summary": {
     "en": "Requires the running kernel to be built with `CONFIG_PAGE_POISONING=y` so freed memory pages are overwritten, destroying stale data.",
     "fr": "Exige que le noyau en cours d'exécution soit compilé avec `CONFIG_PAGE_POISONING=y` afin que les pages mémoire libérées soient écrasées, détruisant les données obsolètes."
+  },
+  "rationale": {
+    "en": "When memory is freed, its contents remain in RAM until reused. If that memory previously held secrets (keys, passwords, tokens), a later use-after-free bug or a fresh allocation that reads stale data can leak it. `CONFIG_PAGE_POISONING=y` overwrites freed pages with a known pattern, so stale sensitive data is destroyed and use-after-free conditions are easier to detect and harder to exploit.",
+    "fr": "Lorsqu'une mémoire est libérée, son contenu reste en RAM jusqu'à réutilisation. Si cette mémoire contenait auparavant des secrets (clés, mots de passe, jetons), un bug d'utilisation après libération ultérieur ou une nouvelle allocation lisant des données obsolètes peut les divulguer. `CONFIG_PAGE_POISONING=y` écrase les pages libérées avec un motif connu, de sorte que les données sensibles obsolètes sont détruites et que les conditions d'utilisation après libération sont plus faciles à détecter et plus difficiles à exploiter."
   },
   "check_note": {
     "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)`, falling back to `/proc/config.gz`, so the result reflects the booted kernel. Pavois expects `CONFIG_PAGE_POISONING=y`.",

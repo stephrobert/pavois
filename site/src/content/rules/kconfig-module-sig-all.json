@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R18"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_MODULE_SIG_ALL=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_MODULE_SIG_ALL='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_MODULE_SIG_ALL=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_MODULE_SIG_ALL=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Enable automatic signing of all modules",
     "fr": "Activer la signature automatique de tous les modules"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_MODULE_SIG_ALL=y` makes the kernel build process sign **every** module automatically during `make modules_install`. Without it, modules ship unsigned (or only some are signed), so enforcement (`CONFIG_MODULE_SIG_FORCE`) would reject legitimate modules and signature verification is effectively incomplete. Signing all modules at build time guarantees a consistent, fully verifiable module set and is what makes mandatory signing usable in practice.",
-    "fr": "`CONFIG_MODULE_SIG_ALL=y` fait que le processus de compilation du noyau signe **automatiquement** chaque module lors de `make modules_install`. Sans cela, les modules sont livrés non signés (ou seuls certains le sont), de sorte que l'application stricte (`CONFIG_MODULE_SIG_FORCE`) rejetterait des modules légitimes et la vérification de signature serait incomplète. Signer tous les modules à la compilation garantit un ensemble de modules cohérent et entièrement vérifiable, ce qui rend la signature obligatoire utilisable en pratique."
-  },
   "summary": {
     "en": "Requires the running kernel to be built with `CONFIG_MODULE_SIG_ALL=y` so that every module is automatically signed during the build/install process.",
     "fr": "Exige que le noyau en cours d'exécution soit compilé avec `CONFIG_MODULE_SIG_ALL=y` afin que chaque module soit automatiquement signé lors de la compilation/installation."
+  },
+  "rationale": {
+    "en": "`CONFIG_MODULE_SIG_ALL=y` makes the kernel build process sign **every** module automatically during `make modules_install`. Without it, modules ship unsigned (or only some are signed), so enforcement (`CONFIG_MODULE_SIG_FORCE`) would reject legitimate modules and signature verification is effectively incomplete. Signing all modules at build time guarantees a consistent, fully verifiable module set and is what makes mandatory signing usable in practice.",
+    "fr": "`CONFIG_MODULE_SIG_ALL=y` fait que le processus de compilation du noyau signe **automatiquement** chaque module lors de `make modules_install`. Sans cela, les modules sont livrés non signés (ou seuls certains le sont), de sorte que l'application stricte (`CONFIG_MODULE_SIG_FORCE`) rejetterait des modules légitimes et la vérification de signature serait incomplète. Signer tous les modules à la compilation garantit un ensemble de modules cohérent et entièrement vérifiable, ce qui rend la signature obligatoire utilisable en pratique."
   },
   "check_note": {
     "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)`, falling back to `/proc/config.gz` from the live kernel, so the answer reflects the kernel actually booted. Pavois expects `CONFIG_MODULE_SIG_ALL=y`.",

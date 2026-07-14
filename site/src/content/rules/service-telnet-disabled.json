@@ -1,6 +1,7 @@
 {
   "id": "service-telnet-disabled",
   "supported_os": [
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9"
@@ -18,7 +19,7 @@
     "nist": "3.1.13"
   },
   "check": [
-    "describe service('telnet.service') do",
+    "describe service('telnet.socket') do",
     "  it { should_not be_enabled }",
     "  it { should_not be_running }",
     "end"
@@ -28,7 +29,7 @@
       "disable",
       "stop"
     ],
-    "name": "telnet",
+    "name": "telnet.socket",
     "resource": "service"
   },
   "title": {
@@ -36,13 +37,13 @@
     "fr": "Desactiver le service telnet"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "The **telnet** protocol carries all traffic, including usernames and passwords, in **cleartext**. Any party able to observe the network (a switch span port, a compromised hop, a Wi-Fi sniffer) can capture login credentials and the full session, and telnet offers no protection against **man-in-the-middle** tampering. With strongly authenticated, encrypted alternatives (SSH) universally available, an active telnet listener is a high-severity exposure that hands attackers credentials and remote access.",
-    "fr": "Le protocole **telnet** transporte tout le trafic, y compris les identifiants et mots de passe, en **clair**. Toute personne capable d'observer le reseau (un port miroir de commutateur, un rebond compromis, un renifleur Wi-Fi) peut capturer les identifiants de connexion et la session complete, et telnet n'offre aucune protection contre l'alteration de type **man-in-the-middle**. Avec des alternatives chiffrees et fortement authentifiees (SSH) universellement disponibles, un service telnet actif constitue une exposition de severite elevee qui livre aux attaquants des identifiants et un acces distant."
-  },
   "summary": {
     "en": "Ensures the cleartext `telnet.service` is **disabled** and **not running** so no insecure telnet listener is exposed.",
     "fr": "Garantit que le service `telnet.service` en clair est **desactive** et **arrete** afin qu'aucun service telnet non securise ne soit expose."
+  },
+  "rationale": {
+    "en": "The **telnet** protocol carries all traffic, including usernames and passwords, in **cleartext**. Any party able to observe the network (a switch span port, a compromised hop, a Wi-Fi sniffer) can capture login credentials and the full session, and telnet offers no protection against **man-in-the-middle** tampering. With strongly authenticated, encrypted alternatives (SSH) universally available, an active telnet listener is a high-severity exposure that hands attackers credentials and remote access.",
+    "fr": "Le protocole **telnet** transporte tout le trafic, y compris les identifiants et mots de passe, en **clair**. Toute personne capable d'observer le reseau (un port miroir de commutateur, un rebond compromis, un renifleur Wi-Fi) peut capturer les identifiants de connexion et la session complete, et telnet n'offre aucune protection contre l'alteration de type **man-in-the-middle**. Avec des alternatives chiffrees et fortement authentifiees (SSH) universellement disponibles, un service telnet actif constitue une exposition de severite elevee qui livre aux attaquants des identifiants et un acces distant."
   },
   "check_note": {
     "en": "Pavois reads the **effective unit state** via `service('telnet.service')` (`systemctl is-enabled` / `is-active`), so it detects telnet whether started directly or via socket activation, and accounts for drop-in overrides. Checking the running unit beats grepping config files: a telnet listener can be socket-activated or enabled through an override that a file scan of `/etc/xinetd.d/` or similar would not flag.",

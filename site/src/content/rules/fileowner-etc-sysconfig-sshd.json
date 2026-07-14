@@ -1,10 +1,15 @@
 {
   "id": "fileowner-etc-sysconfig-sshd",
   "supported_os": [
-    "rhel8"
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9"
   ],
   "os_versions": {
-    "rhel8": "4.0.0"
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
   },
   "severity": "medium",
   "domain": "File ownership",
@@ -29,13 +34,13 @@
     "fr": "Verifier l'utilisateur proprietaire du fichier /etc/sysconfig/sshd"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "On RHEL-family systems, `/etc/sysconfig/sshd` holds the environment and startup options sourced by the `sshd` service unit (e.g. `OPTIONS`, `CRYPTO_POLICY`). If a non-root account owns it, that user could weaken the SSH daemon, for example overriding the system crypto policy or injecting unsafe flags, affecting every remote login. Setting **`root` (UID 0)** as the owner prevents unauthorized changes to the SSH startup configuration.",
-    "fr": "Sur les systemes de la famille RHEL, `/etc/sysconfig/sshd` contient les variables d'environnement et options de demarrage chargees par l'unite de service `sshd` (par ex. `OPTIONS`, `CRYPTO_POLICY`). Si un compte non-root le possede, cet utilisateur pourrait affaiblir le demon SSH, par exemple en contournant la politique cryptographique systeme ou en injectant des options dangereuses, affectant chaque connexion distante. Definir **`root` (UID 0)** comme proprietaire empeche les modifications non autorisees de la configuration de demarrage SSH."
-  },
   "summary": {
     "en": "Ensures the SSH daemon startup config `/etc/sysconfig/sshd` is owned by `root` (UID 0).",
     "fr": "Garantit que la configuration de demarrage du demon SSH `/etc/sysconfig/sshd` appartient a `root` (UID 0)."
+  },
+  "rationale": {
+    "en": "On RHEL-family systems, `/etc/sysconfig/sshd` holds the environment and startup options sourced by the `sshd` service unit (e.g. `OPTIONS`, `CRYPTO_POLICY`). If a non-root account owns it, that user could weaken the SSH daemon, for example overriding the system crypto policy or injecting unsafe flags, affecting every remote login. Setting **`root` (UID 0)** as the owner prevents unauthorized changes to the SSH startup configuration.",
+    "fr": "Sur les systemes de la famille RHEL, `/etc/sysconfig/sshd` contient les variables d'environnement et options de demarrage chargees par l'unite de service `sshd` (par ex. `OPTIONS`, `CRYPTO_POLICY`). Si un compte non-root le possede, cet utilisateur pourrait affaiblir le demon SSH, par exemple en contournant la politique cryptographique systeme ou en injectant des options dangereuses, affectant chaque connexion distante. Definir **`root` (UID 0)** comme proprietaire empeche les modifications non autorisees de la configuration de demarrage SSH."
   },
   "check_note": {
     "en": "Pavois inspects the **live filesystem** with the InSpec `file('/etc/sysconfig/sshd')` resource and asserts `uid == 0`, guarded by `only_if` so it is skipped when the file is absent. This file feeds the `sshd` unit's environment; reading the real inode owner reflects the **effective** on-disk state and catches a `chown` that could let a user alter how SSH starts (note the daemon's runtime config is separately verified via `sshd -T`).",

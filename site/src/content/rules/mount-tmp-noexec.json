@@ -8,7 +8,8 @@
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -38,21 +39,30 @@
   "check": [
     "describe mount('/tmp') do",
     "  its('options') { should include 'noexec' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /tmp 2>/dev/null; grep -hsE '[[:space:]]/tmp[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /tmp 2>/dev/null) 2>/dev/null; } | grep -ow 'noexec'\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "device": "tmpfs",
+    "fstype": "tmpfs",
+    "mount_point": "/tmp",
+    "option": "noexec",
+    "resource": "mount"
+  },
   "title": {
     "en": "Add noexec Option to /tmp",
     "fr": "Ajouter l'option noexec à /tmp"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "Executing binaries from world-writable directories such as `/tmp` is never required in normal operation. The **`noexec`** option makes the kernel refuse to run any program stored under `/tmp`, removing a favourite staging ground for attackers: dropped malware, exploit payloads and downloaded toolkits are commonly written to `/tmp` and run from there. Without `noexec`, any unprivileged user or compromised service can execute arbitrary code from this directory.",
-    "fr": "Exécuter des binaires depuis des répertoires accessibles en écriture à tous comme `/tmp` n'est jamais nécessaire en fonctionnement normal. L'option **`noexec`** force le noyau à refuser l'exécution de tout programme stocké sous `/tmp`, supprimant un terrain de jeu privilégié des attaquants : malwares déposés, charges d'exploitation et boîtes à outils téléchargées sont couramment écrits dans `/tmp` puis exécutés depuis là. Sans `noexec`, n'importe quel utilisateur non privilégié ou service compromis peut exécuter du code arbitraire depuis ce répertoire."
-  },
   "summary": {
     "en": "Mounts `/tmp` with the **`noexec`** option so the kernel refuses to execute any binary located in that directory.",
     "fr": "Monte `/tmp` avec l'option **`noexec`** afin que le noyau refuse d'exécuter tout binaire situé dans ce répertoire."
+  },
+  "rationale": {
+    "en": "Executing binaries from world-writable directories such as `/tmp` is never required in normal operation. The **`noexec`** option makes the kernel refuse to run any program stored under `/tmp`, removing a favourite staging ground for attackers: dropped malware, exploit payloads and downloaded toolkits are commonly written to `/tmp` and run from there. Without `noexec`, any unprivileged user or compromised service can execute arbitrary code from this directory.",
+    "fr": "Exécuter des binaires depuis des répertoires accessibles en écriture à tous comme `/tmp` n'est jamais nécessaire en fonctionnement normal. L'option **`noexec`** force le noyau à refuser l'exécution de tout programme stocké sous `/tmp`, supprimant un terrain de jeu privilégié des attaquants : malwares déposés, charges d'exploitation et boîtes à outils téléchargées sont couramment écrits dans `/tmp` puis exécutés depuis là. Sans `noexec`, n'importe quel utilisateur non privilégié ou service compromis peut exécuter du code arbitraire depuis ce répertoire."
   },
   "check_note": {
     "en": "Pavois inspects the **effective** mount with `mount('/tmp')` and asserts that its resolved options include `noexec`. It reads the live kernel mount table, what is actually enforced, rather than `/etc/fstab`, so it catches a partition remounted without the flag, an option overridden by a `systemd` mount unit, or an fstab entry that never took effect, all of which a file-based scanner would report as compliant.",

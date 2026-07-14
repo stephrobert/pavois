@@ -3,11 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
     "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -26,23 +28,26 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_DEBUG_WX=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_DEBUG_WX='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_DEBUG_WX=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_DEBUG_WX=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Warn on W+X mappings found at boot",
     "fr": "Avertir sur les mappages W+X détectés au démarrage"
   },
   "needs_translation": [],
-  "rationale": {
-    "en": "This is useful for discovering cases where the kernel is leaving W+X mappings after applying NX, as such mappings are a security risk. Note that even if the check fails, your kernel is possibly still fine, as W+X mappings are not a security hole in themselves, what they do is that they make the exploitation of other unfixed kernel bugs easier.",
-    "fr": "Utile pour découvrir les cas où le noyau laisse des mappages W+X après application de NX, ces mappages constituant un risque de sécurité. Notez que même si le contrôle échoue, votre noyau peut rester sain : les mappages W+X ne sont pas une faille en soi, mais ils facilitent l'exploitation d'autres bogues noyau non corrigés."
-  },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_DEBUG_WX=y`, which warns at boot when any memory page is mapped both writable and executable.",
     "fr": "Exige que le noyau soit compilé avec `CONFIG_DEBUG_WX=y`, qui avertit au démarrage lorsqu'une page mémoire est mappée à la fois en écriture et en exécution."
+  },
+  "rationale": {
+    "en": "This is useful for discovering cases where the kernel is leaving W+X mappings after applying NX, as such mappings are a security risk. Note that even if the check fails, your kernel is possibly still fine, as W+X mappings are not a security hole in themselves, what they do is that they make the exploitation of other unfixed kernel bugs easier.",
+    "fr": "Utile pour découvrir les cas où le noyau laisse des mappages W+X après application de NX, ces mappages constituant un risque de sécurité. Notez que même si le contrôle échoue, votre noyau peut rester sain : les mappages W+X ne sont pas une faille en soi, mais ils facilitent l'exploitation d'autres bogues noyau non corrigés."
   },
   "check_note": {
     "en": "Pavois reads the **effective** build flag of the running kernel via `/boot/config-$(uname -r)` or `/proc/config.gz`, keyed on `$(uname -r)`, so it reflects the actually booted image rather than a stray `.config` a fixed-path file scan might match.",
