@@ -21389,22 +21389,22 @@ misc-aide-build-database:
   remediation:
     '@os':
       debian12:
-        command: apt-get install -y aide-common >/dev/null 2>&1 || true; aideinit -y -f >/dev/null 2>&1 || aide --init; mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db 2>/dev/null || true
+        command: aideinit -y -f >/dev/null 2>&1 || aide --init; mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db 2>/dev/null || true
         name: aide-build-database
         not_if: ls /var/lib/aide/aide.db >/dev/null 2>&1
         resource: exec
       debian13:
-        command: apt-get install -y aide-common >/dev/null 2>&1 || true; aideinit -y -f >/dev/null 2>&1 || aide --init; mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db 2>/dev/null || true
+        command: aideinit -y -f >/dev/null 2>&1 || aide --init; mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db 2>/dev/null || true
         name: aide-build-database
         not_if: ls /var/lib/aide/aide.db >/dev/null 2>&1
         resource: exec
       ubuntu2204:
-        command: apt-get install -y aide-common >/dev/null 2>&1 || true; aideinit -y -f >/dev/null 2>&1 || aide --init; mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db 2>/dev/null || true
+        command: aideinit -y -f >/dev/null 2>&1 || aide --init; mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db 2>/dev/null || true
         name: aide-build-database
         not_if: ls /var/lib/aide/aide.db >/dev/null 2>&1
         resource: exec
       ubuntu2404:
-        command: apt-get install -y aide-common >/dev/null 2>&1 || true; aideinit -y -f >/dev/null 2>&1 || aide --init; mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db 2>/dev/null || true
+        command: aideinit -y -f >/dev/null 2>&1 || aide --init; mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db 2>/dev/null || true
         name: aide-build-database
         not_if: ls /var/lib/aide/aide.db >/dev/null 2>&1
         resource: exec
@@ -21416,12 +21416,12 @@ misc-aide-build-database:
       rhel9: *id006
       rhel10: *id006
       ubuntu2604:
-        command: apt-get install -y aide-common >/dev/null 2>&1 || true; aideinit -y -f >/dev/null 2>&1 || aide --init; mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db 2>/dev/null || true
+        command: aideinit -y -f >/dev/null 2>&1 || aide --init; mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db 2>/dev/null || true
         name: aide-build-database
         not_if: ls /var/lib/aide/aide.db >/dev/null 2>&1
         resource: exec
       fedora: *id006
-  requires_package: aide
+  requires_package: '@{pkg.aide}'
   severity: medium
   socle: SOCLE-CLD-GEN-031
   ssg: aide_build_database
@@ -31009,14 +31009,14 @@ posture-process-accounting:
   remediation:
     '@os':
       debian12: &id022
-        command: DEBIAN_FRONTEND=noninteractive apt-get install -y acct >/dev/null 2>&1; systemctl enable --now acct 2>/dev/null || true
+        command: systemctl enable --now acct 2>/dev/null || systemctl enable --now psacct 2>/dev/null || true
         name: enable-process-accounting
         not_if: systemctl is-active acct psacct 2>/dev/null | grep -qx active
         resource: exec
       rhel8: &id021
         resource: exec
         name: process-accounting
-        command: dnf install -y -q psacct >/dev/null 2>&1 || true; systemctl enable --now psacct 2>/dev/null || true
+        command: systemctl enable --now acct 2>/dev/null || systemctl enable --now psacct 2>/dev/null || true
         not_if: systemctl is-active psacct acct 2>/dev/null | grep -qx active
       rhel9: *id021
       rhel10: *id021
@@ -31025,7 +31025,7 @@ posture-process-accounting:
       ubuntu2404: *id022
       ubuntu2604: *id022
       debian13: *id022
-  requires_package: auditd
+  requires_package: '@{pkg.acct}'
   severity: low
   socle: SOCLE-CLD-GEN-063
   ssg: posture-process-accounting
@@ -31055,7 +31055,7 @@ posture-sysstat:
   remediation:
     '@os':
       debian12:
-        command: DEBIAN_FRONTEND=noninteractive apt-get install -y sysstat >/dev/null 2>&1; sed -ri 's/^ENABLED=.*/ENABLED="true"/' /etc/default/sysstat 2>/dev/null; systemctl enable --now sysstat sysstat.service 2>/dev/null; true
+        command: sed -ri 's/^ENABLED=.*/ENABLED="true"/' /etc/default/sysstat 2>/dev/null; systemctl enable --now sysstat sysstat.service 2>/dev/null; true
         name: enable-sysstat-collection
         not_if: grep -q '^ENABLED="true"' /etc/default/sysstat 2>/dev/null
         resource: exec
@@ -31071,7 +31071,7 @@ posture-sysstat:
       rhel8: &id023
         resource: exec
         name: sysstat
-        command: dnf install -y -q sysstat >/dev/null 2>&1 || true; if [ -f /etc/sysconfig/sysstat ]; then sed -ri 's/^[[:space:]]*ENABLED=.*/ENABLED="true"/' /etc/sysconfig/sysstat; fi; systemctl enable --now sysstat 2>/dev/null || true
+        command: sysstat >/dev/null 2>&1 || true; if [ -f /etc/sysconfig/sysstat ]; then sed -ri 's/^[[:space:]]*ENABLED=.*/ENABLED="true"/' /etc/sysconfig/sysstat; fi; systemctl enable --now sysstat 2>/dev/null || true
         not_if: systemctl is-active sysstat 2>/dev/null | grep -qx active
       rhel9: *id023
       rhel10: *id023
@@ -31084,6 +31084,7 @@ posture-sysstat:
   ssg: posture-sysstat
   title: System statistics collection (sysstat)
   remediation_class: auto
+  requires_package: '@{pkg.sysstat}'
 pwquality-dcredit:
   applicable_os:
   - debian12

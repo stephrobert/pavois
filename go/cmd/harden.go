@@ -1670,7 +1670,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 					time.Now().UTC().Format("20060102-1504")))
 		}
 		_, _ = fmt.Fprintln(os.Stderr, "pavois: photographing the prior state (restore point)…")
-		if got, err := writeRestorePoint(p, target, args[0], dir, sshOpts(), sudoPass); err != nil {
+		if got, err := writeRestorePoint(p, recipe, target, args[0], dir, sshOpts(), sudoPass); err != nil {
 			return fmt.Errorf("restore point: %w (re-run with --no-restore-point to skip, but you lose the rollback)", err)
 		} else {
 			_, _ = fmt.Fprintf(out, "pavois: 📸 restore point → %s   (undo with: pavois harden rollback %s --yes)\n", got, got)
