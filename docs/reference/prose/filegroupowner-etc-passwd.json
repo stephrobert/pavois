@@ -1,0 +1,37 @@
+{
+  "id": "filegroupowner-etc-passwd",
+  "title": {
+    "en": "Verify Group Who Owns passwd File",
+    "fr": "Verifier le groupe proprietaire du fichier passwd"
+  },
+  "summary": {
+    "en": "Ensures the account database `/etc/passwd` is group-owned by **root** (GID 0).",
+    "fr": "Garantit que la base des comptes `/etc/passwd` appartient au groupe **root** (GID 0)."
+  },
+  "rationale": {
+    "en": "`/etc/passwd` defines every **user account**: login name, UID, GID, home directory and shell. If a non-root group could write to it, an attacker could create accounts, change a user's UID to `0`, or alter login shells, a direct path to **privilege escalation**. Restricting group ownership to **GID 0 (root)** ensures only root can modify the account database.",
+    "fr": "`/etc/passwd` definit chaque **compte utilisateur** : nom de connexion, UID, GID, repertoire personnel et shell. Si un groupe non root pouvait y ecrire, un attaquant pourrait creer des comptes, passer l'UID d'un utilisateur a `0` ou modifier les shells de connexion, une voie directe vers l'**elevation de privileges**. Restreindre la propriete de groupe a **GID 0 (root)** garantit que seul root peut modifier la base des comptes."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** group ID of `/etc/passwd` via the InSpec `file` resource and asserts `gid == 0`. Reading the live inode reflects the current security state, catching a `chgrp` slip, a bad restore, or a misbehaving user-management tool, whereas a package manifest only records the intended owner at install time.",
+    "fr": "Pavois lit l'ID de groupe **effectif** de `/etc/passwd` via la ressource InSpec `file` et verifie `gid == 0`. Lire l'inode reel reflete l'etat de securite actuel, detectant un `chgrp` errone, une mauvaise restauration ou un outil de gestion d'utilisateurs defaillant, alors qu'un manifeste de paquet n'enregistre que le proprietaire prevu a l'installation."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /etc/passwd`. Expected output: `root 0`.",
+    "fr": "Executez `stat -c '%G %g' /etc/passwd`. Sortie attendue : `root 0`."
+  },
+  "logs": {
+    "en": "No service log records this static file's ownership; confirm with `stat -c '%n %U %G' /etc/passwd`. If a file watch is configured, account-database changes appear in `/var/log/audit/audit.log` (e.g. `key=\"identity\"`).",
+    "fr": "Aucun journal de service n'enregistre la propriete de ce fichier statique ; verifiez avec `stat -c '%n %U %G' /etc/passwd`. Si une regle de surveillance est en place, les modifications de la base des comptes apparaissent dans `/var/log/audit/audit.log` (par ex. `key=\"identity\"`)."
+  },
+  "remediation_note": {
+    "en": "No automated remediation plan is defined, so apply it **manually**: `chgrp 0 /etc/passwd` (or `chgrp root /etc/passwd`).",
+    "fr": "Aucun plan de remediation automatique n'est defini ; appliquez-le **manuellement** : `chgrp 0 /etc/passwd` (ou `chgrp root /etc/passwd`)."
+  },
+  "impact": {
+    "en": "Resetting group ownership to **root** is the default and safe state, `/etc/passwd` must be root-owned, mode `0644`, world-readable. No service restart and no lockout risk. **Precaution:** never accidentally make the file group-writable or change its mode while fixing ownership; verify it is a regular file (not a symlink) before `chgrp`.",
+    "fr": "Remettre la propriete de groupe a **root** est l'etat par defaut et sur, `/etc/passwd` doit appartenir a root, mode `0644`, lisible par tous. Aucun redemarrage de service, aucun risque de blocage. **Precaution :** ne rendez jamais le fichier accidentellement modifiable par le groupe et ne changez pas son mode en corrigeant la propriete ; verifiez qu'il s'agit d'un fichier ordinaire (pas un lien symbolique) avant `chgrp`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

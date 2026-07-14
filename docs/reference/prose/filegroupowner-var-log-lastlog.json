@@ -1,0 +1,37 @@
+{
+  "id": "filegroupowner-var-log-lastlog",
+  "title": {
+    "en": "Verify Group Who Owns /var/log/lastlog File",
+    "fr": "Verifier le groupe proprietaire du fichier /var/log/lastlog"
+  },
+  "summary": {
+    "en": "Ensures `/var/log/lastlog` is group-owned by `utmp` so login-accounting data stays accurate and tamper-resistant.",
+    "fr": "Garantit que `/var/log/lastlog` appartient au groupe `utmp` afin que les donnees de comptabilite des connexions restent exactes et resistantes a l'alteration."
+  },
+  "rationale": {
+    "en": "`/var/log/lastlog` records the most recent login of every user and is consulted at login time. Its expected group is `utmp` so the login-accounting subsystem can update it while ordinary users cannot rewrite it. A wrong group could let an attacker falsify last-login records to hide unauthorized access, or read login patterns. Setting the group to `utmp` keeps login accounting accurate and tamper-resistant.",
+    "fr": "`/var/log/lastlog` enregistre la derniere connexion de chaque utilisateur et est consulte a l'ouverture de session. Son groupe attendu est `utmp` afin que le sous-systeme de comptabilite des connexions puisse le mettre a jour tandis que les utilisateurs ordinaires ne peuvent pas le reecrire. Un mauvais groupe pourrait permettre a un attaquant de falsifier les enregistrements de derniere connexion pour masquer un acces non autorise, ou de lire les habitudes de connexion. Definir le groupe sur `utmp` maintient une comptabilite des connexions exacte et resistante a l'alteration."
+  },
+  "check_note": {
+    "en": "Pavois reads the **resolved** group ownership of `/var/log/lastlog` via the InSpec `file` resource and asserts the group is `utmp`. It inspects the live inode metadata, so it reflects the file's actual ownership rather than a packaged default, important because login tooling may recreate the file.",
+    "fr": "Pavois lit l'appartenance de groupe **resolue** de `/var/log/lastlog` via la ressource InSpec `file` et verifie que le groupe est `utmp`. Il inspecte les metadonnees reelles de l'inode, ce qui reflete la propriete reelle du fichier plutot qu'une valeur par defaut de paquet, important car l'outillage de connexion peut recreer le fichier."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G' /var/log/lastlog`. The expected output is:\n\n- `utmp`\n\nList it with `ls -l /var/log/lastlog`, and view its contents with the `lastlog` command.",
+    "fr": "Executez `stat -c '%G' /var/log/lastlog`. La sortie attendue est :\n\n- `utmp`\n\nAffichez-le avec `ls -l /var/log/lastlog`, et consultez son contenu avec la commande `lastlog`."
+  },
+  "logs": {
+    "en": "This file is the last-login database: read it with `lastlog` (per-user latest login) and cross-check active sessions with `last` (from `/var/log/wtmp`) and `who`. To trace permission changes, add an auditd watch (`auditctl -w /var/log/lastlog -p wa -k logperms`) and grep `/var/log/audit/audit.log` for `key=\"logperms\"`.",
+    "fr": "Ce fichier est la base des dernieres connexions : lisez-le avec `lastlog` (derniere connexion par utilisateur) et recoupez les sessions actives avec `last` (depuis `/var/log/wtmp`) et `who`. Pour tracer les changements de permissions, ajoutez une surveillance auditd (`auditctl -w /var/log/lastlog -p wa -k logperms`) et recherchez `key=\"logperms\"` dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan applies the `file` resource to set the **group** of `/var/log/lastlog` to `utmp`. It is applied with `pavois harden apply` and leaves the owner and permission bits untouched.",
+    "fr": "Le plan de durcissement de Pavois applique la ressource `file` pour definir le **groupe** de `/var/log/lastlog` sur `utmp`. Il s'applique avec `pavois harden apply` et laisse inchanges le proprietaire et les bits de permission."
+  },
+  "impact": {
+    "en": "A wrong group can let an attacker forge or read last-login records, weakening intrusion detection. The fix only changes group ownership; it does not disrupt logins. **Precaution:** keep the group `utmp`, not `root`, the PAM/login stack relies on the `utmp` group to update the file, and forcing `root` could break last-login recording. Note newer systems may use `/var/log/lastlog2` (an SQLite DB); verify which file is in use before adjusting.",
+    "fr": "Un mauvais groupe peut permettre a un attaquant de falsifier ou de lire les enregistrements de derniere connexion, affaiblissant la detection d'intrusion. La correction ne modifie que le groupe proprietaire ; elle ne perturbe pas les connexions. **Precaution :** conservez le groupe `utmp`, et non `root`, la pile PAM/login s'appuie sur le groupe `utmp` pour mettre a jour le fichier, et forcer `root` pourrait casser l'enregistrement des dernieres connexions. Notez que les systemes recents peuvent utiliser `/var/log/lastlog2` (une base SQLite) ; verifiez quel fichier est utilise avant d'ajuster."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

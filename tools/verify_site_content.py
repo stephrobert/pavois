@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RULES = ROOT / "docs" / "reference" / "rules.yml"
 REF = ROOT / "docs" / "reference" / "pavois-content"
 FICHES = ROOT / "site" / "src" / "content" / "rules"
+PROSE = ROOT / "docs" / "reference" / "prose"
 
 
 def main():
@@ -36,10 +37,16 @@ def main():
     dead = sorted(k for k, v in live.items() if not v.get("applicable_os"))
     expected = {k for k in live if live[k].get("applicable_os")}
 
+    # The fiches are now GENERATED (site/src/content/rules/ is rebuilt from scratch and gitignored),
+    # so comparing them to the rule base would always pass: the generator makes them agree. What can
+    # actually drift is the SOURCE that feeds them, the authored prose, so that is what we check.
     have = {
         Path(p).stem: json.loads(Path(p).read_text(encoding="utf-8"))
         for p in glob.glob(str(FICHES / "*.json"))
     }
+    prose = {Path(p).stem for p in glob.glob(str(PROSE / "*.json"))}
+    no_prose = sorted(expected - prose)
+    orphan_prose = sorted(prose - expected)
 
     missing = sorted(expected - set(have))
     stale = sorted(set(have) - expected)
@@ -59,6 +66,8 @@ def main():
         ("MISSING (the scanner runs it, the site does not document it)", missing),
         ("STALE (a page for a control that no longer exists)", stale),
         ("UNCOVERED OS (a whole target invisible on the site)", uncovered),
+        ("NO PROSE (a control nobody has written a word about)", no_prose),
+        ("ORPHAN PROSE (prose about a control that no longer exists)", orphan_prose),
     ):
         if items:
             fail += len(items)

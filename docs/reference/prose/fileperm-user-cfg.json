@@ -1,0 +1,37 @@
+{
+  "id": "fileperm-user-cfg",
+  "title": {
+    "en": "Verify /boot/grub2/user.cfg Permissions",
+    "fr": "Verifier les permissions de /boot/grub2/user.cfg"
+  },
+  "summary": {
+    "en": "Ensures `/boot/grub2/user.cfg` (the GRUB superuser password file) is readable and writable only by `root`, with no execute/setuid/setgid/sticky bits.",
+    "fr": "Garantit que `/boot/grub2/user.cfg` (le fichier de mot de passe superuser GRUB) n'est lisible et modifiable que par `root`, sans bits d'execution/setuid/setgid/sticky."
+  },
+  "rationale": {
+    "en": "`/boot/grub2/user.cfg` stores the **GRUB bootloader superuser password hash** (PBKDF2). If group or other can read it, an attacker can crack the hash offline and gain the GRUB superuser password, letting them edit boot entries, drop to a root shell via `init=/bin/bash`, or disable security at boot, a full bypass of OS-level access controls. If the file is writable by a non-root user, they can replace or remove the password protection entirely. Only `root` should read or modify it.",
+    "fr": "`/boot/grub2/user.cfg` stocke le **hash du mot de passe superuser du chargeur GRUB** (PBKDF2). Si le groupe ou les autres peuvent le lire, un attaquant peut casser le hash hors ligne et obtenir le mot de passe superuser GRUB, ce qui lui permet d'editer les entrees de demarrage, d'obtenir un shell root via `init=/bin/bash` ou de desactiver la securite au demarrage, un contournement complet des controles d'acces du systeme d'exploitation. Si le fichier est modifiable par un utilisateur non-root, celui-ci peut remplacer ou supprimer entierement la protection par mot de passe. Seul `root` devrait pouvoir le lire ou le modifier."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective inode mode** of `/boot/grub2/user.cfg` and asserts no read/write for group or other and no special bits. Checking the live file (rather than assuming the generator wrote it correctly) catches cases where the file was regenerated, copied, or `chmod`-ed after creation and silently became group/world-readable.",
+    "fr": "Pavois lit le **mode effectif de l'inode** de `/boot/grub2/user.cfg` et verifie l'absence de lecture/ecriture pour le groupe ou les autres et l'absence de bits speciaux. Verifier le fichier reel (plutot que de supposer que le generateur l'a ecrit correctement) detecte les cas ou le fichier a ete regenere, copie ou `chmod`-e apres creation et est devenu silencieusement lisible par le groupe/tous."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %G %a' /boot/grub2/user.cfg`. Expected: owner/group `root` with mode `600` (or `0600`), readable/writable by root only, no bits for group/other.",
+    "fr": "Executez `stat -c '%U %G %a' /boot/grub2/user.cfg`. Attendu : proprietaire/groupe `root` avec le mode `600` (ou `0600`), lisible/modifiable par root uniquement, aucun bit pour le groupe/les autres."
+  },
+  "logs": {
+    "en": "There is no runtime log for this file. Integrity drift can be detected with `rpm -Vf /boot/grub2/user.cfg` (RHEL/Alma/Fedora). GRUB regeneration that may rewrite it is triggered by `grub2-mkconfig`; review its output and re-check the mode afterward.",
+    "fr": "Il n'existe pas de journal d'execution pour ce fichier. La derive d'integrite peut etre detectee avec `rpm -Vf /boot/grub2/user.cfg` (RHEL/Alma/Fedora). La regeneration de GRUB qui peut le reecrire est declenchee par `grub2-mkconfig` ; examinez sa sortie et re-verifiez le mode ensuite."
+  },
+  "remediation_note": {
+    "en": "No automated remediation ships for this rule. Tighten the file manually: `chown root:root /boot/grub2/user.cfg && chmod 600 /boot/grub2/user.cfg`.",
+    "fr": "Aucune remediation automatique n'est fournie pour cette regle. Restreignez le fichier manuellement : `chown root:root /boot/grub2/user.cfg && chmod 600 /boot/grub2/user.cfg`."
+  },
+  "impact": {
+    "en": "A readable `user.cfg` leaks the GRUB superuser hash (offline crackable, leading to boot-time root access); a writable one lets an attacker disable boot password protection. Setting it to `0600 root:root` is safe and matches the GRUB default. **Precaution:** do not delete or empty the file, that removes GRUB password protection. Re-run `grub2-mkconfig` only when needed, since regeneration can reset the mode.",
+    "fr": "Un `user.cfg` lisible divulgue le hash superuser GRUB (cassable hors ligne, menant a un acces root au demarrage) ; un fichier modifiable permet a un attaquant de desactiver la protection par mot de passe au demarrage. Le passer a `0600 root:root` est sans danger et correspond a la valeur par defaut de GRUB. **Precaution :** ne supprimez pas et ne videz pas le fichier, cela retirerait la protection par mot de passe GRUB. Ne relancez `grub2-mkconfig` que si necessaire, car la regeneration peut reinitialiser le mode."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

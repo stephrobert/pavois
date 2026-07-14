@@ -1,0 +1,37 @@
+{
+  "id": "fileowner-sshd-config",
+  "title": {
+    "en": "Verify Owner on SSH Server config file",
+    "fr": "Vérifier le propriétaire du fichier de configuration du serveur SSH"
+  },
+  "summary": {
+    "en": "Ensures the SSH server configuration file `/etc/ssh/sshd_config` is owned by **root** (uid 0).",
+    "fr": "Garantit que le fichier de configuration du serveur SSH `/etc/ssh/sshd_config` appartient à **root** (uid 0)."
+  },
+  "rationale": {
+    "en": "`/etc/ssh/sshd_config` controls every security-relevant aspect of the SSH server: authentication methods, root login, ciphers, port and access restrictions. A misconfiguration here leads directly to a remotely exploitable host. If a non-root user owns the file, they can edit it to enable `PermitRootLogin yes`, weaken authentication or open a backdoor, then trigger an sshd reload, escalating a local account to remote root access. Restricting ownership to **root** (uid 0) ensures only the superuser can change the SSH server's policy.",
+    "fr": "`/etc/ssh/sshd_config` contrôle tous les aspects de sécurité du serveur SSH : méthodes d'authentification, connexion root, algorithmes de chiffrement, port et restrictions d'accès. Une mauvaise configuration ici mène directement à un hôte exploitable à distance. Si un utilisateur non-root possède le fichier, il peut l'éditer pour activer `PermitRootLogin yes`, affaiblir l'authentification ou ouvrir une porte dérobée, puis déclencher un rechargement de sshd, faisant passer un compte local à un accès root distant. Restreindre la propriété à **root** (uid 0) garantit que seul le superutilisateur peut modifier la politique du serveur SSH."
+  },
+  "check_note": {
+    "en": "Pavois asserts that the live file `/etc/ssh/sshd_config` has owner uid `0`, skipped via `only_if` if absent. It reads the **effective** owner from the filesystem (`stat`), so a manual `chown` of the main SSH policy file is detected even when no change-management record exists. (Note: Pavois audits the SSH server's *behaviour* via `sshd -T` in other rules; this ownership rule protects the integrity of the file that `sshd -T` ultimately reflects.)",
+    "fr": "Pavois vérifie que le fichier réel `/etc/ssh/sshd_config` a l'uid de propriétaire `0`, ignoré via `only_if` s'il est absent. Il lit le propriétaire **effectif** depuis le système de fichiers (`stat`), de sorte qu'un `chown` manuel du fichier de politique SSH principal est détecté même en l'absence de tout enregistrement de gestion des changements. (Note : Pavois audite le *comportement* du serveur SSH via `sshd -T` dans d'autres règles ; cette règle de propriété protège l'intégrité du fichier que `sshd -T` reflète in fine.)"
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /etc/ssh/sshd_config`. Expected output: `root 0`. `ls -l /etc/ssh/sshd_config` should likewise show `root` as the owner.",
+    "fr": "Exécutez `stat -c '%U %u' /etc/ssh/sshd_config`. Sortie attendue : `root 0`. `ls -l /etc/ssh/sshd_config` doit de même afficher `root` comme propriétaire."
+  },
+  "logs": {
+    "en": "Ownership has no continuous log; query it with `stat /etc/ssh/sshd_config`. SSH service events and config-load errors appear in `/var/log/auth.log` (Debian/Ubuntu) or via `journalctl -u ssh`. sshd will refuse to start if it considers the config unsafe, logging the reason there.",
+    "fr": "La propriété ne génère pas de journal continu ; interrogez-la avec `stat /etc/ssh/sshd_config`. Les événements du service SSH et les erreurs de chargement de configuration apparaissent dans `/var/log/auth.log` (Debian/Ubuntu) ou via `journalctl -u ssh`. sshd refusera de démarrer s'il juge la configuration non sûre, en journalisant la raison à cet endroit."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined, so apply it manually: `chown root:root /etc/ssh/sshd_config`. Reinstalling `openssh-server` also restores correct ownership.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini, appliquez-la donc manuellement : `chown root:root /etc/ssh/sshd_config`. Réinstaller `openssh-server` restaure également la bonne propriété."
+  },
+  "impact": {
+    "en": "A non-root owner of this file can rewrite SSH policy and gain remote root access, one of the highest-leverage local-to-remote escalations. Restoring root ownership is safe and does not drop current sessions. **Precaution:** after correcting ownership, run `sshd -t` to confirm the config still parses, do not loosen the file mode (keep 0600/0644 per baseline), and keep a second SSH session or console open before reloading sshd in case of a mistake.",
+    "fr": "Un propriétaire non-root de ce fichier peut réécrire la politique SSH et obtenir un accès root distant, l'une des escalades local-vers-distant les plus puissantes. Restaurer la propriété root est sans danger et ne coupe pas les sessions en cours. **Précaution :** après avoir corrigé la propriété, exécutez `sshd -t` pour confirmer que la configuration se parse toujours, n'assouplissez pas le mode du fichier (conservez 0600/0644 selon le référentiel), et gardez une seconde session SSH ou une console ouverte avant de recharger sshd en cas d'erreur."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

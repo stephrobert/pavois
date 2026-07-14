@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-net-ipv4-conf-default-accept_source_route",
+  "title": {
+    "en": "Disable Kernel Parameter for Accepting Source-Routed Packets on IPv4 Interfaces by Default",
+    "fr": "Desactiver le parametre noyau d'acceptation des paquets a routage par la source sur les interfaces IPv4 par defaut"
+  },
+  "summary": {
+    "en": "Forces `net.ipv4.conf.default.accept_source_route` to **0** so every newly created IPv4 interface refuses source-routed packets by default.",
+    "fr": "Force `net.ipv4.conf.default.accept_source_route` a **0** afin que chaque interface IPv4 nouvellement creee refuse par defaut les paquets a routage par la source."
+  },
+  "rationale": {
+    "en": "Source-routed packets carry an explicit path chosen by the sender, instructing routers to forward them along a route other than the one the routing table would pick. Attackers use this to bypass firewalls and routing-based controls, reach otherwise unreachable hosts, and spoof return paths. Legitimate uses are essentially limited to deliberate routers; an ordinary host should set the `default` template to **0** so every new interface refuses source-routed packets.",
+    "fr": "Les paquets a routage par la source transportent un chemin explicite choisi par l'emetteur, ordonnant aux routeurs de les acheminer par une route autre que celle qu'aurait choisie la table de routage. Les attaquants s'en servent pour contourner les pare-feu et les controles fondes sur le routage, atteindre des hotes autrement injoignables et usurper les chemins de retour. Les usages legitimes se limitent essentiellement aux routeurs deliberes ; un hote ordinaire doit definir le modele `default` a **0** afin que chaque nouvelle interface refuse les paquets a routage par la source."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.default.accept_source_route` from the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not a `/etc/sysctl.d/` file. The `default` key sets the template for interfaces created later, so only the running value reflects the posture future interfaces will inherit. A drop-in might declare `0` while a later file or `sysctl -w` overrode it; the effective parameter is authoritative.",
+    "fr": "Pavois lit la **valeur d'execution en direct** de `net.ipv4.conf.default.accept_source_route` depuis le noyau (ressource InSpec `kernel_parameter`, equivalente a `sysctl`), et non un fichier `/etc/sysctl.d/`. La cle `default` definit le modele des interfaces creees ulterieurement, donc seule la valeur en cours reflete la posture que les futures interfaces heriteront. Un drop-in pourrait declarer `0` alors qu'un fichier ulterieur ou un `sysctl -w` l'a surcharge ; le parametre effectif fait autorite."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.conf.default.accept_source_route`. Expected output:\n\n- `net.ipv4.conf.default.accept_source_route = 0`",
+    "fr": "Executez `sysctl net.ipv4.conf.default.accept_source_route`. Sortie attendue :\n\n- `net.ipv4.conf.default.accept_source_route = 0`"
+  },
+  "logs": {
+    "en": "No dedicated log exists. With `log_martians` enabled, source-routed packets that are dropped surface via `dmesg | grep -i martian` and `journalctl -k`. Inspect the state with `sysctl net.ipv4.conf.default.accept_source_route` and all related values with `sysctl -a | grep accept_source_route`.",
+    "fr": "Aucun journal dedie n'existe. Avec `log_martians` active, les paquets a routage par la source rejetes apparaissent via `dmesg | grep -i martian` et `journalctl -k`. Inspectez l'etat avec `sysctl net.ipv4.conf.default.accept_source_route` et toutes les valeurs associees avec `sysctl -a | grep accept_source_route`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv4.conf.default.accept_source_route` to **0**, applying it to the running kernel and persisting it in a Pavois-managed drop-in under `/etc/sysctl.d/` so it survives reboot. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour definir `net.ipv4.conf.default.accept_source_route` a **0**, en l'appliquant au noyau en cours d'execution et en le persistant dans un drop-in gere par Pavois sous `/etc/sysctl.d/` afin qu'il survive au redemarrage. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Safe for essentially all hosts; source routing is obsolete and almost universally undesirable. The only legitimate exception is a system functioning as a router with IPv4 forwarding enabled that must honour source-routed packets, a very rare requirement. This is the `default` template; pair it with the `all.accept_source_route` rule for full coverage. No risk of losing remote access from setting this to **0**.",
+    "fr": "Sur pour la quasi-totalite des hotes ; le routage par la source est obsolete et presque universellement indesirable. La seule exception legitime est un systeme fonctionnant comme routeur avec le transfert IPv4 active qui doit honorer les paquets a routage par la source, un besoin tres rare. C'est le modele `default` ; associez-le a la regle `all.accept_source_route` pour une couverture complete. Definir cette valeur a **0** ne presente aucun risque de perte d'acces distant."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

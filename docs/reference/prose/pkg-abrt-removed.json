@@ -1,0 +1,37 @@
+{
+  "id": "pkg-abrt-removed",
+  "title": {
+    "en": "Uninstall Automatic Bug Reporting Tool (abrt)",
+    "fr": "Désinstaller l'outil de rapport automatique de bogues (abrt)"
+  },
+  "summary": {
+    "en": "Removes the base **`abrt`** package, disabling the Automatic Bug Reporting Tool and its crash-data collection.",
+    "fr": "Supprime le paquet de base **`abrt`**, désactivant l'outil de rapport automatique de bogues et sa collecte de données de plantage."
+  },
+  "rationale": {
+    "en": "ABRT (Automatic Bug Reporting Tool) automatically collects application crash data and can forward it to remote services. **Mishandled crash data can expose sensitive information**, software vulnerabilities, plus secrets held in a process's address space or registers (passwords, keys, tokens). ABRT has also had its own privilege-escalation CVEs. On a hardened server it is unnecessary, and removing the base `abrt` package neutralizes the whole crash-collection stack.",
+    "fr": "ABRT (Automatic Bug Reporting Tool) collecte automatiquement les données de plantage des applications et peut les transmettre à des services distants. **Des données de plantage mal gérées peuvent exposer des informations sensibles**, vulnérabilités logicielles, ainsi que secrets présents dans l'espace d'adressage ou les registres d'un processus (mots de passe, clés, jetons). ABRT a aussi connu ses propres CVE d'élévation de privilèges. Sur un serveur durci, il est superflu, et supprimer le paquet de base `abrt` neutralise toute la pile de collecte de plantages."
+  },
+  "check_note": {
+    "en": "Pavois queries the **effective** package database via the `package('abrt')` resource (`rpm -q`), which reflects what is truly installed and running now rather than any config file or vendor manifest, the live RPM database is the ground truth.",
+    "fr": "Pavois interroge la base de paquets **effective** via la ressource `package('abrt')` (`rpm -q`), qui reflète ce qui est réellement installé et en cours d'exécution à l'instant T plutôt qu'un fichier de configuration ou un manifeste d'éditeur, la base RPM réelle fait foi."
+  },
+  "verify": {
+    "en": "Run `rpm -q abrt`. Expected output: `package abrt is not installed`. A version string means the rule fails. Confirm the daemon is gone with `systemctl status abrtd` (should report not-found).",
+    "fr": "Exécutez `rpm -q abrt`. Sortie attendue : `package abrt is not installed`. Une chaîne de version signifie que la règle échoue. Confirmez la disparition du démon avec `systemctl status abrtd` (devrait indiquer introuvable)."
+  },
+  "logs": {
+    "en": "Confirm with `rpm -q abrt`; the removal is recorded in `dnf history` and `/var/log/dnf.rpm.log`. While installed, ABRT activity appears in `journalctl -u abrtd` and crash spools under `/var/spool/abrt`.",
+    "fr": "Confirmez avec `rpm -q abrt` ; la suppression est enregistrée dans `dnf history` et `/var/log/dnf.rpm.log`. Lorsqu'il est installé, l'activité d'ABRT apparaît dans `journalctl -u abrtd` et les spools de plantage sous `/var/spool/abrt`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the **`package`** resource with action **`remove`** to uninstall `abrt` (equivalent to `dnf remove abrt`). Apply it with **`pavois harden apply`**. Removing the base package typically pulls the dependent ABRT addons with it.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource **`package`** avec l'action **`remove`** pour désinstaller `abrt` (équivalent à `dnf remove abrt`). Appliquez-le avec **`pavois harden apply`**. Supprimer le paquet de base entraîne généralement la suppression des addons ABRT dépendants."
+  },
+  "impact": {
+    "en": "Removing `abrt` stops automatic crash collection and reporting, a clear security gain on servers. **Precautions:** if your operations team relies on ABRT to diagnose production crashes, set up an alternative first (e.g. `systemd-coredump` with restricted permissions, or `kdump` for the kernel). Removal stops and uninstalls the `abrtd` service but causes no application downtime, and the package can be reinstalled if needed.",
+    "fr": "Supprimer `abrt` arrête la collecte et le rapport automatiques de plantages, un gain de sécurité net sur les serveurs. **Précautions :** si votre équipe d'exploitation s'appuie sur ABRT pour diagnostiquer les plantages en production, mettez d'abord en place une alternative (par ex. `systemd-coredump` avec des permissions restreintes, ou `kdump` pour le noyau). La suppression arrête et désinstalle le service `abrtd` mais n'entraîne aucun arrêt applicatif, et le paquet peut être réinstallé si nécessaire."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

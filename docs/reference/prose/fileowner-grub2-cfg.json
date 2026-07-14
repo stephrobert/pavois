@@ -1,0 +1,37 @@
+{
+  "id": "fileowner-grub2-cfg",
+  "title": {
+    "en": "Verify /boot/grub2/grub.cfg User Ownership",
+    "fr": "Vérifier le propriétaire du fichier /boot/grub2/grub.cfg"
+  },
+  "summary": {
+    "en": "Ensures the GRUB2 boot configuration file `/boot/grub2/grub.cfg` is owned by **root** (uid 0).",
+    "fr": "Garantit que le fichier de configuration de démarrage GRUB2 `/boot/grub2/grub.cfg` appartient à **root** (uid 0)."
+  },
+  "rationale": {
+    "en": "The GRUB2 configuration file `/boot/grub2/grub.cfg` defines the kernel that boots, its command line and any boot password. If a non-root user can own (and therefore rewrite) this file, an attacker can append parameters such as `init=/bin/sh` to gain a root shell at boot, disable kernel hardening flags, or remove the GRUB password, turning a local foothold into full control of the machine before any access control is even loaded. Restricting ownership to **root** (uid 0) ensures only the superuser can alter boot parameters.",
+    "fr": "Le fichier de configuration GRUB2 `/boot/grub2/grub.cfg` définit le noyau démarré, sa ligne de commande et un éventuel mot de passe de démarrage. Si un utilisateur non-root peut posséder (et donc réécrire) ce fichier, un attaquant peut ajouter des paramètres comme `init=/bin/sh` pour obtenir un shell root au démarrage, désactiver les protections du noyau ou supprimer le mot de passe GRUB, transformant un simple accès local en contrôle total de la machine, avant même le chargement du moindre contrôle d'accès. Restreindre la propriété à **root** (uid 0) garantit que seul le superutilisateur peut modifier les paramètres de démarrage."
+  },
+  "check_note": {
+    "en": "Pavois inspects the live filesystem object `/boot/grub2/grub.cfg` and asserts its owner uid is `0`. The check is guarded by `only_if` so it is skipped on systems (e.g. UEFI Debian/Ubuntu) where this path does not exist. Pavois reads the **effective** owner of the file as the kernel reports it (`stat`), not a value declared in a config-management manifest, so drift introduced by a manual `chown`, a restore from backup, or a misbehaving package is caught immediately.",
+    "fr": "Pavois examine l'objet de fichier réel `/boot/grub2/grub.cfg` et vérifie que l'uid de son propriétaire est `0`. Le contrôle est protégé par `only_if`, donc il est ignoré sur les systèmes (par ex. Debian/Ubuntu en UEFI) où ce chemin n'existe pas. Pavois lit le propriétaire **effectif** du fichier tel que le noyau le rapporte (`stat`), et non une valeur déclarée dans un manifeste de gestion de configuration, ainsi toute dérive introduite par un `chown` manuel, une restauration de sauvegarde ou un paquet défectueux est détectée immédiatement."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /boot/grub2/grub.cfg`. Expected output: `root 0`. You can also use `ls -l /boot/grub2/grub.cfg` and confirm the third column (owner) reads `root`.",
+    "fr": "Exécutez `stat -c '%U %u' /boot/grub2/grub.cfg`. Sortie attendue : `root 0`. Vous pouvez aussi utiliser `ls -l /boot/grub2/grub.cfg` et vérifier que la troisième colonne (propriétaire) affiche `root`."
+  },
+  "logs": {
+    "en": "There is no continuous log for file ownership; query the current state with `stat /boot/grub2/grub.cfg`. If auditd watches `/boot` (`auditctl -w /boot -p wa`), ownership changes appear in `/var/log/audit/audit.log`, grep for the path with `grep grub.cfg /var/log/audit/audit.log`.",
+    "fr": "Il n'existe pas de journal continu pour la propriété d'un fichier ; interrogez l'état courant avec `stat /boot/grub2/grub.cfg`. Si auditd surveille `/boot` (`auditctl -w /boot -p wa`), les changements de propriété apparaissent dans `/var/log/audit/audit.log`, recherchez le chemin avec `grep grub.cfg /var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied manually: run `chown root:root /boot/grub2/grub.cfg` as root. (On systems using `update-grub`/`grub2-mkconfig`, the file is normally regenerated as root-owned.)",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle, elle doit donc être appliquée manuellement : exécutez `chown root:root /boot/grub2/grub.cfg` en tant que root. (Sur les systèmes utilisant `update-grub`/`grub2-mkconfig`, le fichier est normalement régénéré avec root comme propriétaire.)"
+  },
+  "impact": {
+    "en": "If the file is owned by a non-root user, that user can rewrite the boot menu and silently compromise the system at the next reboot. Fixing ownership is low-risk: a `chown root:root` does not change the file's contents and will not break booting. **Precaution:** confirm the path actually contains the GRUB config (not a symlink to another location) and avoid changing group/permissions at the same time unless intended, so you do not lock out tools that legitimately read it.",
+    "fr": "Si le fichier appartient à un utilisateur non-root, celui-ci peut réécrire le menu de démarrage et compromettre silencieusement le système au prochain redémarrage. Corriger la propriété présente peu de risques : un `chown root:root` ne modifie pas le contenu du fichier et n'empêchera pas le démarrage. **Précaution :** vérifiez que le chemin contient bien la configuration GRUB (et non un lien symbolique vers un autre emplacement) et évitez de changer le groupe/les permissions en même temps sauf intention contraire, afin de ne pas priver d'accès les outils qui le lisent légitimement."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

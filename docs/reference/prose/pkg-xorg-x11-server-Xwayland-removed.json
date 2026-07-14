@@ -1,0 +1,37 @@
+{
+  "id": "pkg-xorg-x11-server-Xwayland-removed",
+  "title": {
+    "en": "Remove the X Windows Xwayland Package",
+    "fr": "Supprimer le paquet X Windows Xwayland"
+  },
+  "summary": {
+    "en": "Ensures the X11 compatibility server `xorg-x11-server-Xwayland` is **not installed** on headless hosts.",
+    "fr": "Garantit que le serveur de compatibilité X11 `xorg-x11-server-Xwayland` n'est **pas installé** sur les hôtes sans interface graphique."
+  },
+  "rationale": {
+    "en": "Unnecessary service packages must not be installed in order to **decrease the attack surface** of the system. `Xwayland` is the X11 compatibility server that lets legacy X applications run under a Wayland session; it inherits the X Window System's long history of security vulnerabilities. Unless your organization specifically requires graphical access, remove it to reduce the potential attack surface.",
+    "fr": "Les paquets de service inutiles ne doivent pas être installés afin de **réduire la surface d'attaque** du système. `Xwayland` est le serveur de compatibilité X11 qui permet aux anciennes applications X de s'exécuter dans une session Wayland ; il hérite de la longue histoire de vulnérabilités du système X Window. Sauf si votre organisation exige spécifiquement un accès graphique, retirez-le pour réduire la surface d'attaque potentielle."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database via the InSpec `package('xorg-x11-server-Xwayland')` resource (`rpm -q`). Checking the package is decisive: with Wayland desktops, Xwayland is the only path left for X11 apps, so its absence proves there is no X11 surface even on a Wayland-based system.",
+    "fr": "Pavois interroge la base de paquets via la ressource InSpec `package('xorg-x11-server-Xwayland')` (`rpm -q`). Vérifier le paquet est décisif : avec les bureaux Wayland, Xwayland est le seul chemin restant pour les applications X11, son absence prouve donc qu'il n'y a aucune surface X11 même sur un système basé sur Wayland."
+  },
+  "verify": {
+    "en": "Run `rpm -q xorg-x11-server-Xwayland`. Expected output: `package xorg-x11-server-Xwayland is not installed`.",
+    "fr": "Exécutez `rpm -q xorg-x11-server-Xwayland`. Sortie attendue : `package xorg-x11-server-Xwayland is not installed`."
+  },
+  "logs": {
+    "en": "- Package state: `rpm -q xorg-x11-server-Xwayland`; removal recorded in `/var/log/dnf.rpm.log`.\n- Default boot target: `systemctl get-default` (should be `multi-user.target` on a headless host).",
+    "fr": "- État du paquet : `rpm -q xorg-x11-server-Xwayland` ; suppression enregistrée dans `/var/log/dnf.rpm.log`.\n- Cible de démarrage par défaut : `systemctl get-default` (devrait être `multi-user.target` sur un hôte sans interface)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource for `xorg-x11-server-Xwayland` with action `remove`, so `pavois harden apply` uninstalls it (`dnf remove xorg-x11-server-Xwayland`).",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` pour `xorg-x11-server-Xwayland` avec l'action `remove`, donc `pavois harden apply` le désinstalle (`dnf remove xorg-x11-server-Xwayland`)."
+  },
+  "impact": {
+    "en": "Removing Xwayland stops X11 (legacy) applications from running under a Wayland desktop and breaks X11 forwarding. **Before applying:** confirm the host is headless and that no admin runs X11-forwarded GUI tools, on a Wayland workstation, removing Xwayland will break any non-Wayland-native application. On a server this is harmless and desirable. No SSH lockout risk, as X11 is independent of the SSH login itself.",
+    "fr": "Retirer Xwayland empêche les applications X11 (héritées) de s'exécuter sous un bureau Wayland et casse le transfert X11. **Avant d'appliquer :** confirmez que l'hôte est sans interface et qu'aucun administrateur ne lance d'outils graphiques via transfert X11, sur un poste Wayland, retirer Xwayland cassera toute application non native Wayland. Sur un serveur c'est sans danger et souhaitable. Aucun risque de verrouillage SSH, car X11 est indépendant de la connexion SSH elle-même."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

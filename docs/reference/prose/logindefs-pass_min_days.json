@@ -1,0 +1,37 @@
+{
+  "id": "logindefs-pass_min_days",
+  "title": {
+    "en": "Set Password Minimum Age",
+    "fr": "Définir l'âge minimal des mots de passe"
+  },
+  "summary": {
+    "en": "Ensures `PASS_MIN_DAYS` in `/etc/login.defs` is at least **1**, blocking immediate repeated password changes.",
+    "fr": "Garantit que `PASS_MIN_DAYS` dans `/etc/login.defs` vaut au moins **1**, bloquant les changements de mot de passe répétés et immédiats."
+  },
+  "rationale": {
+    "en": "Enforcing a minimum password lifetime prevents users from rapidly cycling through password changes to defeat password-history/reuse controls. With `PASS_MIN_DAYS` of at least **1**, a user cannot change a password and immediately revert to a favorite one in the same session, preserving the integrity of the reuse policy.",
+    "fr": "Imposer une durée de vie minimale empêche les utilisateurs d'enchaîner rapidement les changements de mot de passe pour contourner les contrôles d'historique/réutilisation. Avec un `PASS_MIN_DAYS` d'au moins **1**, un utilisateur ne peut pas changer son mot de passe puis revenir immédiatement à un mot de passe favori dans la même session, préservant l'intégrité de la politique de réutilisation."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `login_defs` resource to read the **effective resolved value** of `PASS_MIN_DAYS`, parsing `/etc/login.defs` the way `useradd`/`chage` interpret it (last uncommented setting wins). This is the default for newly created accounts; per-user values in `/etc/shadow` can differ.",
+    "fr": "Pavois utilise la ressource InSpec `login_defs` pour lire la **valeur effective résolue** de `PASS_MIN_DAYS`, en analysant `/etc/login.defs` comme le font `useradd`/`chage` (la dernière valeur non commentée l'emporte). C'est le défaut pour les comptes nouvellement créés ; les valeurs par utilisateur dans `/etc/shadow` peuvent différer."
+  },
+  "verify": {
+    "en": "- `grep -i '^PASS_MIN_DAYS' /etc/login.defs` should print `PASS_MIN_DAYS 1` (or more).\n- Per existing account: `chage -l <user>` shows `Minimum number of days between password change`.",
+    "fr": "- `grep -i '^PASS_MIN_DAYS' /etc/login.defs` doit afficher `PASS_MIN_DAYS 1` (ou plus).\n- Par compte existant : `chage -l <user>` montre `Minimum number of days between password change`."
+  },
+  "logs": {
+    "en": "- `grep -i PASS_MIN_DAYS /etc/login.defs` shows the default.\n- `chage -l <user>` shows each account's effective minimum age.\n- `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL) record password change events via PAM.",
+    "fr": "- `grep -i PASS_MIN_DAYS /etc/login.defs` montre le défaut.\n- `chage -l <user>` montre l'âge minimal effectif de chaque compte.\n- `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL) enregistrent les changements de mot de passe via PAM."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied **manually**: set `PASS_MIN_DAYS 1` in `/etc/login.defs`. This governs **newly created** accounts; use `chage --mindays 1 <user>` to align existing accounts.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle, elle doit donc être appliquée **manuellement** : définissez `PASS_MIN_DAYS 1` dans `/etc/login.defs`. Cela régit les comptes **nouvellement créés** ; utilisez `chage --mindays 1 <user>` pour aligner les comptes existants."
+  },
+  "impact": {
+    "en": "Low risk. **Caution:** a non-zero minimum age means a user who must change their password (e.g. after a reset) cannot change it again until the delay elapses, set the new password correctly the first time. Keep `PASS_MIN_DAYS` well below `PASS_MAX_DAYS` so users always have a window to renew before expiry. For helpdesk-forced resets, clear the minimum temporarily with `chage --mindays 0 <user>`.",
+    "fr": "Risque faible. **Attention :** un âge minimal non nul signifie qu'un utilisateur devant changer son mot de passe (par exemple après une réinitialisation) ne pourra pas le rechanger avant la fin du délai, définissez correctement le nouveau mot de passe du premier coup. Gardez `PASS_MIN_DAYS` bien inférieur à `PASS_MAX_DAYS` pour que les utilisateurs aient toujours une fenêtre de renouvellement avant expiration. Pour les réinitialisations forcées par le support, annulez temporairement le minimum avec `chage --mindays 0 <user>`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

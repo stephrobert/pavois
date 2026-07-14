@@ -23,8 +23,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# the rule fiches and the handbook chapters: same problem, same honest source
-DIRS = ("site/src/content/rules", "site/src/content/handbook")
+# The AUTHORED sources, not the generated fiches: site/src/content/rules/ is rebuilt from scratch on
+# every build and has no history of its own. A page's dates are the history of the prose that IS the
+# page (docs/reference/prose/), and of the handbook chapter. tools/generate_rule_pages.py then
+# carries them into the fiche it emits.
+DIRS = ("docs/reference/prose", "site/src/content/handbook")
 
 
 def git_dates(rel: str) -> dict[str, tuple[str, str]]:
@@ -67,6 +70,10 @@ def main():
                 if not d.get("datePublished"):
                     missing += 1
                 continue
+            # datePublished is EDITORIAL data: when the page first went out. It is never rewritten
+            # (a file that has no git history yet is not a page that was published today, it is a
+            # page whose history has not been committed yet).
+            pub = d.get("datePublished") or pub
             if d.get("datePublished") != pub or d.get("dateModified") != mod:
                 d["datePublished"] = pub
                 d["dateModified"] = mod

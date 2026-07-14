@@ -1,0 +1,37 @@
+{
+  "id": "kconfig-module-sig-all",
+  "title": {
+    "en": "Enable automatic signing of all modules",
+    "fr": "Activer la signature automatique de tous les modules"
+  },
+  "summary": {
+    "en": "Requires the running kernel to be built with `CONFIG_MODULE_SIG_ALL=y` so that every module is automatically signed during the build/install process.",
+    "fr": "Exige que le noyau en cours d'exécution soit compilé avec `CONFIG_MODULE_SIG_ALL=y` afin que chaque module soit automatiquement signé lors de la compilation/installation."
+  },
+  "rationale": {
+    "en": "`CONFIG_MODULE_SIG_ALL=y` makes the kernel build process sign **every** module automatically during `make modules_install`. Without it, modules ship unsigned (or only some are signed), so enforcement (`CONFIG_MODULE_SIG_FORCE`) would reject legitimate modules and signature verification is effectively incomplete. Signing all modules at build time guarantees a consistent, fully verifiable module set and is what makes mandatory signing usable in practice.",
+    "fr": "`CONFIG_MODULE_SIG_ALL=y` fait que le processus de compilation du noyau signe **automatiquement** chaque module lors de `make modules_install`. Sans cela, les modules sont livrés non signés (ou seuls certains le sont), de sorte que l'application stricte (`CONFIG_MODULE_SIG_FORCE`) rejetterait des modules légitimes et la vérification de signature serait incomplète. Signer tous les modules à la compilation garantit un ensemble de modules cohérent et entièrement vérifiable, ce qui rend la signature obligatoire utilisable en pratique."
+  },
+  "check_note": {
+    "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)`, falling back to `/proc/config.gz` from the live kernel, so the answer reflects the kernel actually booted. Pavois expects `CONFIG_MODULE_SIG_ALL=y`.",
+    "fr": "Pavois lit la configuration de compilation du noyau **en cours d'exécution** via `/boot/config-$(uname -r)`, avec repli sur `/proc/config.gz` du noyau actif, de sorte que la réponse reflète le noyau réellement démarré. Pavois attend `CONFIG_MODULE_SIG_ALL=y`."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_MODULE_SIG_ALL=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep '^CONFIG_MODULE_SIG_ALL='`). Expected output: `CONFIG_MODULE_SIG_ALL=y`.",
+    "fr": "Exécutez `grep '^CONFIG_MODULE_SIG_ALL=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep '^CONFIG_MODULE_SIG_ALL='`). Sortie attendue : `CONFIG_MODULE_SIG_ALL=y`."
+  },
+  "logs": {
+    "en": "Inspect individual modules with `modinfo <module>`, a signed module reports `sig_id`, `signer` and `sig_key` fields. `dmesg | grep -i module` and `journalctl -k` reveal load-time signature warnings or rejections.",
+    "fr": "Inspectez chaque module avec `modinfo <module>`, un module signé affiche les champs `sig_id`, `signer` et `sig_key`. `dmesg | grep -i module` et `journalctl -k` révèlent les avertissements ou rejets de signature au chargement."
+  },
+  "remediation_note": {
+    "en": "No automated remediation: `CONFIG_MODULE_SIG_ALL` is a **kernel build-time option** decided when the kernel is compiled. It cannot be set at runtime. Use a distribution kernel that signs all its modules, or rebuild the kernel with this option. Apply manually; `pavois harden apply` cannot change a compiled-in setting.",
+    "fr": "Aucune remédiation automatique : `CONFIG_MODULE_SIG_ALL` est une **option de compilation du noyau** décidée lors de la construction. Elle ne peut pas être définie à l'exécution. Utilisez un noyau de distribution qui signe tous ses modules, ou recompilez le noyau avec cette option. À appliquer manuellement ; `pavois harden apply` ne peut pas modifier un paramètre compilé en dur."
+  },
+  "impact": {
+    "en": "If not all modules are signed, enabling enforcement would reject legitimate kernel modules and could break drivers or even prevent boot. Conversely, leaving it off undermines mandatory module signing. There is no runtime risk to the check itself; the precaution applies to the broader signing chain: when moving to enforced signing, confirm every in-use module is signed (`modinfo` shows signature fields) before enabling `CONFIG_MODULE_SIG_FORCE`, and keep recovery/console access.",
+    "fr": "Si tous les modules ne sont pas signés, activer l'application stricte rejetterait des modules noyau légitimes et pourrait casser des pilotes ou même empêcher le démarrage. À l'inverse, le laisser désactivé fragilise la signature obligatoire des modules. Le contrôle lui-même ne présente pas de risque à l'exécution ; la précaution concerne la chaîne de signature globale : avant de passer à la signature imposée, confirmez que chaque module utilisé est signé (`modinfo` montre les champs de signature) avant d'activer `CONFIG_MODULE_SIG_FORCE`, et conservez un accès récupération/console."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

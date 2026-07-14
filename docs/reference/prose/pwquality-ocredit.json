@@ -1,0 +1,37 @@
+{
+  "id": "pwquality-ocredit",
+  "title": {
+    "en": "Ensure PAM Enforces Password Requirements - Minimum Special Characters",
+    "fr": "Garantir que PAM impose des exigences de mot de passe - Minimum de caracteres speciaux"
+  },
+  "summary": {
+    "en": "Forces `pam_pwquality` to require at least one special (\"other\") character in every new password by setting `ocredit = -1`.",
+    "fr": "Force `pam_pwquality` a exiger au moins un caractere special (\"autre\") dans chaque nouveau mot de passe en posant `ocredit = -1`."
+  },
+  "rationale": {
+    "en": "A complex password increases the time and resources needed to compromise it. The `ocredit` parameter controls how special characters (punctuation, symbols) count toward strength: a value of `-1` makes **at least one special character mandatory**. Special characters dramatically enlarge the per-position search space, making brute-force and dictionary attacks much costlier. Without it, passwords limited to letters and digits fall far faster.",
+    "fr": "Un mot de passe complexe augmente le temps et les ressources necessaires pour le compromettre. Le parametre `ocredit` controle la contribution des caracteres speciaux (ponctuation, symboles) a la robustesse : une valeur de `-1` rend **au moins un caractere special obligatoire**. Les caracteres speciaux elargissent fortement l'espace de recherche par position, rendant les attaques par force brute et par dictionnaire bien plus couteuses. Sans cela, les mots de passe limites aux lettres et chiffres cedent bien plus vite."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** `ocredit` value across `/etc/security/pwquality.conf` **and** all drop-ins under `/etc/security/pwquality.conf.d/`, keeping the **last** definition that wins at runtime. A scanner reading only the main file would miss an override placed in a drop-in. The control passes only when the resolved value is `<= -1`.",
+    "fr": "Pavois lit la valeur **effective** de `ocredit` a travers `/etc/security/pwquality.conf` **et** tous les drop-ins sous `/etc/security/pwquality.conf.d/`, en conservant la **derniere** definition qui l'emporte a l'execution. Un scanner lisant uniquement le fichier principal manquerait une surcharge placee dans un drop-in. Le controle passe uniquement quand la valeur resolue est `<= -1`."
+  },
+  "verify": {
+    "en": "Run `grep -rh '^[[:space:]]*ocredit' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. The effective line must read `ocredit = -1` (or any value `<= -1`).",
+    "fr": "Executez `grep -rh '^[[:space:]]*ocredit' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. La ligne effective doit indiquer `ocredit = -1` (ou toute valeur `<= -1`)."
+  },
+  "logs": {
+    "en": "Password changes rejected for lacking a special character are logged via PAM in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL family) with `pam_pwquality` messages. Inspect the live setting with `grep -r ocredit /etc/security/pwquality.conf.d/`.",
+    "fr": "Les changements de mot de passe rejetes faute de caractere special sont journalises via PAM dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL) avec des messages `pam_pwquality`. Inspectez le reglage actif avec `grep -r ocredit /etc/security/pwquality.conf.d/`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` writes `ocredit = -1` to the drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via the idempotent `keyval` resource. The `99-` prefix ensures it overrides any earlier value. No service restart is needed; it applies at the next password change.",
+    "fr": "`pavois harden apply` ecrit `ocredit = -1` dans le drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via la ressource idempotente `keyval`. Le prefixe `99-` garantit qu'il surcharge toute valeur anterieure. Aucun redemarrage n'est requis ; cela s'applique au prochain changement de mot de passe."
+  },
+  "impact": {
+    "en": "Existing passwords remain valid; only **new** passwords must include a special character. Users choosing alphanumeric-only passwords will be rejected. Lockout risk is low, but ensure automated provisioning and rotation tooling emit passwords with at least one symbol before applying, and note that some legacy systems restrict the symbol set in shared credentials.",
+    "fr": "Les mots de passe existants restent valides ; seuls les **nouveaux** mots de passe doivent inclure un caractere special. Les utilisateurs choisissant des mots de passe purement alphanumeriques seront rejetes. Le risque de blocage est faible, mais assurez-vous que vos outils de provisionnement et de rotation produisent des mots de passe avec au moins un symbole avant d'appliquer, et notez que certains systemes anciens restreignent le jeu de symboles dans les identifiants partages."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

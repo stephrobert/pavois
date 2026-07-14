@@ -1,0 +1,37 @@
+{
+  "id": "pkg-audit-libs-installed",
+  "title": {
+    "en": "Ensure the audit-libs package as a part of audit Subsystem is installed",
+    "fr": "Garantir l'installation du paquet audit-libs, composant du sous-systeme d'audit"
+  },
+  "summary": {
+    "en": "Ensures the **audit-libs** package (the shared libraries that `auditd` and its tools link against) is installed.",
+    "fr": "Garantit que le paquet **audit-libs** (les bibliotheques partagees auxquelles `auditd` et ses outils se lient) est installe."
+  },
+  "rationale": {
+    "en": "**audit-libs** provides `libaudit`, the runtime library every audit component depends on (`auditctl`, `ausearch`, PAM's `pam_tty_audit`, etc.). If it is missing, the audit subsystem cannot function and PAM modules that link it may fail, leaving the host without a working security audit trail, contrary to CIS 6.3.1.1.",
+    "fr": "**audit-libs** fournit `libaudit`, la bibliotheque d'execution dont depend chaque composant d'audit (`auditctl`, `ausearch`, le module PAM `pam_tty_audit`, etc.). Si elle manque, le sous-systeme d'audit ne peut fonctionner et les modules PAM qui s'y lient peuvent echouer, laissant l'hote sans piste d'audit de securite operationnelle, contrairement a CIS 6.3.1.1."
+  },
+  "check_note": {
+    "en": "Pavois asks the package database (via `dpkg`/`rpm`) whether `audit-libs` is installed using the InSpec `package` resource. Checking the **effective package state** confirms the dependency is actually present rather than assumed from `auditd` being installed.",
+    "fr": "Pavois interroge la base de paquets (via `dpkg`/`rpm`) pour savoir si `audit-libs` est installe via la ressource InSpec `package`. Verifier l'**etat effectif des paquets** confirme la presence reelle de la dependance plutot que de la deduire de l'installation d'`auditd`."
+  },
+  "verify": {
+    "en": "Run `rpm -q audit-libs` (RHEL-family) or `dpkg -s libaudit1` (Debian/Ubuntu, where the library ships as `libaudit1`), expected the package present.",
+    "fr": "Executez `rpm -q audit-libs` (famille RHEL) ou `dpkg -s libaudit1` (Debian/Ubuntu, ou la bibliotheque est livree sous `libaudit1`), attendu : paquet present."
+  },
+  "logs": {
+    "en": "- `rpm -q audit-libs` / `dpkg -l libaudit1` confirm installation.\n- The library itself produces no logs, but failures to load it surface when audit tools run; audit activity itself is in `/var/log/audit/audit.log`.",
+    "fr": "- `rpm -q audit-libs` / `dpkg -l libaudit1` confirment l'installation.\n- La bibliotheque elle-meme ne produit pas de journaux, mais les echecs de chargement apparaissent a l'execution des outils d'audit ; l'activite d'audit est dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan installs the `audit-libs` package (`package` resource, `install` action) with `pavois harden apply`. It is normally pulled in automatically as a dependency of the `audit` package.",
+    "fr": "Le plan de durcissement de Pavois installe le paquet `audit-libs` (ressource `package`, action `install`) avec `pavois harden apply`. Il est normalement installe automatiquement comme dependance du paquet `audit`."
+  },
+  "impact": {
+    "en": "Installing a shared library is low-risk and non-disruptive. Removing it, by contrast, would break `auditd`, audit CLI tools and any PAM stack using `pam_tty_audit`, so never uninstall it on its own.",
+    "fr": "Installer une bibliotheque partagee presente peu de risque et est non perturbateur. La supprimer, en revanche, casserait `auditd`, les outils CLI d'audit et toute pile PAM utilisant `pam_tty_audit` ; ne la desinstallez donc jamais isolement."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

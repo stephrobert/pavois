@@ -1,0 +1,37 @@
+{
+  "id": "pkg-xinetd-removed",
+  "title": {
+    "en": "Uninstall xinetd package if not used by network services",
+    "fr": "Désinstaller le paquet xinetd s'il n'est pas utilisé par des services réseau"
+  },
+  "summary": {
+    "en": "Ensures the legacy `xinetd` super-server package is **not installed** when no service requires it.",
+    "fr": "Garantit que le paquet super-serveur historique `xinetd` n'est **pas installé** lorsqu'aucun service ne l'exige."
+  },
+  "rationale": {
+    "en": "`xinetd` is a legacy **super-server** that listens on ports and launches network daemons on demand. It is largely obsolete, replaced by `systemd` socket activation, and is mostly used today to wrap old, insecure services (telnet, rsh, tftp). Keeping it installed decreases nothing and increases the risk of accidentally or intentionally exposing those legacy services. Removing the package eliminates that risk and shrinks the attack surface.",
+    "fr": "`xinetd` est un **super-serveur** historique qui écoute sur des ports et lance des démons réseau à la demande. Il est largement obsolète, remplacé par l'activation par socket de `systemd`, et sert aujourd'hui surtout à encapsuler de vieux services non sécurisés (telnet, rsh, tftp). Le garder installé n'apporte rien et augmente le risque d'exposer accidentellement ou intentionnellement ces services hérités. Retirer le paquet élimine ce risque et réduit la surface d'attaque."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database via the InSpec `package('xinetd')` resource (`rpm -q` / `dpkg -s`). Checking the package guarantees the super-server cannot be reactivated to launch wrapped legacy daemons; if the package is gone, no `xinetd`-managed service can be brought up.",
+    "fr": "Pavois interroge la base de paquets via la ressource InSpec `package('xinetd')` (`rpm -q` / `dpkg -s`). Vérifier le paquet garantit que le super-serveur ne peut pas être réactivé pour lancer des démons hérités encapsulés ; si le paquet est absent, aucun service géré par `xinetd` ne peut être démarré."
+  },
+  "verify": {
+    "en": "On RHEL-family: `rpm -q xinetd` → `package xinetd is not installed`. On Debian/Ubuntu: `dpkg -s xinetd` → `dpkg-query: package 'xinetd' is not installed`.",
+    "fr": "Sur famille RHEL : `rpm -q xinetd` → `package xinetd is not installed`. Sur Debian/Ubuntu : `dpkg -s xinetd` → `dpkg-query: package 'xinetd' is not installed`."
+  },
+  "logs": {
+    "en": "- Package state: `rpm -q xinetd` / `dpkg -s xinetd`; removal in `/var/log/dnf.rpm.log` or `/var/log/dpkg.log`.\n- Past super-server activity (before removal): `journalctl -u xinetd`.",
+    "fr": "- État du paquet : `rpm -q xinetd` / `dpkg -s xinetd` ; suppression dans `/var/log/dnf.rpm.log` ou `/var/log/dpkg.log`.\n- Activité passée du super-serveur (avant suppression) : `journalctl -u xinetd`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource for `xinetd` with action `remove`, so `pavois harden apply` uninstalls it (`dnf remove xinetd` / `apt-get purge xinetd`). Removing the package also removes the `xinetd` unit, so no restart is needed.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` pour `xinetd` avec l'action `remove`, donc `pavois harden apply` le désinstalle (`dnf remove xinetd` / `apt-get purge xinetd`). Retirer le paquet supprime aussi l'unité `xinetd`, aucun redémarrage n'est donc nécessaire."
+  },
+  "impact": {
+    "en": "If `xinetd` stays installed, any legacy service configured under `/etc/xinetd.d/` can be (re)exposed on the network. **Before applying:** as the title warns, confirm no service is actually launched by xinetd, inspect `/etc/xinetd.d/` for enabled entries and `ss -lntp` for ports xinetd is bound to. If a needed service still relies on it, migrate it to a native systemd unit or socket activation first, then remove the package. Removal does not affect SSH, so there is no remote-management lockout risk.",
+    "fr": "Si `xinetd` reste installé, tout service hérité configuré sous `/etc/xinetd.d/` peut être (ré)exposé sur le réseau. **Avant d'appliquer :** comme l'indique le titre, vérifiez qu'aucun service n'est réellement lancé par xinetd, inspectez `/etc/xinetd.d/` pour les entrées activées et `ss -lntp` pour les ports auxquels xinetd est lié. Si un service nécessaire en dépend encore, migrez-le d'abord vers une unité systemd native ou l'activation par socket, puis retirez le paquet. La suppression n'affecte pas SSH, il n'y a donc aucun risque de verrouillage de l'administration à distance."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

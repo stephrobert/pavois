@@ -1,0 +1,37 @@
+{
+  "id": "filegroupownerships-var-log-apt",
+  "title": {
+    "en": "Verify Groupownership of Files in /var/log/apt",
+    "fr": "Verifier le groupe proprietaire des fichiers dans /var/log/apt"
+  },
+  "summary": {
+    "en": "Ensures the `/var/log/apt` directory is group-owned by `adm` so package-manager logs are readable only by log-privileged accounts.",
+    "fr": "Garantit que le repertoire `/var/log/apt` appartient au groupe `adm` afin que les journaux du gestionnaire de paquets ne soient lisibles que par les comptes habilites aux journaux."
+  },
+  "rationale": {
+    "en": "The `/var/log/apt` directory holds the package-manager logs (installs, upgrades, removals). These records reveal exactly which software and versions are present on the host, information an attacker can use to target known vulnerabilities. Restricting the directory to the `adm` group keeps this inventory away from ordinary users.",
+    "fr": "Le repertoire `/var/log/apt` contient les journaux du gestionnaire de paquets (installations, mises a jour, suppressions). Ces enregistrements revelent exactement quels logiciels et quelles versions sont presents sur l'hote, une information qu'un attaquant peut exploiter pour cibler des vulnerabilites connues. Restreindre le repertoire au groupe `adm` garde cet inventaire hors de portee des utilisateurs ordinaires."
+  },
+  "check_note": {
+    "en": "Pavois reads the **resolved** group ownership of `/var/log/apt` via the InSpec `file` resource and asserts the group is `adm`. It checks the live inode metadata, not a packaging default or a config snippet, so it reflects the directory's actual state on disk at audit time.",
+    "fr": "Pavois lit l'appartenance de groupe **resolue** de `/var/log/apt` via la ressource InSpec `file` et verifie que le groupe est `adm`. Il inspecte les metadonnees reelles de l'inode, et non une valeur par defaut de paquet ou un fragment de configuration, ce qui reflete l'etat effectif du repertoire sur le disque au moment de l'audit."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G' /var/log/apt`. The expected output is:\n\n- `adm`\n\nYou can inspect the whole tree with `ls -ld /var/log/apt` and `find /var/log/apt -printf '%g %p\\n'`.",
+    "fr": "Executez `stat -c '%G' /var/log/apt`. La sortie attendue est :\n\n- `adm`\n\nVous pouvez inspecter toute l'arborescence avec `ls -ld /var/log/apt` et `find /var/log/apt -printf '%g %p\\n'`."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by APT itself. To audit them, check `dpkg.log` context with `dpkg -V`, or add an auditd watch (`auditctl -w /var/log/apt -p wa -k logperms`) and inspect `/var/log/audit/audit.log` for `key=\"logperms\"`.",
+    "fr": "Les changements de proprietaire ne sont pas journalises par APT lui-meme. Pour les auditer, examinez le contexte de `dpkg.log` avec `dpkg -V`, ou ajoutez une surveillance auditd (`auditctl -w /var/log/apt -p wa -k logperms`) et inspectez `/var/log/audit/audit.log` pour `key=\"logperms\"`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan applies the `file` resource to set the **group** of `/var/log/apt` to `adm`. It is applied with `pavois harden apply` and leaves the owner and permission bits untouched.",
+    "fr": "Le plan de durcissement de Pavois applique la ressource `file` pour definir le **groupe** de `/var/log/apt` sur `adm`. Il s'applique avec `pavois harden apply` et laisse inchanges le proprietaire et les bits de permission."
+  },
+  "impact": {
+    "en": "Misconfiguration leaks the host's software inventory to unprivileged users, aiding reconnaissance. The change is low-risk: only group ownership is altered, and `adm` is the standard log group on Debian/Ubuntu. **Precaution:** if a custom log shipper or monitoring agent reads APT logs under a different group, add it to `adm` or grant it access before applying, so log collection is not interrupted.",
+    "fr": "Une mauvaise configuration expose l'inventaire logiciel de l'hote aux utilisateurs non privilegies, facilitant la reconnaissance. Le changement est peu risque : seul le groupe proprietaire est modifie, et `adm` est le groupe de journaux standard sur Debian/Ubuntu. **Precaution :** si un collecteur de journaux ou un agent de supervision lit les journaux APT sous un autre groupe, ajoutez-le a `adm` ou accordez-lui l'acces avant d'appliquer, afin de ne pas interrompre la collecte des journaux."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

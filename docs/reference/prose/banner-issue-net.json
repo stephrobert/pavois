@@ -1,0 +1,37 @@
+{
+  "id": "banner-issue-net",
+  "title": {
+    "en": "Ensure Remote Login Warning Banner Is Configured Properly",
+    "fr": "S'assurer que la banniere d'avertissement de connexion distante est correctement configuree"
+  },
+  "summary": {
+    "en": "Sets `/etc/issue.net` (the banner offered to **remote** logins, e.g. SSH via `Banner`) to a legal warning containing **no OS/version escape sequences** (`\\s`, `\\m`, `\\r`, `\\v`, `\\l`).",
+    "fr": "Definit `/etc/issue.net` (la banniere proposee aux connexions **distantes**, p. ex. SSH via `Banner`) sur un avertissement legal ne contenant **aucune sequence d'echappement** revelant l'OS ou la version (`\\s`, `\\m`, `\\r`, `\\v`, `\\l`)."
+  },
+  "rationale": {
+    "en": "The remote banner must state the **legal status** of access, name the owning organisation and reference monitoring, wording often required to prosecute unauthorised remote access. Crucially, `/etc/issue.net` is exposed **over the network before authentication**, so any `\\s`/`\\r`/`\\m` escape leaks the OS, kernel and architecture to unauthenticated attackers, handing them a free fingerprint to select exploits. Legitimate users can read these details with `uname -a` after login.",
+    "fr": "La banniere distante doit enoncer le **statut legal** de l'acces, nommer l'organisation proprietaire et mentionner la surveillance, formulation souvent necessaire pour poursuivre un acces distant non autorise. Surtout, `/etc/issue.net` est expose **sur le reseau avant authentification** ; ainsi tout echappement `\\s`/`\\r`/`\\m` divulgue l'OS, le noyau et l'architecture a des attaquants non authentifies, leur offrant une empreinte gratuite pour choisir leurs exploits. Les utilisateurs legitimes peuvent lire ces details via `uname -a` apres connexion."
+  },
+  "check_note": {
+    "en": "Pavois reads `/etc/issue.net` and asserts it is **non-empty** and **free of `\\[smrvlSMRVL]` escapes**. Note: the banner only reaches SSH clients if `sshd -T` reports `banner /etc/issue.net`; this rule checks the file content, while the SSH `Banner` directive is covered by its own effective-config control. Reading the file is correct here because it is the literal text served.",
+    "fr": "Pavois lit `/etc/issue.net` et verifie qu'il est **non vide** et **exempt des echappements `\\[smrvlSMRVL]`**. Remarque : la banniere n'atteint les clients SSH que si `sshd -T` indique `banner /etc/issue.net` ; cette regle verifie le contenu du fichier, tandis que la directive SSH `Banner` releve de son propre controle de config effective. Lire le fichier est correct ici car c'est le texte litteral servi."
+  },
+  "verify": {
+    "en": "Run `cat /etc/issue.net` (no escapes, clear notice). Confirm it is actually served remotely with `sshd -T | grep -i banner` (expect `banner /etc/issue.net`), then `ssh -o PreferredAuthentications=none user@host` should print the banner.",
+    "fr": "Executez `cat /etc/issue.net` (aucun echappement, avis clair). Confirmez qu'elle est reellement servie a distance avec `sshd -T | grep -i banner` (attendu `banner /etc/issue.net`), puis `ssh -o PreferredAuthentications=none user@host` doit afficher la banniere."
+  },
+  "logs": {
+    "en": "No dedicated log; the banner is a display artifact. Remote login attempts are visible in `/var/log/auth.log` (Debian/Ubuntu) or `journalctl -u ssh` / `journalctl -u sshd`. Ownership/mode: `stat /etc/issue.net` (expect `root:root`, `0644`).",
+    "fr": "Aucun journal dedie ; la banniere est un element d'affichage. Les tentatives de connexion distante sont visibles dans `/var/log/auth.log` (Debian/Ubuntu) ou via `journalctl -u ssh` / `journalctl -u sshd`. Propriete/mode : `stat /etc/issue.net` (attendu `root:root`, `0644`)."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` writes `/etc/issue.net` with a neutral authorized-access notice, owner `root:root`, mode `0644`, and **no dynamic escapes**. No reboot needed; if SSH is configured with `Banner /etc/issue.net` the new text is served on the next connection without an sshd restart.",
+    "fr": "`pavois harden apply` ecrit `/etc/issue.net` avec un avis d'acces autorise neutre, proprietaire `root:root`, mode `0644`, et **aucun echappement dynamique**. Aucun redemarrage requis ; si SSH est configure avec `Banner /etc/issue.net`, le nouveau texte est servi a la connexion suivante sans redemarrage de sshd."
+  },
+  "impact": {
+    "en": "Safe and cosmetic, it only changes the pre-auth banner text. **Precautions:** the banner is shown to anyone reaching the SSH port; keep wording generic and free of `\\` escapes. The file only has effect if `sshd_config` sets `Banner /etc/issue.net`, without it the banner is never sent. Watch for provisioning tools that regenerate `/etc/issue.net` on boot and may revert this.",
+    "fr": "Sans risque et cosmetique, cela ne change que le texte de la banniere pre-authentification. **Precautions :** la banniere est montree a quiconque atteint le port SSH ; gardez un texte generique et exempt d'echappements `\\`. Le fichier n'a d'effet que si `sshd_config` definit `Banner /etc/issue.net` ; sans cela la banniere n'est jamais envoyee. Mefiez-vous des outils de provisionnement qui regenerent `/etc/issue.net` au demarrage et peuvent l'annuler."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

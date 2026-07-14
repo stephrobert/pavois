@@ -1,0 +1,37 @@
+{
+  "id": "dconf-gnome-disable-automount-open",
+  "title": {
+    "en": "Disable GNOME3 Automount Opening",
+    "fr": "Désactiver l'ouverture automatique des supports montés GNOME3"
+  },
+  "summary": {
+    "en": "Prevents GNOME from automatically opening a file-manager window for inserted media by setting `automount-open=false` and locking the key.",
+    "fr": "Empêche GNOME d'ouvrir automatiquement une fenêtre du gestionnaire de fichiers pour les supports insérés en définissant `automount-open=false` et en verrouillant la clé."
+  },
+  "rationale": {
+    "en": "Beyond auto-mounting, GNOME can automatically **open** a file-manager window for newly inserted media, which triggers thumbnailers and previewers that parse untrusted file content. This widens the attack surface for malicious removable devices. Setting `automount-open=false` and locking it forces the user to open media deliberately. The trade-off is reduced convenience for legitimate removable-media use.",
+    "fr": "Au-delà du montage automatique, GNOME peut **ouvrir** automatiquement une fenêtre du gestionnaire de fichiers pour les supports nouvellement insérés, ce qui déclenche les générateurs de vignettes et les prévisualiseurs qui analysent du contenu non fiable. Cela élargit la surface d'attaque des périphériques amovibles malveillants. Définir `automount-open=false` et le verrouiller impose à l'utilisateur d'ouvrir les supports délibérément. En contrepartie, l'usage légitime des supports amovibles est moins pratique."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective** dconf state: the last definition of `automount-open` across `/etc/dconf/db/*.d/*` must resolve to `false`, **and** the key `/org/gnome/desktop/media-handling/automount-open` must appear in a dconf **lock** file. Evaluating resolved precedence (last drop-in wins) plus the lock matches how dconf computes the real value, so a later drop-in re-enabling auto-open or unlocking the key is flagged.",
+    "fr": "Pavois vérifie l'état dconf **effectif** : la dernière définition de `automount-open` parmi `/etc/dconf/db/*.d/*` doit valoir `false`, **et** la clé `/org/gnome/desktop/media-handling/automount-open` doit figurer dans un fichier de **verrou** dconf. Évaluer la précédence résolue (le dernier drop-in l'emporte) plus le verrou correspond à la façon dont dconf calcule la valeur réelle, de sorte qu'un drop-in ultérieur réactivant l'ouverture automatique ou déverrouillant la clé est signalé."
+  },
+  "verify": {
+    "en": "After `dconf update`, run `gsettings get org.gnome.desktop.media-handling automount-open` (should print `false`) and confirm the key is locked by checking `/etc/dconf/db/*/locks/*` for `/org/gnome/desktop/media-handling/automount-open`.",
+    "fr": "Après `dconf update`, exécutez `gsettings get org.gnome.desktop.media-handling automount-open` (doit afficher `false`) et confirmez que la clé est verrouillée en cherchant `/org/gnome/desktop/media-handling/automount-open` dans `/etc/dconf/db/*/locks/*`."
+  },
+  "logs": {
+    "en": "dconf has no runtime log; verify with `gsettings get org.gnome.desktop.media-handling automount-open` and inspect `/etc/dconf/db/*.d/*` and `/etc/dconf/db/*/locks/*`. Media-insertion handling can be observed with `journalctl -u udisks2` or `journalctl -f` while plugging in a device.",
+    "fr": "dconf n'a pas de journal à l'exécution ; vérifiez avec `gsettings get org.gnome.desktop.media-handling automount-open` et inspectez `/etc/dconf/db/*.d/*` et `/etc/dconf/db/*/locks/*`. La gestion de l'insertion de supports s'observe avec `journalctl -u udisks2` ou `journalctl -f` lors du branchement d'un périphérique."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `dconf` resource to write `automount-open=false` into a system dconf profile drop-in, add `/org/gnome/desktop/media-handling/automount-open` to a `locks` file, and run `dconf update`. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `dconf` pour écrire `automount-open=false` dans un drop-in de profil dconf système, ajouter `/org/gnome/desktop/media-handling/automount-open` à un fichier `locks`, et exécuter `dconf update`. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Applies only to GNOME desktops; irrelevant on headless servers. After applying, inserted media no longer pops open a file-manager window, users open it manually. This is best combined with `automount=false` and `autorun-never`. Precaution: inform desktop users who expect media to open automatically. No reboot is required; `dconf update` is sufficient.",
+    "fr": "Ne s'applique qu'aux bureaux GNOME ; sans objet sur les serveurs sans interface graphique. Après application, un support inséré n'ouvre plus de fenêtre du gestionnaire de fichiers, les utilisateurs l'ouvrent manuellement. À combiner idéalement avec `automount=false` et `autorun-never`. Précaution : informez les utilisateurs de bureau qui s'attendent à l'ouverture automatique des supports. Aucun redémarrage n'est requis ; `dconf update` suffit."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

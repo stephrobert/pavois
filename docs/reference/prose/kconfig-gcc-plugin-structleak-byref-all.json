@@ -1,0 +1,37 @@
+{
+  "id": "kconfig-gcc-plugin-structleak-byref-all",
+  "title": {
+    "en": "zero-init everything passed by reference",
+    "fr": "Initialiser à zéro tout ce qui est passé par référence"
+  },
+  "summary": {
+    "en": "Requires the kernel to be built with `CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL=y`, the strongest structleak mode, which zero-initializes every local variable whose address is taken.",
+    "fr": "Exige que le noyau soit compilé avec `CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL=y`, le mode structleak le plus strict, qui initialise à zéro toute variable locale dont l'adresse est prise."
+  },
+  "rationale": {
+    "en": "This eliminates all classes of uninitialized stack variable exploits and information exposures.",
+    "fr": "Cela élimine toutes les classes d'exploits par variables de pile non initialisées et d'expositions d'informations."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** build flag of the running kernel via `/boot/config-$(uname -r)` or `/proc/config.gz`, keyed on `$(uname -r)`, so it reflects the booted image rather than a stray `.config` a fixed-path file scan might match.",
+    "fr": "Pavois lit le drapeau de compilation **effectif** du noyau en cours d'exécution via `/boot/config-$(uname -r)` ou `/proc/config.gz`, indexé sur `$(uname -r)` : il reflète l'image démarrée plutôt qu'un `.config` égaré qu'un scan à chemin fixe pourrait capter."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep '^CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL='`). Expected output: `CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL=y`. Absent or `# ... is not set` is a failure.",
+    "fr": "Exécutez `grep '^CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep '^CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL='`). Sortie attendue : `CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL=y`. Absente ou `# ... is not set` est un échec."
+  },
+  "logs": {
+    "en": "This plugin is a compile-time transformation with no dedicated runtime log; its effect is the absence of info leaks. Confirm the flag with `zcat /proc/config.gz | grep STRUCTLEAK_BYREF_ALL`.",
+    "fr": "Ce plugin est une transformation à la compilation sans journal d'exécution dédié ; son effet est l'absence de fuites d'information. Confirmez le drapeau avec `zcat /proc/config.gz | grep STRUCTLEAK_BYREF_ALL`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped: a kernel build option cannot be set by editing a file. Apply it **manually** by installing and booting a kernel compiled with `CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL=y`.",
+    "fr": "Aucune remédiation automatisée n'est fournie : une option de compilation du noyau ne se règle pas en éditant un fichier. Appliquez-la **manuellement** en installant et démarrant un noyau compilé avec `CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL=y`."
+  },
+  "impact": {
+    "en": "A local kernel variable that is **passed by reference** to another function before being fully written can leak the **uninitialized stack contents** that occupied that memory, leftover pointers or secrets, to userspace or to an attacker-controlled path. The `BYREF_ALL` structleak mode zero-initializes **every** such by-reference local (not just aggregate structs), closing essentially the whole class of uninitialized-stack information exposures at the cost of more zeroing than the basic mode. Without it, a subset of these leaks remains exploitable. This is a **build-time** option needing GCC plugin support, set only by booting a kernel compiled with it. **Precautions:** it adds more runtime overhead than plain `STRUCTLEAK` because it zeroes more variables; switching to a hardened kernel changes module ABI, so validate driver loading and benchmark hot paths off production. No reboot risk beyond a normal kernel swap.",
+    "fr": "Une variable locale du noyau **passée par référence** à une autre fonction avant d'être entièrement écrite peut divulguer le **contenu non initialisé de la pile** qui occupait cette mémoire, pointeurs ou secrets résiduels, vers l'espace utilisateur ou un chemin contrôlé par l'attaquant. Le mode structleak `BYREF_ALL` initialise à zéro **chaque** locale ainsi passée par référence (pas seulement les structures agrégées), fermant pratiquement toute la classe des expositions d'informations par pile non initialisée, au prix de davantage d'initialisations que le mode de base. Sans lui, un sous-ensemble de ces fuites reste exploitable. C'est une option **à la compilation** nécessitant le support des plugins GCC, posée uniquement en démarrant un noyau compilé avec. **Précautions :** elle ajoute plus de surcoût à l'exécution que `STRUCTLEAK` simple car elle initialise plus de variables ; passer à un noyau durci change l'ABI des modules, donc vérifiez le chargement des pilotes et mesurez les chemins critiques hors production. Aucun risque de redémarrage au-delà d'un échange de noyau classique."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,33 @@
+{
+  "id": "growth-journal-bounded",
+  "title": {
+    "en": "The systemd journal is bounded (SystemMaxUse)",
+    "fr": "Le journal systemd est borné (SystemMaxUse)"
+  },
+  "summary": {
+    "en": "Set an explicit ceiling on the systemd journal (`SystemMaxUse`) so `/var/log/journal` can never fill its filesystem. This is a **pavois-native** control from the `growth-*` family: any filesystem pavois carves out must carry a mechanism that stops it from filling. The check asserts the **rotation policy**, never the free space of the day, because free space is a snapshot while a bound is a guarantee.",
+    "fr": "Impose un plafond explicite au journal systemd (`SystemMaxUse`) pour que `/var/log/journal` ne puisse jamais saturer son système de fichiers. Contrôle **natif pavois** de la famille `growth-*` : tout système de fichiers que pavois découpe doit porter un mécanisme qui l'empêche de se remplir. Le contrôle vérifie la **politique de rotation**, jamais l'espace libre du jour, car l'espace libre est un instantané là où une borne est une garantie."
+  },
+  "check_note": {
+    "en": "Pavois runs `systemd-analyze cat-config systemd/journald.conf` and keeps the **last** `SystemMaxUse=` line, which is the **effective** value: that command merges the vendor file, `/etc/systemd/journald.conf` and every drop-in under `journald.conf.d/`, in systemd's own precedence order. Grepping `/etc/systemd/journald.conf` alone would miss a drop-in that overrides (or removes) the bound, and would report compliant on a journal that is in fact unbounded. Any non-empty size value (`1G`, `500M`, ...) passes: the control demands that a ceiling **exists**, and does not dictate its size.",
+    "fr": "Pavois exécute `systemd-analyze cat-config systemd/journald.conf` et retient la **dernière** ligne `SystemMaxUse=`, c'est-à-dire la valeur **effective** : cette commande fusionne le fichier fournisseur, `/etc/systemd/journald.conf` et tous les drop-ins de `journald.conf.d/`, dans l'ordre de précédence de systemd. Lire seulement `/etc/systemd/journald.conf` manquerait un drop-in qui surcharge (ou supprime) la borne, et déclarerait conforme un journal en réalité non borné. Toute valeur de taille non vide (`1G`, `500M`, etc.) passe : le contrôle exige qu'un plafond **existe**, il n'en impose pas la taille."
+  },
+  "verify": {
+    "en": "Read the resolved value, then the real disk usage:\n\n```\nsystemd-analyze cat-config systemd/journald.conf | grep -i '^SystemMaxUse'\njournalctl --disk-usage\n```\n\nThe reported archive size must stay under the declared ceiling. `journalctl --verify` confirms the journal files themselves are intact after a vacuum.",
+    "fr": "Lisez la valeur résolue, puis l'occupation disque réelle :\n\n```\nsystemd-analyze cat-config systemd/journald.conf | grep -i '^SystemMaxUse'\njournalctl --disk-usage\n```\n\nLa taille annoncée doit rester sous le plafond déclaré. `journalctl --verify` confirme que les fichiers de journal restent intacts après un nettoyage."
+  },
+  "logs": {
+    "en": "journald reports its own enforcement: `journalctl -u systemd-journald` shows lines such as `System Journal (/var/log/journal/...) is 1.0G, max 1.0G, 0B free` and `Vacuuming done, freed 512.0M of archived journals`. Seeing those lines is the proof the bound is not merely configured but **actively applied**.",
+    "fr": "journald rend compte de sa propre application : `journalctl -u systemd-journald` affiche des lignes comme `System Journal (/var/log/journal/...) is 1.0G, max 1.0G, 0B free` et `Vacuuming done, freed 512.0M of archived journals`. La présence de ces lignes prouve que la borne n'est pas seulement configurée mais **effectivement appliquée**."
+  },
+  "remediation_note": {
+    "en": "Pavois writes a dedicated drop-in `/etc/systemd/journald.conf.d/99-pavois-bounded.conf` (`root:root`, `0644`) containing:\n\n```ini\n[Journal]\nSystemMaxUse=1G\nSystemKeepFree=500M\nMaxRetentionSec=90day\n```\n\nThree complementary bounds: a hard size ceiling, a floor of free space journald must leave to the rest of the filesystem, and a retention horizon. The drop-in holds **only** this setting, so no other control can silently overwrite it. Apply it with `confkit harden apply`; journald picks it up on `systemctl restart systemd-journald`.",
+    "fr": "Pavois écrit un drop-in dédié `/etc/systemd/journald.conf.d/99-pavois-bounded.conf` (`root:root`, `0644`) contenant :\n\n```ini\n[Journal]\nSystemMaxUse=1G\nSystemKeepFree=500M\nMaxRetentionSec=90day\n```\n\nTrois bornes complémentaires : un plafond de taille, un plancher d'espace libre que journald doit laisser au reste du système de fichiers, et un horizon de rétention. Le drop-in ne porte **que** ce réglage, de sorte qu'aucun autre contrôle ne peut l'écraser silencieusement. Appliquez-le avec `confkit harden apply` ; journald le prend en compte au `systemctl restart systemd-journald`."
+  },
+  "impact": {
+    "en": "The `growth-*` family exists because of a real outage: a pavois-hardened host powered itself off six seconds into every boot. `max_log_file_action = keep_logs` (auditd never deletes a log), plus a separate `/var/log/audit` partition (created by the pavois recipe), plus `admin_space_left_action = halt` filled the filesystem (measured: 738 files, 5.8 GB, 100%), and **every control was green**. Bounding the journal applies the same lesson to `/var/log`. The trade-off is real: past the ceiling, the oldest entries are dropped. Size `SystemMaxUse` against your actual retention requirement, and if you must keep everything, ship the journal to a SIEM rather than raising the bound.",
+    "fr": "La famille `growth-*` est née d'une panne réelle : un hôte durci par pavois s'éteignait tout seul six secondes après chaque démarrage. La combinaison `max_log_file_action = keep_logs` (auditd ne supprime jamais un log), une partition `/var/log/audit` séparée (créée par la recette pavois) et `admin_space_left_action = halt` avait rempli le système de fichiers (mesuré : 738 fichiers, 5,8 Go, 100 %), et **tous les contrôles étaient au vert**. Borner le journal applique la même leçon à `/var/log`. L'arbitrage est réel : au-delà du plafond, les entrées les plus anciennes sont supprimées. Dimensionnez `SystemMaxUse` selon votre exigence de rétention réelle et, s'il faut tout conserver, expédiez le journal vers un SIEM plutôt que de relever la borne."
+  },
+  "datePublished": "2026-07-14",
+  "dateModified": "2026-07-14"
+}

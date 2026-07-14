@@ -1,0 +1,37 @@
+{
+  "id": "pkg-samba-removed",
+  "title": {
+    "en": "Uninstall the Samba Package",
+    "fr": "Désinstaller le paquet Samba"
+  },
+  "summary": {
+    "en": "Ensures the `samba` package (SMB/CIFS `smbd`/`nmbd` services) is **not installed** when not required.",
+    "fr": "Garantit que le paquet `samba` (services SMB/CIFS `smbd`/`nmbd`) **n'est pas installé** quand il n'est pas nécessaire."
+  },
+  "rationale": {
+    "en": "The `samba` package runs the `smbd`/`nmbd` services that implement SMB/CIFS file and printer sharing. SMB has a long history of serious vulnerabilities (e.g. the EternalBlue class) and exposes a network listener. On a system that does not need to serve Windows file shares, removing Samba eliminates that exposed service and provides a safeguard against its accidental activation.",
+    "fr": "Le paquet `samba` exécute les services `smbd`/`nmbd` qui mettent en œuvre le partage de fichiers et d'imprimantes SMB/CIFS. SMB a un long historique de vulnérabilités graves (par exemple la famille EternalBlue) et expose un service réseau en écoute. Sur un système qui n'a pas besoin de servir des partages de fichiers Windows, supprimer Samba élimine ce service exposé et constitue une protection contre son activation accidentelle."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database with `describe package('samba')` and asserts it `should_not be_installed`, reflecting the **real installed state** instead of inferring presence from a config file that may exist without the daemon.",
+    "fr": "Pavois interroge la base de paquets avec `describe package('samba')` et vérifie qu'il `should_not be_installed`, reflétant l'**état d'installation réel** au lieu de déduire la présence d'un fichier de configuration qui peut exister sans le démon."
+  },
+  "verify": {
+    "en": "Debian/Ubuntu: `dpkg -s samba` → `package 'samba' is not installed`. RPM: `rpm -q samba` → `package samba is not installed`. Confirm no SMB listener with `ss -ltnp | grep -E ':445|:139'` (no output).",
+    "fr": "Debian/Ubuntu : `dpkg -s samba` → `package 'samba' is not installed`. RPM : `rpm -q samba` → `package samba is not installed`. Vérifiez l'absence d'écoute SMB avec `ss -ltnp | grep -E ':445|:139'` (aucune sortie)."
+  },
+  "logs": {
+    "en": "Removal is logged in `/var/log/dpkg.log` (Debian/Ubuntu) or `dnf history` / `/var/log/dnf.rpm.log` (RPM). Samba service activity, if it ran, appears via `journalctl -u smbd -u nmbd`. Confirm state with `dpkg -l samba` / `rpm -q samba`.",
+    "fr": "La suppression est journalisée dans `/var/log/dpkg.log` (Debian/Ubuntu) ou `dnf history` / `/var/log/dnf.rpm.log` (RPM). L'activité des services Samba, s'ils ont tourné, apparaît via `journalctl -u smbd -u nmbd`. Confirmez l'état avec `dpkg -l samba` / `rpm -q samba`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan removes the `samba` package (resource `package`, action `remove`). Apply it with `pavois harden apply`. This uninstalls the `smbd`/`nmbd` services.",
+    "fr": "Le plan de durcissement de Pavois supprime le paquet `samba` (ressource `package`, action `remove`). Appliquez-le avec `pavois harden apply`. Cela désinstalle les services `smbd`/`nmbd`."
+  },
+  "impact": {
+    "en": "Removing Samba stops all SMB/CIFS file and printer sharing this host provides. Before applying, confirm no clients (Windows machines, other servers, backup tools) mount shares from this server. This rule targets the Samba **server**; client mounts via `cifs-utils` are unaffected. Migrate or retire dependent shares before removal.",
+    "fr": "Supprimer Samba arrête tout partage de fichiers et d'imprimantes SMB/CIFS fourni par cet hôte. Avant d'appliquer, vérifiez qu'aucun client (machines Windows, autres serveurs, outils de sauvegarde) ne monte des partages depuis ce serveur. Cette règle vise le **serveur** Samba ; les montages clients via `cifs-utils` ne sont pas concernés. Migrez ou retirez les partages dépendants avant la suppression."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

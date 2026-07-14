@@ -1,0 +1,37 @@
+{
+  "id": "filegroupowner-etc-group",
+  "title": {
+    "en": "Verify Group Who Owns group File",
+    "fr": "Vérifier le groupe propriétaire du fichier group"
+  },
+  "summary": {
+    "en": "Ensures the `/etc/group` file is group-owned by **`root` (gid 0)**.",
+    "fr": "Garantit que le fichier `/etc/group` est détenu par le groupe **`root` (gid 0)**."
+  },
+  "rationale": {
+    "en": "The `/etc/group` file defines every group on the system and its membership, and group membership grants privileges (e.g. `sudo`, `wheel`, `docker`, `disk`). If the file is group-owned by a non-privileged group, a member of that group could, combined with loose permissions, add itself to a privileged group and **escalate to root or equivalent**. Restricting group ownership to **`root` (gid 0)** ensures only highly-privileged accounts can influence group membership.",
+    "fr": "Le fichier `/etc/group` définit chaque groupe du système et ses membres, et l'appartenance à un groupe confère des privilèges (par exemple `sudo`, `wheel`, `docker`, `disk`). Si le fichier est détenu par un groupe non privilégié, un de ses membres pourrait, combiné à des permissions trop ouvertes, s'ajouter à un groupe privilégié et **obtenir un accès root ou équivalent**. Restreindre la propriété de groupe à **`root` (gid 0)** garantit que seuls les comptes hautement privilégiés peuvent influencer l'appartenance aux groupes."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** group owner of `/etc/group` on the live system via the InSpec `file` resource and asserts `gid == 0`. It inspects the actual inode metadata as the kernel sees it, not a packaging default, so a file whose ownership drifted after install (or after a restore from backup) is caught.",
+    "fr": "Pavois lit le groupe propriétaire **effectif** de `/etc/group` sur le système en cours d'exécution via la ressource InSpec `file` et vérifie `gid == 0`. Il inspecte les métadonnées réelles de l'inode telles que le noyau les voit, et non une valeur par défaut de paquet : un fichier dont la propriété a dérivé après l'installation (ou après une restauration depuis une sauvegarde) est donc détecté."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /etc/group`. Expected output: **`root 0`**. Any other group name or non-zero gid means the rule is not applied.",
+    "fr": "Exécutez `stat -c '%G %g' /etc/group`. Sortie attendue : **`root 0`**. Tout autre nom de groupe ou gid non nul signifie que la règle n'est pas appliquée."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default. Watch the file with auditd: `auditctl -w /etc/group -p wa -k identity`, then inspect `grep 'key=\"identity\"' /var/log/audit/audit.log`. Group membership edits made through tooling are also visible in `/var/log/auth.log` (Debian/Ubuntu) or `journalctl` entries from `groupadd`/`gpasswd`/`usermod`.",
+    "fr": "Les changements de propriété ne sont pas journalisés par défaut. Surveillez le fichier avec auditd : `auditctl -w /etc/group -p wa -k identity`, puis examinez `grep 'key=\"identity\"' /var/log/audit/audit.log`. Les modifications d'appartenance aux groupes effectuées via les outils sont aussi visibles dans `/var/log/auth.log` (Debian/Ubuntu) ou dans les entrées `journalctl` de `groupadd`/`gpasswd`/`usermod`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is defined for this rule, so it must be applied **manually**. Restore the correct group ownership with `chgrp root /etc/group`.",
+    "fr": "Aucune remédiation automatique n'est définie pour cette règle ; elle doit donc être appliquée **manuellement**. Rétablissez le bon groupe propriétaire avec `chgrp root /etc/group`."
+  },
+  "impact": {
+    "en": "A non-`root` group owner on `/etc/group` weakens the trust boundary around group membership, a known privilege-escalation lever. Restoring `root` ownership is low-risk: `chgrp root` changes only group ownership, not content or permissions, and authentication keeps working. **Precaution:** never blank, truncate, or change permissions on `/etc/group` while fixing ownership, a corrupt group file can break `sudo`, login, and service startup; keep `/etc/group` at mode `0644` owned `root:root`.",
+    "fr": "Un groupe propriétaire autre que `root` sur `/etc/group` affaiblit la frontière de confiance autour de l'appartenance aux groupes, un levier connu d'élévation de privilèges. Rétablir la propriété `root` présente peu de risques : `chgrp root` ne change que la propriété de groupe, ni le contenu ni les permissions, et l'authentification continue de fonctionner. **Précaution :** ne videz, ne tronquez ni ne modifiez jamais les permissions de `/etc/group` en corrigeant la propriété, un fichier group corrompu peut casser `sudo`, la connexion et le démarrage des services ; conservez `/etc/group` en mode `0644` détenu par `root:root`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,37 @@
+{
+  "id": "service-debug-shell-disabled",
+  "title": {
+    "en": "Disable debug-shell SystemD Service",
+    "fr": "Désactiver le service SystemD debug-shell"
+  },
+  "summary": {
+    "en": "Ensures the systemd `debug-shell.service` unit is **disabled** and **not running** so no passwordless root shell is reachable at boot.",
+    "fr": "Garantit que l'unité systemd `debug-shell.service` est **désactivée** et **arrêtée**, afin qu'aucun shell root sans mot de passe ne soit accessible au démarrage."
+  },
+  "rationale": {
+    "en": "`debug-shell.service` opens a **root shell with no authentication** on tty9, intended for diagnosing boot failures. If it is enabled, anyone with physical or console access (or who can force a reboot) gains an instant **root shell**, bypassing all login controls. It must stay disabled on any production system.",
+    "fr": "`debug-shell.service` ouvre un **shell root sans authentification** sur tty9, prévu pour diagnostiquer les échecs de démarrage. S'il est activé, toute personne ayant un accès physique ou console (ou capable de forcer un redémarrage) obtient un **shell root** immédiat, contournant tous les contrôles de connexion. Il doit rester désactivé sur tout système de production."
+  },
+  "check_note": {
+    "en": "Pavois queries the **resolved unit state** via `systemctl is-enabled` / `is-active` for `debug-shell.service`. Reading the effective service state catches a unit enabled by a drop-in or a static alias that a file-based scan of `/etc/systemd` would miss.",
+    "fr": "Pavois interroge l'**état résolu de l'unité** via `systemctl is-enabled` / `is-active` pour `debug-shell.service`. Lire l'état effectif du service détecte une unité activée par un drop-in ou un alias statique qu'un scan de fichiers dans `/etc/systemd` manquerait."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled debug-shell.service` (expected `disabled` or `masked`) and `systemctl is-active debug-shell.service` (expected `inactive`).",
+    "fr": "Exécutez `systemctl is-enabled debug-shell.service` (résultat attendu `disabled` ou `masked`) et `systemctl is-active debug-shell.service` (résultat attendu `inactive`)."
+  },
+  "logs": {
+    "en": "Inspect `systemctl show debug-shell.service` for `UnitFileState` and `ActiveState`; activation events appear in `journalctl -u debug-shell.service`.",
+    "fr": "Examinez `systemctl show debug-shell.service` pour `UnitFileState` et `ActiveState` ; les événements d'activation apparaissent dans `journalctl -u debug-shell.service`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan applies a `service` resource for `debug-shell` with actions **disable** and **stop**, ensuring the unit will not start at boot and is halted now. Apply it with `pavois harden apply`.",
+    "fr": "Le plan harden de Pavois applique une ressource `service` sur `debug-shell` avec les actions **disable** et **stop**, garantissant que l'unité ne démarrera pas au boot et qu'elle est arrêtée immédiatement. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Disabling `debug-shell.service` only removes an **emergency diagnostic shell**; no production workload depends on it, so impact is minimal. **Precaution:** if you rely on it to recover unbootable systems, keep an alternative recovery path (rescue target, console access, known root password) before applying.",
+    "fr": "Désactiver `debug-shell.service` supprime seulement un **shell de diagnostic d'urgence** ; aucune charge de production n'en dépend, l'impact est donc minime. **Précaution :** si vous l'utilisez pour récupérer des systèmes qui ne démarrent plus, conservez une voie de récupération alternative (cible rescue, accès console, mot de passe root connu) avant d'appliquer."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

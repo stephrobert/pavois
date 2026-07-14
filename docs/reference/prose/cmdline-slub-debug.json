@@ -1,0 +1,37 @@
+{
+  "id": "cmdline-slub-debug",
+  "title": {
+    "en": "Enable SLUB/SLAB allocator poisoning",
+    "fr": "Activer l'empoisonnement de l'allocateur SLUB/SLAB"
+  },
+  "summary": {
+    "en": "Requires the **`slub_debug=P`** kernel boot parameter so the SLUB allocator poisons freed objects, catching use-after-free and scrubbing leftover data.",
+    "fr": "Exige le paramètre de démarrage noyau **`slub_debug=P`** afin que l'allocateur SLUB empoisonne les objets libérés, détectant les use-after-free et effaçant les données résiduelles."
+  },
+  "rationale": {
+    "en": "`slub_debug=P` enables **poisoning of SLUB allocator objects**: a known pattern is written into objects as they are freed, so any read or write to an object after it is freed (or before it is re-initialized) is detected and prevented. This neutralizes many **use-after-free** vulnerabilities at little performance cost, and additionally **scrubs sensitive data** left in freed objects so it cannot leak to the next allocation. The `P` flag enables only poisoning (not the full, costlier debug suite).",
+    "fr": "`slub_debug=P` active l'**empoisonnement des objets de l'allocateur SLUB** : un motif connu est écrit dans les objets au moment de leur libération, si bien que toute lecture ou écriture sur un objet après sa libération (ou avant sa réinitialisation) est détectée et empêchée. Cela neutralise de nombreuses vulnérabilités **use-after-free** à faible coût de performance, et **efface les données sensibles** restées dans les objets libérés afin qu'elles ne fuient pas vers l'allocation suivante. Le drapeau `P` n'active que l'empoisonnement (et non la suite de débogage complète, plus coûteuse)."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel command line** from `/proc/cmdline` and checks for `slub_debug=P`. This is the boot line the running kernel parsed, not `/etc/default/grub`, a GRUB edit never regenerated would falsely pass a file scan while object poisoning is still off at runtime. Per-cache state is visible under `/sys/kernel/slab/*/`.",
+    "fr": "Pavois lit la **ligne de commande noyau active** depuis `/proc/cmdline` et vérifie la présence de `slub_debug=P`. C'est la ligne de boot analysée par le noyau, et non `/etc/default/grub`, une modification GRUB jamais régénérée passerait à tort un scan fichier alors que l'empoisonnement d'objets reste désactivé à l'exécution. L'état par cache est visible sous `/sys/kernel/slab/*/`."
+  },
+  "verify": {
+    "en": "Run `cat /proc/cmdline` and confirm it contains `slub_debug=P`. You can confirm poisoning is active on a cache by reading its sysfs attribute, e.g.:\n\n```\ncat /sys/kernel/slab/kmalloc-64/poison\n```\n\nExpected output is **`1`**.",
+    "fr": "Lancez `cat /proc/cmdline` et confirmez la présence de `slub_debug=P`. Vous pouvez confirmer que l'empoisonnement est actif sur un cache en lisant son attribut sysfs, par ex. :\n\n```\ncat /sys/kernel/slab/kmalloc-64/poison\n```\n\nLa sortie attendue est **`1`**."
+  },
+  "logs": {
+    "en": "A poison/redzone violation is reported in the kernel ring buffer as a SLUB corruption message, inspect `dmesg | grep -iE 'slab|slub|poison'` or `journalctl -k | grep -iE 'slub|poison'`. Per-cache state lives under `/sys/kernel/slab/`.",
+    "fr": "Une violation d'empoisonnement/redzone est rapportée dans le ring buffer noyau comme un message de corruption SLUB, inspectez `dmesg | grep -iE 'slab|slub|poison'` ou `journalctl -k | grep -iE 'slub|poison'`. L'état par cache se trouve sous `/sys/kernel/slab/`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the **`kernel_cmdline`** resource to add `slub_debug=P` to the bootloader configuration and regenerate it, so the option is present on next boot. A **reboot is required** to take effect.",
+    "fr": "`pavois harden apply` utilise la ressource **`kernel_cmdline`** pour ajouter `slub_debug=P` à la configuration du bootloader et la régénérer, afin que l'option soit présente au prochain démarrage. Un **redémarrage est requis** pour qu'il prenne effet."
+  },
+  "impact": {
+    "en": "Object poisoning adds a **small CPU cost** for the overwrite/check on alloc and free, and **disables slab cache merging** (the `P` flag implies per-cache debug), slightly raising kernel memory usage. Precautions:\n\n- On **memory-churn-heavy** or latency-critical workloads, benchmark to confirm the overhead is acceptable.\n- It can surface **pre-existing buggy drivers** that touch freed memory by triggering corruption reports, validate on a non-critical node first.\n- Applies **after reboot** only, schedule a maintenance window.",
+    "fr": "L'empoisonnement d'objets ajoute un **faible coût CPU** pour l'écrasement/vérification à l'allocation et à la libération, et **désactive la fusion des caches slab** (le drapeau `P` implique un débogage par cache), augmentant légèrement l'usage mémoire noyau. Précautions :\n\n- Sur des charges à **fort renouvellement mémoire** ou critiques en latence, mesurez pour confirmer que le surcoût est acceptable.\n- Il peut révéler des **pilotes bogués préexistants** touchant la mémoire libérée en déclenchant des rapports de corruption, validez d'abord sur un nœud non critique.\n- S'applique uniquement **après redémarrage**, planifiez une fenêtre de maintenance."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

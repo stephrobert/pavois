@@ -1,0 +1,37 @@
+{
+  "id": "pkg-nfs-common-removed",
+  "title": {
+    "en": "Uninstall nfs-common Package",
+    "fr": "Desinstaller le paquet nfs-common"
+  },
+  "summary": {
+    "en": "Removes the **nfs-common** package (NFS client support) when the host does not mount or serve NFS shares.",
+    "fr": "Supprime le paquet **nfs-common** (support client NFS) lorsque l'hote ne monte ni ne sert de partages NFS."
+  },
+  "rationale": {
+    "en": "The **nfs-common** package provides the client-side NFS support (`rpc.statd`, `rpc.gssd`, `mount.nfs` helpers) needed to mount remote NFS shares. NFS relies on the RPC/portmapper stack, which has a long history of vulnerabilities and exposes additional listening services. If the system neither mounts NFS shares nor acts as an NFS client, removing the package **reduces the remote attack surface** and eliminates unnecessary RPC daemons.",
+    "fr": "Le paquet **nfs-common** fournit le support NFS cote client (`rpc.statd`, `rpc.gssd`, assistants `mount.nfs`) necessaire pour monter des partages NFS distants. NFS s'appuie sur la pile RPC/portmapper, qui a un long historique de vulnerabilites et expose des services en ecoute supplementaires. Si le systeme ne monte pas de partages NFS et n'agit pas comme client NFS, supprimer le paquet **reduit la surface d'attaque distante** et elimine des demons RPC inutiles."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database through the InSpec `package('nfs-common')` resource and asserts `should_not be_installed`, resolving via `dpkg`. Reading the **effective** package inventory is more reliable than checking for active NFS mounts with `findmnt`: a host can have the client stack installed and ready to mount even with no mount currently active, so the package state is the definitive indicator that NFS client code is absent.",
+    "fr": "Pavois interroge la base de paquets via la ressource InSpec `package('nfs-common')` et verifie `should_not be_installed`, en s'appuyant sur `dpkg`. Lire l'inventaire **effectif** est plus fiable que de verifier les montages NFS actifs avec `findmnt` : un hote peut avoir la pile cliente installee et prete a monter sans aucun montage actif, donc l'etat du paquet est l'indicateur definitif de l'absence de code client NFS."
+  },
+  "verify": {
+    "en": "Run `dpkg -s nfs-common`; expect `not installed` (or `dpkg-query: package 'nfs-common' is not installed`). Confirm no NFS mounts remain with `findmnt -t nfs,nfs4` (no output expected) and no RPC daemons with `ss -lntup | grep -E ':111|rpc'`.",
+    "fr": "Executez `dpkg -s nfs-common` ; attendu : `not installed` (ou `dpkg-query: package 'nfs-common' is not installed`). Confirmez l'absence de montages NFS avec `findmnt -t nfs,nfs4` (aucune sortie attendue) et de demons RPC avec `ss -lntup | grep -E ':111|rpc'`."
+  },
+  "logs": {
+    "en": "Removal is recorded in `/var/log/dpkg.log`. Prior NFS client activity (statd, lock recovery) appears in `journalctl -u rpc-statd` and the kernel log (`dmesg`). After removal, those units should no longer exist.",
+    "fr": "La suppression est tracee dans `/var/log/dpkg.log`. L'activite anterieure du client NFS (statd, recuperation de verrous) apparait dans `journalctl -u rpc-statd` et le journal noyau (`dmesg`). Apres suppression, ces unites ne doivent plus exister."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource for **nfs-common** with action `remove`; `pavois harden apply` uninstalls it via `apt`, which also stops the associated RPC client daemons. Be aware many desktop and integration metapackages depend on `nfs-common`, so apt may remove or block on those, review the apt transaction before applying on a non-server host.",
+    "fr": "Le plan de durcissement de Pavois declare une ressource `package` pour **nfs-common** avec l'action `remove` ; `pavois harden apply` le desinstalle via `apt`, ce qui arrete aussi les demons clients RPC associes. Attention : de nombreux metapaquets bureau ou d'integration dependent de `nfs-common`, donc apt peut les retirer ou bloquer, verifiez la transaction apt avant d'appliquer sur un hote non serveur."
+  },
+  "impact": {
+    "en": "Removing **nfs-common** disables this host's ability to mount NFS shares; any application or fstab entry relying on an NFS mount will fail. **Precautions:** before applying, run `findmnt -t nfs,nfs4` and check `/etc/fstab` for NFS entries, if the host depends on NFS (e.g. shared home directories), do not remove it. Also verify no metapackage you need will be pulled out by the apt removal. On hosts that never use NFS, removal is safe and reduces RPC exposure.",
+    "fr": "Supprimer **nfs-common** desactive la capacite de l'hote a monter des partages NFS ; toute application ou entree fstab reposant sur un montage NFS echouera. **Precautions :** avant d'appliquer, executez `findmnt -t nfs,nfs4` et verifiez `/etc/fstab` pour des entrees NFS, si l'hote depend de NFS (par ex. repertoires home partages), ne le supprimez pas. Verifiez aussi qu'aucun metapaquet necessaire ne sera retire par la desinstallation apt. Sur les hotes n'utilisant jamais NFS, la suppression est sans danger et reduit l'exposition RPC."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}
