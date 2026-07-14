@@ -51,6 +51,16 @@ while :; do
     echo "  FIXPOINT: nothing left to apply — hardening has converged in $((pass - 1)) pass(es)"
     break
   fi
+  # A gap an apply cannot close (a partition recipe, a kernel rebuild, a human) is re-enabled every
+  # pass and closes nothing: without this, the loop would spin to MAX_PASSES on a host that is in
+  # fact done. Convergence is the failing SET no longer shrinking — never a rule's label, which is
+  # too coarse to decide it (install-time covers both partition-boot and an fstab option the engine
+  # sets just fine).
+  if [ "${enabled:-0}" -eq "${prev_enabled:-0}" ] && [ "$pass" -gt 1 ]; then
+    echo "  FIXPOINT: the same $enabled gap(s) survive an apply — nothing left that hardening can close"
+    break
+  fi
+  prev_enabled=$enabled
   if [ "$pass" -gt "$MAX_PASSES" ]; then
     echo "  WARNING: still $enabled gap(s) after $MAX_PASSES passes — NOT converged, see the scan below"
     break

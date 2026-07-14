@@ -43,11 +43,12 @@ def main():
             continue
         if r.get("status") != "gap":
             continue
-        # install-time / kernel-build / manual: no apply can close this gap (it takes a partition
-        # recipe, a kernel rebuild, a human). Enabling it anyway makes every convergence pass
-        # "apply" it, achieve nothing, and never reach a fixpoint.
-        if r.get("class"):
-            continue
+        # NOTE: do NOT skip on `class`. It reads like "an apply cannot close this", but the class
+        # taxonomy is coarser than that: `install-time` covers both partition-boot (needs a recipe)
+        # and mount-dev-shm-nodev (an fstab option the engine sets just fine), and `dangerous`
+        # covers grub-password, which SAFE_DANGERS deliberately acks. Filtering on it silently
+        # dropped six controls the harness used to fix. Convergence is measured on the failing SET
+        # (harden_validate.sh stops when it stops shrinking), never on a rule's label.
         if rid in KEEP_OFF:
             continue
         if "danger" in r and rid not in SAFE_DANGERS:
