@@ -29,8 +29,24 @@ vrun(){ vssh "echo '$PAVOIS_SUDO_PASSWORD' | sudo -S bash -c '$1'"; }   # run as
 say(){ printf '\n\033[1;35m######## %s ########\033[0m\n' "$*"; }
 waitssh(){ local n=0; until ssh -F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 -o BatchMode=yes -i "$KEY" "$TARGET" true 2>/dev/null; do sleep 5; n=$((n+1)); if [ $n -gt 180 ]; then echo "TIMEOUT waiting for $TARGET"; return 1; fi; done; return 0; }
 
+# This script DESTROYS $VMID before recreating it. The hypervisor is a shared lab: a VMID picked
+# without looking is a machine someone else loses, and `--purge` leaves nothing to restore. So we
+# look FIRST, and destroy only what pavois itself created (a `pavois-*` name). A free id is fine,
+# an occupied one is not — no matter how convenient the number was.
+assert_ours(){
+  local name
+  name=$(pssh "qm config $VMID 2>/dev/null | sed -n 's/^name: //p'" | tr -d '\r')
+  [ -z "$name" ] && return 0                                   # free id: nothing to destroy
+  case "$name" in
+    pavois-*) return 0 ;;                                      # ours, from a previous run
+    *) echo "REFUSING: VM $VMID is '$name' — not a pavois VM. Pick a free VMID (CK_VMID)." >&2
+       exit 1 ;;
+  esac
+}
+
 provision(){
   say "1 PROVISION fresh $OS VM $VMID @ $IP (from cloud image)"
+  assert_ours
   # push my pubkey to Proxmox for cloud-init
   scp -o StrictHostKeyChecking=no "${KEY}.pub" "$PVE:/root/pavois-ck.pub" >/dev/null
   rm -f /tmp/ck-known
