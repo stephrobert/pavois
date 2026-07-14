@@ -18,20 +18,32 @@ LOGDIR=${LOGDIR:-/tmp/pavois-campaign}
 mkdir -p "$LOGDIR"
 
 # os:vmid:ip:image
+# VMIDs are pavois-only. 141-143 are the lab's saltminions and 150 is ascender-lab: this script
+# DESTROYS the VMID it is given, so the range must never drift into someone else's machines.
 FLEET=(
   "rhel9:140:203.0.113.70:$ISO/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2"
-  "rhel8:141:203.0.113.71:$ISO/AlmaLinux-8-GenericCloud-latest.x86_64.qcow2"
+  "rhel8:131:203.0.113.71:$ISO/AlmaLinux-8-GenericCloud-latest.x86_64.qcow2"
   "rhel10:133:203.0.113.63:$ISO/AlmaLinux-10-GenericCloud-latest.x86_64.qcow2"
   "fedora:136:203.0.113.66:$ISO/fedora-42-cloud.qcow2"
   "ubuntu2604:138:203.0.113.68:$ISO/ubuntu-26.04-server-cloudimg-amd64.img"
   "ubuntu2204:139:203.0.113.69:$ISO/jammy-server-cloudimg-amd64.img"
 )
+PAVOIS_VMIDS="131 133 134 135 136 137 138 139 140"
 
 want=("$@")
 [ ${#want[@]} -eq 0 ] && want=(rhel9 rhel8 rhel10 fedora ubuntu2604 ubuntu2204)
 
 run_one() {
   local os=$1 vmid=$2 ip=$3 img=$4 log="$LOGDIR/$os.log"
+  # This function DESTROYS $vmid. The hypervisor is a shared lab: refuse anything that is not a
+  # pavois VM, both by id and by name. A typo in a VMID must never cost someone else a machine.
+  case " $PAVOIS_VMIDS " in *" $vmid "*) ;; *) echo "[$os] REFUSED: VM $vmid is not a pavois id"; return 1;; esac
+  local name
+  name=$(ssh "$PVE" "qm config $vmid 2>/dev/null | sed -n 's/^name: //p'")
+  if [ -n "$name" ] && [[ "$name" != pavois-* ]]; then
+    echo "[$os] REFUSED: VM $vmid is '$name', not a pavois VM — not touching it"
+    return 1
+  fi
   ssh "$PVE" "qm stop $vmid >/dev/null 2>&1; qm destroy $vmid --purge >/dev/null 2>&1" || true
   PVE=$PVE CK_VMID=$vmid CK_IP=$ip CK_GW=203.0.113.1 CK_OS=$os CK_USER=pavois \
   CK_CLOUDIMG=$img CK_MEM=8192 CK_CORES=6 \
