@@ -88,6 +88,16 @@ const c = {
     en: 'A state-aware loop, not a blind script. Nothing changes until you opt in, and every fix is proven against a fresh scan.',
     fr: 'Une boucle consciente de l’état, pas un script aveugle. Rien ne change sans ton accord, et chaque correctif est prouvé contre un nouveau scan.',
   },
+  fitH2: {
+    en: 'Pavois builds a compliant image.<br>It does not rescue a legacy host.',
+    fr: 'Pavois construit une image conforme.<br>Il ne rattrape pas un hôte legacy.',
+  },
+  fitP: {
+    en: 'Some gaps cannot be closed by any command: a separate <code>/var/log</code> is decided when the disk is partitioned, and a kernel without the KSPP options cannot grow them at runtime. Those controls carry the classes <code>install-time</code> and <code>kernel-build</code> because <b>no apply can close them on a box that is serving traffic</b>. Point Pavois at a legacy host and it still tells you the truth, including which share of the gaps needs a rebuild rather than a command.',
+    fr: 'Certains écarts ne se ferment par aucune commande : un <code>/var/log</code> séparé se décide au partitionnement du disque, et un noyau sans les options KSPP ne peut pas les acquérir à chaud. Ces contrôles portent les classes <code>install-time</code> et <code>kernel-build</code> parce qu’<b>aucun apply ne peut les fermer sur une machine en production</b>. Pointe Pavois sur un hôte legacy et il te dit quand même la vérité, y compris quelle part des écarts exige une reconstruction plutôt qu’une commande.',
+  },
+  fitYesH: { en: 'Built for', fr: 'Fait pour' },
+  fitNoH: { en: 'Not a fit', fr: 'Pas fait pour' },
   stdKick: { en: 'standards', fr: 'normes' },
   stdH2: { en: 'One control, every applicable mapping.', fr: 'Un contrôle, chaque mapping applicable.' },
   stdP: {
@@ -118,6 +128,19 @@ const c = {
   ctaHb: { en: 'Read the handbook', fr: 'Lire le handbook' },
 };
 const tr = (f: { en: string; fr: string }) => f[lang];
+
+const fitYes = [
+  { en: '<b>Building a golden image</b>: fresh install, partition recipe, KSPP kernel, converged apply, then bake it.', fr: '<b>Construire une image golden</b> : installation neuve, recette de partitionnement, noyau KSPP, apply convergé, puis on la fige.' },
+  { en: '<b>Watching a fleet for drift</b>: scan the hosts you shipped, catch the drop-in someone added last Tuesday.', fr: '<b>Surveiller la dérive d’un parc</b> : scanner les hôtes livrés, attraper le drop-in ajouté mardi dernier.' },
+  { en: '<b>Proving a posture</b>: a chaptered report, a signed evidence bundle, an OSCAL export an auditor can consume.', fr: '<b>Prouver une posture</b> : rapport chapitré, paquet de preuve signé, export OSCAL exploitable par un auditeur.' },
+  { en: '<b>Gating a pipeline</b>: <code>--fail-under</code> turns the grade into a CI check on the image you are about to ship.', fr: '<b>Verrouiller un pipeline</b> : <code>--fail-under</code> transforme la note en check CI sur l’image que tu t’apprêtes à livrer.' },
+];
+const fitNo = [
+  { en: 'A <b>ten-year-old production host</b> you cannot repartition or reboot. It will be audited honestly, and a share of its gaps will stay open.', fr: 'Un <b>hôte de production de dix ans</b> que tu ne peux ni repartitionner ni redémarrer. Il sera audité honnêtement, et une part de ses écarts restera ouverte.' },
+  { en: 'A <b>one-shot script</b> that blindly applies everything. Nothing changes until you flip <code>apply</code> per rule, on purpose.', fr: 'Un <b>script one-shot</b> qui applique tout aveuglément. Rien ne change tant que tu n’as pas activé <code>apply</code>, règle par règle, volontairement.' },
+  { en: 'A <b>certification stamp</b>. Pavois produces evidence; the auditor produces the verdict.', fr: 'Un <b>tampon de certification</b>. Pavois produit la preuve ; c’est l’auditeur qui rend le verdict.' },
+  { en: 'A <b>non-Linux estate</b>. Nine Linux OS families today, nothing else.', fr: 'Un <b>parc non-Linux</b>. Neuf familles d’OS Linux aujourd’hui, rien d’autre.' },
+];
 
 const steps = [
   { num: { en: '01 · scan', fr: '01 · scan' }, h: { en: 'Audit', fr: 'Auditer' }, p: { en: 'Resolve the effective config of any target and grade it A–E against the standard you choose.', fr: 'Résous la config effective de n’importe quelle cible et note-la A–E contre la norme choisie.' }, code: 'pavois scan <target>' },
@@ -250,6 +273,33 @@ const softwareApp = {
           </div>
         ))}
       </div>
+    </div>
+  </section>
+
+  <!-- FIT -->
+  <section class="blk tight" id="fit">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>{tr(c.fitH2)}</h2>
+        <p set:html={tr(c.fitP)} />
+      </div>
+      <div class="feat two">
+        <div class="fcard fit-yes">
+          <h3>{tr(c.fitYesH)}</h3>
+          <ul>{fitYes.map((l) => <li set:html={tr(l)} />)}</ul>
+        </div>
+        <div class="fcard fit-no">
+          <h3>{tr(c.fitNoH)}</h3>
+          <ul>{fitNo.map((l) => <li set:html={tr(l)} />)}</ul>
+        </div>
+      </div>
+      <p class="vs-more">
+        <a href={`/${lang}/handbook/operating-pavois/`}>
+          {lang === 'fr'
+            ? 'Opérer Pavois : les quatre questions qui décident s’il est fait pour toi →'
+            : 'Operating Pavois: the four questions that decide whether it fits →'}
+        </a>
+      </p>
     </div>
   </section>
 

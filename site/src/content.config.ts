@@ -99,9 +99,12 @@ const handbook = defineCollection({
     title: localized,
     summary: localized.optional(),
     body: localized, // Markdown
+    // External deep-dive references (e.g. the blog guides). The label is bilingual: a French
+    // reader must not land on a "Pour aller plus loin" list written in English. A plain string
+    // is still accepted for a label that is the same in both languages (a proper name, a title).
     cite: z
-      .array(z.object({ url: z.string(), label: z.string() }))
-      .default([]), // external deep-dive references (e.g. the blog guides)
+      .array(z.object({ url: z.string(), label: z.union([z.string(), localized]) }))
+      .default([]),
   }),
 });
 

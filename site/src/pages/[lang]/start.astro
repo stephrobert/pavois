@@ -11,12 +11,12 @@ const { lang } = Astro.params as { lang: Lang };
 const fr = lang === 'fr';
 
 const sections = [
-  { slug: 'quickstart', en: 'First scan in 5 minutes', fr: 'Premier scan en 5 minutes' },
+  { slug: 'quickstart', en: 'In short: zero to verdict in six lines', fr: 'En bref : de zéro au verdict en six lignes' },
   { slug: 'prerequisites', en: 'Prerequisites', fr: 'Prérequis' },
-  { slug: 'install', en: 'Install a verified binary (first release)', fr: 'Installer un binaire vérifié (première release)' },
-  { slug: 'build', en: 'Build from source', fr: 'Construire depuis les sources' },
-  { slug: 'scan', en: 'First scan', fr: 'Premier scan' },
-  { slug: 'harden', en: 'Harden, then prove', fr: 'Durcir, puis prouver' },
+  { slug: 'install', en: 'Install a verified binary (once released)', fr: 'Installer un binaire vérifié (une fois publié)' },
+  { slug: 'build', en: '1. Build from source', fr: '1. Construire depuis les sources' },
+  { slug: 'scan', en: '2. First scan (A to E grade)', fr: '2. Premier scan (note A à E)' },
+  { slug: 'harden', en: '3. Harden, then prove', fr: '3. Durcir, puis prouver' },
   { slug: 'converge', en: '4. Converge (an apply is not enough)', fr: '4. Converger (un apply ne suffit pas)' },
   { slug: 'limits', en: '5. What an apply cannot close', fr: '5. Ce qu’un apply ne peut pas fermer' },
   { slug: 'survive', en: '6. Prove the host survived', fr: '6. Prouver que l’hôte a survécu' },
@@ -46,11 +46,11 @@ const crumbs = [
   <div class="wrap layout-doc">
    <div class="doc-col">
     <div class="prose">
-    <h2 id="quickstart">{fr ? 'Premier scan en 5 minutes' : 'First scan in 5 minutes'}</h2>
+    <h2 id="quickstart">{fr ? 'En bref : de zéro au verdict en six lignes' : 'In short: zero to verdict in six lines'}</h2>
     <p>{fr
       ? 'Le chemin le plus court, sur l’hôte courant (la config effective exige root). Build une fois, puis vérifie, scanne, consulte :'
       : 'The shortest path, on the current host (effective config needs root). Build once, then check, scan, browse:'}</p>
-    <Fragment set:html={highlight(`# ${fr ? 'mise epingle la chaine d outils (Go, Node, Python). Une ligne, une fois :' : 'mise pins the toolchain (Go, Node, Python). One line, once:'}
+    <Fragment set:html={highlight(`# ${fr ? 'mise épingle la chaîne d’outils (Go, Node, Python). Une ligne, une fois :' : 'mise pins the toolchain (Go, Node, Python). One line, once:'}
 curl https://mise.run | sh && export PATH="$HOME/.local/bin:$PATH"
 
 git clone https://github.com/stephrobert/pavois.git && cd pavois
@@ -81,11 +81,11 @@ mise trust && mise install && mise run build && mise run regen
         : '. CINC Auditor installs natively on the first scan (via omnitruck); a Docker container is the fallback.'}
     </p>
 
-    <h2 id="install">{fr ? 'Installer un binaire vérifié (première release)' : 'Install a verified binary (first release)'}</h2>
+    <h2 id="install">{fr ? 'Installer un binaire vérifié (une fois publié)' : 'Install a verified binary (once released)'}</h2>
     <p>{fr
-      ? 'Une fois la première release publiée, chaque release publie un binaire statique par plateforme et un fichier checksums.txt. Télécharge-le, vérifie son intégrité, et vérifie qu’il a bien été produit par la chaîne de release :'
-      : 'Once the first release is published, each release ships a static binary per platform plus a checksums.txt. Download it, check its integrity, and verify it was produced by the release pipeline:'}</p>
-    <Fragment set:html={highlight(`gh release download v0.1.0 --repo stephrobert/pavois \\
+      ? 'Aucune release n’est publiée à ce jour : la section ci-dessous décrit ce que fera la première, pas ce que tu peux faire aujourd’hui (aujourd’hui, c’est le build depuis les sources, juste en dessous). Chaque release publiera un binaire statique par plateforme et un fichier checksums.txt. Sans numéro de version, gh prend la dernière :'
+      : 'No release is published yet: the section below describes what the first one will do, not what you can do today (today, that is the build from source, right underneath). Each release will ship a static binary per platform plus a checksums.txt. With no tag, gh takes the latest:'}</p>
+    <Fragment set:html={highlight(`gh release download --repo stephrobert/pavois \\
   --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
 sha256sum --ignore-missing --check checksums.txt
 gh attestation verify pavois-linux-amd64 --repo stephrobert/pavois
@@ -108,7 +108,7 @@ mise run regen               # ${fr ? 'corpus .rb + OSCAL depuis la référence'
     <Fragment set:html={highlight(`# ${fr ? 'tout est prêt' : 'all set'}
 [OK  ] CINC engine (native)   /usr/bin/cinc-auditor
 [OK  ] sudo / ssh             /usr/bin/sudo /usr/bin/ssh
-[OK  ] rule corpus            620 controls rendered for debian12 (789 across all 9 OSes)
+[OK  ] rule corpus            5928 controls rendered across 9 OS profile(s)
 [OK  ] local OS detected      debian 12
 ready - try:  pavois scan local --sudo
 
@@ -123,7 +123,7 @@ ready - try:  pavois scan local --sudo
     <p>{fr ? 'Pour une cible distante via SSH (ton ~/.ssh/config et ta clé) :' : 'For a remote target over SSH (your ~/.ssh/config and key):'}</p>
     <Fragment set:html={highlight(`./go/pavois scan user@host --key ~/.ssh/id_ed25519 --sudo`, 'bash')} />
     <p class="muted">{fr ? 'Le profil (OS) est auto-détecté ; --profile ne sert que pour un profil custom.' : 'The OS profile is auto-detected; --profile is only for a custom profile.'}</p>
-    <Fragment set:html={highlight(`# ${fr ? '(profil custom, optionnel)' : '(custom profile, optional)'}
+    <Fragment set:html={highlight(`# ${fr ? '(profil personnalisé, optionnel)' : '(custom profile, optional)'}
 # ./go/pavois scan user@host --key ~/.ssh/id_ed25519 --sudo --profile profiles/linux/debian12`, 'bash')} />
     <p>
       {fr
@@ -157,7 +157,7 @@ ready - try:  pavois scan local --sudo
         : ' creates /etc/at.deny, which another control requires to be absent. It was absent when the plan was written, so nothing ever deleted it. A single-pass apply therefore cannot close the gaps it creates itself.'}
     </p>
     <p>{fr ? 'La boucle : re-scanner, re-planifier, ré-appliquer, jusqu’à ce qu’une passe n’ait plus rien à faire.' : 'The loop: re-scan, re-plan, re-apply, until a pass has nothing left to do.'}</p>
-    <Fragment set:html={highlight(`# ${fr ? 'jusqu’au point fixe (2 a 3 passes en pratique)' : 'until the fixpoint (2 to 3 passes in practice)'}
+    <Fragment set:html={highlight(`# ${fr ? 'jusqu’au point fixe (2 à 3 passes en pratique)' : 'until the fixpoint (2 to 3 passes in practice)'}
 ./go/pavois scan user@host --key ~/.ssh/id_ed25519 --sudo
 ./go/pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo --from reports/<last>.json
 ./go/pavois harden apply --target user@host --key ~/.ssh/id_ed25519 --sudo-prompt plan.yml`, 'bash')} />
@@ -205,7 +205,7 @@ ready - try:  pavois scan local --sudo
         ? 'Une machine durcie qui a perdu une fonction vitale est un échec, pas une note. Après un apply, vérifie que le pare-feu tourne, que sshd répond, que le gestionnaire de paquets est sain et que la machine journalise encore. Un hôte peut afficher 560 contrôles au vert et n’écrire plus une ligne dans /var/log/syslog.'
         : 'A hardened host that lost a vital function is a failure, not a grade. After an apply, check that the firewall is up, sshd answers, the package manager is healthy and the machine still logs. A host can show 560 green controls and no longer write a single line to /var/log/syslog.'}
     </p>
-    <Fragment set:html={highlight(`# ${fr ? 'redemarre, re-scanne : un PASS apres reboot est reboot-proven' : 'reboot, re-scan: a PASS after reboot is reboot-proven'}
+    <Fragment set:html={highlight(`# ${fr ? 'redémarre, re-scanne : un PASS après reboot est reboot-proven' : 'reboot, re-scan: a PASS after reboot is reboot-proven'}
 ./go/pavois harden apply --target user@host --key ~/.ssh/id_ed25519 --sudo-prompt --reboot --scan plan.yml
 
 # ${fr ? 'validation comportementale : tenter l’action interdite' : 'behavioural validation: attempt the forbidden action'}
@@ -213,16 +213,16 @@ ready - try:  pavois scan local --sudo
     <p>
       <code>pavois verify</code>
       {fr
-        ? ' ne lit pas la configuration : il tente la connexion root en SSH, et confirme qu’elle est refusée. C’est la seule preuve qui ne dépend d’aucune interprétation.'
-        : ' does not read the configuration: it attempts the root SSH login and confirms it is refused. That is the one proof that depends on nobody\'s interpretation.'}
+        ? ' ne lit pas la configuration : il tente les actions interdites et regarde ce qui se passe. Huit sondes, dont la connexion root en SSH (qui doit être refusée), l’absence de clients en clair, et quatre sondes qui déclenchent un vrai événement (un chmod, une suppression, une lecture refusée de /etc/shadow) puis vérifient qu’auditd l’a effectivement ENREGISTRÉ. C’est la seule preuve qui ne dépend d’aucune interprétation.'
+        : ' does not read the configuration: it attempts the forbidden actions and watches what happens. Eight probes, including the root SSH login (which must be refused), the absence of cleartext clients, and four that trigger a real event (a chmod, a deletion, a denied read of /etc/shadow) then confirm auditd actually RECORDED it. That is the one proof that depends on nobody\'s interpretation.'}
     </p>
 
     <h2 id="ci">{fr ? '7. En CI' : '7. In CI'}</h2>
     <p>{fr ? 'Le code de sortie porte le verdict, et le format de sortie s’adapte à ton outillage :' : 'The exit code carries the verdict, and the output format fits your tooling:'}</p>
-    <Fragment set:html={highlight(`# ${fr ? 'echoue la CI sous 80/100 ; SARIF pour GitHub code scanning' : 'fail the build under 80/100; SARIF for GitHub code scanning'}
+    <Fragment set:html={highlight(`# ${fr ? 'échoue la CI sous 80/100 ; SARIF pour GitHub code scanning' : 'fail the build under 80/100; SARIF for GitHub code scanning'}
 ./go/pavois scan user@host --key ~/.ssh/id --sudo --fail-under 80 --format sarif --out ./out
 
-# ${fr ? 'un paquet de preuve horodate, avec manifeste et empreintes' : 'a timestamped evidence package, with a manifest and checksums'}
+# ${fr ? 'un paquet de preuve horodaté, avec manifeste et empreintes' : 'a timestamped evidence package, with a manifest and checksums'}
 ./go/pavois bundle before.json after.json --plan plan.yml --out evidence/`, 'bash')} />
     <p class="muted">
       {fr
@@ -246,11 +246,11 @@ ready - try:  pavois scan local --sudo
         ? ' photographie l’état antérieur : le contenu de chaque fichier que la recette va écrire, la liste de ceux qui n’existaient pas encore (le rollback les supprime), et l’état installé/activé de chaque paquet et service touché.'
         : ' photographs the prior state: the content of every file the recipe will write, the list of those that did not exist yet (a rollback deletes them), and the installed/enabled state of every package and service it touches.'}
     </p>
-    <Fragment set:html={highlight(`# ${fr ? 'l apply ecrit un point de restauration, puis converge' : 'the apply writes a restore point, then converges'}
+    <Fragment set:html={highlight(`# ${fr ? 'l’apply écrit un point de restauration, puis converge' : 'the apply writes a restore point, then converges'}
 ./go/pavois harden apply --target user@host --key ~/.ssh/id --sudo-prompt --yes plan.yml
 # pavois: 📸 restore point → restore-points/user_192-0-2-10-20260714-1505
 
-# ${fr ? 'annuler : fichiers restaures, paquets purges, services remis, demons recharges' : 'undo: files restored, packages purged, services restored, daemons reloaded'}
+# ${fr ? 'annuler : fichiers restaurés, paquets purgés, services remis, démons rechargés' : 'undo: files restored, packages purged, services restored, daemons reloaded'}
 ./go/pavois harden rollback restore-points/user_192-0-2-10-20260714-1505 --key ~/.ssh/id --sudo-prompt --yes`, 'bash')} />
     <p>
       {fr
@@ -287,13 +287,13 @@ ready - try:  pavois scan local --sudo
         ? ' En pratique, une boucle et un dossier de rapports suffisent, parce que chaque scan émet un JSON complet et autoporté.'
         : ' In practice a loop and a report directory are enough, because every scan emits a complete, self-contained JSON.'}
     </p>
-    <Fragment set:html={highlight(`# ${fr ? 'un scan par hote, un JSON par hote' : 'one scan per host, one JSON per host'}
+    <Fragment set:html={highlight(`# ${fr ? 'un scan par hôte, un JSON par hôte' : 'one scan per host, one JSON per host'}
 while read -r host; do
   ./go/pavois scan "$host" --key ~/.ssh/id_ed25519 --sudo --on-target \\
      --format json --out reports/ --fail-under 70 || echo "$host below threshold"
 done < inventory.txt
 
-# ${fr ? 'la note et les echecs de chaque hote, en une ligne' : 'each host grade and failures, one line each'}
+# ${fr ? 'la note et les échecs de chaque hôte, en une ligne' : 'each host grade and failures, one line each'}
 jq -r '.grade + " " + (.failed|tostring) + " " + .target' reports/*.json`, 'bash')} />
     <p class="muted">
       {fr
