@@ -94,7 +94,7 @@ run = "uv run --with pyyaml python3 tools/gen_reboot_survivable.py"
 description = "Regenerate the site's sample scan + campaign reports from the anonymized fixtures (docs/examples/) — keeps them current and leak-free by construction"
 depends = ["build"]
 run = [
-  "{{config_root}}/go/pavois render {{config_root}}/docs/examples/after.json --machine 203.0.113.10 --transport ssh --timestamp '2026-06-28 10:00:00 UTC' --out {{config_root}}/site/public/sample-report.html",
+  "{{config_root}}/go/pavois render {{config_root}}/docs/examples/after.json --machine 203.0.113.10 --transport ssh --timestamp '2026-07-13 21:07:00 UTC' --out {{config_root}}/site/public/sample-report.html",
   "{{config_root}}/go/pavois diff {{config_root}}/docs/examples/before.json {{config_root}}/docs/examples/after.json --html {{config_root}}/site/public/sample-campaign.html --json {{config_root}}/site/public/sample-campaign.json",
 ]
 
@@ -145,9 +145,13 @@ run = "npm install && npm run dev"
 
 [tasks."site:build"]
 description = "Build the static hardening site"
-depends = ["gen:pages", "gen:cli", "oscal", "site:verify"]
+depends = ["gen:pages", "gen:cli", "gen:example", "oscal", "site:verify"]
 dir = "{{config_root}}/site"
 run = "npm install && npm run build"
+
+[tasks."site:links"]
+description = "FAIL if any internal link of the built site lands on a page that does not exist"
+run = "uv run python3 tools/check_site_links.py"
 
 [tasks."site:preview"]
 description = "Preview the built site locally"
