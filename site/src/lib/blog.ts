@@ -1,7 +1,6 @@
 // Blog helpers, modelled on devsecops-2026's src/lib/blog.ts, adapted to pavois (bilingual).
 import type { Lang } from '../i18n/ui';
 
-export const POSTS_PER_PAGE = 9;
 
 // Editorial categories (slug -> bilingual label). Used by the breadcrumb, filters and the
 // articleSection in the Article JSON-LD.
