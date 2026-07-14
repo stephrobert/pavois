@@ -1,0 +1,37 @@
+{
+  "id": "kconfig-page-poisoning-no-sanity",
+  "title": {
+    "en": "Enable poison without sanity check",
+    "fr": "Activer l'empoisonnement sans vérification d'intégrité"
+  },
+  "summary": {
+    "en": "Requires the running kernel to be built with `CONFIG_PAGE_POISONING_NO_SANITY=y` so freed pages are still poisoned but the costly verify-on-alloc check is skipped.",
+    "fr": "Exige que le noyau en cours d'exécution soit compilé avec `CONFIG_PAGE_POISONING_NO_SANITY=y` afin que les pages libérées soient toujours empoisonnées mais que la vérification coûteuse à l'allocation soit ignorée."
+  },
+  "rationale": {
+    "en": "Page poisoning normally writes a pattern on free **and** verifies that pattern on the next allocation (the sanity check), to catch corruption. That verification read doubles the cost. `CONFIG_PAGE_POISONING_NO_SANITY=y` keeps the security benefit, freed memory is still overwritten so secrets are destroyed, while skipping the verification read, cutting the performance overhead so poisoning stays viable on production systems.",
+    "fr": "L'empoisonnement des pages écrit normalement un motif à la libération **et** vérifie ce motif lors de l'allocation suivante (la vérification d'intégrité), pour détecter une corruption. Cette lecture de vérification double le coût. `CONFIG_PAGE_POISONING_NO_SANITY=y` conserve le bénéfice de sécurité, la mémoire libérée est toujours écrasée, donc les secrets sont détruits, tout en supprimant la lecture de vérification, réduisant le surcoût en performance afin que l'empoisonnement reste viable sur les systèmes de production."
+  },
+  "check_note": {
+    "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)`, falling back to `/proc/config.gz`, so the result reflects the booted kernel. Pavois expects `CONFIG_PAGE_POISONING_NO_SANITY=y`.",
+    "fr": "Pavois lit la configuration de compilation du noyau **en cours d'exécution** via `/boot/config-$(uname -r)`, avec repli sur `/proc/config.gz`, de sorte que le résultat reflète le noyau démarré. Pavois attend `CONFIG_PAGE_POISONING_NO_SANITY=y`."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_PAGE_POISONING_NO_SANITY=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep '^CONFIG_PAGE_POISONING_NO_SANITY='`). Expected output: `CONFIG_PAGE_POISONING_NO_SANITY=y`.",
+    "fr": "Exécutez `grep '^CONFIG_PAGE_POISONING_NO_SANITY=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep '^CONFIG_PAGE_POISONING_NO_SANITY='`). Sortie attendue : `CONFIG_PAGE_POISONING_NO_SANITY=y`."
+  },
+  "logs": {
+    "en": "This is a tuning sub-option of page poisoning, so it has no dedicated log line. Confirm poisoning is active via `dmesg | grep -i poison`, `journalctl -k` and `cat /proc/cmdline` (look for `page_poison=1`).",
+    "fr": "Il s'agit d'une sous-option de réglage de l'empoisonnement des pages, sans ligne de journal dédiée. Confirmez que l'empoisonnement est actif via `dmesg | grep -i poison`, `journalctl -k` et `cat /proc/cmdline` (cherchez `page_poison=1`)."
+  },
+  "remediation_note": {
+    "en": "No automated remediation: `CONFIG_PAGE_POISONING_NO_SANITY` is a **kernel build-time option** and cannot be toggled at runtime. It depends on `CONFIG_PAGE_POISONING` also being enabled. Use a distribution kernel that sets it, or rebuild. Apply manually; `pavois harden apply` cannot change a compiled-in setting.",
+    "fr": "Aucune remédiation automatique : `CONFIG_PAGE_POISONING_NO_SANITY` est une **option de compilation du noyau** et ne peut pas être basculée à l'exécution. Elle dépend de l'activation de `CONFIG_PAGE_POISONING`. Utilisez un noyau de distribution qui la définit, ou recompilez. À appliquer manuellement ; `pavois harden apply` ne peut pas modifier un paramètre compilé en dur."
+  },
+  "impact": {
+    "en": "Disabling the sanity check trades a corruption-detection diagnostic for speed; the security benefit of overwriting freed memory is preserved. The only real downside is losing an early-warning signal for memory corruption, which matters more in debugging than in production. There is no runtime breakage risk and no lockout concern, it is a compile-time tuning flag. Note it only takes effect when `CONFIG_PAGE_POISONING` is also enabled.",
+    "fr": "Désactiver la vérification d'intégrité échange un diagnostic de détection de corruption contre de la vitesse ; le bénéfice de sécurité lié à l'écrasement de la mémoire libérée est préservé. Le seul vrai inconvénient est la perte d'un signal d'alerte précoce de corruption mémoire, ce qui importe davantage en débogage qu'en production. Aucun risque de casse à l'exécution ni de blocage d'accès, c'est un drapeau de réglage à la compilation. Notez qu'elle ne prend effet que si `CONFIG_PAGE_POISONING` est aussi activé."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

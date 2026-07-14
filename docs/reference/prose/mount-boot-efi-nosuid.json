@@ -1,0 +1,37 @@
+{
+  "id": "mount-boot-efi-nosuid",
+  "title": {
+    "en": "Add nosuid Option to /boot/efi",
+    "fr": "Ajouter l'option nosuid à /boot/efi"
+  },
+  "summary": {
+    "en": "Mounts the EFI system partition `/boot/efi` with the **`nosuid`** option, so the kernel ignores the setuid/setgid bits on any executable stored there.",
+    "fr": "Monte la partition système EFI `/boot/efi` avec l'option **`nosuid`**, afin que le noyau ignore les bits setuid/setgid de tout exécutable qui y serait stocké."
+  },
+  "rationale": {
+    "en": "The EFI system partition holds bootloader files, not user programs, and should never be a source of privileged binaries. Without `nosuid`, an attacker who can write a setuid-root binary onto `/boot/efi` gains a path to **privilege escalation**. Mounting with `nosuid` makes the kernel strip the setuid/setgid effect of any file on that partition, closing this escalation vector with no impact on booting.",
+    "fr": "La partition système EFI contient des fichiers de chargeur d'amorçage, pas des programmes utilisateur, et ne doit jamais être une source de binaires privilégiés. Sans `nosuid`, un attaquant capable d'écrire un binaire setuid-root sur `/boot/efi` obtient une voie d'**élévation de privilèges**. Monter avec `nosuid` fait ignorer par le noyau l'effet setuid/setgid de tout fichier de cette partition, fermant ce vecteur d'élévation sans aucun impact sur le démarrage."
+  },
+  "check_note": {
+    "en": "Pavois inspects the **effective** mount via InSpec's `mount('/boot/efi')` resource, which reads the live kernel mount table (the same data as `findmnt`/`/proc/mounts`). This reflects how the filesystem is **actually** mounted right now, including options applied at runtime, rather than trusting `/etc/fstab`, which may diverge from the running state.",
+    "fr": "Pavois inspecte le montage **effectif** via la ressource InSpec `mount('/boot/efi')`, qui lit la table de montage vivante du noyau (les mêmes données que `findmnt`/`/proc/mounts`). Cela reflète la manière dont le système de fichiers est **réellement** monté en ce moment, y compris les options appliquées à l'exécution, plutôt que de se fier à `/etc/fstab`, qui peut diverger de l'état en cours."
+  },
+  "verify": {
+    "en": "Run `findmnt /boot/efi` (or `mount | grep /boot/efi`). The expected output lists `nosuid` among the mount options. Confirm it is also persisted in `/etc/fstab` so it survives a reboot.",
+    "fr": "Exécutez `findmnt /boot/efi` (ou `mount | grep /boot/efi`). La sortie attendue liste `nosuid` parmi les options de montage. Vérifiez qu'elle est aussi persistée dans `/etc/fstab` afin de survivre à un redémarrage."
+  },
+  "logs": {
+    "en": "There is no dedicated event log; verify the live state with `findmnt /boot/efi`. Mount/remount actions are visible in `journalctl -k` / `dmesg`, and the persistent definition lives in `/etc/fstab`.",
+    "fr": "Il n'existe pas de journal d'événements dédié ; vérifiez l'état vivant avec `findmnt /boot/efi`. Les actions de montage/remontage sont visibles dans `journalctl -k` / `dmesg`, et la définition persistante se trouve dans `/etc/fstab`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined, so this must be applied **manually**: add `nosuid` to the `/boot/efi` entry options in `/etc/fstab`, then apply it live with `mount -o remount /boot/efi` (or reboot). Verify with `findmnt /boot/efi`.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini ; cela doit donc être appliqué **manuellement** : ajoutez `nosuid` aux options de l'entrée `/boot/efi` dans `/etc/fstab`, puis appliquez-le à chaud avec `mount -o remount /boot/efi` (ou redémarrez). Vérifiez avec `findmnt /boot/efi`."
+  },
+  "impact": {
+    "en": "This change is low-risk: the EFI partition contains only bootloader binaries that are run by firmware, not by the OS via setuid, so `nosuid` does not affect booting. The main precaution is editing `/etc/fstab` carefully, a malformed entry can prevent the system from mounting filesystems at boot. Test the line with `mount -a` (and `findmnt /boot/efi`) before rebooting, and keep recovery media handy.",
+    "fr": "Ce changement présente un faible risque : la partition EFI ne contient que des binaires de chargeur d'amorçage exécutés par le firmware, et non par l'OS via setuid ; `nosuid` n'affecte donc pas le démarrage. La principale précaution est d'éditer `/etc/fstab` avec soin, une entrée mal formée peut empêcher le système de monter ses systèmes de fichiers au démarrage. Testez la ligne avec `mount -a` (et `findmnt /boot/efi`) avant de redémarrer, et gardez un support de récupération à portée de main."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

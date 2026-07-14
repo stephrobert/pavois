@@ -1,0 +1,37 @@
+{
+  "id": "findloop-no-files-unowned-by-user",
+  "title": {
+    "en": "Ensure All Files Are Owned by a User",
+    "fr": "S'assurer que tous les fichiers appartiennent a un utilisateur"
+  },
+  "summary": {
+    "en": "Ensures every regular file on local filesystems is owned by a valid user account (no `-nouser` files).",
+    "fr": "Garantit que chaque fichier ordinaire des systemes de fichiers locaux appartient a un compte utilisateur valide (aucun fichier `-nouser`)."
+  },
+  "rationale": {
+    "en": "Unowned files do not directly imply a security problem, but they are generally a sign that something is amiss. They may be caused by an intruder, by an incorrect software installation or incomplete removal, or by failure to delete every file belonging to a removed account. A file with no owner becomes a hidden liability: when a new account is created and happens to reuse the orphaned **UID**, that account silently inherits all of those files, which can leak data or grant unintended write access. The files should be repaired and the root cause investigated.",
+    "fr": "Les fichiers sans proprietaire n'impliquent pas directement un probleme de securite, mais ils signalent generalement une anomalie. Ils peuvent provenir d'un intrus, d'une installation logicielle incorrecte ou d'une suppression incomplete, ou de l'oubli de supprimer tous les fichiers d'un compte retire. Un fichier sans proprietaire devient un risque cache : lorsqu'un nouveau compte est cree et reutilise l'**UID** orphelin, ce compte herite silencieusement de tous ces fichiers, ce qui peut exposer des donnees ou accorder un acces en ecriture imprevu. Les fichiers doivent etre corriges et la cause profonde investiguee."
+  },
+  "check_note": {
+    "en": "Pavois runs `find / -xdev -type f -nouser` and expects empty output, meaning no file references a UID without a matching entry in `/etc/passwd`. The `-xdev` flag keeps the scan on the local filesystem (it does not cross mount points), so network mounts and pseudo-filesystems are not flagged. This is a live scan of the real inodes on disk, not a guess from a config file.",
+    "fr": "Pavois execute `find / -xdev -type f -nouser` et attend une sortie vide, signifiant qu'aucun fichier ne reference un UID sans entree correspondante dans `/etc/passwd`. L'option `-xdev` limite l'analyse au systeme de fichiers local (sans franchir les points de montage), de sorte que les montages reseau et pseudo-systemes ne sont pas signales. Il s'agit d'une analyse en direct des inodes reels sur disque, et non d'une deduction depuis un fichier de configuration."
+  },
+  "verify": {
+    "en": "Run `sudo find / -xdev -type f -nouser 2>/dev/null` as an administrator. Expected output: **nothing** (an empty result). Any path printed is an unowned file that must be fixed or removed.",
+    "fr": "Executez `sudo find / -xdev -type f -nouser 2>/dev/null` en tant qu'administrateur. Sortie attendue : **rien** (resultat vide). Tout chemin affiche est un fichier sans proprietaire a corriger ou supprimer."
+  },
+  "logs": {
+    "en": "There is no daemon log for this. Audit on demand with `find / -xdev -type f -nouser -ls` to list offending files with their numeric UID, or `find / -xdev -nouser -o -nogroup` to also catch unowned groups.",
+    "fr": "Aucun journal de service n'existe pour ce controle. Auditez a la demande avec `find / -xdev -type f -nouser -ls` pour lister les fichiers fautifs avec leur UID numerique, ou `find / -xdev -nouser -o -nogroup` pour detecter aussi les groupes sans proprietaire."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is provided: an unowned file is a **symptom**, and blindly reassigning ownership could hide an intrusion or break an application. Investigate each file first, then either delete it or `chown` it to the correct account manually.",
+    "fr": "Aucun plan de durcissement automatise n'est fourni : un fichier sans proprietaire est un **symptome**, et reattribuer aveuglement la propriete pourrait masquer une intrusion ou casser une application. Investiguez chaque fichier, puis supprimez-le ou attribuez-le (`chown`) manuellement au bon compte."
+  },
+  "impact": {
+    "en": "If left unaddressed, a future account that reuses an orphaned UID silently gains ownership of these files, potentially leaking data or granting write access. Before remediating, **do not** mass-`chown` blindly: identify why the file is unowned (recently deleted account, failed install, or compromise). Reassigning an application's data files to the wrong user can break that service; deleting files still in use can cause data loss.",
+    "fr": "Si rien n'est fait, un compte futur reutilisant un UID orphelin acquiert silencieusement la propriete de ces fichiers, exposant potentiellement des donnees ou accordant un acces en ecriture. Avant de remedier, **ne faites pas** de `chown` massif aveugle : identifiez pourquoi le fichier est sans proprietaire (compte recemment supprime, installation echouee ou compromission). Reattribuer les donnees d'une application au mauvais utilisateur peut casser ce service ; supprimer des fichiers encore utilises peut entrainer une perte de donnees."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

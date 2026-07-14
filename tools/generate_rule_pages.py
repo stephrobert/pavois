@@ -22,12 +22,15 @@ import server  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 REF = ROOT / "docs" / "reference" / "pavois-content"
-OUT = ROOT / "site" / "src" / "content" / "rules"
-OUT.mkdir(parents=True, exist_ok=True)
+PROSE = ROOT / "docs" / "reference" / "prose"  # the authored bilingual prose: SOURCE, versioned
+OUT = ROOT / "site" / "src" / "content" / "rules"  # 100% derived: generated here, gitignored
 
-# Remove stale per-OS entries (old model); keep per-id fiches (they may be enriched).
-for f in OUT.glob("*--*.json"):
-    f.unlink()
+# The output directory is DERIVED: rebuild it from scratch. No stale fiche can survive a merge, a
+# rename or a deletion, because nothing in it is authored any more.
+if OUT.exists():
+    for f in OUT.glob("*.json"):
+        f.unlink()
+OUT.mkdir(parents=True, exist_ok=True)
 
 RICH = ("summary", "check_note", "verify", "logs", "remediation_note", "impact")
 
@@ -102,39 +105,22 @@ for rid, items in sorted(by_id.items()):
     }
     if base.get("rationale"):
         entry["rationale"] = base["rationale"]
+
+    # The prose is SOURCE, and it lives next to the rules it talks about (docs/reference/prose/).
+    # The generator used to read its own output back so as not to destroy it, which is why the
+    # fiches had to be versioned even though everything else in them is derived.
+    pf = PROSE / f"{rid}.json"
+    if pf.exists():
+        authored = json.loads(pf.read_text(encoding="utf-8"))
+        for k, v in authored.items():
+            if k != "id":
+                entry[k] = v
+        if any(k in authored for k in RICH):
+            kept += 1
+
     out = OUT / f"{rid}.json"
-    if out.exists():  # refresh technical fields, PRESERVE authored bilingual prose
-        try:
-            ex = json.loads(out.read_text(encoding="utf-8"))
-            for k in (
-                "title",
-                "summary",
-                "rationale",
-                "check_note",
-                "verify",
-                "logs",
-                "remediation_note",
-                "impact",
-                "needs_translation",
-                "datePublished",
-                "dateModified",
-            ):  # hand-maintained editorial dates
-                if k in ex:
-                    entry[k] = ex[k]
-            if _is_enriched(out):
-                kept += 1
-        except (OSError, json.JSONDecodeError):
-            # no prior file or it isn't valid JSON: nothing to carry over, just (re)write below
-            pass
     out.write_text(json.dumps(entry, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     gen += 1
-
-# A fiche for a control the scanner no longer runs is a page that documents a rule nobody can fail:
-# merging two duplicate ids used to leave the loser's fiche behind, live and indexable. The site is
-# a DERIVED artifact — what is not in the reference has no page.
-stale = sorted(p for p in OUT.glob("*.json") if p.stem not in by_id)
-for p in stale:
-    p.unlink()
 
 # Both honesty flags are DERIVED from the data, never asserted.
 #
@@ -172,6 +158,10 @@ for p in sorted(OUT.glob("*.json")):
         p.write_text(json.dumps(d, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 print(f"wrote {gen} fiches ({kept} kept their authored prose), from {len(oses)} OSes")
-gone = ", ".join(p.stem for p in stale) or "-"
-print(f"removed {len(stale)} stale fiche(s) whose control is gone: {gone}")
+orphan = sorted(p.stem for p in PROSE.glob("*.json") if p.stem not in by_id)
+if orphan:
+    print(
+        f"WARNING: {len(orphan)} prose file(s) describe a control that no longer exists: "
+        f"{', '.join(orphan[:8])}"
+    )
 print(f"{todo} fiche(s) still need authored prose, {untranslated} still need a FR pass")

@@ -1,0 +1,37 @@
+{
+  "id": "service-named-disabled",
+  "title": {
+    "en": "Disable named Service",
+    "fr": "Désactiver le service named"
+  },
+  "summary": {
+    "en": "Ensures the BIND DNS server (`named.service`) is **disabled** and **not running** unless the host is an intentional DNS server.",
+    "fr": "Garantit que le serveur DNS BIND (`named.service`) est **désactivé** et **arrêté**, sauf si l'hôte est un serveur DNS voulu."
+  },
+  "rationale": {
+    "en": "The BIND `named` DNS server is a network-facing service that has a long history of remotely exploitable flaws. Unless the host is an intended DNS server, it should be disabled to reduce the attack surface.",
+    "fr": "Le serveur DNS BIND `named` est un service accessible sur le réseau qui a connu de nombreuses failles exploitables à distance. À moins que l'hôte ne soit un serveur DNS voulu, il doit être désactivé pour réduire la surface d'attaque."
+  },
+  "check_note": {
+    "en": "Pavois queries the **resolved unit state** with `systemctl is-enabled` / `is-active` for `named.service`. The effective state catches a server enabled via a drop-in or an alias (e.g. `bind9.service`) that scanning `/etc/bind/` or `/etc/named.conf` would miss.",
+    "fr": "Pavois interroge l'**état résolu de l'unité** avec `systemctl is-enabled` / `is-active` pour `named.service`. L'état effectif détecte un serveur activé via un drop-in ou un alias (p. ex. `bind9.service`) qu'un scan de `/etc/bind/` ou `/etc/named.conf` manquerait."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled named.service` (expected `disabled` or `not-found`) and `systemctl is-active named.service` (expected `inactive`).",
+    "fr": "Exécutez `systemctl is-enabled named.service` (résultat attendu `disabled` ou `not-found`) et `systemctl is-active named.service` (résultat attendu `inactive`)."
+  },
+  "logs": {
+    "en": "Check `systemctl show named.service` (fields `UnitFileState`, `ActiveState`) and `journalctl -u named.service`; query and zone-transfer activity also appears in `/var/log/syslog`.",
+    "fr": "Vérifiez `systemctl show named.service` (champs `UnitFileState`, `ActiveState`) et `journalctl -u named.service` ; l'activité de requêtes et de transferts de zone apparaît aussi dans `/var/log/syslog`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan applies a `service` resource for `named` with actions **disable** and **stop**, so the DNS server stays off across reboots and is stopped immediately. Apply it with `pavois harden apply`.",
+    "fr": "Le plan harden de Pavois applique une ressource `service` sur `named` avec les actions **disable** et **stop**, de sorte que le serveur DNS reste éteint après les redémarrages et soit arrêté immédiatement. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "On a host that is not a DNS server, disabling `named.service` has **no functional impact**. **Precaution:** if this machine serves authoritative or caching DNS to clients, do **not** disable it, name resolution would break for its consumers; document the exception instead. On Debian/Ubuntu the unit may be `bind9.service`, so confirm the intended unit's state.",
+    "fr": "Sur un hôte qui n'est pas un serveur DNS, désactiver `named.service` n'a **aucun impact fonctionnel**. **Précaution :** si cette machine fournit du DNS faisant autorité ou de cache à des clients, ne la désactivez **pas**, la résolution de noms casserait pour ses consommateurs ; documentez plutôt l'exception. Sous Debian/Ubuntu, l'unité peut être `bind9.service`, vérifiez donc l'état de l'unité voulue."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

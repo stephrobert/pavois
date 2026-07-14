@@ -1,0 +1,37 @@
+{
+  "id": "pkg-nfs-kernel-server-removed",
+  "title": {
+    "en": "Uninstall nfs-kernel-server Package",
+    "fr": "Desinstaller le paquet nfs-kernel-server"
+  },
+  "summary": {
+    "en": "Removes the **nfs-kernel-server** package (the NFS server) when the host does not need to export NFS shares.",
+    "fr": "Supprime le paquet **nfs-kernel-server** (le serveur NFS) lorsque l'hote n'a pas besoin d'exporter de partages NFS."
+  },
+  "rationale": {
+    "en": "The **nfs-kernel-server** package provides the in-kernel NFS server (`nfsd`, `rpc.mountd`, exports), turning the host into an NFS file server. It exposes the RPC/portmapper stack and NFS daemons on the network, a historically vulnerable surface. If the system does not need to **export NFS shares**, removing the package eliminates these listening services and reduces the remote attack surface.",
+    "fr": "Le paquet **nfs-kernel-server** fournit le serveur NFS integre au noyau (`nfsd`, `rpc.mountd`, exports), transformant l'hote en serveur de fichiers NFS. Il expose la pile RPC/portmapper et les demons NFS sur le reseau, une surface historiquement vulnerable. Si le systeme n'a pas besoin d'**exporter de partages NFS**, supprimer le paquet elimine ces services en ecoute et reduit la surface d'attaque distante."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database through the InSpec `package('nfs-kernel-server')` resource and asserts `should_not be_installed`, resolving via `dpkg`. The **effective** package inventory is more reliable than inspecting `/etc/exports`: an empty exports file does not prove the server is gone, and the daemons can be re-enabled while installed. The package state definitively tells whether NFS server code is present.",
+    "fr": "Pavois interroge la base de paquets via la ressource InSpec `package('nfs-kernel-server')` et verifie `should_not be_installed`, en s'appuyant sur `dpkg`. L'inventaire **effectif** est plus fiable que l'inspection de `/etc/exports` : un fichier d'exports vide ne prouve pas la disparition du serveur, et les demons peuvent etre reactives une fois installes. L'etat du paquet indique de maniere definitive si le code serveur NFS est present."
+  },
+  "verify": {
+    "en": "Run `dpkg -s nfs-kernel-server`; expect `not installed`. Confirm nothing is exported with `exportfs -v` (command should be absent or print nothing) and no `nfsd` listener via `ss -lntup | grep :2049` (no output expected).",
+    "fr": "Executez `dpkg -s nfs-kernel-server` ; attendu : `not installed`. Confirmez l'absence d'exports avec `exportfs -v` (commande absente ou sans sortie) et l'absence d'ecoute `nfsd` via `ss -lntup | grep :2049` (aucune sortie attendue)."
+  },
+  "logs": {
+    "en": "Removal is recorded in `/var/log/dpkg.log`. Prior NFS server activity, mount requests and export errors appear in `journalctl -u nfs-server` and `journalctl -u rpc-mountd`. After removal those units should no longer exist.",
+    "fr": "La suppression est tracee dans `/var/log/dpkg.log`. L'activite anterieure du serveur NFS, les demandes de montage et les erreurs d'export apparaissent dans `journalctl -u nfs-server` et `journalctl -u rpc-mountd`. Apres suppression, ces unites ne doivent plus exister."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource for **nfs-kernel-server** with action `remove`; `pavois harden apply` uninstalls it via `apt`, which stops `nfs-server` and the associated RPC daemons. Removing the server package does **not** remove client support (`nfs-common`); that is a separate rule.",
+    "fr": "Le plan de durcissement de Pavois declare une ressource `package` pour **nfs-kernel-server** avec l'action `remove` ; `pavois harden apply` le desinstalle via `apt`, ce qui arrete `nfs-server` et les demons RPC associes. Supprimer le paquet serveur ne retire **pas** le support client (`nfs-common`) ; c'est une regle distincte."
+  },
+  "impact": {
+    "en": "Removing **nfs-kernel-server** stops this host from serving NFS; any clients mounting its exports will lose access. **Precautions:** before applying, check `/etc/exports` and `exportfs -v`, if this host is a file server other systems depend on, do **not** remove it (or migrate those shares first). Notify clients of the outage. On hosts that never exported NFS, removal is safe and shrinks the network attack surface.",
+    "fr": "Supprimer **nfs-kernel-server** empeche l'hote de servir du NFS ; les clients montant ses exports perdront l'acces. **Precautions :** avant d'appliquer, verifiez `/etc/exports` et `exportfs -v`, si cet hote est un serveur de fichiers dont d'autres systemes dependent, ne le supprimez **pas** (ou migrez d'abord ces partages). Prevenez les clients de l'interruption. Sur les hotes n'ayant jamais exporte de NFS, la suppression est sans danger et reduit la surface d'attaque reseau."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

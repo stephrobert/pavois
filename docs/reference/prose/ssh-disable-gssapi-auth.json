@@ -1,0 +1,37 @@
+{
+  "id": "ssh-disable-gssapi-auth",
+  "title": {
+    "en": "Disable GSSAPI Authentication",
+    "fr": "Désactiver l'authentification GSSAPI"
+  },
+  "summary": {
+    "en": "Forces **`GSSAPIAuthentication no`** so SSH does not offer the GSSAPI (typically Kerberos) authentication mechanism.",
+    "fr": "Force **`GSSAPIAuthentication no`** afin que SSH ne propose pas le mécanisme d'authentification GSSAPI (généralement Kerberos)."
+  },
+  "rationale": {
+    "en": "GSSAPI provides pluggable authentication (most often Kerberos) to applications. Exposing it through SSH widens the attack surface: it reaches the system's GSSAPI/Kerberos stack from the network and historically has been a source of pre-authentication vulnerabilities. On hosts that do not participate in a Kerberos realm, this mechanism is pure dead weight and should be disabled to keep the set of enabled auth methods minimal.",
+    "fr": "GSSAPI fournit une authentification enfichable (le plus souvent Kerberos) aux applications. L'exposer via SSH élargit la surface d'attaque : il atteint la pile GSSAPI/Kerberos du système depuis le réseau et a historiquement été source de vulnérabilités pré-authentification. Sur les hôtes ne participant pas à un domaine Kerberos, ce mécanisme est un poids mort et doit être désactivé pour garder un ensemble minimal de méthodes d'authentification activées."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** value from `sshd -T`, after all `Include`s, drop-ins in `/etc/ssh/sshd_config.d/` and `Match` blocks. On RHEL-family systems system-wide crypto policies inject SSH settings via includes, only the resolved `sshd -T` output reveals whether GSSAPI is truly off, which a read of `/etc/ssh/sshd_config` cannot.",
+    "fr": "Pavois lit la valeur **effective** via `sshd -T`, après tous les `Include`, drop-ins de `/etc/ssh/sshd_config.d/` et blocs `Match`. Sur la famille RHEL, les politiques crypto système injectent des réglages SSH par includes, seule la sortie résolue de `sshd -T` révèle si GSSAPI est réellement désactivé, ce qu'une lecture de `/etc/ssh/sshd_config` ne permet pas."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -i '^gssapiauthentication'`. Expected output is `gssapiauthentication no`.",
+    "fr": "Exécutez `sshd -T | grep -i '^gssapiauthentication'`. La sortie attendue est `gssapiauthentication no`."
+  },
+  "logs": {
+    "en": "Authentication method negotiation is logged in `/var/log/auth.log` (Debian/Ubuntu) or `journalctl -u sshd` (RHEL family), more verbosely with `LogLevel VERBOSE`.",
+    "fr": "La négociation des méthodes d'authentification est journalisée dans `/var/log/auth.log` (Debian/Ubuntu) ou `journalctl -u sshd` (famille RHEL), plus en détail avec `LogLevel VERBOSE`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan writes the `sshd_setting` directive **`GSSAPIAuthentication no`** in a managed drop-in, validates with `sshd -t`, then **reloads** the `ssh` service. Apply it with `pavois harden apply`.",
+    "fr": "Le plan harden de Pavois écrit la directive `sshd_setting` **`GSSAPIAuthentication no`** dans un drop-in géré, valide avec `sshd -t`, puis **recharge** le service `ssh`. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "**Before applying**, confirm the host does not rely on Kerberos single sign-on over SSH (common in Active Directory / FreeIPA / SSSD-joined environments). If users log in with Kerberos tickets (`ssh -K`), disabling GSSAPI will force them onto keys or passwords. On standalone hosts there is no impact. The reload preserves active sessions.",
+    "fr": "**Avant d'appliquer**, vérifiez que l'hôte ne repose pas sur l'authentification unique Kerberos via SSH (fréquent dans les environnements Active Directory / FreeIPA / joints par SSSD). Si les utilisateurs se connectent avec des tickets Kerberos (`ssh -K`), désactiver GSSAPI les forcera vers les clés ou mots de passe. Sur les hôtes autonomes, aucun impact. Le rechargement préserve les sessions actives."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

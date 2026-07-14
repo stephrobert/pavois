@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-net-ipv4-conf-default-shared_media",
+  "title": {
+    "en": "Configure Sending and Accepting Shared Media Redirects by Default",
+    "fr": "Configurer l'envoi et l'acceptation des redirections sur média partagé par défaut"
+  },
+  "summary": {
+    "en": "Disables shared-media redirect behavior on new IPv4 interfaces by setting `net.ipv4.conf.default.shared_media` to **0**, so it cannot silently re-enable secure redirects.",
+    "fr": "Désactive le comportement de redirection sur média partagé sur les nouvelles interfaces IPv4 en positionnant `net.ipv4.conf.default.shared_media` à **0**, l'empêchant de réactiver silencieusement les redirections sécurisées."
+  },
+  "rationale": {
+    "en": "This setting must be aligned with `net.ipv4.conf.default.secure_redirects` because it overrides it: if `shared_media` is enabled for an interface, secure redirects are implicitly enabled too. Leaving it on therefore re-opens the ICMP-redirect attack surface (routing-table tampering, man-in-the-middle) even when secure_redirects is set to 0.",
+    "fr": "Ce réglage doit être aligné avec `net.ipv4.conf.default.secure_redirects` car il le surcharge : si `shared_media` est activé sur une interface, les redirections sécurisées le sont implicitement aussi. Le laisser actif rouvre donc la surface d'attaque des redirections ICMP (altération de la table de routage, homme du milieu) même lorsque secure_redirects vaut 0."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live** kernel value via `kernel_parameter('net.ipv4.conf.default.shared_media')`, reflecting the running setting after all `sysctl.conf` / `/etc/sysctl.d/` drop-ins and runtime overrides are merged. This matters here because `shared_media` overrides `secure_redirects`, so only the effective value reveals the true state, a file scan of `/etc/sysctl.conf` alone cannot.",
+    "fr": "Pavois lit la valeur **effective** du noyau via `kernel_parameter('net.ipv4.conf.default.shared_media')`, qui reflète le réglage en cours après fusion de tous les drop-ins `sysctl.conf` / `/etc/sysctl.d/` et des surcharges runtime. C'est crucial ici car `shared_media` surcharge `secure_redirects` : seule la valeur effective révèle l'état réel, ce qu'un simple examen de `/etc/sysctl.conf` ne permet pas."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.conf.default.shared_media` and expect `net.ipv4.conf.default.shared_media = 0`.",
+    "fr": "Exécuter `sysctl net.ipv4.conf.default.shared_media` et attendre `net.ipv4.conf.default.shared_media = 0`."
+  },
+  "logs": {
+    "en": "Check the effective value with `sysctl net.ipv4.conf.default.shared_media`, and cross-check `sysctl net.ipv4.conf.default.secure_redirects` since shared_media can override it. Per-interface state: `sysctl -a | grep shared_media`.",
+    "fr": "Vérifier la valeur effective avec `sysctl net.ipv4.conf.default.shared_media`, et recouper avec `sysctl net.ipv4.conf.default.secure_redirects` puisque shared_media peut le surcharger. État par interface : `sysctl -a | grep shared_media`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan sets `net.ipv4.conf.default.shared_media = 0` via the **sysctl** resource, persisting it in a Pavois-owned drop-in and applying it live (no reboot). Run it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois positionne `net.ipv4.conf.default.shared_media = 0` via la ressource **sysctl**, en le persistant dans un drop-in géré par Pavois et en l'appliquant à chaud (sans redémarrage). À exécuter avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Safe on standard hosts. Precaution: `shared_media` only matters in **shared-medium / multi-subnet-on-one-segment** topologies where multiple IP subnets share a single physical link; disabling it there may break expected redirect behavior. On ordinary point-to-point or switched LANs there is no functional impact. The `default` key applies to new interfaces only, align `net.ipv4.conf.all.shared_media` for existing ones.",
+    "fr": "Sans danger sur les hôtes standard. Précaution : `shared_media` n'a d'importance que dans les topologies à **média partagé / plusieurs sous-réseaux sur un même segment** où plusieurs sous-réseaux IP partagent un seul lien physique ; le désactiver dans ce cas peut casser le comportement de redirection attendu. Sur un LAN commuté ou point à point ordinaire, aucun impact fonctionnel. La clé `default` ne s'applique qu'aux nouvelles interfaces, aligner `net.ipv4.conf.all.shared_media` pour les interfaces existantes."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

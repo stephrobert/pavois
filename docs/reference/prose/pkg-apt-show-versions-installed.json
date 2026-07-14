@@ -1,0 +1,33 @@
+{
+  "id": "pkg-apt-show-versions-installed",
+  "title": {
+    "en": "Install apt-show-versions (patch-management inventory)",
+    "fr": "Installer apt-show-versions (inventaire pour la gestion des correctifs)"
+  },
+  "summary": {
+    "en": "`apt-show-versions` reports, for every installed package, the version in use, the suite it came from (`stable`, `oldstable`, a third-party repo) and whether a newer version is available: `apt-show-versions -u` lists exactly what is upgradable. Be clear about what this buys you: it is an **inventory and patch-management tool, not a protection**. It makes patch drift measurable; it never fixes it. No standard mandates it, and Pavois carries it as a Debian defence-in-depth practice.",
+    "fr": "`apt-show-versions` indique, pour chaque paquet installé, la version en place, la suite d'origine (`stable`, `oldstable`, un dépôt tiers) et l'existence d'une version plus récente : `apt-show-versions -u` liste exactement ce qui est mettable à jour. Soyons clairs sur l'apport : c'est un **outil d'inventaire et de gestion des correctifs, pas une protection**. Il rend la dette de correctifs mesurable ; il ne la corrige jamais. Aucune norme ne l'impose, Pavois le porte comme bonne pratique Debian de défense en profondeur."
+  },
+  "check_note": {
+    "en": "Pavois asserts that `apt-show-versions` is present in the dpkg inventory. This is an **inventory-state** control: it proves the binary is available on the host, **not** that anyone runs it, and certainly not that the host is up to date. A machine two years behind on patches passes this rule as long as the package is installed.",
+    "fr": "Pavois vérifie la présence de `apt-show-versions` dans l'inventaire dpkg. C'est un contrôle d'**état d'inventaire** : il prouve que le binaire est disponible sur l'hôte, **pas** que quelqu'un l'exécute, et encore moins que l'hôte est à jour. Une machine en retard de deux ans sur ses correctifs passe cette règle du moment que le paquet est installé."
+  },
+  "verify": {
+    "en": "Run `dpkg -l apt-show-versions` and confirm the state column reads `ii`:\n\n```\nii  apt-show-versions  0.22.13  all  lists available package versions with distribution\n```\n\nThen exercise it: `apt-show-versions -u` prints one line per upgradable package (`openssl/bookworm-security upgradeable from 3.0.11-1~deb12u2 to 3.0.15-1~deb12u1`), and prints nothing when the host is current.",
+    "fr": "Exécutez `dpkg -l apt-show-versions` et vérifiez que la colonne d'état affiche `ii` :\n\n```\nii  apt-show-versions  0.22.13  all  lists available package versions with distribution\n```\n\nPuis mettez-le à l'épreuve : `apt-show-versions -u` affiche une ligne par paquet mettable à jour (`openssl/bookworm-security upgradeable from 3.0.11-1~deb12u2 to 3.0.15-1~deb12u1`), et n'affiche rien quand l'hôte est à jour."
+  },
+  "logs": {
+    "en": "**No logs.** apt-show-versions is an on-demand CLI with no daemon, no cron job and no log file; its only persistent artefact is a parsing cache under `/var/cache/apt-show-versions/`, rebuilt when the APT lists change. If you want a trace of patch drift over time, you have to capture the output of `apt-show-versions -u` yourself (a scheduled job feeding your monitoring).",
+    "fr": "**Aucun journal.** apt-show-versions est une commande à la demande : pas de démon, pas de tâche planifiée, pas de fichier de journal ; son seul artefact persistant est un cache d'analyse sous `/var/cache/apt-show-versions/`, reconstruit quand les listes APT changent. Pour garder une trace de la dette de correctifs dans le temps, il faut capturer soi-même la sortie de `apt-show-versions -u` (une tâche planifiée qui alimente la supervision)."
+  },
+  "remediation_note": {
+    "en": "The Pavois harden plan installs the `apt-show-versions` package with the system package manager (`package` resource, action `install`). No configuration is applied, and none is needed: the tool is a read-only reporter.",
+    "fr": "Le plan de durcissement Pavois installe le paquet `apt-show-versions` avec le gestionnaire de paquets du système (ressource `package`, action `install`). Aucune configuration n'est appliquée, et aucune n'est nécessaire : l'outil ne fait que rapporter, en lecture seule."
+  },
+  "impact": {
+    "en": "Without it you lose a fast, scriptable view of *which* packages are behind and *which suite* they come from, which is how you catch a package still pinned to an unsupported suite or pulled from a forgotten third-party repo. Honestly, `apt list --upgradable` covers most of that, so the marginal gain is modest, and the rule's real value is that it forces the question *is anyone measuring patch drift here?*. Side effects are negligible: the package is small, pulls only Perl libraries already present on Debian, changes no configuration and cannot break a service. The one cost is a cache rebuild that makes the first invocation after an `apt update` take a few seconds.",
+    "fr": "Sans lui, vous perdez une vue rapide et scriptable des paquets en retard et de leur suite d'origine : c'est ainsi qu'on repère un paquet resté épinglé sur une suite non maintenue ou tiré d'un dépôt tiers oublié. Honnêtement, `apt list --upgradable` couvre l'essentiel, donc le gain marginal reste modeste, et la vraie valeur de la règle est de poser la question : *quelqu'un mesure-t-il la dette de correctifs sur cet hôte ?*. Les effets de bord sont négligeables : le paquet est léger, ne tire que des bibliothèques Perl déjà présentes sur Debian, ne modifie aucune configuration et ne peut casser aucun service. Seul coût : une reconstruction de cache qui rend la première invocation après un `apt update` un peu lente (quelques secondes)."
+  },
+  "datePublished": "2026-07-14",
+  "dateModified": "2026-07-14"
+}

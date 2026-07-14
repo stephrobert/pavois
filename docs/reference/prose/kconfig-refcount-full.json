@@ -1,0 +1,37 @@
+{
+  "id": "kconfig-refcount-full",
+  "title": {
+    "en": "Perform full reference count validation",
+    "fr": "Effectuer la validation complète des compteurs de références"
+  },
+  "summary": {
+    "en": "Requires the kernel to be built with **`CONFIG_REFCOUNT_FULL=y`** so all `refcount_t` operations are fully validated and saturate on overflow.",
+    "fr": "Exige que le noyau soit compilé avec **`CONFIG_REFCOUNT_FULL=y`** afin que toutes les opérations `refcount_t` soient entièrement validées et saturent en cas de débordement."
+  },
+  "rationale": {
+    "en": "Refcounting provides protections against various use-after-free conditions that can be used in security flaw exploits. With `CONFIG_REFCOUNT_FULL`, the kernel performs full sanity checking of `refcount_t` operations and saturates instead of wrapping, so a counter that overflows (often forced by an attacker) cannot reach zero prematurely and trigger an early **free** of a still-referenced object, a classic path to **use-after-free** privilege escalation. Note: on newer kernels (5.5+) this protection is always built into the arithmetic and the dedicated option was removed, so the check is most meaningful on the older kernels in scope.",
+    "fr": "Le comptage de références protège contre diverses conditions d'utilisation après libération (use-after-free) exploitables dans des failles de sécurité. Avec `CONFIG_REFCOUNT_FULL`, le noyau effectue une vérification complète des opérations `refcount_t` et sature au lieu de déborder : un compteur qui déborde (souvent forcé par un attaquant) ne peut pas atteindre zéro prématurément et provoquer une **libération** anticipée d'un objet encore référencé, voie classique vers une élévation de privilèges par **use-after-free**. Remarque : sur les noyaux récents (5.5+), cette protection est intégrée d'office à l'arithmétique et l'option dédiée a été supprimée ; le contrôle est donc surtout pertinent sur les noyaux plus anciens du périmètre."
+  },
+  "check_note": {
+    "en": "Pavois reads the build options of the **running** kernel, `grep '^CONFIG_REFCOUNT_FULL=' /boot/config-$(uname -r)` or `zcat /proc/config.gz`, and requires `y`. Reading the live kernel's own config (keyed on `uname -r`) reflects exactly the booted kernel, which a package name or generic file cannot guarantee.",
+    "fr": "Pavois lit les options de compilation du noyau **en cours d'exécution**, `grep '^CONFIG_REFCOUNT_FULL=' /boot/config-$(uname -r)` ou `zcat /proc/config.gz`, et exige `y`. Lire la configuration du noyau réellement démarré (indexée sur `uname -r`) reflète exactement le noyau démarré, ce qu'un nom de paquet ou un fichier générique ne peut garantir."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_REFCOUNT_FULL=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep CONFIG_REFCOUNT_FULL`). Expected output:\n\n```\nCONFIG_REFCOUNT_FULL=y\n```\n\nOn kernels 5.5 and newer the symbol no longer exists because full refcount checking is unconditional.",
+    "fr": "Exécutez `grep '^CONFIG_REFCOUNT_FULL=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep CONFIG_REFCOUNT_FULL`). Sortie attendue :\n\n```\nCONFIG_REFCOUNT_FULL=y\n```\n\nSur les noyaux 5.5 et ultérieurs, le symbole n'existe plus car la vérification complète des compteurs est inconditionnelle."
+  },
+  "logs": {
+    "en": "There is no routine log entry. A refcount violation is reported at runtime via a kernel warning in `dmesg` / `journalctl -k` (look for `refcount_t` overflow/underflow `WARNING` traces). Confirm the build flag with `grep CONFIG_REFCOUNT_FULL /boot/config-$(uname -r)`.",
+    "fr": "Il n'y a pas d'entrée de journal courante. Une violation de compteur est signalée à l'exécution par un avertissement noyau dans `dmesg` / `journalctl -k` (recherchez des traces `WARNING` de débordement/sous-débordement `refcount_t`). Confirmez l'option de compilation avec `grep CONFIG_REFCOUNT_FULL /boot/config-$(uname -r)`."
+  },
+  "remediation_note": {
+    "en": "This is a **kernel build-time option**, so Pavois ships no automated harden step for it. It is satisfied by booting a distribution kernel compiled with `CONFIG_REFCOUNT_FULL=y`, or by running a kernel 5.5+ where the protection is always on; a custom kernel must be rebuilt.",
+    "fr": "Il s'agit d'une **option de compilation du noyau**, Pavois ne fournit donc aucune étape de durcissement automatique. Elle est satisfaite en démarrant un noyau de distribution compilé avec `CONFIG_REFCOUNT_FULL=y`, ou en exécutant un noyau 5.5+ où la protection est toujours active ; un noyau personnalisé doit être recompilé."
+  },
+  "impact": {
+    "en": "If absent (on a kernel old enough to expose the option), `refcount_t` overflows can silently wrap and enable use-after-free exploitation. **Precautions:** full refcount checking adds a tiny per-operation cost but is enabled in stock kernels and safe to adopt. On modern kernels (5.5+) there is nothing to change, the check intentionally finds the symbol missing because the behavior is built in. No reboot risk beyond the normal kernel switch.",
+    "fr": "En son absence (sur un noyau assez ancien pour exposer l'option), les débordements de `refcount_t` peuvent boucler silencieusement et permettre une exploitation use-after-free. **Précautions :** la vérification complète des compteurs ajoute un coût minime par opération mais est activée dans les noyaux standards et sûre à adopter. Sur les noyaux modernes (5.5+), rien à changer, le contrôle constate volontairement l'absence du symbole car le comportement est intégré. Aucun risque de redémarrage au-delà du changement de noyau habituel."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

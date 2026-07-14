@@ -1,0 +1,37 @@
+{
+  "id": "pkg-squid-removed",
+  "title": {
+    "en": "Uninstall squid Package",
+    "fr": "Désinstaller le paquet squid"
+  },
+  "summary": {
+    "en": "Ensures the **`squid`** HTTP proxy package is **not installed** on hosts that are not dedicated proxy servers.",
+    "fr": "Garantit que le paquet de proxy HTTP **`squid`** n'est **pas installé** sur les hôtes qui ne sont pas des serveurs mandataires dédiés."
+  },
+  "rationale": {
+    "en": "`squid` is a **caching/forwarding HTTP proxy** server. If there is no need to make proxy server software available, **removing it provides a safeguard against its activation**. A proxy left running can be abused as an **open relay** for outbound traffic, used to pivot through network boundaries, or exploited via the proxy's own CVEs, all unnecessary exposure on a host that is not a deliberate proxy.",
+    "fr": "`squid` est un **serveur mandataire (proxy) HTTP de cache et de relais**. S'il n'est pas nécessaire de disposer d'un logiciel de proxy, **le supprimer protège contre son activation**. Un proxy laissé en fonctionnement peut être détourné en **relais ouvert** pour le trafic sortant, servir à franchir des frontières réseau, ou être exploité via ses propres CVE, autant d'expositions inutiles sur un hôte qui n'est pas un proxy assumé."
+  },
+  "check_note": {
+    "en": "Pavois asserts absence of `squid` via CINC/InSpec's `package` resource against the **effective** package database (`dpkg`/`rpm`). If `squid` is installed it can bind a listener (typically TCP/3128) regardless of config-file state, so the package-level check is the authoritative signal.",
+    "fr": "Pavois vérifie l'absence de `squid` via la ressource `package` de CINC/InSpec sur la base de données de paquets **effective** (`dpkg`/`rpm`). Si `squid` est installé, il peut ouvrir un écouteur (généralement TCP/3128) quel que soit l'état des fichiers de configuration ; le contrôle au niveau paquet est donc le signal faisant autorité."
+  },
+  "verify": {
+    "en": "Run `dpkg -s squid` (Debian/Ubuntu) or `rpm -q squid` (RHEL/Alma/Fedora); a compliant host reports **not installed**. Confirm no proxy listener with `ss -tlnp | grep ':3128'` (no output).",
+    "fr": "Exécutez `dpkg -s squid` (Debian/Ubuntu) ou `rpm -q squid` (RHEL/Alma/Fedora) ; un hôte conforme indique **non installé**. Confirmez l'absence d'écouteur proxy avec `ss -tlnp | grep ':3128'` (aucune sortie)."
+  },
+  "logs": {
+    "en": "- Removal events appear in `/var/log/dpkg.log` (Debian) or `/var/log/dnf.log` (RHEL).\n- After removal, `systemctl status squid` reports **not-found** and TCP/3128 is no longer bound (`ss -tlnp`).",
+    "fr": "- Les événements de suppression apparaissent dans `/var/log/dpkg.log` (Debian) ou `/var/log/dnf.log` (RHEL).\n- Après suppression, `systemctl status squid` indique **not-found** et TCP/3128 n'est plus en écoute (`ss -tlnp`)."
+  },
+  "remediation_note": {
+    "en": "The harden plan declares a **`package`** resource for `squid` with action **`remove`**; `pavois harden apply` uninstalls it via the native package manager (`apt`/`dnf`). The proxy listener disappears.",
+    "fr": "Le plan de durcissement déclare une ressource **`package`** pour `squid` avec l'action **`remove`** ; `pavois harden apply` le désinstalle via le gestionnaire de paquets natif (`apt`/`dnf`). L'écouteur du proxy disparaît."
+  },
+  "impact": {
+    "en": "**Do not apply on a deliberate proxy/gateway host**, removing `squid` cuts off every client that routes web traffic or pulls cached content through it, which can break internet access for a whole subnet. Verify the host's role and current clients (`ss -tnp` against :3128) before applying. Cache data under `/var/spool/squid` is preserved by a removal (purge would delete it).",
+    "fr": "**N'appliquez pas cette règle sur un hôte proxy/passerelle assumé**, supprimer `squid` coupe tout client qui route son trafic web ou récupère du contenu en cache à travers lui, ce qui peut priver d'accès Internet un sous-réseau entier. Vérifiez le rôle de l'hôte et ses clients actuels (`ss -tnp` sur :3128) avant d'appliquer. Les données de cache sous `/var/spool/squid` sont conservées par une suppression (un purge les supprimerait)."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,37 @@
+{
+  "id": "pwquality-difok",
+  "title": {
+    "en": "Ensure PAM Enforces Password Requirements - Minimum Different Characters",
+    "fr": "Garantir que PAM impose les exigences de mot de passe - Nombre minimum de caractères différents"
+  },
+  "summary": {
+    "en": "Sets pwquality `difok = 2` so a new password must differ from the old one by **at least 2 characters**, preventing trivial password recycling.",
+    "fr": "Définit `difok = 2` dans pwquality afin qu'un nouveau mot de passe diffère de l'ancien d'**au moins 2 caractères**, empêchant un recyclage trivial des mots de passe."
+  },
+  "rationale": {
+    "en": "Password strength measures resistance to guessing and brute-force attacks. When users change a password, they tend to make a **minimal tweak** to the previous one (e.g. incrementing a trailing digit). `difok` requires a minimum number of characters to differ from the old password, so a freshly changed password does not closely resemble a previously compromised one. Note that on an already-compromised system a changed password may still be exposed.",
+    "fr": "La robustesse d'un mot de passe mesure sa résistance aux attaques par devinette et force brute. Lorsqu'ils changent de mot de passe, les utilisateurs tendent à n'apporter qu'une **modification minime** au précédent (par ex. incrémenter un chiffre final). `difok` exige qu'un nombre minimum de caractères diffère de l'ancien mot de passe, afin qu'un mot de passe fraîchement changé ne ressemble pas étroitement à un mot de passe déjà compromis. À noter : sur un système déjà compromis, un mot de passe changé peut rester exposé."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** pwquality configuration by grepping `/etc/security/pwquality.conf` **and every drop-in** under `/etc/security/pwquality.conf.d/`, keeping the **last** `difok=` value (the one that wins) and requiring it to be `>= 2`. Resolving merged drop-in precedence is what a single-file inspection would miss.",
+    "fr": "Pavois lit la configuration pwquality **effective** en parcourant `/etc/security/pwquality.conf` **et chaque drop-in** sous `/etc/security/pwquality.conf.d/`, en conservant la **dernière** valeur `difok=` (celle qui l'emporte) et en exigeant qu'elle soit `>= 2`. Résoudre la priorité des drop-ins fusionnés est ce qu'une inspection mono-fichier raterait."
+  },
+  "verify": {
+    "en": "Run `grep -rh '^[[:space:]]*difok' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`, the effective line should read `difok = 2` (or higher). Then test live: run `passwd` and try a new password that differs from the old one by a single character; it must be rejected as too similar.",
+    "fr": "Lancez `grep -rh '^[[:space:]]*difok' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`, la ligne effective doit indiquer `difok = 2` (ou plus). Testez ensuite en conditions réelles : lancez `passwd` et essayez un nouveau mot de passe ne différant de l'ancien que d'un seul caractère ; il doit être rejeté comme trop similaire."
+  },
+  "logs": {
+    "en": "PAM rejections are logged to `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL); look for `pam_pwquality` messages such as \"is too similar to the old one\". `journalctl -t passwd` shows change attempts. The effective value is confirmed from the merged `pwquality.conf.d` drop-ins.",
+    "fr": "Les rejets PAM sont journalisés dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL) ; cherchez les messages `pam_pwquality` du type « is too similar to the old one ». `journalctl -t passwd` montre les tentatives de changement. La valeur effective se confirme depuis les drop-ins fusionnés de `pwquality.conf.d`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` writes the `keyval` setting `difok = 2` into the drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf`, overriding distro defaults. No restart is required, PAM applies it at the next `passwd`.",
+    "fr": "`pavois harden apply` écrit le réglage `keyval` `difok = 2` dans le drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf`, surchargeant les valeurs par défaut de la distribution. Aucun redémarrage n'est requis, PAM l'applique au prochain `passwd`."
+  },
+  "impact": {
+    "en": "Only **password changes** are affected; existing passwords keep working, so there is no lockout risk on apply. The visible effect is that users can no longer make a one-character tweak when rotating a password, communicate this so changes are not perceived as failing. Note `difok` is checked only when the old password is known to PAM (interactive `passwd`); an admin force-resetting another user's password is not constrained by it.",
+    "fr": "Seuls les **changements de mot de passe** sont concernés ; les mots de passe existants continuent de fonctionner, il n'y a donc pas de risque de verrouillage à l'application. L'effet visible est que les utilisateurs ne peuvent plus se contenter d'une modification d'un seul caractère lors d'une rotation, communiquez-le pour que les changements ne soient pas perçus comme défaillants. À noter : `difok` n'est vérifié que lorsque l'ancien mot de passe est connu de PAM (`passwd` interactif) ; un administrateur réinitialisant de force le mot de passe d'un autre utilisateur n'y est pas soumis."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

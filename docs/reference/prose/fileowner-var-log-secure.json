@@ -1,0 +1,37 @@
+{
+  "id": "fileowner-var-log-secure",
+  "title": {
+    "en": "Verify User Who Owns /var/log/secure File",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier /var/log/secure"
+  },
+  "summary": {
+    "en": "Ensures the authentication log `/var/log/secure` is **owned by the `syslog` user**.",
+    "fr": "Garantit que le journal d'authentification `/var/log/secure` est **détenu par l'utilisateur `syslog`**."
+  },
+  "rationale": {
+    "en": "`/var/log/secure` records **authentication and authorization activity**, logins, sudo and privilege escalations. It is among the most sensitive logs on the system: an attacker who can read it harvests account and timing intelligence, and one who can write it can forge or erase evidence of an intrusion. Restricting it to the `syslog` owner keeps the authentication trail tamper-resistant and confidential.",
+    "fr": "`/var/log/secure` enregistre l'**activité d'authentification et d'autorisation**, connexions, sudo et élévations de privilèges. C'est l'un des journaux les plus sensibles du système : un attaquant capable de le lire récolte des renseignements sur les comptes et les horaires, et celui qui peut y écrire peut falsifier ou effacer les preuves d'une intrusion. Le restreindre au propriétaire `syslog` maintient la piste d'authentification résistante à la falsification et confidentielle."
+  },
+  "check_note": {
+    "en": "Pavois checks that the **owner of `/var/log/secure` is `syslog`**, only when the file exists (`only_if`). It reads the **live owner** (`stat`) on the target rather than a default, so a `chown` from rotation, packaging or a misbehaving service is caught as the **effective on-disk state**.",
+    "fr": "Pavois vérifie que le **propriétaire de `/var/log/secure` est `syslog`**, uniquement lorsque le fichier existe (`only_if`). Il lit le **propriétaire réel** (`stat`) sur la cible plutôt qu'une valeur par défaut, ainsi un `chown` issu de la rotation, du paquet ou d'un service défaillant est détecté comme l'**état effectif sur le disque**."
+  },
+  "verify": {
+    "en": "Confirm the owner with:\n\n```bash\nstat -c '%U' /var/log/secure\n```\n\nExpected output is `syslog`.",
+    "fr": "Confirmez le propriétaire avec :\n\n```bash\nstat -c '%U' /var/log/secure\n```\n\nLa sortie attendue est `syslog`."
+  },
+  "logs": {
+    "en": "This file is itself the authentication log. Inspect ownership and content:\n\n```bash\nls -l /var/log/secure\ntail -n 50 /var/log/secure\n```\n\nThe writer is rsyslog (`systemctl status rsyslog`). Ownership changes can be tracked with `grep 'secure' /var/log/audit/audit.log` if auditd watches are configured.",
+    "fr": "Ce fichier est lui-même le journal d'authentification. Inspectez la propriété et le contenu :\n\n```bash\nls -l /var/log/secure\ntail -n 50 /var/log/secure\n```\n\nL'écrivain est rsyslog (`systemctl status rsyslog`). Les changements de propriété peuvent être suivis avec `grep 'secure' /var/log/audit/audit.log` si des surveillances auditd sont configurées."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses a **`file` resource** to set the owner of `/var/log/secure` to **`syslog`**. Run `pavois harden apply` to enforce it, the Chef engine performs the equivalent of `chown syslog /var/log/secure`, leaving content and group untouched.",
+    "fr": "Le plan de durcissement de Pavois utilise une **ressource `file`** pour définir le propriétaire de `/var/log/secure` sur **`syslog`**. Lancez `pavois harden apply` pour l'appliquer, le moteur Chef exécute l'équivalent de `chown syslog /var/log/secure`, sans toucher au contenu ni au groupe."
+  },
+  "impact": {
+    "en": "**Consequences if misconfigured:** wrong ownership exposes sensitive authentication data and lets an attacker forge or erase the security log, defeating accountability.\n\n**Precautions before applying:** safe on Debian/Ubuntu where rsyslog runs as `syslog`. Note that `/var/log/secure` is the RHEL-style name; on Debian/Ubuntu the equivalent is `/var/log/auth.log`, so the `only_if` guard usually skips this rule there. Ensure the `syslog` user exists before applying, and confirm any log-shipping agent does not rely on a different owner.",
+    "fr": "**Conséquences en cas de mauvaise configuration :** une propriété erronée expose des données d'authentification sensibles et permet à un attaquant de falsifier ou d'effacer le journal de sécurité, anéantissant la traçabilité.\n\n**Précautions avant application :** sûr sur Debian/Ubuntu où rsyslog s'exécute sous `syslog`. Notez que `/var/log/secure` est le nom de style RHEL ; sur Debian/Ubuntu l'équivalent est `/var/log/auth.log`, donc la garde `only_if` ignore généralement cette règle. Assurez-vous que l'utilisateur `syslog` existe avant d'appliquer, et vérifiez qu'aucun agent d'expédition de logs ne dépend d'un autre propriétaire."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

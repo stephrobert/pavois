@@ -1,0 +1,37 @@
+{
+  "id": "auditd-max-log-file",
+  "title": {
+    "en": "Configure auditd Max Log File Size",
+    "fr": "Configurer la taille maximale du fichier de journal d'auditd"
+  },
+  "summary": {
+    "en": "Sets `max_log_file` in `/etc/audit/auditd.conf` to at least `6` (MB) so each audit log file is large enough to retain a useful window of events.",
+    "fr": "Définit `max_log_file` dans `/etc/audit/auditd.conf` à au moins `6` (Mo) pour que chaque fichier de journal d'audit soit assez grand pour conserver une fenêtre d'événements utile."
+  },
+  "rationale": {
+    "en": "Total audit retention is a product of the **per-file size** (`max_log_file`) and the **number of files kept** (`num_logs`). If `max_log_file` is too small, logs rotate too quickly and the retained history covers only a short window, insufficient to investigate an incident discovered days later. A floor of 6 MB ensures each file holds enough events to make the retained set meaningful.",
+    "fr": "La rétention totale d'audit est le produit de la **taille par fichier** (`max_log_file`) et du **nombre de fichiers conservés** (`num_logs`). Si `max_log_file` est trop faible, les journaux tournent trop vite et l'historique conservé ne couvre qu'une courte période, insuffisant pour enquêter sur un incident découvert plusieurs jours après. Un plancher de 6 Mo garantit que chaque fichier contient assez d'événements pour rendre l'ensemble conservé significatif."
+  },
+  "check_note": {
+    "en": "Pavois reads the effective `max_log_file` value (in MB) from `/etc/audit/auditd.conf` and requires it to be **6 or greater**. This number controls the running daemon's rotation threshold, so the configured value is the meaningful indicator.",
+    "fr": "Pavois lit la valeur effective `max_log_file` (en Mo) dans `/etc/audit/auditd.conf` et exige une valeur **supérieure ou égale à 6**. Ce nombre contrôle le seuil de rotation du démon ; la valeur configurée est donc l'indicateur pertinent."
+  },
+  "verify": {
+    "en": "Run `grep -i '^[[:space:]]*max_log_file' /etc/audit/auditd.conf`. Expected output: a line such as `max_log_file = 8` with a value of 6 or more.",
+    "fr": "Exécutez `grep -i '^[[:space:]]*max_log_file' /etc/audit/auditd.conf`. Sortie attendue : une ligne du type `max_log_file = 8` avec une valeur de 6 ou plus."
+  },
+  "logs": {
+    "en": "Observe the size and rotation of files under `/var/log/audit/` (`ls -lh /var/log/audit/`); rotation events appear in `journalctl -u auditd`.",
+    "fr": "Observez la taille et la rotation des fichiers sous `/var/log/audit/` (`ls -lh /var/log/audit/`) ; les événements de rotation apparaissent dans `journalctl -u auditd`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied **manually**: set `max_log_file = 8` (or any value ≥ 6) in `/etc/audit/auditd.conf` and reload auditd (`service auditd reload`).",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit donc être appliquée **manuellement** : définissez `max_log_file = 8` (ou toute valeur ≥ 6) dans `/etc/audit/auditd.conf` puis rechargez auditd (`service auditd reload`)."
+  },
+  "impact": {
+    "en": "A larger `max_log_file` combined with `num_logs` raises the **maximum disk footprint** of the audit logs (worst case ≈ `max_log_file × num_logs`). **Precaution:** size the audit partition for that worst case and confirm `space_left_action`/`disk_full_action` are configured so a full disk is handled gracefully. The change is non-disruptive to running services; reload auditd rather than stopping it.",
+    "fr": "Un `max_log_file` plus grand combiné à `num_logs` augmente l'**empreinte disque maximale** des journaux d'audit (au pire ≈ `max_log_file × num_logs`). **Précaution :** dimensionnez la partition d'audit pour ce pire cas et vérifiez que `space_left_action`/`disk_full_action` sont configurés pour gérer proprement un disque plein. Le changement n'interrompt aucun service ; rechargez auditd plutôt que de l'arrêter."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

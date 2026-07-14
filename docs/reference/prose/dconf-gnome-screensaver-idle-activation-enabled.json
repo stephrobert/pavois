@@ -1,0 +1,37 @@
+{
+  "id": "dconf-gnome-screensaver-idle-activation-enabled",
+  "title": {
+    "en": "Enable GNOME3 Screensaver Idle Activation",
+    "fr": "Activer l'activation du screensaver GNOME3 sur inactivité"
+  },
+  "summary": {
+    "en": "Enables automatic screensaver activation after the idle delay via `idle-activation-enabled=true` in the system `dconf` database, locked against user override.",
+    "fr": "Active l'activation automatique du screensaver après le délai d'inactivité via `idle-activation-enabled=true` dans la base `dconf` du système, verrouillé contre toute modification par l'utilisateur."
+  },
+  "rationale": {
+    "en": "A session time-out lock is taken when a user steps away without logging out. Rather than trusting users to lock manually, GNOME can detect an idle session and activate the screensaver. Setting `idle-activation-enabled=true` is the trigger that makes the idle delay and lock-on-screensaver settings actually fire. If it is off, **an unattended desktop stays open indefinitely**, exposing the live session to anyone who walks up.",
+    "fr": "Un verrouillage par temporisation s'enclenche lorsqu'un utilisateur s'éloigne sans se déconnecter. Plutôt que de compter sur un verrouillage manuel, GNOME peut détecter une session inactive et activer le screensaver. Définir `idle-activation-enabled=true` est le déclencheur qui rend effectifs le délai d'inactivité et le verrouillage sur screensaver. S'il est désactivé, **un bureau laissé sans surveillance reste ouvert indéfiniment**, exposant la session active à quiconque s'en approche."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** `dconf` configuration: it resolves the last-defined `idle-activation-enabled` value across `/etc/dconf/db/*.d/` drop-ins, requires `true`, and checks `/org/gnome/desktop/screensaver/idle-activation-enabled` is in a `locks/` file so users cannot disable it. Evaluating the resolved value (last keyfile wins) mirrors how dconf applies the policy and avoids a false pass if a later drop-in turns it off.",
+    "fr": "Pavois lit la configuration `dconf` **effective** : il résout la dernière valeur définie de `idle-activation-enabled` parmi les drop-ins `/etc/dconf/db/*.d/`, exige `true`, et vérifie que `/org/gnome/desktop/screensaver/idle-activation-enabled` figure dans un fichier `locks/` afin que les utilisateurs ne puissent pas le désactiver. Évaluer la valeur résolue (le dernier fichier de clés l'emporte) reflète la façon dont dconf applique la politique et évite un faux succès si un drop-in ultérieur la désactive."
+  },
+  "verify": {
+    "en": "Run `dconf read /org/gnome/desktop/screensaver/idle-activation-enabled` (or `gsettings get org.gnome.desktop.screensaver idle-activation-enabled`); the expected output is `true`. Confirm the lock with `grep -r idle-activation-enabled /etc/dconf/db/*/locks/`.",
+    "fr": "Exécutez `dconf read /org/gnome/desktop/screensaver/idle-activation-enabled` (ou `gsettings get org.gnome.desktop.screensaver idle-activation-enabled`) ; la sortie attendue est `true`. Confirmez le verrou avec `grep -r idle-activation-enabled /etc/dconf/db/*/locks/`."
+  },
+  "logs": {
+    "en": "Screensaver activation and idle transitions are logged in the user session journal: `journalctl --user -u gnome-session` and via `journalctl _COMM=gnome-shell`. The current state can be queried live with `gnome-screensaver-command -q` where available.",
+    "fr": "L'activation du screensaver et les transitions d'inactivité sont journalisées dans le journal de la session utilisateur : `journalctl --user -u gnome-session` et via `journalctl _COMM=gnome-shell`. L'état courant peut être interrogé en direct avec `gnome-screensaver-command -q` là où il est disponible."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `dconf` resource to write the keyfile setting `idle-activation-enabled=true` and a matching `locks/` entry, then runs `dconf update`. Apply with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `dconf` pour écrire le fichier de clés définissant `idle-activation-enabled=true` et l'entrée `locks/` correspondante, puis exécute `dconf update`. Appliquez avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Low impact: the screensaver simply starts after the configured idle delay. **Precaution:** kiosks, dashboards, or monitoring stations that must keep the screen on continuously will be interrupted, exempt those hosts (and rely on their controlled-access location and non-privileged session instead), and pair this with a sensible `idle-delay` so users are not locked out mid-task.",
+    "fr": "Impact faible : le screensaver démarre simplement après le délai d'inactivité configuré. **Précaution :** les bornes, tableaux de bord ou stations de supervision qui doivent garder l'écran allumé en continu seront interrompus, exemptez ces hôtes (et appuyez-vous plutôt sur leur emplacement à accès contrôlé et leur session non privilégiée), et associez ceci à un `idle-delay` raisonnable pour ne pas verrouiller les utilisateurs en pleine tâche."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

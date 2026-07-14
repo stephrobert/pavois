@@ -1,0 +1,37 @@
+{
+  "id": "service-tftp-disabled",
+  "title": {
+    "en": "Disable tftp Service",
+    "fr": "Desactiver le service tftp"
+  },
+  "summary": {
+    "en": "Ensures the unauthenticated `tftp.service` is **disabled** and **not running** so the host does not act as a TFTP server.",
+    "fr": "Garantit que le service `tftp.service` non authentifie est **desactive** et **arrete** afin que l'hote n'agisse pas comme serveur TFTP."
+  },
+  "rationale": {
+    "en": "**TFTP** (Trivial File Transfer Protocol) provides **no authentication and no encryption**. A running TFTP server lets anyone on the network read or write the served files in cleartext, making it a frequent vector for retrieving configuration, exfiltrating data, or planting malicious payloads. Following the principle of least functionality, the service should be disabled unless a documented, network-restricted need (e.g. PXE boot) exists.",
+    "fr": "**TFTP** (Trivial File Transfer Protocol) n'offre **aucune authentification ni chiffrement**. Un serveur TFTP actif permet a quiconque sur le reseau de lire ou ecrire les fichiers servis en clair, en faisant un vecteur frequent pour recuperer des configurations, exfiltrer des donnees ou deposer des charges malveillantes. Conformement au principe de moindre fonctionnalite, le service doit etre desactive sauf besoin documente et restreint au reseau (par exemple amorcage PXE)."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective unit state** via `service('tftp.service')` (`systemctl is-enabled` / `is-active`). TFTP is commonly **socket-activated** (`tftp.socket`), so checking the running/enabled unit, including drop-ins, catches an on-demand server that a static file scan of `/etc/default/tftpd-hpa` would not reveal.",
+    "fr": "Pavois lit l'**etat effectif de l'unite** via `service('tftp.service')` (`systemctl is-enabled` / `is-active`). TFTP est souvent **active par socket** (`tftp.socket`), donc verifier l'unite active/en cours, y compris les drop-ins, detecte un serveur a la demande qu'un balayage statique de `/etc/default/tftpd-hpa` ne revelerait pas."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled tftp.service` (expect `disabled`/`masked`/not found) and `systemctl is-active tftp.service` (expect `inactive`). Also check the socket: `systemctl is-active tftp.socket` and confirm nothing listens on UDP/69 with `ss -lunp | grep ':69'` (expected: no output).",
+    "fr": "Executez `systemctl is-enabled tftp.service` (attendu `disabled`/`masked`/introuvable) et `systemctl is-active tftp.service` (attendu `inactive`). Verifiez aussi le socket : `systemctl is-active tftp.socket` et confirmez que rien n'ecoute sur UDP/69 avec `ss -lunp | grep ':69'` (attendu : aucune sortie)."
+  },
+  "logs": {
+    "en": "Service transitions and transfer activity are in `journalctl -u tftp.service` (and `journalctl -u tftp.socket`). Listening sockets are confirmed with `ss -lunp | grep ':69'`. After disabling, no further TFTP request entries should appear.",
+    "fr": "Les transitions du service et l'activite de transfert sont dans `journalctl -u tftp.service` (et `journalctl -u tftp.socket`). Les sockets en ecoute se confirment avec `ss -lunp | grep ':69'`. Apres desactivation, aucune nouvelle entree de requete TFTP ne doit apparaitre."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the **service** resource named `tftp`: it runs `disable` and `stop` so the server does not start at boot and is stopped now. It is applied with `pavois harden apply`. To fully prevent socket reactivation, also disable/mask `tftp.socket` and consider removing the `tftpd-hpa` package.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource **service** nommee `tftp` : il execute `disable` et `stop` pour que le serveur ne demarre pas au boot et soit arrete maintenant. Il s'applique avec `pavois harden apply`. Pour empecher totalement la reactivation par socket, desactivez/masquez aussi `tftp.socket` et envisagez de supprimer le paquet `tftpd-hpa`."
+  },
+  "impact": {
+    "en": "The main breakage risk is environments that legitimately rely on TFTP, typically **PXE/network boot** or network-device firmware provisioning. **Precautions:** confirm no boot infrastructure, switch/router backups, or imaging workflow depends on this host's TFTP before disabling; if PXE is required, keep TFTP only on the dedicated provisioning server, bind it to the management network, and firewall UDP/69 to authorized clients.",
+    "fr": "Le principal risque de rupture concerne les environnements qui dependent legitimement de TFTP, typiquement l'**amorcage PXE/reseau** ou le provisionnement de firmware d'equipements reseau. **Precautions :** confirmez qu'aucune infrastructure de boot, sauvegarde de commutateur/routeur ou flux d'imagerie ne depend du TFTP de cet hote avant de desactiver ; si PXE est requis, conservez TFTP uniquement sur le serveur de provisionnement dedie, liez-le au reseau d'administration et filtrez UDP/69 vers les clients autorises."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,37 @@
+{
+  "id": "ssh-enable-warning-banner-net",
+  "title": {
+    "en": "Enable SSH Warning Banner (issue.net)",
+    "fr": "Activer la bannière d'avertissement SSH (issue.net)"
+  },
+  "summary": {
+    "en": "Configures `sshd` to present a legal warning banner to remote clients before login by setting **`Banner /etc/issue.net`**.",
+    "fr": "Configure `sshd` pour présenter une bannière d'avertissement légale aux clients distants avant la connexion en positionnant **`Banner /etc/issue.net`**."
+  },
+  "rationale": {
+    "en": "A pre-authentication banner reinforces policy awareness during login and supports possible legal action against intruders by removing any ambiguity about unauthorized access. For network logins the dedicated `/etc/issue.net` file is used so the message shown to remote SSH clients can differ from the local console `/etc/issue`. (Systems whose ownership should stay non-obvious can use a banner that avoids easy attribution.)",
+    "fr": "Une bannière affichée avant l'authentification renforce la sensibilisation à la politique lors de la connexion et facilite d'éventuelles poursuites contre les intrus en supprimant toute ambiguïté sur l'accès non autorisé. Pour les connexions réseau, le fichier dédié `/etc/issue.net` est utilisé afin que le message présenté aux clients SSH distants puisse différer de la console locale `/etc/issue`. (Les systèmes dont la propriété doit rester discrète peuvent utiliser une bannière qui évite toute attribution facile.)"
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** `banner` value from `sshd -T`, the daemon's resolved configuration. A scan of `/etc/ssh/sshd_config` could miss a value set in an `Include`d drop-in under `/etc/ssh/sshd_config.d/` (Ubuntu/Debian ship several), `sshd -T` reflects exactly which banner the running daemon presents to remote clients.",
+    "fr": "Pavois lit la valeur **effective** de `banner` depuis `sshd -T`, la configuration résolue du démon. Un scan de `/etc/ssh/sshd_config` pourrait rater une valeur définie dans un drop-in `Include` sous `/etc/ssh/sshd_config.d/` (Ubuntu/Debian en livrent plusieurs), `sshd -T` reflète exactement quelle bannière le démon en cours d'exécution présente aux clients distants."
+  },
+  "verify": {
+    "en": "Run `sudo sshd -T | grep -i banner`. The expected output is **`banner /etc/issue.net`**. You can also open a fresh `ssh` connection from another host and confirm the banner text appears before the password prompt.",
+    "fr": "Exécutez `sudo sshd -T | grep -i banner`. La sortie attendue est **`banner /etc/issue.net`**. Vous pouvez aussi ouvrir une nouvelle connexion `ssh` depuis un autre hôte et vérifier que le texte de la bannière apparaît avant l'invite de mot de passe."
+  },
+  "logs": {
+    "en": "Banner presentation is not logged directly, but the surrounding connection and authentication events are recorded by `sshd` in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL family); follow with `journalctl -u ssh -f` (or `-u sshd`). The banner content lives in `/etc/issue.net`.",
+    "fr": "L'affichage de la bannière n'est pas journalisé directement, mais les événements de connexion et d'authentification environnants sont consignés par `sshd` dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL) ; suivez avec `journalctl -u ssh -f` (ou `-u sshd`). Le contenu de la bannière se trouve dans `/etc/issue.net`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is defined for this rule (`remediation` is empty), so it must be applied **manually**: set `Banner /etc/issue.net` in `/etc/ssh/sshd_config` (or a drop-in in `/etc/ssh/sshd_config.d/`), put the approved warning text in `/etc/issue.net`, validate with `sshd -t`, then reload the service (`systemctl reload ssh` / `sshd`).",
+    "fr": "Aucune remédiation automatique n'est définie pour cette règle (`remediation` est vide) : elle doit donc être appliquée **manuellement** : définissez `Banner /etc/issue.net` dans `/etc/ssh/sshd_config` (ou un drop-in dans `/etc/ssh/sshd_config.d/`), placez le texte d'avertissement approuvé dans `/etc/issue.net`, validez avec `sshd -t`, puis rechargez le service (`systemctl reload ssh` / `sshd`)."
+  },
+  "impact": {
+    "en": "Without a network banner, remote users get no legal/usage notice and prosecuting intruders is harder; the gap is compliance-oriented rather than a direct technical exposure. Applying it is low-risk. Precaution: keep `/etc/issue.net` **generic**, avoid hostname, OS version, or other reconnaissance-useful details, and note that some clients only display the banner in interactive sessions. Reloading `sshd` (not restarting) keeps existing sessions alive, so there is no lockout risk.",
+    "fr": "Sans bannière réseau, les utilisateurs distants ne reçoivent aucun avis légal/d'usage et la poursuite des intrus est plus difficile ; la lacune relève de la conformité plutôt que d'une exposition technique directe. L'appliquer présente peu de risque. Précaution : gardez `/etc/issue.net` **générique**, évitez le nom d'hôte, la version de l'OS ou d'autres détails utiles à la reconnaissance, et notez que certains clients n'affichent la bannière qu'en session interactive. Recharger `sshd` (sans le redémarrer) préserve les sessions existantes, il n'y a donc aucun risque de blocage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

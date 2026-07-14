@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-kernel-kptr_restrict",
+  "title": {
+    "en": "Restrict Exposed Kernel Pointer Addresses Access",
+    "fr": "Restreindre l'exposition des adresses de pointeurs noyau"
+  },
+  "summary": {
+    "en": "Sets `kernel.kptr_restrict = 2` so kernel pointer addresses are hidden (printed as `0`) from every user, including those with `CAP_SYSLOG`.",
+    "fr": "Fixe `kernel.kptr_restrict = 2` afin que les adresses de pointeurs noyau soient masquées (affichées en `0`) pour tous les utilisateurs, y compris ceux disposant de `CAP_SYSLOG`."
+  },
+  "rationale": {
+    "en": "Exposing kernel pointers (through procfs or `seq_printf()`) leaks the addresses of kernel writeable structures, which may contain function pointers. If a write vulnerability in the kernel allows tampering with one of these structures, the leaked addresses make the kernel far easier to compromise reliably (defeating KASLR). Setting `kptr_restrict = 2` replaces kernel pointers printed via these interfaces with `0` for **all** users, regardless of `CAP_SYSLOG`.",
+    "fr": "L'exposition des pointeurs noyau (via procfs ou `seq_printf()`) divulgue les adresses de structures noyau modifiables, susceptibles de contenir des pointeurs de fonction. Si une vulnérabilité d'écriture dans le noyau permet d'altérer l'une de ces structures, les adresses divulguées rendent la compromission fiable bien plus facile (en mettant en échec KASLR). Fixer `kptr_restrict = 2` remplace par `0` les pointeurs noyau affichés par ces interfaces pour **tous** les utilisateurs, indépendamment de `CAP_SYSLOG`."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** with `kernel_parameter('kernel.kptr_restrict')` (equivalent to `sysctl kernel.kptr_restrict`), not a line in `/etc/sysctl.conf` or `/etc/sysctl.d/*.conf`. A file may declare `2` while the running kernel is still at `0` or `1` because a later drop-in overrode it, the file was never applied, or a `sysctl -w` changed it at runtime. Auditing the effective parameter is the only reliable proof of what the kernel enforces now.",
+    "fr": "Pavois lit la **valeur noyau en vigueur** via `kernel_parameter('kernel.kptr_restrict')` (équivalent à `sysctl kernel.kptr_restrict`), et non une ligne de `/etc/sysctl.conf` ou `/etc/sysctl.d/*.conf`. Un fichier peut déclarer `2` alors que le noyau en cours est encore à `0` ou `1`, parce qu'un drop-in ultérieur l'a écrasé, que le fichier n'a jamais été appliqué, ou qu'un `sysctl -w` l'a modifié à chaud. Auditer le paramètre effectif est la seule preuve fiable de ce que le noyau applique réellement."
+  },
+  "verify": {
+    "en": "Run `sysctl kernel.kptr_restrict`. Expected output:\n\n```\nkernel.kptr_restrict = 2\n```",
+    "fr": "Exécutez `sysctl kernel.kptr_restrict`. Sortie attendue :\n\n```\nkernel.kptr_restrict = 2\n```"
+  },
+  "logs": {
+    "en": "No log entry is produced by this setting. Confirm it directly with `sysctl kernel.kptr_restrict`. You can observe the effect by checking that pointers are masked, e.g. `cat /proc/kallsyms | head` should show addresses as `0000000000000000`.",
+    "fr": "Ce réglage ne produit aucune entrée de journal. Vérifiez-le directement via `sysctl kernel.kptr_restrict`. Vous pouvez constater l'effet en vérifiant que les pointeurs sont masqués, p. ex. `cat /proc/kallsyms | head` doit afficher les adresses en `0000000000000000`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `kernel.kptr_restrict = 2`, writes it to a Pavois-managed drop-in under `/etc/sysctl.d/` for persistence, and applies it live (no reboot). Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour fixer `kernel.kptr_restrict = 2`, l'écrit dans un drop-in géré par Pavois sous `/etc/sysctl.d/` pour la persistance, et l'applique à chaud (sans redémarrage). Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "**Risk if not applied:** kernel pointer addresses leak through `/proc`, weakening KASLR and giving an attacker the precise targets needed to turn a write primitive into reliable kernel code execution.\n\n**Precautions before applying:**\n- Value `2` hides pointers even from privileged tools. Some **performance/debugging tooling** (`perf`, eBPF tracers, `systemtap`, certain profilers) may show `0x0` addresses or lose symbol resolution. On dedicated profiling hosts you may prefer `1`; for hardened production servers `2` is the recommended value.\n- The change is harmless to applications and fully reversible at runtime, so no lockout risk.",
+    "fr": "**Risque si non appliqué :** les adresses de pointeurs noyau fuient via `/proc`, affaiblissant KASLR et fournissant à un attaquant les cibles précises pour transformer une primitive d'écriture en exécution de code noyau fiable.\n\n**Précautions avant application :**\n- La valeur `2` masque les pointeurs même aux outils privilégiés. Certains **outils de performance/débogage** (`perf`, traceurs eBPF, `systemtap`, certains profileurs) peuvent afficher des adresses `0x0` ou perdre la résolution des symboles. Sur des hôtes dédiés au profilage, préférez `1` ; pour des serveurs de production durcis, `2` est la valeur recommandée.\n- Le changement est inoffensif pour les applications et entièrement réversible à chaud, sans risque de blocage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}
