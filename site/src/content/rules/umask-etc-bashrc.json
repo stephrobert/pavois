@@ -1,0 +1,85 @@
+{
+  "id": "umask-etc-bashrc",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (umask)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R36",
+    "cis": "5.4.3.3",
+    "nist": [
+      "AC-6(1)",
+      "CM-6(a)"
+    ],
+    "stig": [
+      "UBTU-22-412035",
+      "UBTU-24-300030"
+    ]
+  },
+  "check": [
+    "m = {'bp28'=>'0077','cis'=>'0027'}.fetch(input('pavois_standard', value: '_default'), '0077')",
+    "describe command(\"v=$(grep -hiE '^[[:space:]]*umask[[:space:]]+[0-7]+' /etc/bash.bashrc 2>/dev/null | grep -oE '[0-7]+' | tail -1); { [ -n \\\"$v\\\" ] && [ $((0$v & #{m})) -eq $((#{m})) ] && echo ok; } || echo ko\") do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "file": "/etc/bash.bashrc",
+    "line": "umask 077",
+    "module": "umask 077",
+    "resource": "pam_line"
+  },
+  "title": {
+    "en": "Ensure the Default Bash Umask is Set Correctly",
+    "fr": "S'assurer que l'umask Bash par defaut est correctement configure"
+  },
+  "summary": {
+    "en": "Ensures the system-wide Bash startup file `/etc/bash.bashrc` sets a **restrictive `umask`** (at least as strict as `0027`/`0077` per norm).",
+    "fr": "S'assure que le fichier de demarrage Bash global `/etc/bash.bashrc` definit un **`umask` restrictif** (au moins aussi strict que `0027`/`0077` selon la norme)."
+  },
+  "rationale": {
+    "en": "The **umask** determines the permissions stripped from newly created files and directories. The system-wide Bash umask in `/etc/bash.bashrc` applies to interactive Bash shells; if it is too permissive, every file a user creates is **world- or group-readable/writable** by default, exposing data and config to unauthorized accounts. A restrictive umask (`0027` for CIS, `0077` for ANSSI BP-028 R36) enforces least privilege on file creation across all users.",
+    "fr": "L'**umask** determine les permissions retirees aux fichiers et repertoires nouvellement crees. L'umask Bash global dans `/etc/bash.bashrc` s'applique aux shells Bash interactifs ; s'il est trop permissif, chaque fichier cree par un utilisateur est par defaut **lisible/inscriptible par le groupe ou tous**, exposant donnees et configuration a des comptes non autorises. Un umask restrictif (`0027` pour CIS, `0077` pour ANSSI BP-028 R36) impose le moindre privilege a la creation de fichiers pour tous les utilisateurs."
+  },
+  "check_note": {
+    "en": "Pavois reads the **last effective** `umask` line in `/etc/bash.bashrc` and verifies it is at least as strict as the norm target with a **bitmask test** (`(value & mask) == mask`), so `0077` satisfies a `0027` requirement. Because shell rc files allow repeated assignments and the last one wins, Pavois takes the **final** matching line (`tail -1`) rather than the first - this mirrors what an interactive Bash shell actually applies, which a naive first-match grep would get wrong.",
+    "fr": "Pavois lit la **derniere** ligne `umask` effective de `/etc/bash.bashrc` et verifie qu'elle est au moins aussi stricte que la cible de la norme via un **test par masque de bits** (`(valeur & masque) == masque`), si bien que `0077` satisfait une exigence `0027`. Comme les fichiers rc autorisent des affectations repetees ou la derniere l'emporte, Pavois retient la **derniere** ligne correspondante (`tail -1`) et non la premiere - ce qui reflete ce qu'un shell Bash interactif applique reellement, la ou un grep naif au premier match se tromperait."
+  },
+  "verify": {
+    "en": "Inspect the configured value:\n\n```\ngrep -hiE '^[[:space:]]*umask[[:space:]]+[0-7]+' /etc/bash.bashrc | tail -1\n```\n\nExpected a line like `umask 027` (or stricter, e.g. `umask 077`). Confirm the runtime value in a fresh interactive shell with `bash -i -c umask` (expected `0027` or `0077`).",
+    "fr": "Inspectez la valeur configuree :\n\n```\ngrep -hiE '^[[:space:]]*umask[[:space:]]+[0-7]+' /etc/bash.bashrc | tail -1\n```\n\nAttendu une ligne du type `umask 027` (ou plus strict, ex. `umask 077`). Confirmez la valeur d'execution dans un nouveau shell interactif avec `bash -i -c umask` (attendu `0027` ou `0077`)."
+  },
+  "logs": {
+    "en": "umask has no audit event; verify it from current state. Show the source line with `grep -i umask /etc/bash.bashrc`, and the value a login would inherit with `bash -i -c umask`. To see what a newly created file would get, `umask` in your shell then `touch /tmp/t && stat -c '%a' /tmp/t`.",
+    "fr": "L'umask ne genere aucun evenement d'audit ; verifiez-le depuis l'etat courant. Affichez la ligne source avec `grep -i umask /etc/bash.bashrc`, et la valeur heritee a la connexion avec `bash -i -c umask`. Pour voir les droits d'un fichier nouvellement cree : `umask` dans votre shell puis `touch /tmp/t && stat -c '%a' /tmp/t`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is wired for this rule (`remediation` is empty), so it must be applied **manually**: add or correct a single line `umask 027` (or `umask 077` for ANSSI) in `/etc/bash.bashrc`, placed so it is not overridden by a later, looser `umask` line. New shells pick it up immediately; current sessions must re-source the file or re-login.",
+    "fr": "Aucun plan de durcissement automatise n'est cable pour cette regle (`remediation` est vide) ; elle doit etre appliquee **manuellement** : ajoutez ou corrigez une unique ligne `umask 027` (ou `umask 077` pour l'ANSSI) dans `/etc/bash.bashrc`, placee de sorte qu'aucune ligne `umask` ulterieure plus laxiste ne l'ecrase. Les nouveaux shells la prennent immediatement ; les sessions en cours doivent re-sourcer le fichier ou se reconnecter."
+  },
+  "impact": {
+    "en": "Tightening the default umask is generally safe but **changes file-creation behavior for every interactive Bash user**. Pitfalls: applications or deploy scripts that rely on group-shared files (e.g. a `www-data`/`developers` group expecting `0664`) may break if they inherit `0077`, which strips group access. Before enforcing, audit shared-directory workflows; where group collaboration is required, use **setgid directories** plus ACLs rather than loosening the global umask. The change only affects **new** files, never existing permissions, and is trivially reversible by editing the line back.",
+    "fr": "Renforcer l'umask par defaut est generalement sans danger mais **modifie la creation de fichiers pour chaque utilisateur Bash interactif**. Pieges : des applications ou scripts de deploiement reposant sur des fichiers partages en groupe (par ex. un groupe `www-data`/`developers` attendant `0664`) peuvent casser s'ils heritent de `0077`, qui retire l'acces au groupe. Avant d'imposer la regle, auditez les flux a repertoires partages ; lorsque la collaboration de groupe est requise, utilisez des **repertoires setgid** et des ACL plutot que d'assouplir l'umask global. Le changement n'affecte que les **nouveaux** fichiers, jamais les permissions existantes, et se reverse trivialement en reeditant la ligne."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

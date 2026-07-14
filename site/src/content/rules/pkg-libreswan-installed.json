@@ -1,0 +1,61 @@
+{
+  "id": "pkg-libreswan-installed",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe package('libreswan') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "libreswan",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Install libreswan Package",
+    "fr": "Installer le paquet libreswan"
+  },
+  "summary": {
+    "en": "Ensures the **libreswan** IPsec/IKE package is installed so the host can establish encrypted VPN tunnels.",
+    "fr": "Garantit que le paquet IPsec/IKE **libreswan** est installe afin que l'hote puisse etablir des tunnels VPN chiffres."
+  },
+  "rationale": {
+    "en": "**libreswan** provides an IPsec/IKE implementation used to build encrypted VPN tunnels. Offering remote users and systems the ability to initiate a secure VPN connection protects data **in transit** across untrusted or wide-area networks. Without an IPsec stack installed, the host cannot terminate or originate IPsec tunnels, forcing traffic over the network in cleartext or pushing it onto less-controlled tunneling tools.",
+    "fr": "**libreswan** fournit une implementation IPsec/IKE servant a etablir des tunnels VPN chiffres. Offrir aux utilisateurs et systemes distants la possibilite d'ouvrir une connexion VPN securisee protege les donnees **en transit** sur des reseaux non fiables ou etendus. Sans pile IPsec installee, l'hote ne peut ni terminer ni initier de tunnels IPsec, ce qui laisse le trafic circuler en clair ou le reporte sur des outils de tunneling moins maitrises."
+  },
+  "check_note": {
+    "en": "Pavois asks the package database directly via the InSpec `package('libreswan')` resource and asserts `should be_installed`. On RHEL 9 this resolves through `rpm`/`dnf`, reflecting the **effective** package state rather than a guess based on the presence of a config file like `/etc/ipsec.conf`. A leftover config file does not mean the IPsec stack is actually present, so querying the resolved package inventory is more reliable.",
+    "fr": "Pavois interroge directement la base de paquets via la ressource InSpec `package('libreswan')` et verifie `should be_installed`. Sur RHEL 9, cela passe par `rpm`/`dnf` et reflete l'etat **effectif** du paquet plutot qu'une supposition basee sur la presence d'un fichier comme `/etc/ipsec.conf`. Un fichier de configuration residuel ne signifie pas que la pile IPsec est reellement presente : interroger l'inventaire de paquets resolu est donc plus fiable."
+  },
+  "verify": {
+    "en": "Run `rpm -q libreswan`. Applied looks like `libreswan-4.x-...el9.x86_64`; not applied returns `package libreswan is not installed`. You can also confirm the service unit exists with `systemctl status ipsec`.",
+    "fr": "Executez `rpm -q libreswan`. Conforme : `libreswan-4.x-...el9.x86_64` ; non conforme : `package libreswan is not installed`. Vous pouvez aussi verifier l'unite de service avec `systemctl status ipsec`."
+  },
+  "logs": {
+    "en": "Installation is recorded by the package manager: `dnf history` and `rpm -q --last libreswan` show when it was added. IPsec activity and IKE negotiation errors land in `journalctl -u ipsec` (pluto daemon).",
+    "fr": "L'installation est tracee par le gestionnaire de paquets : `dnf history` et `rpm -q --last libreswan` indiquent la date d'ajout. L'activite IPsec et les erreurs de negociation IKE apparaissent dans `journalctl -u ipsec` (demon pluto)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource for **libreswan** with action `install`, so running `pavois harden apply` installs it through the native package manager (`dnf`/`rpm`). Installing the package alone does **not** create any VPN tunnel; you still configure `/etc/ipsec.conf`, the connection definitions and enable the `ipsec` service separately.",
+    "fr": "Le plan de durcissement de Pavois declare une ressource `package` pour **libreswan** avec l'action `install` ; executer `pavois harden apply` l'installe via le gestionnaire de paquets natif (`dnf`/`rpm`). Installer le paquet ne cree **aucun** tunnel VPN : il faut ensuite configurer `/etc/ipsec.conf`, definir les connexions et activer le service `ipsec`."
+  },
+  "impact": {
+    "en": "Without an IPsec implementation the host cannot build encrypted tunnels and remote traffic may traverse the network unprotected. **Precautions:** this rule only installs the package; it does not start `ipsec` or open any tunnel, so applying it is low-risk. Note it pulls in a network daemon and dependencies, review and configure connections before enabling the service, and ensure firewall rules permit the required IKE/ESP traffic (UDP 500/4500, protocol 50) only where intended.",
+    "fr": "Sans implementation IPsec, l'hote ne peut pas etablir de tunnels chiffres et le trafic distant peut circuler sans protection. **Precautions :** cette regle se contente d'installer le paquet ; elle ne demarre pas `ipsec` et n'ouvre aucun tunnel, son application est donc peu risquee. Notez qu'elle ajoute un demon reseau et ses dependances, verifiez et configurez les connexions avant d'activer le service, et assurez-vous que le pare-feu autorise le trafic IKE/ESP requis (UDP 500/4500, protocole 50) uniquement la ou c'est voulu."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

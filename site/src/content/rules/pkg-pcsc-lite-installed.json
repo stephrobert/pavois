@@ -1,0 +1,61 @@
+{
+  "id": "pkg-pcsc-lite-installed",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe package('pcsc-lite') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "pcsc-lite",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Install the pcsc-lite package",
+    "fr": "Installer le paquet pcsc-lite"
+  },
+  "summary": {
+    "en": "Ensures the `pcsc-lite` package is installed so the host can use smartcard readers for **multifactor authentication**.",
+    "fr": "Garantit que le paquet `pcsc-lite` est installé pour que l'hôte puisse utiliser les lecteurs de cartes à puce pour l'**authentification multifacteur**."
+  },
+  "rationale": {
+    "en": "The `pcsc-lite` package provides the **PC/SC** middleware (the `pcscd` daemon) that lets the system communicate with smartcard readers. It must be installed for smartcard-based **multifactor authentication** (e.g. PIV/CAC cards) to be available. Without it, the host cannot read hardware tokens, so strong, phishing-resistant authentication for privileged access is impossible.",
+    "fr": "Le paquet `pcsc-lite` fournit l'intergiciel **PC/SC** (le démon `pcscd`) qui permet au système de communiquer avec les lecteurs de cartes à puce. Il doit être installé pour rendre disponible l'**authentification multifacteur** par carte à puce (cartes PIV/CAC, par exemple). Sans lui, l'hôte ne peut pas lire les jetons matériels, rendant impossible une authentification forte et résistante au hameçonnage pour les accès privilégiés."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective** package state with `package('pcsc-lite')` (resolved through `rpm`), rather than inferring readiness from config files. Smartcard auth depends on the `pcscd` middleware actually being present; Pavois confirms the package exists instead of assuming a PAM or SSSD setting implies it.",
+    "fr": "Pavois vérifie l'état **effectif** du paquet avec `package('pcsc-lite')` (résolu via `rpm`), au lieu de déduire la disponibilité à partir de fichiers de configuration. L'authentification par carte dépend de la présence réelle de l'intergiciel `pcscd` : Pavois confirme que le paquet existe plutôt que de supposer qu'un réglage PAM ou SSSD l'implique."
+  },
+  "verify": {
+    "en": "Run `rpm -q pcsc-lite`. Expected output is a versioned package name such as `pcsc-lite-1.9.x-...`. You can confirm the daemon with `systemctl status pcscd`.",
+    "fr": "Exécutez `rpm -q pcsc-lite`. La sortie attendue est un nom de paquet versionné comme `pcsc-lite-1.9.x-...`. Vous pouvez vérifier le démon avec `systemctl status pcscd`."
+  },
+  "logs": {
+    "en": "Installation history is visible with `dnf history` and in `/var/log/dnf.log`. Smartcard reader and `pcscd` activity is logged via `journalctl -u pcscd`.",
+    "fr": "L'historique d'installation est visible avec `dnf history` et dans `/var/log/dnf.log`. L'activité du lecteur de carte et de `pcscd` est tracée via `journalctl -u pcscd`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan installs the `pcsc-lite` package via the **package** resource (`action: install`). It is applied with `pavois harden apply`. Enabling and starting `pcscd`, and wiring smartcard authentication into PAM/SSSD, remain separate configuration steps.",
+    "fr": "Le plan de durcissement de Pavois installe le paquet `pcsc-lite` via la ressource **package** (`action: install`). Il s'applique avec `pavois harden apply`. L'activation et le démarrage de `pcscd`, ainsi que l'intégration de l'authentification par carte dans PAM/SSSD, restent des étapes de configuration distinctes."
+  },
+  "impact": {
+    "en": "Installing the package is low-risk and does not alter authentication on its own. The risk comes later, when smartcard auth is made required: if `pcscd` is not running, a reader is missing, or a certificate is invalid, users relying on smartcards can be **locked out**. - Keep a working fallback (local privileged account or password method) until smartcard login is proven. - Verify `pcscd` is active and a card is read (`pcsc_scan`) before enforcing card-only authentication.",
+    "fr": "Installer le paquet présente un risque faible et ne modifie pas l'authentification à lui seul. Le risque survient plus tard, lorsque l'authentification par carte devient obligatoire : si `pcscd` ne tourne pas, si un lecteur est absent ou si un certificat est invalide, les utilisateurs dépendant des cartes peuvent être **bloqués**. - Conservez une solution de repli fonctionnelle (compte local privilégié ou méthode par mot de passe) jusqu'à ce que la connexion par carte soit éprouvée. - Vérifiez que `pcscd` est actif et qu'une carte est lue (`pcsc_scan`) avant d'imposer une authentification uniquement par carte."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

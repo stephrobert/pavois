@@ -1,0 +1,83 @@
+{
+  "id": "ssh-set-loglevel-info",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "SSH",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.1.14",
+    "nist": [
+      "AC-17(a)",
+      "CM-6(a)"
+    ]
+  },
+  "check": [
+    "describe command('sshd -T') do",
+    "  its('stdout') { should match(/^loglevel\\s+(info|verbose)$/i) }",
+    "end"
+  ],
+  "remediation": {
+    "directive": "loglevel",
+    "notify": {
+      "action": "reload",
+      "service": "ssh.service"
+    },
+    "resource": "sshd_setting",
+    "value": "verbose",
+    "verify": "sshd -t -f %{path}"
+  },
+  "title": {
+    "en": "Set LogLevel to INFO",
+    "fr": "Définir LogLevel sur INFO"
+  },
+  "summary": {
+    "en": "Ensure `sshd` logs at **`INFO`** level or higher so login and logout events are recorded.",
+    "fr": "Garantir que `sshd` journalise au niveau **`INFO`** ou supérieur afin d'enregistrer les connexions et déconnexions."
+  },
+  "rationale": {
+    "en": "SSH offers several logging verbosities. **`DEBUG`** is discouraged outside protocol troubleshooting: it floods the log with data that buries security-relevant events. At least **`INFO`** (or the stronger `VERBOSE`) records SSH login and logout activity, which is essential for **incident response**, being able to tell when a given user was active, and to discount sessions that simply disconnected, narrows an investigation. Without adequate logging, account misuse and intrusions go unnoticed and unattributable.",
+    "fr": "SSH propose plusieurs niveaux de verbosité de journalisation. **`DEBUG`** est déconseillé en dehors du dépannage du protocole : il noie le journal sous des données qui masquent les événements pertinents pour la sécurité. Au minimum **`INFO`** (ou le plus complet `VERBOSE`) enregistre l'activité de connexion et de déconnexion SSH, indispensable à la **réponse à incident**, pouvoir déterminer quand un utilisateur donné était actif, et écarter les sessions simplement déconnectées, restreint le champ d'une investigation. Sans journalisation adéquate, les abus de comptes et les intrusions passent inaperçus et ne peuvent être attribués."
+  },
+  "check_note": {
+    "en": "Pavois asserts that the **effective** `sshd -T` output reports `loglevel info` or `loglevel verbose`. Querying the running daemon reflects the value resolved after all `Include` directives and `/etc/ssh/sshd_config.d/` drop-ins are merged, a file scan can miss a drop-in that silently lowers the level to `QUIET` or `DEBUG`.",
+    "fr": "Pavois vérifie que la sortie **effective** de `sshd -T` rapporte `loglevel info` ou `loglevel verbose`. Interroger le démon en cours d'exécution reflète la valeur résolue après fusion de tous les `Include` et des drop-ins de `/etc/ssh/sshd_config.d/`, un scan de fichiers peut manquer un drop-in qui abaisse silencieusement le niveau à `QUIET` ou `DEBUG`."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -i loglevel`. Expected output (either is acceptable):\n\n- `loglevel INFO`\n- `loglevel VERBOSE`",
+    "fr": "Exécuter `sshd -T | grep -i loglevel`. Sortie attendue (l'une ou l'autre convient) :\n\n- `loglevel INFO`\n- `loglevel VERBOSE`"
+  },
+  "logs": {
+    "en": "Authentication events land in `/var/log/auth.log` (Debian/Ubuntu) or `journalctl -u ssh` / `journalctl -u sshd` (RHEL family). At `INFO` you see `Accepted`/`Failed` login lines and session open/close; `VERBOSE` additionally logs the key fingerprint used.",
+    "fr": "Les événements d'authentification apparaissent dans `/var/log/auth.log` (Debian/Ubuntu) ou via `journalctl -u ssh` / `journalctl -u sshd` (famille RHEL). À `INFO`, vous voyez les lignes `Accepted`/`Failed` et l'ouverture/fermeture de session ; `VERBOSE` journalise en plus l'empreinte de la clé utilisée."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan sets the `sshd_setting` resource for directive `loglevel` to **`verbose`** (which satisfies this `INFO`-or-better rule), validates the candidate config with `sshd -t`, then notifies a **reload** of the `ssh` service. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois règle la ressource `sshd_setting` pour la directive `loglevel` sur **`verbose`** (ce qui satisfait cette règle `INFO`-ou-mieux), valide la configuration candidate avec `sshd -t`, puis déclenche un **reload** du service `ssh`. À appliquer avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Raising the log level has no effect on connectivity, so there is no lockout risk. The only consequence is **higher log volume** (especially with `VERBOSE`); ensure log rotation and disk space are sized accordingly, and avoid `DEBUG`, which can expose sensitive protocol details and is not appropriate for production.",
+    "fr": "Augmenter le niveau de journalisation n'a aucun effet sur la connectivité, donc aucun risque de verrouillage. La seule conséquence est un **volume de journaux plus élevé** (surtout avec `VERBOSE`) ; veillez à dimensionner la rotation des logs et l'espace disque en conséquence, et évitez `DEBUG`, qui peut exposer des détails sensibles du protocole et n'est pas adapté à la production."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

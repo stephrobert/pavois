@@ -1,0 +1,75 @@
+{
+  "id": "posture-core-dumps-limits",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (posture)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe command('grep -rqE \\'^\\\\*[[:space:]]+hard[[:space:]]+core[[:space:]]+0\\' /etc/security/limits.conf /etc/security/limits.d/ 2>/dev/null && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "content": "* hard core 0\n",
+    "group": "root",
+    "mode": "0644",
+    "owner": "root",
+    "path": "/etc/security/limits.d/99-pavois-core.conf",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Core dumps disabled (limits hard core 0)",
+    "fr": "Vidages mémoire (core dumps) désactivés (limits hard core 0)"
+  },
+  "summary": {
+    "en": "Enforces a **hard limit of `0`** on core dump file size for all users via `* hard core 0` in PAM limits, so processes cannot write memory dumps to disk.",
+    "fr": "Impose une **limite stricte (`hard`) de `0`** sur la taille des fichiers de vidage mémoire pour tous les utilisateurs via `* hard core 0` dans les limites PAM, empêchant les processus d'écrire des dumps mémoire sur disque."
+  },
+  "rationale": {
+    "en": "A **core dump** is a snapshot of a process's memory written to disk when it crashes. That memory can contain **passwords, private keys, session tokens and other secrets** held in clear by the application. If core dumps are unlimited, any crash (or an attacker deliberately crashing a service) can leak these secrets to a file readable later, and large dumps can also fill the filesystem (denial of service). Setting a hard limit of `0` removes this exposure.",
+    "fr": "Un **vidage mémoire (core dump)** est une copie de la mémoire d'un processus écrite sur disque lorsqu'il plante. Cette mémoire peut contenir des **mots de passe, clés privées, jetons de session et autres secrets** détenus en clair par l'application. Si les core dumps sont illimités, tout plantage (ou un attaquant qui fait délibérément planter un service) peut fuiter ces secrets dans un fichier lisible ensuite, et des dumps volumineux peuvent saturer le système de fichiers (déni de service). Une limite stricte à `0` supprime cette exposition."
+  },
+  "check_note": {
+    "en": "Pavois greps the **effective** PAM limits configuration, `/etc/security/limits.conf` **and every drop-in** under `/etc/security/limits.d/`, for `* hard core 0`. Scanning the directory (not just the main file) is what catches the rule when it is shipped as a drop-in, which a file-only check of `limits.conf` would miss.",
+    "fr": "Pavois recherche dans la configuration PAM **effective**, `/etc/security/limits.conf` **et chaque drop-in** sous `/etc/security/limits.d/`, la directive `* hard core 0`. Inspecter le répertoire (et pas seulement le fichier principal) permet de détecter la règle lorsqu'elle est livrée sous forme de drop-in, ce qu'un contrôle limité à `limits.conf` raterait."
+  },
+  "verify": {
+    "en": "Run `grep -rE '^\\*[[:space:]]+hard[[:space:]]+core[[:space:]]+0' /etc/security/limits.conf /etc/security/limits.d/`. It should print a matching line. You can also confirm the live value with `ulimit -Hc` in a fresh login shell, which should return `0`.",
+    "fr": "Lancez `grep -rE '^\\*[[:space:]]+hard[[:space:]]+core[[:space:]]+0' /etc/security/limits.conf /etc/security/limits.d/`. Une ligne correspondante doit s'afficher. Vous pouvez aussi confirmer la valeur effective avec `ulimit -Hc` dans un shell de connexion neuf, qui doit renvoyer `0`."
+  },
+  "logs": {
+    "en": "There is no dedicated log. Verify the active limit with `ulimit -Hc` (per shell) and check the kernel core pattern with `sysctl kernel.core_pattern`. Systemd-handled crashes appear via `coredumpctl list` (which should show nothing new once dumps are disabled).",
+    "fr": "Il n'existe pas de journal dédié. Vérifiez la limite active avec `ulimit -Hc` (par shell) et le motif de core du noyau avec `sysctl kernel.core_pattern`. Les plantages gérés par systemd apparaissent via `coredumpctl list` (qui ne doit plus rien afficher de nouveau une fois les dumps désactivés)."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped for this rule yet, so it must be applied **manually**: add the line `*    hard    core    0` to a file under `/etc/security/limits.d/` (e.g. `99-Pavois.conf`). For full coverage also set `kernel.core_pattern` via sysctl and disable `systemd-coredump`.",
+    "fr": "Aucune remédiation automatisée n'est encore fournie pour cette règle, elle doit donc être appliquée **manuellement** : ajoutez la ligne `*    hard    core    0` dans un fichier sous `/etc/security/limits.d/` (par ex. `99-Pavois.conf`). Pour une couverture complète, définissez aussi `kernel.core_pattern` via sysctl et désactivez `systemd-coredump`."
+  },
+  "impact": {
+    "en": "Disabling core dumps has very low operational risk. The main consequence is that **developers and support teams lose post-mortem crash dumps** used to debug native applications. Before applying on a system where you actively diagnose crashes, make sure you have an alternative (reproduce in a controlled lab, or temporarily allow dumps for a specific service). For production servers this is safe and recommended.",
+    "fr": "Désactiver les core dumps présente un risque opérationnel très faible. La principale conséquence est que les **développeurs et équipes support perdent les dumps de plantage post-mortem** utilisés pour déboguer les applications natives. Avant d'appliquer sur un système où vous diagnostiquez activement des plantages, assurez-vous d'avoir une alternative (reproduire en laboratoire contrôlé, ou autoriser temporairement les dumps pour un service précis). Pour des serveurs de production, c'est sûr et recommandé."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,79 @@
+{
+  "id": "pkg-sssd-installed",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R67",
+    "nist": "CM-6(a)",
+    "stig": [
+      "UBTU-22-254010",
+      "UBTU-24-100650"
+    ]
+  },
+  "check": [
+    "describe package('sssd') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "sssd",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Install the SSSD Package",
+    "fr": "Installer le paquet SSSD"
+  },
+  "summary": {
+    "en": "Ensures the **`sssd`** package is **installed**, providing the daemon needed to integrate the host with centralized identity/authentication providers.",
+    "fr": "Garantit que le paquet **`sssd`** est **installé**, fournissant le démon nécessaire pour intégrer l'hôte à des fournisseurs d'identité/d'authentification centralisés."
+  },
+  "rationale": {
+    "en": "**SSSD** (System Security Services Daemon) is the standard framework for integrating a host with **centralized identity providers** (LDAP, Active Directory, FreeIPA, Kerberos). Central authentication lets you enforce uniform password policy, disable departing users in one place, and **cache credentials** for offline operation. Without SSSD a system tends to rely on scattered local accounts, which drift, outlive their owners, and weaken accountability, exactly the gaps centralized identity management is meant to close.",
+    "fr": "**SSSD** (System Security Services Daemon) est le cadre standard pour intégrer un hôte à des **fournisseurs d'identité centralisés** (LDAP, Active Directory, FreeIPA, Kerberos). L'authentification centralisée permet d'appliquer une politique de mots de passe uniforme, de désactiver les comptes des partants en un seul endroit et de **mettre les identifiants en cache** pour le fonctionnement hors ligne. Sans SSSD, un système tend à reposer sur des comptes locaux dispersés, qui dérivent, survivent à leurs titulaires et affaiblissent la traçabilité, précisément les lacunes que la gestion centralisée des identités vise à combler."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** install state from the package database via CINC/InSpec's `package` resource and asserts `sssd` is present. The package must exist before `nsswitch.conf`/PAM can reference the `sss` provider, so the package check is the right precondition for any centralized-auth configuration.",
+    "fr": "Pavois lit l'état d'installation **effectif** dans la base de données des paquets via la ressource `package` de CINC/InSpec et vérifie que `sssd` est présent. Le paquet doit exister avant que `nsswitch.conf`/PAM puisse référencer le fournisseur `sss` ; le contrôle de paquet est donc le bon prérequis pour toute configuration d'authentification centralisée."
+  },
+  "verify": {
+    "en": "Run `dpkg -s sssd` (Debian/Ubuntu) or `rpm -q sssd` (RHEL/Alma); a compliant host returns the installed version. When configured, `systemctl is-active sssd` returns **`active`** and `sssctl domain-list` lists the joined domains.",
+    "fr": "Exécutez `dpkg -s sssd` (Debian/Ubuntu) ou `rpm -q sssd` (RHEL/Alma) ; un hôte conforme renvoie la version installée. Une fois configuré, `systemctl is-active sssd` renvoie **`active`** et `sssctl domain-list` liste les domaines joints."
+  },
+  "logs": {
+    "en": "- Installation is logged in `/var/log/dpkg.log` or `/var/log/dnf.log`.\n- SSSD's own activity and authentication events go to `/var/log/sssd/` and `journalctl -u sssd`.",
+    "fr": "- L'installation est journalisée dans `/var/log/dpkg.log` ou `/var/log/dnf.log`.\n- L'activité de SSSD et les événements d'authentification se trouvent dans `/var/log/sssd/` et `journalctl -u sssd`."
+  },
+  "remediation_note": {
+    "en": "The harden plan declares a **`package`** resource for `sssd` with action **`install`**; `pavois harden apply` installs it via the native package manager. Installing the package alone does **not** join any domain, you still need a valid `/etc/sssd/sssd.conf` and NSS/PAM wiring for authentication to actually use it.",
+    "fr": "Le plan de durcissement déclare une ressource **`package`** pour `sssd` avec l'action **`install`** ; `pavois harden apply` l'installe via le gestionnaire de paquets natif. Installer le seul paquet ne **joint** aucun domaine, il faut encore un `/etc/sssd/sssd.conf` valide et le câblage NSS/PAM pour que l'authentification l'utilise réellement."
+  },
+  "impact": {
+    "en": "Installing the package is safe and changes nothing until configured. **The risk is in the configuration step, not the install**: a misconfigured `sssd.conf` or PAM stack can lock out all centrally-managed logins. Before enabling SSSD-backed auth, keep a working local/root session open, test with `getent passwd <domain-user>`, and ensure local emergency accounts still authenticate. No reboot is required for the package itself.",
+    "fr": "Installer le paquet est sans risque et ne change rien tant qu'il n'est pas configuré. **Le risque réside dans l'étape de configuration, pas dans l'installation** : un `sssd.conf` ou une pile PAM mal configurés peuvent bloquer toutes les connexions gérées de façon centralisée. Avant d'activer l'authentification via SSSD, gardez une session locale/root ouverte, testez avec `getent passwd <utilisateur-domaine>` et assurez-vous que les comptes locaux de secours s'authentifient toujours. Aucun redémarrage n'est nécessaire pour le paquet lui-même."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

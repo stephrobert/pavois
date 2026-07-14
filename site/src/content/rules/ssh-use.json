@@ -1,0 +1,67 @@
+{
+  "id": "ssh-use",
+  "supported_os": [
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "SSH",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.1.15",
+    "stig": "UBTU-24-100830"
+  },
+  "check": [
+    "describe command('sshd -T') do",
+    "  its('stdout') { should match(/^macs\\s+hmac\\-sha2\\-512\\-etm@openssh\\.com,hmac\\-sha2\\-256\\-etm@openssh\\.com,hmac\\-sha2\\-512,hmac\\-sha2\\-256$/i) }",
+    "end"
+  ],
+  "remediation": {
+    "directive": "MACs",
+    "notify": {
+      "action": "reload",
+      "service": "ssh.service"
+    },
+    "resource": "sshd_setting",
+    "value": "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256",
+    "verify": "sshd -t -f %{path}"
+  },
+  "title": {
+    "en": "Use Only FIPS 140-2 Validated MACs",
+    "fr": "N'utiliser que des MAC validés FIPS 140-2"
+  },
+  "summary": {
+    "en": "Restrict the SSH server to **FIPS 140-2 validated** Message Authentication Codes (`MACs`) based on SHA-2: `hmac-sha2-512-etm@openssh.com`, `hmac-sha2-256-etm@openssh.com`, `hmac-sha2-512`, `hmac-sha2-256`.",
+    "fr": "Restreint le serveur SSH aux codes d'authentification de message (`MACs`) **validés FIPS 140-2** reposant sur SHA-2 : `hmac-sha2-512-etm@openssh.com`, `hmac-sha2-256-etm@openssh.com`, `hmac-sha2-512`, `hmac-sha2-256`."
+  },
+  "rationale": {
+    "en": "FIPS-approved cryptographic hash functions must be used to protect the integrity of the SSH session. The only SSHv2 MAC algorithms meeting this requirement are based on **SHA-2**. Legacy MACs (MD5, RIPEMD-160, 96-bit truncations) are considered broken and can be exploited in **downgrade and man-in-the-middle attacks** to tamper with or decrypt the SSH tunnel, capturing credentials and session data. For systems that must operate in a FIPS mode, using non-validated MACs is also a direct compliance violation.",
+    "fr": "Des fonctions de hachage cryptographique approuvées par FIPS doivent être employées pour protéger l'intégrité de la session SSH. Les seuls algorithmes MAC SSHv2 satisfaisant cette exigence reposent sur **SHA-2**. Les MAC historiques (MD5, RIPEMD-160, troncatures à 96 bits) sont considérés comme cassés et peuvent être exploités lors d'**attaques par déclassement (downgrade) et de l'homme du milieu** pour altérer ou déchiffrer le tunnel SSH, et ainsi capturer identifiants et données de session. Pour un système devant fonctionner en mode FIPS, l'usage de MAC non validés constitue de plus une non-conformité directe."
+  },
+  "check_note": {
+    "en": "Pavois runs `sshd -T` and matches the **effective** `macs` line against the validated SHA-2 list. `sshd -T` prints the configuration the daemon actually resolved, after every `Include`, `Match` block and drop-in in `/etc/ssh/sshd_config.d/`, so a weak MAC re-enabled by a forgotten drop-in is caught. Reading `/etc/ssh/sshd_config` directly would miss those includes and report a **false negative**.",
+    "fr": "Pavois exécute `sshd -T` et compare la ligne `macs` **effective** à la liste SHA-2 validée. `sshd -T` affiche la configuration réellement résolue par le démon, après tous les `Include`, blocs `Match` et drop-ins de `/etc/ssh/sshd_config.d/`, de sorte qu'un MAC faible réactivé par un drop-in oublié est détecté. Lire directement `/etc/ssh/sshd_config` manquerait ces inclusions et donnerait un **faux négatif**."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -i '^macs'`. Expected output:\n\n```\nmacs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256\n```\n\nNo other algorithm should appear in the list.",
+    "fr": "Exécutez `sshd -T | grep -i '^macs'`. Sortie attendue :\n\n```\nmacs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256\n```\n\nAucun autre algorithme ne doit figurer dans la liste."
+  },
+  "logs": {
+    "en": "SSH negotiation and connection events are logged to `/var/log/auth.log` (or `journalctl -u ssh`). A client offering only weak MACs will be refused with a message such as `no matching MAC found`, visible in those logs and useful to spot legacy clients before tightening the policy.",
+    "fr": "Les événements de négociation et de connexion SSH sont journalisés dans `/var/log/auth.log` (ou `journalctl -u ssh`). Un client ne proposant que des MAC faibles est rejeté avec un message du type `no matching MAC found`, visible dans ces journaux et utile pour repérer les clients hérités avant de durcir la politique."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan writes the `MACs` directive (`sshd_setting` resource) with the validated SHA-2 value into the SSH drop-in configuration and reloads `sshd`. Apply it with `pavois harden apply`. The change takes effect on the next connection; existing sessions are not dropped.",
+    "fr": "Le plan de durcissement de Pavois écrit la directive `MACs` (ressource `sshd_setting`) avec la valeur SHA-2 validée dans la configuration drop-in SSH puis recharge `sshd`. Appliquez-le avec `pavois harden apply`. La modification prend effet à la prochaine connexion ; les sessions existantes ne sont pas interrompues."
+  },
+  "impact": {
+    "en": "Removing legacy MACs can break very old SSH clients, embedded devices or scripted automation that only speak MD5/96-bit MACs. **Before applying**, inventory your clients (modern OpenSSH already prefers SHA-2) and keep a **second console or out-of-band access** open. Apply the new `macs` line, then open a fresh SSH session in a new terminal to confirm you can still authenticate before closing the original one, this avoids locking yourself out.",
+    "fr": "Le retrait des MAC hérités peut casser de très anciens clients SSH, des équipements embarqués ou des automatisations scriptées ne parlant que MD5/96 bits. **Avant d'appliquer**, inventoriez vos clients (OpenSSH récent privilégie déjà SHA-2) et conservez **une seconde console ou un accès hors-bande** ouvert. Appliquez la nouvelle ligne `macs`, puis ouvrez une nouvelle session SSH dans un autre terminal pour vérifier que l'authentification fonctionne toujours avant de fermer la session d'origine, cela évite tout verrouillage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

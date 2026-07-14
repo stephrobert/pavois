@@ -1,0 +1,78 @@
+{
+  "id": "kmod-loading-disabled",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel modules",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R10"
+  },
+  "check": [
+    "describe kernel_parameter('kernel.modules_disabled') do",
+    "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE 'kernel.modules_disabled[[:space:]]*=[[:space:]]*1' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf /etc/systemd/system/*.service 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
+    "end"
+  ],
+  "remediation": {
+    "key": "kernel.modules_disabled",
+    "reboot_required": true,
+    "resource": "sysctl",
+    "value": "1"
+  },
+  "title": {
+    "en": "Disable loading and unloading of kernel modules",
+    "fr": "Désactiver le chargement et le déchargement des modules du noyau"
+  },
+  "summary": {
+    "en": "Set `kernel.modules_disabled=1` so the kernel refuses to load or unload **any** module for the rest of the uptime, even for root. Once set, the switch cannot be reverted without a reboot.",
+    "fr": "Positionne `kernel.modules_disabled=1` afin que le noyau refuse de charger ou de décharger **le moindre** module jusqu'au prochain redémarrage, y compris pour root. Une fois posé, cet interrupteur ne peut plus être annulé sans redémarrer."
+  },
+  "rationale": {
+    "en": "Malicious kernel modules can have a significant impact on system security and availability. Disabling loading of kernel modules prevents this threat. Note that once this option has been set, it cannot be reverted without doing a system reboot. Make sure that all needed kernel modules are loaded before setting this option.",
+    "fr": "Un module noyau malveillant s'exécute avec les privilèges les plus élevés de la machine : il peut masquer des processus, détourner des appels système et neutraliser les protections en place. Interdire le chargement de modules ferme cette porte. Attention : une fois l'option positionnée, elle ne peut être annulée que par un redémarrage. Assurez-vous que tous les modules nécessaires sont déjà chargés avant de l'activer."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** value from `/proc/sys/kernel/modules_disabled` (the InSpec `kernel_parameter` resource), which is the switch the kernel actually honours at each module load. A second check proves **persistence**: it greps `/etc/sysctl.conf`, the `sysctl.d` directories **and** the systemd units under `/etc/systemd/system/*.service`, because Pavois applies this one through a late-running unit rather than a plain sysctl drop-in (see the remediation). A runtime value alone would vanish at the next boot; a config file alone would prove nothing about the running kernel.",
+    "fr": "Pavois lit la valeur **effective** dans `/proc/sys/kernel/modules_disabled` (ressource InSpec `kernel_parameter`), c'est-à-dire l'interrupteur que le noyau consulte réellement à chaque chargement de module. Un second contrôle prouve la **persistance** : il cherche la valeur dans `/etc/sysctl.conf`, les répertoires `sysctl.d` **et** les unités systemd de `/etc/systemd/system/*.service`, car Pavois applique ce réglage via une unité tardive plutôt qu'un simple drop-in sysctl (voir la remédiation). Une valeur seulement en mémoire disparaîtrait au prochain démarrage ; un fichier de configuration seul ne prouverait rien sur le noyau en cours d'exécution."
+  },
+  "verify": {
+    "en": "Check the live switch, then prove it actually bites:\n\n```\nsysctl kernel.modules_disabled\n# kernel.modules_disabled = 1\nmodprobe dummy\n# modprobe: ERROR: could not insert 'dummy': Operation not permitted\nsystemctl is-enabled pavois-modules-disabled.service\n# enabled\n```\n\nThe last command is what guarantees the lock is re-applied at every boot.",
+    "fr": "Vérifiez l'interrupteur en vigueur, puis prouvez qu'il mord réellement :\n\n```\nsysctl kernel.modules_disabled\n# kernel.modules_disabled = 1\nmodprobe dummy\n# modprobe: ERROR: could not insert 'dummy': Operation not permitted\nsystemctl is-enabled pavois-modules-disabled.service\n# enabled\n```\n\nLa dernière commande est ce qui garantit que le verrou est réappliqué à chaque démarrage."
+  },
+  "logs": {
+    "en": "A refused module load returns `EPERM` (`Operation not permitted`) to the caller, so it surfaces in the logs of whatever tried to load it (`journalctl -u <service>`, `dmesg`), not in a dedicated log. The attempts themselves are recorded by the Pavois audit ruleset (`init_module`, `finit_module`, `delete_module`, key `modules`) in `/var/log/audit/audit.log`: grep the raw file for `key=\"modules\"` rather than relying on `ausearch`, which is known to return false \"no matches\".",
+    "fr": "Un chargement de module refusé renvoie `EPERM` (`Operation not permitted`) à l'appelant : cela apparaît donc dans les journaux du composant qui a tenté le chargement (`journalctl -u <service>`, `dmesg`), et non dans un journal dédié. Les tentatives elles-mêmes sont enregistrées par le jeu de règles d'audit Pavois (`init_module`, `finit_module`, `delete_module`, clé `modules`) dans `/var/log/audit/audit.log` : cherchez `key=\"modules\"` directement dans le fichier brut plutôt que de vous fier à `ausearch`, connu pour renvoyer de faux « aucun résultat »."
+  },
+  "remediation_note": {
+    "en": "Pavois does **not** write this key into its `sysctl.d` drop-in. `systemd-sysctl` runs during `sysinit`, **before** `local-fs.target` mounts `/boot/efi`: locking module loading that early means the `vfat` module can never load, `local-fs` fails, and the host drops into emergency mode (an unrecoverable brick when root has no password, observed on an EFI VM). Instead, Pavois writes a oneshot unit `pavois-modules-disabled.service`, ordered `After=local-fs.target network-online.target`, whose `ExecStart` is `sysctl -q -w kernel.modules_disabled=1`, and enables it: every boot-time module is loaded first, then module loading is locked. The lock is re-applied on each boot, and the rule carries `reboot_required`.\n\nThe rule is classified **dangerous**: `harden apply` never applies it on its own. It requires an explicit acknowledgement (`acknowledged: true` on the rule in the plan, or `--i-understand-danger`).",
+    "fr": "Pavois n'écrit **pas** cette clé dans son drop-in `sysctl.d`. `systemd-sysctl` s'exécute pendant `sysinit`, **avant** que `local-fs.target` ne monte `/boot/efi` : verrouiller le chargement de modules aussi tôt empêche à jamais le module `vfat` de se charger, `local-fs` échoue, et l'hôte tombe en mode d'urgence (machine irrécupérable si root n'a pas de mot de passe, constaté sur une VM EFI). Pavois écrit à la place une unité oneshot `pavois-modules-disabled.service`, ordonnée `After=local-fs.target network-online.target`, dont l'`ExecStart` est `sysctl -q -w kernel.modules_disabled=1`, et l'active : tous les modules de démarrage sont chargés d'abord, puis le chargement est verrouillé. Le verrou est réappliqué à chaque démarrage, et la règle porte `reboot_required`.\n\nLa règle est classée **dangereuse** : `harden apply` ne l'applique jamais de lui-même. Elle exige un acquittement explicite (`acknowledged: true` sur la règle dans le plan, ou `--i-understand-danger`)."
+  },
+  "impact": {
+    "en": "**This is a one-way switch, which is why Pavois never applies it automatically.** From the moment it is set, no module can be loaded until the next reboot: any driver not already resident is out of reach. Concretely:\n\n- **The firewall can be stranded.** The nftables ruleset Pavois deploys uses `ct state`, which needs `nf_conntrack`. If that module is not loaded when the lock closes, the ruleset fails to load and the host ends up with **no firewall at all**, or with its SSH access cut. That trade-off is why Pavois documents a waiver on hosts where a working firewall outranks the lock.\n- **Hardware and filesystems can go missing.** Hot-plugging a disk, a USB device or a NIC, or mounting a filesystem whose module was never loaded (`vfat`, `nfs`, `xfs`, a `dm-*` target), simply fails.\n- **Container runtimes and VPNs break** as soon as they load a module on demand (`overlay`, `br_netfilter`, `wireguard`, `tun`).\n\nBefore acknowledging it: inventory `lsmod`, pre-load every module you will need (`/etc/modules-load.d/`), make sure the firewall is up with its modules resident, keep console access (not just SSH), and plan a reboot to confirm the host comes back with the lock re-applied.",
+    "fr": "**C'est un interrupteur à sens unique, et c'est pour cela que Pavois ne l'applique jamais automatiquement.** Dès qu'il est posé, plus aucun module ne peut être chargé jusqu'au redémarrage : tout pilote qui n'est pas déjà en mémoire devient hors d'atteinte. Concrètement :\n\n- **Le pare-feu peut rester en rade.** Le jeu de règles nftables déployé par Pavois utilise `ct state`, qui a besoin de `nf_conntrack`. Si ce module n'est pas chargé au moment où le verrou se ferme, le jeu de règles ne se charge pas : l'hôte se retrouve **sans aucun pare-feu**, ou avec son accès SSH coupé. C'est ce compromis qui justifie la dérogation documentée par Pavois sur les hôtes où un pare-feu fonctionnel prime sur le verrou.\n- **Le matériel et les systèmes de fichiers peuvent disparaître.** Brancher à chaud un disque, un périphérique USB ou une carte réseau, ou monter un système de fichiers dont le module n'a jamais été chargé (`vfat`, `nfs`, `xfs`, une cible `dm-*`), échoue purement et simplement.\n- **Les moteurs de conteneurs et les VPN cassent** dès qu'ils chargent un module à la demande (`overlay`, `br_netfilter`, `wireguard`, `tun`).\n\nAvant de l'acquitter : inventoriez `lsmod`, préchargez tous les modules dont vous aurez besoin (`/etc/modules-load.d/`), assurez-vous que le pare-feu est levé et ses modules résidents, gardez un accès console (pas seulement SSH), et prévoyez un redémarrage pour confirmer que l'hôte revient avec le verrou réappliqué."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

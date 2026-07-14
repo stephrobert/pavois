@@ -1,0 +1,63 @@
+{
+  "id": "auditd-admin-space-left-percentage",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Audit (auditd daemon)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe command('v=$(grep -iE \\'^[[:space:]]*admin_space_left[[:space:]]*=[[:space:]]*[0-9]+%\\' /etc/audit/auditd.conf 2>/dev/null | grep -oE \\'[0-9]+\\' | tail -1); { [ -n \"$v\" ] && [ \"$v\" -ge 5 ] && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "file": "/etc/audit/auditd.conf",
+    "key": "admin_space_left",
+    "resource": "conf_line",
+    "service": "auditd",
+    "value": "5%"
+  },
+  "title": {
+    "en": "Configure auditd admin_space_left on Low Disk Space",
+    "fr": "Configurer auditd admin_space_left_percentage en cas d'espace disque faible"
+  },
+  "summary": {
+    "en": "Ensures `admin_space_left_percentage` in `/etc/audit/auditd.conf` is set to **at least 5 %**, defining the critical audit-disk threshold by percentage.",
+    "fr": "Garantit que `admin_space_left_percentage` dans `/etc/audit/auditd.conf` est réglé à **au moins 5 %**, définissant en pourcentage le seuil critique d'espace disque d'audit."
+  },
+  "rationale": {
+    "en": "Notifying administrators of an impending disk space problem may allow them to take corrective action prior to any disruption.",
+    "fr": "Avertir les administrateurs d'un problème imminent d'espace disque leur permet de prendre des mesures correctives avant toute interruption."
+  },
+  "check_note": {
+    "en": "Pavois reads the last `admin_space_left_percentage` value from `/etc/audit/auditd.conf` and expects a number **≥ 5**. Parsing the daemon's effective config (last value wins, as auditd does) reflects the real threshold rather than assuming a documented default.",
+    "fr": "Pavois lit la dernière valeur de `admin_space_left_percentage` dans `/etc/audit/auditd.conf` et attend un nombre **≥ 5**. Analyser la configuration effective du démon (la dernière valeur l'emporte, comme le fait auditd) reflète le seuil réel plutôt que de supposer une valeur par défaut documentée."
+  },
+  "verify": {
+    "en": "Run `grep -i admin_space_left_percentage /etc/audit/auditd.conf`. The value must be `5` or higher (e.g. `admin_space_left_percentage = 5`).",
+    "fr": "Exécutez `grep -i admin_space_left_percentage /etc/audit/auditd.conf`. La valeur doit être `5` ou plus (par ex. `admin_space_left_percentage = 5`)."
+  },
+  "logs": {
+    "en": "- `journalctl -u auditd` and `/var/log/audit/audit.log` log when the admin threshold is reached.\n- `df -h /var/log/audit` shows current free space against the configured percentage.",
+    "fr": "- `journalctl -u auditd` et `/var/log/audit/audit.log` journalisent l'atteinte du seuil administrateur.\n- `df -h /var/log/audit` montre l'espace libre actuel face au pourcentage configuré."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is wired for this rule. **Apply manually**, add or update `admin_space_left_percentage = 5` (or higher) in `/etc/audit/auditd.conf`, then reload with `systemctl reload auditd`. This option exists on RHEL 9's auditd (hence the rule is RHEL 9 only).",
+    "fr": "Aucune remédiation automatique n'est câblée pour cette règle. **À appliquer manuellement**, ajoutez ou mettez à jour `admin_space_left_percentage = 5` (ou plus) dans `/etc/audit/auditd.conf`, puis rechargez avec `systemctl reload auditd`. Cette option existe sur l'auditd de RHEL 9 (la règle est donc limitée à RHEL 9)."
+  },
+  "impact": {
+    "en": "Pairing a percentage threshold with `admin_space_left_action` is what triggers timely alerts; a too-low value leaves no reaction margin. The setting is safe to apply, but remember it works in concert with the action directive, set a meaningful action (mail/syslog/single/halt) too, or the threshold fires with no useful consequence.",
+    "fr": "Associer un seuil en pourcentage à `admin_space_left_action` est ce qui déclenche des alertes en temps utile ; une valeur trop basse ne laisse aucune marge de réaction. Le réglage est sans danger à appliquer, mais il fonctionne de concert avec la directive d'action, définissez aussi une action pertinente (mail/syslog/single/halt), sinon le seuil se déclenche sans effet utile."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

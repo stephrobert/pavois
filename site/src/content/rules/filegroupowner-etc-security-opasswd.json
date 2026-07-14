@@ -1,0 +1,75 @@
+{
+  "id": "filegroupowner-etc-security-opasswd",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "7.1.10"
+  },
+  "check": [
+    "only_if { file('/etc/security/opasswd').exist? }",
+    "describe file('/etc/security/opasswd') do",
+    "  its('gid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "group": "root",
+    "path": "/etc/security/opasswd",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Group Who Owns /etc/security/opasswd File",
+    "fr": "Verifier le groupe proprietaire du fichier /etc/security/opasswd"
+  },
+  "summary": {
+    "en": "Ensures the password-history file `/etc/security/opasswd` is group-owned by **root** (GID 0).",
+    "fr": "Garantit que le fichier d'historique des mots de passe `/etc/security/opasswd` appartient au groupe **root** (GID 0)."
+  },
+  "rationale": {
+    "en": "`/etc/security/opasswd` stores the **history of previous password hashes** used by `pam_pwhistory`/`pam_unix` to enforce the password-reuse policy. The hashes it contains are crackable offline; if a non-root group could read it, those old hashes (often reused or rotated) could be attacked. Group ownership by **root** (GID 0) keeps this history confidential and tamper-proof.",
+    "fr": "`/etc/security/opasswd` stocke l'**historique des empreintes de mots de passe precedents** utilise par `pam_pwhistory`/`pam_unix` pour appliquer la politique anti-reutilisation. Les empreintes qu'il contient sont cassables hors ligne ; si un groupe non root pouvait le lire, ces anciennes empreintes (souvent reutilisees ou alternees) pourraient etre attaquees. La propriete de groupe par **root** (GID 0) maintient cet historique confidentiel et inalterable."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** group ID of `/etc/security/opasswd` via the InSpec `file` resource and asserts `gid == 0`, skipping the rule (via `only_if`) where password history is not in use. Reading the live inode reflects the file's real protection now, important because PAM creates this file on first password change, after the package manifest was written.",
+    "fr": "Pavois lit l'ID de groupe **effectif** de `/etc/security/opasswd` via la ressource InSpec `file` et verifie `gid == 0`, ignorant la regle (via `only_if`) la ou l'historique des mots de passe n'est pas utilise. Lire l'inode reel reflete la protection effective du fichier a l'instant present, ce qui compte car PAM cree ce fichier au premier changement de mot de passe, apres l'ecriture du manifeste de paquet."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /etc/security/opasswd`. Expected output: `root 0`.",
+    "fr": "Executez `stat -c '%G %g' /etc/security/opasswd`. Sortie attendue : `root 0`."
+  },
+  "logs": {
+    "en": "No service log records this file's ownership; confirm with `stat -c '%n %U %G' /etc/security/opasswd`. Password-history enforcement itself is logged by PAM in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL) at password change.",
+    "fr": "Aucun journal de service n'enregistre la propriete de ce fichier ; verifiez avec `stat -c '%n %U %G' /etc/security/opasswd`. L'application de l'historique des mots de passe est journalisee par PAM dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL) lors d'un changement de mot de passe."
+  },
+  "remediation_note": {
+    "en": "No automated remediation plan is defined, so apply it **manually**: `chgrp 0 /etc/security/opasswd` (or `chgrp root /etc/security/opasswd`).",
+    "fr": "Aucun plan de remediation automatique n'est defini ; appliquez-le **manuellement** : `chgrp 0 /etc/security/opasswd` (ou `chgrp root /etc/security/opasswd`)."
+  },
+  "impact": {
+    "en": "Setting the group to **root** is safe and does not affect PAM, which accesses the file as root, no service restart, no lockout risk. **Precaution:** keep the mode restrictive (`0600`) alongside ownership so the old hashes stay unreadable to regular users; verify the file is a regular file before `chgrp`.",
+    "fr": "Definir le groupe sur **root** est sur et n'affecte pas PAM, qui accede au fichier en tant que root, aucun redemarrage de service, aucun risque de blocage. **Precaution :** conservez un mode restrictif (`0600`) en plus de la propriete pour que les anciennes empreintes restent illisibles aux utilisateurs ordinaires ; verifiez que le fichier est un fichier ordinaire avant `chgrp`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

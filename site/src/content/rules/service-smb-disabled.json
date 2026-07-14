@@ -1,0 +1,78 @@
+{
+  "id": "service-smb-disabled",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "systemd services",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "2.1.14"
+  },
+  "check": [
+    "describe service('smbd.service') do",
+    "  it { should_not be_enabled }",
+    "  it { should_not be_running }",
+    "end"
+  ],
+  "remediation": {
+    "action": [
+      "disable",
+      "stop"
+    ],
+    "name": "smbd.service",
+    "resource": "service"
+  },
+  "title": {
+    "en": "Disable Samba",
+    "fr": "Désactiver Samba"
+  },
+  "summary": {
+    "en": "Ensures the Samba file-sharing service (**`smb.service`** / `smbd`) is neither enabled at boot nor running, unless the host is intentionally a Windows-style file server.",
+    "fr": "Garantit que le service de partage de fichiers Samba (**`smb.service`** / `smbd`) n'est ni activé au démarrage ni en cours d'exécution, sauf si l'hôte est volontairement un serveur de fichiers de type Windows."
+  },
+  "rationale": {
+    "en": "**Samba** (`smbd`) implements the SMB/CIFS file-sharing protocol over ports **`139`** and **`445`**. SMB has a long history of severe, widely-exploited vulnerabilities (e.g. EternalBlue / `MS17-010`) and is a prime lateral-movement and ransomware vector inside networks. Running it where no Windows-style file sharing is needed **needlessly exposes a high-value, frequently-targeted service**. If the host is not a Samba file server, the service should be stopped and disabled to remove that exposure.",
+    "fr": "**Samba** (`smbd`) implémente le protocole de partage de fichiers SMB/CIFS sur les ports **`139`** et **`445`**. SMB a une longue histoire de vulnérabilités graves et largement exploitées (par ex. EternalBlue / `MS17-010`) et constitue un vecteur de prédilection de mouvement latéral et de rançongiciels au sein des réseaux. Le faire tourner là où aucun partage de fichiers de type Windows n'est nécessaire **expose inutilement un service de grande valeur et fréquemment ciblé**. Si l'hôte n'est pas un serveur de fichiers Samba, le service doit être arrêté et désactivé pour supprimer cette exposition."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective state** of `smb.service` from systemd, asserting it is neither *enabled* nor *running*. This reflects what is actually listening on 139/445 rather than whether `/etc/samba/smb.conf` happens to exist. On Debian/Ubuntu the unit may also be named `smbd.service`; auditing the resolved systemd state avoids guessing from package or config presence and catches drop-in overrides.",
+    "fr": "Pavois lit l'**état effectif** de `smb.service` depuis systemd, en vérifiant qu'il n'est ni *enabled* ni *running*. Cela reflète ce qui écoute réellement sur 139/445 plutôt que la simple existence de `/etc/samba/smb.conf`. Sur Debian/Ubuntu l'unité peut aussi se nommer `smbd.service` ; auditer l'état systemd résolu évite de deviner à partir de la présence d'un paquet ou d'une configuration et détecte les surcharges drop-in."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled smb.service` (or `smbd.service`) and `systemctl is-active smb.service`; expect **`disabled`/`masked`** and **`inactive`**. Confirm nothing listens with `ss -tlnp | grep -E ':139|:445'`.",
+    "fr": "Exécutez `systemctl is-enabled smb.service` (ou `smbd.service`) et `systemctl is-active smb.service` ; attendez **`disabled`/`masked`** et **`inactive`**. Confirmez qu'aucun service n'écoute avec `ss -tlnp | grep -E ':139|:445'`."
+  },
+  "logs": {
+    "en": "Inspect `journalctl -u smb.service -u smbd.service` for start/stop and connection events. `systemctl show smb.service -p ActiveState -p UnitFileState` gives the machine-readable state. Confirm the SMB ports are closed with `ss -tlnp | grep -E ':139|:445'`.",
+    "fr": "Inspectez `journalctl -u smb.service -u smbd.service` pour le démarrage/arrêt et les événements de connexion. `systemctl show smb.service -p ActiveState -p UnitFileState` donne l'état lisible par machine. Confirmez la fermeture des ports SMB avec `ss -tlnp | grep -E ':139|:445'`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the **`service`** resource named **`smb`** with actions **`disable`** then **`stop`**: it removes boot enablement and stops `smbd`. Applied with `pavois harden apply`. Existing shares and config under `/etc/samba/` are left in place, only the running service is affected.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource **`service`** nommée **`smb`** avec les actions **`disable`** puis **`stop`** : il supprime l'activation au démarrage et arrête `smbd`. Appliqué avec `pavois harden apply`. Les partages et la configuration existants sous `/etc/samba/` restent en place, seul le service en cours est affecté."
+  },
+  "impact": {
+    "en": "Disabling Samba **breaks all SMB/CIFS file shares** served by this host: Windows/macOS/Linux clients mounting `\\\\host\\share` or `//host/share` will lose access, and any print sharing via Samba stops. **Before applying**: confirm no clients rely on shares from this host (`smbstatus` lists active sessions/locks), and that it is not a domain member providing `winbind`-backed services. If the host is a file server, exclude this rule. Note that disabling `smb` does not by itself disable `nmbd` (NetBIOS), handle that separately if required.",
+    "fr": "Désactiver Samba **casse tous les partages de fichiers SMB/CIFS** servis par cet hôte : les clients Windows/macOS/Linux montant `\\\\hôte\\partage` ou `//hôte/partage` perdront l'accès, et tout partage d'impression via Samba s'arrête. **Avant d'appliquer** : confirmez qu'aucun client ne dépend des partages de cet hôte (`smbstatus` liste les sessions/verrous actifs) et qu'il n'est pas membre de domaine fournissant des services adossés à `winbind`. Si l'hôte est un serveur de fichiers, excluez cette règle. À noter : désactiver `smb` ne désactive pas en soi `nmbd` (NetBIOS), traitez-le séparément si nécessaire."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

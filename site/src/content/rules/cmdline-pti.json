@@ -1,0 +1,78 @@
+{
+  "id": "cmdline-pti",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Kernel command line",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R8",
+    "nist": "SI-16"
+  },
+  "check": [
+    "describe command('cat /proc/cmdline') do",
+    "  its('stdout') { should match(/(^| )pti=on( |$)/) }",
+    "end",
+    "describe command(\"grep -hwsF 'pti=on' /etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
+    "end"
+  ],
+  "remediation": {
+    "param": "pti=on",
+    "reboot_required": true,
+    "resource": "kernel_cmdline"
+  },
+  "title": {
+    "en": "Enable Kernel Page-Table Isolation (KPTI)",
+    "fr": "Activer l'isolation des tables de pages du noyau (KPTI)"
+  },
+  "summary": {
+    "en": "Requires the **`pti=on`** kernel boot parameter to force Kernel Page-Table Isolation, mitigating Meltdown and protecting KASLR.",
+    "fr": "Exige le paramètre de démarrage noyau **`pti=on`** pour forcer l'isolation des tables de pages du noyau, mitigeant Meltdown et protégeant KASLR."
+  },
+  "rationale": {
+    "en": "**Kernel Page-Table Isolation (KPTI)** keeps the kernel's page tables separate from user-space ones, so a user process can no longer read kernel memory through the **Meltdown** (CVE-2017-5754) side channel. It also strengthens the kernel against attempts to defeat **KASLR** by leaking kernel addresses. Forcing `pti=on` ensures the mitigation is active even on CPUs where the kernel might otherwise auto-disable it.",
+    "fr": "L'**isolation des tables de pages du noyau (KPTI)** maintient les tables de pages du noyau séparées de celles de l'espace utilisateur, si bien qu'un processus utilisateur ne peut plus lire la mémoire noyau via le canal auxiliaire **Meltdown** (CVE-2017-5754). Elle renforce aussi le noyau contre les tentatives de contournement de **KASLR** par fuite d'adresses noyau. Forcer `pti=on` garantit que la mitigation est active même sur les CPU où le noyau pourrait sinon la désactiver automatiquement."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel command line** from `/proc/cmdline` and checks for `pti=on`. This is the boot line the running kernel parsed, not `/etc/default/grub`, a GRUB edit never regenerated would pass a file scan while PTI is still off. You can confirm the actual mitigation status via `/sys/devices/system/cpu/vulnerabilities/meltdown`.",
+    "fr": "Pavois lit la **ligne de commande noyau active** depuis `/proc/cmdline` et vérifie la présence de `pti=on`. C'est la ligne de boot analysée par le noyau, et non `/etc/default/grub`, une modification GRUB jamais régénérée passerait un scan fichier alors que PTI est encore désactivé. Vous pouvez confirmer l'état réel de la mitigation via `/sys/devices/system/cpu/vulnerabilities/meltdown`."
+  },
+  "verify": {
+    "en": "Run `cat /proc/cmdline` and confirm it contains `pti=on`. Confirm the mitigation is active with:\n\n```\ncat /sys/devices/system/cpu/vulnerabilities/meltdown\n```\n\nExpected output reports **`Mitigation: PTI`**.",
+    "fr": "Lancez `cat /proc/cmdline` et confirmez la présence de `pti=on`. Vérifiez que la mitigation est active avec :\n\n```\ncat /sys/devices/system/cpu/vulnerabilities/meltdown\n```\n\nLa sortie attendue indique **`Mitigation: PTI`**."
+  },
+  "logs": {
+    "en": "Mitigation state is exposed under `sysfs`: `cat /sys/devices/system/cpu/vulnerabilities/meltdown`. The kernel also logs PTI at boot, `dmesg | grep -iE 'page table isolation|pti'` or `journalctl -k | grep -i pti`.",
+    "fr": "L'état de la mitigation est exposé sous `sysfs` : `cat /sys/devices/system/cpu/vulnerabilities/meltdown`. Le noyau journalise aussi PTI au démarrage, `dmesg | grep -iE 'page table isolation|pti'` ou `journalctl -k | grep -i pti`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the **`kernel_cmdline`** resource to add `pti=on` to the bootloader configuration and regenerate it, so the option is present on next boot. A **reboot is required** to take effect.",
+    "fr": "`pavois harden apply` utilise la ressource **`kernel_cmdline`** pour ajouter `pti=on` à la configuration du bootloader et la régénérer, afin que l'option soit présente au prochain démarrage. Un **redémarrage est requis** pour qu'il prenne effet."
+  },
+  "impact": {
+    "en": "KPTI adds a **measurable performance cost** for syscall-heavy workloads (extra TLB flushes on kernel/user transitions), historically up to ~5-30% for I/O-bound or syscall-intensive applications. Precautions:\n\n- **Benchmark** databases, high-IOPS storage and proxies before enabling fleet-wide.\n- On CPUs **not affected by Meltdown**, forcing `pti=on` pays the cost without added security; weigh per platform.\n- Applies **after reboot** only, schedule a maintenance window.",
+    "fr": "KPTI ajoute un **coût de performance mesurable** pour les charges intensives en appels système (flushs TLB supplémentaires aux transitions noyau/utilisateur), historiquement jusqu'à ~5-30 % pour les applications liées aux E/S ou aux appels système. Précautions :\n\n- **Mesurez** bases de données, stockage à fort IOPS et proxys avant un déploiement de masse.\n- Sur les CPU **non affectés par Meltdown**, forcer `pti=on` paie le coût sans gain de sécurité ; arbitrez par plateforme.\n- S'applique uniquement **après redémarrage**, planifiez une fenêtre de maintenance."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,86 @@
+{
+  "id": "sysctl-net-ipv4-conf-all-log_martians",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "3.3.9",
+      "3.3.1.16"
+    ],
+    "nist": [
+      "3.1.20",
+      "CM-7(a)",
+      "CM-7(b)",
+      "SC-5(3)(a)"
+    ]
+  },
+  "check": [
+    "describe kernel_parameter('net.ipv4.conf.all.log_martians') do",
+    "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.all.log_martians[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
+    "end"
+  ],
+  "remediation": {
+    "key": "net.ipv4.conf.all.log_martians",
+    "resource": "sysctl",
+    "value": "1"
+  },
+  "title": {
+    "en": "Enable Kernel Parameter to Log Martian Packets on all IPv4 Interfaces",
+    "fr": "Activer la journalisation des paquets martiens sur toutes les interfaces IPv4"
+  },
+  "summary": {
+    "en": "Sets `net.ipv4.conf.all.log_martians=1` so the kernel logs dropped packets with impossible/spoofed source addresses.",
+    "fr": "Définit `net.ipv4.conf.all.log_martians=1` pour que le noyau journalise les paquets rejetés ayant des adresses sources impossibles/usurpées."
+  },
+  "rationale": {
+    "en": "\"Martian\" packets carry impossible or illegitimate source addresses (e.g. a packet claiming to come from a local or reserved address while arriving from outside). Their presence, alongside spoofed, source-routed and redirected packets, is a strong indicator of **spoofing, reconnaissance or misconfiguration**. With `net.ipv4.conf.all.log_martians=1`, the kernel logs each dropped martian packet, giving defenders the **visibility** to detect these attacks and the audit trail to investigate them. Without it, the packets are silently dropped and the malicious activity leaves no trace.",
+    "fr": "Les paquets « martiens » portent des adresses sources impossibles ou illégitimes (ex. un paquet prétendant provenir d'une adresse locale ou réservée tout en arrivant de l'extérieur). Leur présence, aux côtés des paquets usurpés, à routage par la source et redirigés, est un fort indicateur d'**usurpation, de reconnaissance ou de mauvaise configuration**. Avec `net.ipv4.conf.all.log_martians=1`, le noyau journalise chaque paquet martien rejeté, offrant aux défenseurs la **visibilité** nécessaire pour détecter ces attaques et la piste d'audit pour les investiguer. Sans cela, les paquets sont rejetés silencieusement et l'activité malveillante ne laisse aucune trace."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** via `kernel_parameter('net.ipv4.conf.all.log_martians')` and asserts it equals `1`. Whether martian logging is actually happening depends on the running kernel value, not on a config file: a `sysctl.d` entry written but not reloaded, or overridden by a per-interface key, would silence the logging despite a correct-looking file. Reading the effective value confirms the logging is truly active.",
+    "fr": "Pavois lit la **valeur noyau effective** via `kernel_parameter('net.ipv4.conf.all.log_martians')` et vérifie qu'elle vaut `1`. Le fait que la journalisation des martiens ait réellement lieu dépend de la valeur noyau effective, pas d'un fichier de configuration : une entrée de `sysctl.d` écrite mais non rechargée, ou écrasée par une clé d'interface, désactiverait la journalisation malgré un fichier d'apparence correcte. Lire la valeur effective confirme que la journalisation est réellement active."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.conf.all.log_martians`. Expected output:\n\n```\nnet.ipv4.conf.all.log_martians = 1\n```",
+    "fr": "Exécutez `sysctl net.ipv4.conf.all.log_martians`. Sortie attendue :\n\n```\nnet.ipv4.conf.all.log_martians = 1\n```"
+  },
+  "logs": {
+    "en": "- `sysctl net.ipv4.conf.all.log_martians` confirms the value.\n- Once enabled, dropped martian packets appear in the **kernel log**: `journalctl -k | grep -i 'martian'` (or `dmesg | grep -i martian`), with lines like `IPv4: martian source <ip> from <ip>, on dev <iface>`.\n- `cat /proc/sys/net/ipv4/conf/all/log_martians` is the raw kernel value.",
+    "fr": "- `sysctl net.ipv4.conf.all.log_martians` confirme la valeur.\n- Une fois activé, les paquets martiens rejetés apparaissent dans le **journal du noyau** : `journalctl -k | grep -i 'martian'` (ou `dmesg | grep -i martian`), avec des lignes comme `IPv4: martian source <ip> from <ip>, on dev <iface>`.\n- `cat /proc/sys/net/ipv4/conf/all/log_martians` est la valeur brute du noyau."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv4.conf.all.log_martians` to `1`. It writes the key into a Pavois-managed drop-in and reloads it so martian-packet logging is **active immediately** and **persistent across reboots**. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour positionner `net.ipv4.conf.all.log_martians` à `1`. Il écrit la clé dans un drop-in géré par Pavois puis le recharge, de sorte que la journalisation des paquets martiens soit **active immédiatement** et **persistante après redémarrage**. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "This rule only enables **logging**; it does not change which packets are accepted, so there is **no connectivity or lockout risk**. The single caveat is **log volume**: on a noisy or hostile network segment the kernel log can fill with martian entries, adding disk and journal pressure. **Before applying** at scale, ensure rate limiting (the kernel already rate-limits these messages) and log rotation are in place, and consider forwarding kernel logs to your SIEM so the alerts are actually used. Otherwise this is a safe, observability-only improvement.",
+    "fr": "Cette règle n'active que la **journalisation** ; elle ne change pas quels paquets sont acceptés, il n'y a donc **aucun risque de connectivité ou de blocage**. La seule réserve concerne le **volume de journaux** : sur un segment réseau bruyant ou hostile, le journal du noyau peut se remplir d'entrées martiennes, augmentant la pression sur le disque et le journal. **Avant d'appliquer** à grande échelle, assurez-vous que la limitation de débit (le noyau limite déjà ces messages) et la rotation des journaux sont en place, et envisagez de transférer les journaux du noyau vers votre SIEM pour que les alertes soient réellement exploitées. Sinon, c'est une amélioration sûre, purement orientée observabilité."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

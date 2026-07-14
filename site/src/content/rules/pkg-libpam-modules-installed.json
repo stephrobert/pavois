@@ -1,0 +1,67 @@
+{
+  "id": "pkg-libpam-modules-installed",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.3.1.2"
+  },
+  "check": [
+    "describe package('libpam-modules') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "libpam-modules",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Install pam-modules Package",
+    "fr": "Installer le paquet pam-modules"
+  },
+  "summary": {
+    "en": "Ensures the `libpam-modules` package (core PAM modules) is **installed** so PAM-based hardening can be enforced.",
+    "fr": "Garantit que le paquet `libpam-modules` (modules PAM essentiels) est **installé** afin que le durcissement basé sur PAM puisse être appliqué."
+  },
+  "rationale": {
+    "en": "`libpam-modules` ships the core PAM modules (`pam_unix`, `pam_pwquality`, `pam_faillock`, `pam_pwhistory`…) that many other hardening rules rely on to enforce password quality, account lockout and history. If the package is missing, those PAM-based controls cannot be configured at all, leaving authentication policy unenforced.",
+    "fr": "`libpam-modules` livre les modules PAM essentiels (`pam_unix`, `pam_pwquality`, `pam_faillock`, `pam_pwhistory`…) sur lesquels reposent de nombreuses autres règles de durcissement pour imposer la qualité des mots de passe, le verrouillage de compte et l'historique. Si le paquet est absent, ces contrôles basés sur PAM ne peuvent pas du tout être configurés, laissant la politique d'authentification non appliquée."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database via InSpec `package('libpam-modules')` (`dpkg -s libpam-modules`) and asserts it **is installed**. Confirming the package is present guarantees the shared objects (`pam_*.so`) that other rules wire into `/etc/pam.d/` actually exist on disk.",
+    "fr": "Pavois interroge la base de paquets via InSpec `package('libpam-modules')` (`dpkg -s libpam-modules`) et vérifie qu'il **est installé**. Confirmer la présence du paquet garantit que les objets partagés (`pam_*.so`) que d'autres règles branchent dans `/etc/pam.d/` existent réellement sur le disque."
+  },
+  "verify": {
+    "en": "Run `dpkg -s libpam-modules`. The expected output includes `Status: install ok installed`. Anything else means the rule fails.",
+    "fr": "Exécutez `dpkg -s libpam-modules`. La sortie attendue contient `Status: install ok installed`. Toute autre valeur signifie que la règle échoue."
+  },
+  "logs": {
+    "en": "Confirm installation via `apt list --installed | grep libpam-modules` or `/var/log/apt/history.log`. The PAM modules themselves emit authentication events to `/var/log/auth.log` (e.g. `pam_unix(...)`, `pam_faillock`) and to `journalctl`.",
+    "fr": "Confirmez l'installation via `apt list --installed | grep libpam-modules` ou `/var/log/apt/history.log`. Les modules PAM eux-mêmes émettent des événements d'authentification dans `/var/log/auth.log` (par ex. `pam_unix(...)`, `pam_faillock`) et dans `journalctl`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource named `libpam-modules` with action **install**; `pavois harden apply` runs the equivalent of `apt-get install libpam-modules` to reach the compliant state. It is normally already present as an essential dependency.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` nommée `libpam-modules` avec l'action **install** ; `pavois harden apply` exécute l'équivalent de `apt-get install libpam-modules` pour atteindre l'état conforme. Il est normalement déjà présent en tant que dépendance essentielle."
+  },
+  "impact": {
+    "en": "This is a foundational package (essential on Debian/Ubuntu); installing it is safe and usually a no-op. **Precaution:** never attempt to *remove* `libpam-modules`, doing so would break PAM and could render the system **unable to authenticate any user**, including root, effectively bricking login. Installing or reinstalling it has no adverse effect.",
+    "fr": "C'est un paquet fondamental (essentiel sur Debian/Ubuntu) ; l'installer est sans danger et généralement sans effet. **Précaution :** ne tentez jamais de *retirer* `libpam-modules`, cela casserait PAM et pourrait rendre le système **incapable d'authentifier le moindre utilisateur**, root compris, bloquant de fait toute connexion. L'installer ou le réinstaller n'a aucun effet néfaste."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

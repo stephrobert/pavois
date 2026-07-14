@@ -1,0 +1,60 @@
+{
+  "id": "pkg-mailx-installed",
+  "supported_os": [
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe package('mailx') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "mailx",
+    "resource": "package"
+  },
+  "title": {
+    "en": "The mailx Package Is Installed",
+    "fr": "Le paquet mailx est installe"
+  },
+  "summary": {
+    "en": "Ensures the **mailx** package is installed so security tooling can send email notifications of important system events.",
+    "fr": "Garantit que le paquet **mailx** est installe afin que les outils de securite puissent envoyer des notifications par courriel des evenements importants."
+  },
+  "rationale": {
+    "en": "**mailx** provides the `mail`/`mailx` command-line mail client. Many security mechanisms, cron jobs, `aide` integrity checks, `logwatch`, audit dispatchers and custom scripts, rely on `mailx` to **notify designated personnel** of important events such as failures, integrity violations or warnings. Without it, those notifications are silently dropped and operators may never learn of a problem in time to react.",
+    "fr": "**mailx** fournit le client de messagerie en ligne de commande `mail`/`mailx`. De nombreux mecanismes de securite, taches cron, controles d'integrite `aide`, `logwatch`, dispatchers d'audit et scripts maison, s'appuient sur `mailx` pour **notifier le personnel designe** d'evenements importants comme des echecs, des violations d'integrite ou des avertissements. Sans lui, ces notifications sont silencieusement perdues et les operateurs risquent de ne jamais etre informes a temps."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database through the InSpec `package('mailx')` resource and asserts `should be_installed`, resolving via `rpm`/`dnf` on RHEL 8. This reflects the **effective** inventory rather than checking for the `/usr/bin/mail` symlink alone, which could be provided by an alternative or left dangling. The package state is the reliable indicator that the mail client is actually available to scripts.",
+    "fr": "Pavois interroge la base de paquets via la ressource InSpec `package('mailx')` et verifie `should be_installed`, en s'appuyant sur `rpm`/`dnf` sur RHEL 8. Cela reflete l'inventaire **effectif** plutot que de verifier le seul lien `/usr/bin/mail`, qui pourrait etre fourni par une alternative ou rester orphelin. L'etat du paquet est l'indicateur fiable que le client de messagerie est reellement disponible pour les scripts."
+  },
+  "verify": {
+    "en": "Run `rpm -q mailx`. Applied: `mailx-12.x-...el8.x86_64`; not applied: `package mailx is not installed`. Confirm the command resolves with `which mail` (expect `/usr/bin/mail`).",
+    "fr": "Executez `rpm -q mailx`. Conforme : `mailx-12.x-...el8.x86_64` ; non conforme : `package mailx is not installed`. Verifiez que la commande se resout avec `which mail` (attendu : `/usr/bin/mail`)."
+  },
+  "logs": {
+    "en": "Package install is recorded in `dnf history` / `rpm -q --last mailx`. Sent mail and delivery problems appear in the MTA log (`/var/log/maillog`) and in `journalctl -u postfix` (or the configured mail service). Test delivery with `echo test | mail -s test root`.",
+    "fr": "L'installation est tracee dans `dnf history` / `rpm -q --last mailx`. Les courriels envoyes et les problemes de remise apparaissent dans le journal du MTA (`/var/log/maillog`) et dans `journalctl -u postfix` (ou le service de messagerie configure). Testez la remise avec `echo test | mail -s test root`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource for **mailx** with action `install`; `pavois harden apply` installs it through the native package manager (`dnf`). Note that `mailx` only sends mail, it needs a working local MTA (e.g. `postfix`) and an alias for `root` for notifications to actually be delivered; configure those separately.",
+    "fr": "Le plan de durcissement de Pavois declare une ressource `package` pour **mailx** avec l'action `install` ; `pavois harden apply` l'installe via le gestionnaire de paquets natif (`dnf`). Notez que `mailx` ne fait qu'envoyer du courrier : il faut un MTA local operationnel (par ex. `postfix`) et un alias pour `root` afin que les notifications soient reellement remises ; configurez-les separement."
+  },
+  "impact": {
+    "en": "Without mailx, scripts and security tools that call `mail` fail silently and event notifications never reach operators. **Precautions:** installing the package is non-disruptive. To make notifications actually work, ensure a local MTA is running and `root` mail is aliased to a monitored mailbox (`/etc/aliases` + `newaliases`); otherwise mail queues locally and is never read. There is no lockout risk from this rule.",
+    "fr": "Sans mailx, les scripts et outils de securite qui appellent `mail` echouent silencieusement et les notifications n'atteignent jamais les operateurs. **Precautions :** installer le paquet est non perturbant. Pour que les notifications fonctionnent vraiment, assurez-vous qu'un MTA local tourne et que le courrier de `root` est redirige vers une boite surveillee (`/etc/aliases` + `newaliases`) ; sinon le courrier s'accumule localement sans etre lu. Cette regle ne presente aucun risque de blocage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

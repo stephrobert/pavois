@@ -1,0 +1,79 @@
+{
+  "id": "fileperm-var-log-waagent",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.1.4.1",
+      "6.2.2.1"
+    ]
+  },
+  "check": [
+    "['/var/log/waagent.log'].each do |f|",
+    "  next unless file(f).exist?",
+    "  describe file(f) do",
+    "    it { should_not be_writable.by('group') }",
+    "    it { should_not be_readable.by('other') }",
+    "    it { should_not be_writable.by('other') }",
+    "    it { should_not be_executable.by('other') }",
+    "    it { should_not be_setuid }",
+    "    it { should_not be_setgid }",
+    "  end",
+    "end"
+  ],
+  "remediation": {
+    "command": "for f in /var/log/waagent.log; do [ -e \"$f\" ] && chmod g-wx,o-rwx \"$f\"; done; true",
+    "name": "fileperm-var-log-waagent-tighten",
+    "not_if": "! find /var/log/waagent.log -maxdepth 0 \\( -perm /g=wx -o -perm /o=rwx \\) 2>/dev/null | grep -q .",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Verify Permissions on /var/log/waagent.log(.*) Files",
+    "fr": "Vérifier les permissions des fichiers /var/log/waagent.log(.*)"
+  },
+  "summary": {
+    "en": "Ensure the Azure Linux Guest Agent log `/var/log/waagent` carries no execute, `setuid`, `setgid` or sticky bit and is not group/other-writable, so its records cannot be altered.",
+    "fr": "Garantit que le journal de l'agent invité Azure Linux `/var/log/waagent` ne porte aucun bit d'exécution, `setuid`, `setgid` ou sticky et n'est pas inscriptible par le groupe ou les autres, afin que ses enregistrements ne puissent être altérés."
+  },
+  "rationale": {
+    "en": "`/var/log/waagent.log` records events from the **Azure Linux Guest Agent**, used for provisioning and troubleshooting cloud instances. It can expose **cloud metadata, extension activity and VM identity details**. If the file is group/other-writable an attacker can **inject misleading entries or erase evidence** of tampering with the agent. Restricting it keeps cloud-platform diagnostics trustworthy.",
+    "fr": "`/var/log/waagent.log` enregistre les événements de l'**agent invité Azure Linux**, utilisé pour le provisionnement et le diagnostic des instances cloud. Il peut exposer des **métadonnées cloud, l'activité des extensions et des détails d'identité de la VM**. Si le fichier est inscriptible par le groupe ou les autres, un attaquant peut **injecter des entrées trompeuses ou effacer les traces** d'une altération de l'agent. Le restreindre garde fiables les diagnostics de la plateforme cloud."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live inode** of `/var/log/waagent` and asserts no execute, `setuid`, `setgid` or sticky bit and no group/other write. Reading the real filesystem object catches drift that a packaging or config check would miss, the **effective** mode is what governs access at runtime.",
+    "fr": "Pavois lit l'**inode réel** de `/var/log/waagent` et vérifie l'absence de bit d'exécution, `setuid`, `setgid` ou sticky et d'écriture groupe/autres. Lire l'objet réel du système de fichiers détecte les dérives qu'une vérification de paquet ou de configuration manquerait, le mode **effectif** est celui qui régit l'accès à l'exécution."
+  },
+  "verify": {
+    "en": "Run `stat -c '%A %U:%G' /var/log/waagent.log`. Expect a mode like `-rw-r----- root:adm` (`0640` or stricter) with no `x`, `s`, `S`, `t`, `T`, and no group/other write bit.",
+    "fr": "Exécutez `stat -c '%A %U:%G' /var/log/waagent.log`. Attendez un mode du type `-rw-r----- root:adm` (`0640` ou plus strict), sans `x`, `s`, `S`, `t`, `T`, ni bit d'écriture groupe/autres."
+  },
+  "logs": {
+    "en": "This file *is* a log; inspect with `tail -n 50 /var/log/waagent.log`. The agent itself is a systemd service: `systemctl status walinuxagent` (or `waagent`) and `journalctl -u walinuxagent`. To detect permission tampering, add `auditctl -w /var/log/waagent.log -p wa` and review `/var/log/audit/audit.log`.",
+    "fr": "Ce fichier *est* un journal ; inspectez-le avec `tail -n 50 /var/log/waagent.log`. L'agent lui-même est un service systemd : `systemctl status walinuxagent` (ou `waagent`) et `journalctl -u walinuxagent`. Pour détecter une altération des permissions, ajoutez `auditctl -w /var/log/waagent.log -p wa` et consultez `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule, so it must be applied **manually**: `chown root:adm /var/log/waagent.log` and `chmod u-x,g-wx,o-wx,u-s,g-s,-t /var/log/waagent.log` (commonly `chmod 0640`).",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle ; elle doit donc être appliquée **manuellement** : `chown root:adm /var/log/waagent.log` et `chmod u-x,g-wx,o-wx,u-s,g-s,-t /var/log/waagent.log` (généralement `chmod 0640`)."
+  },
+  "impact": {
+    "en": "A writable agent log can be poisoned or truncated, hampering cloud incident analysis. **Precautions:** this file only exists on Azure VMs running `walinuxagent`; the agent runs as `root` and recreates the file, so after re-permissioning confirm the agent still writes (`systemctl restart walinuxagent` then `tail /var/log/waagent.log`). The agent's own rotation may reset the mode, so verify periodically. Keep `root:adm` readable rather than `0600` if your monitoring reads it as the `adm` group.",
+    "fr": "Un journal d'agent inscriptible peut être empoisonné ou tronqué, gênant l'analyse d'incident cloud. **Précautions :** ce fichier n'existe que sur les VM Azure exécutant `walinuxagent` ; l'agent tourne en `root` et recrée le fichier, donc après re-permissionnement vérifiez qu'il écrit toujours (`systemctl restart walinuxagent` puis `tail /var/log/waagent.log`). La rotation propre à l'agent peut réinitialiser le mode, vérifiez donc périodiquement. Conservez `root:adm` lisible plutôt que `0600` si votre supervision le lit sous le groupe `adm`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

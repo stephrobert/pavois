@@ -1,0 +1,77 @@
+{
+  "id": "ssh-enable-strictmodes",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "SSH",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "nist": "3.1.12"
+  },
+  "check": [
+    "describe command('sshd -T') do",
+    "  its('stdout') { should match(/^strictmodes\\s+yes$/i) }",
+    "end"
+  ],
+  "remediation": {
+    "directive": "strictmodes",
+    "notify": {
+      "action": "reload",
+      "service": "ssh.service"
+    },
+    "resource": "sshd_setting",
+    "value": "yes",
+    "verify": "sshd -t -f %{path}"
+  },
+  "title": {
+    "en": "Enable Use of Strict Mode Checking",
+    "fr": "Activer la vérification en mode strict"
+  },
+  "summary": {
+    "en": "Makes `sshd` refuse key-based login when file ownership or permissions are too loose, by setting **`StrictModes yes`**.",
+    "fr": "Fait refuser à `sshd` la connexion par clé lorsque les droits ou la propriété des fichiers sont trop permissifs, en positionnant **`StrictModes yes`**."
+  },
+  "rationale": {
+    "en": "With **`StrictModes yes`**, before accepting a key-based login `sshd` checks the ownership and permissions of the user's home directory, `~/.ssh`, and `authorized_keys`. If those are group- or world-writable, another local user could insert their own key and log in as the victim. Strict mode blocks that path, closing a common local privilege-escalation and account-takeover vector caused by misconfigured permissions.",
+    "fr": "Avec **`StrictModes yes`**, avant d'accepter une connexion par clé, `sshd` vérifie la propriété et les permissions du répertoire personnel de l'utilisateur, de `~/.ssh` et de `authorized_keys`. Si ceux-ci sont accessibles en écriture au groupe ou à tous, un autre utilisateur local pourrait y insérer sa propre clé et se connecter en tant que la victime. Le mode strict bloque ce chemin, fermant un vecteur courant d'élévation de privilèges locale et de prise de contrôle de compte dû à des permissions mal configurées."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** `strictmodes` value from `sshd -T`, the daemon's resolved configuration. A file scan of `/etc/ssh/sshd_config` could miss a value set in an `Include`d drop-in under `/etc/ssh/sshd_config.d/`, `sshd -T` reflects exactly what the running daemon enforces.",
+    "fr": "Pavois lit la valeur **effective** de `strictmodes` depuis `sshd -T`, la configuration résolue du démon. Un scan du fichier `/etc/ssh/sshd_config` pourrait rater une valeur définie dans un drop-in `Include` sous `/etc/ssh/sshd_config.d/`, `sshd -T` reflète exactement ce que le démon en cours d'exécution applique."
+  },
+  "verify": {
+    "en": "Run `sudo sshd -T | grep -i strictmodes`. The expected output is **`strictmodes yes`**.",
+    "fr": "Exécutez `sudo sshd -T | grep -i strictmodes`. La sortie attendue est **`strictmodes yes`**."
+  },
+  "logs": {
+    "en": "When strict mode rejects a login, `sshd` logs a permissions/ownership warning (e.g. `Authentication refused: bad ownership or modes for directory ...`) in `/var/log/secure` (RHEL family); follow with `journalctl -u sshd -f`.",
+    "fr": "Lorsque le mode strict rejette une connexion, `sshd` consigne un avertissement de permissions/propriété (par exemple `Authentication refused: bad ownership or modes for directory ...`) dans `/var/log/secure` (famille RHEL) ; suivez avec `journalctl -u sshd -f`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` sets the `sshd_setting` directive **`strictmodes`** to **`yes`** in a managed drop-in, validates it with `sshd -t -f %{path}`, then notifies a **reload** of the `ssh` service so the check is enforced without dropping live sessions.",
+    "fr": "`pavois harden apply` définit la directive `sshd_setting` **`strictmodes`** sur **`yes`** dans un drop-in géré, la valide avec `sshd -t -f %{path}`, puis déclenche un **reload** du service `ssh` pour que la vérification soit appliquée sans couper les sessions actives."
+  },
+  "impact": {
+    "en": "With `StrictModes no`, a world- or group-writable `~/.ssh` lets any local user plant a key and impersonate the account, a real takeover risk. Enabling strict mode is safe and is the default on most systems. Precaution: if some users currently have **loose permissions** on their home directory, `~/.ssh`, or `authorized_keys`, their key-based logins will start failing once strict mode is on, fix them first (`chmod 700 ~/.ssh`, `chmod 600 ~/.ssh/authorized_keys`, correct ownership). The reload preserves your current SSH session, so there is no lockout risk for an already-connected admin.",
+    "fr": "Avec `StrictModes no`, un `~/.ssh` accessible en écriture au groupe ou à tous permet à n'importe quel utilisateur local de déposer une clé et d'usurper le compte, un véritable risque de prise de contrôle. Activer le mode strict est sûr et c'est la valeur par défaut sur la plupart des systèmes. Précaution : si certains utilisateurs ont actuellement des **permissions trop ouvertes** sur leur répertoire personnel, `~/.ssh` ou `authorized_keys`, leurs connexions par clé commenceront à échouer une fois le mode strict activé, corrigez-les d'abord (`chmod 700 ~/.ssh`, `chmod 600 ~/.ssh/authorized_keys`, propriété correcte). Le reload préserve votre session SSH en cours, il n'y a donc aucun risque de blocage pour un administrateur déjà connecté."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

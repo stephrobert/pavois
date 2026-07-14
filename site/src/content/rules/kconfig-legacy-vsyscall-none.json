@@ -1,0 +1,73 @@
+{
+  "id": "kconfig-legacy-vsyscall-none",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel build",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R15"
+  },
+  "check": [
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_X86_VSYSCALL_EMULATION=|CONFIG_LEGACY_VSYSCALL_NONE=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
+    "  its('stdout') { should_not match(/^CONFIG_X86_VSYSCALL_EMULATION=y$/) }",
+    "end"
+  ],
+  "remediation": {
+    "resource": "kernel_build"
+  },
+  "title": {
+    "en": "Disable vsyscall mapping",
+    "fr": "Désactiver le mappage vsyscall"
+  },
+  "summary": {
+    "en": "Requires the kernel to be built with `CONFIG_LEGACY_VSYSCALL_NONE=y`, removing the fixed-address vsyscall page entirely.",
+    "fr": "Exige que le noyau soit compilé avec `CONFIG_LEGACY_VSYSCALL_NONE=y`, supprimant entièrement la page vsyscall à adresse fixe."
+  },
+  "rationale": {
+    "en": "The legacy **vsyscall** page is a region mapped at a **fixed, well-known virtual address** in every process, a relic from before vDSO. Because its address never changes, it is a reliable target for **ASLR-bypassing return-oriented programming (ROP)**: an attacker can chain gadgets from its known contents. Selecting `CONFIG_LEGACY_VSYSCALL_NONE=y` removes the mapping entirely, eliminating this fixed-address attack surface (the alternatives only emulate or execute-restrict it).",
+    "fr": "La page **vsyscall** héritée est une région mappée à une **adresse virtuelle fixe et bien connue** dans chaque processus, un vestige antérieur au vDSO. Son adresse ne changeant jamais, elle constitue une cible fiable pour le **contournement de l'ASLR par programmation orientée retour (ROP)** : un attaquant peut enchaîner des gadgets à partir de son contenu connu. Choisir `CONFIG_LEGACY_VSYSCALL_NONE=y` supprime entièrement le mappage, éliminant cette surface d'attaque à adresse fixe (les alternatives ne font que l'émuler ou en restreindre l'exécution)."
+  },
+  "check_note": {
+    "en": "Pavois reads the build configuration of the **running** kernel, `/boot/config-$(uname -r)` and the in-memory `/proc/config.gz`, and confirms `CONFIG_LEGACY_VSYSCALL_NONE=y`. This is a `choice` group (none / xonly / emulate), so checking the booted kernel's real config establishes which variant is actually compiled in, not a stale `/boot/config-*`.",
+    "fr": "Pavois lit la configuration de compilation du noyau **en cours d'exécution**, `/boot/config-$(uname -r)` et `/proc/config.gz` en mémoire, et confirme `CONFIG_LEGACY_VSYSCALL_NONE=y`. Il s'agit d'un groupe `choice` (none / xonly / emulate) ; vérifier la config réelle du noyau démarré établit quelle variante est réellement compilée, et non un `/boot/config-*` obsolète."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_LEGACY_VSYSCALL' /boot/config-$(uname -r)`. Expected: `CONFIG_LEGACY_VSYSCALL_NONE=y` (and the XONLY/EMULATE variants marked `is not set`). At runtime, a kernel with vsyscall removed can also be confirmed via the boot parameter `vsyscall=none` in `cat /proc/cmdline` when used.",
+    "fr": "Exécutez `grep '^CONFIG_LEGACY_VSYSCALL' /boot/config-$(uname -r)`. Attendu : `CONFIG_LEGACY_VSYSCALL_NONE=y` (les variantes XONLY/EMULATE marquées `is not set`). À l'exécution, un noyau dont vsyscall est retiré peut aussi être confirmé via le paramètre de démarrage `vsyscall=none` dans `cat /proc/cmdline` lorsqu'il est employé."
+  },
+  "logs": {
+    "en": "No dedicated log. When a process touches the removed vsyscall page it receives a `SIGSEGV`; such faults appear in `dmesg | grep -i -e vsyscall -e segfault` or `journalctl -k | grep -i vsyscall`. The effective setting is also reflected by the kernel `vsyscall=` command line in `cat /proc/cmdline`.",
+    "fr": "Aucun journal dédié. Quand un processus accède à la page vsyscall retirée, il reçoit un `SIGSEGV` ; ces fautes apparaissent dans `dmesg | grep -i -e vsyscall -e segfault` ou `journalctl -k | grep -i vsyscall`. Le réglage effectif est aussi reflété par la ligne de commande noyau `vsyscall=` dans `cat /proc/cmdline`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation: this is a **kernel build-time `choice`**, not a runtime tunable. Pavois's harden plan is empty. To fix it you must boot a kernel built with `CONFIG_LEGACY_VSYSCALL_NONE=y`. On kernels that compiled in emulate/xonly you can approximate it at runtime with the `vsyscall=none` boot parameter, but the compile-time `NONE` choice this rule checks requires a different kernel.",
+    "fr": "Aucune remédiation automatisée : il s'agit d'un **`choice` de compilation du noyau**, pas d'un paramètre modifiable à chaud. Le plan de durcissement Pavois est vide. Pour corriger, démarrez un noyau compilé avec `CONFIG_LEGACY_VSYSCALL_NONE=y`. Sur les noyaux compilés en emulate/xonly, vous pouvez l'approcher à l'exécution avec le paramètre de démarrage `vsyscall=none`, mais le choix de compilation `NONE` vérifié par cette règle requiert un autre noyau."
+  },
+  "impact": {
+    "en": "Removing the vsyscall page breaks only **very old statically linked binaries** (glibc older than ~2.14) that still call through the fixed vsyscall addresses; everything modern uses the vDSO and is unaffected. Audit for legacy static binaries before applying, if one exists, `vsyscall=emulate` is a less-secure compatibility fallback. Because the change requires a different kernel, keep the previous kernel entry in the bootloader.",
+    "fr": "Supprimer la page vsyscall ne casse que des **binaires très anciens liés statiquement** (glibc antérieure à ~2.14) qui appellent encore via les adresses vsyscall fixes ; tout ce qui est moderne utilise le vDSO et n'est pas concerné. Auditez les binaires statiques hérités avant d'appliquer, s'il en existe, `vsyscall=emulate` est un repli de compatibilité moins sûr. Comme le changement requiert un autre noyau, conservez l'entrée du noyau précédent dans le chargeur d'amorçage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

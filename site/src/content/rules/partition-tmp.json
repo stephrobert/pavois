@@ -1,0 +1,78 @@
+{
+  "id": "partition-tmp",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {
+    "cis": "1.1.2.1.1",
+    "nist": [
+      "CM-6(a)",
+      "SC-5(2)"
+    ]
+  },
+  "check": [
+    "describe mount('/tmp') do",
+    "  it { should be_mounted }",
+    "end"
+  ],
+  "remediation": {
+    "command": "# /tmp must be its own filesystem. Simplest without repartitioning: make it a tmpfs via systemd:\nsystemctl unmask tmp.mount && systemctl enable --now tmp.mount\n# (review /usr/share/systemd/tmp.mount first). A real disk partition requires offline disk work.\n",
+    "reason": "a separate /tmp filesystem needs partitioning/tmpfs, not a safe runtime change",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Ensure /tmp Located On Separate Partition",
+    "fr": "S'assurer que /tmp est sur une partition separee"
+  },
+  "summary": {
+    "en": "Verifies that **`/tmp`** is mounted on its own partition or `tmpfs` so restrictive options (`nodev`, `nosuid`, `noexec`) can protect temporary storage.",
+    "fr": "Verifie que **`/tmp`** est monte sur sa propre partition ou un `tmpfs`, afin que des options restrictives (`nodev`, `nosuid`, `noexec`) protegent le stockage temporaire."
+  },
+  "rationale": {
+    "en": "`/tmp` is world-writable temporary storage used by many programs and any user. Mounting it separately (a dedicated partition or a `tmpfs` unit) lets you enforce **`nodev`, `nosuid` and `noexec`**, blocking execution of dropped payloads and setuid abuse, and prevents a flood of temp files from filling the root filesystem.",
+    "fr": "`/tmp` est un stockage temporaire accessible en ecriture a tous, utilise par de nombreux programmes et tout utilisateur. Le monter separement (partition dediee ou unite `tmpfs`) permet d'imposer **`nodev`, `nosuid` et `noexec`**, bloquant l'execution de charges deposees et l'abus de setuid, et empeche un afflux de fichiers temporaires de saturer le systeme de fichiers racine."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `mount('/tmp')` resource, reading the **effective** mount table (`/proc/self/mountinfo`) rather than `/etc/fstab`. This catches a `/tmp` provided by the systemd `tmp.mount` unit or a runtime tmpfs, mounts a plain fstab parse would miss, and confirms what the kernel actually mounted.",
+    "fr": "Pavois utilise la ressource InSpec `mount('/tmp')`, lisant la table de montage **effective** (`/proc/self/mountinfo`) plutot que `/etc/fstab`. Cela capte un `/tmp` fourni par l'unite systemd `tmp.mount` ou un tmpfs cree a chaud, des montages qu'une simple analyse de fstab raterait, et confirme ce que le noyau a reellement monte."
+  },
+  "verify": {
+    "en": "Run:\n\n```bash\nfindmnt /tmp\n```\n\nExpected: a row showing `/tmp` as its own mount (a separate device or a `tmpfs`), ideally with `nodev,nosuid,noexec`. No output means `/tmp` lives on the root filesystem and the rule fails.",
+    "fr": "Executez :\n\n```bash\nfindmnt /tmp\n```\n\nAttendu : une ligne montrant `/tmp` comme montage a part (peripherique distinct ou `tmpfs`), idealement avec `nodev,nosuid,noexec`. Aucune sortie signifie que `/tmp` reside sur le systeme de fichiers racine et la regle echoue."
+  },
+  "logs": {
+    "en": "Check the live mount with `findmnt /tmp` or `mount | grep ' /tmp '`. If a systemd unit provides it, inspect `systemctl status tmp.mount` and `journalctl -u tmp.mount`; persistent fstab config is in `/etc/fstab`. Enable the unit with `systemctl enable --now tmp.mount` where applicable.",
+    "fr": "Verifiez le montage actif avec `findmnt /tmp` ou `mount | grep ' /tmp '`. Si une unite systemd le fournit, inspectez `systemctl status tmp.mount` et `journalctl -u tmp.mount` ; la configuration fstab persistante est dans `/etc/fstab`. Activez l'unite avec `systemctl enable --now tmp.mount` le cas echeant."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule, so apply it **manually**. The easiest route is the systemd `tmp.mount` unit (`systemctl enable --now tmp.mount`), which provides a hardened tmpfs `/tmp` without repartitioning; alternatively add a dedicated partition or a `tmpfs /tmp tmpfs defaults,nodev,nosuid,noexec 0 0` line to `/etc/fstab` and remount.",
+    "fr": "Aucun plan de durcissement automatise n'est fourni pour cette regle : appliquez-la **manuellement**. Le plus simple est l'unite systemd `tmp.mount` (`systemctl enable --now tmp.mount`), qui fournit un `/tmp` tmpfs durci sans repartitionnement ; sinon ajoutez une partition dediee ou une ligne `tmpfs /tmp tmpfs defaults,nodev,nosuid,noexec 0 0` a `/etc/fstab` et remontez."
+  },
+  "impact": {
+    "en": "A tmpfs `/tmp` is volatile (cleared on reboot) and sized from RAM, so workloads writing large temp files may hit ENOSPC; `noexec` can break installers or build tools that execute from `/tmp`. **Precautions:** size the tmpfs appropriately, identify any service that runs code from `/tmp` before enabling `noexec`, and verify temp-heavy applications after the change. Switching `/tmp` to a unit/mount is reversible but clears existing contents.",
+    "fr": "Un `/tmp` en tmpfs est volatil (vide au redemarrage) et dimensionne sur la RAM ; des charges ecrivant de gros fichiers temporaires peuvent atteindre ENOSPC ; `noexec` peut casser des installeurs ou outils de build qui s'executent depuis `/tmp`. **Precautions :** dimensionnez correctement le tmpfs, identifiez tout service executant du code depuis `/tmp` avant d'activer `noexec`, et verifiez les applications gourmandes en temporaire apres le changement. Basculer `/tmp` vers une unite/un montage est reversible mais efface le contenu existant."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

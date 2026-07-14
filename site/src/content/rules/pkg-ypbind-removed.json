@@ -1,0 +1,65 @@
+{
+  "id": "pkg-ypbind-removed",
+  "supported_os": [
+    "fedora",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R62",
+    "pci-dss": "2.2.4",
+    "cis": "2.2.3"
+  },
+  "check": [
+    "describe package('ypbind') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "ypbind",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Remove NIS Client",
+    "fr": "Supprimer le client NIS"
+  },
+  "summary": {
+    "en": "Ensures the insecure NIS client package `ypbind` is **not installed**.",
+    "fr": "Garantit que le paquet client NIS non sécurisé `ypbind` n'est **pas installé**."
+  },
+  "rationale": {
+    "en": "`ypbind` is the **NIS (Network Information Service) client** daemon. NIS is inherently insecure: it has been vulnerable to denial-of-service attacks and buffer overflows, and provides weak authentication when querying NIS maps, which it transmits without encryption. NIS has been superseded by protocols such as LDAP. The client package should be removed so the host cannot bind to a NIS domain and leak directory/credential data.",
+    "fr": "`ypbind` est le démon **client NIS (Network Information Service)**. NIS est intrinsèquement non sécurisé : il a été vulnérable à des attaques par déni de service et à des débordements de tampon, et offre une authentification faible lors de l'interrogation des cartes NIS, qu'il transmet sans chiffrement. NIS a été remplacé par des protocoles tels que LDAP. Le paquet client doit être retiré afin que l'hôte ne puisse pas se lier à un domaine NIS et divulguer des données d'annuaire ou d'identifiants."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database via the InSpec `package('ypbind')` resource (`rpm -q`). Checking the package guarantees the NIS client cannot be started to bind the host to a NIS domain; if the package is gone, the `ypbind` service unit no longer exists.",
+    "fr": "Pavois interroge la base de paquets via la ressource InSpec `package('ypbind')` (`rpm -q`). Vérifier le paquet garantit que le client NIS ne peut pas être démarré pour lier l'hôte à un domaine NIS ; si le paquet est absent, l'unité de service `ypbind` n'existe plus."
+  },
+  "verify": {
+    "en": "Run `rpm -q ypbind`. Expected output: `package ypbind is not installed`. You can also confirm `systemctl status ypbind` returns `Unit ypbind.service could not be found`.",
+    "fr": "Exécutez `rpm -q ypbind`. Sortie attendue : `package ypbind is not installed`. Vous pouvez aussi confirmer que `systemctl status ypbind` renvoie `Unit ypbind.service could not be found`."
+  },
+  "logs": {
+    "en": "- Package state: `rpm -q ypbind`; removal recorded in `/var/log/dnf.rpm.log`.\n- Past NIS binding activity (before removal): `journalctl -u ypbind` and `ypwhich` (which NIS server was bound).",
+    "fr": "- État du paquet : `rpm -q ypbind` ; suppression enregistrée dans `/var/log/dnf.rpm.log`.\n- Activité passée de liaison NIS (avant suppression) : `journalctl -u ypbind` et `ypwhich` (quel serveur NIS était lié)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource for `ypbind` with action `remove`, so `pavois harden apply` uninstalls it (`dnf remove ypbind`). Removing the package also removes the `ypbind` unit, so no restart is needed.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` pour `ypbind` avec l'action `remove`, donc `pavois harden apply` le désinstalle (`dnf remove ypbind`). Retirer le paquet supprime aussi l'unité `ypbind`, aucun redémarrage n'est donc nécessaire."
+  },
+  "impact": {
+    "en": "If `ypbind` stays installed, the host can bind to a NIS domain and rely on an unencrypted, weakly-authenticated directory service for users/credentials. **Before applying:** confirm the host does not actually authenticate users or resolve maps via NIS, check `/etc/nsswitch.conf` for `nis` entries and `ypwhich`. If NIS is still in use for login, migrate to LDAP/SSSD first, otherwise removing the client can break user authentication and lock out accounts that resolve only through NIS. Removal does not affect existing SSH key-based access.",
+    "fr": "Si `ypbind` reste installé, l'hôte peut se lier à un domaine NIS et dépendre d'un service d'annuaire non chiffré et faiblement authentifié pour les utilisateurs/identifiants. **Avant d'appliquer :** confirmez que l'hôte n'authentifie pas réellement d'utilisateurs et ne résout pas de cartes via NIS, vérifiez les entrées `nis` dans `/etc/nsswitch.conf` et `ypwhich`. Si NIS est encore utilisé pour la connexion, migrez d'abord vers LDAP/SSSD, sinon retirer le client peut casser l'authentification des utilisateurs et verrouiller les comptes qui ne se résolvent que via NIS. La suppression n'affecte pas l'accès SSH par clé existant."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

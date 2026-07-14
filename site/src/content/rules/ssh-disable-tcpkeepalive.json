@@ -1,0 +1,71 @@
+{
+  "id": "ssh-disable-tcpkeepalive",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "SSH",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe command('sshd -T') do",
+    "  its('stdout') { should match(/^tcpkeepalive\\s+no$/i) }",
+    "end"
+  ],
+  "remediation": {
+    "directive": "tcpkeepalive",
+    "notify": {
+      "action": "reload",
+      "service": "ssh.service"
+    },
+    "resource": "sshd_setting",
+    "value": "no",
+    "verify": "sshd -t -f %{path}"
+  },
+  "title": {
+    "en": "Disable SSH TCPKeepAlive (use ClientAlive instead)",
+    "fr": "Désactiver TCPKeepAlive dans SSH (utiliser ClientAlive à la place)"
+  },
+  "summary": {
+    "en": "Turn off the TCP-level keepalive (`TCPKeepAlive no`) so that session liveness is decided only by the `ClientAliveInterval` / `ClientAliveCountMax` probes. TCP keepalives travel outside the encrypted channel and are spoofable: an attacker on the path can forge them to keep a dead or hijacked session registered as alive.",
+    "fr": "Désactive le keepalive au niveau TCP (`TCPKeepAlive no`) afin que la vivacité d'une session ne dépende que des sondes `ClientAliveInterval` / `ClientAliveCountMax`. Les keepalives TCP circulent hors du canal chiffré et sont falsifiables : un attaquant sur le chemin peut les forger pour maintenir une session morte ou détournée comme étant vivante."
+  },
+  "check_note": {
+    "en": "Pavois runs `sshd -T` and requires the resolved line `tcpkeepalive no`. `sshd -T` prints the daemon's effective configuration, after all `Include` directives and every drop-in in `/etc/ssh/sshd_config.d/`, so a later drop-in that restores the default `yes` is detected. A file-based check on `/etc/ssh/sshd_config` would miss it.",
+    "fr": "Pavois exécute `sshd -T` et exige la ligne résolue `tcpkeepalive no`. `sshd -T` affiche la configuration effective du démon, après toutes les directives `Include` et tous les drop-ins de `/etc/ssh/sshd_config.d/`, de sorte qu'un drop-in ultérieur rétablissant la valeur par défaut `yes` est détecté. Un contrôle basé sur le fichier `/etc/ssh/sshd_config` le manquerait."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -iE '^(tcpkeepalive|clientalive)'` as root. Expected output, `tcpkeepalive` off and the encrypted probes taking over:\n\n```\ntcpkeepalive no\nclientaliveinterval 300\nclientalivecountmax 3\n```\n\nThe `clientalive*` values come from their own Pavois rules; what this rule requires is the first line.",
+    "fr": "Exécutez `sshd -T | grep -iE '^(tcpkeepalive|clientalive)'` en root. Sortie attendue, `tcpkeepalive` désactivé et les sondes chiffrées prenant le relais :\n\n```\ntcpkeepalive no\nclientaliveinterval 300\nclientalivecountmax 3\n```\n\nLes valeurs `clientalive*` relèvent de leurs propres règles Pavois ; cette règle n'exige que la première ligne."
+  },
+  "logs": {
+    "en": "The directive itself produces no log entry. What becomes visible is the ClientAlive-driven teardown: when a client stops answering the encrypted probes, sshd logs in `/var/log/auth.log` (or `journalctl -u ssh`):\n\n```\nsshd[1234]: Timeout, client not responding from user alice 203.0.113.10 port 51234\n```\n\nWith `TCPKeepAlive yes` and no ClientAlive probes, that same dead session would simply linger, silently.",
+    "fr": "La directive elle-même ne produit aucune entrée de journal. Ce qui devient visible, c'est la fermeture pilotée par ClientAlive : lorsqu'un client cesse de répondre aux sondes chiffrées, sshd journalise dans `/var/log/auth.log` (ou `journalctl -u ssh`) :\n\n```\nsshd[1234]: Timeout, client not responding from user alice 203.0.113.10 port 51234\n```\n\nAvec `TCPKeepAlive yes` et sans sondes ClientAlive, cette même session morte subsisterait, silencieusement."
+  },
+  "remediation_note": {
+    "en": "The Pavois harden plan uses the `sshd_setting` resource to set the directive `tcpkeepalive` to `no` in the Pavois drop-in under `/etc/ssh/sshd_config.d/`. The file is validated with `sshd -t -f <file>` before being kept, and a change notifies a **reload** of `ssh.service`.",
+    "fr": "Le plan de durcissement Pavois utilise la ressource `sshd_setting` pour positionner la directive `tcpkeepalive` à `no` dans le drop-in Pavois sous `/etc/ssh/sshd_config.d/`. Le fichier est validé par `sshd -t -f <fichier>` avant d'être conservé, et tout changement déclenche un **reload** de `ssh.service`."
+  },
+  "impact": {
+    "en": "Disabling TCP keepalives removes the packets that keep NAT and stateful-firewall entries warm. If `ClientAliveInterval` is unset (or larger than the firewall's idle timeout), long idle sessions can be silently dropped by a middlebox: set `ClientAliveInterval` **below** that timeout, or have clients use `ServerAliveInterval`. Conversely, do not disable TCPKeepAlive *and* leave ClientAlive off: the server would then never detect a dead peer and would accumulate orphaned sessions. The change is applied by a reload, so current sessions are unaffected.",
+    "fr": "Désactiver les keepalives TCP supprime les paquets qui maintiennent chaudes les entrées de NAT et de pare-feu à états. Si `ClientAliveInterval` n'est pas défini (ou dépasse le délai d'inactivité du pare-feu), de longues sessions inactives peuvent être coupées silencieusement par un équipement intermédiaire : réglez `ClientAliveInterval` **en dessous** de ce délai, ou faites utiliser `ServerAliveInterval` aux clients. À l'inverse, ne désactivez pas TCPKeepAlive en laissant ClientAlive inactif : le serveur ne détecterait alors jamais un pair mort et accumulerait des sessions orphelines. Le changement est appliqué par un reload : les sessions en cours ne sont pas affectées."
+  },
+  "datePublished": "2026-07-14",
+  "dateModified": "2026-07-14"
+}

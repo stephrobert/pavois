@@ -1,0 +1,73 @@
+{
+  "id": "kconfig-security",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel build",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R20"
+  },
+  "check": [
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_SECURITY=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
+    "  its('stdout') { should match(/^CONFIG_SECURITY=y$/) }",
+    "end"
+  ],
+  "remediation": {
+    "resource": "kernel_build"
+  },
+  "title": {
+    "en": "Enable different security models",
+    "fr": "Activer la prise en charge des modèles de sécurité"
+  },
+  "summary": {
+    "en": "Requires the kernel to be built with **`CONFIG_SECURITY=y`**, the master switch that enables the Linux Security Modules (LSM) framework.",
+    "fr": "Exige que le noyau soit compilé avec **`CONFIG_SECURITY=y`**, l'interrupteur maître activant le cadre des Linux Security Modules (LSM)."
+  },
+  "rationale": {
+    "en": "This enables kernel security primitives required by the **LSM** framework. `CONFIG_SECURITY` is the master switch for Linux Security Modules; without it, **SELinux, AppArmor, SMACK, Yama and the LSM hooks** cannot exist, leaving the system with only classic DAC permissions and no mandatory-access-control layer to contain a compromised or over-privileged process.",
+    "fr": "Ceci active les primitives de sécurité du noyau requises par le cadre **LSM**. `CONFIG_SECURITY` est l'interrupteur maître des Linux Security Modules ; sans lui, **SELinux, AppArmor, SMACK, Yama et les hooks LSM** ne peuvent exister, laissant le système avec les seules permissions DAC classiques et aucune couche de contrôle d'accès obligatoire pour contenir un processus compromis ou surdoté en privilèges."
+  },
+  "check_note": {
+    "en": "Pavois reads the build options of the **running** kernel, `grep '^CONFIG_SECURITY=' /boot/config-$(uname -r)` or `zcat /proc/config.gz`, and requires `y`. Reading the live kernel's own config (keyed on `uname -r`) reflects exactly the booted kernel, which a package-name guess or generic file cannot.",
+    "fr": "Pavois lit les options de compilation du noyau **en cours d'exécution**, `grep '^CONFIG_SECURITY=' /boot/config-$(uname -r)` ou `zcat /proc/config.gz`, et exige `y`. Lire la configuration du noyau réellement démarré (indexée sur `uname -r`) reflète exactement le noyau démarré, ce qu'une supposition de nom de paquet ou un fichier générique ne peut faire."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_SECURITY=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep CONFIG_SECURITY`). Expected output:\n\n```\nCONFIG_SECURITY=y\n```\n\nWith LSM enabled you can also list the active modules with `cat /sys/kernel/security/lsm` (e.g. `capability,yama,apparmor` or `...,selinux`).",
+    "fr": "Exécutez `grep '^CONFIG_SECURITY=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep CONFIG_SECURITY`). Sortie attendue :\n\n```\nCONFIG_SECURITY=y\n```\n\nAvec LSM activé, vous pouvez aussi lister les modules actifs avec `cat /sys/kernel/security/lsm` (par ex. `capability,yama,apparmor` ou `...,selinux`)."
+  },
+  "logs": {
+    "en": "No routine log entry. The active LSMs are listed in `/sys/kernel/security/lsm`; MAC denials are logged by the module in use, AppArmor/SELinux events land in `/var/log/audit/audit.log` (`type=AVC`/`type=APPARMOR`) and in `journalctl -k`. Confirm the build flag with `grep CONFIG_SECURITY /boot/config-$(uname -r)`.",
+    "fr": "Aucune entrée de journal courante. Les LSM actifs sont listés dans `/sys/kernel/security/lsm` ; les refus MAC sont journalisés par le module en service, les événements AppArmor/SELinux arrivent dans `/var/log/audit/audit.log` (`type=AVC`/`type=APPARMOR`) et dans `journalctl -k`. Confirmez l'option de compilation avec `grep CONFIG_SECURITY /boot/config-$(uname -r)`."
+  },
+  "remediation_note": {
+    "en": "This is a **kernel build-time option**, so Pavois ships no automated harden step for it. It is satisfied by booting a distribution kernel compiled with `CONFIG_SECURITY=y` (true for all current Debian/Ubuntu/RHEL kernels, which ship AppArmor or SELinux); a custom kernel must be rebuilt. Activating an actual LSM (AppArmor/SELinux) is covered by separate rules.",
+    "fr": "Il s'agit d'une **option de compilation du noyau**, Pavois ne fournit donc aucune étape de durcissement automatique. Elle est satisfaite en démarrant un noyau de distribution compilé avec `CONFIG_SECURITY=y` (vrai pour tous les noyaux Debian/Ubuntu/RHEL actuels, qui embarquent AppArmor ou SELinux) ; un noyau personnalisé doit être recompilé. L'activation d'un LSM réel (AppArmor/SELinux) est couverte par des règles distinctes."
+  },
+  "impact": {
+    "en": "If absent, no mandatory-access-control module can load and the system relies solely on discretionary permissions, a major regression in containment. **Precautions:** simply enabling LSM support (via a compliant kernel) does not enforce any policy by itself, so it cannot break applications. Disruption only arises when you subsequently *activate and enforce* a specific module (SELinux/AppArmor) with a strict policy, test those policies in permissive/complain mode first to avoid blocking legitimate services.",
+    "fr": "En son absence, aucun module de contrôle d'accès obligatoire ne peut se charger et le système ne repose que sur les permissions discrétionnaires, régression majeure du confinement. **Précautions :** activer simplement le support LSM (via un noyau conforme) n'applique aucune politique par lui-même et ne peut donc casser d'applications. La perturbation n'apparaît que lorsque vous *activez et appliquez* ensuite un module précis (SELinux/AppArmor) avec une politique stricte, testez d'abord ces politiques en mode permissif/complain pour éviter de bloquer des services légitimes."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,79 @@
+{
+  "id": "pkg-slapd-removed",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "2.1.7",
+    "nist": [
+      "CM-7(a)",
+      "CM-7(b)",
+      "CM-6(a)"
+    ]
+  },
+  "check": [
+    "describe package('slapd') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "slapd",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall openldap-servers Package",
+    "fr": "Désinstaller le paquet openldap-servers (slapd)"
+  },
+  "summary": {
+    "en": "Ensures the **`slapd`** (OpenLDAP server) package is **not installed** on hosts that are not dedicated directory servers.",
+    "fr": "Garantit que le paquet **`slapd`** (serveur OpenLDAP) n'est **pas installé** sur les hôtes qui ne sont pas des serveurs d'annuaire dédiés."
+  },
+  "rationale": {
+    "en": "`slapd` is the **OpenLDAP standalone directory server**. Unnecessary packages should not be installed, in order to **decrease the attack surface** of the system. While this software is clearly essential on a dedicated LDAP/directory server, it is not needed on a typical workstation, application server, or appliance, where a listening LDAP daemon would only add exposure and patch burden.",
+    "fr": "`slapd` est le **serveur d'annuaire autonome OpenLDAP**. Les paquets inutiles ne doivent pas être installés afin de **réduire la surface d'attaque** du système. Bien que ce logiciel soit clairement essentiel sur un serveur d'annuaire LDAP dédié, il n'est pas nécessaire sur un poste de travail, un serveur applicatif ou une appliance classique, où un démon LDAP à l'écoute n'ajouterait que de l'exposition et une charge de correctifs."
+  },
+  "check_note": {
+    "en": "Pavois uses CINC/InSpec's `package` resource to read the **effective** install state from the package database (`dpkg`/`apt`) and asserts `slapd` is absent. This is authoritative: if `slapd` is installed, an LDAP daemon can be started and bind to the network, regardless of any config file content.",
+    "fr": "Pavois utilise la ressource `package` de CINC/InSpec pour lire l'état d'installation **effectif** dans la base de données des paquets (`dpkg`/`apt`) et vérifie que `slapd` est absent. C'est la source faisant autorité : si `slapd` est installé, un démon LDAP peut être démarré et écouter le réseau, quel que soit le contenu des fichiers de configuration."
+  },
+  "verify": {
+    "en": "Run `dpkg -s slapd`; a compliant host returns **`package 'slapd' is not installed and no information is available`**. You can also confirm nothing listens on LDAP ports with `ss -tlnp | grep -E ':389|:636'` (no output).",
+    "fr": "Exécutez `dpkg -s slapd` ; un hôte conforme renvoie **`package 'slapd' is not installed and no information is available`**. Vous pouvez aussi confirmer qu'aucun service n'écoute sur les ports LDAP avec `ss -tlnp | grep -E ':389|:636'` (aucune sortie)."
+  },
+  "logs": {
+    "en": "- Removal events appear in `/var/log/dpkg.log` and `/var/log/apt/history.log`.\n- After removal, `systemctl status slapd` reports **not-found** and ports 389/636 are no longer bound (`ss -tlnp`).",
+    "fr": "- Les événements de suppression apparaissent dans `/var/log/dpkg.log` et `/var/log/apt/history.log`.\n- Après suppression, `systemctl status slapd` indique **not-found** et les ports 389/636 ne sont plus en écoute (`ss -tlnp`)."
+  },
+  "remediation_note": {
+    "en": "The harden plan defines a **`package`** resource for `slapd` with action **`remove`**; `pavois harden apply` uninstalls it through `apt`. The OpenLDAP service stops listening and cannot be reactivated until the package is reinstalled.",
+    "fr": "Le plan de durcissement définit une ressource **`package`** pour `slapd` avec l'action **`remove`** ; `pavois harden apply` le désinstalle via `apt`. Le service OpenLDAP cesse d'écouter et ne peut être réactivé tant que le paquet n'est pas réinstallé."
+  },
+  "impact": {
+    "en": "**Do not apply on a host that is actually serving LDAP**, removing `slapd` takes down authentication/directory services for every client that binds to it, which can cascade into a site-wide login outage. Verify the role of the machine first (`ss -tlnp`, check for live LDAP clients). The local OpenLDAP **database under `/var/lib/ldap` is preserved** by a package removal (a `purge` would delete it), so reinstalling can recover the directory if needed.",
+    "fr": "**N'appliquez pas cette règle sur un hôte qui sert réellement du LDAP**, supprimer `slapd` interrompt les services d'authentification/d'annuaire pour tous les clients qui s'y connectent, ce qui peut provoquer une panne de connexion à l'échelle du site. Vérifiez d'abord le rôle de la machine (`ss -tlnp`, présence de clients LDAP actifs). La **base OpenLDAP locale sous `/var/lib/ldap` est conservée** par une simple suppression (un `purge` la supprimerait), de sorte qu'une réinstallation peut restaurer l'annuaire si besoin."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,80 @@
+{
+  "id": "fileowner-backup-etc-group",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "2.2.6",
+      "7.1.4"
+    ],
+    "nist": "AC-6 (1)",
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "only_if { file('/etc/group-').exist? }",
+    "describe file('/etc/group-') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/etc/group-",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify User Who Owns Backup group File",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier de sauvegarde group"
+  },
+  "summary": {
+    "en": "Ensures the `/etc/group-` backup file is owned by **root** (uid 0).",
+    "fr": "Garantit que le fichier de sauvegarde `/etc/group-` appartient à **root** (uid 0)."
+  },
+  "rationale": {
+    "en": "`/etc/group-` is the backup copy of `/etc/group` and lists every group configured on the system. If it is not owned by **root** (uid 0), an unauthorized user could read group membership (mapping privilege relationships) or tamper with the backup to seed a later restore. Root ownership is essential to keep group definitions trustworthy.",
+    "fr": "`/etc/group-` est la copie de sauvegarde de `/etc/group` et liste chaque groupe configuré sur le système. S'il n'appartient pas à **root** (uid 0), un utilisateur non autorisé pourrait lire les appartenances aux groupes (cartographiant les relations de privilèges) ou altérer la sauvegarde pour préparer une restauration ultérieure. La propriété par root est essentielle pour que les définitions de groupes restent fiables."
+  },
+  "check_note": {
+    "en": "Pavois reads the file's **effective owning uid** with the InSpec `file` resource and asserts it equals `0` (root), only when the file exists. Reading the actual filesystem owner reflects the protection currently enforced, catching `chown` drift, rather than assuming the default created by `passwd`/`groupadd` was preserved.",
+    "fr": "Pavois lit l'**uid propriétaire effectif** du fichier avec la ressource InSpec `file` et vérifie qu'il vaut `0` (root), uniquement si le fichier existe. Lire le propriétaire réel du système de fichiers reflète la protection réellement appliquée, détectant la dérive de `chown`, plutôt que de supposer que la valeur par défaut créée par `passwd`/`groupadd` a été conservée."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U' /etc/group-`. Expected output: `root`. Alternatively `ls -l /etc/group-` should show `root` in the owner column.",
+    "fr": "Exécutez `stat -c '%U' /etc/group-`. Sortie attendue : `root`. Sinon, `ls -l /etc/group-` doit afficher `root` dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "Ownership is shown by `ls -l /etc/group-` and `stat /etc/group-`. The backup is rewritten whenever group databases change (`groupadd`, `groupmod`, `gpasswd`). If auditd watches `/etc/group-` (a common identity-file watch), `chown` and write events appear in `/var/log/audit/audit.log`.",
+    "fr": "Le propriétaire est affiché par `ls -l /etc/group-` et `stat /etc/group-`. La sauvegarde est réécrite à chaque modification des bases de groupes (`groupadd`, `groupmod`, `gpasswd`). Si auditd surveille `/etc/group-` (surveillance courante des fichiers d'identité), les événements `chown` et d'écriture apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is shipped for this rule, so it must be remediated **manually**: run `chown root /etc/group-` (commonly paired with `chgrp root` and `chmod 644` to match `/etc/group`).",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle : elle doit être corrigée **manuellement** avec `chown root /etc/group-` (souvent accompagné de `chgrp root` et `chmod 644` pour correspondre à `/etc/group`)."
+  },
+  "impact": {
+    "en": "Non-root ownership exposes the group database backup to reading or tampering, weakening identity integrity and aiding privilege mapping. Restoring root ownership has no operational impact, only administrative tooling touches this file. **Precaution:** if `/etc/group-` is absent (no group change has occurred yet) the check is skipped; simply re-run after the first group modification.",
+    "fr": "Une propriété autre que root expose la sauvegarde de la base de groupes à la lecture ou à l'altération, affaiblissant l'intégrité des identités et facilitant la cartographie des privilèges. Rétablir la propriété root n'a aucun impact opérationnel, seuls les outils d'administration touchent ce fichier. **Précaution :** si `/etc/group-` est absent (aucune modification de groupe n'a encore eu lieu), le contrôle est ignoré ; relancez-le simplement après la première modification de groupe."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

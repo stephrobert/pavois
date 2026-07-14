@@ -1,0 +1,88 @@
+{
+  "id": "kmod-sctp-disabled",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel modules",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "1.4.2",
+      "3.2.4",
+      "3.2.6",
+      "3.2.5"
+    ],
+    "nist": [
+      "3.4.6",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)"
+    ],
+    "pci-dss": "1.4.2"
+  },
+  "check": [
+    "describe kernel_module('sctp') do",
+    "  it { should_not be_loaded }",
+    "  it { should be_disabled }",
+    "end"
+  ],
+  "remediation": {
+    "action": "blacklist",
+    "name": "sctp",
+    "reboot_required": true,
+    "resource": "kernel_module"
+  },
+  "title": {
+    "en": "Disable SCTP Support",
+    "fr": "Désactiver la prise en charge de SCTP"
+  },
+  "summary": {
+    "en": "Ensures the `sctp` (Stream Control Transmission Protocol) network protocol kernel module cannot be loaded.",
+    "fr": "Garantit que le module noyau du protocole réseau `sctp` (Stream Control Transmission Protocol) ne peut pas être chargé."
+  },
+  "rationale": {
+    "en": "SCTP (Stream Control Transmission Protocol) is a transport protocol mostly used in telecom signaling (SS7/Diameter) and rarely on general-purpose servers. Its kernel implementation has had multiple memory-safety vulnerabilities, and as a third transport alongside TCP/UDP it widens the network attack surface and can evade firewall rules written only for TCP/UDP. Disabling SCTP protects the system against exploitation of flaws in its implementation and removes an unused protocol.",
+    "fr": "SCTP (Stream Control Transmission Protocol) est un protocole de transport surtout utilisé dans la signalisation télécom (SS7/Diameter) et rarement sur les serveurs généralistes. Son implémentation noyau a connu plusieurs vulnérabilités de sûreté mémoire, et en tant que troisième transport aux côtés de TCP/UDP il élargit la surface d'attaque réseau et peut contourner des règles de pare-feu écrites uniquement pour TCP/UDP. Désactiver SCTP protège le système contre l'exploitation de failles de son implémentation et retire un protocole inutilisé."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `kernel_module('sctp')` resource to confirm the module is **not loaded** and is **disabled** (blacklist plus an `install ... /bin/true` override). This reflects the **effective** kernel state via `lsmod` and `modprobe --showconfig`, not a static grep of `/etc/modprobe.d/`, so an application that opens an SCTP socket and autoloads the module is detected.",
+    "fr": "Pavois utilise la ressource InSpec `kernel_module('sctp')` pour confirmer que le module n'est **pas chargé** et qu'il est **désactivé** (blacklist plus une redirection `install ... /bin/true`). Cela reflète l'état **effectif** du noyau via `lsmod` et `modprobe --showconfig`, et non un grep statique de `/etc/modprobe.d/`, ainsi une application qui ouvrirait une socket SCTP et chargerait le module est détectée."
+  },
+  "verify": {
+    "en": "Run `modprobe -n -v sctp`, it should print `install /bin/true`. Confirm it is not loaded with `lsmod | grep sctp` (no output expected). `modprobe --showconfig | grep sctp` should show a `blacklist sctp` and an `install sctp /bin/true` line.",
+    "fr": "Exécutez `modprobe -n -v sctp`, la sortie doit afficher `install /bin/true`. Vérifiez qu'il n'est pas chargé avec `lsmod | grep sctp` (aucune sortie attendue). `modprobe --showconfig | grep sctp` doit afficher une ligne `blacklist sctp` et une ligne `install sctp /bin/true`."
+  },
+  "logs": {
+    "en": "Load attempts appear in the kernel ring buffer: `dmesg | grep sctp` or `journalctl -k | grep sctp`. The effective modprobe policy is shown by `modprobe --showconfig | grep sctp`; active SCTP sockets (which should be none) can be checked with `ss -A sctp`.",
+    "fr": "Les tentatives de chargement apparaissent dans le tampon noyau : `dmesg | grep sctp` ou `journalctl -k | grep sctp`. La politique modprobe effective est affichée par `modprobe --showconfig | grep sctp` ; les sockets SCTP actives (qui devraient être inexistantes) se vérifient avec `ss -A sctp`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `kernel_module` resource to **blacklist** `sctp`: it writes a drop-in under `/etc/modprobe.d/` with `blacklist sctp` and `install sctp /bin/true`, and unloads the module if loaded. Because the protocol may already be loaded, **`reboot_required` is true** to guarantee a clean state.",
+    "fr": "`pavois harden apply` utilise la ressource `kernel_module` pour mettre `sctp` en **blacklist** : il écrit un drop-in sous `/etc/modprobe.d/` avec `blacklist sctp` et `install sctp /bin/true`, et décharge le module s'il est chargé. Comme le protocole peut déjà être chargé, **`reboot_required` est vrai** pour garantir un état propre."
+  },
+  "impact": {
+    "en": "Risk if not applied: a network protocol with a history of kernel CVEs stays loadable, widening the attack surface and potentially bypassing TCP/UDP-only firewall rules.\n\n- **Before applying**, confirm no application uses SCTP, relevant chiefly to telecom signaling stacks (SS7/Diameter/SIGTRAN) and some clustering software.\n- Non-disruptive on general-purpose servers and VMs.\n- A **reboot** is required for full effect; schedule it in a maintenance window.",
+    "fr": "Risque en l'absence d'application : un protocole réseau au passif de CVE noyau reste chargeable, élargissant la surface d'attaque et pouvant contourner des règles de pare-feu limitées à TCP/UDP.\n\n- **Avant d'appliquer**, vérifiez qu'aucune application n'utilise SCTP, pertinent surtout pour les piles de signalisation télécom (SS7/Diameter/SIGTRAN) et certains logiciels de clustering.\n- Non perturbateur sur les serveurs et VM généralistes.\n- Un **redémarrage** est requis pour un effet complet ; planifiez-le dans une fenêtre de maintenance."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

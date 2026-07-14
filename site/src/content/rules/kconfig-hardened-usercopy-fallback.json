@@ -1,0 +1,73 @@
+{
+  "id": "kconfig-hardened-usercopy-fallback",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "high",
+  "domain": "Kernel build",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R15"
+  },
+  "check": [
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_HARDENED_USERCOPY_FALLBACK=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
+    "  its('stdout') { should_not match(/^CONFIG_HARDENED_USERCOPY_FALLBACK=y$/) }",
+    "end"
+  ],
+  "remediation": {
+    "resource": "kernel_build"
+  },
+  "title": {
+    "en": "Do not allow usercopy whitelist violations to fallback to object size",
+    "fr": "Interdire le repli sur la taille de l'objet en cas de violation de la liste blanche usercopy"
+  },
+  "summary": {
+    "en": "Requires the kernel to be built **without** `CONFIG_HARDENED_USERCOPY_FALLBACK=y`, so usercopy allow-list violations are blocked rather than allowed with a warning.",
+    "fr": "Exige que le noyau soit compilé **sans** `CONFIG_HARDENED_USERCOPY_FALLBACK=y`, afin que les violations de la liste d'autorisation usercopy soient bloquées au lieu d'être tolérées avec un avertissement."
+  },
+  "rationale": {
+    "en": "When `CONFIG_HARDENED_USERCOPY_FALLBACK=y`, a usercopy that violates a slab cache's allow-list is **permitted anyway** (only a warning is logged) and validated against the coarse object size instead. This soft-fail mode was a migration aid; leaving it on weakens hardened usercopy back toward an advisory check, so a heap object that should never be copied to userspace can still leak its full contents. Disabling the fallback turns violations into hard rejections, restoring the full protection of `CONFIG_HARDENED_USERCOPY`.",
+    "fr": "Quand `CONFIG_HARDENED_USERCOPY_FALLBACK=y`, une copie usercopy qui viole la liste d'autorisation d'un cache slab est **tout de même autorisée** (un simple avertissement est journalisé) et validée par rapport à la taille grossière de l'objet. Ce mode de tolérance servait à la migration ; le laisser actif ramène le durcissement usercopy à un simple contrôle indicatif, si bien qu'un objet du tas qui ne devrait jamais être copié vers l'espace utilisateur peut quand même divulguer tout son contenu. Désactiver le repli transforme les violations en rejets stricts, rétablissant la pleine protection de `CONFIG_HARDENED_USERCOPY`."
+  },
+  "check_note": {
+    "en": "Pavois reads the build configuration of the **running** kernel, `/boot/config-$(uname -r)` and the in-memory `/proc/config.gz`, and confirms `CONFIG_HARDENED_USERCOPY_FALLBACK` is not set to `y`. Inspecting the booted kernel's config (not a leftover `/boot/config-*`) ensures the answer reflects the kernel actually enforcing usercopy checks.",
+    "fr": "Pavois lit la configuration de compilation du noyau **en cours d'exécution**, `/boot/config-$(uname -r)` et `/proc/config.gz` en mémoire, et confirme que `CONFIG_HARDENED_USERCOPY_FALLBACK` n'est pas à `y`. Examiner la config du noyau démarré (et non un `/boot/config-*` résiduel) garantit que le résultat reflète le noyau qui applique réellement les contrôles usercopy."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_HARDENED_USERCOPY_FALLBACK=' /boot/config-$(uname -r)`. Expected: no match, or `# CONFIG_HARDENED_USERCOPY_FALLBACK is not set`, the line `CONFIG_HARDENED_USERCOPY_FALLBACK=y` must be absent.",
+    "fr": "Exécutez `grep '^CONFIG_HARDENED_USERCOPY_FALLBACK=' /boot/config-$(uname -r)`. Attendu : aucune correspondance, ou `# CONFIG_HARDENED_USERCOPY_FALLBACK is not set`, la ligne `CONFIG_HARDENED_USERCOPY_FALLBACK=y` doit être absente."
+  },
+  "logs": {
+    "en": "With the fallback enabled, violations only warn, look for `usercopy: Whitelist mismatch` or `Bad or missing usercopy whitelist` in `dmesg | grep -i usercopy` / `journalctl -k | grep -i usercopy`. With the fallback disabled, those same violations escalate to hard faults visible in the kernel log.",
+    "fr": "Avec le repli activé, les violations ne produisent qu'un avertissement, recherchez `usercopy: Whitelist mismatch` ou `Bad or missing usercopy whitelist` dans `dmesg | grep -i usercopy` / `journalctl -k | grep -i usercopy`. Avec le repli désactivé, ces mêmes violations deviennent des fautes strictes visibles dans le journal noyau."
+  },
+  "remediation_note": {
+    "en": "No automated remediation: this is a **kernel build-time option**, not a runtime tunable. Pavois's harden plan is empty. To fix it you must boot a kernel compiled **without** `CONFIG_HARDENED_USERCOPY_FALLBACK`, current distribution kernels already disable it; for a custom kernel, unset the option and rebuild, then reboot.",
+    "fr": "Aucune remédiation automatisée : il s'agit d'une **option de compilation du noyau**, pas d'un paramètre modifiable à chaud. Le plan de durcissement Pavois est vide. Pour corriger, démarrez un noyau compilé **sans** `CONFIG_HARDENED_USERCOPY_FALLBACK`, les noyaux de distribution actuels le désactivent déjà ; pour un noyau personnalisé, retirez l'option et recompilez, puis redémarrez."
+  },
+  "impact": {
+    "en": "Leaving the fallback enabled degrades hardened usercopy to advisory mode, so kernel memory disclosures that should be blocked are merely logged. Disabling it is purely a hardening tightening and breaks no legitimate workload, but it requires booting a different kernel: keep the previous kernel entry in the bootloader and confirm the new kernel boots cleanly before decommissioning the old one.",
+    "fr": "Laisser le repli activé rétrograde le durcissement usercopy en mode indicatif : des divulgations de mémoire noyau qui devraient être bloquées ne sont que journalisées. Le désactiver est un pur renforcement et ne casse aucune charge légitime, mais cela impose de démarrer un autre noyau : conservez l'entrée du noyau précédent dans le chargeur d'amorçage et vérifiez que le nouveau noyau démarre proprement avant de retirer l'ancien."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

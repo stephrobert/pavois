@@ -122,6 +122,11 @@ run = "echo 'regen complete: corpus + OSCAL rebuilt from docs/reference/'"
 description = "Run the norm-studio MCP server (surfaces official sources, exploits reference docs)"
 run = "uv run --with fastmcp --with pyyaml tools/norm_studio/server.py"
 
+[tasks."gen:cli"]
+description = "Generate the site's CLI reference from the BINARY itself (pavois clidocs), so it cannot drift"
+depends = ["build"]
+run = "{{config_root}}/go/pavois clidocs > {{config_root}}/site/src/data/cli.json"
+
 [tasks."gen:pages"]
 description = "Generate the site's rule fiches from the rule base (one per neutral id, authored prose preserved)"
 depends = ["gen"]
@@ -140,7 +145,7 @@ run = "npm install && npm run dev"
 
 [tasks."site:build"]
 description = "Build the static hardening site"
-depends = ["gen:pages", "oscal", "site:verify"]
+depends = ["gen:pages", "gen:cli", "oscal", "site:verify"]
 dir = "{{config_root}}/site"
 run = "npm install && npm run build"
 

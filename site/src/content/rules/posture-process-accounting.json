@@ -1,0 +1,73 @@
+{
+  "id": "posture-process-accounting",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Hardening (posture)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {},
+  "check": [
+    "describe command('systemctl is-active acct psacct 2>/dev/null | grep -qx active && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "DEBIAN_FRONTEND=noninteractive apt-get install -y acct >/dev/null 2>&1; systemctl enable --now acct 2>/dev/null || true",
+    "name": "enable-process-accounting",
+    "not_if": "systemctl is-active acct psacct 2>/dev/null | grep -qx active",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Process accounting enabled",
+    "fr": "Comptabilité des processus activée"
+  },
+  "summary": {
+    "en": "Requires that **process accounting** is active, via `auditd`, or the `acct`/`psacct` service, so that command and process execution is recorded for audit and forensics.",
+    "fr": "Exige que la **comptabilité des processus** soit active, via `auditd` ou le service `acct`/`psacct`, afin que l'exécution des commandes et des processus soit enregistrée pour l'audit et l'investigation."
+  },
+  "rationale": {
+    "en": "Process accounting records **which commands ran, by whom, when, and for how long**. Without it, after an incident you have little visibility into what an attacker (or a misbehaving user) actually executed, crippling forensic investigation and accountability. An active accounting/audit subsystem provides the trail needed to reconstruct activity, attribute actions and detect abuse.",
+    "fr": "La comptabilité des processus enregistre **quelles commandes ont été exécutées, par qui, quand et pendant combien de temps**. Sans elle, après un incident, vous disposez de peu de visibilité sur ce qu'un attaquant (ou un utilisateur fautif) a réellement exécuté, ce qui handicape l'investigation et l'imputabilité. Un sous-système de comptabilité/audit actif fournit la piste nécessaire pour reconstituer l'activité, attribuer les actions et détecter les abus."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** runtime state with `systemctl is-active auditd acct psacct` and requires at least one to be `active`. Querying systemd's live unit state (not whether a package is installed or a config file exists) confirms the service is genuinely running and collecting data right now.",
+    "fr": "Pavois lit l'**état d'exécution effectif** avec `systemctl is-active auditd acct psacct` et exige qu'au moins un soit `active`. Interroger l'état réel de l'unité systemd (et non la présence d'un paquet ou d'un fichier de configuration) confirme que le service tourne réellement et collecte des données en ce moment."
+  },
+  "verify": {
+    "en": "Run `systemctl is-active auditd acct psacct`, at least one should report `active`. With `auditd`, confirm with `auditctl -s` (enabled 1). With acct/psacct, `lastcomm` and `sa` should show recorded command activity.",
+    "fr": "Lancez `systemctl is-active auditd acct psacct`, au moins un doit indiquer `active`. Avec `auditd`, confirmez via `auditctl -s` (enabled 1). Avec acct/psacct, `lastcomm` et `sa` doivent montrer l'activité de commandes enregistrée."
+  },
+  "logs": {
+    "en": "auditd writes to `/var/log/audit/audit.log` (query with care, see the project note that `ausearch` can give false negatives; grep the raw log). acct/psacct stores accounting in `/var/log/account/pacct`, read with `lastcomm`, `sa` and `ac`. Service status: `systemctl status auditd`.",
+    "fr": "auditd écrit dans `/var/log/audit/audit.log` (interrogez avec prudence, voir la note du projet selon laquelle `ausearch` peut donner des faux négatifs ; grep directement le journal brut). acct/psacct stocke la comptabilité dans `/var/log/account/pacct`, lue via `lastcomm`, `sa` et `ac`. État du service : `systemctl status auditd`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped, so apply it **manually**: install and enable an accounting subsystem, `apt install acct && systemctl enable --now acct` (Debian/Ubuntu) or `dnf install psacct && systemctl enable --now psacct` (RHEL family), or ensure `auditd` is installed and `systemctl enable --now auditd`.",
+    "fr": "Aucune remédiation automatisée n'est fournie, appliquez-la donc **manuellement** : installez et activez un sous-système de comptabilité, `apt install acct && systemctl enable --now acct` (Debian/Ubuntu) ou `dnf install psacct && systemctl enable --now psacct` (famille RHEL), ou assurez-vous qu'`auditd` est installé et `systemctl enable --now auditd`."
+  },
+  "impact": {
+    "en": "Enabling process accounting is low risk. The trade-offs are operational: accounting/audit logs **grow continuously and can fill `/var`** on busy systems, so configure log rotation and size limits (`auditd`'s `max_log_file`, `space_left_action`). `auditd` with verbose rules adds slight overhead under heavy syscall load. No services are interrupted by enabling it.",
+    "fr": "Activer la comptabilité des processus est peu risqué. Les compromis sont opérationnels : les journaux de comptabilité/audit **croissent en continu et peuvent saturer `/var`** sur les systèmes chargés, configurez donc la rotation et les limites de taille (`max_log_file`, `space_left_action` d'`auditd`). `auditd` avec des règles verbeuses ajoute un léger surcoût en cas de forte charge d'appels système. Aucun service n'est interrompu par son activation."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

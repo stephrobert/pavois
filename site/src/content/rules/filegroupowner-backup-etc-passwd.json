@@ -1,0 +1,80 @@
+{
+  "id": "filegroupowner-backup-etc-passwd",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "2.2.6",
+      "7.1.2"
+    ],
+    "nist": "AC-6 (1)",
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "only_if { file('/etc/passwd-').exist? }",
+    "describe file('/etc/passwd-') do",
+    "  its('gid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "group": "root",
+    "path": "/etc/passwd-",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Group Who Owns Backup passwd File",
+    "fr": "Vérifier le groupe propriétaire du fichier de sauvegarde passwd"
+  },
+  "summary": {
+    "en": "Ensures `/etc/passwd-`, the backup copy of `/etc/passwd`, is group-owned by `root` (gid `0`).",
+    "fr": "Garantit que `/etc/passwd-`, la copie de sauvegarde de `/etc/passwd`, a `root` (gid `0`) pour groupe propriétaire."
+  },
+  "rationale": {
+    "en": "`/etc/passwd-` is the **backup of** `/etc/passwd` and lists every local account, its UID/GID, home directory and login shell. If its group owner is not `root` (gid `0`), an unprivileged group could read it to enumerate accounts (notably UID-0 accounts) or tamper with the backup so a later restore introduces a rogue or privileged user onto the live file.",
+    "fr": "`/etc/passwd-` est la **sauvegarde de** `/etc/passwd` et liste chaque compte local, son UID/GID, son répertoire personnel et son shell de connexion. Si son groupe propriétaire n'est pas `root` (gid `0`), un groupe non privilégié pourrait le lire pour énumérer les comptes (notamment les comptes UID-0) ou altérer la sauvegarde afin qu'une restauration ultérieure introduise un utilisateur malveillant ou privilégié dans le fichier actif."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective ownership** of `/etc/passwd-` from the inode (via `stat`) and asserts `gid == 0`. Checking the live inode catches drift from manual restores or backup tools rather than trusting a template. The `only_if` guard skips the check when the backup is absent.",
+    "fr": "Pavois lit la **propriété effective** de `/etc/passwd-` depuis l'inode (via `stat`) et vérifie `gid == 0`. Contrôler l'inode réel détecte la dérive due aux restaurations manuelles ou aux outils de sauvegarde plutôt que de se fier à un modèle. La garde `only_if` ignore le contrôle lorsque la sauvegarde est absente."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /etc/passwd-`. Expected output: **`root 0`**. If the backup file does not exist the control is skipped.",
+    "fr": "Exécutez `stat -c '%G %g' /etc/passwd-`. Sortie attendue : **`root 0`**. Si le fichier de sauvegarde n'existe pas, le contrôle est ignoré."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default. Inspect with `ls -l /etc/passwd-` or `stat /etc/passwd-`. With an auditd watch (`auditctl -w /etc/passwd- -p wa`), `chown` events appear in `/var/log/audit/audit.log`.",
+    "fr": "Les changements de propriété ne sont pas journalisés par défaut. Inspectez avec `ls -l /etc/passwd-` ou `stat /etc/passwd-`. Avec une surveillance auditd (`auditctl -w /etc/passwd- -p wa`), les événements `chown` apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so it must be applied **manually**: run `chgrp root /etc/passwd-` (or `chown :root /etc/passwd-`) to restore the `root` group owner.",
+    "fr": "Aucun plan de durcissement automatisé n'est encore défini pour cette règle ; elle doit donc être appliquée **manuellement** : exécutez `chgrp root /etc/passwd-` (ou `chown :root /etc/passwd-`) pour restaurer le groupe propriétaire `root`."
+  },
+  "impact": {
+    "en": "A wrong group owner on `/etc/passwd-` exposes the account inventory and a restorable backup to unprivileged users. **Precautions:** restoring `root` group ownership is safe and has no functional effect on running services, the backup is consulted only during account-management operations. Verify no backup tool recreates it with the wrong ownership.",
+    "fr": "Un mauvais groupe propriétaire sur `/etc/passwd-` expose l'inventaire des comptes et une sauvegarde restaurable à des utilisateurs non privilégiés. **Précautions :** restaurer la propriété de groupe `root` est sûr et n'a aucun effet fonctionnel sur les services en cours, la sauvegarde n'est consultée que lors des opérations de gestion des comptes. Vérifiez qu'aucun outil de sauvegarde ne le recrée avec une propriété incorrecte."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

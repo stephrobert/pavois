@@ -1,0 +1,69 @@
+{
+  "id": "dconf-gnome-lock-screen-on-smartcard-removal",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "GNOME desktop (dconf)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "stig": "UBTU-24-200042"
+  },
+  "check": [
+    "only_if { command('dconf').exist? }",
+    "describe command('{ grep -rqE \\'^[[:space:]]*removal-action[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null && grep -rqxF \\'/org/gnome/settings-daemon/peripherals/smartcard/removal-action\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "key": "org/gnome/settings-daemon/peripherals/smartcard/removal-action",
+    "resource": "dconf",
+    "value": "'lock-screen'"
+  },
+  "title": {
+    "en": "Enable the GNOME3 Screen Locking On Smartcard Removal",
+    "fr": "Activer le verrouillage de l'écran GNOME3 au retrait de la carte à puce"
+  },
+  "summary": {
+    "en": "Configures GNOME to lock the screen automatically when the user's smartcard is removed, enforced system-wide via the `dconf` database and locked against user override.",
+    "fr": "Configure GNOME pour verrouiller automatiquement l'écran au retrait de la carte à puce de l'utilisateur, appliqué à tout le système via la base `dconf` et verrouillé contre toute modification par l'utilisateur."
+  },
+  "rationale": {
+    "en": "On smartcard-authenticated workstations, the card is the user's physical token of presence. If removing it does not lock the session, a user who walks away while pocketing their badge leaves an **unlocked, authenticated session** exposed to anyone nearby. Setting `removal-action='lock-screen'` ties the session lock to the physical token, closing the window of unattended access.",
+    "fr": "Sur les postes authentifiés par carte à puce, la carte est le jeton physique de présence de l'utilisateur. Si son retrait ne verrouille pas la session, un utilisateur qui s'éloigne en récupérant son badge laisse une **session ouverte et authentifiée** exposée à toute personne à proximité. Définir `removal-action='lock-screen'` lie le verrouillage de session au jeton physique, supprimant la fenêtre d'accès non surveillé."
+  },
+  "check_note": {
+    "en": "Pavois confirms two things in the **effective** `dconf` configuration: that a key file under `/etc/dconf/db/*.d/` actually sets `removal-action`, and that `/org/gnome/settings-daemon/peripherals/smartcard/removal-action` appears in a `locks/` file so users cannot override it. Reading the resolved dconf database (not a single GUI dialog) catches the value wherever a drop-in defines it.",
+    "fr": "Pavois vérifie deux points dans la configuration `dconf` **effective** : qu'un fichier de clés sous `/etc/dconf/db/*.d/` définit bien `removal-action`, et que `/org/gnome/settings-daemon/peripherals/smartcard/removal-action` figure dans un fichier `locks/` afin que les utilisateurs ne puissent pas l'écraser. Lire la base dconf résolue (et non une seule boîte de dialogue) capte la valeur quel que soit le drop-in qui la définit."
+  },
+  "verify": {
+    "en": "As a logged-in desktop user run `gsettings get org.gnome.settings-daemon.peripherals.smartcard active-action` (or inspect `dconf read /org/gnome/settings-daemon/peripherals/smartcard/removal-action`); the expected output is `'lock-screen'`. Confirm the lock with `grep -r removal-action /etc/dconf/db/*/locks/`.",
+    "fr": "En tant qu'utilisateur de bureau connecté, exécutez `gsettings get org.gnome.settings-daemon.peripherals.smartcard active-action` (ou inspectez `dconf read /org/gnome/settings-daemon/peripherals/smartcard/removal-action`) ; la sortie attendue est `'lock-screen'`. Confirmez le verrou avec `grep -r removal-action /etc/dconf/db/*/locks/`."
+  },
+  "logs": {
+    "en": "Smartcard removal and session-lock events surface in the user session journal: `journalctl --user -u gnome-session` and `journalctl -u gdm`. The smartcard subsystem (pcscd / opensc) logs card insert/remove via `journalctl -u pcscd`.",
+    "fr": "Les événements de retrait de carte et de verrouillage de session apparaissent dans le journal de la session utilisateur : `journalctl --user -u gnome-session` et `journalctl -u gdm`. Le sous-système carte à puce (pcscd / opensc) journalise les insertions/retraits via `journalctl -u pcscd`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `dconf` resource to write the key file setting `removal-action='lock-screen'` and a matching `locks/` entry, then runs `dconf update` so the change takes effect for all users. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `dconf` pour écrire le fichier de clés définissant `removal-action='lock-screen'` et l'entrée `locks/` correspondante, puis exécute `dconf update` pour que le changement prenne effet pour tous les utilisateurs. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Functional impact is minimal: only sessions on smartcard-equipped machines are affected, and the lock simply requires re-authentication. **Precaution:** if smartcards are also the only login method, removing the card now locks the screen and re-insertion + PIN is needed to return, make sure a working fallback (a known PIN or an admin account) exists before rollout so a misread card does not strand a user. On servers with no graphical session this rule has no runtime effect.",
+    "fr": "L'impact fonctionnel est minime : seules les sessions sur machines équipées de carte à puce sont concernées, et le verrou n'exige qu'une ré-authentification. **Précaution :** si la carte est aussi l'unique moyen de connexion, son retrait verrouille désormais l'écran et il faut la réinsérer + saisir le PIN pour revenir, assurez-vous qu'un repli fonctionnel (PIN connu ou compte administrateur) existe avant déploiement afin qu'une carte mal lue ne bloque pas un utilisateur. Sur les serveurs sans session graphique, cette règle n'a aucun effet à l'exécution."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

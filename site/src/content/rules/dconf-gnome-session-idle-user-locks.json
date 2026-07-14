@@ -1,0 +1,78 @@
+{
+  "id": "dconf-gnome-session-idle-user-locks",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "GNOME desktop (dconf)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "1.8.5",
+      "1.8.3"
+    ],
+    "nist": "3.1.10",
+    "pci-dss": "8.2.8"
+  },
+  "check": [
+    "only_if { command('dconf').exist? }",
+    "describe command('{ grep -rqE \\'^[[:space:]]*idle-delay[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null && grep -rqxF \\'/org/gnome/desktop/session/idle-delay\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "key": "org/gnome/desktop/session/idle-delay",
+    "resource": "dconf",
+    "value": "uint32 900"
+  },
+  "title": {
+    "en": "Ensure Users Cannot Change GNOME3 Session Idle Settings",
+    "fr": "Empêcher les utilisateurs de modifier les paramètres d'inactivité de session GNOME3"
+  },
+  "summary": {
+    "en": "**Locks** the GNOME `idle-delay` key so users cannot raise or disable the idle timeout that triggers the automatic session lock.",
+    "fr": "**Verrouille** la clé GNOME `idle-delay` afin que les utilisateurs ne puissent ni augmenter ni désactiver le délai d'inactivité qui déclenche le verrouillage automatique de session."
+  },
+  "rationale": {
+    "en": "A session time-out lock is a temporary action taken when a user stops work and moves away from the immediate physical vicinity of the information system but does not logout because of the temporary nature of the absence. Rather than relying on the user to manually lock their operating system session prior to vacating the vicinity, GNOME desktops can be configured to identify when a user's session has idled and take action to initiate the session lock. As such, users should not be allowed to change session settings.",
+    "fr": "Le verrouillage de session sur inactivité est une action temporaire déclenchée lorsqu'un utilisateur cesse de travailler et s'éloigne physiquement du système d'information sans se déconnecter, en raison du caractère temporaire de son absence. Plutôt que de compter sur l'utilisateur pour verrouiller manuellement sa session avant de s'éloigner, les bureaux GNOME peuvent être configurés pour détecter l'inactivité d'une session et déclencher son verrouillage. Les utilisateurs ne doivent donc pas être autorisés à modifier ces paramètres de session."
+  },
+  "check_note": {
+    "en": "Pavois confirms, against the **effective** system dconf database under `/etc/dconf/db/*.d/`, that `idle-delay` is set AND that `/org/gnome/desktop/session/idle-delay` appears in a `locks/` file. The lock entry is the real control: it proves the idle timeout cannot be raised or removed by a user. A file-only read of a single profile could not show whether the system policy is enforced and locked.",
+    "fr": "Pavois confirme, face à la base dconf système **effective** sous `/etc/dconf/db/*.d/`, que `idle-delay` est défini ET que `/org/gnome/desktop/session/idle-delay` figure dans un fichier `locks/`. L'entrée de verrou est le véritable contrôle : elle prouve que le délai d'inactivité ne peut être ni augmenté ni supprimé par un utilisateur. Une simple lecture de fichier d'un seul profil ne pourrait pas montrer si la politique système est imposée et verrouillée."
+  },
+  "verify": {
+    "en": "List the lock with `grep -r idle-delay /etc/dconf/db/*/locks/` (must match) and read the enforced value via `gsettings get org.gnome.desktop.session idle-delay`. Re-running the InSpec command should print `ok`.",
+    "fr": "Listez le verrou avec `grep -r idle-delay /etc/dconf/db/*/locks/` (doit correspondre) et lisez la valeur imposée via `gsettings get org.gnome.desktop.session idle-delay`. La réexécution de la commande InSpec doit afficher `ok`."
+  },
+  "logs": {
+    "en": "dconf is not logged to syslog; verify state with `gsettings get org.gnome.desktop.session idle-delay` and `ls /etc/dconf/db/`. After editing keyfiles, `dconf update` recompiles the binary databases.",
+    "fr": "dconf n'est pas journalisé dans syslog ; vérifiez l'état avec `gsettings get org.gnome.desktop.session idle-delay` et `ls /etc/dconf/db/`. Après modification des fichiers de clés, `dconf update` recompile les bases binaires."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the **dconf** resource to add `/org/gnome/desktop/session/idle-delay` to the system `locks/` directory (alongside the enforced keyfile value), then runs `dconf update` so the idle timeout becomes non-overridable for all users.",
+    "fr": "`pavois harden apply` utilise la ressource **dconf** pour ajouter `/org/gnome/desktop/session/idle-delay` au répertoire `locks/` système (aux côtés de la valeur imposée dans le fichier de clés), puis exécute `dconf update` afin que le délai d'inactivité devienne non modifiable par tous les utilisateurs."
+  },
+  "impact": {
+    "en": "Low risk: enforces an existing idle/lock policy without affecting login or services. Set a sensible non-zero `idle-delay` first, otherwise locking the key cements whatever value is present (a locked `0` would mean never lock). Users must re-login (or `dconf update` must run) for the policy to load. GNOME desktop only; not applicable to headless servers.",
+    "fr": "Risque faible : impose une politique d'inactivité/verrouillage existante sans affecter la connexion ni les services. Définissez d'abord une valeur `idle-delay` raisonnable et non nulle, sinon verrouiller la clé fige la valeur présente (un `0` verrouillé signifierait ne jamais verrouiller). Les utilisateurs doivent se reconnecter (ou `dconf update` doit s'exécuter) pour charger la politique. Bureau GNOME uniquement ; sans objet sur un serveur sans interface graphique."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

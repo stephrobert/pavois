@@ -1,0 +1,74 @@
+{
+  "id": "pam-pwquality-enabled",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (PAM modules)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.3.2.3"
+  },
+  "check": [
+    "describe command('grep -RqE \\'^[^#]*\\bpam_pwquality\\\\.so\\b\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "apt-get install -y libpam-pwquality\npam-auth-update --enable pwquality 2>/dev/null || pam-auth-update\n",
+    "reason": "installs + enables a PAM module, review which password profile you want",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Verify pam_pwquality module is activated",
+    "fr": "Vérifier que le module pam_pwquality est activé"
+  },
+  "summary": {
+    "en": "Ensures `pam_pwquality.so` is present in the PAM password stack so new passwords are checked for strength (length, complexity, dictionary words).",
+    "fr": "Garantit que `pam_pwquality.so` est présent dans la pile password de PAM afin que les nouveaux mots de passe soient contrôlés en robustesse (longueur, complexité, mots de dictionnaire)."
+  },
+  "rationale": {
+    "en": "Strong passwords significantly increase the time and effort required for unauthorized access, improving overall system security. `pam_pwquality` is the module that enforces composition rules at password-set time; without it, users can choose trivially weak or dictionary passwords that fall instantly to guessing or cracking.",
+    "fr": "Des mots de passe forts augmentent considérablement le temps et l'effort nécessaires à un accès non autorisé, améliorant la sécurité globale du système. `pam_pwquality` est le module qui applique les règles de composition au moment de la définition du mot de passe ; sans lui, les utilisateurs peuvent choisir des mots de passe trivialement faibles ou de dictionnaire, qui cèdent instantanément à la devinette ou au cassage."
+  },
+  "check_note": {
+    "en": "Pavois greps the **effective** PAM stack under `/etc/pam.d/` for an active (non-commented) `pam_pwquality.so` line. The password stack is built from `common-password` and its `@include` chain, so reading the resolved files catches the case where the module is declared in a sample but absent from the path PAM actually applies, a gap a single-file scan misses.",
+    "fr": "Pavois recherche dans la pile PAM **effective** sous `/etc/pam.d/` une ligne `pam_pwquality.so` active (non commentée). La pile password est construite à partir de `common-password` et de sa chaîne `@include`, si bien que lire les fichiers résolus détecte le cas où le module est déclaré dans un exemple mais absent du chemin réellement appliqué par PAM, une lacune qu'une analyse mono-fichier manque."
+  },
+  "verify": {
+    "en": "Run `grep -rE '^[^#]*pam_pwquality\\.so' /etc/pam.d/`; an active `password` line should reference the module. Functionally, run `passwd` and try a weak password (e.g. `abc`), it should be rejected with a quality message.",
+    "fr": "Exécutez `grep -rE '^[^#]*pam_pwquality\\.so' /etc/pam.d/` ; une ligne `password` active doit référencer le module. Fonctionnellement, lancez `passwd` et essayez un mot de passe faible (par ex. `abc`), il devrait être rejeté avec un message de qualité."
+  },
+  "logs": {
+    "en": "Password-change attempts and quality rejections are logged in `/var/log/auth.log` (Debian/Ubuntu). The module's policy is read from `/etc/security/pwquality.conf`.",
+    "fr": "Les tentatives de changement de mot de passe et les rejets pour qualité insuffisante sont consignés dans `/var/log/auth.log` (Debian/Ubuntu). La politique du module est lue depuis `/etc/security/pwquality.conf`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is wired for this rule, so it must be applied **manually**: install `libpam-pwquality` and add a `password requisite pam_pwquality.so retry=3` line to `/etc/pam.d/common-password` (before `pam_unix.so`), typically via `pam-auth-update`, then set policy in `/etc/security/pwquality.conf`.",
+    "fr": "Aucune remédiation automatisée n'est câblée pour cette règle, elle doit donc être appliquée **manuellement** : installez `libpam-pwquality` et ajoutez une ligne `password requisite pam_pwquality.so retry=3` à `/etc/pam.d/common-password` (avant `pam_unix.so`), généralement via `pam-auth-update`, puis définissez la politique dans `/etc/security/pwquality.conf`."
+  },
+  "impact": {
+    "en": "Adding `pam_pwquality` only affects password changes, not logins or sessions, but an overly strict policy can frustrate users or block password resets, and a malformed `password` line can break **all** password changes. **Precautions:** keep a root session open, start with reasonable settings (e.g. `minlen`, `retry=3`), test `passwd` on a throwaway user, and ensure the line precedes `pam_unix.so`.",
+    "fr": "Ajouter `pam_pwquality` n'affecte que les changements de mot de passe, pas les connexions ni les sessions, mais une politique trop stricte peut frustrer les utilisateurs ou bloquer les réinitialisations, et une ligne `password` malformée peut casser **tous** les changements de mot de passe. **Précautions :** gardez une session root ouverte, commencez par des réglages raisonnables (par ex. `minlen`, `retry=3`), testez `passwd` sur un utilisateur jetable, et assurez-vous que la ligne précède `pam_unix.so`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

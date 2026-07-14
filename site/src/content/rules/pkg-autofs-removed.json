@@ -1,0 +1,74 @@
+{
+  "id": "pkg-autofs-removed",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "2.1.1"
+  },
+  "check": [
+    "describe package('autofs') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "autofs",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Remove autofs Package",
+    "fr": "Supprimer le paquet autofs"
+  },
+  "summary": {
+    "en": "Ensures the **autofs** automounter package is **not installed**, removing on-demand filesystem mounting unless it is explicitly required.",
+    "fr": "Garantit que le paquet d'automontage **autofs** n'est **pas installe**, supprimant le montage de systemes de fichiers a la demande sauf besoin explicite."
+  },
+  "rationale": {
+    "en": "With automounting enabled, anyone with physical access can attach a USB drive or disc and have its contents mounted automatically into the filesystem, even without permission to mount it themselves, a vector for malware delivery and data exfiltration. Removing **autofs** shrinks the attack surface on systems that do not need network or removable-media automounts (CIS 2.1.1).",
+    "fr": "Avec l'automontage active, toute personne disposant d'un acces physique peut connecter une cle USB ou un disque et voir son contenu monte automatiquement dans le systeme de fichiers, meme sans droit de le monter elle-meme, un vecteur de diffusion de malware et d'exfiltration de donnees. Supprimer **autofs** reduit la surface d'attaque sur les systemes qui n'ont pas besoin d'automontages reseau ou de media amovibles (CIS 2.1.1)."
+  },
+  "check_note": {
+    "en": "Pavois asks `dpkg` (via the InSpec `package` resource) whether `autofs` is installed and expects it absent. Checking the **effective package state** is authoritative, it catches the automounter regardless of any leftover unit files or config.",
+    "fr": "Pavois interroge `dpkg` (via la ressource InSpec `package`) pour savoir si `autofs` est installe et l'attend absent. Verifier l'**etat effectif des paquets** fait autorite, il detecte l'automonteur quels que soient les fichiers d'unite ou de config residuels."
+  },
+  "verify": {
+    "en": "Run `dpkg -s autofs`, expected `package 'autofs' is not installed`. Optionally confirm no automount service is active with `systemctl is-active autofs` (expected `inactive`/not found).",
+    "fr": "Executez `dpkg -s autofs`, attendu `package 'autofs' is not installed`. Verifiez eventuellement qu'aucun service d'automontage n'est actif avec `systemctl is-active autofs` (attendu `inactive`/introuvable)."
+  },
+  "logs": {
+    "en": "- `dpkg -l autofs` confirms removal.\n- Mount/unmount activity (and any residual automount events) appears in `journalctl -u autofs` while installed, and current mounts are visible with `findmnt`.",
+    "fr": "- `dpkg -l autofs` confirme la suppression.\n- L'activite de montage/demontage (et tout evenement d'automontage residuel) apparait dans `journalctl -u autofs` tant qu'il est installe, et les montages courants sont visibles avec `findmnt`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan removes the `autofs` package (`package` resource, `remove` action) with `pavois harden apply`, which also stops and disables the automounter.",
+    "fr": "Le plan de durcissement de Pavois supprime le paquet `autofs` (ressource `package`, action `remove`) avec `pavois harden apply`, ce qui arrete et desactive aussi l'automonteur."
+  },
+  "impact": {
+    "en": "Removing autofs breaks any workflow that relies on on-demand mounts, commonly **NFS home directories**, automounted network shares, or removable-media automounting in kiosk/lab setups. Before applying, confirm no `/etc/auto.master` maps are in use (`findmnt` for `autofs` mounts) and that users do not depend on automounted homes, or you risk inaccessible directories after removal.",
+    "fr": "Supprimer autofs casse tout flux reposant sur des montages a la demande, typiquement les **repertoires personnels NFS**, les partages reseau automontes ou l'automontage de media amovibles dans les configs kiosque/labo. Avant d'appliquer, verifiez qu'aucune carte `/etc/auto.master` n'est utilisee (`findmnt` pour les montages `autofs`) et que les utilisateurs ne dependent pas de homes automontes, sous peine de repertoires inaccessibles apres suppression."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,79 @@
+{
+  "id": "groupowner-var-log-journal",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.1.4.1",
+      "6.2.2.1"
+    ]
+  },
+  "check": [
+    "only_if { command('test -d /var/log/journal').exit_status.zero? }",
+    "describe command('find -P /var/log/journal -type f ! -group systemd-journal ! -group root 2>/dev/null | head -1') do",
+    "  its('stdout') { should eq '' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "find /var/log/journal -exec chown root:systemd-journal {} + 2>/dev/null || true",
+    "name": "chown-journal",
+    "not_if": "test -z \"$(find /var/log/journal ! -group systemd-journal 2>/dev/null)\"",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Verify Group Who Owns /var/log/*.journal(~) File",
+    "fr": "Verifier le groupe proprietaire des fichiers /var/log/*.journal(~)"
+  },
+  "summary": {
+    "en": "Ensures every file under `/var/log/journal` is group-owned by `systemd-journal` or `root` (when the directory exists).",
+    "fr": "Garantit que chaque fichier sous `/var/log/journal` a pour groupe proprietaire `systemd-journal` ou `root` (lorsque le repertoire existe)."
+  },
+  "rationale": {
+    "en": "The `/var/log/*.journal` files are the persistent system logs managed by `systemd-journald`. They record authentication, kernel, service and audit-relevant events. The `systemd-journal` group is the controlled boundary for who may read the journal; if these files are group-owned by an unexpected group, members could read sensitive event data or, if also writable, corrupt the journal and destroy forensic evidence. Restricting group ownership to `systemd-journal` (or `root`) preserves both confidentiality and integrity of the journal.",
+    "fr": "Les fichiers `/var/log/*.journal` sont les journaux systeme persistants geres par `systemd-journald`. Ils enregistrent les evenements d'authentification, noyau, services et pertinents pour l'audit. Le groupe `systemd-journal` est la frontiere controlee determinant qui peut lire le journal ; si ces fichiers ont pour groupe proprietaire un groupe inattendu, ses membres pourraient lire des donnees sensibles ou, s'ils sont aussi inscriptibles, corrompre le journal et detruire les preuves forensiques. Restreindre la propriete de groupe a `systemd-journal` (ou `root`) preserve la confidentialite et l'integrite du journal."
+  },
+  "check_note": {
+    "en": "Guarded by `only_if test -d /var/log/journal` so it is skipped when persistent journaling is off (volatile-only). Pavois then runs `find -P /var/log/journal -type f ! -group systemd-journal ! -group root` and expects empty output. Reading the real group on each `.journal` inode catches files rotated/created at runtime by journald, a static config audit of `journald.conf` cannot.",
+    "fr": "Protege par `only_if test -d /var/log/journal`, il est ignore quand la journalisation persistante est desactivee (volatile seulement). Pavois execute alors `find -P /var/log/journal -type f ! -group systemd-journal ! -group root` et attend une sortie vide. Lire le groupe reel de chaque inode `.journal` detecte les fichiers crees/effectues par rotation a l'execution par journald, ce qu'un audit statique de `journald.conf` ne peut pas."
+  },
+  "verify": {
+    "en": "Run `sudo find /var/log/journal -type f ! -group systemd-journal ! -group root 2>/dev/null`. Expected output: **empty**. You can also check with `stat -c '%U:%G %n' /var/log/journal/*/*.journal` (expected owner/group `root:systemd-journal`).",
+    "fr": "Executez `sudo find /var/log/journal -type f ! -group systemd-journal ! -group root 2>/dev/null`. Sortie attendue : **vide**. Vous pouvez aussi verifier avec `stat -c '%U:%G %n' /var/log/journal/*/*.journal` (proprietaire/groupe attendu `root:systemd-journal`)."
+  },
+  "logs": {
+    "en": "Inspect journald itself with `journalctl -u systemd-journald` and `systemctl show systemd-journald`. List file groups with `find /var/log/journal -type f -printf '%g %p\\n'`; run `journalctl --verify` to confirm the journal files are not corrupted after any ownership change.",
+    "fr": "Inspectez journald lui-meme avec `journalctl -u systemd-journald` et `systemctl show systemd-journald`. Listez les groupes des fichiers avec `find /var/log/journal -type f -printf '%g %p\\n'` ; executez `journalctl --verify` pour confirmer que les fichiers du journal ne sont pas corrompus apres tout changement de propriete."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan runs an **exec** resource named `chown-journal` that applies `chown root:systemd-journal` to everything under `/var/log/journal`, restoring the expected owner and group. A `not_if` guard skips the action when no file has the wrong group, so it is idempotent. Applied with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois execute une ressource **exec** nommee `chown-journal` qui applique `chown root:systemd-journal` a tout le contenu de `/var/log/journal`, retablissant le proprietaire et le groupe attendus. Une garde `not_if` saute l'action quand aucun fichier n'a le mauvais groupe, garantissant l'idempotence. Applique avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Resetting the journal files to `root:systemd-journal` is the documented systemd default and is low-risk: journald keeps writing and the `systemd-journal` group keeps read access. The harden command also touches directory entries; this does not stop logging. As a precaution, run `journalctl --verify` afterward to confirm integrity, and avoid manually `chmod`-ing journal files to broader permissions, which would defeat the access control this rule enforces.",
+    "fr": "Retablir les fichiers du journal a `root:systemd-journal` est le defaut documente de systemd et presente peu de risque : journald continue d'ecrire et le groupe `systemd-journal` conserve l'acces en lecture. La commande de durcissement touche aussi les entrees de repertoire ; cela n'interrompt pas la journalisation. Par precaution, executez `journalctl --verify` ensuite pour confirmer l'integrite, et evitez d'elargir manuellement les permissions des fichiers du journal par `chmod`, ce qui annulerait le controle d'acces impose par cette regle."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

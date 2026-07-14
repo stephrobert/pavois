@@ -1,0 +1,88 @@
+{
+  "id": "mount-tmp-noexec",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R28",
+    "cis": "1.1.2.1.4",
+    "nist": [
+      "AC-6",
+      "AC-6(1)",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)",
+      "MP-7"
+    ]
+  },
+  "check": [
+    "describe mount('/tmp') do",
+    "  its('options') { should include 'noexec' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /tmp 2>/dev/null; grep -hsE '[[:space:]]/tmp[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /tmp 2>/dev/null) 2>/dev/null; } | grep -ow 'noexec'\") do",
+    "  its('stdout') { should match(/\\S/) }",
+    "end"
+  ],
+  "remediation": {
+    "device": "tmpfs",
+    "fstype": "tmpfs",
+    "mount_point": "/tmp",
+    "option": "noexec",
+    "resource": "mount"
+  },
+  "title": {
+    "en": "Add noexec Option to /tmp",
+    "fr": "Ajouter l'option noexec à /tmp"
+  },
+  "summary": {
+    "en": "Mounts `/tmp` with the **`noexec`** option so the kernel refuses to execute any binary located in that directory.",
+    "fr": "Monte `/tmp` avec l'option **`noexec`** afin que le noyau refuse d'exécuter tout binaire situé dans ce répertoire."
+  },
+  "rationale": {
+    "en": "Executing binaries from world-writable directories such as `/tmp` is never required in normal operation. The **`noexec`** option makes the kernel refuse to run any program stored under `/tmp`, removing a favourite staging ground for attackers: dropped malware, exploit payloads and downloaded toolkits are commonly written to `/tmp` and run from there. Without `noexec`, any unprivileged user or compromised service can execute arbitrary code from this directory.",
+    "fr": "Exécuter des binaires depuis des répertoires accessibles en écriture à tous comme `/tmp` n'est jamais nécessaire en fonctionnement normal. L'option **`noexec`** force le noyau à refuser l'exécution de tout programme stocké sous `/tmp`, supprimant un terrain de jeu privilégié des attaquants : malwares déposés, charges d'exploitation et boîtes à outils téléchargées sont couramment écrits dans `/tmp` puis exécutés depuis là. Sans `noexec`, n'importe quel utilisateur non privilégié ou service compromis peut exécuter du code arbitraire depuis ce répertoire."
+  },
+  "check_note": {
+    "en": "Pavois inspects the **effective** mount with `mount('/tmp')` and asserts that its resolved options include `noexec`. It reads the live kernel mount table, what is actually enforced, rather than `/etc/fstab`, so it catches a partition remounted without the flag, an option overridden by a `systemd` mount unit, or an fstab entry that never took effect, all of which a file-based scanner would report as compliant.",
+    "fr": "Pavois inspecte le montage **effectif** via `mount('/tmp')` et vérifie que ses options résolues incluent `noexec`. Il lit la table de montage active du noyau, ce qui est réellement appliqué, plutôt que `/etc/fstab` ; il détecte donc une partition remontée sans le drapeau, une option écrasée par une unité de montage `systemd`, ou une entrée fstab jamais prise en compte, autant de cas qu'un scanner basé sur les fichiers signalerait comme conformes."
+  },
+  "verify": {
+    "en": "Run `findmnt /tmp` (or `findmnt -no OPTIONS /tmp`) and confirm `noexec` is in the option list. Expected output contains `noexec`, e.g. `/tmp ... rw,nosuid,nodev,noexec,relatime`. A practical functional test: `cp /bin/true /tmp/x && /tmp/x` should fail with `Permission denied`.",
+    "fr": "Exécutez `findmnt /tmp` (ou `findmnt -no OPTIONS /tmp`) et confirmez que `noexec` figure dans la liste des options. La sortie attendue contient `noexec`, par exemple `/tmp ... rw,nosuid,nodev,noexec,relatime`. Test fonctionnel pratique : `cp /bin/true /tmp/x && /tmp/x` doit échouer avec `Permission denied`."
+  },
+  "logs": {
+    "en": "Mount state is queried live with `findmnt /tmp` or `cat /proc/mounts`, not from a log file. Boot-time and remount events appear via `journalctl -b | grep -i tmp` or `journalctl -u tmp.mount`. Blocked execution attempts surface as `Permission denied` in the calling program's own logs (and, if auditd is configured, in `/var/log/audit/audit.log`).",
+    "fr": "L'état du montage s'interroge en direct avec `findmnt /tmp` ou `cat /proc/mounts`, pas depuis un fichier de log. Les événements de démarrage et de remontage apparaissent via `journalctl -b | grep -i tmp` ou `journalctl -u tmp.mount`. Les tentatives d'exécution bloquées se manifestent par `Permission denied` dans les logs du programme appelant (et, si auditd est configuré, dans `/var/log/audit/audit.log`)."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule yet, so it must be applied **manually**: add `noexec` to the `/tmp` entry's options in `/etc/fstab` (or to the relevant `systemd` mount unit), then `mount -o remount /tmp`, or reboot, and re-scan to confirm.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle ; elle doit donc être appliquée **manuellement** : ajoutez `noexec` aux options de l'entrée `/tmp` dans `/etc/fstab` (ou à l'unité de montage `systemd` concernée), puis `mount -o remount /tmp`, ou redémarrez, et relancez le scan pour confirmer."
+  },
+  "impact": {
+    "en": "**Things that can break:** some package managers and installers (e.g. building software, certain `pip`/`dnf` plugins, application self-updaters) stage and run helper scripts from `/tmp` and will fail under `noexec`. Java and some installers honour `$TMPDIR`, point them elsewhere or grant a temporary exception during maintenance. **Precautions:** verify `/tmp` is a dedicated mount first; test critical workflows (package upgrades, app deployments) after applying; if a tool needs execute temporarily, use a separate exec-capable scratch directory rather than removing `noexec` from `/tmp`.",
+    "fr": "**Ce qui peut casser :** certains gestionnaires de paquets et installateurs (compilation de logiciels, certains plugins `pip`/`dnf`, auto-updaters d'applications) déposent et exécutent des scripts d'aide depuis `/tmp` et échoueront sous `noexec`. Java et certains installateurs respectent `$TMPDIR`, redirigez-les ailleurs ou accordez une exception temporaire pendant la maintenance. **Précautions :** vérifiez d'abord que `/tmp` est un montage dédié ; testez les flux critiques (mises à jour de paquets, déploiements d'applications) après application ; si un outil a besoin d'exécution temporairement, utilisez un répertoire de travail séparé autorisant l'exécution plutôt que de retirer `noexec` de `/tmp`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

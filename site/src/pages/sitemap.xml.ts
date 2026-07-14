@@ -10,7 +10,7 @@ const LANGS = Object.keys(languages);
 // are real pages, linked from the main navigation, and were missing here — 8 URLs a crawler never
 // saw, including the benchmark, which is the product's whole differentiating argument.
 const STATIC = [
-  '', 'start/', 'installation/', 'audit/', 'docs/', 'docs/tools/', 'docs/benchmark/',
+  '', 'start/', 'installation/', 'audit/', 'docs/', 'docs/cli/', 'docs/tools/', 'docs/benchmark/',
   'handbook/', 'rules/', 'blog/', 'glossary/', 'about/', 'downloads/', 'sample-report/', 'attribution/',
   'standards/cis/', 'standards/bp28/', 'standards/nist/', 'standards/pci-dss/', 'standards/stig/',
 ];

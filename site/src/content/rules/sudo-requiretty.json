@@ -1,0 +1,78 @@
+{
+  "id": "sudo-requiretty",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Sudo",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R39"
+  },
+  "check": [
+    "describe command('grep -rqE \\'^[^#]*Defaults[^#]*\\brequiretty\\b\\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "content": "Defaults requiretty\n",
+    "group": "root",
+    "mode": "0440",
+    "owner": "root",
+    "path": "/etc/sudoers.d/99-pavois-requiretty",
+    "resource": "file",
+    "verify": "visudo -cf %{path}"
+  },
+  "title": {
+    "en": "Ensure Only Users Logged In To Real tty Can Execute Sudo - sudo requiretty",
+    "fr": "S'assurer que seuls les utilisateurs connectés sur un vrai tty peuvent exécuter sudo - sudo requiretty"
+  },
+  "summary": {
+    "en": "Enable the `Defaults requiretty` option so `sudo` can only be invoked from a real terminal (tty), not from a script, cron job or daemon without one.",
+    "fr": "Active l'option `Defaults requiretty` afin que `sudo` ne puisse être invoqué que depuis un vrai terminal (tty), et non depuis un script, une tâche cron ou un démon sans tty."
+  },
+  "rationale": {
+    "en": "Requiring a real tty restricts the contexts in which `sudo` may be used and reduces the attack surface. Without `requiretty`, a compromised web service, daemon or background process could call `sudo` non-interactively; it also limits the impact of session-hijacking tricks where the attacker has no controlling terminal. Forcing an interactive tty ties privilege escalation to a genuine, attributable login session.",
+    "fr": "Exiger un vrai tty restreint les contextes dans lesquels `sudo` peut être utilisé et réduit la surface d'attaque. Sans `requiretty`, un service web, un démon ou un processus d'arrière-plan compromis pourrait appeler `sudo` de façon non interactive ; cela limite aussi l'impact des détournements de session où l'attaquant ne dispose d'aucun terminal de contrôle. Imposer un tty interactif rattache l'élévation de privilèges à une véritable session de connexion attribuable."
+  },
+  "check_note": {
+    "en": "Pavois greps the **active sudoers tree**, `/etc/sudoers` and every file under `/etc/sudoers.d/`, for an uncommented `Defaults ... requiretty`. Because `sudo` merges its policy from the main file plus all drop-ins, scanning the whole tree reflects the **effective** policy rather than a single file a later drop-in could override.",
+    "fr": "Pavois recherche dans l'**arborescence sudoers active**, `/etc/sudoers` et chaque fichier sous `/etc/sudoers.d/`, une directive non commentée `Defaults ... requiretty`. Comme `sudo` fusionne sa politique à partir du fichier principal et de tous les drop-ins, parcourir toute l'arborescence reflète la politique **effective** plutôt qu'un seul fichier qu'un drop-in ultérieur pourrait écraser."
+  },
+  "verify": {
+    "en": "Run `sudo grep -rE '^[^#]*Defaults.*requiretty' /etc/sudoers /etc/sudoers.d/`. A matching, uncommented line confirms the option is active. To test, a `sudo` call with no tty (e.g. `ssh host 'sudo id'` without `-t`) should now fail with `sorry, you must have a tty to run sudo`.",
+    "fr": "Exécutez `sudo grep -rE '^[^#]*Defaults.*requiretty' /etc/sudoers /etc/sudoers.d/`. Une ligne correspondante, non commentée, confirme que l'option est active. Pour tester, un appel `sudo` sans tty (par ex. `ssh hôte 'sudo id'` sans `-t`) doit désormais échouer avec `sorry, you must have a tty to run sudo`."
+  },
+  "logs": {
+    "en": "`sudo` invocations and refusals are logged to `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL), and via `journalctl -t sudo`. A tty-less attempt is recorded with a `requiretty`/`must have a tty` denial, useful to spot scripts or services that were silently using sudo.",
+    "fr": "Les appels à `sudo` et leurs refus sont journalisés dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL), et via `journalctl -t sudo`. Une tentative sans tty est enregistrée avec un refus `requiretty`/`must have a tty`, utile pour repérer les scripts ou services qui utilisaient sudo en silence."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan writes a `file` resource at `/etc/sudoers.d/99-Pavois-requiretty` containing `Defaults requiretty`, owned `root:root` with mode `0440`, validated with `visudo -cf` before activation. Apply it with `pavois harden apply`. The dedicated drop-in keeps the change isolated and reversible.",
+    "fr": "Le plan de durcissement de Pavois écrit une ressource `file` dans `/etc/sudoers.d/99-Pavois-requiretty` contenant `Defaults requiretty`, appartenant à `root:root` avec le mode `0440`, validée avec `visudo -cf` avant activation. Appliquez-le avec `pavois harden apply`. Le drop-in dédié isole la modification et la rend réversible."
+  },
+  "impact": {
+    "en": "`requiretty` **breaks non-interactive sudo**: cron jobs, CI pipelines, configuration-management agents (Ansible, Chef) and `ssh host 'sudo ...'` calls without a pseudo-tty will fail. **Before applying**, audit such callers, switch SSH automation to `ssh -t`, set Ansible's `pipelining`/`pty` appropriately, or grant tty-less paths a scoped exemption with a matching `Defaults!/command !requiretty` rule. The drop-in is validated by `visudo` before activation, so it cannot corrupt sudoers; verify your automation right after applying.",
+    "fr": "`requiretty` **casse le sudo non interactif** : tâches cron, pipelines CI, agents de gestion de configuration (Ansible, Chef) et appels `ssh hôte 'sudo ...'` sans pseudo-tty échoueront. **Avant d'appliquer**, auditez ces appelants, passez l'automatisation SSH à `ssh -t`, réglez le `pipelining`/`pty` d'Ansible en conséquence, ou accordez aux chemins sans tty une exemption ciblée avec une règle `Defaults!/commande !requiretty`. Le drop-in est validé par `visudo` avant activation : il ne peut donc pas corrompre sudoers ; vérifiez vos automatisations juste après l'application."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

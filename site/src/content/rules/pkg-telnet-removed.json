@@ -1,0 +1,77 @@
+{
+  "id": "pkg-telnet-removed",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R62",
+    "cis": "2.2.4",
+    "nist": "3.1.13",
+    "pci-dss": "2.2.4"
+  },
+  "check": [
+    "describe package('telnet') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "telnet",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Remove telnet Clients",
+    "fr": "Supprimer les clients telnet"
+  },
+  "summary": {
+    "en": "Ensures the `telnet` client package is **not installed**.",
+    "fr": "Garantit que le paquet client `telnet` n'est **pas installé**."
+  },
+  "rationale": {
+    "en": "The `telnet` **client** speaks an insecure, **unencrypted** protocol: credentials and session data sent to a remote host can be captured by anyone on the network path. Removing the client prevents users from establishing cleartext sessions and steers them to the encrypted **SSH** client instead.",
+    "fr": "Le **client** `telnet` parle un protocole non sécurisé et **non chiffré** : les identifiants et les données de session envoyés vers un hôte distant peuvent être capturés par quiconque sur le chemin réseau. Supprimer le client empêche les utilisateurs d'établir des sessions en clair et les oriente vers le client **SSH** chiffré."
+  },
+  "check_note": {
+    "en": "Pavois verifies that the `telnet` package is absent from the package database. The presence of the client binary is the relevant exposure (users could open cleartext sessions to any host), so querying the package manager directly is the authoritative signal.",
+    "fr": "Pavois vérifie que le paquet `telnet` est absent de la base de paquets. La présence du binaire client constitue l'exposition pertinente (les utilisateurs pourraient ouvrir des sessions en clair vers n'importe quel hôte), donc interroger directement le gestionnaire de paquets est le signal qui fait autorité."
+  },
+  "verify": {
+    "en": "On Debian/Ubuntu run `dpkg -s telnet` and expect **`package 'telnet' is not installed`**; on RHEL-family run `rpm -q telnet` and expect **`package telnet is not installed`**.",
+    "fr": "Sur Debian/Ubuntu, exécutez `dpkg -s telnet` : attendez **`package 'telnet' is not installed`** ; sur la famille RHEL, exécutez `rpm -q telnet` : attendez **`package telnet is not installed`**."
+  },
+  "logs": {
+    "en": "Removal is recorded in `grep telnet /var/log/dpkg.log` (Debian/Ubuntu) or `dnf history` / `rpm -q --last telnet` (RHEL family).",
+    "fr": "La suppression est enregistrée dans `grep telnet /var/log/dpkg.log` (Debian/Ubuntu) ou `dnf history` / `rpm -q --last telnet` (famille RHEL)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares the `telnet` **package** resource with action **remove**, so `pavois harden apply` uninstalls the client via the system package manager (`apt`/`dnf`).",
+    "fr": "Le plan de durcissement de Pavois déclare la ressource **package** `telnet` avec l'action **remove** ; ainsi `pavois harden apply` désinstalle le client via le gestionnaire de paquets système (`apt`/`dnf`)."
+  },
+  "impact": {
+    "en": "Removing the `telnet` client is generally safe: SSH replaces it for remote shells. **Precaution:** the `telnet` binary is sometimes used as a quick TCP port-probe (`telnet host port`); if scripts or admins rely on that, switch them to `nc`/`ncat` or `ss`/`curl` before removing the package.",
+    "fr": "Supprimer le client `telnet` est généralement sûr : SSH le remplace pour les shells distants. **Précaution :** le binaire `telnet` sert parfois de test rapide de port TCP (`telnet hôte port`) ; si des scripts ou administrateurs s'en servent, faites-les basculer vers `nc`/`ncat` ou `ss`/`curl` avant de supprimer le paquet."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

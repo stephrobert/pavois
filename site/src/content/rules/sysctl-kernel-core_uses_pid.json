@@ -1,0 +1,64 @@
+{
+  "id": "sysctl-kernel-core_uses_pid",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe kernel_parameter('kernel.core_uses_pid') do",
+    "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*kernel.core_uses_pid[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
+    "end"
+  ],
+  "remediation": {
+    "key": "kernel.core_uses_pid",
+    "resource": "sysctl",
+    "value": "0"
+  },
+  "title": {
+    "en": "Configure file name of core dumps",
+    "fr": "Configurer le nom de fichier des vidages mémoire (core dumps)"
+  },
+  "summary": {
+    "en": "Sets `kernel.core_uses_pid=0` so the kernel does not append a PID to core filenames, complementing the disabled-core-dump policy.",
+    "fr": "Définit `kernel.core_uses_pid=0` pour que le noyau n'ajoute pas de PID aux noms de fichiers de core, complétant la politique de désactivation des core dumps."
+  },
+  "rationale": {
+    "en": "`kernel.core_uses_pid` controls whether the running process's PID is appended to a core dump's filename (turning `core` into `core.PID`). When core dumps are disabled by setting `kernel.core_pattern` to an empty or no-op value, leaving `core_uses_pid=1` causes the kernel to still try to append `.PID`, which can produce confusing shell error messages. Setting `kernel.core_uses_pid=0` complements the disabled-core-dump policy so no core file is named or created and no spurious errors are printed.",
+    "fr": "`kernel.core_uses_pid` détermine si le PID du processus en cours est ajouté au nom de fichier d'un core dump (transformant `core` en `core.PID`). Lorsque les core dumps sont désactivés en définissant `kernel.core_pattern` à une valeur vide ou sans effet, laisser `core_uses_pid=1` amène le noyau à tenter quand même d'ajouter `.PID`, ce qui peut produire des messages d'erreur shell déroutants. Définir `kernel.core_uses_pid=0` complète la politique de désactivation des core dumps, de sorte qu'aucun fichier de core n'est nommé ni créé et qu'aucune erreur parasite n'est affichée."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** via the `kernel_parameter` resource (equivalent to `sysctl kernel.core_uses_pid`), not `/etc/sysctl.conf` or any `*.conf` drop-in. A declared value in a file may be overridden by a later drop-in or never applied; reading the running kernel reflects the value actually in effect.",
+    "fr": "Pavois lit la **valeur effective du noyau** via la ressource `kernel_parameter` (équivalent à `sysctl kernel.core_uses_pid`), et non `/etc/sysctl.conf` ou un drop-in `*.conf`. Une valeur déclarée dans un fichier peut être écrasée par un drop-in ultérieur ou n'être jamais appliquée ; lire le noyau en cours d'exécution reflète la valeur réellement en vigueur."
+  },
+  "verify": {
+    "en": "Run `sysctl kernel.core_uses_pid`, expected output `kernel.core_uses_pid = 0`.",
+    "fr": "Exécutez `sysctl kernel.core_uses_pid`, sortie attendue `kernel.core_uses_pid = 0`."
+  },
+  "logs": {
+    "en": "Read the current value with `sysctl kernel.core_uses_pid` or `cat /proc/sys/kernel/core_uses_pid`. This parameter itself produces no log; its purpose is to avoid spurious core-naming errors when core dumps are disabled, observe the absence of such messages on the shell or in `journalctl -k` after a crash.",
+    "fr": "Lisez la valeur courante avec `sysctl kernel.core_uses_pid` ou `cat /proc/sys/kernel/core_uses_pid`. Ce paramètre ne produit aucun log par lui-même ; son but est d'éviter des erreurs parasites de nommage de core lorsque les core dumps sont désactivés, observez l'absence de tels messages dans le shell ou dans `journalctl -k` après un plantage."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan sets the `sysctl` key `kernel.core_uses_pid` to `0`, persisting it to a managed drop-in and applying it live so the running kernel and future boots both use it. Applied with `pavois harden apply`. It is best paired with the `sysctl-kernel-core_pattern` rule.",
+    "fr": "Le plan de durcissement de Pavois définit la clé `sysctl` `kernel.core_uses_pid` à `0`, la persiste dans un drop-in géré et l'applique à chaud, de sorte que le noyau en cours d'exécution comme les démarrages futurs l'utilisent. Appliqué avec `pavois harden apply`. À associer de préférence à la règle `sysctl-kernel-core_pattern`."
+  },
+  "impact": {
+    "en": "Negligible risk. This only affects how a core file would be named, and is meaningful only in combination with a disabled core-dump policy; it does not by itself change whether dumps are produced. No service or application behavior is affected. Reversible by changing the key.",
+    "fr": "Risque négligeable. Cela n'affecte que la manière dont un fichier de core serait nommé, et n'a de sens qu'en combinaison avec une politique de désactivation des core dumps ; cela ne change pas à soi seul la production des dumps. Aucun comportement de service ou d'application n'est affecté. Réversible en modifiant la clé."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

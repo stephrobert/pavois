@@ -1,0 +1,90 @@
+{
+  "id": "logindefs-encrypt_method",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (login.defs)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "5.4.1.4",
+      "8.3.2"
+    ],
+    "nist": [
+      "3.13.11",
+      "CM-6(a)",
+      "IA-5(1)(c)",
+      "IA-5(c)"
+    ],
+    "pci-dss": "8.3.2",
+    "stig": [
+      "UBTU-22-611070",
+      "UBTU-24-400400"
+    ]
+  },
+  "check": [
+    "describe login_defs do",
+    "  its('ENCRYPT_METHOD') { should match(/\\A(SHA512|YESCRYPT)\\z/i) }",
+    "end"
+  ],
+  "remediation": {
+    "file": "/etc/login.defs",
+    "key": "ENCRYPT_METHOD",
+    "resource": "conf_line",
+    "sep": "space",
+    "value": "YESCRYPT"
+  },
+  "title": {
+    "en": "Set Password Hashing Algorithm in /etc/login.defs",
+    "fr": "Définir l'algorithme de hachage des mots de passe dans /etc/login.defs"
+  },
+  "summary": {
+    "en": "Ensures `ENCRYPT_METHOD` in `/etc/login.defs` is set to **`SHA512`**, so new password hashes use a strong algorithm.",
+    "fr": "Garantit que `ENCRYPT_METHOD` dans `/etc/login.defs` vaut **`SHA512`**, afin que les nouveaux hachages de mots de passe utilisent un algorithme fort."
+  },
+  "rationale": {
+    "en": "Passwords must be protected at all times, and hashing is the standard method for protecting them. A password hashed with a weak algorithm is no better protected than plaintext. Setting `ENCRYPT_METHOD` to **SHA512** ensures new and changed passwords use a strong hash, making offline password-cracking attacks far more expensive.",
+    "fr": "Les mots de passe doivent être protégés en permanence, et le hachage est la méthode standard pour les protéger. Un mot de passe haché avec un algorithme faible n'est pas mieux protégé qu'en clair. Définir `ENCRYPT_METHOD` sur **SHA512** garantit que les mots de passe nouveaux ou modifiés utilisent un hachage fort, rendant les attaques de cassage hors-ligne beaucoup plus coûteuses."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `login_defs` resource to read the **effective resolved value** of `ENCRYPT_METHOD`, parsing `/etc/login.defs` as the password tools actually interpret it (last setting wins, comments ignored). This reflects the value `passwd`/`chpasswd` will use, rather than a naive grep that could match a commented or overridden line.",
+    "fr": "Pavois utilise la ressource InSpec `login_defs` pour lire la **valeur effective résolue** de `ENCRYPT_METHOD`, en analysant `/etc/login.defs` comme le font réellement les outils de mot de passe (la dernière valeur l'emporte, commentaires ignorés). Cela reflète la valeur que `passwd`/`chpasswd` utiliseront, plutôt qu'un grep naïf qui pourrait correspondre à une ligne commentée ou écrasée."
+  },
+  "verify": {
+    "en": "- `grep -i '^ENCRYPT_METHOD' /etc/login.defs` should print `ENCRYPT_METHOD SHA512`.\n- After setting a new password, `getent shadow <user>` should show a hash starting with `$6$` (SHA512).",
+    "fr": "- `grep -i '^ENCRYPT_METHOD' /etc/login.defs` doit afficher `ENCRYPT_METHOD SHA512`.\n- Après définition d'un nouveau mot de passe, `getent shadow <user>` doit montrer un hachage commençant par `$6$` (SHA512)."
+  },
+  "logs": {
+    "en": "- `grep -i ENCRYPT_METHOD /etc/login.defs` shows the configured algorithm.\n- `getent shadow <user>` reveals the actual hash prefix (`$6$` = SHA512, `$y$` = yescrypt).\n- `journalctl /usr/sbin/sshd` / `/var/log/auth.log` record password change events via PAM.",
+    "fr": "- `grep -i ENCRYPT_METHOD /etc/login.defs` montre l'algorithme configuré.\n- `getent shadow <user>` révèle le préfixe du hachage réel (`$6$` = SHA512, `$y$` = yescrypt).\n- `journalctl /usr/sbin/sshd` / `/var/log/auth.log` enregistrent les changements de mot de passe via PAM."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied **manually**: set `ENCRYPT_METHOD SHA512` in `/etc/login.defs` (or rely on the PAM `pam_unix sha512`/`yescrypt` default on modern distros). The change affects only passwords set or changed afterward; existing hashes are not rehashed until each user next changes their password.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle, elle doit donc être appliquée **manuellement** : définissez `ENCRYPT_METHOD SHA512` dans `/etc/login.defs` (ou reposez-vous sur le défaut PAM `pam_unix sha512`/`yescrypt` des distributions récentes). Le changement n'affecte que les mots de passe définis ou modifiés ensuite ; les hachages existants ne sont pas re-hachés tant que chaque utilisateur ne change pas son mot de passe."
+  },
+  "impact": {
+    "en": "Negligible operational risk, SHA512 is the default on all supported distros. **Note:** the change is forward-only, so existing accounts keep their old hash until next password change; force a rotation if you need every account compliant immediately. On distros defaulting to yescrypt (`$y$`), confirm your policy accepts SHA512 vs yescrypt before forcing this value.",
+    "fr": "Risque opérationnel négligeable, SHA512 est le défaut sur toutes les distributions prises en charge. **Note :** le changement n'agit que vers l'avenir, les comptes existants conservent leur ancien hachage jusqu'au prochain changement de mot de passe ; forcez une rotation si chaque compte doit être conforme immédiatement. Sur les distributions qui utilisent yescrypt par défaut (`$y$`), confirmez que votre politique accepte SHA512 plutôt que yescrypt avant de forcer cette valeur."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

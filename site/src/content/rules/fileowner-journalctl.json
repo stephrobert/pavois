@@ -1,0 +1,67 @@
+{
+  "id": "fileowner-journalctl",
+  "supported_os": [
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "stig": [
+      "UBTU-22-232100",
+      "UBTU-24-700040"
+    ]
+  },
+  "check": [
+    "only_if { file('/usr/bin/journalctl').exist? }",
+    "describe file('/usr/bin/journalctl') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/usr/bin/journalctl",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Owner on the journalctl Command",
+    "fr": "Vérifier le propriétaire de la commande journalctl"
+  },
+  "summary": {
+    "en": "Ensures the `journalctl` binary (`/usr/bin/journalctl`) is owned by **root** (uid 0).",
+    "fr": "Garantit que le binaire `journalctl` (`/usr/bin/journalctl`) appartient à **root** (uid 0)."
+  },
+  "rationale": {
+    "en": "`journalctl` is the tool used to read the systemd journal, which holds operational, error and security-relevant events. If the binary is owned by a non-root user, that user could replace or tamper with it to hide log entries, leak sensitive information (PII, operational details exposed in error messages) to unauthorized people, or run trojaned code with the privileges of whoever invokes it. Keeping the binary owned by **root** (uid 0) ensures only the superuser can modify the audit-viewing tooling.",
+    "fr": "`journalctl` est l'outil utilisé pour lire le journal systemd, qui contient des événements opérationnels, des erreurs et des éléments pertinents pour la sécurité. Si le binaire appartient à un utilisateur non-root, celui-ci pourrait le remplacer ou le falsifier pour masquer des entrées de journal, divulguer des informations sensibles (PII, détails opérationnels exposés dans les messages d'erreur) à des personnes non autorisées, ou exécuter du code piégé avec les privilèges de quiconque l'invoque. Conserver le binaire sous la propriété de **root** (uid 0) garantit que seul le superutilisateur peut modifier l'outillage de consultation des journaux."
+  },
+  "check_note": {
+    "en": "Pavois asserts that the live file `/usr/bin/journalctl` has owner uid `0`, skipping the test via `only_if` if the binary is absent. It reads the **effective** owner from the filesystem (`stat`) rather than trusting the package database, so even if `dpkg -V systemd` reports no change, a binary that was manually replaced or re-owned is still flagged.",
+    "fr": "Pavois vérifie que le fichier réel `/usr/bin/journalctl` a l'uid de propriétaire `0`, en ignorant le test via `only_if` si le binaire est absent. Il lit le propriétaire **effectif** depuis le système de fichiers (`stat`) plutôt que de se fier à la base de données des paquets, ainsi, même si `dpkg -V systemd` ne signale aucun changement, un binaire remplacé ou re-attribué manuellement est tout de même signalé."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /usr/bin/journalctl`. Expected output: `root 0`. Equivalently, `ls -l /usr/bin/journalctl` should show `root` as the owner.",
+    "fr": "Exécutez `stat -c '%U %u' /usr/bin/journalctl`. Sortie attendue : `root 0`. De façon équivalente, `ls -l /usr/bin/journalctl` doit afficher `root` comme propriétaire."
+  },
+  "logs": {
+    "en": "Ownership has no running log; check current state with `stat /usr/bin/journalctl`. Use of the journal tooling itself is visible via `journalctl`, and if `/usr/bin` is watched by auditd, tampering with the binary shows up in `/var/log/audit/audit.log`.",
+    "fr": "La propriété ne génère pas de journal continu ; vérifiez l'état courant avec `stat /usr/bin/journalctl`. L'usage de l'outillage du journal est lui-même visible via `journalctl`, et si `/usr/bin` est surveillé par auditd, toute altération du binaire apparaît dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined, so apply it manually: `chown root:root /usr/bin/journalctl`. Reinstalling the `systemd` package (`apt install --reinstall systemd`) also restores the correct root ownership.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini, appliquez-la donc manuellement : `chown root:root /usr/bin/journalctl`. Réinstaller le paquet `systemd` (`apt install --reinstall systemd`) restaure également la bonne propriété root."
+  },
+  "impact": {
+    "en": "A non-root owner of this binary is a serious risk: that user controls the tool everyone uses to read logs and could trojan it. Restoring root ownership is safe and does not affect normal users' ability to run `journalctl` (read access is governed by group membership and permissions, not ownership). **Precaution:** do not strip the setgid bit or change group ownership while fixing the owner, as journalctl relies on group `systemd-journal` semantics on some setups.",
+    "fr": "Un propriétaire non-root de ce binaire constitue un risque sérieux : cet utilisateur contrôle l'outil que tout le monde utilise pour lire les journaux et pourrait le piéger. Restaurer la propriété root est sans danger et n'affecte pas la capacité des utilisateurs normaux à exécuter `journalctl` (l'accès en lecture est régi par l'appartenance à un groupe et les permissions, pas par la propriété). **Précaution :** ne supprimez pas le bit setgid ni ne changez la propriété de groupe en corrigeant le propriétaire, car journalctl s'appuie sur la sémantique du groupe `systemd-journal` dans certaines configurations."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

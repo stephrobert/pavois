@@ -1,0 +1,57 @@
+{
+  "id": "dconf-gnome-screensaver-user-info",
+  "supported_os": [
+    "fedora"
+  ],
+  "os_versions": {},
+  "severity": "medium",
+  "domain": "GNOME desktop (dconf)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "only_if { command('dconf').exist? }",
+    "describe command('{ s=$(grep -rhE \\'^[[:space:]]*show-full-name-in-top-bar[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null | tail -1 | sed -E \\'s/^[^=]*=[[:space:]]*//\\' | tr -d \"\\'\\\\\"\"); [ \"$s\" = \"false\" ] && grep -rqxF \\'/org/gnome/desktop/screensaver/show-full-name-in-top-bar\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "key": "org/gnome/desktop/screensaver/show-full-name-in-top-bar",
+    "resource": "dconf",
+    "value": "false"
+  },
+  "title": {
+    "en": "Disable Full User Name on Splash Shield",
+    "fr": "Désactiver l'affichage du nom complet de l'utilisateur sur l'écran de veille"
+  },
+  "summary": {
+    "en": "Sets the GNOME screensaver `show-full-name-in-top-bar` key to **false** and **locks** it so the logged-in user's full name is not shown on the lock/splash shield.",
+    "fr": "Définit la clé GNOME `show-full-name-in-top-bar` de l'économiseur d'écran sur **false** et la **verrouille**, afin que le nom complet de l'utilisateur connecté ne soit pas affiché sur l'écran de veille/verrouillage."
+  },
+  "rationale": {
+    "en": "Setting the splash screen to not reveal the logged in user's name conceals who has access to the system from passersby.",
+    "fr": "Configurer l'écran de veille pour qu'il ne révèle pas le nom de l'utilisateur connecté masque aux personnes de passage l'identité de qui a accès au système."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** system dconf keyfiles under `/etc/dconf/db/*.d/`, takes the last (winning) `show-full-name-in-top-bar` value, requires it to equal `false`, and confirms a matching entry exists in `locks/`. Resolving the keyfiles in precedence order plus the lock proves the setting is mandatory and cannot be re-enabled by a user, something a per-file glance could not establish.",
+    "fr": "Pavois lit les fichiers de clés dconf système **effectifs** sous `/etc/dconf/db/*.d/`, prend la dernière valeur (gagnante) de `show-full-name-in-top-bar`, exige qu'elle vaille `false`, et confirme la présence d'une entrée correspondante dans `locks/`. Résoudre les fichiers de clés dans l'ordre de priorité, avec le verrou, prouve que le réglage est obligatoire et ne peut être réactivé par un utilisateur, ce qu'un simple coup d'œil fichier par fichier ne saurait établir."
+  },
+  "verify": {
+    "en": "Run `gsettings get org.gnome.desktop.screensaver show-full-name-in-top-bar` (expect `false`) and confirm the lock with `grep -r show-full-name-in-top-bar /etc/dconf/db/*/locks/`. Re-running the InSpec command should print `ok`.",
+    "fr": "Exécutez `gsettings get org.gnome.desktop.screensaver show-full-name-in-top-bar` (attendez `false`) et confirmez le verrou avec `grep -r show-full-name-in-top-bar /etc/dconf/db/*/locks/`. La réexécution de la commande InSpec doit afficher `ok`."
+  },
+  "logs": {
+    "en": "dconf does not log to syslog; check the live value with `gsettings get org.gnome.desktop.screensaver show-full-name-in-top-bar` and list active databases with `ls /etc/dconf/db/`. `dconf update` recompiles the binary databases after a keyfile change.",
+    "fr": "dconf ne journalise pas dans syslog ; vérifiez la valeur en direct avec `gsettings get org.gnome.desktop.screensaver show-full-name-in-top-bar` et listez les bases actives avec `ls /etc/dconf/db/`. `dconf update` recompile les bases binaires après modification d'un fichier de clés."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the **dconf** resource to write `show-full-name-in-top-bar=false` into a system dconf keyfile, add the matching entry to `locks/`, then run `dconf update` to enforce it for all users.",
+    "fr": "`pavois harden apply` utilise la ressource **dconf** pour écrire `show-full-name-in-top-bar=false` dans un fichier de clés dconf système, ajoute l'entrée correspondante dans `locks/`, puis exécute `dconf update` pour l'imposer à tous les utilisateurs."
+  },
+  "impact": {
+    "en": "Low risk: only the on-screen label changes, no authentication or service impact. Users must re-login (or `dconf update` must run) for the mandatory policy to load. Applicable only to GNOME desktop systems; irrelevant on headless servers.",
+    "fr": "Risque faible : seul le libellé affiché change, sans impact sur l'authentification ou les services. Les utilisateurs doivent se reconnecter (ou `dconf update` doit s'exécuter) pour charger la politique obligatoire. Applicable uniquement aux systèmes de bureau GNOME ; sans objet sur un serveur sans interface graphique."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

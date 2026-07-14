@@ -1,0 +1,63 @@
+{
+  "id": "pkg-tuned-removed",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe package('tuned') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "tuned",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall tuned Package",
+    "fr": "Désinstaller le paquet tuned"
+  },
+  "summary": {
+    "en": "Ensures the `tuned` dynamic system-tuning package is **not installed**.",
+    "fr": "Garantit que le paquet d'ajustement dynamique `tuned` n'est **pas installé**."
+  },
+  "rationale": {
+    "en": "`tuned` ships a daemon that **dynamically tunes** system settings by periodically monitoring several components and switching them between lower or higher power-saving profiles. On a hardened server this daemon is rarely required: it is an extra always-running service with privileged access to kernel knobs (sysctl, CPU governor, disk schedulers), which enlarges the attack surface and can silently override security-relevant kernel parameters. If `tuned` is not part of your performance baseline, removing the package eliminates the daemon and the risk of its accidental or malicious activation.",
+    "fr": "`tuned` fournit un démon qui **ajuste dynamiquement** les réglages système en surveillant périodiquement plusieurs composants et en les basculant vers des profils de plus ou moins grande économie d'énergie. Sur un serveur durci ce démon est rarement nécessaire : c'est un service permanent supplémentaire disposant d'un accès privilégié aux paramètres du noyau (sysctl, gouverneur CPU, ordonnanceurs disque), ce qui élargit la surface d'attaque et peut écraser silencieusement des paramètres noyau ayant un rôle de sécurité. Si `tuned` ne fait pas partie de votre référentiel de performance, retirer le paquet supprime le démon et le risque de son activation accidentelle ou malveillante."
+  },
+  "check_note": {
+    "en": "Pavois asks the package manager whether `tuned` is present via the InSpec `package('tuned')` resource (backed by `rpm -q tuned`). Querying the **package database** rather than guessing from running processes is what guarantees the daemon cannot be restarted later: as long as the package is gone, the `tuned.service` unit no longer exists.",
+    "fr": "Pavois interroge le gestionnaire de paquets pour savoir si `tuned` est présent via la ressource InSpec `package('tuned')` (qui s'appuie sur `rpm -q tuned`). Interroger la **base de paquets** plutôt que de deviner à partir des processus en cours est ce qui garantit que le démon ne pourra pas être relancé plus tard : tant que le paquet est absent, l'unité `tuned.service` n'existe plus."
+  },
+  "verify": {
+    "en": "Run `rpm -q tuned`. Expected output: `package tuned is not installed`. You can also confirm the unit is gone with `systemctl status tuned` returning `Unit tuned.service could not be found`.",
+    "fr": "Exécutez `rpm -q tuned`. Sortie attendue : `package tuned is not installed`. Vous pouvez aussi confirmer la disparition de l'unité avec `systemctl status tuned` qui renvoie `Unit tuned.service could not be found`."
+  },
+  "logs": {
+    "en": "- Package state: `rpm -q tuned` and the transaction history in `dnf history` (`/var/log/dnf.rpm.log`).\n- Past daemon activity (before removal): `journalctl -u tuned`.",
+    "fr": "- État du paquet : `rpm -q tuned` et l'historique des transactions dans `dnf history` (`/var/log/dnf.rpm.log`).\n- Activité passée du démon (avant suppression) : `journalctl -u tuned`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource for `tuned` with action `remove`, so `pavois harden apply` uninstalls the package (`dnf remove tuned`). No service restart is needed, removing the package also removes the unit. If you rely on a specific tuned profile for performance, do **not** apply this rule.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` pour `tuned` avec l'action `remove`, donc `pavois harden apply` désinstalle le paquet (`dnf remove tuned`). Aucun redémarrage de service n'est requis, retirer le paquet supprime aussi l'unité. Si vous dépendez d'un profil tuned précis pour la performance, n'appliquez **pas** cette règle."
+  },
+  "impact": {
+    "en": "If `tuned` stays installed, an unnecessary privileged daemon keeps running and may override kernel/CPU/disk settings, including security-relevant sysctl values, and remains exploitable surface. **Before applying:** confirm no performance SLA depends on a tuned profile (check `tuned-adm active`); on virtualization hosts or latency-sensitive workloads a tuned profile may be intentional. Removal is non-disruptive to networking or login, so there is no lockout risk, but power/performance characteristics may revert to kernel defaults.",
+    "fr": "Si `tuned` reste installé, un démon privilégié inutile continue de tourner et peut écraser des réglages noyau/CPU/disque, y compris des valeurs sysctl ayant un rôle de sécurité, et constitue une surface exploitable. **Avant d'appliquer :** vérifiez qu'aucun SLA de performance ne dépend d'un profil tuned (consultez `tuned-adm active`) ; sur des hôtes de virtualisation ou des charges sensibles à la latence un profil tuned peut être volontaire. La suppression n'impacte ni le réseau ni la connexion, donc il n'y a aucun risque de verrouillage, mais les caractéristiques d'énergie/performance peuvent revenir aux valeurs par défaut du noyau."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

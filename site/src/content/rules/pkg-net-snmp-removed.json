@@ -1,0 +1,79 @@
+{
+  "id": "pkg-net-snmp-removed",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "2.1.15",
+      "2.2.4",
+      "2.1.14"
+    ],
+    "pci-dss": "2.2.4"
+  },
+  "check": [
+    "describe package('snmpd') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "snmpd",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall net-snmp Package",
+    "fr": "Desinstaller le paquet net-snmp"
+  },
+  "summary": {
+    "en": "Removes the **net-snmp** package (the `snmpd` SNMP agent) when no SNMP server is required.",
+    "fr": "Supprime le paquet **net-snmp** (l'agent SNMP `snmpd`) lorsque aucun serveur SNMP n'est requis."
+  },
+  "rationale": {
+    "en": "The **net-snmp** package provides the `snmpd` SNMP agent. SNMP, especially v1/v2c with community strings, exposes detailed system information over the network and is a frequent target: weak or default community strings allow attackers to enumerate and sometimes reconfigure the host. If there is no need to run an SNMP server, removing the package provides a safeguard **against its activation** and removes a listening network service from the attack surface.",
+    "fr": "Le paquet **net-snmp** fournit l'agent SNMP `snmpd`. SNMP, surtout en v1/v2c avec chaines de communaute, expose des informations systeme detaillees sur le reseau et constitue une cible frequente : des chaines de communaute faibles ou par defaut permettent a un attaquant d'enumerer et parfois de reconfigurer l'hote. Si aucun serveur SNMP n'est necessaire, supprimer le paquet protege **contre son activation** et retire un service reseau en ecoute de la surface d'attaque."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database through the InSpec `package('net-snmp')` resource and asserts `should_not be_installed`, resolving via `dpkg`/`rpm`. Reading the **effective** package inventory is more reliable than checking whether `snmpd` is currently listening: a stopped service can still be installed and re-enabled, and a leftover `/etc/snmp/snmpd.conf` does not prove the daemon is gone. The package state is the ground truth.",
+    "fr": "Pavois interroge la base de paquets via la ressource InSpec `package('net-snmp')` et verifie `should_not be_installed`, en s'appuyant sur `dpkg`/`rpm`. Lire l'inventaire **effectif** est plus fiable que de verifier si `snmpd` ecoute actuellement : un service arrete peut rester installe et etre reactive, et un `/etc/snmp/snmpd.conf` residuel ne prouve pas la disparition du demon. L'etat du paquet est la verite de terrain."
+  },
+  "verify": {
+    "en": "RHEL: `rpm -q net-snmp` should print `package net-snmp is not installed`. Debian/Ubuntu: `dpkg -s snmpd` should report `not installed`. Confirm nothing listens on the SNMP port with `ss -lunp | grep :161` (no output expected).",
+    "fr": "RHEL : `rpm -q net-snmp` doit afficher `package net-snmp is not installed`. Debian/Ubuntu : `dpkg -s snmpd` doit indiquer `not installed`. Verifiez qu'aucun service n'ecoute sur le port SNMP avec `ss -lunp | grep :161` (aucune sortie attendue)."
+  },
+  "logs": {
+    "en": "Removal is logged in `/var/log/dpkg.log` (Debian/Ubuntu) or `dnf history` (RHEL). Prior SNMP agent activity and authentication failures appear in `journalctl -u snmpd` and `/var/log/snmpd.log` if logging was configured. After removal, no `snmpd` unit should exist.",
+    "fr": "La suppression est journalisee dans `/var/log/dpkg.log` (Debian/Ubuntu) ou `dnf history` (RHEL). L'activite anterieure de l'agent SNMP et les echecs d'authentification apparaissent dans `journalctl -u snmpd` et `/var/log/snmpd.log` si la journalisation etait configuree. Apres suppression, aucune unite `snmpd` ne doit subsister."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource for **net-snmp** with action `remove`; `pavois harden apply` uninstalls it via the native package manager (`apt`/`dnf`), which also removes the `snmpd` service. Note: on Debian/Ubuntu the SNMP daemon ships in the `snmpd` package, adjust the name accordingly if your distro packages it separately.",
+    "fr": "Le plan de durcissement de Pavois declare une ressource `package` pour **net-snmp** avec l'action `remove` ; `pavois harden apply` le desinstalle via le gestionnaire de paquets natif (`apt`/`dnf`), ce qui retire aussi le service `snmpd`. Note : sur Debian/Ubuntu le demon SNMP est fourni par le paquet `snmpd`, ajustez le nom si votre distribution le package separement."
+  },
+  "impact": {
+    "en": "If a monitoring system (Zabbix, Nagios, LibreNMS, network polling) depends on this host's SNMP agent, removing **net-snmp** will break that monitoring. **Precautions:** before applying, confirm no NMS polls this host over SNMP. If SNMP monitoring is genuinely required, do **not** remove it, instead disable v1/v2c, configure **SNMPv3** with authentication and privacy, and restrict the listener to management addresses. Removing the package has no impact on hosts that never used SNMP.",
+    "fr": "Si un systeme de supervision (Zabbix, Nagios, LibreNMS, sondage reseau) depend de l'agent SNMP de cet hote, supprimer **net-snmp** cassera cette supervision. **Precautions :** avant d'appliquer, confirmez qu'aucun NMS n'interroge cet hote en SNMP. Si la supervision SNMP est reellement necessaire, ne le supprimez **pas**, desactivez plutot v1/v2c, configurez **SNMPv3** avec authentification et chiffrement, et restreignez l'ecoute aux adresses d'administration. La suppression n'a aucun impact sur les hotes n'ayant jamais utilise SNMP."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

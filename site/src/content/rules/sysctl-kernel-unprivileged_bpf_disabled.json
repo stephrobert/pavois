@@ -1,0 +1,81 @@
+{
+  "id": "sysctl-kernel-unprivileged_bpf_disabled",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R9",
+    "nist": [
+      "AC-6",
+      "SC-7(10)"
+    ]
+  },
+  "check": [
+    "describe kernel_parameter('kernel.unprivileged_bpf_disabled') do",
+    "  its('value') { should cmp >= 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*kernel.unprivileged_bpf_disabled[[:space:]]*=[[:space:]]*[12]([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
+    "end"
+  ],
+  "remediation": {
+    "key": "kernel.unprivileged_bpf_disabled",
+    "resource": "sysctl",
+    "value": "1"
+  },
+  "title": {
+    "en": "Disable Access to Network bpf() Syscall From Unprivileged Processes",
+    "fr": "Désactiver l'accès à l'appel système bpf() pour les processus non privilégiés"
+  },
+  "summary": {
+    "en": "Sets `kernel.unprivileged_bpf_disabled = 1` so the `bpf()` syscall is restricted to privileged processes.",
+    "fr": "Fixe `kernel.unprivileged_bpf_disabled = 1` afin que l'appel système `bpf()` soit restreint aux processus privilégiés."
+  },
+  "rationale": {
+    "en": "Loading and accessing packet-filter programs and maps via the `bpf()` syscall can leak sensitive information about kernel state, and the in-kernel eBPF subsystem has been a recurring source of privilege-escalation vulnerabilities. Exposing `bpf()` to unprivileged processes greatly widens the kernel attack surface. Setting `kernel.unprivileged_bpf_disabled = 1` restricts `bpf()` to privileged (`CAP_BPF`/`CAP_SYS_ADMIN`) processes.",
+    "fr": "Le chargement et l'accès aux programmes et cartes de filtrage de paquets via l'appel système `bpf()` peuvent divulguer des informations sensibles sur l'état du noyau, et le sous-système eBPF intégré au noyau a été une source récurrente de vulnérabilités d'élévation de privilèges. Exposer `bpf()` aux processus non privilégiés élargit considérablement la surface d'attaque du noyau. Fixer `kernel.unprivileged_bpf_disabled = 1` restreint `bpf()` aux processus privilégiés (`CAP_BPF`/`CAP_SYS_ADMIN`)."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** with `kernel_parameter('kernel.unprivileged_bpf_disabled')` (equivalent to `sysctl kernel.unprivileged_bpf_disabled`), not a `/etc/sysctl.d/*.conf` line. Defaults vary by distribution and kernel build, and this value can be locked (`2`) once set; only reading the effective parameter reveals what unprivileged processes are actually permitted to do right now. A config file that was never applied or was overridden by a drop-in would mislead a file-based scanner.",
+    "fr": "Pavois lit la **valeur noyau en vigueur** via `kernel_parameter('kernel.unprivileged_bpf_disabled')` (équivalent à `sysctl kernel.unprivileged_bpf_disabled`), et non une ligne de `/etc/sysctl.d/*.conf`. Les valeurs par défaut varient selon la distribution et la compilation du noyau, et cette valeur peut être verrouillée (`2`) une fois définie ; seule la lecture du paramètre effectif révèle ce que les processus non privilégiés peuvent réellement faire à l'instant présent. Un fichier de configuration jamais appliqué ou écrasé par un drop-in tromperait un scanner basé sur les fichiers."
+  },
+  "verify": {
+    "en": "Run `sysctl kernel.unprivileged_bpf_disabled`. Expected output (`1`, or `2` if locked):\n\n```\nkernel.unprivileged_bpf_disabled = 1\n```",
+    "fr": "Exécutez `sysctl kernel.unprivileged_bpf_disabled`. Sortie attendue (`1`, ou `2` si verrouillé) :\n\n```\nkernel.unprivileged_bpf_disabled = 1\n```"
+  },
+  "logs": {
+    "en": "No dedicated log line. Confirm with `sysctl kernel.unprivileged_bpf_disabled`. The effect is observable: an unprivileged process calling `bpf()` receives **EPERM**, and tools relying on it (e.g. unprivileged `bpftrace`) will fail with a permission error.",
+    "fr": "Aucune ligne de journal dédiée. Vérifiez via `sysctl kernel.unprivileged_bpf_disabled`. L'effet est observable : un processus non privilégié appelant `bpf()` reçoit **EPERM**, et les outils qui en dépendent (p. ex. `bpftrace` non privilégié) échouent avec une erreur de permission."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `kernel.unprivileged_bpf_disabled = 1`, persists it in a Pavois-managed drop-in under `/etc/sysctl.d/`, and applies it live (no reboot). Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour fixer `kernel.unprivileged_bpf_disabled = 1`, le persiste dans un drop-in géré par Pavois sous `/etc/sysctl.d/`, et l'applique à chaud (sans redémarrage). Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "**Risk if not applied:** unprivileged processes can use `bpf()`, exposing kernel state and a historically vulnerable subsystem that has enabled local privilege escalation.\n\n**Precautions before applying:**\n- This **breaks unprivileged eBPF**. Observability/security agents (Cilium, Falco, Pixie, `bpftrace`) or sandboxes that load eBPF without root will need `CAP_BPF`/`CAP_SYS_ADMIN`, or must run privileged. Inventory eBPF-using tooling before enforcing.\n- Note that once set to `1`, the kernel may not allow lowering it back to `0` until reboot (and `2` is a hard lock). No boot or login lockout risk otherwise.",
+    "fr": "**Risque si non appliqué :** les processus non privilégiés peuvent utiliser `bpf()`, exposant l'état du noyau et un sous-système historiquement vulnérable ayant permis des élévations de privilèges locales.\n\n**Précautions avant application :**\n- Cela **casse l'eBPF non privilégié**. Les agents d'observabilité/sécurité (Cilium, Falco, Pixie, `bpftrace`) ou les bacs à sable chargeant de l'eBPF sans root nécessiteront `CAP_BPF`/`CAP_SYS_ADMIN`, ou devront s'exécuter en mode privilégié. Recensez les outils utilisant eBPF avant d'appliquer.\n- Notez qu'une fois à `1`, le noyau peut ne pas autoriser le retour à `0` avant un redémarrage (et `2` est un verrou ferme). Aucun risque de blocage au démarrage ou à la connexion par ailleurs."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

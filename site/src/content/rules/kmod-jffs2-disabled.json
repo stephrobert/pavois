@@ -1,0 +1,82 @@
+{
+  "id": "kmod-jffs2-disabled",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Kernel modules",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "1.1.1.5",
+    "nist": [
+      "3.4.6",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)"
+    ]
+  },
+  "check": [
+    "describe kernel_module('jffs2') do",
+    "  it { should_not be_loaded }",
+    "  it { should be_disabled }",
+    "end"
+  ],
+  "remediation": {
+    "action": "blacklist",
+    "name": "jffs2",
+    "reboot_required": true,
+    "resource": "kernel_module"
+  },
+  "title": {
+    "en": "Disable Mounting of jffs2",
+    "fr": "Désactiver le montage de jffs2"
+  },
+  "summary": {
+    "en": "Ensures the `jffs2` flash filesystem kernel module cannot be loaded, so the embedded-flash driver is unavailable.",
+    "fr": "Garantit que le module noyau du système de fichiers flash `jffs2` ne peut pas être chargé, rendant indisponible le pilote de flash embarqué."
+  },
+  "rationale": {
+    "en": "`jffs2` is a log-structured filesystem for raw flash (NOR/NAND) memory, used on embedded devices and almost never on servers. Every loadable filesystem driver adds attack surface: parsing untrusted flash images has historically caused kernel memory-corruption bugs. An attacker who can present a crafted image could exploit flaws in this rarely-used driver to crash the kernel or run code. Disabling it removes that exposure on systems that have no JFFS2 storage.",
+    "fr": "`jffs2` est un système de fichiers journalisé pour mémoire flash brute (NOR/NAND), utilisé sur les équipements embarqués et presque jamais sur les serveurs. Chaque pilote de système de fichiers chargeable ajoute de la surface d'attaque : l'analyse d'images flash non fiables a historiquement causé des bogues de corruption mémoire du noyau. Un attaquant capable de présenter une image forgée pourrait exploiter des failles de ce pilote rarement utilisé pour faire planter le noyau ou exécuter du code. Le désactiver supprime cette exposition sur les systèmes dépourvus de stockage JFFS2."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `kernel_module('jffs2')` resource to confirm the module is **not loaded** and is **disabled** (blacklist plus an `install ... /bin/true` override). This reflects the **effective** kernel state via `lsmod` and `modprobe --showconfig`, not a static grep of `/etc/modprobe.d/`. A drop-in that re-enables loading is caught even when a config file appears correct.",
+    "fr": "Pavois utilise la ressource InSpec `kernel_module('jffs2')` pour confirmer que le module n'est **pas chargé** et qu'il est **désactivé** (blacklist plus une redirection `install ... /bin/true`). Cela reflète l'état **effectif** du noyau via `lsmod` et `modprobe --showconfig`, et non un grep statique de `/etc/modprobe.d/`. Un drop-in réactivant le chargement est détecté même quand un fichier de configuration semble correct."
+  },
+  "verify": {
+    "en": "Run `modprobe -n -v jffs2`, it should print `install /bin/true`. Confirm it is not loaded with `lsmod | grep jffs2` (no output expected). `modprobe --showconfig | grep jffs2` should show a `blacklist jffs2` and an `install jffs2 /bin/true` line.",
+    "fr": "Exécutez `modprobe -n -v jffs2`, la sortie doit afficher `install /bin/true`. Vérifiez qu'il n'est pas chargé avec `lsmod | grep jffs2` (aucune sortie attendue). `modprobe --showconfig | grep jffs2` doit afficher une ligne `blacklist jffs2` et une ligne `install jffs2 /bin/true`."
+  },
+  "logs": {
+    "en": "Load attempts appear in the kernel ring buffer: `dmesg | grep jffs2` or `journalctl -k | grep jffs2`. The effective modprobe policy is shown by `modprobe --showconfig | grep jffs2`.",
+    "fr": "Les tentatives de chargement apparaissent dans le tampon noyau : `dmesg | grep jffs2` ou `journalctl -k | grep jffs2`. La politique modprobe effective est affichée par `modprobe --showconfig | grep jffs2`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `kernel_module` resource to **blacklist** `jffs2`: it writes a drop-in under `/etc/modprobe.d/` with `blacklist jffs2` and `install jffs2 /bin/true`, and unloads the module if loaded. Because the driver may be resident in the running kernel or initramfs, **`reboot_required` is true** to guarantee it is not active.",
+    "fr": "`pavois harden apply` utilise la ressource `kernel_module` pour mettre `jffs2` en **blacklist** : il écrit un drop-in sous `/etc/modprobe.d/` avec `blacklist jffs2` et `install jffs2 /bin/true`, et décharge le module s'il est chargé. Comme le pilote peut être présent dans le noyau en cours d'exécution ou dans l'initramfs, **`reboot_required` est vrai** pour garantir qu'il n'est pas actif."
+  },
+  "impact": {
+    "en": "Risk if not applied: a loadable flash-filesystem driver remains exploitable via a crafted image.\n\n- **Before applying**, confirm the host has no raw-flash (NOR/NAND) storage using JFFS2, essentially never the case on standard servers and VMs.\n- Non-disruptive on typical deployments; only embedded/appliance systems relying on JFFS2 are affected.\n- A **reboot** is required for full effect, schedule it in a maintenance window.",
+    "fr": "Risque en l'absence d'application : un pilote de système de fichiers flash chargeable reste exploitable via une image forgée.\n\n- **Avant d'appliquer**, vérifiez que l'hôte n'a pas de stockage flash brut (NOR/NAND) utilisant JFFS2, pratiquement jamais le cas sur les serveurs et VM standard.\n- Non perturbateur sur les déploiements classiques ; seuls les systèmes embarqués/appliances reposant sur JFFS2 sont affectés.\n- Un **redémarrage** est requis pour un effet complet, planifiez-le dans une fenêtre de maintenance."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

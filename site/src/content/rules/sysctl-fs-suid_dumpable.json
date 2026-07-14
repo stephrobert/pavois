@@ -1,0 +1,87 @@
+{
+  "id": "sysctl-fs-suid_dumpable",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R14",
+    "cis": [
+      "1.5.3",
+      "3.3.1.1",
+      "1.5.4"
+    ],
+    "nist": [
+      "SI-11(a)",
+      "SI-11(b)"
+    ],
+    "pci-dss": "3.3.1.1"
+  },
+  "check": [
+    "describe kernel_parameter('fs.suid_dumpable') do",
+    "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*fs.suid_dumpable[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
+    "end"
+  ],
+  "remediation": {
+    "key": "fs.suid_dumpable",
+    "resource": "sysctl",
+    "value": "0"
+  },
+  "title": {
+    "en": "Disable Core Dumps for SUID programs",
+    "fr": "Désactiver les vidages mémoire (core dumps) pour les programmes SUID"
+  },
+  "summary": {
+    "en": "Sets `fs.suid_dumpable=0` so setuid/setgid programs never write a core dump, preventing leakage of privileged memory contents.",
+    "fr": "Définit `fs.suid_dumpable=0` pour que les programmes setuid/setgid n'écrivent jamais de core dump, empêchant la fuite du contenu privilégié de la mémoire."
+  },
+  "rationale": {
+    "en": "A core dump captures the full memory image of a process at the moment it crashes. For a setuid/setgid program, which runs with privileges higher than the invoking user, that image can contain secrets, keys, or other privileged data the user should never see. Setting `fs.suid_dumpable=0` forbids any setuid program from producing a core dump, preventing an attacker from deliberately crashing a privileged binary to harvest sensitive memory contents.",
+    "fr": "Un vidage mémoire (core dump) capture l'image mémoire complète d'un processus au moment où il plante. Pour un programme setuid/setgid, qui s'exécute avec des privilèges supérieurs à ceux de l'utilisateur appelant, cette image peut contenir des secrets, des clés ou d'autres données privilégiées que l'utilisateur ne devrait jamais voir. Définir `fs.suid_dumpable=0` interdit à tout programme setuid de produire un core dump, empêchant un attaquant de faire planter délibérément un binaire privilégié pour récupérer le contenu sensible de la mémoire."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** via the `kernel_parameter` resource (equivalent to `sysctl fs.suid_dumpable`), not `/etc/sysctl.conf` or any `*.conf` drop-in. A file may declare `0` while a later drop-in or a typo left the running value at `1` or `2`; reading the running kernel reflects what setuid programs are actually allowed to do.",
+    "fr": "Pavois lit la **valeur effective du noyau** via la ressource `kernel_parameter` (équivalent à `sysctl fs.suid_dumpable`), et non `/etc/sysctl.conf` ou un drop-in `*.conf`. Un fichier peut déclarer `0` alors qu'un drop-in ultérieur ou une faute de frappe a laissé la valeur effective à `1` ou `2` ; lire le noyau en cours d'exécution reflète ce que les programmes setuid sont réellement autorisés à faire."
+  },
+  "verify": {
+    "en": "Run `sysctl fs.suid_dumpable`, expected output `fs.suid_dumpable = 0`.",
+    "fr": "Exécutez `sysctl fs.suid_dumpable`, sortie attendue `fs.suid_dumpable = 0`."
+  },
+  "logs": {
+    "en": "Read the current value with `sysctl fs.suid_dumpable` or `cat /proc/sys/fs/suid_dumpable`. If a setuid program crashes with dumping disabled, the kernel logs a `coredump skipped` style message visible via `dmesg` or `journalctl -k`, and any core handler such as systemd-coredump (`journalctl -u systemd-coredump`) will record the suppression.",
+    "fr": "Lisez la valeur courante avec `sysctl fs.suid_dumpable` ou `cat /proc/sys/fs/suid_dumpable`. Si un programme setuid plante alors que le vidage est désactivé, le noyau journalise un message de type `coredump skipped` visible via `dmesg` ou `journalctl -k`, et tout gestionnaire de core comme systemd-coredump (`journalctl -u systemd-coredump`) enregistrera la suppression."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan sets the `sysctl` key `fs.suid_dumpable` to `0`, persisting it to a managed drop-in and applying it live so the running kernel and future boots both use it. Applied with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois définit la clé `sysctl` `fs.suid_dumpable` à `0`, la persiste dans un drop-in géré et l'applique à chaud, de sorte que le noyau en cours d'exécution comme les démarrages futurs l'utilisent. Appliqué avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Very low operational risk. The only loss is the ability to debug crashes of setuid binaries via core dumps, which is precisely the goal. If you must debug a specific privileged binary, temporarily raise the value to `2` (root-only, restricted dumps) in a controlled environment, then reset to `0`. Reversible by changing the key.",
+    "fr": "Risque opérationnel très faible. La seule perte est la possibilité de déboguer les plantages de binaires setuid via les core dumps, ce qui est précisément l'objectif. Si vous devez déboguer un binaire privilégié précis, remontez temporairement la valeur à `2` (vidages restreints, root uniquement) dans un environnement contrôlé, puis remettez à `0`. Réversible en modifiant la clé."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

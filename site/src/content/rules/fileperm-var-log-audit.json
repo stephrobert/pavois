@@ -1,0 +1,97 @@
+{
+  "id": "fileperm-var-log-audit",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "10.3.1",
+      "6.2.4.1",
+      "6.3.4.2",
+      "6.3.4.1"
+    ],
+    "nist": [
+      "3.3.1",
+      "AC-6(1)",
+      "AU-9(4)",
+      "CM-6(a)"
+    ],
+    "pci-dss": [
+      "10.3.1",
+      "10.3.2"
+    ],
+    "stig": [
+      "UBTU-22-653060",
+      "UBTU-24-901380"
+    ]
+  },
+  "check": [
+    "only_if { file('/var/log/audit').exist? }",
+    "describe file('/var/log/audit') do",
+    "  it { should_not be_writable.by('group') }",
+    "  it { should_not be_readable.by('other') }",
+    "  it { should_not be_writable.by('other') }",
+    "  it { should_not be_executable.by('other') }",
+    "end"
+  ],
+  "remediation": {
+    "mode": "0750",
+    "path": "/var/log/audit",
+    "resource": "file"
+  },
+  "title": {
+    "en": "System Audit Logs Must Have Mode 0640 or Less Permissive",
+    "fr": "Les journaux d'audit systeme doivent avoir le mode 0640 ou moins permissif"
+  },
+  "summary": {
+    "en": "Ensures the `/var/log/audit` directory is not group-writable and not readable/writable/executable by other (mode `0640` or stricter).",
+    "fr": "Garantit que le repertoire `/var/log/audit` n'est pas modifiable par le groupe et n'est ni lisible, ni modifiable, ni executable par les autres (mode `0640` ou plus strict)."
+  },
+  "rationale": {
+    "en": "The `/var/log/audit` tree holds the **auditd trail**, the authoritative record of security-relevant events. If non-privileged users can **write** to it, audit trails can be altered or destroyed, letting an attacker erase evidence of intrusion. If they can **read** it, sensitive data captured by audit rules (commands, paths, arguments) leaks. Audit logs must be confined to `root` (and the audit group) with mode `0640` or stricter to protect the integrity and confidentiality of the trail.",
+    "fr": "L'arborescence `/var/log/audit` contient la **piste d'audit auditd**, l'enregistrement faisant autorite des evenements lies a la securite. Si des utilisateurs non privilegies peuvent y **ecrire**, les pistes d'audit peuvent etre alterees ou detruites, permettant a un attaquant d'effacer les preuves d'intrusion. S'ils peuvent la **lire**, des donnees sensibles capturees par les regles d'audit (commandes, chemins, arguments) fuitent. Les journaux d'audit doivent etre confines a `root` (et au groupe d'audit) avec le mode `0640` ou plus strict afin de proteger l'integrite et la confidentialite de la piste."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective inode mode** of `/var/log/audit` and asserts no group write and no read/write/execute for other. Reading the live mode (not a vendor manifest) is essential here: auditd, log rotation and manual restores can all reset these permissions, and a tampered audit directory is exactly what an attacker would try to hide.",
+    "fr": "Pavois lit le **mode effectif de l'inode** de `/var/log/audit` et verifie l'absence d'ecriture pour le groupe et l'absence de lecture/ecriture/execution pour les autres. Lire le mode reel (et non un manifeste editeur) est essentiel ici : auditd, la rotation des journaux et les restaurations manuelles peuvent reinitialiser ces permissions, et un repertoire d'audit altere est precisement ce qu'un attaquant chercherait a dissimuler."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %G %a' /var/log/audit` (expect owner `root`, mode `700` or `750`) and `stat -c '%a' /var/log/audit/audit.log` (expect `600` or `640`). No write bit for group, and nothing for other.",
+    "fr": "Executez `stat -c '%U %G %a' /var/log/audit` (attendu proprietaire `root`, mode `700` ou `750`) et `stat -c '%a' /var/log/audit/audit.log` (attendu `600` ou `640`). Aucun bit d'ecriture pour le groupe, et rien pour les autres."
+  },
+  "logs": {
+    "en": "The audited events themselves live in `/var/log/audit/audit.log`; grep it directly (e.g. `grep 'key=\"...\"' /var/log/audit/audit.log`) rather than relying on `ausearch`, which can falsely report no matches. auditd's own status is shown by `systemctl status auditd` and `auditctl -s`.",
+    "fr": "Les evenements audites resident dans `/var/log/audit/audit.log` ; recherchez-y directement (par ex. `grep 'key=\"...\"' /var/log/audit/audit.log`) plutot que de vous fier a `ausearch`, qui peut signaler a tort l'absence de correspondance. L'etat d'auditd est affiche par `systemctl status auditd` et `auditctl -s`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation ships for this rule. Tighten manually: `chown root:root /var/log/audit && chmod 700 /var/log/audit` (or `750` if an audit group needs read), and `chmod 600 /var/log/audit/*.log`. The `log_group` and permissions can also be enforced in `/etc/audit/auditd.conf`.",
+    "fr": "Aucune remediation automatique n'est fournie pour cette regle. Restreignez manuellement : `chown root:root /var/log/audit && chmod 700 /var/log/audit` (ou `750` si un groupe d'audit a besoin de lire), et `chmod 600 /var/log/audit/*.log`. Le `log_group` et les permissions peuvent aussi etre imposes dans `/etc/audit/auditd.conf`."
+  },
+  "impact": {
+    "en": "Loose audit-log permissions let attackers tamper with or read the forensic trail, defeating accountability. Restricting to `root` is safe; auditd runs as root and is unaffected. **Precaution:** if a log-shipping or SIEM agent reads `/var/log/audit` as a non-root user, add it to the audit group and use mode `0640` rather than `0600`, or grant access via ACL/`log_group`, otherwise the collector will silently stop ingesting audit events.",
+    "fr": "Des permissions laxistes sur les journaux d'audit permettent aux attaquants d'alterer ou de lire la piste forensique, ruinant l'imputabilite. Restreindre a `root` est sans danger ; auditd s'execute en root et n'est pas affecte. **Precaution :** si un agent de collecte de journaux ou un SIEM lit `/var/log/audit` en tant qu'utilisateur non-root, ajoutez-le au groupe d'audit et utilisez le mode `0640` plutot que `0600`, ou accordez l'acces via ACL/`log_group`, sinon le collecteur cessera silencieusement d'ingerer les evenements d'audit."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

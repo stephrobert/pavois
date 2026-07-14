@@ -1,0 +1,76 @@
+{
+  "id": "pam-pwhistory-enabled",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (PAM modules)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.3.2.4"
+  },
+  "check": [
+    "describe command('grep -RqE \\'^[^#]*\\bpam_pwhistory\\\\.so\\b\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "before": "^password.*pam_unix\\.so",
+    "file": "/etc/pam.d/common-password",
+    "line": "password required pam_pwhistory.so remember=24 use_authtok enforce_for_root",
+    "module": "pam_pwhistory.so",
+    "resource": "pam_line"
+  },
+  "title": {
+    "en": "Verify pam_pwhistory module is activated",
+    "fr": "Vérifier que le module pam_pwhistory est activé"
+  },
+  "summary": {
+    "en": "Ensures `pam_pwhistory.so` is present in the PAM password stack so the system remembers previous passwords and blocks their reuse.",
+    "fr": "Garantit que `pam_pwhistory.so` est présent dans la pile password de PAM afin que le système mémorise les anciens mots de passe et en interdise la réutilisation."
+  },
+  "rationale": {
+    "en": "Enforcing strong, non-recycled passwords increases the difficulty and resources required for password compromise. `pam_pwhistory` is the module that records old password hashes and rejects a new password matching a recent one; without it, users freely cycle back to a known (possibly leaked) password, defeating the purpose of password expiry.",
+    "fr": "Imposer des mots de passe forts et non recyclés augmente la difficulté et les ressources nécessaires à la compromission d'un mot de passe. `pam_pwhistory` est le module qui enregistre les anciens condensats et rejette un nouveau mot de passe identique à un récent ; sans lui, les utilisateurs reviennent librement à un mot de passe connu (potentiellement divulgué), annulant l'intérêt de l'expiration des mots de passe."
+  },
+  "check_note": {
+    "en": "Pavois greps the **effective** PAM stack under `/etc/pam.d/` for an active `pam_pwhistory.so` line. Because the password stack is assembled from `common-password` and its `@include` chain, reading the resolved files catches a module that is present in a sample but removed or commented in the path PAM actually applies, a gap a single-file scan misses.",
+    "fr": "Pavois recherche dans la pile PAM **effective** sous `/etc/pam.d/` une ligne `pam_pwhistory.so` active. Comme la pile password est assemblée à partir de `common-password` et de sa chaîne `@include`, lire les fichiers résolus détecte un module présent dans un exemple mais retiré ou commenté dans le chemin réellement appliqué par PAM, une lacune qu'une analyse mono-fichier manque."
+  },
+  "verify": {
+    "en": "Run `grep -rE '^[^#]*pam_pwhistory\\.so' /etc/pam.d/`; an active `password` line should reference the module. As a functional check, try changing a user's password to a value used recently, PAM should reject it (\"Password has been already used\").",
+    "fr": "Exécutez `grep -rE '^[^#]*pam_pwhistory\\.so' /etc/pam.d/` ; une ligne `password` active doit référencer le module. Comme test fonctionnel, essayez de changer le mot de passe d'un utilisateur vers une valeur récemment utilisée, PAM devrait le rejeter (« Password has been already used »)."
+  },
+  "logs": {
+    "en": "Password-change attempts and rejections are logged in `/var/log/auth.log` (Debian/Ubuntu). The stored history lives in `/etc/security/opasswd`.",
+    "fr": "Les tentatives et rejets de changement de mot de passe sont consignés dans `/var/log/auth.log` (Debian/Ubuntu). L'historique stocké réside dans `/etc/security/opasswd`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `pam_line` resource to insert `password required pam_pwhistory.so remember=24 use_authtok enforce_for_root` into `/etc/pam.d/common-password`, placed **before** the `pam_unix.so` line so history is checked before the password is committed. It is applied with `pavois harden apply`.",
+    "fr": "`pavois harden apply` utilise la ressource `pam_line` pour insérer `password required pam_pwhistory.so remember=24 use_authtok enforce_for_root` dans `/etc/pam.d/common-password`, placée **avant** la ligne `pam_unix.so` pour que l'historique soit vérifié avant la validation du mot de passe. Cela s'applique avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Adding `pam_pwhistory` only affects password changes, so existing sessions are unaffected, but a malformed `password` line can break **all** password changes (users unable to set a new password). **Precautions:** keep a root session open, test `passwd` for a throwaway user after applying, and verify the new line sits before `pam_unix.so` so `use_authtok` correctly receives the token from the preceding module.",
+    "fr": "Ajouter `pam_pwhistory` n'affecte que les changements de mot de passe, les sessions existantes ne sont donc pas touchées, mais une ligne `password` malformée peut casser **tous** les changements de mot de passe (impossibilité d'en définir un nouveau). **Précautions :** gardez une session root ouverte, testez `passwd` sur un utilisateur jetable après application, et vérifiez que la nouvelle ligne se situe avant `pam_unix.so` pour que `use_authtok` reçoive correctement le jeton du module précédent."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

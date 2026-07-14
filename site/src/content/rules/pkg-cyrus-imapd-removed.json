@@ -1,0 +1,74 @@
+{
+  "id": "pkg-cyrus-imapd-removed",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "2.1.8"
+  },
+  "check": [
+    "describe package('cyrus-imapd') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "cyrus-imapd",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall cyrus-imapd Package",
+    "fr": "Désinstaller le paquet cyrus-imapd"
+  },
+  "summary": {
+    "en": "Ensures the **cyrus-imapd** IMAP/POP3 mail server is not installed on hosts that do not serve mailboxes.",
+    "fr": "Garantit que le serveur de messagerie IMAP/POP3 **cyrus-imapd** n'est pas installé sur les hôtes qui ne servent pas de boîtes aux lettres."
+  },
+  "rationale": {
+    "en": "If there is no need to make the cyrus-imapd software available, removing it provides a safeguard against its activation.",
+    "fr": "S'il n'est pas nécessaire de rendre le logiciel cyrus-imapd disponible, sa suppression constitue une protection contre son activation."
+  },
+  "check_note": {
+    "en": "Pavois verifies that the `cyrus-imapd` package is absent via the package manager. Removing the package guarantees the IMAP/POP3 daemon cannot be started or auto-enabled, which is stronger than disabling a service that could later be re-activated.",
+    "fr": "Pavois vérifie que le paquet `cyrus-imapd` est absent via le gestionnaire de paquets. Supprimer le paquet garantit que le démon IMAP/POP3 ne peut être démarré ou activé automatiquement, ce qui est plus robuste que désactiver un service susceptible d'être réactivé ultérieurement."
+  },
+  "verify": {
+    "en": "On RHEL family run `rpm -q cyrus-imapd` (expected `package cyrus-imapd is not installed`); on Debian/Ubuntu run `dpkg -s cyrus-imapd`. Confirm nothing listens on IMAP/POP ports with `ss -tlnp | grep -E ':(143|993|110|995)'`.",
+    "fr": "Sur la famille RHEL, exécutez `rpm -q cyrus-imapd` (attendu : `package cyrus-imapd is not installed`) ; sur Debian/Ubuntu, exécutez `dpkg -s cyrus-imapd`. Confirmez qu'aucun service n'écoute sur les ports IMAP/POP avec `ss -tlnp | grep -E ':(143|993|110|995)'`."
+  },
+  "logs": {
+    "en": "Confirm removal with `rpm -q cyrus-imapd` or `dpkg -l cyrus-imapd`; while present, the service logs to the system journal (`journalctl -u cyrus-imapd`) and the mail facility in syslog.",
+    "fr": "Confirmez la suppression avec `rpm -q cyrus-imapd` ou `dpkg -l cyrus-imapd` ; lorsqu'il est présent, le service journalise dans le journal système (`journalctl -u cyrus-imapd`) et la catégorie mail de syslog."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan removes the `cyrus-imapd` package (resource `package`, action `remove`) and is applied with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois supprime le paquet `cyrus-imapd` (ressource `package`, action `remove`) et s'applique avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Removing cyrus-imapd disables IMAP/POP3 mailbox access provided by this server. Before applying, confirm the host is not a mail server and that no clients retrieve mail from it; on a dedicated mail server this rule should be exempted. On general-purpose hosts there is no impact.",
+    "fr": "La suppression de cyrus-imapd désactive l'accès aux boîtes aux lettres IMAP/POP3 fourni par ce serveur. Avant d'appliquer, confirmez que l'hôte n'est pas un serveur de messagerie et qu'aucun client n'y récupère son courrier ; sur un serveur de messagerie dédié, cette règle doit être exemptée. Sur les hôtes polyvalents, il n'y a aucun impact."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

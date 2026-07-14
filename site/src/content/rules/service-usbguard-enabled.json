@@ -1,0 +1,67 @@
+{
+  "id": "service-usbguard-enabled",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "systemd services",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {},
+  "check": [
+    "describe service('usbguard.service') do",
+    "  it { should be_enabled }",
+    "  it { should be_running }",
+    "end"
+  ],
+  "remediation": {
+    "action": [
+      "enable",
+      "start"
+    ],
+    "name": "usbguard.service",
+    "resource": "service"
+  },
+  "title": {
+    "en": "Enable the USBGuard Service",
+    "fr": "Activer le service USBGuard"
+  },
+  "summary": {
+    "en": "Ensures `usbguard.service` is **enabled** and **running** so the USB device authorization policy is enforced.",
+    "fr": "Garantit que `usbguard.service` est **active** et **en cours d'execution** afin que la politique d'autorisation des peripheriques USB soit appliquee."
+  },
+  "rationale": {
+    "en": "The `usbguard` service must be running to enforce the **USB device authorization policy** that whitelists which USB devices may attach to the system. Without it, any USB device plugged in is accepted, exposing the host to **BadUSB** attacks, rogue keyboards/network adapters that inject keystrokes or hijack traffic, and data exfiltration via mass-storage. Enforcing a device policy is a key physical-access control for endpoints and servers in accessible locations.",
+    "fr": "Le service `usbguard` doit etre actif pour appliquer la **politique d'autorisation des peripheriques USB** qui liste les peripheriques USB autorises a se connecter au systeme. Sans lui, tout peripherique USB branche est accepte, exposant l'hote aux attaques **BadUSB**, aux claviers/cartes reseau malveillants qui injectent des frappes ou detournent le trafic, et a l'exfiltration de donnees via le stockage de masse. Appliquer une politique de peripheriques est un controle d'acces physique cle pour les postes et serveurs situes dans des lieux accessibles."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective unit state** via `service('usbguard.service')` (`systemctl is-enabled` / `is-active`). This confirms the daemon is actually enforcing now and at boot, including drop-in overrides, rather than just that a rules file `/etc/usbguard/rules.conf` exists. A present ruleset with a stopped daemon enforces nothing; only effective-state checking exposes that gap.",
+    "fr": "Pavois lit l'**etat effectif de l'unite** via `service('usbguard.service')` (`systemctl is-enabled` / `is-active`). Cela confirme que le demon applique reellement la politique maintenant et au boot, y compris les surcharges drop-in, et pas seulement qu'un fichier de regles `/etc/usbguard/rules.conf` existe. Un jeu de regles present avec un demon arrete n'applique rien ; seul le controle de l'etat effectif revele cet ecart."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled usbguard && systemctl is-active usbguard` (expect `enabled` then `active`). Confirm the policy is loaded with `usbguard list-rules` (should list your authorized devices) and `usbguard list-devices` (shows allowed/blocked state).",
+    "fr": "Executez `systemctl is-enabled usbguard && systemctl is-active usbguard` (attendu `enabled` puis `active`). Confirmez que la politique est chargee avec `usbguard list-rules` (doit lister vos peripheriques autorises) et `usbguard list-devices` (montre l'etat autorise/bloque)."
+  },
+  "logs": {
+    "en": "Daemon health and policy decisions are in `journalctl -u usbguard.service`; device authorization/blocking events are logged there and via the audit subsystem (`/var/log/audit/audit.log`). `usbguard list-devices` shows the current allowed/blocked verdict per device.",
+    "fr": "L'etat du demon et les decisions de politique sont dans `journalctl -u usbguard.service` ; les evenements d'autorisation/blocage de peripheriques y sont journalises ainsi que via le sous-systeme d'audit (`/var/log/audit/audit.log`). `usbguard list-devices` montre le verdict autorise/bloque actuel par peripherique."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the **service** resource named `usbguard`: it runs `enable` and `start` so the policy is enforced at boot and immediately. It is applied with `pavois harden apply`. USBGuard must be installed and an **initial allow policy generated first** (`usbguard generate-policy > /etc/usbguard/rules.conf`), otherwise starting the daemon with an empty/implicit-block policy can reject currently attached devices.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource **service** nommee `usbguard` : il execute `enable` et `start` pour que la politique soit appliquee au boot et immediatement. Il s'applique avec `pavois harden apply`. USBGuard doit etre installe et une **politique d'autorisation initiale generee au prealable** (`usbguard generate-policy > /etc/usbguard/rules.conf`), sinon demarrer le demon avec une politique vide/bloquante implicite peut rejeter les peripheriques actuellement connectes."
+  },
+  "impact": {
+    "en": "The biggest risk is **locking out essential USB hardware**: if you enable USBGuard with a default-block policy, an attached USB keyboard, KVM, or boot device can be blocked, leaving a server unmanageable. **Precautions:** generate the baseline policy from the currently connected, trusted devices **before** starting the service; review `usbguard list-rules`; on remote/headless hosts ensure you still have non-USB access (network SSH, serial/iLO console) in case an input device is rejected; and keep `ImplicitPolicyTarget` set deliberately.",
+    "fr": "Le plus grand risque est de **bloquer du materiel USB essentiel** : si vous activez USBGuard avec une politique de blocage par defaut, un clavier USB, un KVM ou un peripherique de boot connecte peut etre bloque, rendant un serveur ingerable. **Precautions :** generez la politique de reference a partir des peripheriques de confiance actuellement connectes **avant** de demarrer le service ; verifiez `usbguard list-rules` ; sur les hotes distants/sans ecran, assurez-vous de conserver un acces non-USB (SSH reseau, console serie/iLO) au cas ou un peripherique d'entree serait rejete ; et definissez `ImplicitPolicyTarget` de maniere deliberee."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

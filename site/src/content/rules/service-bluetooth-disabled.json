@@ -1,0 +1,87 @@
+{
+  "id": "service-bluetooth-disabled",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "systemd services",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "3.1.3",
+    "nist": [
+      "3.1.16",
+      "AC-18(3)",
+      "AC-18(a)",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)",
+      "MP-7"
+    ]
+  },
+  "check": [
+    "describe service('bluetooth.service') do",
+    "  it { should_not be_enabled }",
+    "  it { should_not be_running }",
+    "end"
+  ],
+  "remediation": {
+    "action": [
+      "disable",
+      "stop"
+    ],
+    "name": "bluetooth",
+    "resource": "service"
+  },
+  "title": {
+    "en": "Disable Bluetooth Service",
+    "fr": "Désactiver le service Bluetooth"
+  },
+  "summary": {
+    "en": "Disables and stops the **bluetooth** service to remove the wireless Bluetooth attack surface.",
+    "fr": "Désactive et arrête le service **bluetooth** pour supprimer la surface d'attaque sans fil Bluetooth."
+  },
+  "rationale": {
+    "en": "The `bluetooth` service exposes a wireless attack surface: Bluetooth stacks have a history of remote-exploitable vulnerabilities (e.g. BlueBorne), and an active adapter lets nearby attackers attempt pairing, eavesdropping, or device tracking. Servers and most fixed infrastructure have no need for Bluetooth, so disabling the service removes the radio interface and its protocol stack entirely. The risk decision may legitimately vary on endpoints that rely on Bluetooth peripherals.",
+    "fr": "Le service `bluetooth` expose une surface d'attaque sans fil : les piles Bluetooth ont un historique de vulnérabilités exploitables à distance (par ex. BlueBorne), et un adaptateur actif permet à des attaquants proches de tenter l'appairage, l'écoute ou le pistage de l'appareil. Les serveurs et la plupart des infrastructures fixes n'ont aucun besoin du Bluetooth, donc désactiver le service supprime entièrement l'interface radio et sa pile protocolaire. La décision de risque peut légitimement varier sur des postes reposant sur des périphériques Bluetooth."
+  },
+  "check_note": {
+    "en": "Pavois queries systemd for the **effective** state of `bluetooth.service` (`systemctl is-enabled` / `is-active`), catching a daemon that is running or socket/dbus-activated regardless of `/etc/bluetooth/main.conf`. A config-file scan cannot confirm whether the bluetooth stack is actually live and the adapter powered on.",
+    "fr": "Pavois interroge systemd sur l'état **effectif** de `bluetooth.service` (`systemctl is-enabled` / `is-active`), détectant un démon en cours d'exécution ou activé par socket/dbus, quel que soit `/etc/bluetooth/main.conf`. Un scan de fichier ne peut pas confirmer si la pile bluetooth est réellement active et l'adaptateur allumé."
+  },
+  "verify": {
+    "en": "Confirm the unit is off:\n\n```sh\nsystemctl is-enabled bluetooth.service\nsystemctl is-active bluetooth.service\n```\n\nExpect `disabled` (or `masked`) and `inactive`. Confirm no adapter is up with `bluetoothctl show` (should report no default controller) or `rfkill list bluetooth`.",
+    "fr": "Confirmez que l'unité est désactivée :\n\n```sh\nsystemctl is-enabled bluetooth.service\nsystemctl is-active bluetooth.service\n```\n\nAttendez `disabled` (ou `masked`) et `inactive`. Confirmez qu'aucun adaptateur n'est actif avec `bluetoothctl show` (aucun contrôleur par défaut) ou `rfkill list bluetooth`."
+  },
+  "logs": {
+    "en": "Inspect the unit with `systemctl status bluetooth.service` and `journalctl -u bluetooth.service`. Adapter and pairing events also surface in the journal; `rfkill list bluetooth` shows whether the radio is blocked. Package presence: `dpkg -s bluez` or `rpm -q bluez`.",
+    "fr": "Inspectez l'unité avec `systemctl status bluetooth.service` et `journalctl -u bluetooth.service`. Les événements d'adaptateur et d'appairage apparaissent aussi dans le journal ; `rfkill list bluetooth` indique si la radio est bloquée. Présence du paquet : `dpkg -s bluez` ou `rpm -q bluez`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the `service` resource named `bluetooth`: it runs **disable** (no start at boot) then **stop** (not running now). Applied with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource `service` nommée `bluetooth` : il exécute **disable** (pas de démarrage au boot) puis **stop** (arrêt immédiat). Appliqué avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Misconfiguration risk: an active Bluetooth stack exposes a wireless attack surface to nearby adversaries. **Precautions:** disabling the service breaks any Bluetooth peripherals in use, keyboards, mice, headsets, audio. On a remotely managed server this is safe, but on a workstation confirm the admin is not relying on a Bluetooth input device (which could effectively lock them out of local console access). There is no impact on SSH or network logins.",
+    "fr": "Risque de mauvaise configuration : une pile Bluetooth active expose une surface d'attaque sans fil à des adversaires proches. **Précautions :** désactiver le service casse tout périphérique Bluetooth utilisé, claviers, souris, casques, audio. Sur un serveur géré à distance c'est sans danger, mais sur un poste de travail vérifiez que l'administrateur ne dépend pas d'un périphérique d'entrée Bluetooth (ce qui pourrait le priver de l'accès console local). Aucun impact sur les connexions SSH ou réseau."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

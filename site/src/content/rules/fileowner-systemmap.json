@@ -1,0 +1,75 @@
+{
+  "id": "fileowner-systemmap",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R29"
+  },
+  "check": [
+    "describe command(\"find /boot -maxdepth 1 -name 'System.map-*' ! -user root 2>/dev/null\") do",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "find /boot -maxdepth 1 -name 'System.map-*' -exec chown root {} + 2>/dev/null; true",
+    "name": "systemmap-user",
+    "not_if": "test -z \"$(find /boot -maxdepth 1 -name 'System.map-*' ! -user root 2>/dev/null)\"",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Verify User Who Owns System.map Files",
+    "fr": "Vérifier l'utilisateur propriétaire des fichiers System.map"
+  },
+  "summary": {
+    "en": "Ensures the `/boot` directory (which holds `System.map` and the kernel) is owned by **root** (uid 0).",
+    "fr": "Garantit que le répertoire `/boot` (qui contient `System.map` et le noyau) appartient à **root** (uid 0)."
+  },
+  "rationale": {
+    "en": "`System.map` files (under `/boot`) map kernel symbols to addresses and exist mainly for debugging and profiling. Exposed to an attacker, they reveal the exact kernel layout, easing the development of reliable exploits (e.g. defeating KASLR or locating functions for a rootkit). The `/boot` directory also holds the kernel, initramfs and bootloader config. If owned by a non-root user, these can be read for reconnaissance or modified to compromise the boot chain. Keeping `/boot` owned by **root** (uid 0) restricts this sensitive material to the superuser.",
+    "fr": "Les fichiers `System.map` (sous `/boot`) associent les symboles du noyau à des adresses et existent principalement pour le débogage et le profilage. Exposés à un attaquant, ils révèlent l'agencement exact du noyau, facilitant le développement d'exploits fiables (par ex. contourner KASLR ou localiser des fonctions pour un rootkit). Le répertoire `/boot` contient aussi le noyau, l'initramfs et la configuration du chargeur d'amorçage. S'ils appartiennent à un utilisateur non-root, ils peuvent être lus à des fins de reconnaissance ou modifiés pour compromettre la chaîne de démarrage. Conserver `/boot` sous la propriété de **root** (uid 0) réserve ce matériel sensible au superutilisateur."
+  },
+  "check_note": {
+    "en": "Pavois asserts that the live directory `/boot` has owner uid `0`, skipped via `only_if` if it is absent. It reads the **effective** owner from the filesystem (`stat`), so a manual `chown` on boot material is caught even when no config-management tool reports drift.",
+    "fr": "Pavois vérifie que le répertoire réel `/boot` a l'uid de propriétaire `0`, ignoré via `only_if` s'il est absent. Il lit le propriétaire **effectif** depuis le système de fichiers (`stat`), de sorte qu'un `chown` manuel sur le matériel de démarrage est détecté même si aucun outil de gestion de configuration ne signale de dérive."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /boot`. Expected output: `root 0`. To cover the System.map files specifically, run `find /boot -name 'System.map*' -not -user root`, it should print nothing.",
+    "fr": "Exécutez `stat -c '%U %u' /boot`. Sortie attendue : `root 0`. Pour couvrir spécifiquement les fichiers System.map, exécutez `find /boot -name 'System.map*' -not -user root`, il ne doit rien afficher."
+  },
+  "logs": {
+    "en": "Ownership has no continuous log; query it with `stat /boot`. If `/boot` is watched by auditd (`auditctl -w /boot -p wa`), ownership or content changes appear in `/var/log/audit/audit.log`, grep the raw log directly, e.g. `grep System.map /var/log/audit/audit.log`.",
+    "fr": "La propriété ne génère pas de journal continu ; interrogez-la avec `stat /boot`. Si `/boot` est surveillé par auditd (`auditctl -w /boot -p wa`), les changements de propriété ou de contenu apparaissent dans `/var/log/audit/audit.log`, recherchez directement dans le journal brut, par ex. `grep System.map /var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined, so apply it manually: `chown root:root /boot` and, for the symbol maps, `chown root:root /boot/System.map*`.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini, appliquez-la donc manuellement : `chown root:root /boot` et, pour les tables de symboles, `chown root:root /boot/System.map*`."
+  },
+  "impact": {
+    "en": "A non-root owner of `/boot` can read kernel symbol layout (aiding exploit development) or tamper with the boot chain. Restoring root ownership is safe and does not affect a running system. **Precaution:** when correcting ownership, do not loosen permissions, `System.map` files and the kernel image should remain readable only by root (mode 0600/0644 per baseline) so the symbol layout is not disclosed; avoid `chown -R` onto a separately mounted EFI partition (`/boot/efi` is typically VFAT and owner-agnostic).",
+    "fr": "Un propriétaire non-root de `/boot` peut lire l'agencement des symboles du noyau (aidant au développement d'exploits) ou falsifier la chaîne de démarrage. Restaurer la propriété root est sans danger et n'affecte pas un système en fonctionnement. **Précaution :** en corrigeant la propriété, n'assouplissez pas les permissions, les fichiers `System.map` et l'image du noyau doivent rester lisibles uniquement par root (mode 0600/0644 selon le référentiel) afin que l'agencement des symboles ne soit pas divulgué ; évitez `chown -R` sur une partition EFI montée séparément (`/boot/efi` est généralement en VFAT et insensible au propriétaire)."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

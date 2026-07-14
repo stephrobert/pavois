@@ -1,0 +1,76 @@
+{
+  "id": "sudo-env-reset",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Sudo",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R39"
+  },
+  "check": [
+    "describe command('grep -rqE \\'^[^#]*Defaults[^#]*\\benv_reset\\b\\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "content": "Defaults env_reset\n",
+    "group": "root",
+    "mode": "0440",
+    "owner": "root",
+    "path": "/etc/sudoers.d/99-pavois-env_reset",
+    "resource": "file",
+    "verify": "visudo -cf %{path}"
+  },
+  "title": {
+    "en": "Ensure sudo Runs In A Minimal Environment - sudo env_reset",
+    "fr": "S'assurer que sudo s'exécute dans un environnement minimal - sudo env_reset"
+  },
+  "summary": {
+    "en": "Enable the `Defaults env_reset` option so `sudo` runs commands in a clean, minimal environment instead of inheriting the invoking user's environment variables.",
+    "fr": "Active l'option `Defaults env_reset` afin que `sudo` exécute les commandes dans un environnement propre et minimal plutôt que d'hériter des variables d'environnement de l'utilisateur appelant."
+  },
+  "rationale": {
+    "en": "Forcing `sudo` to reset the environment ensures that user-controlled variables (e.g. `LD_PRELOAD`, `LD_LIBRARY_PATH`, `PATH`, `IFS`) are not passed to the privileged command. Without `env_reset`, an attacker who controls the calling shell's environment could **hijack the privileged process**, loading a malicious library or redirecting it to a planted binary, turning a routine `sudo` into a privilege-escalation vector.",
+    "fr": "Forcer `sudo` à réinitialiser l'environnement garantit que les variables contrôlées par l'utilisateur (par ex. `LD_PRELOAD`, `LD_LIBRARY_PATH`, `PATH`, `IFS`) ne sont pas transmises à la commande privilégiée. Sans `env_reset`, un attaquant maîtrisant l'environnement du shell appelant pourrait **détourner le processus privilégié**, en chargeant une bibliothèque malveillante ou en le redirigeant vers un binaire piégé, transformant un simple `sudo` en vecteur d'élévation de privilèges."
+  },
+  "check_note": {
+    "en": "Pavois greps the **active sudoers tree**, `/etc/sudoers` and every file under `/etc/sudoers.d/`, for an uncommented `Defaults ... env_reset`. Because `sudo` assembles its policy from the main file plus all drop-ins (and `@include` directives), scanning the whole tree reflects the **effective** sudo policy, not just one file that a later drop-in could override.",
+    "fr": "Pavois recherche dans l'**arborescence sudoers active**, `/etc/sudoers` et chaque fichier sous `/etc/sudoers.d/`, une directive non commentée `Defaults ... env_reset`. Comme `sudo` construit sa politique à partir du fichier principal et de tous les drop-ins (et des directives `@include`), parcourir toute l'arborescence reflète la politique sudo **effective**, et pas un seul fichier qu'un drop-in ultérieur pourrait écraser."
+  },
+  "verify": {
+    "en": "Run `sudo -V | grep -i 'reset the environment'` or inspect the parsed policy with `sudo grep -rE '^[^#]*Defaults.*env_reset' /etc/sudoers /etc/sudoers.d/`. A matching line confirms the option is active. `env_reset` is the compiled-in default of modern sudo, so the expected result is that it is present and not overridden by `!env_reset`.",
+    "fr": "Exécutez `sudo -V | grep -i 'reset the environment'` ou inspectez la politique avec `sudo grep -rE '^[^#]*Defaults.*env_reset' /etc/sudoers /etc/sudoers.d/`. Une ligne correspondante confirme que l'option est active. `env_reset` est la valeur par défaut compilée des versions récentes de sudo ; le résultat attendu est donc qu'elle soit présente et non annulée par `!env_reset`."
+  },
+  "logs": {
+    "en": "Every `sudo` invocation is logged to `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL), and to `journalctl -t sudo`. These entries show who ran what; combined with the policy check they confirm privileged commands run under the minimal environment.",
+    "fr": "Chaque appel à `sudo` est journalisé dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL), ainsi que via `journalctl -t sudo`. Ces entrées indiquent qui a exécuté quoi ; combinées au contrôle de politique, elles confirment que les commandes privilégiées s'exécutent dans l'environnement minimal."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan writes a `file` resource at `/etc/sudoers.d/99-Pavois-env_reset` containing `Defaults env_reset`, owned `root:root` with mode `0440`, and validates it with `visudo -cf` before it takes effect. Apply it with `pavois harden apply`. Using a dedicated drop-in keeps the change isolated and reversible without touching the main `/etc/sudoers`.",
+    "fr": "Le plan de durcissement de Pavois écrit une ressource `file` dans `/etc/sudoers.d/99-Pavois-env_reset` contenant `Defaults env_reset`, appartenant à `root:root` avec le mode `0440`, et la valide avec `visudo -cf` avant qu'elle ne prenne effet. Appliquez-le avec `pavois harden apply`. L'usage d'un drop-in dédié isole la modification et la rend réversible sans toucher au fichier principal `/etc/sudoers`."
+  },
+  "impact": {
+    "en": "`env_reset` strips most environment variables, which can break scripts that rely on passing variables (e.g. `http_proxy`, custom `PATH`) through `sudo`. If specific variables are genuinely required, allow only those via `Defaults env_keep += \"VAR\"` rather than disabling `env_reset`. The drop-in is validated by `visudo` before activation, so a syntax error cannot corrupt the sudoers policy or lock you out of sudo.",
+    "fr": "`env_reset` supprime la plupart des variables d'environnement, ce qui peut casser des scripts s'appuyant sur la transmission de variables (par ex. `http_proxy`, `PATH` personnalisé) à travers `sudo`. Si certaines variables sont réellement nécessaires, n'autorisez que celles-ci via `Defaults env_keep += \"VAR\"` plutôt que de désactiver `env_reset`. Le drop-in est validé par `visudo` avant activation : une erreur de syntaxe ne peut donc pas corrompre la politique sudoers ni vous priver de sudo."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

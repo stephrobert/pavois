@@ -1,0 +1,76 @@
+{
+  "id": "sudo-ignore-dot",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Sudo",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R39"
+  },
+  "check": [
+    "describe command('grep -rqE \\'^[^#]*Defaults[^#]*\\bignore_dot\\b\\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "content": "Defaults ignore_dot\n",
+    "group": "root",
+    "mode": "0440",
+    "owner": "root",
+    "path": "/etc/sudoers.d/99-pavois-ignore_dot",
+    "resource": "file",
+    "verify": "visudo -cf %{path}"
+  },
+  "title": {
+    "en": "Ensure sudo Ignores Commands In Current Dir - sudo ignore_dot",
+    "fr": "S'assurer que sudo ignore les commandes du répertoire courant - sudo ignore_dot"
+  },
+  "summary": {
+    "en": "Enable the `Defaults ignore_dot` option so `sudo` ignores any `.` (current directory) entry in `PATH` when resolving the command to run.",
+    "fr": "Active l'option `Defaults ignore_dot` afin que `sudo` ignore toute entrée `.` (répertoire courant) présente dans `PATH` lors de la résolution de la commande à exécuter."
+  },
+  "rationale": {
+    "en": "If `.` is part of `PATH`, an attacker who can write to a directory a user operates in could drop a malicious binary named like a common command. When the user runs it via `sudo`, the **planted binary executes with root privileges**. `ignore_dot` removes the current directory from the search path, preventing this trivially exploitable privilege-escalation path.",
+    "fr": "Si `.` fait partie du `PATH`, un attaquant capable d'écrire dans un répertoire où travaille un utilisateur peut y déposer un binaire malveillant portant le nom d'une commande courante. Lorsque l'utilisateur l'exécute via `sudo`, le **binaire piégé s'exécute avec les privilèges root**. `ignore_dot` retire le répertoire courant du chemin de recherche, fermant cette voie d'élévation de privilèges trivialement exploitable."
+  },
+  "check_note": {
+    "en": "Pavois greps the **active sudoers tree**, `/etc/sudoers` and every file under `/etc/sudoers.d/`, for an uncommented `Defaults ... ignore_dot`. Since `sudo` merges its policy from the main file plus all drop-ins, scanning the whole tree reflects the **effective** policy rather than a single file that a later drop-in could override.",
+    "fr": "Pavois recherche dans l'**arborescence sudoers active**, `/etc/sudoers` et chaque fichier sous `/etc/sudoers.d/`, une directive non commentée `Defaults ... ignore_dot`. Comme `sudo` fusionne sa politique à partir du fichier principal et de tous les drop-ins, parcourir toute l'arborescence reflète la politique **effective** plutôt qu'un seul fichier qu'un drop-in ultérieur pourrait écraser."
+  },
+  "verify": {
+    "en": "Run `sudo grep -rE '^[^#]*Defaults.*ignore_dot' /etc/sudoers /etc/sudoers.d/`. A matching, uncommented line confirms the option is active (and not negated by `!ignore_dot`).",
+    "fr": "Exécutez `sudo grep -rE '^[^#]*Defaults.*ignore_dot' /etc/sudoers /etc/sudoers.d/`. Une ligne correspondante, non commentée, confirme que l'option est active (et non annulée par `!ignore_dot`)."
+  },
+  "logs": {
+    "en": "`sudo` invocations are logged to `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL), and via `journalctl -t sudo`. The logged absolute command path lets you confirm sudo resolved the intended system binary rather than one from the current directory.",
+    "fr": "Les appels à `sudo` sont journalisés dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL), et via `journalctl -t sudo`. Le chemin absolu de la commande journalisé permet de confirmer que sudo a résolu le binaire système attendu et non un binaire du répertoire courant."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan writes a `file` resource at `/etc/sudoers.d/99-Pavois-ignore_dot` containing `Defaults ignore_dot`, owned `root:root` with mode `0440`, and validates it with `visudo -cf` before it takes effect. Apply it with `pavois harden apply`. The dedicated drop-in keeps the change isolated and reversible.",
+    "fr": "Le plan de durcissement de Pavois écrit une ressource `file` dans `/etc/sudoers.d/99-Pavois-ignore_dot` contenant `Defaults ignore_dot`, appartenant à `root:root` avec le mode `0440`, et la valide avec `visudo -cf` avant qu'elle ne prenne effet. Appliquez-le avec `pavois harden apply`. Le drop-in dédié isole la modification et la rend réversible."
+  },
+  "impact": {
+    "en": "`ignore_dot` rarely breaks anything, because relying on `.` in `PATH` for `sudo` is itself bad practice. The only affected workflows are ones that deliberately run a binary from the current directory via `sudo`, those should call it by absolute path (`sudo ./tool`) instead. The drop-in is validated by `visudo` before activation, so a syntax error cannot corrupt sudoers or lock you out.",
+    "fr": "`ignore_dot` ne casse que rarement quelque chose, car compter sur `.` dans le `PATH` de `sudo` est déjà une mauvaise pratique. Seuls sont concernés les usages exécutant délibérément un binaire du répertoire courant via `sudo`, ils devraient l'appeler par chemin absolu (`sudo ./outil`). Le drop-in est validé par `visudo` avant activation : une erreur de syntaxe ne peut donc pas corrompre sudoers ni vous verrouiller."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

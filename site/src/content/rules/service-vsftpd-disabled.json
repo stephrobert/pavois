@@ -1,0 +1,83 @@
+{
+  "id": "service-vsftpd-disabled",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "systemd services",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "2.1.6",
+    "nist": [
+      "CM-7(a)",
+      "CM-7(b)",
+      "CM-6(a)"
+    ]
+  },
+  "check": [
+    "describe service('vsftpd.service') do",
+    "  it { should_not be_enabled }",
+    "  it { should_not be_running }",
+    "end"
+  ],
+  "remediation": {
+    "action": [
+      "disable",
+      "stop"
+    ],
+    "name": "vsftpd",
+    "resource": "service"
+  },
+  "title": {
+    "en": "Disable vsftpd Service",
+    "fr": "Desactiver le service vsftpd"
+  },
+  "summary": {
+    "en": "Ensures the FTP server `vsftpd.service` is **disabled** and **not running** so the host does not expose a cleartext FTP service.",
+    "fr": "Garantit que le serveur FTP `vsftpd.service` est **desactive** et **arrete** afin que l'hote n'expose pas un service FTP en clair."
+  },
+  "rationale": {
+    "en": "Running an **FTP server** (`vsftpd`) opens a network-based avenue of attack and should be disabled when not explicitly required. Plain **FTP transmits credentials and data in cleartext**, risking interception and credential theft, and the listener itself is an additional service to patch and harden. Under the principle of least functionality, hosts that do not need to serve files over FTP should not run vsftpd; use SFTP/HTTPS where file transfer is needed.",
+    "fr": "Executer un **serveur FTP** (`vsftpd`) ouvre une voie d'attaque reseau et doit etre desactive lorsqu'il n'est pas explicitement requis. Le **FTP en clair transmet identifiants et donnees sans chiffrement**, exposant a l'interception et au vol d'identifiants, et le service lui-meme constitue un demon supplementaire a corriger et durcir. Conformement au principe de moindre fonctionnalite, les hotes qui n'ont pas besoin de servir des fichiers en FTP ne doivent pas executer vsftpd ; utilisez SFTP/HTTPS lorsque le transfert de fichiers est necessaire."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective unit state** via `service('vsftpd.service')` (`systemctl is-enabled` / `is-active`), accounting for drop-in overrides and socket activation. This catches a vsftpd listener that is actually enabled/running even if `/etc/vsftpd.conf` looks dormant, the running state, not the config file, is what exposes the network.",
+    "fr": "Pavois lit l'**etat effectif de l'unite** via `service('vsftpd.service')` (`systemctl is-enabled` / `is-active`), en tenant compte des surcharges drop-in et de l'activation par socket. Cela detecte un service vsftpd reellement active/en cours meme si `/etc/vsftpd.conf` semble dormant, c'est l'etat d'execution, et non le fichier de configuration, qui expose le reseau."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled vsftpd.service` (expect `disabled`/`masked`/not found) and `systemctl is-active vsftpd.service` (expect `inactive`). Confirm nothing is listening on TCP/21 with `ss -lntp | grep ':21'` (expected: no output).",
+    "fr": "Executez `systemctl is-enabled vsftpd.service` (attendu `disabled`/`masked`/introuvable) et `systemctl is-active vsftpd.service` (attendu `inactive`). Confirmez que rien n'ecoute sur TCP/21 avec `ss -lntp | grep ':21'` (attendu : aucune sortie)."
+  },
+  "logs": {
+    "en": "Unit transitions and connection activity are in `journalctl -u vsftpd.service`; vsftpd transfer/login logs default to `/var/log/vsftpd.log` (and auth attempts to `/var/log/auth.log`). Confirm the listener is gone with `ss -lntp | grep ':21'`.",
+    "fr": "Les transitions d'unite et l'activite des connexions sont dans `journalctl -u vsftpd.service` ; les logs de transfert/connexion de vsftpd sont par defaut dans `/var/log/vsftpd.log` (et les tentatives d'authentification dans `/var/log/auth.log`). Confirmez la disparition du service avec `ss -lntp | grep ':21'`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the **service** resource named `vsftpd`: it runs `disable` and `stop` so the FTP server does not start at boot and is stopped now. It is applied with `pavois harden apply`. If FTP is not needed at all, also remove the `vsftpd` package to eliminate the binary and its socket entirely.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource **service** nommee `vsftpd` : il execute `disable` et `stop` pour que le serveur FTP ne demarre pas au boot et soit arrete maintenant. Il s'applique avec `pavois harden apply`. Si FTP n'est pas du tout necessaire, supprimez aussi le paquet `vsftpd` pour eliminer entierement le binaire et son socket."
+  },
+  "impact": {
+    "en": "Disabling vsftpd breaks any workflow that depends on this host serving files over FTP (legacy uploads, appliance integrations, anonymous file drops). **Precautions:** inventory clients hitting TCP/21 before disabling; migrate them to **SFTP** (over the existing SSH service) or HTTPS; and if FTP is genuinely required, keep it only with FTPS/TLS, restrict it to the necessary network segment, and firewall the data/control ports.",
+    "fr": "Desactiver vsftpd casse tout flux qui depend de cet hote pour servir des fichiers en FTP (televersements anciens, integrations d'equipements, depots anonymes). **Precautions :** inventoriez les clients utilisant TCP/21 avant de desactiver ; migrez-les vers **SFTP** (via le service SSH existant) ou HTTPS ; et si FTP est reellement requis, ne le conservez qu'avec FTPS/TLS, restreignez-le au segment reseau necessaire et filtrez les ports de donnees/controle."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

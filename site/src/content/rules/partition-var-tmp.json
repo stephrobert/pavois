@@ -1,0 +1,75 @@
+{
+  "id": "partition-var-tmp",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {
+    "bp28": "R28",
+    "cis": "1.1.2.5.1"
+  },
+  "check": [
+    "describe mount('/var/tmp') do",
+    "  it { should be_mounted }",
+    "end"
+  ],
+  "remediation": {
+    "command": "# /var/tmp should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /var/tmp >/dev/null 2>&1 && echo '/var/tmp is already a mount point' || echo '/var/tmp is NOT separate'\n# Then: dedicate an LVM volume / disk to /var/tmp and add it to /etc/fstab.\n# /var/tmp can instead be a tmpfs, add:  tmpfs /var/tmp tmpfs defaults,rw,nosuid,nodev,noexec 0 0\n",
+    "reason": "a separate /var/tmp filesystem needs partitioning/LVM/tmpfs, not a safe runtime change",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Ensure /var/tmp Located On Separate Partition",
+    "fr": "Placer /var/tmp sur une partition distincte"
+  },
+  "summary": {
+    "en": "Mounts `/var/tmp` on a **dedicated filesystem** so restrictive options (`noexec`, `nosuid`, `nodev`) can protect this world-writable temp area.",
+    "fr": "Monte `/var/tmp` sur un **système de fichiers dédié** afin que des options restrictives (`noexec`, `nosuid`, `nodev`) protègent cette zone temporaire accessible en écriture à tous."
+  },
+  "rationale": {
+    "en": "`/var/tmp` is world-writable temporary storage used by many programs and a classic place for an attacker to drop and run a payload. A dedicated partition lets you apply hardening mount options, **`nodev`**, **`nosuid`** and especially **`noexec`**, that block device nodes, setuid escalation and execution of files staged there, while also stopping temp-file growth from filling the root filesystem.",
+    "fr": "`/var/tmp` est un stockage temporaire accessible en écriture à tous, utilisé par de nombreux programmes et lieu classique où un attaquant dépose et exécute une charge utile. Une partition dédiée permet d'appliquer des options de montage de durcissement, **`nodev`**, **`nosuid`** et surtout **`noexec`**, qui bloquent les nœuds de périphériques, l'escalade setuid et l'exécution de fichiers déposés là, tout en empêchant la croissance des fichiers temporaires de saturer le système de fichiers racine."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective** mount table via the `mount('/var/tmp')` resource (`findmnt` / `/proc/self/mountinfo`), not `/etc/fstab`. `fstab` describes intent only, a mount can fail at boot or be overridden (e.g. by a systemd `.mount` unit or a `tmpfs`). Reading the live kernel state confirms `/var/tmp` is **really** a separate mounted filesystem now.",
+    "fr": "Pavois vérifie la table de montage **effective** via la ressource `mount('/var/tmp')` (`findmnt` / `/proc/self/mountinfo`), et non `/etc/fstab`. `fstab` ne décrit qu'une intention, un montage peut échouer au démarrage ou être surchargé (par ex. par une unité systemd `.mount` ou un `tmpfs`). Lire l'état réel du noyau confirme que `/var/tmp` est **réellement** un système de fichiers monté séparément à l'instant T."
+  },
+  "verify": {
+    "en": "Run `findmnt /var/tmp`. A returned line confirms a dedicated filesystem; empty output means it shares `/var` or `/`, and the rule fails. Review the options column for `noexec,nosuid,nodev`.",
+    "fr": "Exécutez `findmnt /var/tmp`. Une ligne renvoyée confirme un système de fichiers dédié ; une sortie vide signifie qu'il partage `/var` ou `/`, et la règle échoue. Vérifiez la colonne des options pour `noexec,nosuid,nodev`."
+  },
+  "logs": {
+    "en": "Confirm with `findmnt /var/tmp` and `df -h /var/tmp`. Boot-time mount issues appear in `journalctl -b | grep -i var-tmp` and `systemctl status var-tmp.mount`.",
+    "fr": "Confirmez avec `findmnt /var/tmp` et `df -h /var/tmp`. Les problèmes de montage au démarrage apparaissent dans `journalctl -b | grep -i var-tmp` et `systemctl status var-tmp.mount`."
+  },
+  "remediation_note": {
+    "en": "There is **no automated harden plan**: this requires repartitioning, which is not safe on a live system. Apply it **manually**, ideally at install time, by allocating a dedicated partition or LVM volume for `/var/tmp` (or a `tmpfs`) and declaring it in `/etc/fstab` with `noexec,nosuid,nodev`.",
+    "fr": "Il n'existe **aucun plan de durcissement automatisé** : cela nécessite un repartitionnement, peu sûr sur un système en fonctionnement. Appliquez-la **manuellement**, idéalement à l'installation, en allouant une partition ou un volume LVM dédié à `/var/tmp` (ou un `tmpfs`) et en le déclarant dans `/etc/fstab` avec `noexec,nosuid,nodev`."
+  },
+  "impact": {
+    "en": "Leaving `/var/tmp` on root forfeits `noexec`/`nosuid` protection and lets temp-file growth threaten the root filesystem. **Precautions before applying:** some installers and packages execute scripts from `/var/tmp`, so `noexec` can break certain upgrades or third-party setup tooling, test first. Migrate with the system quiesced, copy with `rsync -aHAX` preserving the **sticky bit** (`chmod 1777 /var/tmp`), and keep console/rescue access in case the new mount fails at boot.",
+    "fr": "Laisser `/var/tmp` sur la racine sacrifie la protection `noexec`/`nosuid` et laisse la croissance des fichiers temporaires menacer le système de fichiers racine. **Précautions avant application :** certains installateurs et paquets exécutent des scripts depuis `/var/tmp`, donc `noexec` peut casser certaines mises à jour ou outils de configuration tiers, testez d'abord. Migrez le système au repos, copiez avec `rsync -aHAX` en préservant le **sticky bit** (`chmod 1777 /var/tmp`) et conservez un accès console/secours au cas où le nouveau montage échouerait au démarrage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

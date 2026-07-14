@@ -1,0 +1,81 @@
+{
+  "id": "pam-remember-unix-remember",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (password history)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R31",
+    "cis": "8.3.7",
+    "nist": [
+      "3.5.8",
+      "IA-5(1)(e)",
+      "IA-5(f)"
+    ],
+    "pci-dss": "8.3.7"
+  },
+  "check": [
+    "describe command('v=$(grep -RhoE \\'remember[[:space:]]*=[[:space:]]*[0-9]+\\' /etc/pam.d/ /etc/security/pwhistory.conf 2>/dev/null | grep -oE \\'[0-9]+\\' | sort -n | tail -1); { [ -n \"$v\" ] && [ \"$v\" -ge 2 ] && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "# Either enable pam_pwhistory (preferred, see pam-remember-pwhistory-remember) OR add 'remember=5'\n# to the pam_unix.so line in /etc/pam.d/common-password via pam-auth-update.\n",
+    "reason": "prefer pam_pwhistory for history; if using pam_unix remember, set it deliberately",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Limit Password Reuse",
+    "fr": "Limiter la réutilisation des mots de passe"
+  },
+  "summary": {
+    "en": "Requires a password history depth of at least **2** (`remember>=2`) so users cannot immediately reset a password back to its previous value.",
+    "fr": "Exige une profondeur d'historique des mots de passe d'au moins **2** (`remember>=2`) afin que les utilisateurs ne puissent pas immédiatement redéfinir un mot de passe sur sa valeur précédente."
+  },
+  "rationale": {
+    "en": "Preventing reuse of previous passwords helps ensure that a compromised password is not reinstated by a user. Even a minimal history (2) stops the classic trick of changing a password and immediately changing it back to satisfy expiry while keeping the old secret. Note this is a baseline floor; deeper history (e.g. 24, per CIS) is stronger.",
+    "fr": "Empêcher la réutilisation d'anciens mots de passe garantit qu'un mot de passe compromis n'est pas réinstauré par un utilisateur. Même un historique minimal (2) empêche l'astuce classique consistant à changer un mot de passe puis à le remettre aussitôt pour satisfaire l'expiration tout en conservant l'ancien secret. À noter qu'il s'agit d'un plancher de base ; un historique plus profond (par ex. 24, selon CIS) est plus robuste."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** value by scanning both `/etc/pam.d/` and `/etc/security/pwhistory.conf` for every `remember=N`, keeping the **highest** N and requiring it to be at least 2. Evaluating the resolved configuration (PAM line plus pwhistory.conf default) reflects what is actually enforced, which a single-file read could misrepresent if one source overrides the other.",
+    "fr": "Pavois lit la valeur **effective** en parcourant à la fois `/etc/pam.d/` et `/etc/security/pwhistory.conf` pour chaque `remember=N`, en gardant le N le plus **élevé** et en exigeant au moins 2. Évaluer la configuration résolue (ligne PAM plus valeur par défaut de pwhistory.conf) reflète ce qui est réellement appliqué, ce qu'une lecture mono-fichier pourrait fausser si une source en remplace une autre."
+  },
+  "verify": {
+    "en": "Run `grep -rhoE 'remember=[0-9]+' /etc/pam.d/ /etc/security/pwhistory.conf` and confirm the effective (highest) value is `>= 2`. Functionally, change a password then try to set it straight back to the previous value, it should be rejected.",
+    "fr": "Exécutez `grep -rhoE 'remember=[0-9]+' /etc/pam.d/ /etc/security/pwhistory.conf` et vérifiez que la valeur effective (la plus élevée) est `>= 2`. Fonctionnellement, changez un mot de passe puis essayez de le remettre directement à la valeur précédente, cela doit être rejeté."
+  },
+  "logs": {
+    "en": "Reuse rejections are logged in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL). The retained hashes are stored in `/etc/security/opasswd`.",
+    "fr": "Les rejets pour réutilisation sont consignés dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL). Les condensats conservés sont stockés dans `/etc/security/opasswd`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is wired for this rule, so it must be applied **manually**: add `remember=N` (>= 2, ideally 24) to the `pam_unix.so` or `pam_pwhistory.so` line in the password stack, or set `remember = N` in `/etc/security/pwhistory.conf`, then regenerate PAM (`pam-auth-update` / `authselect`).",
+    "fr": "Aucune remédiation automatisée n'est câblée pour cette règle, elle doit donc être appliquée **manuellement** : ajoutez `remember=N` (>= 2, idéalement 24) à la ligne `pam_unix.so` ou `pam_pwhistory.so` de la pile password, ou définissez `remember = N` dans `/etc/security/pwhistory.conf`, puis régénérez PAM (`pam-auth-update` / `authselect`)."
+  },
+  "impact": {
+    "en": "Setting a small history depth only affects password changes and cannot lock out a running session. The main caveat is making sure the option lands on a module that actually stores history (`pam_pwhistory.so`, or `pam_unix.so` with the right setup) so the value is honored. **Precautions:** keep a root session open while editing PAM and test `passwd` on a throwaway account before enforcing.",
+    "fr": "Définir une faible profondeur d'historique n'affecte que les changements de mot de passe et ne peut pas verrouiller une session en cours. La principale réserve est de s'assurer que l'option figure sur un module qui stocke réellement l'historique (`pam_pwhistory.so`, ou `pam_unix.so` correctement configuré) pour que la valeur soit prise en compte. **Précautions :** gardez une session root ouverte pendant l'édition de PAM et testez `passwd` sur un compte jetable avant application."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,63 @@
+{
+  "id": "pkg-prelink-removed",
+  "supported_os": [
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "1.5.4"
+  },
+  "check": [
+    "describe package('prelink') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "prelink",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Package \"prelink\" Must not be Installed",
+    "fr": "Le paquet « prelink » ne doit pas être installé"
+  },
+  "summary": {
+    "en": "Ensures the `prelink` package is **not** installed, so file-integrity checking stays reliable.",
+    "fr": "Garantit que le paquet `prelink` n'est **pas** installé, afin que le contrôle d'intégrité des fichiers reste fiable."
+  },
+  "rationale": {
+    "en": "**prelink** rewrites ELF binaries and shared libraries to speed up dynamic linking, but doing so **changes the on-disk hashes** of those files. This breaks file-integrity tools like **AIDE** (and any checksum-based detection), masking unauthorized modifications. Prelinking can also amplify the damage of a vulnerability in a common library such as `libc`. Modern systems gain little from it, so the package should be removed.",
+    "fr": "**prelink** réécrit les binaires ELF et les bibliothèques partagées pour accélérer l'édition de liens dynamique, mais ce faisant il **modifie les empreintes sur disque** de ces fichiers. Cela casse les outils de contrôle d'intégrité comme **AIDE** (et toute détection fondée sur des sommes de contrôle), masquant des modifications non autorisées. Le prelinking peut aussi amplifier les dégâts d'une vulnérabilité dans une bibliothèque courante comme `libc`. Les systèmes modernes en tirent peu d'avantage : le paquet doit donc être supprimé."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective** package state with `package('prelink')` and expects it absent (`should_not be_installed`), resolved through `dpkg-query`. This is more reliable than scanning config files: it confirms the binary truly is not present, regardless of leftover `/etc/prelink.conf.d` fragments.",
+    "fr": "Pavois vérifie l'état **effectif** du paquet avec `package('prelink')` et l'attend absent (`should_not be_installed`), résolu via `dpkg-query`. C'est plus fiable que l'analyse de fichiers de configuration : cela confirme que le binaire est réellement absent, indépendamment d'éventuels fragments `/etc/prelink.conf.d` résiduels."
+  },
+  "verify": {
+    "en": "Run `dpkg-query -W -f='${Status}\\n' prelink`. Expected: a non-zero exit with `no packages found matching prelink` (or `unknown ok not-installed`). The command should not report `install ok installed`.",
+    "fr": "Exécutez `dpkg-query -W -f='${Status}\\n' prelink`. Attendu : un code de sortie non nul avec `no packages found matching prelink` (ou `unknown ok not-installed`). La commande ne doit pas indiquer `install ok installed`."
+  },
+  "logs": {
+    "en": "Package removal is recorded in `/var/log/dpkg.log` (`grep prelink /var/log/dpkg.log`). After removal, AIDE runs (`aide --check`) should stop reporting spurious binary-hash changes.",
+    "fr": "La suppression du paquet est enregistrée dans `/var/log/dpkg.log` (`grep prelink /var/log/dpkg.log`). Après suppression, les vérifications AIDE (`aide --check`) devraient cesser de signaler de fausses modifications d'empreintes de binaires."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan removes the `prelink` package via the **package** resource (`action: remove`). It is applied with `pavois harden apply`. Best practice is to undo existing prelinking first with `prelink -ua` before the package is removed so binaries return to their normal state; after removal, rebaseline AIDE.",
+    "fr": "Le plan de durcissement de Pavois supprime le paquet `prelink` via la ressource **package** (`action: remove`). Il s'applique avec `pavois harden apply`. La bonne pratique consiste à annuler d'abord le prelinking existant avec `prelink -ua` avant de retirer le paquet, afin que les binaires reviennent à leur état normal ; après la suppression, recréez la base AIDE."
+  },
+  "impact": {
+    "en": "Removing `prelink` is low-risk on modern systems and improves integrity monitoring. The main caveat is binary state: if prelinking was already applied, removing the package without first running `prelink -ua` leaves binaries in a prelinked-but-unmanaged state. - Run `prelink -ua` before removal to restore original binaries. - Regenerate the AIDE database (`aide --init`) afterward so the new baseline reflects the un-prelinked files.",
+    "fr": "Supprimer `prelink` présente un risque faible sur les systèmes modernes et améliore la surveillance d'intégrité. La principale réserve concerne l'état des binaires : si le prelinking était déjà appliqué, retirer le paquet sans exécuter `prelink -ua` au préalable laisse les binaires dans un état prelinké mais non géré. - Exécutez `prelink -ua` avant la suppression pour restaurer les binaires d'origine. - Régénérez ensuite la base AIDE (`aide --init`) pour que la nouvelle référence reflète les fichiers non prelinkés."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

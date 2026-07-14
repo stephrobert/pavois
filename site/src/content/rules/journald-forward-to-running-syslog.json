@@ -1,0 +1,70 @@
+{
+  "id": "journald-forward-to-running-syslog",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "high",
+  "domain": "Hardening (posture)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "only_if { (service('rsyslog').running? || service('syslog-ng').running?) && !command('grep -rqsE \\'^[[:space:]]*(module\\\\(load=\"imjournal\"|\\\\$ModLoad[[:space:]]+imjournal)\\' /etc/rsyslog.conf /etc/rsyslog.d/ 2>/dev/null').exit_status.zero? }",
+    "describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE \"^[[:space:]]*ForwardToSyslog[[:space:]]*=\" | tail -1 | grep -qiE \"=[[:space:]]*(no|false|0)\" && echo ko || echo ok') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "mkdir -p /etc/systemd/journald.conf.d && printf '[Journal]\\nForwardToSyslog=yes\\n' > /etc/systemd/journald.conf.d/99-pavois-forward.conf && rm -f /etc/systemd/journald.conf.d/99-pavois.conf && systemctl restart systemd-journald 2>/dev/null; systemctl restart rsyslog 2>/dev/null; true",
+    "name": "journald-forward-to-running-syslog",
+    "not_if": "! test -e /etc/systemd/journald.conf.d/99-pavois.conf && ! systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE \"^[[:space:]]*ForwardToSyslog[[:space:]]*=\" | tail -1 | grep -qiE \"=[[:space:]]*(no|false|0)\"",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "journald forwards to the syslog daemon that is actually running",
+    "fr": "journald transmet au démon syslog qui tourne réellement"
+  },
+  "summary": {
+    "en": "If a syslog daemon is **running**, journald must forward to it (`ForwardToSyslog=yes`). This **pavois-native** control asserts the other half of the CIS requirement: the norms demand that a syslog daemon be installed and enabled, but nothing checks that it still **receives** anything. A host where rsyslog is `active (running)` and `/var/log/syslog` has not gained a line since boot is compliant on paper and blind in practice.",
+    "fr": "Si un démon syslog **tourne**, journald doit lui transmettre (`ForwardToSyslog=yes`). Ce contrôle **natif pavois** affirme l'autre moitié de l'exigence CIS : les normes demandent qu'un démon syslog soit installé et actif, mais rien ne vérifie qu'il **reçoit** encore quelque chose. Un hôte où rsyslog est `active (running)` et où `/var/log/syslog` n'a pas gagné une ligne depuis le démarrage est conforme sur le papier et aveugle en pratique."
+  },
+  "check_note": {
+    "en": "Two layers. An `only_if` **scopes** the control to the transport that actually depends on forwarding: it runs when `rsyslog` or `syslog-ng` is running **and** rsyslog does not load the `imjournal` module (the Debian and Ubuntu default is `imuxsock` alone, so without forwarding rsyslog receives nothing). Where rsyslog reads the journal directly through `imjournal` (the RHEL and Fedora default), forwarding is redundant and the control is **skipped**, not failed. The check then reads the **effective** value with `systemd-analyze cat-config systemd/journald.conf`, keeping the last `ForwardToSyslog=` line: that merges the vendor file, `/etc/systemd/journald.conf` and every drop-in, so a `no` reintroduced downstream is caught. Grepping the main file alone would miss exactly that.",
+    "fr": "Deux couches. Un `only_if` **cadre** le contrôle sur le transport qui dépend réellement de la transmission : il s'exécute quand `rsyslog` ou `syslog-ng` tourne **et** que rsyslog ne charge pas le module `imjournal` (le défaut Debian et Ubuntu est `imuxsock` seul, donc sans transmission rsyslog ne reçoit rien). Là où rsyslog lit le journal directement via `imjournal` (le défaut RHEL et Fedora), la transmission est redondante et le contrôle est **sauté**, pas mis en échec. Le contrôle lit ensuite la valeur **effective** avec `systemd-analyze cat-config systemd/journald.conf`, en retenant la dernière ligne `ForwardToSyslog=` : cette commande fusionne le fichier fournisseur, `/etc/systemd/journald.conf` et tous les drop-ins, si bien qu'un `no` réintroduit en aval est détecté. Lire le seul fichier principal manquerait précisément cela."
+  },
+  "verify": {
+    "en": "Read the resolved value, then prove the pipe end to end:\n\n```\nsystemd-analyze cat-config systemd/journald.conf | grep -i '^ForwardToSyslog'\nlogger -t pavois-test 'forwarding check'\ntail -n 5 /var/log/syslog        # /var/log/messages on RHEL\n```\n\nThe test line must appear in the file within seconds. That end-to-end check, not the config value, is what the incident behind this control would have caught.",
+    "fr": "Lisez la valeur résolue, puis prouvez la chaîne de bout en bout :\n\n```\nsystemd-analyze cat-config systemd/journald.conf | grep -i '^ForwardToSyslog'\nlogger -t pavois-test 'forwarding check'\ntail -n 5 /var/log/syslog        # /var/log/messages sur RHEL\n```\n\nLa ligne de test doit apparaître dans le fichier en quelques secondes. C'est cette vérification de bout en bout, et non la valeur de configuration, qui aurait rattrapé l'incident à l'origine de ce contrôle."
+  },
+  "logs": {
+    "en": "The tell-tale is the **freshness** of the file-based logs: compare `stat -c %y /var/log/syslog` (or `/var/log/messages`) with the machine's uptime. An mtime frozen at boot time, on a host whose `systemctl status rsyslog` is green, is the exact fingerprint of broken forwarding. `journalctl -u systemd-journald` shows the daemon restarting once the drop-in is applied.",
+    "fr": "L'indice est la **fraîcheur** des journaux fichiers : comparez `stat -c %y /var/log/syslog` (ou `/var/log/messages`) avec l'uptime de la machine. Une date de modification figée à l'heure du démarrage, sur un hôte dont `systemctl status rsyslog` est vert, est l'empreinte exacte d'une transmission cassée. `journalctl -u systemd-journald` montre le démon redémarrer une fois le drop-in appliqué."
+  },
+  "remediation_note": {
+    "en": "Pavois writes a **dedicated** drop-in `/etc/systemd/journald.conf.d/99-pavois-forward.conf` containing only:\n\n```ini\n[Journal]\nForwardToSyslog=yes\n```\n\nIt then removes the legacy aggregated drop-in `99-pavois.conf` that used to pin `ForwardToSyslog=no`, and restarts `systemd-journald` and `rsyslog`. The one-setting-per-drop-in shape is the whole point: it is what stops another journald control from silently clobbering this one on the next `confkit harden apply`.",
+    "fr": "Pavois écrit un drop-in **dédié** `/etc/systemd/journald.conf.d/99-pavois-forward.conf` ne contenant que :\n\n```ini\n[Journal]\nForwardToSyslog=yes\n```\n\nIl supprime ensuite l'ancien drop-in agrégé `99-pavois.conf` qui figeait `ForwardToSyslog=no`, puis redémarre `systemd-journald` et `rsyslog`. La forme un réglage par drop-in est tout l'enjeu : c'est elle qui empêche un autre contrôle journald d'écraser silencieusement celui-ci au prochain `confkit harden apply`."
+  },
+  "impact": {
+    "en": "This control was born from a pavois bug: three journald controls wrote the **same aggregated file**, whose content pinned `ForwardToSyslog=no`. rsyslog stayed `active (running)`, `/var/log/syslog` had not received a single line since boot, and every control was green, while the entire chain that reads log **files** (SIEM shipping, logrotate, post-incident forensics) was dead. Enabling forwarding stores each message twice (in the journal and in the syslog files), so it roughly doubles log disk usage: pair it with `growth-journal-bounded` and `growth-logrotate-active` so neither store can grow without a bound. On RHEL and Fedora with `imjournal`, the control is skipped and nothing changes.",
+    "fr": "Ce contrôle est né d'un bug de pavois : trois contrôles journald écrivaient le **même fichier agrégé**, dont le contenu figeait `ForwardToSyslog=no`. rsyslog restait `active (running)`, `/var/log/syslog` n'avait pas reçu une seule ligne depuis le démarrage, et tous les contrôles étaient verts, alors que toute la chaîne qui lit les **fichiers** de log (expédition vers un SIEM, logrotate, analyse post-incident) était morte. Activer la transmission stocke chaque message deux fois (dans le journal et dans les fichiers syslog) et double donc à peu près l'occupation disque des logs : associez-la à `growth-journal-bounded` et `growth-logrotate-active` pour qu'aucun des deux stockages ne croisse sans borne. Sur RHEL et Fedora avec `imjournal`, le contrôle est sauté et rien ne change."
+  },
+  "datePublished": "2026-07-14",
+  "dateModified": "2026-07-14"
+}

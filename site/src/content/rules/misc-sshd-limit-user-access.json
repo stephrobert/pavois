@@ -1,0 +1,85 @@
+{
+  "id": "misc-sshd-limit-user-access",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (misc)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "2.2.6",
+      "5.1.4",
+      "5.1.7",
+      "5.1.6"
+    ],
+    "nist": [
+      "3.1.12",
+      "AC-3",
+      "CM-6(a)"
+    ],
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "describe command('sshd -T 2>/dev/null | grep -qiE \\'^(allowusers|allowgroups|denyusers|denygroups) .\\' && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "# Decide the allowed users/groups, then add to /etc/ssh/sshd_config.d/ a drop-in, e.g.:\n#   AllowGroups ssh-users\n# and: systemctl reload ssh\n",
+    "reason": "which users/groups may SSH is SITE-SPECIFIC, pavois cannot guess it",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Limit Users' SSH Access",
+    "fr": "Limiter l'accès SSH des utilisateurs"
+  },
+  "summary": {
+    "en": "Requires sshd to define an explicit access list, at least one of `AllowUsers`, `AllowGroups`, `DenyUsers` or `DenyGroups`, so only approved accounts can log in over SSH.",
+    "fr": "Exige que sshd définisse une liste d'accès explicite, au moins l'une de `AllowUsers`, `AllowGroups`, `DenyUsers` ou `DenyGroups`, afin que seuls les comptes approuvés puissent se connecter en SSH."
+  },
+  "rationale": {
+    "en": "By default any local account with a valid password or key can log in over SSH, including service and legacy accounts that should never have remote shell access. Explicitly allow-listing the few accounts (or groups) that need SSH, or deny-listing those that must not, shrinks the remote attack surface and limits the blast radius of a leaked credential, enforcing least privilege at the network entry point.",
+    "fr": "Par défaut, tout compte local disposant d'un mot de passe ou d'une clé valide peut se connecter en SSH, y compris les comptes de service ou hérités qui ne devraient jamais avoir d'accès shell distant. Lister explicitement les quelques comptes (ou groupes) nécessitant SSH, ou interdire ceux qui ne doivent pas l'utiliser, réduit la surface d'attaque distante et limite l'impact d'un identifiant compromis, en appliquant le moindre privilège au point d'entrée réseau."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** sshd configuration with `sshd -T`, which prints the fully resolved directives after parsing `sshd_config`, every `Include` (e.g. `/etc/ssh/sshd_config.d/*.conf`) and any `Match` defaults. A file-based scan of `sshd_config` alone would miss directives placed in drop-ins or matched blocks, producing a false negative; `sshd -T` reflects what the daemon actually enforces.",
+    "fr": "Pavois lit la configuration sshd **effective** avec `sshd -T`, qui affiche les directives entièrement résolues après l'analyse de `sshd_config`, de chaque `Include` (par ex. `/etc/ssh/sshd_config.d/*.conf`) et des valeurs par défaut des blocs `Match`. Un examen basé sur le seul fichier `sshd_config` manquerait les directives placées dans les drop-ins ou les blocs `Match`, donnant un faux négatif ; `sshd -T` reflète ce que le démon applique réellement."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -iE '^(allowusers|allowgroups|denyusers|denygroups) '`. The expected output is at least one such line with a non-empty value, e.g. `allowgroups ssh-users`.",
+    "fr": "Exécutez `sshd -T | grep -iE '^(allowusers|allowgroups|denyusers|denygroups) '`. La sortie attendue est au moins une telle ligne avec une valeur non vide, par ex. `allowgroups ssh-users`."
+  },
+  "logs": {
+    "en": "SSH authentication and access decisions are logged in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL), and via `journalctl -u ssh` / `journalctl -u sshd`. A user blocked by these lists appears as `User <name> ... not allowed because ...` in those logs.",
+    "fr": "Les décisions d'authentification et d'accès SSH sont journalisées dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL), et via `journalctl -u ssh` / `journalctl -u sshd`. Un utilisateur bloqué par ces listes apparaît sous la forme `User <name> ... not allowed because ...` dans ces journaux."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined, so this must be applied **manually**: add an `AllowGroups`/`AllowUsers` (or `DenyGroups`/`DenyUsers`) directive, ideally in a drop-in such as `/etc/ssh/sshd_config.d/10-access.conf`, listing the approved accounts or groups, validate with `sshd -t`, then reload with `systemctl reload ssh`.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini ; cela doit donc être appliqué **manuellement** : ajoutez une directive `AllowGroups`/`AllowUsers` (ou `DenyGroups`/`DenyUsers`), idéalement dans un drop-in tel que `/etc/ssh/sshd_config.d/10-access.conf`, listant les comptes ou groupes approuvés, validez avec `sshd -t`, puis rechargez avec `systemctl reload ssh`."
+  },
+  "impact": {
+    "en": "This is the highest-risk SSH change for **lockout**: an `AllowUsers`/`AllowGroups` list that omits your own account will deny your next login, and `sshd` does not retroactively kill existing sessions. Always include your administrative account/group, validate the config with `sshd -t`, reload (do not stop) sshd, and confirm a new login in a **second session** before closing the first. Service accounts that legitimately use SSH (backups, CI) must be included too.",
+    "fr": "C'est le changement SSH le plus risqué pour un **verrouillage** : une liste `AllowUsers`/`AllowGroups` omettant votre propre compte refusera votre prochaine connexion, et `sshd` ne ferme pas rétroactivement les sessions existantes. Incluez toujours votre compte/groupe d'administration, validez la configuration avec `sshd -t`, rechargez (ne stoppez pas) sshd, et confirmez une nouvelle connexion dans une **seconde session** avant de fermer la première. Les comptes de service utilisant légitimement SSH (sauvegardes, CI) doivent aussi être inclus."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}
