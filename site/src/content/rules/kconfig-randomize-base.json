@@ -1,0 +1,73 @@
+{
+  "id": "kconfig-randomize-base",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel build",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R25"
+  },
+  "check": [
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_RANDOMIZE_BASE=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
+    "  its('stdout') { should match(/^CONFIG_RANDOMIZE_BASE=y$/) }",
+    "end"
+  ],
+  "remediation": {
+    "resource": "kernel_build"
+  },
+  "title": {
+    "en": "Randomize the address of the kernel image (KASLR)",
+    "fr": "Randomiser l'adresse de l'image du noyau (KASLR)"
+  },
+  "summary": {
+    "en": "Requires the kernel to be built with **`CONFIG_RANDOMIZE_BASE=y`** so the kernel image is loaded at a randomized base address (KASLR).",
+    "fr": "Exige que le noyau soit compilé avec **`CONFIG_RANDOMIZE_BASE=y`** afin que l'image du noyau soit chargée à une adresse de base randomisée (KASLR)."
+  },
+  "rationale": {
+    "en": "An unpredictable kernel address makes it more difficult to succeed with exploits that rely on knowledge of the location of kernel code internals. Without **KASLR** (`CONFIG_RANDOMIZE_BASE`), the kernel is mapped at a fixed, well-known virtual address, so any information leak immediately hands an attacker reliable targets for **ROP/return-to-kernel** payloads and turns a memory-corruption bug into a dependable privilege-escalation exploit.",
+    "fr": "Une adresse de noyau imprévisible rend plus difficile la réussite des exploits qui reposent sur la connaissance de l'emplacement du code interne du noyau. Sans **KASLR** (`CONFIG_RANDOMIZE_BASE`), le noyau est mappé à une adresse virtuelle fixe et bien connue : la moindre fuite d'information fournit immédiatement à un attaquant des cibles fiables pour des charges **ROP / return-to-kernel**, transformant un bug de corruption mémoire en exploit d'élévation de privilèges fiable."
+  },
+  "check_note": {
+    "en": "Pavois reads the build options of the **running** kernel, `grep '^CONFIG_RANDOMIZE_BASE=' /boot/config-$(uname -r)` or `zcat /proc/config.gz`, and requires the value `y`. Inspecting the live kernel's own config (keyed on `uname -r`) is more reliable than guessing from a package name or a generic config file: it reflects exactly the kernel that is booted, including vendor or custom builds.",
+    "fr": "Pavois lit les options de compilation du noyau **en cours d'exécution**, `grep '^CONFIG_RANDOMIZE_BASE=' /boot/config-$(uname -r)` ou `zcat /proc/config.gz`, et exige la valeur `y`. Inspecter la configuration du noyau réellement démarré (indexée sur `uname -r`) est plus fiable que de deviner à partir d'un nom de paquet ou d'un fichier générique : cela reflète exactement le noyau démarré, y compris les compilations éditeur ou personnalisées."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_RANDOMIZE_BASE=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep CONFIG_RANDOMIZE_BASE`). Expected output:\n\n```\nCONFIG_RANDOMIZE_BASE=y\n```\n\nYou can also confirm KASLR is active at runtime: the kernel base in `/proc/kallsyms` differs across reboots (requires root to read non-zeroed addresses).",
+    "fr": "Exécutez `grep '^CONFIG_RANDOMIZE_BASE=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep CONFIG_RANDOMIZE_BASE`). Sortie attendue :\n\n```\nCONFIG_RANDOMIZE_BASE=y\n```\n\nVous pouvez aussi confirmer que KASLR est actif à l'exécution : la base du noyau dans `/proc/kallsyms` change d'un redémarrage à l'autre (nécessite root pour lire les adresses non masquées)."
+  },
+  "logs": {
+    "en": "There is no dedicated log entry. Confirm the setting via `grep CONFIG_RANDOMIZE_BASE /boot/config-$(uname -r)` and check the boot command line with `cat /proc/cmdline`, the presence of `nokaslr` there disables KASLR even when compiled in.",
+    "fr": "Il n'y a pas d'entrée de journal dédiée. Confirmez le réglage via `grep CONFIG_RANDOMIZE_BASE /boot/config-$(uname -r)` et vérifiez la ligne de commande de démarrage avec `cat /proc/cmdline`, la présence de `nokaslr` y désactive KASLR même si l'option est compilée."
+  },
+  "remediation_note": {
+    "en": "This is a **kernel build-time option**, so Pavois ships no automated harden step for it. It is satisfied by booting a distribution kernel that was compiled with `CONFIG_RANDOMIZE_BASE=y` (the case for all current Debian/Ubuntu/RHEL kernels). To enforce it you must install/boot a compliant kernel and ensure `nokaslr` is absent from the boot parameters; a custom kernel must be rebuilt.",
+    "fr": "Il s'agit d'une **option de compilation du noyau**, Pavois ne fournit donc aucune étape de durcissement automatique. Elle est satisfaite en démarrant un noyau de distribution compilé avec `CONFIG_RANDOMIZE_BASE=y` (le cas de tous les noyaux Debian/Ubuntu/RHEL actuels). Pour l'imposer, installez/démarrez un noyau conforme et assurez-vous que `nokaslr` est absent des paramètres de démarrage ; un noyau personnalisé doit être recompilé."
+  },
+  "impact": {
+    "en": "If absent, the kernel layout is deterministic and any pointer leak becomes a step toward reliable kernel exploitation. **Precautions:** enabling KASLR by switching to a distribution kernel is low-risk, but rare setups break, some out-of-tree drivers, certain hibernation/`kexec` flows, and a few legacy debuggers assume a fixed kernel base. Test a reboot on a non-production host first, and never add `nokaslr` to `/proc/cmdline` to work around such issues without understanding the security cost.",
+    "fr": "En son absence, l'agencement du noyau est déterministe et toute fuite de pointeur devient un pas vers une exploitation fiable du noyau. **Précautions :** activer KASLR en passant à un noyau de distribution présente un faible risque, mais quelques configurations rares cassent, certains pilotes hors arbre, certains flux d'hibernation/`kexec` et quelques débogueurs anciens supposent une base de noyau fixe. Testez d'abord un redémarrage sur un hôte hors production, et n'ajoutez jamais `nokaslr` à `/proc/cmdline` pour contourner ces problèmes sans en mesurer le coût en sécurité."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

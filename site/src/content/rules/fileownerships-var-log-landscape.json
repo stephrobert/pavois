@@ -1,0 +1,67 @@
+{
+  "id": "fileownerships-var-log-landscape",
+  "supported_os": [
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.2.2.1",
+      "6.1.4.1"
+    ]
+  },
+  "check": [
+    "only_if { file('/var/log/landscape').exist? }",
+    "describe file('/var/log/landscape') do",
+    "  its('owner') { should eq 'root' }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/var/log/landscape",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Ownership of Files in /var/log/landscape",
+    "fr": "Vérifier la propriété des fichiers dans /var/log/landscape"
+  },
+  "summary": {
+    "en": "Ensures the landscape-client log directory `/var/log/landscape` is owned by **root**.",
+    "fr": "Garantit que le répertoire de journaux du landscape-client `/var/log/landscape` appartient à **root**."
+  },
+  "rationale": {
+    "en": "The `/var/log/landscape` directory holds logs from the landscape-client (Canonical's systems-management agent), which records administrative and management actions performed on the host. These logs can expose operational details and form an audit trail. If a non-root user owns this directory, they can read it for reconnaissance or alter it to hide management activity. Keeping it owned by **root** restricts access to authorized personnel.",
+    "fr": "Le répertoire `/var/log/landscape` contient les journaux du landscape-client (l'agent de gestion de systèmes de Canonical), qui enregistre les actions d'administration et de gestion effectuées sur l'hôte. Ces journaux peuvent exposer des détails opérationnels et constituent une piste d'audit. Si un utilisateur non-root possède ce répertoire, il peut le lire à des fins de reconnaissance ou l'altérer pour masquer l'activité de gestion. Le conserver sous la propriété de **root** en restreint l'accès au personnel autorisé."
+  },
+  "check_note": {
+    "en": "Pavois asserts that the live directory `/var/log/landscape` has owner `root`, skipped via `only_if` when the directory does not exist (landscape-client not installed). It reads the **effective** owner from the filesystem (`stat`), so any out-of-band ownership change is caught regardless of deployment manifests.",
+    "fr": "Pavois vérifie que le répertoire réel `/var/log/landscape` a pour propriétaire `root`, ignoré via `only_if` lorsque le répertoire n'existe pas (landscape-client non installé). Il lit le propriétaire **effectif** depuis le système de fichiers (`stat`), de sorte que tout changement de propriété hors-canal est détecté indépendamment des manifestes de déploiement."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U' /var/log/landscape`. Expected output: `root`. To include the contents, run `find /var/log/landscape -not -user root`, it should print nothing.",
+    "fr": "Exécutez `stat -c '%U' /var/log/landscape`. Sortie attendue : `root`. Pour inclure le contenu, exécutez `find /var/log/landscape -not -user root`, il ne doit rien afficher."
+  },
+  "logs": {
+    "en": "The directory itself holds the landscape-client logs you may want to inspect. Ownership has no separate log; query it with `stat /var/log/landscape`. If the path is watched by auditd, ownership changes appear in `/var/log/audit/audit.log`.",
+    "fr": "Le répertoire contient lui-même les journaux du landscape-client que vous pourriez vouloir examiner. La propriété n'a pas de journal distinct ; interrogez-la avec `stat /var/log/landscape`. Si le chemin est surveillé par auditd, les changements de propriété apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the **file** resource to set the **owner** of `/var/log/landscape` to **root**. Apply it with `pavois harden apply`; Pavois will `chown` the directory back to root if it has drifted. (Apply `-R` manually if existing files inside also need correcting.)",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource **file** pour définir le **propriétaire** de `/var/log/landscape` sur **root**. Appliquez-le avec `pavois harden apply` ; Pavois effectuera un `chown` du répertoire vers root s'il a dérivé. (Appliquez `-R` manuellement si les fichiers existants à l'intérieur doivent aussi être corrigés.)"
+  },
+  "impact": {
+    "en": "A non-root owner can read management logs (reconnaissance) or tamper with the activity record. Restoring root ownership is safe, landscape-client runs with elevated privileges and is unaffected. **Precaution:** keep permissions restrictive (root-only or `root:adm` per policy); the harden plan only sets the owner, so review group/mode separately if your baseline requires it.",
+    "fr": "Un propriétaire non-root peut lire les journaux de gestion (reconnaissance) ou falsifier le registre d'activité. Restaurer la propriété root est sans danger, landscape-client s'exécute avec des privilèges élevés et n'est pas affecté. **Précaution :** maintenez des permissions restrictives (root seul ou `root:adm` selon la politique) ; le plan de durcissement ne définit que le propriétaire, examinez donc le groupe/mode séparément si votre référentiel l'exige."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

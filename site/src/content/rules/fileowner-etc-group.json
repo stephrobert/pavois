@@ -1,0 +1,84 @@
+{
+  "id": "fileowner-etc-group",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R50",
+    "cis": [
+      "2.2.6",
+      "7.1.3"
+    ],
+    "nist": [
+      "AC-6(1)",
+      "CM-6(a)"
+    ],
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "only_if { file('/etc/group').exist? }",
+    "describe file('/etc/group') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/etc/group",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify User Who Owns group File",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier group"
+  },
+  "summary": {
+    "en": "Ensures the `/etc/group` file is owned by the `root` user (UID 0).",
+    "fr": "Garantit que le fichier `/etc/group` appartient à l'utilisateur `root` (UID 0)."
+  },
+  "rationale": {
+    "en": "`/etc/group` defines every group on the system and its membership, which drives **authorization** decisions across the OS. If a non-root user owns it, they could add themselves to privileged groups (e.g. `sudo`, `wheel`, `docker`) and **escalate privileges**, or remove others from groups to cause denial of service. Ownership by `root` is essential to system security.",
+    "fr": "`/etc/group` définit chaque groupe du système et ses membres, ce qui gouverne les décisions d'**autorisation** dans tout le système d'exploitation. Si un utilisateur non root le possède, il pourrait s'ajouter à des groupes privilégiés (par exemple `sudo`, `wheel`, `docker`) et **élever ses privilèges**, ou retirer d'autres utilisateurs de groupes pour provoquer un déni de service. La propriété par `root` est essentielle à la sécurité du système."
+  },
+  "check_note": {
+    "en": "Pavois stats the live inode of `/etc/group` and asserts its **owner is UID 0**. Reading the actual filesystem metadata reflects the **effective** ownership the authentication stack relies on at every login and `id` lookup, not an installer default.",
+    "fr": "Pavois interroge l'inode réel de `/etc/group` et vérifie que son **propriétaire est l'UID 0**. Lire les métadonnées réelles du système de fichiers reflète la propriété **effective** sur laquelle la pile d'authentification s'appuie à chaque connexion et résolution `id`, et non une valeur par défaut de l'installateur."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /etc/group`. The expected output is `root 0`.",
+    "fr": "Exécutez `stat -c '%U %u' /etc/group`. La sortie attendue est `root 0`."
+  },
+  "logs": {
+    "en": "Group changes via `groupadd`/`gpasswd`/`usermod` are logged in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL family). To detect direct edits, set an audit watch: `auditctl -w /etc/group -p wa -k group`, then review `/var/log/audit/audit.log` (grep for `key=\"group\"`).",
+    "fr": "Les modifications de groupes via `groupadd`/`gpasswd`/`usermod` sont consignées dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL). Pour détecter les éditions directes, posez une surveillance audit : `auditctl -w /etc/group -p wa -k group`, puis examinez `/var/log/audit/audit.log` (recherchez `key=\"group\"`)."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so it must be fixed **manually**: run `chown root /etc/group` to restore root ownership.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être corrigée **manuellement** : exécutez `chown root /etc/group` pour rétablir la propriété root."
+  },
+  "impact": {
+    "en": "A non-root owner of `/etc/group` can grant themselves privileged group membership and achieve **privilege escalation**. Fixing it is essentially risk-free: `chown root /etc/group` does not change any group definition, so all logins and group lookups keep working. The change applies immediately; no service restart or reboot is needed.",
+    "fr": "Un propriétaire non root de `/etc/group` peut s'octroyer l'appartenance à des groupes privilégiés et obtenir une **élévation de privilèges**. La correction est pratiquement sans risque : `chown root /etc/group` ne modifie aucune définition de groupe, toutes les connexions et résolutions de groupes continuent de fonctionner. Le changement s'applique immédiatement ; aucun redémarrage de service ni de la machine n'est nécessaire."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

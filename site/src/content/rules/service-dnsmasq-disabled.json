@@ -1,0 +1,81 @@
+{
+  "id": "service-dnsmasq-disabled",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "systemd services",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "2.1.5",
+      "2.1.6"
+    ]
+  },
+  "check": [
+    "describe service('dnsmasq.service') do",
+    "  it { should_not be_enabled }",
+    "  it { should_not be_running }",
+    "end"
+  ],
+  "remediation": {
+    "action": [
+      "disable",
+      "stop"
+    ],
+    "name": "dnsmasq",
+    "resource": "service"
+  },
+  "title": {
+    "en": "Disable dnsmasq Service",
+    "fr": "Désactiver le service dnsmasq"
+  },
+  "summary": {
+    "en": "Ensures the lightweight DNS/DHCP server `dnsmasq.service` is **disabled** and **not running** unless the host is intentionally a caching/forwarding resolver.",
+    "fr": "Garantit que le serveur DNS/DHCP léger `dnsmasq.service` est **désactivé** et **arrêté**, sauf si l'hôte est intentionnellement un résolveur de cache/relais."
+  },
+  "rationale": {
+    "en": "Unless a system is specifically designated to act as a DNS caching, DNS forwarding and/or DHCP server, dnsmasq should be disabled to reduce the potential attack surface and avoid exposing a network-facing resolver.",
+    "fr": "À moins qu'un système ne soit spécifiquement désigné comme serveur de cache DNS, de relais DNS et/ou DHCP, dnsmasq devrait être désactivé pour réduire la surface d'attaque potentielle et éviter d'exposer un résolveur accessible sur le réseau."
+  },
+  "check_note": {
+    "en": "Pavois queries the **resolved unit state** with `systemctl is-enabled` / `is-active` for `dnsmasq.service`. The effective state catches a resolver enabled via a drop-in or socket activation that scanning `/etc/dnsmasq.conf` and `/etc/dnsmasq.d/` files would miss.",
+    "fr": "Pavois interroge l'**état résolu de l'unité** avec `systemctl is-enabled` / `is-active` pour `dnsmasq.service`. L'état effectif détecte un résolveur activé via un drop-in ou une activation socket qu'un scan des fichiers `/etc/dnsmasq.conf` et `/etc/dnsmasq.d/` manquerait."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled dnsmasq.service` (expected `disabled` or `not-found`) and `systemctl is-active dnsmasq.service` (expected `inactive`).",
+    "fr": "Exécutez `systemctl is-enabled dnsmasq.service` (résultat attendu `disabled` ou `not-found`) et `systemctl is-active dnsmasq.service` (résultat attendu `inactive`)."
+  },
+  "logs": {
+    "en": "Check `systemctl show dnsmasq.service` (fields `UnitFileState`, `ActiveState`) and `journalctl -u dnsmasq.service`; query/lease activity also appears in `/var/log/syslog`.",
+    "fr": "Vérifiez `systemctl show dnsmasq.service` (champs `UnitFileState`, `ActiveState`) et `journalctl -u dnsmasq.service` ; l'activité de requêtes/baux apparaît aussi dans `/var/log/syslog`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan applies a `service` resource for `dnsmasq` with actions **disable** and **stop**, so the resolver stays off across reboots and is stopped immediately. Apply it with `pavois harden apply`.",
+    "fr": "Le plan harden de Pavois applique une ressource `service` sur `dnsmasq` avec les actions **disable** et **stop**, de sorte que le résolveur reste éteint après les redémarrages et soit arrêté immédiatement. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "On hosts not acting as a DNS/DHCP server, disabling `dnsmasq.service` has **no functional impact**. **Precaution:** some setups (libvirt/NetworkManager local DNS, container DNS) rely on dnsmasq, if so, name resolution or VM networking could break; verify nothing depends on it (e.g. `/etc/resolv.conf` pointing at `127.0.0.1`) before applying.",
+    "fr": "Sur les hôtes ne jouant pas le rôle de serveur DNS/DHCP, désactiver `dnsmasq.service` n'a **aucun impact fonctionnel**. **Précaution :** certaines configurations (DNS local libvirt/NetworkManager, DNS de conteneurs) reposent sur dnsmasq, dans ce cas, la résolution de noms ou le réseau des VM pourrait casser ; vérifiez qu'aucun service n'en dépend (p. ex. `/etc/resolv.conf` pointant vers `127.0.0.1`) avant d'appliquer."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

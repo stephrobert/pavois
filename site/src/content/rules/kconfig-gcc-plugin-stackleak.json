@@ -1,0 +1,71 @@
+{
+  "id": "kconfig-gcc-plugin-stackleak",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel build",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R21"
+  },
+  "check": [
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_GCC_PLUGIN_STACKLEAK=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
+    "  its('stdout') { should match(/^CONFIG_GCC_PLUGIN_STACKLEAK=y$/) }",
+    "end"
+  ],
+  "remediation": {
+    "resource": "kernel_build"
+  },
+  "title": {
+    "en": "Poison kernel stack before returning from syscalls",
+    "fr": "Effacer la pile noyau avant le retour des appels système"
+  },
+  "summary": {
+    "en": "Requires the kernel to be built with `CONFIG_GCC_PLUGIN_STACKLEAK=y`, a GCC plugin that erases (poisons) the kernel stack on return from each syscall.",
+    "fr": "Exige que le noyau soit compilé avec `CONFIG_GCC_PLUGIN_STACKLEAK=y`, un plugin GCC qui efface (empoisonne) la pile noyau au retour de chaque appel système."
+  },
+  "rationale": {
+    "en": "This blocks most uninitialized stack variable attacks, with the performance impact being driven by the depth of the stack usage, rather than the function calling complexity.",
+    "fr": "Cela bloque la plupart des attaques par variables de pile non initialisées, l'impact sur les performances dépendant de la profondeur d'utilisation de la pile plutôt que de la complexité des appels de fonctions."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** build flag of the running kernel via `/boot/config-$(uname -r)` or `/proc/config.gz`, keyed on `$(uname -r)`, so it reflects the booted image rather than a stray `.config` a fixed-path file scan might match.",
+    "fr": "Pavois lit le drapeau de compilation **effectif** du noyau en cours d'exécution via `/boot/config-$(uname -r)` ou `/proc/config.gz`, indexé sur `$(uname -r)` : il reflète l'image démarrée plutôt qu'un `.config` égaré qu'un scan à chemin fixe pourrait capter."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_GCC_PLUGIN_STACKLEAK=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep '^CONFIG_GCC_PLUGIN_STACKLEAK='`). Expected output: `CONFIG_GCC_PLUGIN_STACKLEAK=y`. Absent or `# ... is not set` is a failure. When active, `/proc/sys/kernel/stack_erasing` exists and reads `1`.",
+    "fr": "Exécutez `grep '^CONFIG_GCC_PLUGIN_STACKLEAK=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep '^CONFIG_GCC_PLUGIN_STACKLEAK='`). Sortie attendue : `CONFIG_GCC_PLUGIN_STACKLEAK=y`. Absente ou `# ... is not set` est un échec. Lorsqu'il est actif, `/proc/sys/kernel/stack_erasing` existe et vaut `1`."
+  },
+  "logs": {
+    "en": "STACKLEAK reports detected stack-depth overflows to the ring buffer: `dmesg | grep -i stackleak` or `journalctl -k`. Runtime state is exposed at `/proc/sys/kernel/stack_erasing`. Confirm the build flag with `zcat /proc/config.gz | grep STACKLEAK`.",
+    "fr": "STACKLEAK signale les débordements de profondeur de pile détectés dans le ring buffer : `dmesg | grep -i stackleak` ou `journalctl -k`. L'état à l'exécution est exposé dans `/proc/sys/kernel/stack_erasing`. Confirmez le drapeau de compilation avec `zcat /proc/config.gz | grep STACKLEAK`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped: a kernel build option cannot be set by editing a file. Apply it **manually** by installing and booting a kernel compiled with `CONFIG_GCC_PLUGIN_STACKLEAK=y`.",
+    "fr": "Aucune remédiation automatisée n'est fournie : une option de compilation du noyau ne se règle pas en éditant un fichier. Appliquez-la **manuellement** en installant et démarrant un noyau compilé avec `CONFIG_GCC_PLUGIN_STACKLEAK=y`."
+  },
+  "impact": {
+    "en": "When a syscall returns, the kernel stack it used still holds **leftover data**, pointers, secrets, canaries. A later syscall whose code reads an **uninitialized local variable** can disclose that stale data to userspace (an info leak that defeats ASLR/KASLR) or be steered to use attacker-influenced leftovers. The STACKLEAK plugin overwrites the used portion of the stack with a poison value before returning to userspace, eliminating both the info-leak and the stale-data reuse class. It also detects stack-depth overflows. Without it, uninitialized-stack-variable attacks remain viable. This is a **build-time** option needing GCC plugin support, set only by booting a kernel compiled with it. **Precautions:** there is a runtime cost proportional to stack depth (usually a few percent); switching to a hardened kernel changes module ABI, so validate driver loading and benchmark latency-sensitive workloads off production. No reboot risk beyond a normal kernel swap.",
+    "fr": "Lorsqu'un appel système retourne, la pile noyau qu'il a utilisée contient encore des **données résiduelles**, pointeurs, secrets, canaris. Un appel système ultérieur dont le code lit une **variable locale non initialisée** peut divulguer ces données périmées vers l'espace utilisateur (une fuite d'information qui défait l'ASLR/KASLR) ou être orienté pour réutiliser des restes influencés par l'attaquant. Le plugin STACKLEAK écrase la portion utilisée de la pile avec une valeur d'empoisonnement avant de revenir en espace utilisateur, éliminant à la fois la fuite d'information et la réutilisation de données périmées. Il détecte aussi les débordements de profondeur de pile. Sans lui, les attaques par variables de pile non initialisées restent viables. C'est une option **à la compilation** nécessitant le support des plugins GCC, posée uniquement en démarrant un noyau compilé avec. **Précautions :** il y a un coût à l'exécution proportionnel à la profondeur de pile (généralement quelques pour cent) ; passer à un noyau durci change l'ABI des modules, donc vérifiez le chargement des pilotes et mesurez les charges sensibles à la latence hors production. Aucun risque de redémarrage au-delà d'un échange de noyau classique."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

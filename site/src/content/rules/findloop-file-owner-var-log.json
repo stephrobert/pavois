@@ -1,0 +1,84 @@
+{
+  "id": "findloop-file-owner-var-log",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Filesystem (scan)",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R71",
+    "cis": [
+      "6.1.4.1",
+      "6.2.4.1",
+      "6.2.6.1",
+      "6.2.3.1",
+      "6.2.2.1"
+    ],
+    "pci-dss": "10.3.2",
+    "stig": [
+      "UBTU-22-232120",
+      "UBTU-24-700110"
+    ]
+  },
+  "check": [
+    "describe command('timeout 90 find /var/log -type f ! -user root ! -user syslog ! -user _aide 2>/dev/null') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true",
+    "name": "fix-varlog-ownership",
+    "not_if": "test -z \"$(find /var/log -type f \\( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \\) 2>/dev/null | head -1)\"",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Verify the user owning the /var/log directory",
+    "fr": "Vérifier l'utilisateur propriétaire du répertoire /var/log"
+  },
+  "summary": {
+    "en": "Ensures every file under `/var/log` is owned by the **root** or **syslog** user.",
+    "fr": "Garantit que chaque fichier sous `/var/log` appartient à l'utilisateur **root** ou **syslog**."
+  },
+  "rationale": {
+    "en": "The `/var/log` tree holds system, authentication and audit logs that must only be reachable by authorized personnel. A log file owned by a user other than **root** or **syslog** can be read by that user, exposing error messages, credentials or session data, or rewritten to erase evidence of an attack. Restricting the file owner preserves the confidentiality and integrity of the audit trail.",
+    "fr": "L'arborescence `/var/log` contient les journaux système, d'authentification et d'audit qui ne doivent être accessibles qu'au personnel autorisé. Un fichier de journal appartenant à un utilisateur autre que **root** ou **syslog** peut être lu par cet utilisateur, exposant des messages d'erreur, des identifiants ou des données de session, ou réécrit pour effacer les traces d'une attaque. Restreindre le propriétaire du fichier préserve la confidentialité et l'intégrité de la piste d'audit."
+  },
+  "check_note": {
+    "en": "Pavois runs `find /var/log -type f ! -user root ! -user syslog` and expects **empty output**. Auditing the live filesystem catches logs created at runtime by daemons, rotated files and operator-dropped files that a static file-list or package check would miss.",
+    "fr": "Pavois lance `find /var/log -type f ! -user root ! -user syslog` et attend une **sortie vide**. Auditer le système de fichiers réel détecte les journaux créés à l'exécution par les démons, les fichiers après rotation et les fichiers déposés manuellement qu'une liste statique ou une vérification de paquet manquerait."
+  },
+  "verify": {
+    "en": "Run the scan manually:\n\n```\nfind /var/log -type f ! -user root ! -user syslog\n```\n\n**Expected output: nothing** (empty). Inspect any printed file with `ls -l <file>`.",
+    "fr": "Lancez l'analyse manuellement :\n\n```\nfind /var/log -type f ! -user root ! -user syslog\n```\n\n**Sortie attendue : rien** (vide). Inspectez tout fichier affiché avec `ls -l <fichier>`."
+  },
+  "logs": {
+    "en": "List offenders and their owner with `find /var/log -type f ! -user root ! -user syslog -printf '%u %p\\n'`. After fixing, confirm with `ls -l /var/log/`. Ownership changes are recorded only if an `auditd` watch on `chown` is configured.",
+    "fr": "Listez les fautifs et leur propriétaire avec `find /var/log -type f ! -user root ! -user syslog -printf '%u %p\\n'`. Après correction, vérifiez avec `ls -l /var/log/`. Les changements de propriétaire ne sont enregistrés que si une surveillance `auditd` sur `chown` est configurée."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied **manually**. Re-own the offending files with `chown root <file>` (or `syslog` where appropriate). On Debian/Ubuntu the related `findloop-file-ownerships-var-log` rule ships an automated fix; this RHEL/Ubuntu-scoped variant intentionally leaves it to the administrator.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être appliquée **manuellement**. Réattribuez les fichiers fautifs avec `chown root <fichier>` (ou `syslog` selon le cas). Sur Debian/Ubuntu, la règle proche `findloop-file-ownerships-var-log` fournit un correctif automatisé ; cette variante RHEL/Ubuntu laisse volontairement la main à l'administrateur."
+  },
+  "impact": {
+    "en": "Risk if left as-is: logs owned by an unprivileged user can leak secrets or be tampered with to hide an intrusion. Before fixing: some services (e.g. a database or web server writing into `/var/log/<service>/`) deliberately own their logs with a dedicated user; forcing `root` can break log rotation or stop the daemon writing. Review the listed files and exclude legitimate service-owned subtrees instead of mass-rewriting.",
+    "fr": "Risque en l'état : des journaux appartenant à un utilisateur non privilégié peuvent fuiter des secrets ou être altérés pour masquer une intrusion. Avant de corriger : certains services (base de données ou serveur web écrivant dans `/var/log/<service>/`) possèdent volontairement leurs journaux avec un utilisateur dédié ; forcer `root` peut casser la rotation ou empêcher le démon d'écrire. Examinez les fichiers listés et excluez les sous-arborescences légitimes appartenant à un service au lieu de tout réécrire."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

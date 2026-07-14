@@ -1,0 +1,86 @@
+{
+  "id": "sudo-remove-no-authenticate",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Sudo",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "5.2.5",
+      "5.2.4"
+    ],
+    "nist": [
+      "IA-11",
+      "CM-6(a)"
+    ],
+    "pci-dss": "2.2.6",
+    "stig": [
+      "UBTU-22-432010",
+      "UBTU-24-300021"
+    ]
+  },
+  "check": [
+    "describe command('grep -rqE \\'^[^#]*!authenticate\\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ko || echo ok') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "grep -rl '!authenticate' /etc/sudoers /etc/sudoers.d/ 2>/dev/null\n# remove the !authenticate directive from each with: visudo  (or visudo -f /etc/sudoers.d/<file>)\n",
+    "reason": "sudoers edits risk lockout, always edit via visudo",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Ensure Users Re-Authenticate for Privilege Escalation - sudo !authenticate",
+    "fr": "S'assurer que les utilisateurs se ré-authentifient pour l'élévation de privilèges - sudo !authenticate"
+  },
+  "summary": {
+    "en": "Ensure no `!authenticate` directive appears in the sudoers policy, so every `sudo` invocation requires the user to re-enter their password.",
+    "fr": "S'assure qu'aucune directive `!authenticate` ne figure dans la politique sudoers, afin que chaque appel à `sudo` exige que l'utilisateur ressaisisse son mot de passe."
+  },
+  "rationale": {
+    "en": "An `!authenticate` (or `NOPASSWD`) rule lets users escalate to root **without re-authenticating**. If their session is left unlocked or hijacked, anyone at the keyboard, or a malicious process in that session, can run privileged commands silently. Requiring re-authentication ensures the person escalating is the legitimate, authorised user, and creates an authentication event for accountability.",
+    "fr": "Une règle `!authenticate` (ou `NOPASSWD`) permet aux utilisateurs d'obtenir les droits root **sans se ré-authentifier**. Si leur session reste déverrouillée ou est détournée, quiconque devant le clavier, ou un processus malveillant dans cette session, peut exécuter des commandes privilégiées en silence. Exiger une ré-authentification garantit que la personne qui élève ses privilèges est bien l'utilisateur légitime et autorisé, et génère un événement d'authentification pour la traçabilité."
+  },
+  "check_note": {
+    "en": "Pavois greps the **active sudoers tree**, `/etc/sudoers` and every file under `/etc/sudoers.d/`, and the rule passes only when **no** uncommented `!authenticate` is found. Because `sudo` merges the main file with all drop-ins, scanning the whole tree catches an exemption hidden in any drop-in, reflecting the **effective** authentication policy rather than one file.",
+    "fr": "Pavois recherche dans l'**arborescence sudoers active**, `/etc/sudoers` et chaque fichier sous `/etc/sudoers.d/`, et la règle ne passe que si **aucune** directive `!authenticate` non commentée n'est trouvée. Comme `sudo` fusionne le fichier principal avec tous les drop-ins, parcourir toute l'arborescence détecte une exemption cachée dans n'importe quel drop-in, reflétant la politique d'authentification **effective** et non un seul fichier."
+  },
+  "verify": {
+    "en": "Run `sudo grep -rE '^[^#]*!authenticate' /etc/sudoers /etc/sudoers.d/`. The expected result is **no output**, any matching line is a policy that bypasses re-authentication and must be removed.",
+    "fr": "Exécutez `sudo grep -rE '^[^#]*!authenticate' /etc/sudoers /etc/sudoers.d/`. Le résultat attendu est **aucune sortie**, toute ligne correspondante est une règle contournant la ré-authentification et doit être supprimée."
+  },
+  "logs": {
+    "en": "`sudo` authentication events are logged to `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL), and via `journalctl -t sudo`. With re-authentication enforced, each escalation produces a password-prompt/authentication record; a `NOPASSWD`/`!authenticate` rule would leave the command logged but with no authentication event.",
+    "fr": "Les événements d'authentification de `sudo` sont journalisés dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL), et via `journalctl -t sudo`. Avec la ré-authentification imposée, chaque élévation produit un enregistrement d'invite/authentification ; une règle `NOPASSWD`/`!authenticate` laisserait la commande journalisée mais sans événement d'authentification."
+  },
+  "remediation_note": {
+    "en": "This rule has **no automated harden plan** in Pavois, so it must be fixed **manually**: locate the offending file with the grep above, then remove or comment the `!authenticate` / `NOPASSWD` directive (edit via `visudo` or `visudo -f /etc/sudoers.d/<file>` so the change is syntax-validated before saving).",
+    "fr": "Cette règle n'a **pas de plan de durcissement automatisé** dans Pavois ; elle doit donc être corrigée **manuellement** : localisez le fichier fautif avec le grep ci-dessus, puis supprimez ou commentez la directive `!authenticate` / `NOPASSWD` (édition via `visudo` ou `visudo -f /etc/sudoers.d/<fichier>` afin que la modification soit validée syntaxiquement avant l'enregistrement)."
+  },
+  "impact": {
+    "en": "Removing `NOPASSWD`/`!authenticate` will require a password for affected commands, which **breaks unattended automation** (cron jobs, CI runners, scripts) that relied on passwordless sudo. **Before applying**, identify those automated callers and move them to a dedicated service account with a tightly scoped, command-specific `NOPASSWD` rule, or to a secrets-aware runner, rather than leaving a blanket exemption for interactive users.",
+    "fr": "Retirer `NOPASSWD`/`!authenticate` exigera un mot de passe pour les commandes concernées, ce qui **casse les automatisations sans surveillance** (tâches cron, runners CI, scripts) reposant sur un sudo sans mot de passe. **Avant d'appliquer**, identifiez ces appelants automatisés et déplacez-les vers un compte de service dédié avec une règle `NOPASSWD` strictement limitée à une commande précise, ou vers un runner gérant les secrets, plutôt que de laisser une exemption globale pour les utilisateurs interactifs."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

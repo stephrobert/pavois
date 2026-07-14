@@ -1,0 +1,83 @@
+{
+  "id": "fileowner-cron-monthly",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "2.2.6",
+      "2.4.1.6"
+    ],
+    "nist": [
+      "AC-6(1)",
+      "CM-6(a)"
+    ],
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "only_if { file('/etc/cron.monthly').exist? }",
+    "describe file('/etc/cron.monthly') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/etc/cron.monthly",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Owner on cron.monthly",
+    "fr": "Vérifier le propriétaire de cron.monthly"
+  },
+  "summary": {
+    "en": "Ensures the monthly cron directory `/etc/cron.monthly` is owned by the **root** user (UID 0).",
+    "fr": "Garantit que le répertoire cron mensuel `/etc/cron.monthly` appartient à l'utilisateur **root** (UID 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/cron.monthly` directory holds scripts that **run automatically every month as root**. If it is not owned by **root**, an unprivileged user could drop or modify a script there and have it executed with root privileges, a classic route to **privilege escalation and persistence**. Restricting ownership to root keeps scheduled execution trustworthy.",
+    "fr": "Le répertoire `/etc/cron.monthly` contient des scripts **exécutés automatiquement chaque mois en tant que root**. S'il n'appartient pas à **root**, un utilisateur non privilégié pourrait y déposer ou modifier un script qui serait alors exécuté avec les privilèges root, une voie classique vers l'**élévation de privilèges et la persistance**. Restreindre la propriété à root garantit la fiabilité de l'exécution planifiée."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** owner of `/etc/cron.monthly` via the InSpec `file` resource and asserts `uid == 0`, only when the directory exists (`only_if`). Inspecting the live inode ownership reflects the real on-disk state and catches drift from package installs or manual changes, instead of an assumed default.",
+    "fr": "Pavois lit le propriétaire **effectif** de `/etc/cron.monthly` via la ressource `file` d'InSpec et vérifie `uid == 0`, uniquement si le répertoire existe (`only_if`). L'inspection de la propriété réelle de l'inode reflète l'état exact sur le disque et détecte une dérive due à des installations de paquets ou des changements manuels, au lieu d'une valeur par défaut supposée."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /etc/cron.monthly`. Expected output: **`root 0`**. Alternatively `ls -ld /etc/cron.monthly` should show `root` in the owner column.",
+    "fr": "Exécutez `stat -c '%U %u' /etc/cron.monthly`. Résultat attendu : **`root 0`**. Sinon, `ls -ld /etc/cron.monthly` doit afficher `root` dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "Ownership has no service log. Confirm the state with `stat -c '%U %u' /etc/cron.monthly`. To trace changes, an auditd watch such as `auditctl -w /etc/cron.monthly -p wa -k cron-dir` records writes/attribute changes in `/var/log/audit/audit.log`; cron execution is logged via `journalctl -u cron` (Debian/Ubuntu) or `journalctl -u crond` (RHEL family).",
+    "fr": "La propriété ne génère aucun journal de service. Vérifiez l'état avec `stat -c '%U %u' /etc/cron.monthly`. Pour tracer les changements, une surveillance auditd telle que `auditctl -w /etc/cron.monthly -p wa -k cron-dir` enregistre les écritures/changements d'attributs dans `/var/log/audit/audit.log` ; l'exécution cron est journalisée via `journalctl -u cron` (Debian/Ubuntu) ou `journalctl -u crond` (famille RHEL)."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied **manually**: run `chown root /etc/cron.monthly` as root to set the owner to **root**.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être appliquée **manuellement** : exécutez `chown root /etc/cron.monthly` en root pour fixer le propriétaire à **root**."
+  },
+  "impact": {
+    "en": "**If misconfigured**, a non-root user could plant a monthly script that runs as root, leading to escalation or persistence.\n\n**Precautions before applying:** `chown root /etc/cron.monthly` is safe and reversible with no service restart. Apply to the directory; if you use `-R`, review existing scripts so you do not re-own files managed by packages.",
+    "fr": "**En cas de mauvaise configuration**, un utilisateur non root pourrait y déposer un script mensuel exécuté en root, menant à une élévation ou une persistance.\n\n**Précautions avant application :** `chown root /etc/cron.monthly` est sûr et réversible, sans redémarrage de service. Appliquez-le au répertoire ; si vous utilisez `-R`, examinez les scripts existants pour ne pas réattribuer des fichiers gérés par des paquets."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

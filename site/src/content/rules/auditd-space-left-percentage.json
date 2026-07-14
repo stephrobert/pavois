@@ -1,0 +1,83 @@
+{
+  "id": "auditd-space-left-percentage",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Audit (auditd daemon)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "pci-dss": "10.5.1",
+    "nist": [
+      "AU-5(1)",
+      "AU-5(2)",
+      "AU-5(4)",
+      "AU-5(b)",
+      "CM-6(a)"
+    ],
+    "stig": [
+      "UBTU-22-653040",
+      "UBTU-24-900960"
+    ]
+  },
+  "check": [
+    "describe command('v=$(grep -iE \\'^[[:space:]]*space_left[[:space:]]*=[[:space:]]*[0-9]+%\\' /etc/audit/auditd.conf 2>/dev/null | grep -oE \\'[0-9]+\\' | tail -1); { [ -n \"$v\" ] && [ \"$v\" -ge 25 ] && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "file": "/etc/audit/auditd.conf",
+    "key": "space_left",
+    "resource": "conf_line",
+    "service": "auditd",
+    "value": "25%"
+  },
+  "title": {
+    "en": "Configure auditd space_left on Low Disk Space",
+    "fr": "Configurer le seuil space_left d'auditd en cas d'espace disque faible"
+  },
+  "summary": {
+    "en": "Sets `space_left_percentage` in `/etc/audit/auditd.conf` to at least `25`, so the low-space warning fires while a quarter of the partition is still free.",
+    "fr": "Définit `space_left_percentage` dans `/etc/audit/auditd.conf` à au moins `25`, afin que l'alerte d'espace faible se déclenche alors qu'un quart de la partition est encore libre."
+  },
+  "rationale": {
+    "en": "`space_left_percentage` sets the threshold at which `space_left_action` is triggered. A threshold that is too low (a tiny percentage) leaves administrators almost no margin to react before the disk is full and auditing stops. Setting it to **25%** gives ample lead time to reclaim space, ship logs off-box or investigate before audit records are lost.",
+    "fr": "`space_left_percentage` fixe le seuil auquel `space_left_action` se déclenche. Un seuil trop bas (un faible pourcentage) ne laisse presque aucune marge aux administrateurs pour réagir avant que le disque ne soit plein et que l'audit ne s'arrête. Le fixer à **25 %** offre un délai suffisant pour récupérer de l'espace, exporter les journaux ou enquêter avant la perte d'enregistrements d'audit."
+  },
+  "check_note": {
+    "en": "Pavois reads the effective `space_left_percentage` value from `/etc/audit/auditd.conf` and requires it to be **25 or greater**. This percentage governs when the running daemon raises the low-space alarm, so the configured value is the meaningful indicator.",
+    "fr": "Pavois lit la valeur effective `space_left_percentage` dans `/etc/audit/auditd.conf` et exige une valeur **supérieure ou égale à 25**. Ce pourcentage gouverne le moment où le démon déclenche l'alarme d'espace faible ; la valeur configurée est donc l'indicateur pertinent."
+  },
+  "verify": {
+    "en": "Run `grep -i '^[[:space:]]*space_left_percentage' /etc/audit/auditd.conf`. Expected output: a line such as `space_left_percentage = 25` with a value of 25 or more.",
+    "fr": "Exécutez `grep -i '^[[:space:]]*space_left_percentage' /etc/audit/auditd.conf`. Sortie attendue : une ligne du type `space_left_percentage = 25` avec une valeur de 25 ou plus."
+  },
+  "logs": {
+    "en": "When the threshold is crossed, auditd records the resulting `space_left_action` via `journalctl -u auditd`; the audit trail itself is in `/var/log/audit/audit.log`.",
+    "fr": "Au franchissement du seuil, auditd enregistre l'action `space_left_action` résultante via `journalctl -u auditd` ; la piste d'audit elle-même se trouve dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied **manually**: set `space_left_percentage = 25` (or higher) in `/etc/audit/auditd.conf` and reload auditd (`service auditd reload`). Note `space_left` can be given as an absolute size or a percentage; this rule expects the percentage form.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit donc être appliquée **manuellement** : définissez `space_left_percentage = 25` (ou plus) dans `/etc/audit/auditd.conf` puis rechargez auditd (`service auditd reload`). Notez que `space_left` peut être exprimé en taille absolue ou en pourcentage ; cette règle attend la forme en pourcentage."
+  },
+  "impact": {
+    "en": "A higher percentage simply makes the warning fire **earlier**, which is harmless and only useful. The setting does nothing unless `space_left_action` is configured to actually notify or act. **Precaution:** none for availability, just ensure `space_left_action` is meaningful (e.g. `email`/`exec`) so the earlier warning reaches someone. Reload auditd to apply the change without interrupting coverage.",
+    "fr": "Un pourcentage plus élevé fait simplement se déclencher l'alerte **plus tôt**, ce qui est inoffensif et seulement utile. Le paramètre n'a aucun effet tant que `space_left_action` n'est pas configuré pour notifier ou agir réellement. **Précaution :** aucune pour la disponibilité, assurez-vous seulement que `space_left_action` est pertinent (par ex. `email`/`exec`) afin que l'alerte anticipée atteigne quelqu'un. Rechargez auditd pour appliquer le changement sans interrompre la couverture."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,90 @@
+{
+  "id": "sysctl-net-ipv4-conf-all-secure_redirects",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R12",
+    "cis": [
+      "1.4.3",
+      "3.3.6",
+      "3.3.1.10"
+    ],
+    "nist": [
+      "3.1.20",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)",
+      "SC-7(a)"
+    ],
+    "pci-dss": "1.4.3"
+  },
+  "check": [
+    "describe kernel_parameter('net.ipv4.conf.all.secure_redirects') do",
+    "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.all.secure_redirects[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
+    "end"
+  ],
+  "remediation": {
+    "key": "net.ipv4.conf.all.secure_redirects",
+    "resource": "sysctl",
+    "value": "0"
+  },
+  "title": {
+    "en": "Disable Kernel Parameter for Accepting Secure ICMP Redirects on all IPv4 Interfaces",
+    "fr": "Desactiver le parametre noyau d'acceptation des redirections ICMP securisees sur toutes les interfaces IPv4"
+  },
+  "summary": {
+    "en": "Forces `net.ipv4.conf.all.secure_redirects` to **0** so the host rejects even \"secure\" ICMP redirects (those from listed default gateways) on every IPv4 interface.",
+    "fr": "Force `net.ipv4.conf.all.secure_redirects` a **0** afin que l'hote rejette meme les redirections ICMP « securisees » (celles des passerelles par defaut repertoriees) sur chaque interface IPv4."
+  },
+  "rationale": {
+    "en": "`secure_redirects` lets the host accept ICMP redirect messages, but only from gateways listed in its default-gateway list. Even this restricted form rewrites the routing table on the basis of unauthenticated ICMP packets. A spoofed redirect from (or appearing to come from) a known gateway can divert traffic through an attacker-controlled hop, enabling a man-in-the-middle. Legitimate uses are rare, so it should be disabled (**0**) unless absolutely required.",
+    "fr": "`secure_redirects` permet a l'hote d'accepter des messages de redirection ICMP, mais uniquement depuis les passerelles figurant dans sa liste de passerelles par defaut. Meme cette forme restreinte reecrit la table de routage sur la base de paquets ICMP non authentifies. Une redirection usurpee provenant (ou semblant provenir) d'une passerelle connue peut detourner le trafic via un saut controle par un attaquant, permettant un homme du milieu. Les usages legitimes sont rares ; il convient donc de la desactiver (**0**) sauf necessite absolue."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.all.secure_redirects` from the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not a `/etc/sysctl.d/` file. A drop-in could declare `0` while a later file or a runtime `sysctl -w` re-enabled it. Auditing the effective parameter shows what the kernel actually applies to incoming ICMP redirects; reading a file misses such overrides.",
+    "fr": "Pavois lit la **valeur d'execution en direct** de `net.ipv4.conf.all.secure_redirects` depuis le noyau (ressource InSpec `kernel_parameter`, equivalente a `sysctl`), et non un fichier `/etc/sysctl.d/`. Un drop-in pourrait declarer `0` alors qu'un fichier ulterieur ou un `sysctl -w` a l'execution l'a reactive. Auditer le parametre effectif montre ce que le noyau applique reellement aux redirections ICMP entrantes ; lire un fichier rate ces surcharges."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.conf.all.secure_redirects`. Expected output:\n\n- `net.ipv4.conf.all.secure_redirects = 0`",
+    "fr": "Executez `sysctl net.ipv4.conf.all.secure_redirects`. Sortie attendue :\n\n- `net.ipv4.conf.all.secure_redirects = 0`"
+  },
+  "logs": {
+    "en": "No dedicated log exists for this tunable. With `log_martians` enabled, anomalous redirect-related packets surface via `dmesg | grep -i martian` and `journalctl -k`. Inspect the state with `sysctl net.ipv4.conf.all.secure_redirects` and all redirect settings with `sysctl -a | grep redirects`.",
+    "fr": "Aucun journal dedie n'existe pour ce parametre. Avec `log_martians` active, les paquets anormaux lies aux redirections apparaissent via `dmesg | grep -i martian` et `journalctl -k`. Inspectez l'etat avec `sysctl net.ipv4.conf.all.secure_redirects` et tous les reglages de redirection avec `sysctl -a | grep redirects`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv4.conf.all.secure_redirects` to **0**, applying it to the running kernel and persisting it in a Pavois-managed drop-in under `/etc/sysctl.d/` so it survives reboot. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour definir `net.ipv4.conf.all.secure_redirects` a **0**, en l'appliquant au noyau en cours d'execution et en le persistant dans un drop-in gere par Pavois sous `/etc/sysctl.d/` afin qu'il survive au redemarrage. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Disabling secure redirects is safe on end hosts and ordinary servers; modern networks rely on routing protocols, not ICMP redirects, to converge. The rare exception is a host that deliberately depends on its gateway sending redirects to optimise paths. Note that `shared_media`, if enabled, can implicitly re-enable secure redirects, keep both aligned (see `net.ipv4.conf.all.shared_media`). There is no risk to remote access from setting this to **0**.",
+    "fr": "Desactiver les redirections securisees est sur sur les hotes terminaux et les serveurs ordinaires ; les reseaux modernes s'appuient sur des protocoles de routage, et non sur les redirections ICMP, pour converger. L'exception rare est un hote qui depend volontairement de sa passerelle envoyant des redirections pour optimiser les chemins. A noter que `shared_media`, s'il est active, peut reactiver implicitement les redirections securisees, gardez les deux alignes (voir `net.ipv4.conf.all.shared_media`). Definir cette valeur a **0** ne presente aucun risque pour l'acces distant."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

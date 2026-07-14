@@ -1,0 +1,74 @@
+{
+  "id": "sysctl-net-ipv4-ip_local_port_range",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {
+    "bp28": "R12"
+  },
+  "check": [
+    "describe kernel_parameter('net.ipv4.ip_local_port_range') do",
+    "  its('value') { should match(/32768\\s+65535/) }",
+    "end"
+  ],
+  "remediation": {
+    "key": "net.ipv4.ip_local_port_range",
+    "resource": "sysctl",
+    "value": "32768 65535"
+  },
+  "title": {
+    "en": "Set Kernel Parameter to Increase Local Port Range",
+    "fr": "Définir le paramètre noyau pour élargir la plage de ports locaux"
+  },
+  "summary": {
+    "en": "Sets the ephemeral source-port range to **`32768 65535`** via `net.ipv4.ip_local_port_range`, keeping outbound ports away from privileged and service ports.",
+    "fr": "Définit la plage de ports source éphémères à **`32768 65535`** via `net.ipv4.ip_local_port_range`, en éloignant les ports sortants des ports privilégiés et de services."
+  },
+  "rationale": {
+    "en": "This setting defines the ephemeral port range used by TCP and UDP to choose the local (source) port for outbound connections; the first number is the lowest and the second the highest port. A range starting at **32768** keeps ephemeral ports well clear of the privileged (`<1024`) and registered service ports, avoiding collisions with listening services and providing a larger, less predictable pool of source ports.",
+    "fr": "Ce réglage définit la plage de ports éphémères utilisée par TCP et UDP pour choisir le port local (source) des connexions sortantes ; le premier nombre est le port le plus bas, le second le plus haut. Une plage commençant à **32768** maintient les ports éphémères bien à l'écart des ports privilégiés (`<1024`) et des ports de services enregistrés, évitant les collisions avec les services en écoute et offrant un réservoir de ports source plus large et moins prévisible."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live** value via `kernel_parameter('net.ipv4.ip_local_port_range')`, which returns the running range after all `sysctl.conf` / `/etc/sysctl.d/` drop-ins and runtime overrides are merged. A file scan of `/etc/sysctl.conf` could report a range that a later drop-in or `sysctl -w` has changed.",
+    "fr": "Pavois lit la valeur **effective** via `kernel_parameter('net.ipv4.ip_local_port_range')`, qui renvoie la plage en cours après fusion de tous les drop-ins `sysctl.conf` / `/etc/sysctl.d/` et des surcharges runtime. Un examen de `/etc/sysctl.conf` pourrait rapporter une plage qu'un drop-in ultérieur ou un `sysctl -w` a modifiée."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.ip_local_port_range` and expect `net.ipv4.ip_local_port_range = 32768 65535` (the two values are separated by a tab in the actual output).",
+    "fr": "Exécuter `sysctl net.ipv4.ip_local_port_range` et attendre `net.ipv4.ip_local_port_range = 32768 65535` (les deux valeurs sont séparées par une tabulation dans la sortie réelle)."
+  },
+  "logs": {
+    "en": "Confirm the range with `sysctl net.ipv4.ip_local_port_range`. To see ephemeral ports actually in use, list active sockets with `ss -tan` and observe the local source ports of outbound connections.",
+    "fr": "Confirmer la plage avec `sysctl net.ipv4.ip_local_port_range`. Pour voir les ports éphémères réellement utilisés, lister les sockets actives avec `ss -tan` et observer les ports source locaux des connexions sortantes."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan sets `net.ipv4.ip_local_port_range = 32768 65535` via the **sysctl** resource, persisting it in a Pavois-owned drop-in and applying it live (no reboot). Run it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois positionne `net.ipv4.ip_local_port_range = 32768 65535` via la ressource **sysctl**, en le persistant dans un drop-in géré par Pavois et en l'appliquant à chaud (sans redémarrage). À exécuter avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Low risk. Precaution: a host that opens a **very large number of concurrent outbound connections** (busy proxy, load balancer) benefits from a wide range; this `32768–65535` window gives ~32k ephemeral ports, which is usually plenty but narrower than some tuned setups (e.g. `1024–65535`). Also ensure no service is configured to **listen** on a fixed port inside this range, or it could clash with an ephemeral allocation. Changing the range does not drop existing connections.",
+    "fr": "Risque faible. Précaution : un hôte ouvrant un **très grand nombre de connexions sortantes simultanées** (proxy, répartiteur de charge chargé) tire parti d'une plage large ; cette fenêtre `32768–65535` offre ~32k ports éphémères, généralement suffisant mais plus étroit que certains réglages optimisés (ex. `1024–65535`). Vérifier aussi qu'aucun service n'est configuré pour **écouter** sur un port fixe dans cette plage, sous peine de collision avec une allocation éphémère. Modifier la plage n'interrompt pas les connexions existantes."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

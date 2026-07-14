@@ -1,0 +1,65 @@
+{
+  "id": "logindefs-fail_delay",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (login.defs)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe login_defs do",
+    "  its('FAIL_DELAY') { should cmp >= 4 }",
+    "end"
+  ],
+  "remediation": {
+    "file": "/etc/login.defs",
+    "key": "FAIL_DELAY",
+    "resource": "conf_line",
+    "sep": "space",
+    "value": "4"
+  },
+  "title": {
+    "en": "Ensure the Logon Failure Delay is Set Correctly in login.defs",
+    "fr": "Définir correctement le délai après échec de connexion dans login.defs"
+  },
+  "summary": {
+    "en": "Ensures `FAIL_DELAY` in `/etc/login.defs` is at least **4 seconds**, delaying the prompt after a failed login.",
+    "fr": "Garantit que `FAIL_DELAY` dans `/etc/login.defs` vaut au moins **4 secondes**, retardant l'invite après un échec de connexion."
+  },
+  "rationale": {
+    "en": "Increasing the time between a failed authentication attempt and the next credential prompt slows single-threaded brute-force attacks against console and other login interfaces. A `FAIL_DELAY` of at least **4 seconds** makes exhaustive password guessing impractically slow while remaining unobtrusive for legitimate users.",
+    "fr": "Augmenter le délai entre une tentative d'authentification échouée et l'invite de saisie suivante ralentit les attaques par force brute mono-thread contre la console et les autres interfaces de connexion. Un `FAIL_DELAY` d'au moins **4 secondes** rend le devinage exhaustif de mots de passe d'une lenteur prohibitive tout en restant discret pour les utilisateurs légitimes."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `login_defs` resource to read the **effective resolved value** of `FAIL_DELAY`, parsing `/etc/login.defs` the way the `login` program interprets it (last uncommented setting wins). This reflects the delay actually enforced at login, not just a line that happens to appear in the file.",
+    "fr": "Pavois utilise la ressource InSpec `login_defs` pour lire la **valeur effective résolue** de `FAIL_DELAY`, en analysant `/etc/login.defs` comme le fait le programme `login` (la dernière valeur non commentée l'emporte). Cela reflète le délai réellement appliqué à la connexion, et pas seulement une ligne présente dans le fichier."
+  },
+  "verify": {
+    "en": "- `grep -i '^FAIL_DELAY' /etc/login.defs` should print `FAIL_DELAY 4` (or higher).\n- At a console login, an incorrect password should hold for ~4 s before re-prompting.",
+    "fr": "- `grep -i '^FAIL_DELAY' /etc/login.defs` doit afficher `FAIL_DELAY 4` (ou plus).\n- À une connexion console, un mot de passe incorrect doit marquer une pause d'environ 4 s avant de réinviter."
+  },
+  "logs": {
+    "en": "- `grep -i FAIL_DELAY /etc/login.defs` shows the configured delay.\n- `/var/log/secure` (RHEL) records authentication failures from `login`/PAM.\n- `journalctl _COMM=login` shows console login attempts.",
+    "fr": "- `grep -i FAIL_DELAY /etc/login.defs` montre le délai configuré.\n- `/var/log/secure` (RHEL) enregistre les échecs d'authentification de `login`/PAM.\n- `journalctl _COMM=login` montre les tentatives de connexion console."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied **manually**: set `FAIL_DELAY 4` (or higher) in `/etc/login.defs`. The value takes effect for subsequent console/PAM logins handled by the `login` program.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle, elle doit donc être appliquée **manuellement** : définissez `FAIL_DELAY 4` (ou plus) dans `/etc/login.defs`. La valeur prend effet pour les connexions console/PAM ultérieures gérées par le programme `login`."
+  },
+  "impact": {
+    "en": "Negligible risk. The only effect is a few seconds of delay after a failed console login, which is imperceptible to legitimate users. Note it applies to the `login` program path; SSH and other services enforce their own retry/throttle controls, so this is one layer among several.",
+    "fr": "Risque négligeable. Le seul effet est un délai de quelques secondes après un échec de connexion console, imperceptible pour les utilisateurs légitimes. À noter qu'il s'applique au chemin du programme `login` ; SSH et d'autres services appliquent leurs propres contrôles de nouvelle tentative/limitation, ce n'est donc qu'une couche parmi plusieurs."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

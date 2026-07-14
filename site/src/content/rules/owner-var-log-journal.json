@@ -1,0 +1,79 @@
+{
+  "id": "owner-var-log-journal",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.1.4.1",
+      "6.2.2.1"
+    ]
+  },
+  "check": [
+    "only_if { command('test -d /var/log/journal').exit_status.zero? }",
+    "describe command('find -P /var/log/journal -type f ! -user root 2>/dev/null | head -1') do",
+    "  its('stdout') { should eq '' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "find /var/log/journal -exec chown root:systemd-journal {} + 2>/dev/null || true",
+    "name": "chown-journal",
+    "not_if": "test -z \"$(find /var/log/journal ! -user root 2>/dev/null | head -1)\"",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Verify User Who Owns /var/log/*.journal(~) Files",
+    "fr": "Vérifier l'utilisateur propriétaire des fichiers /var/log/*.journal(~)"
+  },
+  "summary": {
+    "en": "Ensure all persistent journal files under `/var/log/journal` are **owned by root** (group `systemd-journal`).",
+    "fr": "S'assurer que tous les fichiers de journal persistants sous `/var/log/journal` **appartiennent à root** (groupe `systemd-journal`)."
+  },
+  "rationale": {
+    "en": "The `/var/log/*.journal(~)` files are the binary system logs managed by `systemd-journald`. They must be owned by **root** (with group `systemd-journal`) so that no unprivileged user can read or rewrite the journal, tampered or readable journals would let an attacker erase their tracks or harvest sensitive log data.",
+    "fr": "Les fichiers `/var/log/*.journal(~)` sont les journaux système binaires gérés par `systemd-journald`. Ils doivent appartenir à **root** (groupe `systemd-journal`) afin qu'aucun utilisateur non privilégié ne puisse lire ou réécrire le journal, des journaux altérés ou lisibles permettraient à un attaquant d'effacer ses traces ou de récolter des données sensibles."
+  },
+  "check_note": {
+    "en": "Pavois runs `find -P /var/log/journal -type f ! -user root` (only if persistent journaling is enabled) and expects **no output**. It checks the real ownership of the live journal files on disk, catching drift introduced after install, not just packaging defaults.",
+    "fr": "Pavois exécute `find -P /var/log/journal -type f ! -user root` (uniquement si la journalisation persistante est activée) et attend **aucune sortie**. Il vérifie l'appartenance réelle des fichiers de journal présents sur disque, détectant les dérives apparues après l'installation, et non seulement les valeurs par défaut du paquet."
+  },
+  "verify": {
+    "en": "Run `find -P /var/log/journal -type f ! -user root`, it should print **nothing**. You can also confirm ownership with `ls -l /var/log/journal/*/` (expect owner `root`, group `systemd-journal`).",
+    "fr": "Exécutez `find -P /var/log/journal -type f ! -user root`, il ne doit **rien** afficher. Vous pouvez aussi confirmer l'appartenance avec `ls -l /var/log/journal/*/` (propriétaire `root`, groupe `systemd-journal` attendus)."
+  },
+  "logs": {
+    "en": "These files are the journal itself; read it with `journalctl`. Check journald health with `systemctl show systemd-journald` and `journalctl --verify`. List wrongly-owned files via `find -P /var/log/journal -type f ! -user root -printf '%u %p\\n'`.",
+    "fr": "Ces fichiers constituent le journal lui-même ; lisez-le avec `journalctl`. Vérifiez la santé de journald avec `systemctl show systemd-journald` et `journalctl --verify`. Listez les fichiers mal attribués via `find -P /var/log/journal -type f ! -user root -printf '%u %p\\n'`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan runs an `exec` resource named **`chown-journal`** that executes `find /var/log/journal -exec chown root:systemd-journal {} +`, resetting every journal file to owner **root** and group **systemd-journal**. A `not_if` guard skips it when no file already has a wrong group, so it is idempotent. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois lance une ressource `exec` nommée **`chown-journal`** qui exécute `find /var/log/journal -exec chown root:systemd-journal {} +`, réinitialisant chaque fichier de journal au propriétaire **root** et au groupe **systemd-journal**. Une garde `not_if` l'ignore quand aucun fichier n'a déjà un mauvais groupe, ce qui le rend idempotent. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "**What can break:** essentially nothing, `root:systemd-journal` is exactly the ownership `systemd-journald` expects, so it keeps writing normally. Members of the `systemd-journal` group retain read access to the logs. **Precautions:** none significant; the change is idempotent and guarded. On systems with only volatile journaling (`/run/log/journal`), `/var/log/journal` is absent and the rule is skipped (`only_if`).",
+    "fr": "**Ce qui peut casser :** quasiment rien, `root:systemd-journal` est exactement l'appartenance attendue par `systemd-journald`, qui continue d'écrire normalement. Les membres du groupe `systemd-journal` conservent l'accès en lecture aux journaux. **Précautions :** aucune notable ; la modification est idempotente et gardée. Sur les systèmes à journalisation uniquement volatile (`/run/log/journal`), `/var/log/journal` est absent et la règle est ignorée (`only_if`)."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

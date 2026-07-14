@@ -8,7 +8,10 @@ export function getStaticPaths() {
 }
 const { lang } = Astro.params as { lang: Lang };
 const t = ui[lang];
-const md = (s: string): string => renderMarkdown(s).html;
+const INTERNAL = 'docs|handbook|rules|standards|glossary|blog|start|installation|audit|downloads';
+// without { lang }, a root-relative link written in the prose (/docs/cli/) stays unprefixed
+// and 404s: the site has no page outside /en/ and /fr/.
+const md = (s: string): string => renderMarkdown(s, { lang, internal: INTERNAL }).html;
 
 type Sec = { id: string; t: { en: string; fr: string }; b: { en: string; fr: string } };
 const sections: Sec[] = [
@@ -80,8 +83,8 @@ const sections: Sec[] = [
     id: 'api',
     t: { en: 'JSON API', fr: 'API JSON' },
     b: {
-      en: "Pavois exposes its reference as JSON, the consumable contract:\n\n```sh\npavois norms --pretty                 # the standard catalogue (versions, authorities, coverage)\npavois rules --os debian12 --standard cis   # the rule base, filtered\n```\n\nFlags: `--os`, `--standard`, `--domain`, `--pretty`.",
-      fr: "Pavois expose sa référence en JSON, le contrat consommable :\n\n```sh\npavois norms --pretty                 # le catalogue de normes (versions, autorités, couverture)\npavois rules --os debian12 --standard cis   # la base de règles, filtrée\n```\n\nFlags : `--os`, `--standard`, `--domain`, `--pretty`.",
+      en: "Pavois exposes its reference as JSON, the consumable contract:\n\n```sh\npavois norms --pretty                 # the standard catalogue (versions, authorities, coverage)\npavois rules --os debian12 --standard cis   # the rule base, filtered\n```\n\n`pavois rules` takes `--os`, `--standard`, `--domain`, `--pretty`; `pavois norms` takes `--pretty` only. The full reference is [generated from the binary](/docs/cli/).",
+      fr: "Pavois expose sa référence en JSON, le contrat consommable :\n\n```sh\npavois norms --pretty                 # le catalogue de normes (versions, autorités, couverture)\npavois rules --os debian12 --standard cis   # la base de règles, filtrée\n```\n\n`pavois rules` accepte `--os`, `--standard`, `--domain`, `--pretty` ; `pavois norms` n'accepte que `--pretty`. La référence complète est [générée depuis le binaire](/docs/cli/).",
     },
   },
 ];

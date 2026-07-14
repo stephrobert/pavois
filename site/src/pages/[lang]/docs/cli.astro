@@ -1,0 +1,143 @@
+---
+// The CLI reference, GENERATED from the binary (`pavois clidocs` -> site/src/data/cli.json).
+//
+// The hand-written version had drifted exactly like the rule fiches: `render` and `standards` were
+// never documented at all, and one command's flags were attributed to another. A CLI can describe
+// itself, so it does, and this page is a view of that description. Nothing to keep in sync.
+//
+// The command and flag texts are the ones the terminal prints, so they stay in English: they ARE
+// the CLI's output, and translating them would mean the page and the terminal disagree. The page
+// itself is bilingual.
+import Base from '../../../layouts/Base.astro';
+import Toc from '../../../components/Toc.astro';
+import { languages, type Lang } from '../../../i18n/ui';
+import cli from '../../../data/cli.json';
+
+export function getStaticPaths() {
+  return Object.keys(languages).map((lang) => ({ params: { lang } }));
+}
+const { lang } = Astro.params as { lang: Lang };
+const fr = lang === 'fr';
+
+type Flag = { name: string; shorthand?: string; usage: string; default?: string; type: string };
+type Cmd = {
+  name: string;
+  path: string;
+  short: string;
+  long?: string;
+  use: string;
+  examples?: string[];
+  flags?: Flag[];
+  sub?: Cmd[];
+};
+
+const commands: Cmd[] = (cli as unknown as Cmd).sub ?? [];
+const toc = commands.map((c) => ({ depth: 2, slug: c.name, text: `pavois ${c.name}` }));
+const nFlags = commands.reduce(
+  (n, c) => n + (c.flags?.length ?? 0) + (c.sub ?? []).reduce((m, s) => m + (s.flags?.length ?? 0), 0),
+  0
+);
+
+const title = fr ? 'Pavois, référence des commandes' : 'Pavois, command reference';
+const desc = fr
+  ? `Les ${commands.length} commandes de pavois et leurs ${nFlags} options, générées depuis le binaire lui-même : scan, harden, diff, verify, bundle, rules, norms, oscal.`
+  : `The ${commands.length} pavois commands and their ${nFlags} flags, generated from the binary itself: scan, harden, diff, verify, bundle, rules, norms, oscal.`;
+---
+
+<Base
+  title={title}
+  description={desc}
+  lang={lang}
+  schema="CollectionPage"
+  collectionSize={commands.length}
+  breadcrumbs={[
+    { name: 'Pavois', path: `/${lang}/` },
+    { name: 'Docs', path: `/${lang}/docs/` },
+    { name: fr ? 'Commandes' : 'Commands', path: `/${lang}/docs/cli/` },
+  ]}
+>
+  <div class="wrap page-head">
+    <h1>{title}</h1>
+    <p class="lede">{desc}</p>
+    <p class="ev-note">
+      {fr
+        ? 'Cette page est générée depuis le binaire (`pavois clidocs`) : elle ne peut pas être en retard sur lui. Les textes des commandes et des options sont ceux que le terminal affiche.'
+        : 'This page is generated from the binary (`pavois clidocs`), so it cannot fall behind it. The command and flag texts are the ones your terminal prints.'}
+    </p>
+  </div>
+
+  <div class="wrap layout-doc">
+    <div class="doc-col">
+      {
+        commands.map((c) => (
+          <section class="cli-cmd">
+            <h2 id={c.name}>pavois {c.name}</h2>
+            <p class="cli-short">{c.short}</p>
+            <pre class="code cli-use">{`pavois ${c.use}`}</pre>
+
+            {c.long && <p class="cli-long">{c.long}</p>}
+
+            {c.examples && c.examples.length > 0 && (
+              <>
+                <p class="cli-h">{fr ? 'Exemples' : 'Examples'}</p>
+                <pre class="code">{c.examples.join('\n')}</pre>
+              </>
+            )}
+
+            {c.flags && c.flags.length > 0 && (
+              <>
+                <p class="cli-h">{fr ? 'Options' : 'Flags'}</p>
+                <table class="cli-flags">
+                  <tbody>
+                    {c.flags.map((f) => (
+                      <tr>
+                        <td class="f">
+                          {f.shorthand && <span class="sh">-{f.shorthand}, </span>}--{f.name}
+                        </td>
+                        <td class="t">{f.type}</td>
+                        <td class="u">
+                          {f.usage}
+                          {f.default && f.default !== 'false' && f.default !== '[]' && (
+                            <span class="d"> ({fr ? 'défaut' : 'default'} {f.default})</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+
+            {c.sub && c.sub.length > 0 && (
+              <div class="cli-subs">
+                {c.sub.map((s) => (
+                  <div class="cli-sub">
+                    <h3 id={`${c.name}-${s.name}`}>pavois {s.path.replace('pavois ', '')}</h3>
+                    <p class="cli-short">{s.short}</p>
+                    <pre class="code cli-use">{`pavois ${s.path.replace('pavois ', '')} ${s.use.replace(s.name, '').trim()}`}</pre>
+                    {s.flags && s.flags.length > 0 && (
+                      <table class="cli-flags">
+                        <tbody>
+                          {s.flags.map((f) => (
+                            <tr>
+                              <td class="f">
+                                {f.shorthand && <span class="sh">-{f.shorthand}, </span>}--{f.name}
+                              </td>
+                              <td class="t">{f.type}</td>
+                              <td class="u">{f.usage}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        ))
+      }
+    </div>
+    <Toc headings={toc} lang={lang} />
+  </div>
+</Base>

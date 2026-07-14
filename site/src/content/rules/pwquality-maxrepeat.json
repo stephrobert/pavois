@@ -1,0 +1,80 @@
+{
+  "id": "pwquality-maxrepeat",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Passwords (pwquality)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "5.3.3.2.4",
+    "nist": [
+      "CM-6(a)",
+      "IA-5(4)",
+      "IA-5(c)"
+    ]
+  },
+  "check": [
+    "describe command('v=$(grep -rh \\'^[[:space:]]*maxrepeat[[:space:]]*=\\' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ 2>/dev/null | tail -1 | grep -oE \\'[-]?[0-9]+\\'); { [ -n \"$v\" ] && [ \"$v\" -le 3 ] && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "file": "/etc/security/pwquality.conf.d/99-pavois.conf",
+    "key": "maxrepeat",
+    "resource": "keyval",
+    "value": "3"
+  },
+  "title": {
+    "en": "Set Password Maximum Consecutive Repeating Characters",
+    "fr": "Definir le nombre maximal de caracteres identiques consecutifs dans les mots de passe"
+  },
+  "summary": {
+    "en": "Limits how many times the **same character** may repeat in a row in a password by setting `maxrepeat = 3`.",
+    "fr": "Limite le nombre de fois ou un **meme caractere** peut se repeter consecutivement dans un mot de passe en posant `maxrepeat = 3`."
+  },
+  "rationale": {
+    "en": "A complex password increases the time and resources needed to compromise it. The `maxrepeat` parameter rejects passwords with long runs of the **same character** (e.g. `aaaa`, `1111`). Excessive repetition shrinks the effective entropy and creates predictable patterns that password-guessing and rule-based attacks exploit. Capping repeats at **3** preserves randomness and resists such attacks.",
+    "fr": "Un mot de passe complexe augmente le temps et les ressources necessaires pour le compromettre. Le parametre `maxrepeat` rejette les mots de passe comportant de longues suites du **meme caractere** (ex. `aaaa`, `1111`). Une repetition excessive reduit l'entropie effective et cree des motifs previsibles exploites par les attaques par devinette et par regles. Plafonner les repetitions a **3** preserve l'aleatoire et resiste a ces attaques."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** `maxrepeat` value across `/etc/security/pwquality.conf` **and** all drop-ins under `/etc/security/pwquality.conf.d/`, keeping the **last** definition that wins at runtime. A file-based scanner reading only the main config would miss a value set in a drop-in. The control passes only when the resolved value is `<= 3` (and non-zero, since `0` disables the check).",
+    "fr": "Pavois lit la valeur **effective** de `maxrepeat` a travers `/etc/security/pwquality.conf` **et** tous les drop-ins sous `/etc/security/pwquality.conf.d/`, en conservant la **derniere** definition qui l'emporte a l'execution. Un scanner base sur les fichiers lisant uniquement la config principale manquerait une valeur posee dans un drop-in. Le controle passe uniquement quand la valeur resolue est `<= 3` (et non nulle, car `0` desactive le controle)."
+  },
+  "verify": {
+    "en": "Run `grep -rh '^[[:space:]]*maxrepeat' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. The effective line must read `maxrepeat = 3` (or any value `1`..`3`).",
+    "fr": "Executez `grep -rh '^[[:space:]]*maxrepeat' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. La ligne effective doit indiquer `maxrepeat = 3` (ou toute valeur `1`..`3`)."
+  },
+  "logs": {
+    "en": "Password changes rejected for too many repeated characters are logged via PAM in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL family) with `pam_pwquality` messages like **\"Too many same consecutive characters\"**. Inspect the live setting with `grep -r maxrepeat /etc/security/pwquality.conf.d/`.",
+    "fr": "Les changements de mot de passe rejetes pour trop de caracteres repetes sont journalises via PAM dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL) avec des messages `pam_pwquality` comme **\"Too many same consecutive characters\"**. Inspectez le reglage actif avec `grep -r maxrepeat /etc/security/pwquality.conf.d/`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` writes `maxrepeat = 3` to the drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via the idempotent `keyval` resource. The `99-` prefix ensures it overrides any earlier value. No service restart is needed; it applies at the next password change.",
+    "fr": "`pavois harden apply` ecrit `maxrepeat = 3` dans le drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via la ressource idempotente `keyval`. Le prefixe `99-` garantit qu'il surcharge toute valeur anterieure. Aucun redemarrage n'est requis ; cela s'applique au prochain changement de mot de passe."
+  },
+  "impact": {
+    "en": "Existing passwords stay valid; only **new** passwords are constrained. Users picking passwords with four or more identical characters in a row will be rejected. Lockout risk is minimal; the main precaution is ensuring automated password generators do not by chance emit long repeat runs (rare). Setting `maxrepeat = 0` would silently disable the check, so verify the value is `1`..`3`.",
+    "fr": "Les mots de passe existants restent valides ; seuls les **nouveaux** mots de passe sont contraints. Les utilisateurs choisissant des mots de passe avec quatre caracteres identiques consecutifs ou plus seront rejetes. Le risque de blocage est minime ; la principale precaution est de s'assurer que les generateurs automatises ne produisent pas par hasard de longues suites repetees (rare). Mettre `maxrepeat = 0` desactiverait silencieusement le controle, verifiez donc que la valeur est `1`..`3`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

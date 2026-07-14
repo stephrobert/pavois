@@ -1,0 +1,77 @@
+{
+  "id": "pkg-talk-removed",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R62",
+    "cis": [
+      "2.2.3",
+      "2.2.4"
+    ],
+    "pci-dss": "2.2.4"
+  },
+  "check": [
+    "describe package('talk') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "talk",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall talk Package",
+    "fr": "Désinstaller le paquet talk"
+  },
+  "summary": {
+    "en": "Ensures the `talk` client package is **not installed**.",
+    "fr": "Garantit que le paquet client `talk` n'est **pas installé**."
+  },
+  "rationale": {
+    "en": "The `talk` client speaks an obsolete, **unencrypted** terminal-chat protocol. Anyone on the network path can read the exchanged text, and the client may be activated accidentally or by an attacker. Removing the package eliminates this exposure and reduces the attack surface.",
+    "fr": "Le client `talk` utilise un protocole de discussion par terminal obsolète et **non chiffré**. Toute personne sur le chemin réseau peut lire le texte échangé, et le client peut être activé par accident ou par un attaquant. La suppression du paquet élimine cette exposition et réduit la surface d'attaque."
+  },
+  "check_note": {
+    "en": "Pavois verifies that the `talk` package is absent from the package database. This package check is authoritative: an installed `talk` binary is a usable attack surface regardless of any config file, so querying the package manager directly is the correct signal.",
+    "fr": "Pavois vérifie que le paquet `talk` est absent de la base de paquets. Cette vérification de paquet fait autorité : un binaire `talk` installé constitue une surface d'attaque exploitable quel que soit le fichier de configuration, donc interroger directement le gestionnaire de paquets est le signal approprié."
+  },
+  "verify": {
+    "en": "On Debian/Ubuntu run `dpkg -s talk` and expect **`package 'talk' is not installed`**; on RHEL-family run `rpm -q talk` and expect **`package talk is not installed`**.",
+    "fr": "Sur Debian/Ubuntu, exécutez `dpkg -s talk` : attendez **`package 'talk' is not installed`** ; sur la famille RHEL, exécutez `rpm -q talk` : attendez **`package talk is not installed`**."
+  },
+  "logs": {
+    "en": "Removal is recorded in the package manager history: `grep talk /var/log/dpkg.log` (Debian/Ubuntu) or `dnf history` / `rpm -q --last talk` (RHEL family).",
+    "fr": "La suppression est enregistrée dans l'historique du gestionnaire de paquets : `grep talk /var/log/dpkg.log` (Debian/Ubuntu) ou `dnf history` / `rpm -q --last talk` (famille RHEL)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares the `talk` **package** resource with action **remove**, so `pavois harden apply` uninstalls it via the system package manager (`apt`/`dnf`).",
+    "fr": "Le plan de durcissement de Pavois déclare la ressource **package** `talk` avec l'action **remove** ; ainsi `pavois harden apply` la désinstalle via le gestionnaire de paquets système (`apt`/`dnf`)."
+  },
+  "impact": {
+    "en": "Keeping `talk` installed leaves an obsolete cleartext chat tool that can leak data or be misused. Removal is low-risk on servers since `talk` is not an operational dependency. **Precaution:** if any user or script still relies on `talk`, migrate them to an encrypted alternative (e.g. an SSH session or a TLS chat) before removing the package.",
+    "fr": "Conserver `talk` laisse un outil de discussion en clair obsolète pouvant fuiter des données ou être détourné. La suppression présente un faible risque sur les serveurs car `talk` n'est pas une dépendance opérationnelle. **Précaution :** si un utilisateur ou un script dépend encore de `talk`, faites-le migrer vers une alternative chiffrée (session SSH ou messagerie TLS) avant de supprimer le paquet."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

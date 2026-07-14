@@ -1,0 +1,78 @@
+{
+  "id": "service-dovecot-disabled",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "systemd services",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "2.1.8"
+  },
+  "check": [
+    "describe service('dovecot.service') do",
+    "  it { should_not be_enabled }",
+    "  it { should_not be_running }",
+    "end"
+  ],
+  "remediation": {
+    "action": [
+      "disable",
+      "stop"
+    ],
+    "name": "dovecot",
+    "resource": "service"
+  },
+  "title": {
+    "en": "Disable Dovecot Service",
+    "fr": "Désactiver le service Dovecot"
+  },
+  "summary": {
+    "en": "Ensures the Dovecot IMAP/POP3 server (`dovecot.service`) is **disabled** and **not running** unless the host is an intentional mail server.",
+    "fr": "Garantit que le serveur IMAP/POP3 Dovecot (`dovecot.service`) est **désactivé** et **arrêté**, sauf si l'hôte est un serveur de messagerie voulu."
+  },
+  "rationale": {
+    "en": "Dovecot exposes an IMAP/POP3 mail-retrieval server on the network, which is a remote avenue of attack. Unless the host is an intended mail server, it should be disabled to shrink the attack surface.",
+    "fr": "Dovecot expose un serveur de récupération de courrier IMAP/POP3 sur le réseau, ce qui constitue une voie d'attaque distante. À moins que l'hôte ne soit un serveur de messagerie voulu, il doit être désactivé pour réduire la surface d'attaque."
+  },
+  "check_note": {
+    "en": "Pavois queries the **resolved unit state** with `systemctl is-enabled` / `is-active` for `dovecot.service`. The effective state catches a server enabled via a drop-in or socket activation that scanning `/etc/dovecot/` config files would miss.",
+    "fr": "Pavois interroge l'**état résolu de l'unité** avec `systemctl is-enabled` / `is-active` pour `dovecot.service`. L'état effectif détecte un serveur activé via un drop-in ou une activation socket qu'un scan des fichiers de `/etc/dovecot/` manquerait."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled dovecot.service` (expected `disabled` or `not-found`) and `systemctl is-active dovecot.service` (expected `inactive`).",
+    "fr": "Exécutez `systemctl is-enabled dovecot.service` (résultat attendu `disabled` ou `not-found`) et `systemctl is-active dovecot.service` (résultat attendu `inactive`)."
+  },
+  "logs": {
+    "en": "Check `systemctl show dovecot.service` (fields `UnitFileState`, `ActiveState`) and `journalctl -u dovecot.service`; mail-access events also appear in `/var/log/mail.log`.",
+    "fr": "Vérifiez `systemctl show dovecot.service` (champs `UnitFileState`, `ActiveState`) et `journalctl -u dovecot.service` ; les événements d'accès au courrier apparaissent aussi dans `/var/log/mail.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan applies a `service` resource for `dovecot` with actions **disable** and **stop**, so the IMAP/POP3 server stays off across reboots and is stopped immediately. Apply it with `pavois harden apply`.",
+    "fr": "Le plan harden de Pavois applique une ressource `service` sur `dovecot` avec les actions **disable** et **stop**, de sorte que le serveur IMAP/POP3 reste éteint après les redémarrages et soit arrêté immédiatement. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "On a host that is not a mail server, disabling `dovecot.service` has **no functional impact**. **Precaution:** if users retrieve mail from this machine over IMAP/POP3, do **not** disable it, their mail clients would lose access; document the exception instead.",
+    "fr": "Sur un hôte qui n'est pas un serveur de messagerie, désactiver `dovecot.service` n'a **aucun impact fonctionnel**. **Précaution :** si des utilisateurs récupèrent leur courrier depuis cette machine via IMAP/POP3, ne la désactivez **pas**, leurs clients de messagerie perdraient l'accès ; documentez plutôt l'exception."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

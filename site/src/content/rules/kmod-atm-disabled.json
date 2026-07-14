@@ -1,0 +1,67 @@
+{
+  "id": "kmod-atm-disabled",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel modules",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "3.2.1"
+  },
+  "check": [
+    "describe kernel_module('atm') do",
+    "  it { should_not be_loaded }",
+    "  it { should be_disabled }",
+    "end"
+  ],
+  "remediation": {
+    "action": "blacklist",
+    "name": "atm",
+    "reboot_required": true,
+    "resource": "kernel_module"
+  },
+  "title": {
+    "en": "Disable ATM Support",
+    "fr": "Désactiver la prise en charge ATM"
+  },
+  "summary": {
+    "en": "Ensures the `atm` kernel module is not loaded and is blacklisted so the unused ATM protocol stack cannot be activated.",
+    "fr": "Garantit que le module noyau `atm` n'est pas chargé et est mis en liste noire afin que la pile du protocole ATM inutilisé ne puisse être activée."
+  },
+  "rationale": {
+    "en": "**ATM** (Asynchronous Transfer Mode) is a legacy WAN protocol almost no modern server uses. Its kernel module adds parsing and socket code to the attack surface; a flaw there could be exploited by local or remote input for privilege escalation or denial of service. Disabling the unused module removes that exposure.",
+    "fr": "**ATM** (Asynchronous Transfer Mode) est un protocole WAN hérité que presque aucun serveur moderne n'utilise. Son module noyau ajoute du code d'analyse et de sockets à la surface d'attaque ; une faille pourrait y être exploitée via une entrée locale ou distante pour une élévation de privilèges ou un déni de service. Désactiver ce module inutilisé supprime cette exposition."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `kernel_module('atm')` resource to assert the module is **not currently loaded** and is **disabled** (blacklisted / pointed to `/bin/false` via modprobe). This queries the **live kernel and effective modprobe configuration** rather than guessing from a single `.conf` file, so it catches a module that is blacklisted but still loaded, or a config that an override re-enables.",
+    "fr": "Pavois utilise la ressource InSpec `kernel_module('atm')` pour vérifier que le module n'est **pas chargé** et qu'il est **désactivé** (mis en liste noire / redirigé vers `/bin/false` via modprobe). Cela interroge le **noyau vivant et la configuration modprobe effective** plutôt que de deviner depuis un seul fichier `.conf`, détectant ainsi un module en liste noire mais encore chargé, ou une config réactivée par un override."
+  },
+  "verify": {
+    "en": "Run `lsmod | grep atm` (no output = not loaded) and `modprobe -n -v atm` (expect `install /bin/true` or `/bin/false`, indicating it cannot load). `modprobe --showconfig | grep atm` shows the effective blacklist/install rules.",
+    "fr": "Exécutez `lsmod | grep atm` (aucune sortie = non chargé) et `modprobe -n -v atm` (attendu : `install /bin/true` ou `/bin/false`, indiquant qu'il ne peut se charger). `modprobe --showconfig | grep atm` affiche les règles blacklist/install effectives."
+  },
+  "logs": {
+    "en": "A blocked load attempt is logged by the kernel: check `dmesg` / `journalctl -k | grep -i atm`. The active module list is `lsmod`; the resolved modprobe policy is `modprobe --showconfig`.",
+    "fr": "Une tentative de chargement bloquée est journalisée par le noyau : consultez `dmesg` / `journalctl -k | grep -i atm`. La liste des modules actifs est `lsmod` ; la politique modprobe résolue est `modprobe --showconfig`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `kernel_module` resource to **blacklist** `atm`: it writes a modprobe rule (`install atm /bin/false` plus a blacklist entry) so the module cannot be auto-loaded, and unloads it if currently loaded. `reboot_required` is true, a reboot guarantees the module is no longer resident.",
+    "fr": "`pavois harden apply` utilise la ressource `kernel_module` pour mettre `atm` en **liste noire** : il écrit une règle modprobe (`install atm /bin/false` plus une entrée blacklist) afin que le module ne puisse être chargé automatiquement, et le décharge s'il est présent. `reboot_required` est vrai, un redémarrage garantit que le module n'est plus résident."
+  },
+  "impact": {
+    "en": "On a normal server, disabling `atm` has **no functional impact**, ATM hardware is virtually unseen. Precaution: only on the rare host using ATM/DSL WAN interfaces would blacklisting break connectivity; confirm no ATM NIC is in use (`ip link`, `lsmod | grep atm`) before applying. A reboot is needed to fully unload an already-loaded module.",
+    "fr": "Sur un serveur normal, désactiver `atm` n'a **aucun impact fonctionnel**, le matériel ATM est quasi inexistant. Précaution : seul un hôte rare utilisant des interfaces WAN ATM/DSL verrait sa connectivité rompue ; confirmez qu'aucune carte ATM n'est utilisée (`ip link`, `lsmod | grep atm`) avant d'appliquer. Un redémarrage est nécessaire pour décharger totalement un module déjà chargé."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

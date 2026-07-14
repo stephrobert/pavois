@@ -1,0 +1,84 @@
+{
+  "id": "fileperm-var-log-lastlog",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.1.4.1",
+      "6.2.2.1"
+    ]
+  },
+  "check": [
+    "only_if { file('/var/log/lastlog').exist? }",
+    "describe file('/var/log/lastlog') do",
+    "  it { should_not be_executable.by('owner') }",
+    "  it { should_not be_setuid }",
+    "  it { should_not be_executable.by('group') }",
+    "  it { should_not be_setgid }",
+    "  it { should_not be_executable.by('other') }",
+    "  it { should_not be_writable.by('other') }",
+    "  it { should_not be_sticky }",
+    "end"
+  ],
+  "remediation": {
+    "mode": "0664",
+    "path": "/var/log/lastlog",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Permissions on /var/log/lastlog(.*) Files",
+    "fr": "Vérifier les permissions des fichiers /var/log/lastlog(.*)"
+  },
+  "summary": {
+    "en": "Ensure `/var/log/lastlog` carries no execute, `setuid`, `setgid` or sticky bit and is not other-writable, so the record of users' last logins cannot be tampered with.",
+    "fr": "Garantit que `/var/log/lastlog` ne porte aucun bit d'exécution, `setuid`, `setgid` ou sticky et n'est pas accessible en écriture aux autres, afin que l'enregistrement des dernières connexions ne puisse être falsifié."
+  },
+  "rationale": {
+    "en": "`/var/log/lastlog` records the **most recent login of every user**. If it is other-writable an attacker can rewrite or wipe their last-login timestamp to **cover their tracks**, and stray execute or `setuid`/`setgid` bits on a pure data file are a sign of tampering or misconfiguration that could be abused. Restricting it keeps the login history trustworthy for forensics and intrusion detection.",
+    "fr": "`/var/log/lastlog` enregistre la **dernière connexion de chaque utilisateur**. S'il est accessible en écriture aux autres, un attaquant peut réécrire ou effacer son horodatage de dernière connexion pour **effacer ses traces** ; des bits d'exécution ou `setuid`/`setgid` parasites sur un simple fichier de données signalent une altération ou une mauvaise configuration exploitable. Le restreindre maintient un historique de connexions fiable pour l'investigation et la détection d'intrusion."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live inode** of `/var/log/lastlog` and asserts the absence of any execute, `setuid`, `setgid` or sticky bit and of other-write. Checking the real filesystem object catches drift left by a manual `chmod`, a restore or a misbehaving tool, what matters is the **effective** mode the kernel enforces, not what a config or package manifest claims.",
+    "fr": "Pavois lit l'**inode réel** de `/var/log/lastlog` et vérifie l'absence de tout bit d'exécution, `setuid`, `setgid` ou sticky et d'écriture pour les autres. Examiner l'objet réel du système de fichiers détecte les dérives laissées par un `chmod` manuel, une restauration ou un outil défaillant, ce qui compte est le mode **effectif** appliqué par le noyau, pas ce qu'un fichier de configuration ou un manifeste de paquet prétend."
+  },
+  "verify": {
+    "en": "Run `stat -c '%A %U:%G' /var/log/lastlog`. Expect something like `-rw-rw-r-- root:utmp` (CIS allows `0664` here) with no `x`, `s`, `S`, `t` or `T`, and no write bit for `other`.",
+    "fr": "Exécutez `stat -c '%A %U:%G' /var/log/lastlog`. Attendez un résultat du type `-rw-rw-r-- root:utmp` (CIS tolère `0664` ici), sans `x`, `s`, `S`, `t` ni `T`, et sans bit d'écriture pour `other`."
+  },
+  "logs": {
+    "en": "The file itself is consumed by `lastlog` and `last`; run `lastlog` to see the records it protects. To watch for tampering, add `auditctl -w /var/log/lastlog -p wa` and review `/var/log/audit/audit.log`. Current state: `ls -l /var/log/lastlog`.",
+    "fr": "Le fichier est consommé par `lastlog` et `last` ; exécutez `lastlog` pour voir les enregistrements protégés. Pour surveiller toute altération, ajoutez `auditctl -w /var/log/lastlog -p wa` et consultez `/var/log/audit/audit.log`. État courant : `ls -l /var/log/lastlog`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule, so it must be applied **manually**: `chown root:utmp /var/log/lastlog` and `chmod ug-x,o-wx,u-s,g-s,-t /var/log/lastlog` (commonly `chmod 0664`).",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle ; elle doit donc être appliquée **manuellement** : `chown root:utmp /var/log/lastlog` et `chmod ug-x,o-wx,u-s,g-s,-t /var/log/lastlog` (généralement `chmod 0664`)."
+  },
+  "impact": {
+    "en": "Leaving the file other-writable lets users forge their login history; an erroneous execute bit could be (ab)used if the file is ever replaced. **Precautions:** `lastlog` is owned by `root:utmp` and must stay **readable by the `utmp` group** so login programs can update it, do not strip group access or change ownership away from `utmp`, or `pam_lastlog`/`login` may fail to record sessions. Removing bits is safe; tightening to `0600` is usually unnecessary and can break session accounting.",
+    "fr": "Laisser le fichier accessible en écriture aux autres permet aux utilisateurs de falsifier leur historique ; un bit d'exécution erroné pourrait être exploité si le fichier était remplacé. **Précautions :** `lastlog` appartient à `root:utmp` et doit rester **lisible par le groupe `utmp`** pour que les programmes de connexion le mettent à jour, ne retirez pas l'accès du groupe et ne changez pas le propriétaire `utmp`, sous peine de voir `pam_lastlog`/`login` échouer à enregistrer les sessions. Retirer des bits est sûr ; durcir jusqu'à `0600` est généralement inutile et peut casser la comptabilité des sessions."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

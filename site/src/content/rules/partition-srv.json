@@ -1,0 +1,74 @@
+{
+  "id": "partition-srv",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {
+    "bp28": "R28"
+  },
+  "check": [
+    "describe mount('/srv') do",
+    "  it { should be_mounted }",
+    "end"
+  ],
+  "remediation": {
+    "command": "# /srv should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /srv >/dev/null 2>&1 && echo '/srv is already a mount point' || echo '/srv is NOT separate'\n# Then: dedicate an LVM volume / disk to /srv and add it to /etc/fstab.\n",
+    "reason": "a separate /srv filesystem needs partitioning/LVM/tmpfs, not a safe runtime change",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Ensure /srv Located On Separate Partition",
+    "fr": "S'assurer que /srv est sur une partition separee"
+  },
+  "summary": {
+    "en": "Verifies that **`/srv`** is mounted on its own partition so served data is isolated and restrictive mount options can apply.",
+    "fr": "Verifie que **`/srv`** est monte sur sa propre partition afin d'isoler les donnees servies et d'appliquer des options de montage restrictives."
+  },
+  "rationale": {
+    "en": "`/srv` holds data served by the host (web roots, FTP, network shares). Mounting it on its own partition lets you apply restrictive options such as **`nodev`** and **`nosuid`**, and ensures that user- or service-generated content cannot trivially fill the root or log/audit filesystems and cause a denial of service.",
+    "fr": "`/srv` contient les donnees servies par l'hote (racines web, FTP, partages reseau). Le monter sur sa propre partition permet d'appliquer des options restrictives comme **`nodev`** et **`nosuid`**, et garantit que le contenu genere par les utilisateurs ou les services ne peut pas saturer trivialement le systeme de fichiers racine ou de logs/audit et provoquer un deni de service."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `mount('/srv')` resource, reading the **effective** mount table (`/proc/self/mountinfo`) rather than `/etc/fstab`. It reports what the kernel has actually mounted, distinguishing a genuine separate mount from an fstab entry that never took effect.",
+    "fr": "Pavois utilise la ressource InSpec `mount('/srv')`, lisant la table de montage **effective** (`/proc/self/mountinfo`) plutot que `/etc/fstab`. Elle indique ce que le noyau a reellement monte, distinguant un vrai montage separe d'une entree fstab jamais appliquee."
+  },
+  "verify": {
+    "en": "Run:\n\n```bash\nfindmnt /srv\n```\n\nExpected: a row showing `/srv` on its own device/partition. No output means `/srv` is part of the root filesystem and the rule fails.",
+    "fr": "Executez :\n\n```bash\nfindmnt /srv\n```\n\nAttendu : une ligne montrant `/srv` sur son propre peripherique/partition. Aucune sortie signifie que `/srv` fait partie du systeme de fichiers racine et la regle echoue."
+  },
+  "logs": {
+    "en": "Check the live mount with `findmnt /srv` or `mount | grep ' /srv '`; the persistent entry is in `/etc/fstab`. Mount-unit events appear via `journalctl -u srv.mount` and kernel mount activity via `journalctl -k`.",
+    "fr": "Verifiez le montage actif avec `findmnt /srv` ou `mount | grep ' /srv '` ; l'entree persistante est dans `/etc/fstab`. Les evenements d'unite de montage apparaissent via `journalctl -u srv.mount` et l'activite de montage du noyau via `journalctl -k`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule, relocating `/srv` to its own partition is a **manual** disk-layout change, best done at install time. Retrofitting requires a new filesystem, copying served data with `rsync -aXS`, an `/etc/fstab` entry and a remount; Pavois will not perform this automatically.",
+    "fr": "Aucun plan de durcissement automatise n'est fourni pour cette regle, deplacer `/srv` sur sa propre partition est une modification **manuelle** de l'agencement disque, ideale a l'installation. En retrofit, cela exige un nouveau systeme de fichiers, la copie des donnees servies avec `rsync -aXS`, une entree `/etc/fstab` et un remontage ; Pavois ne l'effectue pas automatiquement."
+  },
+  "impact": {
+    "en": "Moving `/srv` on a running server can interrupt the services that read from it (web, FTP, file shares), and `noexec`/`nosuid` may break apps that execute helpers from served paths. **Precautions:** schedule a maintenance window, back up `/srv`, stop the serving services during the copy, verify the new mount before deleting old data, and restart and test services afterward. The control only requires the mount to exist.",
+    "fr": "Deplacer `/srv` sur un serveur en service peut interrompre les services qui le lisent (web, FTP, partages de fichiers), et `noexec`/`nosuid` peuvent casser des applications executant des utilitaires depuis les chemins servis. **Precautions :** planifiez une fenetre de maintenance, sauvegardez `/srv`, arretez les services de diffusion pendant la copie, verifiez le nouveau montage avant de supprimer les anciennes donnees, puis redemarrez et testez les services. Le controle exige seulement l'existence du montage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

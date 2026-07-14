@@ -1,0 +1,84 @@
+{
+  "id": "fileowner-cron-d",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "2.2.6",
+      "2.4.1.7",
+      "2.4.1.8"
+    ],
+    "nist": [
+      "AC-6(1)",
+      "CM-6(a)"
+    ],
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "only_if { file('/etc/cron.d').exist? }",
+    "describe file('/etc/cron.d') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/etc/cron.d",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Owner on cron.d",
+    "fr": "Vérifier le propriétaire de cron.d"
+  },
+  "summary": {
+    "en": "Ensures the cron drop-in directory `/etc/cron.d` is owned by the **root** user (UID 0).",
+    "fr": "Garantit que le répertoire de drop-ins cron `/etc/cron.d` appartient à l'utilisateur **root** (UID 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/cron.d` directory holds **crontab fragments that run as root** with a full schedule and user field. If it is not owned by **root**, an unprivileged user could drop a job file there and have arbitrary commands executed as root at a time of their choosing, a direct path to **privilege escalation and persistence**. Root ownership of this drop-in directory is essential.",
+    "fr": "Le répertoire `/etc/cron.d` contient des **fragments de crontab exécutés en tant que root** avec une planification complète et un champ utilisateur. S'il n'appartient pas à **root**, un utilisateur non privilégié pourrait y déposer un fichier de tâche et faire exécuter des commandes arbitraires en root au moment de son choix, une voie directe vers l'**élévation de privilèges et la persistance**. La propriété root de ce répertoire de drop-ins est essentielle."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** owner of `/etc/cron.d` via the InSpec `file` resource and asserts `uid == 0`, only when the directory exists (`only_if`). Inspecting the live inode ownership reflects the real on-disk state and catches drift from package installs or manual changes, instead of an assumed default.",
+    "fr": "Pavois lit le propriétaire **effectif** de `/etc/cron.d` via la ressource `file` d'InSpec et vérifie `uid == 0`, uniquement si le répertoire existe (`only_if`). L'inspection de la propriété réelle de l'inode reflète l'état exact sur le disque et détecte une dérive due à des installations de paquets ou des changements manuels, au lieu d'une valeur par défaut supposée."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /etc/cron.d`. Expected output: **`root 0`**. Alternatively `ls -ld /etc/cron.d` should show `root` in the owner column.",
+    "fr": "Exécutez `stat -c '%U %u' /etc/cron.d`. Résultat attendu : **`root 0`**. Sinon, `ls -ld /etc/cron.d` doit afficher `root` dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "Ownership has no service log. Confirm the state with `stat -c '%U %u' /etc/cron.d`. To trace changes, an auditd watch such as `auditctl -w /etc/cron.d -p wa -k cron-dir` records writes/attribute changes in `/var/log/audit/audit.log`; cron execution is logged via `journalctl -u cron` (Debian/Ubuntu) or `journalctl -u crond` (RHEL family).",
+    "fr": "La propriété ne génère aucun journal de service. Vérifiez l'état avec `stat -c '%U %u' /etc/cron.d`. Pour tracer les changements, une surveillance auditd telle que `auditctl -w /etc/cron.d -p wa -k cron-dir` enregistre les écritures/changements d'attributs dans `/var/log/audit/audit.log` ; l'exécution cron est journalisée via `journalctl -u cron` (Debian/Ubuntu) ou `journalctl -u crond` (famille RHEL)."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied **manually**: run `chown root /etc/cron.d` as root to set the owner to **root**.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être appliquée **manuellement** : exécutez `chown root /etc/cron.d` en root pour fixer le propriétaire à **root**."
+  },
+  "impact": {
+    "en": "**If misconfigured**, a non-root user could place a job file that runs arbitrary commands as root, leading to escalation or persistence.\n\n**Precautions before applying:** `chown root /etc/cron.d` is safe and reversible with no service restart. Apply to the directory; if you use `-R`, review existing fragments so you do not re-own files managed by packages.",
+    "fr": "**En cas de mauvaise configuration**, un utilisateur non root pourrait y placer un fichier de tâche exécutant des commandes arbitraires en root, menant à une élévation ou une persistance.\n\n**Précautions avant application :** `chown root /etc/cron.d` est sûr et réversible, sans redémarrage de service. Appliquez-le au répertoire ; si vous utilisez `-R`, examinez les fragments existants pour ne pas réattribuer des fichiers gérés par des paquets."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

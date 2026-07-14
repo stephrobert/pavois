@@ -1,0 +1,82 @@
+{
+  "id": "account-gid-passwd-group-same",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Accounts",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "7.2.3",
+      "8.2.2"
+    ],
+    "nist": [
+      "CM-6(a)",
+      "IA-2"
+    ],
+    "pci-dss": "8.2.2"
+  },
+  "check": [
+    "describe command('awk -F: \\'{print $4}\\' /etc/passwd | sort -u | while read g; do getent group \"$g\" >/dev/null || echo \"$g\"; done') do",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "awk -F: '{print $4}' /etc/passwd | sort -u | while read g; do getent group \"$g\" >/dev/null || echo \"missing group gid=$g\"; done\n# groupadd -g <gid> <name> for each, or reassign the user's primary group\n",
+    "reason": "a user's primary GID must exist in /etc/group, create the missing group deliberately",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "All GIDs referenced in /etc/passwd must be defined in /etc/group",
+    "fr": "Tous les GID référencés dans /etc/passwd doivent exister dans /etc/group"
+  },
+  "summary": {
+    "en": "Ensures every primary GID referenced in `/etc/passwd` is actually defined in `/etc/group`.",
+    "fr": "Garantit que chaque GID principal référencé dans `/etc/passwd` est réellement défini dans `/etc/group`."
+  },
+  "rationale": {
+    "en": "Every primary GID assigned to a user in `/etc/passwd` must correspond to an existing group in `/etc/group`. A dangling GID is a latent privilege leak: if an administrator later creates a group with that same GID, the user silently gains access to all of its files and resources without any explicit grant.",
+    "fr": "Chaque GID principal attribué à un utilisateur dans `/etc/passwd` doit correspondre à un groupe existant dans `/etc/group`. Un GID orphelin est une fuite de privilèges latente : si un administrateur crée plus tard un groupe portant ce même GID, l'utilisateur obtient silencieusement l'accès à tous ses fichiers et ressources sans aucune attribution explicite."
+  },
+  "check_note": {
+    "en": "Pavois extracts each distinct primary GID from `/etc/passwd` and, for each one, queries the resolved group database with `getent group`; any GID with no matching group is reported. The check passes only when none are dangling. Using `getent` consults the effective group resolution (including SSSD/LDAP), not just the flat `/etc/group` file.",
+    "fr": "Pavois extrait chaque GID principal distinct de `/etc/passwd` puis, pour chacun, interroge la base de groupes résolue avec `getent group` ; tout GID sans groupe correspondant est signalé. Le contrôle réussit uniquement si aucun n'est orphelin. L'utilisation de `getent` consulte la résolution de groupes effective (y compris SSSD/LDAP), et pas seulement le fichier `/etc/group`."
+  },
+  "verify": {
+    "en": "Run `awk -F: '{print $4}' /etc/passwd | sort -u | while read g; do getent group \"$g\" >/dev/null || echo \"$g\"; done`. **Expected output: nothing**. Any printed GID is referenced by a user but undefined as a group.",
+    "fr": "Exécutez `awk -F: '{print $4}' /etc/passwd | sort -u | while read g; do getent group \"$g\" >/dev/null || echo \"$g\"; done`. **Sortie attendue : rien**. Tout GID affiché est référencé par un utilisateur mais non défini comme groupe."
+  },
+  "logs": {
+    "en": "- Find which users reference an orphan GID: `awk -F: -v g=<gid> '$4==g{print $1}' /etc/passwd`.\n- Inspect group definitions: `getent group` or `cat /etc/group`.\n- Integrity check: `grpck` and `pwck`.",
+    "fr": "- Trouver les utilisateurs référençant un GID orphelin : `awk -F: -v g=<gid> '$4==g{print $1}' /etc/passwd`.\n- Inspecter les définitions de groupes : `getent group` ou `cat /etc/group`.\n- Contrôle d'intégrité : `grpck` et `pwck`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped. Fix it manually: either create the missing group (`groupadd -g <gid> <name>`) or reassign the affected users to a valid group (`usermod -g <validgid> <user>`), then re-run the scan.",
+    "fr": "Aucune remédiation automatique n'est fournie. Corrigez manuellement : soit créez le groupe manquant (`groupadd -g <gid> <nom>`), soit réaffectez les utilisateurs concernés à un groupe valide (`usermod -g <gid_valide> <utilisateur>`), puis relancez le scan."
+  },
+  "impact": {
+    "en": "Misconfiguration is low-severity today but becomes a privilege leak the day a group is created with a previously dangling GID. Before fixing, identify which users hold the orphan GID and decide deliberately whether the group should exist or the users should move; reassigning a user's primary group changes default ownership of files they create afterwards.",
+    "fr": "La mauvaise configuration est de faible gravité aujourd'hui mais devient une fuite de privilèges le jour où un groupe est créé avec un GID jusque-là orphelin. Avant de corriger, identifiez les utilisateurs portant le GID orphelin et décidez délibérément si le groupe doit exister ou si les utilisateurs doivent changer ; réaffecter le groupe principal d'un utilisateur modifie l'appartenance par défaut des fichiers qu'il créera ensuite."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

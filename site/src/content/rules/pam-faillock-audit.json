@@ -1,0 +1,76 @@
+{
+  "id": "pam-faillock-audit",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (PAM modules)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "nist": "AC-7 (a)",
+    "stig": [
+      "UBTU-22-411045",
+      "UBTU-24-200610"
+    ]
+  },
+  "check": [
+    "describe command('grep -RqE \\'^[^#]*\\bpam_faillock\\.so\\' /etc/pam.d/ 2>/dev/null && { grep -RqE \\'^[^#]*\\bpam_faillock\\.so[^#]*\\baudit\\' /etc/pam.d/ 2>/dev/null || grep -qE \\'^[[:space:]]*audit\\b\\' /etc/security/faillock.conf 2>/dev/null; } && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "resource": "pam_faillock"
+  },
+  "title": {
+    "en": "Account Lockouts Must Be Logged",
+    "fr": "Les verrouillages de compte doivent être journalisés"
+  },
+  "summary": {
+    "en": "Enforces the `audit` option on `pam_faillock.so` so every failed authentication that counts toward a lockout is logged.",
+    "fr": "Impose l'option `audit` sur `pam_faillock.so` afin que chaque échec d'authentification comptant pour un verrouillage soit journalisé."
+  },
+  "rationale": {
+    "en": "Without auditing of failed-login events, it is harder (often impossible) to reconstruct what an attacker attempted before or during a brute-force attack. The `audit` flag makes `pam_faillock` record the **user name** for each tracked failure, including for non-existent accounts, giving incident responders the trail they need to detect password-guessing campaigns and identify targeted accounts.",
+    "fr": "Sans journalisation des échecs de connexion, il est difficile (souvent impossible) de reconstituer ce qu'un attaquant a tenté avant ou pendant une attaque par force brute. L'option `audit` fait consigner par `pam_faillock` le **nom d'utilisateur** de chaque échec suivi, y compris pour des comptes inexistants, donnant aux équipes d'intervention la traçabilité nécessaire pour détecter les campagnes de devinette de mot de passe et identifier les comptes ciblés."
+  },
+  "check_note": {
+    "en": "Pavois greps the **effective** PAM stack under `/etc/pam.d/` for a non-commented `pam_faillock.so` line carrying the `audit` option. Reading the PAM stack as it is actually assembled (auth/common-auth and their includes) beats trusting a single sample file: PAM resolves `@include` directives and distro-specific drop-ins, so a flag present in one file but overridden or absent in the included one would be missed by a naive single-file check.",
+    "fr": "Pavois recherche dans la pile PAM **effective** sous `/etc/pam.d/` une ligne `pam_faillock.so` non commentée portant l'option `audit`. Lire la pile PAM telle qu'elle est réellement assemblée (auth/common-auth et leurs inclusions) vaut mieux que se fier à un seul fichier d'exemple : PAM résout les directives `@include` et les drop-ins propres à la distribution, si bien qu'un drapeau présent dans un fichier mais absent ou remplacé dans le fichier inclus échapperait à une vérification mono-fichier naïve."
+  },
+  "verify": {
+    "en": "Run `grep -rE '^[^#]*pam_faillock\\.so' /etc/pam.d/` and confirm the resulting `auth` lines contain the `audit` keyword. You can also trigger a failure (`su - someuser` with a wrong password) and verify the user name appears in the audit/auth log.",
+    "fr": "Exécutez `grep -rE '^[^#]*pam_faillock\\.so' /etc/pam.d/` et vérifiez que les lignes `auth` obtenues contiennent le mot-clé `audit`. Vous pouvez aussi provoquer un échec (`su - utilisateur` avec un mauvais mot de passe) et vérifier que le nom d'utilisateur apparaît dans le journal d'audit/auth."
+  },
+  "logs": {
+    "en": "Failed attempts tracked by faillock surface in `/var/log/auth.log` (Debian/Ubuntu) or via `journalctl -u systemd-logind` / the PAM-emitting service. On systems with auditd, look in `/var/log/audit/audit.log`. The live counter per user is shown by `faillock --user <name>`.",
+    "fr": "Les tentatives échouées suivies par faillock apparaissent dans `/var/log/auth.log` (Debian/Ubuntu) ou via `journalctl -u systemd-logind` / le service émetteur PAM. Sur les systèmes dotés d'auditd, consultez `/var/log/audit/audit.log`. Le compteur en direct par utilisateur s'affiche avec `faillock --user <nom>`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `pam_faillock` resource: it ensures `pam_faillock.so` is wired into the auth stack with the `audit` option set, integrating with the distro's PAM tooling (`pam-auth-update` on Debian/Ubuntu, `authselect` on RHEL) so the change survives PAM regeneration.",
+    "fr": "`pavois harden apply` utilise la ressource `pam_faillock` : elle s'assure que `pam_faillock.so` est intégré dans la pile auth avec l'option `audit`, en s'appuyant sur l'outillage PAM de la distribution (`pam-auth-update` sur Debian/Ubuntu, `authselect` sur RHEL) pour que la modification survive à une régénération de PAM."
+  },
+  "impact": {
+    "en": "Enabling auditing of lockouts is low-risk; it only adds log verbosity. The broader risk lies in misconfiguring `pam_faillock` itself: an incorrectly ordered or duplicated auth line can lock out **all** users, including root. **Precautions:** keep an active root/console session open while changing PAM, test authentication from a second terminal before logging out, and know how to clear counters with `faillock --user <name> --reset` in case of unexpected lockout.",
+    "fr": "Activer la journalisation des verrouillages présente peu de risque ; cela ajoute seulement de la verbosité aux journaux. Le risque principal réside dans une mauvaise configuration de `pam_faillock` lui-même : une ligne auth mal ordonnée ou dupliquée peut verrouiller **tous** les utilisateurs, root compris. **Précautions :** gardez une session root/console active pendant la modification de PAM, testez l'authentification depuis un second terminal avant de vous déconnecter, et sachez réinitialiser les compteurs avec `faillock --user <nom> --reset` en cas de verrouillage imprévu."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

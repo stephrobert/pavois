@@ -1,0 +1,75 @@
+{
+  "id": "repgroupowner-etc-sudoersd",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R50"
+  },
+  "check": [
+    "only_if { file('/etc/sudoers.d').exist? }",
+    "describe file('/etc/sudoers.d') do",
+    "  its('group') { should eq 'root' }",
+    "end"
+  ],
+  "remediation": {
+    "group": "root",
+    "path": "/etc/sudoers.d",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Group Who Owns /etc/sudoers.d Directory",
+    "fr": "Vérifier le groupe propriétaire du répertoire /etc/sudoers.d"
+  },
+  "summary": {
+    "en": "Ensures the `/etc/sudoers.d` directory is group-owned by **root**.",
+    "fr": "Garantit que le répertoire `/etc/sudoers.d` a pour groupe propriétaire **root**."
+  },
+  "rationale": {
+    "en": "The `/etc/sudoers.d` directory holds drop-in files that grant `sudo` privileges. If its group owner is not `root`, members of that group could drop in a file granting themselves passwordless root access, leading to a full **privilege escalation**. Controlling the group owner is essential to keep the sudo policy trustworthy.",
+    "fr": "Le répertoire `/etc/sudoers.d` contient des fichiers drop-in qui accordent des privilèges `sudo`. Si son groupe propriétaire n'est pas `root`, les membres de ce groupe pourraient y déposer un fichier leur octroyant un accès root sans mot de passe, menant à une **élévation de privilèges** complète. Maîtriser le groupe propriétaire est essentiel pour garder la politique sudo fiable."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** group owner of `/etc/sudoers.d` from the filesystem (`stat`), reflecting the real state, including a directory recreated by a package update, rather than a value assumed from documentation. This is the directory `sudo` actually parses, so its ownership is what matters.",
+    "fr": "Pavois lit le groupe propriétaire **effectif** de `/etc/sudoers.d` depuis le système de fichiers (`stat`), reflétant l'état réel, y compris un répertoire recréé par une mise à jour de paquet, plutôt qu'une valeur supposée. C'est le répertoire que `sudo` analyse réellement, donc sa propriété est ce qui compte."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G' /etc/sudoers.d`. The expected output is `root`. Alternatively, `ls -ld /etc/sudoers.d` should show `root` in the group column.",
+    "fr": "Exécutez `stat -c '%G' /etc/sudoers.d`. La sortie attendue est `root`. Sinon, `ls -ld /etc/sudoers.d` doit afficher `root` dans la colonne du groupe."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default. Inspect the state with `ls -ld /etc/sudoers.d`. Sudo policy usage is logged in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL). If auditd watches `/etc/sudoers.d`, ownership changes appear in `/var/log/audit/audit.log`.",
+    "fr": "Les changements de propriété ne sont pas journalisés par défaut. Inspectez l'état avec `ls -ld /etc/sudoers.d`. L'usage de la politique sudo est journalisé dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL). Si auditd surveille `/etc/sudoers.d`, les changements de propriété apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan sets the **group** of the `file` resource `/etc/sudoers.d` to `root` (equivalent to `chgrp root /etc/sudoers.d`). It is applied with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois définit le **groupe** de la ressource `file` `/etc/sudoers.d` sur `root` (équivalent à `chgrp root /etc/sudoers.d`). Il s'applique avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Setting the group to `root` is the expected state and has no functional impact on `sudo`, which runs as root. There is no lockout risk. Before applying, confirm no legitimate non-root tool relies on group access to read drop-in files; such cases are rare and usually misconfigurations themselves.",
+    "fr": "Définir le groupe sur `root` correspond à l'état attendu et n'a aucun impact fonctionnel sur `sudo`, qui s'exécute en root. Aucun risque de verrouillage. Avant d'appliquer, confirmez qu'aucun outil non-root légitime ne dépend de l'accès de groupe pour lire les fichiers drop-in ; ces cas sont rares et constituent généralement eux-mêmes des erreurs de configuration."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

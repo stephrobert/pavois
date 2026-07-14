@@ -1,0 +1,81 @@
+{
+  "id": "sysctl-fs-protected_fifos",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R14",
+    "nist": [
+      "AC-6(1)",
+      "CM-6(a)"
+    ]
+  },
+  "check": [
+    "describe kernel_parameter('fs.protected_fifos') do",
+    "  its('value') { should cmp 2 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*fs.protected_fifos[[:space:]]*=[[:space:]]*2([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
+    "end"
+  ],
+  "remediation": {
+    "key": "fs.protected_fifos",
+    "resource": "sysctl",
+    "value": "2"
+  },
+  "title": {
+    "en": "Enable Kernel Parameter to Enforce DAC on FIFOs",
+    "fr": "Activer le paramètre noyau pour appliquer le DAC sur les FIFOs"
+  },
+  "summary": {
+    "en": "Sets `fs.protected_fifos=2` so a process cannot open a FIFO it does not own in a world/group-writable sticky directory, blocking FIFO-spoofing attacks.",
+    "fr": "Définit `fs.protected_fifos=2` pour qu'un processus ne puisse pas ouvrir un FIFO qu'il ne possède pas dans un répertoire sticky accessible en écriture par le groupe ou tous, bloquant les attaques par usurpation de FIFO."
+  },
+  "rationale": {
+    "en": "Available since Linux 4.19, `fs.protected_fifos=2` prohibits opening FIFOs (named pipes) that the caller does not own inside world- or group-writable sticky directories (such as `/tmp`). This blocks a class of **FIFO-spoofing** attacks where an attacker pre-creates a named pipe at a path a privileged program expects to be a fresh regular file, redirecting or stalling its writes. Enforcing discretionary access control (DAC) on FIFO opens prevents unintentional writes to an attacker-controlled pipe.",
+    "fr": "Disponible depuis Linux 4.19, `fs.protected_fifos=2` interdit l'ouverture de FIFOs (tubes nommés) que l'appelant ne possède pas dans les répertoires sticky accessibles en écriture par le groupe ou tous (comme `/tmp`). Cela bloque une catégorie d'attaques par **usurpation de FIFO**, où un attaquant pré-crée un tube nommé à un emplacement où un programme privilégié s'attend à un fichier régulier neuf, détournant ou bloquant ses écritures. Appliquer le contrôle d'accès discrétionnaire (DAC) à l'ouverture des FIFOs empêche les écritures involontaires vers un tube contrôlé par l'attaquant."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** via the `kernel_parameter` resource (equivalent to `sysctl fs.protected_fifos`), not the contents of `/etc/sysctl.conf` or any `*.conf` drop-in. A file can declare a value that was never loaded (typo, ordering, a later drop-in overriding it, or a module not yet applied); reading the running kernel reflects what is actually enforced right now.",
+    "fr": "Pavois lit la **valeur effective du noyau** via la ressource `kernel_parameter` (équivalent à `sysctl fs.protected_fifos`), et non le contenu de `/etc/sysctl.conf` ou d'un drop-in `*.conf`. Un fichier peut déclarer une valeur jamais chargée (faute de frappe, ordre de chargement, drop-in ultérieur qui l'écrase, ou module non encore appliqué) ; lire le noyau en cours d'exécution reflète ce qui est réellement appliqué à l'instant."
+  },
+  "verify": {
+    "en": "Run `sysctl fs.protected_fifos`, expected output `fs.protected_fifos = 2`.",
+    "fr": "Exécutez `sysctl fs.protected_fifos`, sortie attendue `fs.protected_fifos = 2`."
+  },
+  "logs": {
+    "en": "Read the current value with `sysctl fs.protected_fifos` or `cat /proc/sys/fs/protected_fifos`. When the protection blocks an open, the kernel does not log by default, but the calling program receives `EACCES`; check that application's own error log.",
+    "fr": "Lisez la valeur courante avec `sysctl fs.protected_fifos` ou `cat /proc/sys/fs/protected_fifos`. Lorsque la protection bloque une ouverture, le noyau ne journalise rien par défaut, mais le programme appelant reçoit `EACCES` ; consultez le journal d'erreurs propre à cette application."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan sets the `sysctl` key `fs.protected_fifos` to `2`, writing it to a managed drop-in and applying it live so both the running kernel and subsequent boots use the value. Applied with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois définit la clé `sysctl` `fs.protected_fifos` à `2`, l'écrit dans un drop-in géré et l'applique à chaud, de sorte que le noyau en cours d'exécution comme les démarrages suivants utilisent cette valeur. Appliqué avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Very low risk on modern systems. It only affects opening FIFOs you do not own in shared sticky directories, legitimate apps create their FIFOs in their own directories or own the pipe. Rare legacy software using shared named pipes in `/tmp` could see `EACCES`; test such applications before enforcing. The change is reversible by resetting the key to `0` or `1`.",
+    "fr": "Risque très faible sur les systèmes modernes. Cela n'affecte que l'ouverture de FIFOs que vous ne possédez pas dans des répertoires sticky partagés, les applications légitimes créent leurs FIFOs dans leurs propres répertoires ou possèdent le tube. De rares logiciels anciens utilisant des tubes nommés partagés dans `/tmp` pourraient recevoir `EACCES` ; testez ces applications avant d'appliquer. Le changement est réversible en remettant la clé à `0` ou `1`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

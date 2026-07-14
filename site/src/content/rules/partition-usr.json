@@ -1,0 +1,74 @@
+{
+  "id": "partition-usr",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {
+    "bp28": "R28"
+  },
+  "check": [
+    "describe mount('/usr') do",
+    "  it { should be_mounted }",
+    "end"
+  ],
+  "remediation": {
+    "command": "# /usr should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /usr >/dev/null 2>&1 && echo '/usr is already a mount point' || echo '/usr is NOT separate'\n# Then: dedicate an LVM volume / disk to /usr and add it to /etc/fstab.\n",
+    "reason": "a separate /usr filesystem needs partitioning/LVM/tmpfs, not a safe runtime change",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Ensure /usr Located On Separate Partition",
+    "fr": "Placer /usr sur une partition distincte"
+  },
+  "summary": {
+    "en": "Mounts `/usr` on a **dedicated filesystem** so the system binaries can be isolated and protected with restrictive mount options.",
+    "fr": "Monte `/usr` sur un **système de fichiers dédié** afin d'isoler les binaires système et de les protéger par des options de montage restrictives."
+  },
+  "rationale": {
+    "en": "The `/usr` directory holds system software, utilities and shared files. Hosting it on its own partition lets you cap its size and, above all, enforce restrictive mount options. Because `/usr` is largely read-only at runtime, it is a prime candidate for **`ro`** or **`nodev`** mounts that block device-node tricks and unexpected writes to the binaries an attacker would love to tamper with.",
+    "fr": "Le répertoire `/usr` contient les logiciels système, les utilitaires et les fichiers partagés. Le placer sur sa propre partition permet d'en limiter la taille et, surtout, d'appliquer des options de montage restrictives. Comme `/usr` est en grande partie en lecture seule à l'exécution, c'est un candidat idéal pour un montage **`ro`** ou **`nodev`**, qui bloque les ruses de nœuds de périphériques et les écritures inattendues sur les binaires qu'un attaquant chercherait à altérer."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective** mount table via the `mount('/usr')` resource (backed by `findmnt` / `/proc/self/mountinfo`), not `/etc/fstab`. This matters because `fstab` describes *intent*: a line can be present yet the mount may have failed at boot, been overridden by a systemd `.mount` unit, or bind-mounted elsewhere. Auditing the live kernel mount state confirms `/usr` is **actually** a separate mounted filesystem right now.",
+    "fr": "Pavois vérifie la table de montage **effective** via la ressource `mount('/usr')` (qui s'appuie sur `findmnt` / `/proc/self/mountinfo`), et non `/etc/fstab`. C'est important car `fstab` décrit une *intention* : une ligne peut être présente alors que le montage a échoué au démarrage, a été surchargé par une unité systemd `.mount` ou redirigé par un bind-mount. Auditer l'état de montage réel du noyau confirme que `/usr` est **bel et bien** un système de fichiers monté séparément à l'instant T."
+  },
+  "verify": {
+    "en": "Run `findmnt /usr` (or `mount | grep ' /usr '`). It must return a line showing `/usr` as its own source device/filesystem. No output means `/usr` is part of the root filesystem and the rule fails.",
+    "fr": "Exécutez `findmnt /usr` (ou `mount | grep ' /usr '`). La commande doit renvoyer une ligne montrant `/usr` avec son propre périphérique/système de fichiers. L'absence de sortie signifie que `/usr` fait partie du système de fichiers racine et que la règle échoue."
+  },
+  "logs": {
+    "en": "Inspect the live mount state with `findmnt /usr` and `cat /proc/mounts | grep /usr`. Boot-time mount failures are visible via `journalctl -b | grep -i usr` and the status of the related systemd unit with `systemctl status usr.mount`.",
+    "fr": "Inspectez l'état de montage réel avec `findmnt /usr` et `cat /proc/mounts | grep /usr`. Les échecs de montage au démarrage sont visibles via `journalctl -b | grep -i usr` et l'état de l'unité systemd associée avec `systemctl status usr.mount`."
+  },
+  "remediation_note": {
+    "en": "There is **no automated harden plan** for this rule: repartitioning a live system is destructive and cannot be done safely in place. It must be applied **manually**, normally at install time, by allocating a dedicated partition (or LVM volume) for `/usr` and adding its entry to `/etc/fstab`.",
+    "fr": "Il n'existe **aucun plan de durcissement automatisé** pour cette règle : repartitionner un système en cours d'exécution est destructeur et ne peut être réalisé en place sans risque. Elle doit être appliquée **manuellement**, généralement à l'installation, en allouant une partition (ou un volume LVM) dédiée à `/usr` et en ajoutant son entrée dans `/etc/fstab`."
+  },
+  "impact": {
+    "en": "If `/usr` is not separated, you lose the ability to mount it `ro`/`nodev` and a runaway write elsewhere could in theory affect it. **Precautions before migrating:** mounting `/usr` `ro` can break package upgrades and any tooling that writes under `/usr`; an early-boot environment (initramfs) must be able to mount `/usr` before `systemd` needs it, otherwise the system fails to boot. Repartitioning risks data loss, **take a full backup and have console/rescue access** before touching the layout, and prefer doing this at install time.",
+    "fr": "Si `/usr` n'est pas séparé, vous perdez la possibilité de le monter en `ro`/`nodev` et une écriture incontrôlée ailleurs pourrait en théorie l'affecter. **Précautions avant migration :** monter `/usr` en `ro` peut casser les mises à jour de paquets et tout outillage qui écrit sous `/usr` ; l'environnement de démarrage précoce (initramfs) doit pouvoir monter `/usr` avant que `systemd` n'en ait besoin, sinon le système ne démarre pas. Repartitionner risque une perte de données, **réalisez une sauvegarde complète et disposez d'un accès console/secours** avant de modifier l'agencement, et privilégiez l'installation pour le faire."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

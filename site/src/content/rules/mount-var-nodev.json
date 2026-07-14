@@ -1,0 +1,86 @@
+{
+  "id": "mount-var-nodev",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "1.1.2.4.2",
+    "nist": [
+      "AC-6",
+      "AC-6(1)",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)",
+      "MP-7"
+    ]
+  },
+  "check": [
+    "describe mount('/var') do",
+    "  its('options') { should include 'nodev' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /var 2>/dev/null; grep -hsE '[[:space:]]/var[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /var 2>/dev/null) 2>/dev/null; } | grep -ow 'nodev'\") do",
+    "  its('stdout') { should match(/\\S/) }",
+    "end"
+  ],
+  "remediation": {
+    "command": "awk -v m=/var -v o=nodev '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,\",\");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4\",\"o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var && mount -o remount,nodev /var || true",
+    "name": "mount-var-nodev",
+    "not_if": "awk -v m=/var '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\\n' | grep -qx nodev",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Add nodev Option to /var",
+    "fr": "Ajouter l'option nodev à /var"
+  },
+  "summary": {
+    "en": "Mounts `/var` with the **`nodev`** option so the kernel refuses to interpret device files placed in that directory.",
+    "fr": "Monte `/var` avec l'option **`nodev`** afin que le noyau refuse d'interpréter les fichiers de périphérique placés dans ce répertoire."
+  },
+  "rationale": {
+    "en": "The only legitimate place for device files is `/dev` on the root partition (chroot jails being the rare exception). `/var` holds variable data, logs, spool, caches, databases, and should never contain device nodes. Mounting it with **`nodev`** tells the kernel to ignore any character or block special device found there, preventing an attacker who can write under `/var` from planting a device node to bypass filesystem permissions and access raw disk or kernel memory.",
+    "fr": "Le seul emplacement légitime pour les fichiers de périphérique est `/dev` sur la partition racine (les prisons chroot étant la rare exception). `/var` contient des données variables, logs, spool, caches, bases de données, et ne devrait jamais comporter de nœuds de périphérique. Le monter avec **`nodev`** indique au noyau d'ignorer tout périphérique spécial qui s'y trouverait, empêchant un attaquant capable d'écrire sous `/var` d'y créer un nœud de périphérique pour contourner les permissions et accéder au disque brut ou à la mémoire noyau."
+  },
+  "check_note": {
+    "en": "Pavois inspects the **effective** mount with `mount('/var')` and asserts its resolved options include `nodev`. It reads the live kernel mount table, what is actually enforced, rather than `/etc/fstab`, so it catches a partition remounted without the flag, a `systemd` mount-unit override, or an fstab entry that never applied, which a file-based scanner would wrongly pass.",
+    "fr": "Pavois inspecte le montage **effectif** via `mount('/var')` et vérifie que ses options résolues incluent `nodev`. Il lit la table de montage active du noyau, ce qui est réellement appliqué, plutôt que `/etc/fstab` ; il détecte donc une partition remontée sans le drapeau, un écrasement par une unité `systemd`, ou une entrée fstab jamais appliquée, ce qu'un scanner basé sur les fichiers validerait à tort."
+  },
+  "verify": {
+    "en": "Run `findmnt /var` (or `findmnt -no OPTIONS /var`) and confirm `nodev` is in the option list. Expected output contains `nodev`, e.g. `/var ... rw,nosuid,nodev,relatime`.",
+    "fr": "Exécutez `findmnt /var` (ou `findmnt -no OPTIONS /var`) et confirmez que `nodev` figure dans la liste des options. La sortie attendue contient `nodev`, par exemple `/var ... rw,nosuid,nodev,relatime`."
+  },
+  "logs": {
+    "en": "Mount state is queried live with `findmnt /var` or `cat /proc/mounts`, not from a log. Boot-time and remount events appear via `journalctl -b | grep -i /var`.",
+    "fr": "L'état du montage s'interroge en direct avec `findmnt /var` ou `cat /proc/mounts`, pas depuis un log. Les événements de démarrage et de remontage apparaissent via `journalctl -b | grep -i /var`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule yet, so it must be applied **manually**: this requires `/var` to be a separate partition. Add `nodev` to its `/etc/fstab` entry, then `mount -o remount /var`, or reboot, and re-scan to confirm.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle ; elle doit donc être appliquée **manuellement** : cela suppose que `/var` soit une partition séparée. Ajoutez `nodev` à son entrée dans `/etc/fstab`, puis `mount -o remount /var`, ou redémarrez, et relancez le scan pour confirmer."
+  },
+  "impact": {
+    "en": "Functional impact is essentially nil, `/var` never needs device nodes (note: `nodev` does not affect `noexec`/`nosuid`, so keep `/var` executable since many services run from `/var/lib`). **Precautions:** the option can only be set if `/var` is a dedicated partition; on a default layout you must first carve it out, which is among the most disruptive partition changes (it holds running databases, package caches, container storage and logs) and requires planning, data migration with services stopped, and a reboot. Remounting a busy `/var` live often fails, prefer applying at the next reboot.",
+    "fr": "L'impact fonctionnel est quasi nul, `/var` n'a jamais besoin de nœuds de périphérique (note : `nodev` n'affecte pas `noexec`/`nosuid`, gardez donc `/var` exécutable car de nombreux services tournent depuis `/var/lib`). **Précautions :** l'option ne peut être posée que si `/var` est une partition dédiée ; sur une disposition par défaut, vous devez d'abord la créer, ce qui figure parmi les changements de partition les plus perturbateurs (elle contient des bases de données actives, des caches de paquets, le stockage des conteneurs et les logs) et nécessite planification, migration des données services arrêtés, et redémarrage. Remonter à chaud un `/var` occupé échoue souvent, préférez l'application au prochain redémarrage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

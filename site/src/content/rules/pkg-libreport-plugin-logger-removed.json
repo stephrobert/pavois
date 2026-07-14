@@ -1,0 +1,60 @@
+{
+  "id": "pkg-libreport-plugin-logger-removed",
+  "supported_os": [
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "low",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe package('libreport-plugin-logger') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "libreport-plugin-logger",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall libreport-plugin-logger Package",
+    "fr": "Désinstaller le paquet libreport-plugin-logger"
+  },
+  "summary": {
+    "en": "Ensures the ABRT `libreport-plugin-logger` crash-reporting plugin is **not installed**.",
+    "fr": "Garantit que le greffon de rapport de plantage ABRT `libreport-plugin-logger` n'est **pas installé**."
+  },
+  "rationale": {
+    "en": "`libreport-plugin-logger` is an ABRT (Automatic Bug Reporting Tool) plugin that writes crash reports to a log. ABRT and its plugins automatically collect and forward crash data, which can **leak sensitive information** (memory contents, configuration) off-host and adds unnecessary code that runs on faults. On hardened systems ABRT is disabled, so its plugins should be removed to reduce the attack surface.",
+    "fr": "`libreport-plugin-logger` est un greffon d'ABRT (Automatic Bug Reporting Tool) qui écrit les rapports de plantage dans un journal. ABRT et ses greffons collectent et transmettent automatiquement les données de plantage, ce qui peut **divulguer des informations sensibles** (contenu mémoire, configuration) hors de l'hôte et ajoute du code superflu exécuté lors des défaillances. Sur les systèmes durcis, ABRT est désactivé, ses greffons devraient donc être retirés pour réduire la surface d'attaque."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database via InSpec `package('libreport-plugin-logger')` (`rpm -q libreport-plugin-logger`) and asserts it is **not installed**. The live RPM database is authoritative, it confirms the plugin is truly gone, not merely disabled in ABRT configuration.",
+    "fr": "Pavois interroge la base de paquets via InSpec `package('libreport-plugin-logger')` (`rpm -q libreport-plugin-logger`) et vérifie qu'il n'est **pas installé**. La base RPM vivante fait autorité, elle confirme que le greffon a réellement disparu, et pas seulement qu'il est désactivé dans la configuration d'ABRT."
+  },
+  "verify": {
+    "en": "Run `rpm -q libreport-plugin-logger`. The expected output is `package libreport-plugin-logger is not installed`. A version line means the rule fails.",
+    "fr": "Exécutez `rpm -q libreport-plugin-logger`. La sortie attendue est `package libreport-plugin-logger is not installed`. Une ligne de version signifie que la règle échoue."
+  },
+  "logs": {
+    "en": "Confirm removal via `dnf history` or `rpm -q --last libreport-plugin-logger`; `/var/log/dnf.rpm.log` records the uninstall transaction. ABRT activity, if any remains, is logged under `/var/log/abrt/` and via `journalctl -u abrtd`.",
+    "fr": "Confirmez la suppression via `dnf history` ou `rpm -q --last libreport-plugin-logger` ; `/var/log/dnf.rpm.log` consigne la transaction de désinstallation. L'activité d'ABRT, s'il en reste, est consignée sous `/var/log/abrt/` et via `journalctl -u abrtd`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource named `libreport-plugin-logger` with action **remove**; `pavois harden apply` runs the equivalent of `dnf remove libreport-plugin-logger` to reach the compliant state. If `remediation` were empty you would uninstall it manually.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` nommée `libreport-plugin-logger` avec l'action **remove** ; `pavois harden apply` exécute l'équivalent de `dnf remove libreport-plugin-logger` pour atteindre l'état conforme. Si `remediation` était vide, il faudrait le désinstaller manuellement."
+  },
+  "impact": {
+    "en": "Removing this ABRT plugin disables logger-based crash reporting only; core system operation is unaffected. **Precaution:** if your organization actually relies on ABRT to capture crash data for diagnostics, removing the plugin will **stop that collection**. Confirm ABRT is not part of your supported troubleshooting workflow before applying; removal may pull in other `libreport`/`abrt` dependencies, so review the `dnf remove` plan.",
+    "fr": "Retirer ce greffon ABRT ne désactive que le rapport de plantage par journal ; le fonctionnement central du système n'est pas affecté. **Précaution :** si votre organisation utilise réellement ABRT pour capturer les données de plantage à des fins de diagnostic, retirer le greffon **arrêtera cette collecte**. Vérifiez qu'ABRT ne fait pas partie de votre processus de dépannage pris en charge avant d'appliquer ; la suppression peut entraîner d'autres dépendances `libreport`/`abrt`, examinez donc le plan `dnf remove`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

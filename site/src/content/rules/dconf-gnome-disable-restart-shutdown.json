@@ -1,0 +1,64 @@
+{
+  "id": "dconf-gnome-disable-restart-shutdown",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "high",
+  "domain": "GNOME desktop (dconf)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "nist": "3.1.2"
+  },
+  "check": [
+    "only_if { command('dconf').exist? }",
+    "describe command('{ s=$(grep -rhE \\'^[[:space:]]*disable-restart-buttons[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null | tail -1 | sed -E \\'s/^[^=]*=[[:space:]]*//\\' | tr -d \"\\'\\\\\"\"); [ \"$s\" = \"true\" ] && grep -rqxF \\'/org/gnome/login-screen/disable-restart-buttons\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "key": "org/gnome/login-screen/disable-restart-buttons",
+    "resource": "dconf",
+    "value": "true"
+  },
+  "title": {
+    "en": "Disable the GNOME3 Login Restart and Shutdown Buttons",
+    "fr": "Désactiver les boutons de redémarrage et d'arrêt de l'écran de connexion GNOME3"
+  },
+  "summary": {
+    "en": "Removes the restart and shutdown buttons from the GNOME (GDM) login screen by setting `disable-restart-buttons=true` and locking the key.",
+    "fr": "Retire les boutons de redémarrage et d'arrêt de l'écran de connexion GNOME (GDM) en définissant `disable-restart-buttons=true` et en verrouillant la clé."
+  },
+  "rationale": {
+    "en": "The GDM login screen normally offers restart and shutdown buttons that anyone with physical access can press without authenticating. Pressing them causes an unplanned reboot or power-off, a short-term loss of availability that an unauthenticated person at the console should not be able to trigger. Setting `disable-restart-buttons=true` and locking it removes these buttons from the greeter.",
+    "fr": "L'écran de connexion GDM propose normalement des boutons de redémarrage et d'arrêt que toute personne disposant d'un accès physique peut presser sans s'authentifier. Les presser provoque un redémarrage ou une extinction non planifiés, une perte de disponibilité à court terme qu'une personne non authentifiée à la console ne devrait pas pouvoir déclencher. Définir `disable-restart-buttons=true` et le verrouiller retire ces boutons de l'écran d'accueil."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective** dconf state: the last definition of `disable-restart-buttons` across `/etc/dconf/db/*.d/*` must resolve to `true`, **and** the key `/org/gnome/login-screen/disable-restart-buttons` must appear in a dconf **lock** file. Evaluating resolved precedence (last drop-in wins) plus the lock matches how dconf computes the value, catching a later drop-in that re-enables the buttons or unlocks the key.",
+    "fr": "Pavois vérifie l'état dconf **effectif** : la dernière définition de `disable-restart-buttons` parmi `/etc/dconf/db/*.d/*` doit valoir `true`, **et** la clé `/org/gnome/login-screen/disable-restart-buttons` doit figurer dans un fichier de **verrou** dconf. Évaluer la précédence résolue (le dernier drop-in l'emporte) plus le verrou correspond à la façon dont dconf calcule la valeur, détectant un drop-in ultérieur réactivant les boutons ou déverrouillant la clé."
+  },
+  "verify": {
+    "en": "After `dconf update`, run `gsettings get org.gnome.login-screen disable-restart-buttons` (should print `true`) and confirm the key is locked by checking `/etc/dconf/db/*/locks/*` for `/org/gnome/login-screen/disable-restart-buttons`. The buttons should no longer appear on the GDM greeter.",
+    "fr": "Après `dconf update`, exécutez `gsettings get org.gnome.login-screen disable-restart-buttons` (doit afficher `true`) et confirmez que la clé est verrouillée en cherchant `/org/gnome/login-screen/disable-restart-buttons` dans `/etc/dconf/db/*/locks/*`. Les boutons ne doivent plus apparaître sur l'écran d'accueil GDM."
+  },
+  "logs": {
+    "en": "dconf has no runtime log; verify with `gsettings get org.gnome.login-screen disable-restart-buttons` and inspect `/etc/dconf/db/*.d/*` and `/etc/dconf/db/*/locks/*`. Actual power-state changes are logged by systemd, review with `journalctl -b -1` (previous boot) or `last -x | grep -E 'reboot|shutdown'`.",
+    "fr": "dconf n'a pas de journal à l'exécution ; vérifiez avec `gsettings get org.gnome.login-screen disable-restart-buttons` et inspectez `/etc/dconf/db/*.d/*` et `/etc/dconf/db/*/locks/*`. Les changements réels d'état d'alimentation sont journalisés par systemd, consultez `journalctl -b -1` (boot précédent) ou `last -x | grep -E 'reboot|shutdown'`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `dconf` resource to write `disable-restart-buttons=true` into a system dconf profile drop-in, add `/org/gnome/login-screen/disable-restart-buttons` to a `locks` file, and run `dconf update`. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `dconf` pour écrire `disable-restart-buttons=true` dans un drop-in de profil dconf système, ajouter `/org/gnome/login-screen/disable-restart-buttons` à un fichier `locks`, et exécuter `dconf update`. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Applies only to RHEL 9 GNOME/GDM hosts; irrelevant on headless servers. After applying, no one can reboot or power off from the login screen without authenticating first. Precaution: ensure authorized administrators retain a way to reboot/shut down (authenticated session, `systemctl reboot`/`poweroff`, or out-of-band/IPMI) so legitimate maintenance is not blocked. No reboot needed; `dconf update` is sufficient.",
+    "fr": "Ne s'applique qu'aux hôtes RHEL 9 GNOME/GDM ; sans objet sur les serveurs sans interface graphique. Après application, personne ne peut redémarrer ou éteindre depuis l'écran de connexion sans s'authentifier d'abord. Précaution : assurez-vous que les administrateurs autorisés conservent un moyen de redémarrer/éteindre (session authentifiée, `systemctl reboot`/`poweroff`, ou hors-bande/IPMI) afin de ne pas bloquer la maintenance légitime. Aucun redémarrage nécessaire ; `dconf update` suffit."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

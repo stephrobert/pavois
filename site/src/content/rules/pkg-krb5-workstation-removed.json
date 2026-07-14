@@ -1,0 +1,63 @@
+{
+  "id": "pkg-krb5-workstation-removed",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe package('krb5-workstation') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "krb5-workstation",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall krb5-workstation Package",
+    "fr": "Désinstaller le paquet krb5-workstation"
+  },
+  "summary": {
+    "en": "Ensures the `krb5-workstation` Kerberos client package is **not installed** on hosts that do not use Kerberos authentication.",
+    "fr": "Garantit que le paquet client Kerberos `krb5-workstation` n'est **pas installé** sur les hôtes qui n'utilisent pas l'authentification Kerberos."
+  },
+  "rationale": {
+    "en": "Kerberos is a network authentication system. The `krb5-workstation` package contains the basic Kerberos client programs (`kinit`, `klist`, `kdestroy`, `kpasswd`). Older versions relied on weak ciphers (e.g. single-DES) and the package is unnecessary on systems that do not authenticate against a Kerberos realm; removing it reduces the **attack surface** and removes credential-handling tooling an attacker could misuse.",
+    "fr": "Kerberos est un système d'authentification réseau. Le paquet `krb5-workstation` contient les programmes client Kerberos de base (`kinit`, `klist`, `kdestroy`, `kpasswd`). Les anciennes versions reposaient sur des chiffrements faibles (par ex. DES simple) et le paquet est inutile sur les systèmes qui ne s'authentifient pas auprès d'un royaume Kerberos ; le retirer réduit la **surface d'attaque** et supprime un outillage de gestion d'identifiants qu'un attaquant pourrait détourner."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database via InSpec `package('krb5-workstation')` (`rpm -q krb5-workstation`) and asserts it is **not installed**. The live RPM database is authoritative: it tells you exactly which client binaries (`kinit`, `klist`…) are present, regardless of any `/etc/krb5.conf` left behind.",
+    "fr": "Pavois interroge la base de paquets via InSpec `package('krb5-workstation')` (`rpm -q krb5-workstation`) et vérifie qu'il n'est **pas installé**. La base RPM vivante fait autorité : elle indique exactement quels binaires client (`kinit`, `klist`…) sont présents, indépendamment d'un éventuel `/etc/krb5.conf` résiduel."
+  },
+  "verify": {
+    "en": "Run `rpm -q krb5-workstation`. The expected output is `package krb5-workstation is not installed`. A version line like `krb5-workstation-1.18.x-...` means the rule fails.",
+    "fr": "Exécutez `rpm -q krb5-workstation`. La sortie attendue est `package krb5-workstation is not installed`. Une ligne de version comme `krb5-workstation-1.18.x-...` signifie que la règle échoue."
+  },
+  "logs": {
+    "en": "Confirm removal via `dnf history` or `rpm -q --last krb5-workstation`. `/var/log/dnf.rpm.log` records the uninstall transaction. There is no dedicated service log, since these are command-line client tools.",
+    "fr": "Confirmez la suppression via `dnf history` ou `rpm -q --last krb5-workstation`. `/var/log/dnf.rpm.log` consigne la transaction de désinstallation. Il n'y a pas de journal de service dédié, puisqu'il s'agit d'outils client en ligne de commande."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource named `krb5-workstation` with action **remove**; `pavois harden apply` runs the equivalent of `dnf remove krb5-workstation` to reach the compliant state. If `remediation` were empty you would uninstall it manually.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` nommée `krb5-workstation` avec l'action **remove** ; `pavois harden apply` exécute l'équivalent de `dnf remove krb5-workstation` pour atteindre l'état conforme. Si `remediation` était vide, il faudrait le désinstaller manuellement."
+  },
+  "impact": {
+    "en": "Removing `krb5-workstation` deletes the Kerberos client tools. **Precaution:** do not apply on hosts that authenticate users or services against a Kerberos/Active Directory realm (e.g. via `sssd`, NFS with `sec=krb5`, or SSH GSSAPI), removing it would **break Kerberos logins and ticket acquisition**, potentially locking out users. Check `/etc/krb5.conf`, `realm list` and SSSD config before applying.",
+    "fr": "Retirer `krb5-workstation` supprime les outils client Kerberos. **Précaution :** n'appliquez pas la règle sur des hôtes qui authentifient des utilisateurs ou services auprès d'un royaume Kerberos/Active Directory (par ex. via `sssd`, NFS en `sec=krb5`, ou SSH GSSAPI), la retirer **casserait les connexions Kerberos et l'obtention de tickets**, risquant de verrouiller des utilisateurs. Vérifiez `/etc/krb5.conf`, `realm list` et la configuration SSSD avant d'appliquer."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

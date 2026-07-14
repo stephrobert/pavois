@@ -1,0 +1,89 @@
+{
+  "id": "dconf-gnome-banner-enabled",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "GNOME desktop (dconf)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "1.7.2",
+      "1.8.2",
+      "1.8.1"
+    ],
+    "nist": [
+      "3.1.9",
+      "AC-8(a)",
+      "AC-8(b)",
+      "AC-8(c)"
+    ],
+    "stig": [
+      "UBTU-22-271010",
+      "UBTU-24-200650"
+    ]
+  },
+  "check": [
+    "only_if { command('dconf').exist? }",
+    "describe command('{ s=$(grep -rhE \\'^[[:space:]]*banner-message-enable[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null | tail -1 | sed -E \\'s/^[^=]*=[[:space:]]*//\\' | tr -d \"\\'\\\\\"\"); [ \"$s\" = \"true\" ] && grep -rqxF \\'/org/gnome/login-screen/banner-message-enable\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "key": "org/gnome/login-screen/banner-message-enable",
+    "resource": "dconf",
+    "value": "true"
+  },
+  "title": {
+    "en": "Enable GNOME3 Login Warning Banner",
+    "fr": "Activer la bannière d'avertissement de connexion GNOME3"
+  },
+  "summary": {
+    "en": "Ensures the GNOME login screen displays a warning banner by setting `banner-message-enable=true` and locking the key so users cannot disable it.",
+    "fr": "Garantit que l'écran de connexion GNOME affiche une bannière d'avertissement en définissant `banner-message-enable=true` et en verrouillant la clé pour empêcher sa désactivation par les utilisateurs."
+  },
+  "rationale": {
+    "en": "Displaying a standardized, approved use-notification banner before granting access to the system warns users that activity may be monitored and that unauthorized access is prohibited. This satisfies legal and policy requirements (consistent with applicable laws, directives, standards and guidance) and strengthens any later legal action against intruders. The setting must also be **locked** so a logged-in user cannot remove the banner.",
+    "fr": "Afficher une bannière d'avertissement standardisée et approuvée avant d'accorder l'accès au système prévient les utilisateurs que leur activité peut être surveillée et que tout accès non autorisé est interdit. Cela répond aux exigences légales et de politique (conformément aux lois, directives, normes et recommandations applicables) et renforce toute action juridique ultérieure contre les intrus. Le réglage doit aussi être **verrouillé** pour qu'un utilisateur connecté ne puisse pas supprimer la bannière."
+  },
+  "check_note": {
+    "en": "Pavois verifies two things in the **effective** dconf state: the last definition of `banner-message-enable` across `/etc/dconf/db/*.d/*` resolves to `true`, **and** the key `/org/gnome/login-screen/banner-message-enable` appears in a dconf **lock** file. Reading the resolved key precedence (last drop-in wins) and the lock, rather than assuming a single file, matches how dconf actually computes the value, catching cases where a later drop-in re-enables editing or overrides the banner.",
+    "fr": "Pavois vérifie deux choses dans l'état dconf **effectif** : la dernière définition de `banner-message-enable` parmi `/etc/dconf/db/*.d/*` vaut `true`, **et** la clé `/org/gnome/login-screen/banner-message-enable` figure dans un fichier de **verrou** dconf. Lire la précédence résolue des clés (le dernier drop-in l'emporte) et le verrou, au lieu de supposer un seul fichier, correspond à la façon dont dconf calcule réellement la valeur, ce qui détecte les cas où un drop-in ultérieur réautorise l'édition ou surcharge la bannière."
+  },
+  "verify": {
+    "en": "After updating the dconf database (`dconf update`), confirm the effective value with `gsettings get org.gnome.login-screen banner-message-enable` (should print `true`) and check that the key is locked by listing `/etc/dconf/db/*/locks/*` for the entry `/org/gnome/login-screen/banner-message-enable`.",
+    "fr": "Après mise à jour de la base dconf (`dconf update`), confirmez la valeur effective avec `gsettings get org.gnome.login-screen banner-message-enable` (doit afficher `true`) et vérifiez que la clé est verrouillée en listant `/etc/dconf/db/*/locks/*` pour l'entrée `/org/gnome/login-screen/banner-message-enable`."
+  },
+  "logs": {
+    "en": "dconf has no runtime event log; verify state with `gsettings get org.gnome.login-screen banner-message-enable` and inspect `/etc/dconf/db/*.d/*` and `/etc/dconf/db/*/locks/*`. The banner itself is visible on the GDM greeter; GDM/session messages can be reviewed with `journalctl -u gdm` (or `journalctl -b /usr/sbin/gdm`).",
+    "fr": "dconf n'a pas de journal d'événements à l'exécution ; vérifiez l'état avec `gsettings get org.gnome.login-screen banner-message-enable` et inspectez `/etc/dconf/db/*.d/*` et `/etc/dconf/db/*/locks/*`. La bannière elle-même est visible sur l'écran d'accueil GDM ; les messages GDM/session se consultent avec `journalctl -u gdm` (ou `journalctl -b /usr/sbin/gdm`)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `dconf` resource to write `banner-message-enable=true` (and typically a `banner-message-text`) into a system dconf profile drop-in, add the matching entry to a `locks` file, then run `dconf update` to compile the database. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `dconf` pour écrire `banner-message-enable=true` (et généralement un `banner-message-text`) dans un drop-in de profil dconf système, ajouter l'entrée correspondante dans un fichier `locks`, puis exécuter `dconf update` pour compiler la base. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "This rule only applies to hosts running GNOME/GDM; on headless servers it is not relevant. The change is low-risk: it adds a banner to the login screen and does not block authentication. Precautions: keep the banner text aligned with your organization's approved legal notice, and remember that locking the key prevents users (and local config) from altering it, to change wording later you must edit the system profile and re-run `dconf update`.",
+    "fr": "Cette règle ne s'applique qu'aux hôtes exécutant GNOME/GDM ; sur les serveurs sans interface graphique elle n'est pas pertinente. Le changement est peu risqué : il ajoute une bannière à l'écran de connexion sans bloquer l'authentification. Précautions : maintenez le texte de la bannière conforme à l'avis légal approuvé par votre organisation, et rappelez-vous que verrouiller la clé empêche les utilisateurs (et la config locale) de la modifier, pour changer le texte ultérieurement, éditez le profil système et relancez `dconf update`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

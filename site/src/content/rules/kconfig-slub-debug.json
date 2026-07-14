@@ -1,0 +1,73 @@
+{
+  "id": "kconfig-slub-debug",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel build",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R17"
+  },
+  "check": [
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_SLUB_DEBUG=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
+    "  its('stdout') { should match(/^CONFIG_SLUB_DEBUG=y$/) }",
+    "end"
+  ],
+  "remediation": {
+    "resource": "kernel_build"
+  },
+  "title": {
+    "en": "Enable SLUB debugging support",
+    "fr": "Activer la prise en charge du débogage SLUB"
+  },
+  "summary": {
+    "en": "Requires the kernel to be built with `CONFIG_SLUB_DEBUG=y`, enabling the SLUB allocator's corruption-detection checks.",
+    "fr": "Exige un noyau compilé avec `CONFIG_SLUB_DEBUG=y`, activant les contrôles de détection de corruption de l'allocateur SLUB."
+  },
+  "rationale": {
+    "en": "`CONFIG_SLUB_DEBUG=y` builds in the SLUB allocator's consistency-checking machinery: redzone and poison checks that detect heap corruption, plus the ability to validate freelist integrity. It is the prerequisite for runtime hardening such as `init_on_free`/`slub_debug` and lets the kernel catch use-after-free and overflow conditions instead of silently continuing with corrupted memory. The checks are dormant until requested, so the cost when unused is minimal.",
+    "fr": "`CONFIG_SLUB_DEBUG=y` intègre les mécanismes de vérification de cohérence de l'allocateur SLUB : contrôles de redzone et de poison qui détectent la corruption du tas, ainsi que la validation de l'intégrité de la freelist. C'est le prérequis du durcissement à l'exécution (`init_on_free`/`slub_debug`) et il permet au noyau de détecter use-after-free et débordements au lieu de poursuivre silencieusement avec une mémoire corrompue. Les contrôles restent inactifs tant qu'ils ne sont pas demandés, d'où un coût minimal hors usage."
+  },
+  "check_note": {
+    "en": "Pavois reads the build configuration of the **running** kernel via `/boot/config-$(uname -r)` or `/proc/config.gz` and confirms `CONFIG_SLUB_DEBUG=y`. Reading the booted kernel's effective config proves the debugging support is compiled into the kernel in use, not just available in some installed image.",
+    "fr": "Pavois lit la configuration de compilation du noyau **en cours d'exécution** via `/boot/config-$(uname -r)` ou `/proc/config.gz` et vérifie `CONFIG_SLUB_DEBUG=y`. Lire la config effective du noyau démarré prouve que le support de débogage est compilé dans le noyau utilisé, et pas seulement disponible dans une image installée."
+  },
+  "verify": {
+    "en": "```\ngrep '^CONFIG_SLUB_DEBUG=' /boot/config-$(uname -r) || zcat /proc/config.gz | grep '^CONFIG_SLUB_DEBUG='\n```\n\nExpected output: `CONFIG_SLUB_DEBUG=y`. To see whether checks are active at runtime, inspect the boot line for `slub_debug=` with `cat /proc/cmdline`.",
+    "fr": "```\ngrep '^CONFIG_SLUB_DEBUG=' /boot/config-$(uname -r) || zcat /proc/config.gz | grep '^CONFIG_SLUB_DEBUG='\n```\n\nSortie attendue : `CONFIG_SLUB_DEBUG=y`. Pour voir si les contrôles sont actifs à l'exécution, inspectez la ligne de boot pour `slub_debug=` via `cat /proc/cmdline`."
+  },
+  "logs": {
+    "en": "When SLUB debugging detects corruption it prints diagnostics to the kernel ring buffer, inspect `dmesg` or `journalctl -k` for messages like `Redzone overwritten`, `Poison overwritten` or `Object already free`. Per-cache state is visible under `/sys/kernel/slab/`.",
+    "fr": "Lorsque le débogage SLUB détecte une corruption, il écrit des diagnostics dans le ring buffer noyau, examinez `dmesg` ou `journalctl -k` pour des messages comme `Redzone overwritten`, `Poison overwritten` ou `Object already free`. L'état par cache est visible sous `/sys/kernel/slab/`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped: `CONFIG_SLUB_DEBUG` is a **compile-time** kernel option and cannot be turned on at runtime. The fix is to boot a kernel built with it enabled, the stock distribution kernels for the supported OSes already do. For a custom kernel, set `CONFIG_SLUB_DEBUG=y` and rebuild.",
+    "fr": "Aucune remédiation automatique n'est fournie : `CONFIG_SLUB_DEBUG` est une option noyau **à la compilation**, non activable à chaud. La correction consiste à démarrer un noyau compilé avec cette option, c'est déjà le cas des noyaux par défaut des OS pris en charge. Pour un noyau personnalisé, positionnez `CONFIG_SLUB_DEBUG=y` et reconstruisez."
+  },
+  "impact": {
+    "en": "Without `CONFIG_SLUB_DEBUG`, the kernel cannot perform allocator consistency checks and you lose the foundation for runtime SLUB hardening, so heap corruption can go undetected. **Precautions:** enabling the option alone has negligible overhead since checks stay dormant; only activating full checking at runtime (`slub_debug=FZP`) carries a measurable cost, so reserve that for debugging. Changing kernels requires a reboot, schedule a maintenance window and keep the prior kernel in GRUB as a fallback.",
+    "fr": "Sans `CONFIG_SLUB_DEBUG`, le noyau ne peut pas effectuer de contrôles de cohérence de l'allocateur et vous perdez la base du durcissement SLUB à l'exécution : la corruption du tas peut passer inaperçue. **Précautions :** activer l'option seule a un surcoût négligeable, les contrôles restant inactifs ; seul l'activation complète à l'exécution (`slub_debug=FZP`) a un coût mesurable, à réserver au débogage. Changer de noyau impose un redémarrage, planifiez une fenêtre de maintenance et gardez le noyau précédent dans GRUB en repli."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

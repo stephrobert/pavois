@@ -1,0 +1,73 @@
+{
+  "id": "kconfig-modify-ldt-syscall",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel build",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R25"
+  },
+  "check": [
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_MODIFY_LDT_SYSCALL=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
+    "  its('stdout') { should_not match(/^CONFIG_MODIFY_LDT_SYSCALL=y$/) }",
+    "end"
+  ],
+  "remediation": {
+    "resource": "kernel_build"
+  },
+  "title": {
+    "en": "Disable the LDT (local descriptor table)",
+    "fr": "Désactiver la LDT (table de descripteurs locale)"
+  },
+  "summary": {
+    "en": "Requires the kernel to be built **without** `CONFIG_MODIFY_LDT_SYSCALL=y`, removing the `modify_ldt()` syscall and per-process LDT support.",
+    "fr": "Exige que le noyau soit compilé **sans** `CONFIG_MODIFY_LDT_SYSCALL=y`, supprimant l'appel système `modify_ldt()` et la prise en charge de la LDT par processus."
+  },
+  "rationale": {
+    "en": "`CONFIG_MODIFY_LDT_SYSCALL` enables the `modify_ldt()` syscall, which lets a process install custom segment descriptors in a per-process **Local Descriptor Table**. This legacy x86 mechanism (used by old 16-bit/segmented code and some sandboxes) has a long history of kernel vulnerabilities and privilege-escalation exploits. Modern 64-bit userspace almost never needs it, so building the kernel without `CONFIG_MODIFY_LDT_SYSCALL` removes an unnecessary, exploit-prone syscall and shrinks attack surface.",
+    "fr": "`CONFIG_MODIFY_LDT_SYSCALL` active l'appel système `modify_ldt()`, qui permet à un processus d'installer des descripteurs de segment personnalisés dans une **table de descripteurs locale** propre au processus. Ce mécanisme x86 hérité (utilisé par du vieux code 16 bits/segmenté et certains bacs à sable) a un long historique de vulnérabilités noyau et d'exploits d'élévation de privilèges. L'espace utilisateur 64 bits moderne n'en a presque jamais besoin ; compiler le noyau sans `CONFIG_MODIFY_LDT_SYSCALL` supprime donc un appel système inutile et propice aux exploits, et réduit la surface d'attaque."
+  },
+  "check_note": {
+    "en": "Pavois reads the build configuration of the **running** kernel, `/boot/config-$(uname -r)` and the in-memory `/proc/config.gz`, and confirms `CONFIG_MODIFY_LDT_SYSCALL` is not set to `y`. Reading the booted kernel's real config (not a stale `/boot/config-*`) reflects whether the `modify_ldt()` syscall is actually compiled in.",
+    "fr": "Pavois lit la configuration de compilation du noyau **en cours d'exécution**, `/boot/config-$(uname -r)` et `/proc/config.gz` en mémoire, et confirme que `CONFIG_MODIFY_LDT_SYSCALL` n'est pas à `y`. Lire la config réelle du noyau démarré (et non un `/boot/config-*` obsolète) reflète si l'appel système `modify_ldt()` est réellement compilé."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_MODIFY_LDT_SYSCALL=' /boot/config-$(uname -r)`. Expected: no match, or `# CONFIG_MODIFY_LDT_SYSCALL is not set`, the line `CONFIG_MODIFY_LDT_SYSCALL=y` must be absent. On a kernel that compiled it in but disabled it at runtime, `sysctl kernel.modify_ldt` returns `0`.",
+    "fr": "Exécutez `grep '^CONFIG_MODIFY_LDT_SYSCALL=' /boot/config-$(uname -r)`. Attendu : aucune correspondance, ou `# CONFIG_MODIFY_LDT_SYSCALL is not set`, la ligne `CONFIG_MODIFY_LDT_SYSCALL=y` doit être absente. Sur un noyau qui l'a compilé mais désactivé à l'exécution, `sysctl kernel.modify_ldt` renvoie `0`."
+  },
+  "logs": {
+    "en": "No dedicated log. When the syscall is unavailable, callers get `ENOSYS`. On kernels built with it, the runtime gate is `sysctl kernel.modify_ldt` (`0` = disabled). Programs attempting to use it can be traced with `strace -e trace=modify_ldt <cmd>`.",
+    "fr": "Aucun journal dédié. Quand l'appel système est indisponible, les appelants reçoivent `ENOSYS`. Sur les noyaux compilés avec, le verrou à l'exécution est `sysctl kernel.modify_ldt` (`0` = désactivé). Les programmes tentant de l'utiliser peuvent être tracés avec `strace -e trace=modify_ldt <cmd>`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation: this is a **kernel build-time option**, not a runtime tunable. Pavois's harden plan is empty. To fully remove the syscall you must boot a kernel compiled without `CONFIG_MODIFY_LDT_SYSCALL`. As a runtime mitigation on kernels that ship it, set `kernel.modify_ldt=0` via sysctl, but that does not remove the syscall this rule targets.",
+    "fr": "Aucune remédiation automatisée : il s'agit d'une **option de compilation du noyau**, pas d'un paramètre modifiable à chaud. Le plan de durcissement Pavois est vide. Pour supprimer entièrement l'appel système, démarrez un noyau compilé sans `CONFIG_MODIFY_LDT_SYSCALL`. En atténuation à l'exécution sur les noyaux qui l'embarquent, positionnez `kernel.modify_ldt=0` via sysctl, mais cela ne supprime pas l'appel système visé par cette règle."
+  },
+  "impact": {
+    "en": "Removing `modify_ldt()` breaks the rare software that depends on a custom LDT: **DOSEMU/old Wine 16-bit code**, some legacy segmented or JIT sandboxes. Audit for such workloads before applying. Because the change requires a different kernel, keep the previous kernel entry in the bootloader so you can fall back if a dependent application is found.",
+    "fr": "Supprimer `modify_ldt()` casse les rares logiciels qui dépendent d'une LDT personnalisée : **DOSEMU/ancien code Wine 16 bits**, certains bacs à sable segmentés ou JIT hérités. Auditez ces charges avant d'appliquer. Comme le changement requiert un autre noyau, conservez l'entrée du noyau précédent dans le chargeur d'amorçage pour revenir en arrière si une application dépendante est trouvée."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

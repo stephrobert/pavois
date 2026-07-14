@@ -1,0 +1,74 @@
+{
+  "id": "pkg-libpam-apparmor-installed",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R45",
+    "nist": [
+      "AC-3(4)",
+      "AC-6(8)",
+      "AC-6(10)",
+      "CM-7(5)(b)",
+      "CM-7(2)",
+      "SC-7(21)",
+      "CM-6(a)"
+    ]
+  },
+  "check": [
+    "describe package('libpam-apparmor') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "libpam-apparmor",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Install the pam_apparmor Package",
+    "fr": "Installer le paquet pam_apparmor"
+  },
+  "summary": {
+    "en": "Ensures the `libpam-apparmor` package (the `pam_apparmor` PAM module) is **installed** so sessions can be confined by AppArmor.",
+    "fr": "Garantit que le paquet `libpam-apparmor` (le module PAM `pam_apparmor`) est **installé** afin que les sessions puissent être confinées par AppArmor."
+  },
+  "rationale": {
+    "en": "`libpam-apparmor` provides the `pam_apparmor` module, which confines user sessions to an AppArmor profile at login. Enforcing **mandatory access control** on a per-session basis limits what a compromised account can reach. Protection of system integrity through this confinement depends on the package being installed; without it, the corresponding AppArmor session restrictions cannot be applied.",
+    "fr": "`libpam-apparmor` fournit le module `pam_apparmor`, qui confine les sessions utilisateur dans un profil AppArmor à l'ouverture de session. Imposer un **contrôle d'accès obligatoire** au niveau de chaque session limite ce qu'un compte compromis peut atteindre. La protection de l'intégrité du système par ce confinement dépend de l'installation du paquet ; sans lui, les restrictions de session AppArmor correspondantes ne peuvent être appliquées."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database via InSpec `package('libpam-apparmor')` (`dpkg -s libpam-apparmor`) and asserts it **is installed**. Checking the package state confirms the module is present and available to PAM; a missing package means no `pam_apparmor` line can take effect no matter what `/etc/pam.d/` declares.",
+    "fr": "Pavois interroge la base de paquets via InSpec `package('libpam-apparmor')` (`dpkg -s libpam-apparmor`) et vérifie qu'il **est installé**. Contrôler l'état du paquet confirme que le module est présent et disponible pour PAM ; un paquet absent signifie qu'aucune ligne `pam_apparmor` ne peut prendre effet, quoi que déclare `/etc/pam.d/`."
+  },
+  "verify": {
+    "en": "Run `dpkg -s libpam-apparmor`. The expected output includes `Status: install ok installed`. Anything else (e.g. `is not installed`) means the rule fails.",
+    "fr": "Exécutez `dpkg -s libpam-apparmor`. La sortie attendue contient `Status: install ok installed`. Toute autre valeur (par ex. `is not installed`) signifie que la règle échoue."
+  },
+  "logs": {
+    "en": "Confirm installation via `apt list --installed | grep libpam-apparmor` or `/var/log/apt/history.log`. Once a profile confines a session, AppArmor decisions are logged to `/var/log/syslog` / `journalctl -k` as `apparmor=\"DENIED\"`/`\"ALLOWED\"` audit lines (or `/var/log/audit/audit.log` when auditd is active).",
+    "fr": "Confirmez l'installation via `apt list --installed | grep libpam-apparmor` ou `/var/log/apt/history.log`. Une fois qu'un profil confine une session, les décisions AppArmor sont consignées dans `/var/log/syslog` / `journalctl -k` sous forme de lignes d'audit `apparmor=\"DENIED\"`/`\"ALLOWED\"` (ou `/var/log/audit/audit.log` quand auditd est actif)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource named `libpam-apparmor` with action **install**; `pavois harden apply` runs the equivalent of `apt-get install libpam-apparmor` to reach the compliant state. Installing the package only makes the module available, you still configure `pam_apparmor` in PAM and define the AppArmor profiles separately.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` nommée `libpam-apparmor` avec l'action **install** ; `pavois harden apply` exécute l'équivalent de `apt-get install libpam-apparmor` pour atteindre l'état conforme. Installer le paquet ne fait que rendre le module disponible, vous configurez encore `pam_apparmor` dans PAM et définissez les profils AppArmor séparément."
+  },
+  "impact": {
+    "en": "Installing the package alone is low-risk: it adds the module but changes no behavior until `pam_apparmor` is referenced in `/etc/pam.d/` and a profile is defined. **Precaution:** the real risk comes later, an over-restrictive or missing session profile can prevent users from logging in or block needed actions. Roll out profiles in **complain mode** first (`aa-complain`), test login, then switch to enforce. Keep a root console open while testing to avoid lockout.",
+    "fr": "Installer le paquet seul présente peu de risque : il ajoute le module mais ne change aucun comportement tant que `pam_apparmor` n'est pas référencé dans `/etc/pam.d/` et qu'un profil n'est pas défini. **Précaution :** le vrai risque vient ensuite, un profil de session trop restrictif ou manquant peut empêcher les utilisateurs de se connecter ou bloquer des actions nécessaires. Déployez d'abord les profils en **mode complain** (`aa-complain`), testez la connexion, puis passez en enforce. Gardez une console root ouverte pendant les tests pour éviter le verrouillage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

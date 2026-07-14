@@ -1,0 +1,60 @@
+{
+  "id": "pkg-abrt-cli-removed",
+  "supported_os": [
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "low",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe package('abrt-cli') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "abrt-cli",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall abrt-cli Package",
+    "fr": "Désinstaller le paquet abrt-cli"
+  },
+  "summary": {
+    "en": "Removes the **`abrt-cli`** package so the command-line client for the ABRT crash daemon is no longer present.",
+    "fr": "Supprime le paquet **`abrt-cli`** afin que le client en ligne de commande du démon de plantage ABRT ne soit plus présent."
+  },
+  "rationale": {
+    "en": "`abrt-cli` provides a command-line client that controls the ABRT daemon over its sockets, giving local access to collected crash reports. Those reports can contain **sensitive process memory** (passwords, keys). On a hardened server the crash-reporting subsystem is unwanted, and removing its client tooling reduces both the attack surface and the exposure of captured crash data.",
+    "fr": "`abrt-cli` fournit un client en ligne de commande qui pilote le démon ABRT via ses sockets, offrant un accès local aux rapports de plantage collectés. Ces rapports peuvent contenir de la **mémoire de processus sensible** (mots de passe, clés). Sur un serveur durci, le sous-système de rapport de plantage est indésirable ; supprimer son outillage client réduit à la fois la surface d'attaque et l'exposition des données de plantage capturées."
+  },
+  "check_note": {
+    "en": "Pavois queries the **effective** package database via the `package('abrt-cli')` resource (`rpm -q`), which reports what is actually installed now, the authoritative source rather than any config or vendor list.",
+    "fr": "Pavois interroge la base de paquets **effective** via la ressource `package('abrt-cli')` (`rpm -q`), qui indique ce qui est réellement installé à l'instant T, la source de référence plutôt qu'une configuration ou une liste d'éditeur."
+  },
+  "verify": {
+    "en": "Run `rpm -q abrt-cli`. Expected output: `package abrt-cli is not installed`. A version string means the rule fails.",
+    "fr": "Exécutez `rpm -q abrt-cli`. Sortie attendue : `package abrt-cli is not installed`. Une chaîne de version signifie que la règle échoue."
+  },
+  "logs": {
+    "en": "Confirm with `rpm -q abrt-cli`; the removal transaction is recorded in `dnf history` and `/var/log/dnf.rpm.log`.",
+    "fr": "Confirmez avec `rpm -q abrt-cli` ; la transaction de suppression est enregistrée dans `dnf history` et `/var/log/dnf.rpm.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the **`package`** resource with action **`remove`** to uninstall `abrt-cli` (equivalent to `dnf remove abrt-cli`). Apply it with **`pavois harden apply`**.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource **`package`** avec l'action **`remove`** pour désinstaller `abrt-cli` (équivalent à `dnf remove abrt-cli`). Appliquez-le avec **`pavois harden apply`**."
+  },
+  "impact": {
+    "en": "Removing `abrt-cli` only takes away the command-line interface to ABRT; it does not disrupt running services. **Precautions:** if operators use `abrt-cli` to triage crashes, plan to remove the wider ABRT stack (`abrt`, addons) together so the workflow is consistent. The change is reversible by reinstalling the package.",
+    "fr": "Supprimer `abrt-cli` retire uniquement l'interface en ligne de commande d'ABRT ; cela n'interrompt aucun service en cours. **Précautions :** si des opérateurs utilisent `abrt-cli` pour trier les plantages, prévoyez de supprimer l'ensemble de la pile ABRT (`abrt`, addons) de concert pour rester cohérent. Le changement est réversible en réinstallant le paquet."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,73 @@
+{
+  "id": "posture-no-compilers",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (posture)",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe command('for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; p=$(readlink -f \\\"$p\\\"); find \\\"$p\\\" -perm -o+x 2>/dev/null; done') do",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "for p in gcc cpp g++ gcc-12 g++-12 cpp-12 clang tcc tcc-dev; do dpkg -l \"$p\" 2>/dev/null | grep -q '^ii' && DEBIAN_FRONTEND=noninteractive apt-get purge -y \"$p\" >/dev/null 2>&1; done; true; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x \"$p\" 2>/dev/null; don; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x \"$(readlink -f \"$p\")\" 2>/dev/null; done; true",
+    "name": "purge-compilers",
+    "not_if": "test -z \"$(for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; p=$(readlink -f \\\"$p\\\"); find \\\"$p\\\" -perm -o+x 2>/dev/null; done)\"",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "No compiler available (attack surface)",
+    "fr": "Aucun compilateur disponible (surface d'attaque)"
+  },
+  "summary": {
+    "en": "Ensures no C/C++ compiler (`gcc`, `cc`, `clang`, `g++`, `tcc`) is present on a production host, reducing the attack surface available to an intruder.",
+    "fr": "Garantit qu'aucun compilateur C/C++ (`gcc`, `cc`, `clang`, `g++`, `tcc`) n'est présent sur un hôte de production, réduisant la surface d'attaque disponible pour un intrus."
+  },
+  "rationale": {
+    "en": "A compiler on a production server is a gift to an attacker: it lets them **build privilege-escalation exploits, kernel modules, rootkits or custom tooling directly on the target**, turning source they smuggle in into working binaries that evade allow-lists. Production hosts almost never need to compile code locally, software should be built elsewhere and deployed as packages. Removing compilers forces an attacker to bring pre-built tools, which is noisier and easier to block.",
+    "fr": "Un compilateur sur un serveur de production est un cadeau pour un attaquant : il lui permet de **compiler des exploits d'élévation de privilèges, des modules noyau, des rootkits ou des outils sur mesure directement sur la cible**, transformant du code source introduit en binaires fonctionnels qui contournent les listes d'autorisation. Les hôtes de production n'ont quasiment jamais besoin de compiler localement, les logiciels devraient être construits ailleurs et déployés sous forme de paquets. Retirer les compilateurs oblige l'attaquant à apporter des outils précompilés, ce qui est plus bruyant et plus facile à bloquer."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective state** by probing `PATH` (`command -v`) for each known compiler binary and expects an **empty** result. Resolving the live `PATH` is more reliable than scanning a package manifest: it catches a compiler installed by hand, symlinked, or shipped inside another package.",
+    "fr": "Pavois contrôle l'**état effectif** en sondant le `PATH` (`command -v`) pour chaque binaire de compilateur connu et attend un résultat **vide**. Résoudre le `PATH` réel est plus fiable que d'inspecter un manifeste de paquets : cela détecte un compilateur installé à la main, lié par symlink ou embarqué dans un autre paquet."
+  },
+  "verify": {
+    "en": "Run `for c in gcc cc clang g++ tcc; do command -v $c; done`, it should print **nothing**. Each missing binary confirms no compiler is reachable on `PATH`.",
+    "fr": "Lancez `for c in gcc cc clang g++ tcc; do command -v $c; done`, il ne doit **rien** afficher. Chaque binaire manquant confirme qu'aucun compilateur n'est accessible dans le `PATH`."
+  },
+  "logs": {
+    "en": "There is no runtime log for this rule. Confirm absence with `command -v gcc cc clang g++ tcc` (empty) and `dpkg -l gcc 'g++' clang` / `rpm -q gcc` to verify the packages are not installed.",
+    "fr": "Il n'existe pas de journal d'exécution pour cette règle. Confirmez l'absence avec `command -v gcc cc clang g++ tcc` (vide) et `dpkg -l gcc 'g++' clang` / `rpm -q gcc` pour vérifier que les paquets ne sont pas installés."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped, so apply it **manually**: remove the compiler packages (`apt purge gcc g++ clang` / `dnf remove gcc gcc-c++ clang`) and any standalone compiler binaries. Restrict execute permissions on any compiler that must stay (e.g. for DKMS) to root only.",
+    "fr": "Aucune remédiation automatisée n'est fournie, appliquez-la donc **manuellement** : supprimez les paquets de compilateur (`apt purge gcc g++ clang` / `dnf remove gcc gcc-c++ clang`) ainsi que tout binaire de compilateur autonome. Restreignez les droits d'exécution de tout compilateur devant rester (par ex. pour DKMS) au seul utilisateur root."
+  },
+  "impact": {
+    "en": "Removing compilers can **break builds and tooling that compile at install/runtime**: DKMS kernel modules, `make`-based installers, some language package managers (native gems/wheels/npm addons), and configuration management that builds from source. Before applying, verify the host does not rely on these, if it does, either keep the compiler with restricted permissions or move that build step to a dedicated build server. Pure runtime/production servers are safe.",
+    "fr": "Retirer les compilateurs peut **casser les compilations et outils qui compilent à l'installation ou à l'exécution** : modules noyau DKMS, installeurs basés sur `make`, certains gestionnaires de paquets de langage (gems/wheels/addons npm natifs) et la gestion de configuration compilant depuis les sources. Avant d'appliquer, vérifiez que l'hôte n'en dépend pas, si c'est le cas, conservez le compilateur avec des droits restreints ou déportez cette étape vers un serveur de build dédié. Les serveurs purement d'exécution/production sont sûrs."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

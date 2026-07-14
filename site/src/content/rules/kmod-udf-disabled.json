@@ -1,0 +1,85 @@
+{
+  "id": "kmod-udf-disabled",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Kernel modules",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "1.1.1.8",
+      "1.1.1.7"
+    ],
+    "nist": [
+      "3.4.6",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)"
+    ]
+  },
+  "check": [
+    "describe kernel_module('udf') do",
+    "  it { should_not be_loaded }",
+    "  it { should be_disabled }",
+    "end"
+  ],
+  "remediation": {
+    "action": "blacklist",
+    "name": "udf",
+    "reboot_required": true,
+    "resource": "kernel_module"
+  },
+  "title": {
+    "en": "Disable Mounting of udf",
+    "fr": "Désactiver le montage de udf"
+  },
+  "summary": {
+    "en": "Ensures the `udf` kernel module is **not loaded** and is **blacklisted** so this rarely needed filesystem driver cannot be auto-loaded.",
+    "fr": "Garantit que le module noyau `udf` n'est **pas chargé** et qu'il est **mis en liste noire** afin que ce pilote de système de fichiers rarement nécessaire ne soit pas chargé automatiquement."
+  },
+  "rationale": {
+    "en": "Removing support for unneeded filesystem types reduces the local attack surface of the system. The `udf` driver (Universal Disk Format, used by DVDs and some removable media) parses attacker-supplied media; a flaw in it is a local privilege-escalation or denial-of-service vector. Unless the host mounts optical/UDF media, the module should be neither loaded nor loadable.",
+    "fr": "Supprimer la prise en charge des types de systèmes de fichiers inutiles réduit la surface d'attaque locale du système. Le pilote `udf` (Universal Disk Format, utilisé par les DVD et certains supports amovibles) analyse des supports fournis par l'attaquant ; une faille dans ce code est un vecteur d'élévation de privilèges locale ou de déni de service. Sauf si l'hôte monte des supports optiques/UDF, le module ne doit être ni chargé ni chargeable."
+  },
+  "check_note": {
+    "en": "Pavois queries the **effective module state**, not config files: it checks `udf` is absent from the running kernel and that modprobe refuses to load it. Reading `/etc/modprobe.d/*.conf` alone would miss a module already loaded (e.g. after a DVD was inserted) or pulled in by an unexpected drop-in; querying the live kernel catches both.",
+    "fr": "Pavois interroge l'**état effectif du module**, pas les fichiers de configuration : il vérifie que `udf` est absent du noyau en cours d'exécution et que modprobe refuse de le charger. Lire uniquement `/etc/modprobe.d/*.conf` manquerait un module déjà chargé (par exemple après l'insertion d'un DVD) ou tiré par un drop-in inattendu ; interroger le noyau vivant détecte les deux cas."
+  },
+  "verify": {
+    "en": "- `lsmod | grep udf` should return **nothing**.\n- `modprobe -n -v udf` should print `install /bin/true`.\n- `grep -r udf /etc/modprobe.d/` should show `blacklist udf` and `install udf /bin/true`.",
+    "fr": "- `lsmod | grep udf` ne doit **rien** renvoyer.\n- `modprobe -n -v udf` doit afficher `install /bin/true`.\n- `grep -r udf /etc/modprobe.d/` doit montrer `blacklist udf` et `install udf /bin/true`."
+  },
+  "logs": {
+    "en": "- `dmesg | grep -i udf` and `journalctl -k | grep udf` show kernel/module load events.\n- `lsmod` and `modprobe -n -v udf` reflect the live state.",
+    "fr": "- `dmesg | grep -i udf` et `journalctl -k | grep udf` affichent les événements de chargement noyau/module.\n- `lsmod` et `modprobe -n -v udf` reflètent l'état réel."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `kernel_module` resource to **blacklist** `udf`: it writes a modprobe drop-in blacklisting the module and redirecting its load to `/bin/true`, then unloads it if active. A **reboot is required** to fully clear an in-use module. Apply with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `kernel_module` pour mettre `udf` en **liste noire** : il écrit un drop-in modprobe qui blackliste le module et redirige son chargement vers `/bin/true`, puis le décharge s'il est actif. Un **redémarrage est requis** pour purger un module utilisé. Appliquez avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Low risk on servers. **Caution:** blacklisting `udf` prevents mounting DVDs and some UDF-formatted USB media; some installer/ISO workflows and Windows-interop drives use UDF. If the host needs to mount optical or UDF media, verify with `findmnt -t udf` before applying and exclude the rule there.",
+    "fr": "Risque faible sur les serveurs. **Attention :** mettre `udf` en liste noire empêche le montage de DVD et de certains supports USB au format UDF ; certains processus d'installation/ISO et disques d'interopérabilité Windows utilisent UDF. Si l'hôte doit monter des supports optiques ou UDF, vérifiez avec `findmnt -t udf` avant d'appliquer et excluez-y la règle."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

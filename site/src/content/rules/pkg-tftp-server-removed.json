@@ -1,0 +1,85 @@
+{
+  "id": "pkg-tftp-server-removed",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "critical",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R62",
+    "cis": [
+      "2.1.16",
+      "2.2.4",
+      "2.1.17"
+    ],
+    "nist": [
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)"
+    ],
+    "pci-dss": "2.2.4"
+  },
+  "check": [
+    "describe package('tftpd-hpa') do",
+    "  it { should_not be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "remove",
+    "name": "tftpd-hpa",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Uninstall tftp-server Package",
+    "fr": "Désinstaller le paquet tftp-server"
+  },
+  "summary": {
+    "en": "Ensures the `tftp-server` package is **not installed**.",
+    "fr": "Garantit que le paquet `tftp-server` n'est **pas installé**."
+  },
+  "rationale": {
+    "en": "`tftp-server` exposes a Trivial FTP listener with **no authentication and no encryption**, letting remote clients read or write files over an insecure channel, a classic vector for exfiltration and unauthorized file delivery. Removing it prevents accidental or intentional activation. If TFTP is genuinely required (e.g. router config delivery), its use must be documented, restricted to authorized personnel, and access-controlled.",
+    "fr": "`tftp-server` expose un service Trivial FTP **sans authentification ni chiffrement**, permettant à des clients distants de lire ou écrire des fichiers via un canal non sécurisé, un vecteur classique d'exfiltration et de dépôt de fichiers non autorisé. Le supprimer empêche toute activation accidentelle ou intentionnelle. Si TFTP est réellement nécessaire (par ex. distribution de configuration de routeurs), son usage doit être documenté, restreint au personnel autorisé et soumis à un contrôle d'accès."
+  },
+  "check_note": {
+    "en": "Pavois verifies that the `tftp-server` package is absent from the package database. A present server binary can be (re)started to expose an unauthenticated file-transfer port, so the package query is the authoritative signal regardless of current unit/inetd state.",
+    "fr": "Pavois vérifie que le paquet `tftp-server` est absent de la base de paquets. Un binaire serveur présent peut être (re)démarré pour exposer un port de transfert de fichiers non authentifié, donc la requête de paquet est le signal qui fait autorité quel que soit l'état actuel de l'unité/inetd."
+  },
+  "verify": {
+    "en": "On RHEL-family run `rpm -q tftp-server` and expect **`package tftp-server is not installed`**. Optionally confirm nothing listens on UDP/69 with `ss -lnup | grep ':69'` (no output).",
+    "fr": "Sur la famille RHEL, exécutez `rpm -q tftp-server` : attendez **`package tftp-server is not installed`**. Éventuellement, confirmez qu'aucun service n'écoute sur UDP/69 avec `ss -lnup | grep ':69'` (aucune sortie)."
+  },
+  "logs": {
+    "en": "Removal is recorded by the package manager: `dnf history` / `rpm -q --last tftp-server` (RHEL) or `grep tftp /var/log/dpkg.log` (Debian/Ubuntu). Past TFTP transfers, if the service ran, appear in `journalctl -u tftp` or `/var/log/messages`.",
+    "fr": "La suppression est enregistrée par le gestionnaire de paquets : `dnf history` / `rpm -q --last tftp-server` (RHEL) ou `grep tftp /var/log/dpkg.log` (Debian/Ubuntu). Les transferts TFTP passés, si le service a tourné, apparaissent dans `journalctl -u tftp` ou `/var/log/messages`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares the `tftp-server` **package** resource with action **remove**, so `pavois harden apply` uninstalls it via the system package manager (`dnf`/`apt`).",
+    "fr": "Le plan de durcissement de Pavois déclare la ressource **package** `tftp-server` avec l'action **remove** ; ainsi `pavois harden apply` la désinstalle via le gestionnaire de paquets système (`dnf`/`apt`)."
+  },
+  "impact": {
+    "en": "An installed `tftp-server` is an unauthenticated file service that can be abused for exfiltration or malware drop. **Precaution before applying:** if this host is a legitimate PXE/network-boot or appliance-config server, removal will break those workflows, keep the package only with documented, access-controlled justification; otherwise removal is the safe default.",
+    "fr": "Un `tftp-server` installé est un service de fichiers non authentifié pouvant être détourné pour de l'exfiltration ou du dépôt de malware. **Précaution avant application :** si cet hôte est un serveur PXE/démarrage réseau ou de configuration d'équipements légitime, la suppression cassera ces flux, ne conservez le paquet qu'avec une justification documentée et un contrôle d'accès ; sinon la suppression est le choix sûr par défaut."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,74 @@
+{
+  "id": "misc-prefer-64bit-os",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (misc)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {
+    "bp28": "R1"
+  },
+  "check": [
+    "describe command('uname -m | grep -qE \\'x86_64|aarch64|amd64|s390x\\' && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "uname -m   # if not x86_64/aarch64, a reinstall is required (audit-only finding)\n",
+    "reason": "the OS architecture cannot be changed in place, reinstall as 64-bit if needed",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Prefer to use a 64-bit Operating System when supported",
+    "fr": "Préférer un système d'exploitation 64 bits lorsqu'il est pris en charge"
+  },
+  "summary": {
+    "en": "Requires the system to run a **64-bit** kernel architecture (`x86_64`, `aarch64`, `amd64`, `s390x`) rather than a legacy 32-bit one.",
+    "fr": "Exige que le système exécute une architecture noyau **64 bits** (`x86_64`, `aarch64`, `amd64`, `s390x`) plutôt qu'une ancienne architecture 32 bits."
+  },
+  "rationale": {
+    "en": "A 64-bit operating system materially improves the effectiveness of two key exploit mitigations. The much larger address space makes **Address Space Layout Randomization (ASLR)** far harder to brute-force, and 64-bit platforms guarantee the **No eXecute / Execute Disable (NX/XD)** bits that block code execution from data pages, defeating many memory-corruption attacks. A 32-bit OS weakens both, making exploitation more practical.",
+    "fr": "Un système d'exploitation 64 bits améliore concrètement l'efficacité de deux protections clés contre les exploits. L'espace d'adressage bien plus large rend la **randomisation de l'espace d'adressage (ASLR)** bien plus difficile à forcer par force brute, et les plateformes 64 bits garantissent les bits **No eXecute / Execute Disable (NX/XD)** qui empêchent l'exécution de code depuis les pages de données, déjouant de nombreuses attaques par corruption mémoire. Un OS 32 bits affaiblit les deux et rend l'exploitation plus facile."
+  },
+  "check_note": {
+    "en": "Pavois reads the **running** kernel architecture with `uname -m`, the architecture the machine is actually booted on. This reflects the live state, which is what matters for exploit mitigations; inspecting package metadata or installer files could report a different or planned architecture, not the one in effect.",
+    "fr": "Pavois lit l'architecture noyau **en cours d'exécution** avec `uname -m`, l'architecture sur laquelle la machine a réellement démarré. Cela reflète l'état actif, ce qui importe pour les protections contre les exploits ; inspecter les métadonnées de paquets ou les fichiers d'installation pourrait indiquer une architecture différente ou prévue, et non celle effective."
+  },
+  "verify": {
+    "en": "Run `uname -m`. The expected output is a 64-bit architecture such as `x86_64`, `aarch64`, `amd64` or `s390x`. A value like `i686` or `i386` indicates a non-compliant 32-bit system.",
+    "fr": "Exécutez `uname -m`. La sortie attendue est une architecture 64 bits telle que `x86_64`, `aarch64`, `amd64` ou `s390x`. Une valeur comme `i686` ou `i386` indique un système 32 bits non conforme."
+  },
+  "logs": {
+    "en": "There is no event log for architecture. Confirm at any time with `uname -m`, or inspect boot details with `dmesg | head` and `cat /proc/cpuinfo` (the `lm` CPU flag indicates 64-bit capability).",
+    "fr": "Il n'existe pas de journal d'événements pour l'architecture. Vérifiez à tout moment avec `uname -m`, ou inspectez les détails de démarrage avec `dmesg | head` et `cat /proc/cpuinfo` (le drapeau CPU `lm` indique la capacité 64 bits)."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan exists for this rule, and it cannot be fixed in place: switching from 32-bit to 64-bit requires **reinstalling the operating system** with a 64-bit image on 64-bit-capable hardware. It must be addressed manually during provisioning.",
+    "fr": "Aucun plan de durcissement automatisé n'existe pour cette règle, et elle ne peut être corrigée sur place : passer de 32 bits à 64 bits nécessite de **réinstaller le système d'exploitation** avec une image 64 bits sur un matériel compatible 64 bits. Cela doit être traité manuellement lors du provisionnement."
+  },
+  "impact": {
+    "en": "This rule is informational on modern hardware, virtually all current servers and cloud images are already 64-bit. A non-compliant result almost always means a legacy or embedded host. Remediation is not a configuration change but a **full reinstall**, so plan it as a migration: back up data, validate that all required software has 64-bit packages, and rebuild rather than attempt an in-place conversion.",
+    "fr": "Cette règle est informative sur le matériel moderne, la quasi-totalité des serveurs et images cloud actuels sont déjà en 64 bits. Un résultat non conforme signale presque toujours un hôte ancien ou embarqué. La remédiation n'est pas un changement de configuration mais une **réinstallation complète** : planifiez-la comme une migration : sauvegardez les données, vérifiez que tous les logiciels requis disposent de paquets 64 bits, et reconstruisez plutôt que de tenter une conversion sur place."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

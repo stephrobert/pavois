@@ -1,0 +1,80 @@
+{
+  "id": "fileowner-backup-etc-passwd",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "2.2.6",
+      "7.1.2"
+    ],
+    "nist": "AC-6 (1)",
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "only_if { file('/etc/passwd-').exist? }",
+    "describe file('/etc/passwd-') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/etc/passwd-",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify User Who Owns Backup passwd File",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier de sauvegarde passwd"
+  },
+  "summary": {
+    "en": "Ensures the backup password file `/etc/passwd-` is owned by the **root** user (UID 0).",
+    "fr": "Garantit que le fichier de sauvegarde des mots de passe `/etc/passwd-` appartient à l'utilisateur **root** (UID 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/passwd-` file is the backup of `/etc/passwd` and contains the full list of user accounts (names, UIDs, GIDs, home directories, shells). If it is not owned by **root**, an unprivileged user could read or tamper with account data, enabling **account enumeration** or **privilege escalation** through forged entries. Backup files are often overlooked, which makes them an easy target.",
+    "fr": "Le fichier `/etc/passwd-` est la sauvegarde de `/etc/passwd` et contient la liste complète des comptes utilisateurs (noms, UID, GID, répertoires personnels, shells). S'il n'appartient pas à **root**, un utilisateur non privilégié pourrait lire ou altérer ces données, ouvrant la voie à l'**énumération des comptes** ou à une **élévation de privilèges** via des entrées falsifiées. Les fichiers de sauvegarde sont souvent oubliés, ce qui en fait une cible facile."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** owner of `/etc/passwd-` via the InSpec `file` resource and asserts `uid == 0`. The check is wrapped in `only_if { file('/etc/passwd-').exist? }` so it is skipped when no backup exists. Inspecting the live inode ownership reflects the real state on disk, including changes made after the file was last written by tools like `passwd` or `useradd`.",
+    "fr": "Pavois lit le propriétaire **effectif** de `/etc/passwd-` via la ressource `file` d'InSpec et vérifie `uid == 0`. Le contrôle est encadré par `only_if { file('/etc/passwd-').exist? }`, donc ignoré en l'absence de sauvegarde. L'inspection de la propriété réelle de l'inode reflète l'état exact sur le disque, y compris les changements opérés après la dernière écriture par des outils comme `passwd` ou `useradd`."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /etc/passwd-`. Expected output: **`root 0`**. Alternatively `ls -l /etc/passwd-` should show `root` in the owner column.",
+    "fr": "Exécutez `stat -c '%U %u' /etc/passwd-`. Résultat attendu : **`root 0`**. Sinon, `ls -l /etc/passwd-` doit afficher `root` dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "Ownership has no service log. Confirm the current state with `stat -c '%U %u' /etc/passwd-`. To trace any change, an auditd watch such as `auditctl -w /etc/passwd- -p wa -k passwd-backup` records writes/attribute changes in `/var/log/audit/audit.log`.",
+    "fr": "La propriété ne génère aucun journal de service. Vérifiez l'état courant avec `stat -c '%U %u' /etc/passwd-`. Pour tracer tout changement, une surveillance auditd telle que `auditctl -w /etc/passwd- -p wa -k passwd-backup` enregistre les écritures/changements d'attributs dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied **manually**: run `chown root /etc/passwd-` as root to set the owner to **root**.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être appliquée **manuellement** : exécutez `chown root /etc/passwd-` en root pour fixer le propriétaire à **root**."
+  },
+  "impact": {
+    "en": "**If misconfigured**, account data in the backup can be read or altered by non-root users, aiding enumeration or privilege escalation.\n\n**Precautions before applying:** `chown root /etc/passwd-` is non-disruptive and reversible. Verify you target the backup file (trailing `-`), not `/etc/passwd`. No service restart is required and no lockout risk exists.",
+    "fr": "**En cas de mauvaise configuration**, les données de comptes contenues dans la sauvegarde peuvent être lues ou modifiées par des utilisateurs non root, facilitant l'énumération ou l'élévation de privilèges.\n\n**Précautions avant application :** `chown root /etc/passwd-` est sans impact et réversible. Vérifiez que vous ciblez bien le fichier de sauvegarde (suffixe `-`), pas `/etc/passwd`. Aucun redémarrage de service n'est requis et aucun risque de blocage n'existe."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

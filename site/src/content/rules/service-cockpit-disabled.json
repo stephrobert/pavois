@@ -1,0 +1,69 @@
+{
+  "id": "service-cockpit-disabled",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "systemd services",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "2.1.3"
+  },
+  "check": [
+    "describe service('cockpit.service') do",
+    "  it { should_not be_enabled }",
+    "  it { should_not be_running }",
+    "end"
+  ],
+  "remediation": {
+    "action": [
+      "disable",
+      "stop"
+    ],
+    "name": "cockpit",
+    "resource": "service"
+  },
+  "title": {
+    "en": "Disable Cockpit Management Server",
+    "fr": "Désactiver le serveur d'administration Cockpit"
+  },
+  "summary": {
+    "en": "Disables and stops the **Cockpit** web management server to close its remote-login interface on TCP 9090.",
+    "fr": "Désactive et arrête le serveur d'administration web **Cockpit** pour fermer son interface de connexion à distance sur le port TCP 9090."
+  },
+  "rationale": {
+    "en": "Cockpit is a web-based management console that provides a **form of remote login** with full administrative reach over the host, listening on TCP 9090. Any internet-facing or unnecessary management endpoint widens the attack surface and offers another credential-attack and exploitation target. If remote web administration is not explicitly required, the service should be disabled.",
+    "fr": "Cockpit est une console d'administration web qui fournit une **forme de connexion à distance** avec un contrôle administratif complet sur l'hôte, à l'écoute sur le port TCP 9090. Tout point d'administration exposé ou inutile élargit la surface d'attaque et offre une cible supplémentaire pour les attaques sur identifiants et l'exploitation. Si l'administration web à distance n'est pas explicitement requise, le service doit être désactivé."
+  },
+  "check_note": {
+    "en": "Pavois queries systemd for the **effective** state of `cockpit.service` (`systemctl is-enabled` / `is-active`). Cockpit is typically **socket-activated**, so a config-file scan would miss that `cockpit.socket` can spin the service up on demand, the live systemd state is what reveals whether the management endpoint is reachable.",
+    "fr": "Pavois interroge systemd sur l'état **effectif** de `cockpit.service` (`systemctl is-enabled` / `is-active`). Cockpit est généralement **activé par socket**, donc un scan de fichier raterait le fait que `cockpit.socket` peut lancer le service à la demande, c'est l'état systemd vivant qui révèle si le point d'administration est joignable."
+  },
+  "verify": {
+    "en": "Confirm the service and its socket are off:\n\n```sh\nsystemctl is-enabled cockpit.service cockpit.socket\nsystemctl is-active cockpit.service cockpit.socket\n```\n\nExpect `disabled`/`masked` and `inactive`. Confirm nothing listens on 9090: `ss -lntp | grep 9090` should return nothing.",
+    "fr": "Confirmez que le service et son socket sont désactivés :\n\n```sh\nsystemctl is-enabled cockpit.service cockpit.socket\nsystemctl is-active cockpit.service cockpit.socket\n```\n\nAttendez `disabled`/`masked` et `inactive`. Vérifiez que rien n'écoute sur 9090 : `ss -lntp | grep 9090` ne doit rien retourner."
+  },
+  "logs": {
+    "en": "Inspect the unit with `systemctl status cockpit.service` and `journalctl -u cockpit`. Web-login attempts and sessions also appear in the journal and in PAM/auth logs. Confirm the listening socket is gone with `ss -lntp 'sport = :9090'`.",
+    "fr": "Inspectez l'unité avec `systemctl status cockpit.service` et `journalctl -u cockpit`. Les tentatives de connexion web et les sessions apparaissent aussi dans le journal et les logs PAM/auth. Confirmez la disparition du socket d'écoute avec `ss -lntp 'sport = :9090'`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the `service` resource named `cockpit`: it runs **disable** (no start at boot) then **stop** (not running now). Applied with `pavois harden apply`. Note: if `cockpit.socket` is also present, ensure it too is disabled/masked to fully close the endpoint.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource `service` nommée `cockpit` : il exécute **disable** (pas de démarrage au boot) puis **stop** (arrêt immédiat). Appliqué avec `pavois harden apply`. Note : si `cockpit.socket` est aussi présent, assurez-vous qu'il est également désactivé/masqué pour fermer complètement le point d'accès."
+  },
+  "impact": {
+    "en": "Misconfiguration risk: an exposed Cockpit endpoint is a remote-administration and credential-attack target. **Precautions:** if administrators currently manage this host through the Cockpit web UI, disabling it removes that access path, ensure SSH or another management channel is working first so you do not lose remote administration. There is no impact on running services or non-Cockpit logins.",
+    "fr": "Risque de mauvaise configuration : un point d'accès Cockpit exposé est une cible d'administration à distance et d'attaque sur identifiants. **Précautions :** si les administrateurs gèrent actuellement cet hôte via l'interface web Cockpit, le désactiver supprime ce chemin d'accès, assurez-vous d'abord que SSH ou un autre canal d'administration fonctionne pour ne pas perdre l'administration à distance. Aucun impact sur les services en cours ni sur les connexions hors Cockpit."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

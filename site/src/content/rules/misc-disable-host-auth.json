@@ -1,0 +1,91 @@
+{
+  "id": "misc-disable-host-auth",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (misc)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "5.1.10",
+      "8.3.1",
+      "5.1.12"
+    ],
+    "nist": [
+      "3.1.12",
+      "AC-17(a)",
+      "AC-3",
+      "CM-6(a)",
+      "CM-7(a)",
+      "CM-7(b)"
+    ],
+    "pci-dss": "8.3.1"
+  },
+  "check": [
+    "describe command('sshd -T 2>/dev/null | grep -qiE \\'^hostbasedauthentication no\\' && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "directive": "HostbasedAuthentication",
+    "notify": {
+      "action": "reload",
+      "service": "ssh.service"
+    },
+    "resource": "sshd_setting",
+    "value": "no"
+  },
+  "title": {
+    "en": "Disable Host-Based Authentication",
+    "fr": "Désactiver l'authentification basée sur l'hôte"
+  },
+  "summary": {
+    "en": "Ensures SSH `HostbasedAuthentication` is set to **no** so clients cannot authenticate purely by virtue of their host identity.",
+    "fr": "Garantit que `HostbasedAuthentication` SSH est réglé sur **no** afin que les clients ne puissent s'authentifier uniquement sur la base de l'identité de leur hôte."
+  },
+  "rationale": {
+    "en": "Host-based authentication establishes trust relationships between machines, letting a user on a trusted host log in without per-user credentials. This means compromising one host lets an attacker move trivially to every host that trusts it, turning a single breach into lateral movement across the fleet. Disabling it forces real per-user authentication (keys, passwords) on every connection.",
+    "fr": "L'authentification basée sur l'hôte établit des relations de confiance entre machines, permettant à un utilisateur d'un hôte de confiance de se connecter sans identifiants par utilisateur. Ainsi, compromettre un hôte permet à un attaquant de se déplacer trivialement vers chaque hôte qui lui fait confiance, transformant une seule brèche en mouvement latéral sur tout le parc. La désactiver force une authentification réelle par utilisateur (clés, mots de passe) à chaque connexion."
+  },
+  "check_note": {
+    "en": "Pavois runs `sshd -T` and checks the effective `hostbasedauthentication no` line. `sshd -T` prints the fully resolved running configuration, including `Match` blocks, `Include`d files and drop-ins under `/etc/ssh/sshd_config.d/`, so Pavois reports what sshd actually enforces, not what a single `sshd_config` line might say while a drop-in overrides it.",
+    "fr": "Pavois exécute `sshd -T` et vérifie la ligne effective `hostbasedauthentication no`. `sshd -T` affiche la configuration en vigueur entièrement résolue, y compris les blocs `Match`, les fichiers `Include` et les drop-ins de `/etc/ssh/sshd_config.d/`, donc Pavois rapporte ce que sshd applique réellement, et non ce qu'une seule ligne de `sshd_config` pourrait dire alors qu'un drop-in la surcharge."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -i hostbasedauthentication`. The expected output is `hostbasedauthentication no`.",
+    "fr": "Exécutez `sshd -T | grep -i hostbasedauthentication`. La sortie attendue est `hostbasedauthentication no`."
+  },
+  "logs": {
+    "en": "SSH authentication attempts and outcomes are logged in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL), and via `journalctl -u ssh` / `journalctl -u sshd`. The effective directive is confirmed with `sshd -T | grep -i hostbased`.",
+    "fr": "Les tentatives et résultats d'authentification SSH sont journalisés dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL), et via `journalctl -u ssh` / `journalctl -u sshd`. La directive effective est confirmée avec `sshd -T | grep -i hostbased`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule; apply it **manually**. Add `HostbasedAuthentication no` in a drop-in such as `/etc/ssh/sshd_config.d/60-hardening.conf` (it is also the sshd default), validate with `sshd -t`, then reload with `systemctl reload ssh` (or `sshd`).",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni ; appliquez-la **manuellement**. Ajoutez `HostbasedAuthentication no` dans un drop-in tel que `/etc/ssh/sshd_config.d/60-hardening.conf` (c'est aussi la valeur par défaut de sshd), validez avec `sshd -t`, puis rechargez avec `systemctl reload ssh` (ou `sshd`)."
+  },
+  "impact": {
+    "en": "Setting this to `no` is the sshd default and almost never disruptive, host-based auth is rarely used. The only systems affected are those that deliberately rely on `~/.shosts`/`/etc/ssh/shosts.equiv` trust (some HPC clusters or legacy rsh-style setups). If you operate such an environment, confirm an alternative (key-based) login path works before disabling it. Always run `sshd -t` before reloading to avoid breaking the SSH service on a remote host.",
+    "fr": "Régler ceci sur `no` est la valeur par défaut de sshd et n'est presque jamais perturbateur, l'auth basée sur l'hôte est rarement utilisée. Les seuls systèmes concernés sont ceux qui s'appuient délibérément sur la confiance `~/.shosts`/`/etc/ssh/shosts.equiv` (certains clusters HPC ou installations legacy de type rsh). Si vous exploitez un tel environnement, confirmez qu'une voie de connexion alternative (par clé) fonctionne avant de la désactiver. Lancez toujours `sshd -t` avant de recharger pour éviter de casser le service SSH sur un hôte distant."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

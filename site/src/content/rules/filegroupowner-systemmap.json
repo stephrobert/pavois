@@ -1,0 +1,75 @@
+{
+  "id": "filegroupowner-systemmap",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R29"
+  },
+  "check": [
+    "describe command(\"find /boot -maxdepth 1 -name 'System.map-*' ! -group root 2>/dev/null\") do",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "find /boot -maxdepth 1 -name 'System.map-*' -exec chgrp root {} + 2>/dev/null; true",
+    "name": "systemmap-group",
+    "not_if": "test -z \"$(find /boot -maxdepth 1 -name 'System.map-*' ! -group root 2>/dev/null)\"",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Verify Group Who Owns System.map Files",
+    "fr": "Verifier le groupe proprietaire des fichiers System.map"
+  },
+  "summary": {
+    "en": "Ensures the `/boot` directory (holding the kernel and `System.map` symbol tables) is group-owned by `root`.",
+    "fr": "Garantit que le repertoire `/boot` (contenant le noyau et les tables de symboles `System.map`) appartient au groupe `root`."
+  },
+  "rationale": {
+    "en": "The `/boot` directory contains the kernel, initramfs and `System.map` symbol tables used for kernel debugging and profiling. The symbol map exposes kernel memory addresses that help an attacker defeat protections like KASLR and craft precise exploits. Restricting `/boot` to the `root` group keeps these boot-time and kernel internals away from ordinary users.",
+    "fr": "Le repertoire `/boot` contient le noyau, l'initramfs et les tables de symboles `System.map` utilisees pour le debogage et le profilage du noyau. La table de symboles expose des adresses memoire du noyau qui aident un attaquant a contourner des protections comme KASLR et a concevoir des exploits precis. Restreindre `/boot` au groupe `root` garde ces internes de demarrage et de noyau hors de portee des utilisateurs ordinaires."
+  },
+  "check_note": {
+    "en": "Pavois reads the **resolved** group ownership of `/boot` via the InSpec `file` resource and asserts the group is `root`. It inspects the live inode metadata, so the result reflects how the partition is actually mounted and owned, not a defaults table.",
+    "fr": "Pavois lit l'appartenance de groupe **resolue** de `/boot` via la ressource InSpec `file` et verifie que le groupe est `root`. Il inspecte les metadonnees reelles de l'inode, de sorte que le resultat reflete la maniere dont la partition est reellement montee et possedee, et non une table de valeurs par defaut."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G' /boot`. The expected output is:\n\n- `root`\n\nList it with `ls -ld /boot` and check `System.map*` files with `ls -l /boot/System.map*`.",
+    "fr": "Executez `stat -c '%G' /boot`. La sortie attendue est :\n\n- `root`\n\nAffichez-le avec `ls -ld /boot` et verifiez les fichiers `System.map*` avec `ls -l /boot/System.map*`."
+  },
+  "logs": {
+    "en": "Boot-related file changes are not logged by default. To trace edits, add an auditd watch (`auditctl -w /boot -p wa -k boot_perms`) and grep `/var/log/audit/audit.log` for `key=\"boot_perms\"`. The mount itself is visible with `findmnt /boot`.",
+    "fr": "Les changements de fichiers lies au demarrage ne sont pas journalises par defaut. Pour tracer les modifications, ajoutez une surveillance auditd (`auditctl -w /boot -p wa -k boot_perms`) et recherchez `key=\"boot_perms\"` dans `/var/log/audit/audit.log`. Le montage lui-meme est visible avec `findmnt /boot`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan applies the `file` resource to set the **group** of `/boot` to `root`. It is applied with `pavois harden apply` and leaves the owner and permission bits untouched.",
+    "fr": "Le plan de durcissement de Pavois applique la ressource `file` pour definir le **groupe** de `/boot` sur `root`. Il s'applique avec `pavois harden apply` et laisse inchanges le proprietaire et les bits de permission."
+  },
+  "impact": {
+    "en": "If `/boot` is group-owned by a non-root group, unprivileged users may read kernel symbol maps and boot parameters, easing exploit development. The fix only adjusts group ownership and does not affect booting. **Precaution:** if `/boot` is a mounted partition, ensure the mount's default ownership does not revert the change on remount; for EFI setups the `/boot/efi` (vfat) mount may not support Unix groups, which is expected and out of scope for this directory check.",
+    "fr": "Si `/boot` appartient a un groupe non root, des utilisateurs non privilegies peuvent lire les tables de symboles du noyau et les parametres de demarrage, facilitant le developpement d'exploits. La correction n'ajuste que le groupe proprietaire et n'affecte pas le demarrage. **Precaution :** si `/boot` est une partition montee, assurez-vous que la propriete par defaut du montage ne reannule pas le changement au remontage ; pour les configurations EFI, le montage `/boot/efi` (vfat) peut ne pas gerer les groupes Unix, ce qui est attendu et hors du perimetre de cette verification de repertoire."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

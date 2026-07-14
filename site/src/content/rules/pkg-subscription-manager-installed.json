@@ -1,0 +1,63 @@
+{
+  "id": "pkg-subscription-manager-installed",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe package('subscription-manager') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "subscription-manager",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Install subscription-manager Package",
+    "fr": "Installer le paquet subscription-manager"
+  },
+  "summary": {
+    "en": "Ensures the **`subscription-manager`** package is **installed**, so the RHEL host can register and pull entitled security updates.",
+    "fr": "Garantit que le paquet **`subscription-manager`** est **installé**, afin que l'hôte RHEL puisse s'enregistrer et récupérer les mises à jour de sécurité auxquelles il a droit."
+  },
+  "rationale": {
+    "en": "**Red Hat Subscription Manager** is a local service that tracks installed products and subscriptions on the system to manage subscription assignments. It communicates with the backend subscription service (the Customer Portal or an on-premise server such as Satellite/Subscription Asset Manager) and works with content-management tooling. In practice, a registered subscription is what entitles the host to **security errata and patches**, without it, the system cannot reliably receive updates, which is itself a security exposure.",
+    "fr": "**Red Hat Subscription Manager** est un service local qui suit les produits installés et les abonnements du système pour gérer leur attribution. Il communique avec le service d'abonnement dorsal (le Customer Portal ou un serveur sur site tel que Satellite/Subscription Asset Manager) et s'intègre aux outils de gestion de contenu. En pratique, un abonnement enregistré est ce qui donne droit aux **correctifs et errata de sécurité**, sans lui, le système ne peut pas recevoir de mises à jour de manière fiable, ce qui constitue en soi une exposition."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** install state from the RPM database via CINC/InSpec's `package` resource and asserts `subscription-manager` is present. The package presence is the precondition for `subscription-manager register` and for the `rhsm` repositories to function, a config check alone would not reveal whether the tooling actually exists.",
+    "fr": "Pavois lit l'état d'installation **effectif** dans la base RPM via la ressource `package` de CINC/InSpec et vérifie que `subscription-manager` est présent. La présence du paquet est le prérequis pour `subscription-manager register` et pour le fonctionnement des dépôts `rhsm`, un simple contrôle de configuration ne révélerait pas si l'outil existe réellement."
+  },
+  "verify": {
+    "en": "Run `rpm -q subscription-manager`; a compliant host returns the installed version. Registration status can be confirmed with `subscription-manager status` (expects **`Overall Status: Current`**) or `subscription-manager identity`.",
+    "fr": "Exécutez `rpm -q subscription-manager` ; un hôte conforme renvoie la version installée. L'état d'enregistrement se confirme avec `subscription-manager status` (attendu : **`Overall Status: Current`**) ou `subscription-manager identity`."
+  },
+  "logs": {
+    "en": "- Installation is logged in `/var/log/dnf.log` and visible via `rpm -q --last subscription-manager`.\n- Registration and entitlement activity is recorded in `/var/log/rhsm/rhsm.log`.",
+    "fr": "- L'installation est journalisée dans `/var/log/dnf.log` et visible via `rpm -q --last subscription-manager`.\n- L'activité d'enregistrement et d'attribution est consignée dans `/var/log/rhsm/rhsm.log`."
+  },
+  "remediation_note": {
+    "en": "The harden plan declares a **`package`** resource for `subscription-manager` with action **`install`**; `pavois harden apply` installs it via `dnf`. Installing the package does **not** register the host, you still run `subscription-manager register` (or attach to Satellite) afterward to actually receive entitlements.",
+    "fr": "Le plan de durcissement déclare une ressource **`package`** pour `subscription-manager` avec l'action **`install`** ; `pavois harden apply` l'installe via `dnf`. Installer le paquet n'**enregistre** pas l'hôte, il faut ensuite exécuter `subscription-manager register` (ou rattacher à Satellite) pour recevoir effectivement les droits."
+  },
+  "impact": {
+    "en": "Installing the package is safe and non-disruptive. The precaution is **environment fit**: on hosts that deliberately use a different content source (a local mirror, Katello/Foreman, or CentOS Stream/clones like AlmaLicense-managed mirrors), subscription-manager may be irrelevant or could be misconfigured to point at the wrong CDN. Verify your patch-management strategy before registering; the install itself requires no reboot and breaks nothing.",
+    "fr": "Installer le paquet est sûr et non perturbateur. La précaution concerne l'**adéquation à l'environnement** : sur des hôtes qui utilisent délibérément une autre source de contenu (un miroir local, Katello/Foreman, ou des clones de type CentOS Stream), subscription-manager peut être hors de propos ou mal configuré pour pointer vers le mauvais CDN. Vérifiez votre stratégie de gestion des correctifs avant d'enregistrer ; l'installation elle-même ne nécessite aucun redémarrage et ne casse rien."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

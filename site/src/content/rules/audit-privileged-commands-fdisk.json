@@ -1,0 +1,80 @@
+{
+  "id": "audit-privileged-commands-fdisk",
+  "supported_os": [
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Audit (auditd)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R73",
+    "cis": [
+      "6.3.3.19",
+      "6.2.3.19"
+    ],
+    "nist": "3.1.7",
+    "stig": [
+      "UBTU-22-654170",
+      "UBTU-22-654175",
+      "UBTU-22-654045",
+      "UBTU-22-654060",
+      "UBTU-24-900350",
+      "UBTU-24-900340",
+      "UBTU-24-900750",
+      "UBTU-24-900730"
+    ]
+  },
+  "check": [
+    "describe command('auditctl -l') do",
+    "  its('stdout') { should match(/(-k +|key=)modules\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'modules' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
+    "end"
+  ],
+  "remediation": {
+    "reboot_required": true,
+    "resource": "audit_ruleset"
+  },
+  "title": {
+    "en": "Ensure auditd Collects Information on the Use of Privileged Commands - fdisk",
+    "fr": "Vérifier qu'auditd journalise l'usage des commandes privilégiées - fdisk"
+  },
+  "summary": {
+    "en": "Ensures auditd has a live rule (keyed **`modules`**) recording use of the privileged `fdisk` command.",
+    "fr": "Garantit qu'auditd possède une règle active (clé **`modules`**) journalisant l'usage de la commande privilégiée `fdisk`."
+  },
+  "rationale": {
+    "en": "`fdisk` and the related disk/module tooling can repartition storage and manipulate low-level device state, exactly the kind of privileged action an attacker uses to plant persistence or destroy data. Auditing its use (under the **`modules`** key on this platform) records who invoked it and when, so misuse of privileged functions by insiders or compromised accounts can be detected and investigated.",
+    "fr": "`fdisk` et l'outillage disque/modules associé peuvent repartitionner le stockage et manipuler l'état bas niveau des périphériques, précisément le type d'action privilégiée qu'un attaquant emploie pour installer une persistance ou détruire des données. Auditer son usage (sous la clé **`modules`** sur cette plateforme) enregistre qui l'a invoqué et quand, afin de détecter et d'investiguer l'abus de fonctions privilégiées par des initiés ou des comptes compromis."
+  },
+  "check_note": {
+    "en": "Pavois runs `auditctl -l` and checks the loaded ruleset for a rule keyed `modules`. This inspects the effective kernel ruleset, not the rule files: a rule sitting in `/etc/audit/rules.d/` but never loaded (parse error or no reload) would fool a file-based scanner but correctly fails here.",
+    "fr": "Pavois exécute `auditctl -l` et cherche dans l'ensemble chargé une règle marquée `modules`. Cela inspecte l'ensemble effectif du noyau, pas les fichiers de règles : une règle présente dans `/etc/audit/rules.d/` mais jamais chargée (erreur d'analyse ou rechargement oublié) tromperait un scanner de fichiers mais échoue correctement ici."
+  },
+  "verify": {
+    "en": "Run `auditctl -l | grep modules`. **Expected:** at least one rule line ending in `-k modules` (or `key=modules`) covering the `fdisk` binary. No output means the rule is not active.",
+    "fr": "Exécutez `auditctl -l | grep modules`. **Attendu :** au moins une ligne de règle se terminant par `-k modules` (ou `key=modules`) couvrant le binaire `fdisk`. Aucune sortie signifie que la règle n'est pas active."
+  },
+  "logs": {
+    "en": "- Confirm the loaded rule: `auditctl -l | grep modules`.\n- See recorded executions: `grep 'key=\"modules\"' /var/log/audit/audit.log` (prefer raw grep; ausearch is unreliable).\n- Service state: `systemctl status auditd`.",
+    "fr": "- Confirmer la règle chargée : `auditctl -l | grep modules`.\n- Voir les exécutions enregistrées : `grep 'key=\"modules\"' /var/log/audit/audit.log` (préférez un grep brut ; ausearch est peu fiable).\n- État du service : `systemctl status auditd`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `audit_ruleset` resource to write the privileged-command watch for `fdisk` (keyed `modules`) into auditd's rules directory and reload the ruleset. The rule is `reboot_required`, so a reboot ensures the rules are loaded from boot and any immutable-mode setting is enforced.",
+    "fr": "`pavois harden apply` utilise la ressource `audit_ruleset` pour écrire la surveillance de commande privilégiée pour `fdisk` (clé `modules`) dans le répertoire de règles d'auditd et recharger l'ensemble. La règle est `reboot_required` : un redémarrage garantit que les règles sont chargées dès le démarrage et que tout mode immuable est appliqué."
+  },
+  "impact": {
+    "en": "Without this rule, privileged disk operations leave no audit trail, hampering forensics and failing CIS/STIG/BP-028 audit requirements. Applying it only adds an audit watch and may require a reboot; impact is minimal since `fdisk` is invoked rarely, so log growth is negligible.",
+    "fr": "Sans cette règle, les opérations disque privilégiées ne laissent aucune trace d'audit, gênant l'analyse forensique et faisant échouer les exigences CIS/STIG/BP-028. L'appliquer ajoute seulement une surveillance d'audit et peut nécessiter un redémarrage ; l'impact est minime car `fdisk` est rarement invoqué, la croissance des journaux est négligeable."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

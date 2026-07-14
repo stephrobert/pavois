@@ -1,0 +1,77 @@
+{
+  "id": "pam-unix-enabled",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Accounts (PAM modules)",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "5.3.2.1",
+      "5.3.2.5"
+    ]
+  },
+  "check": [
+    "describe command('grep -RqE \\'^[^#]*\\bpam_unix\\\\.so\\b\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "grep -rE 'pam_unix\\.so' /etc/pam.d/ || echo 'pam_unix MISSING'\n# pam_unix is part of debian's default profiles; if missing, restore with: pam-auth-update\n",
+    "reason": "PAM stack changes go through pam-auth-update, review the profile set",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Verify pam_unix module is activated",
+    "fr": "Verifier que le module pam_unix est active"
+  },
+  "summary": {
+    "en": "Confirms the core **`pam_unix.so`** module is present in the PAM stack so that local credential checks against `/etc/shadow` are actually performed.",
+    "fr": "Confirme que le module central **`pam_unix.so`** est present dans la pile PAM, afin que les verifications d'identifiants locaux face a `/etc/shadow` soient reellement effectuees."
+  },
+  "rationale": {
+    "en": "`pam_unix.so` is the module that actually checks credentials against the local password database (`/etc/shadow`). If it is missing from the PAM stack, the system may grant access **without performing any local authentication**, breaking the most basic security guarantee that access follows a successful identity check.",
+    "fr": "`pam_unix.so` est le module qui verifie reellement les identifiants face a la base de mots de passe locale (`/etc/shadow`). S'il est absent de la pile PAM, le systeme peut accorder l'acces **sans effectuer aucune authentification locale**, rompant la garantie la plus fondamentale : l'acces n'est accorde qu'apres une verification d'identite reussie."
+  },
+  "check_note": {
+    "en": "Pavois greps the **effective** PAM tree under `/etc/pam.d/` for a non-commented `pam_unix.so` line. Scanning the resolved configuration, including files pulled in by `@include`/`substack`, proves the module is wired into the live authentication path, not just present in some unreferenced file a file-by-file check might wrongly trust.",
+    "fr": "Pavois recherche dans l'arborescence PAM **effective** sous `/etc/pam.d/` une ligne `pam_unix.so` non commentee. Analyser la configuration resolue, y compris les fichiers tires par `@include`/`substack`, prouve que le module est cable dans le chemin d'authentification reel, et pas seulement present dans un fichier non reference auquel un controle fichier par fichier ferait a tort confiance."
+  },
+  "verify": {
+    "en": "Run:\n\n```bash\ngrep -rE '^[^#]*\\bpam_unix\\.so\\b' /etc/pam.d/\n```\n\nExpected: one or more active lines (in `common-auth`, `common-password`, `system-auth`…) reference `pam_unix.so`. No match means local PAM authentication is not configured.",
+    "fr": "Executez :\n\n```bash\ngrep -rE '^[^#]*\\bpam_unix\\.so\\b' /etc/pam.d/\n```\n\nAttendu : une ou plusieurs lignes actives (dans `common-auth`, `common-password`, `system-auth`...) referencent `pam_unix.so`. Aucune correspondance signifie que l'authentification PAM locale n'est pas configuree."
+  },
+  "logs": {
+    "en": "Login and authentication attempts handled by `pam_unix` are recorded in **`/var/log/auth.log`** (Debian/Ubuntu) or **`/var/log/secure`** (RHEL/Fedora). Use `journalctl -t sshd -t login -t sudo` to follow successful and failed `pam_unix` decisions in real time.",
+    "fr": "Les tentatives de connexion et d'authentification traitees par `pam_unix` sont enregistrees dans **`/var/log/auth.log`** (Debian/Ubuntu) ou **`/var/log/secure`** (RHEL/Fedora). Utilisez `journalctl -t sshd -t login -t sudo` pour suivre en temps reel les decisions `pam_unix` reussies et echouees."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule, so it must be applied **manually**. On a normally installed system `pam_unix.so` is present by default; if it has been removed, restore it in the `auth`, `account`, `password` and `session` stacks via `pam-auth-update` (Debian/Ubuntu) or `authselect select` (RHEL/Fedora) rather than editing PAM files by hand.",
+    "fr": "Aucun plan de durcissement automatise n'est fourni pour cette regle : elle doit etre appliquee **manuellement**. Sur un systeme installe normalement, `pam_unix.so` est present par defaut ; s'il a ete retire, restaurez-le dans les piles `auth`, `account`, `password` et `session` via `pam-auth-update` (Debian/Ubuntu) ou `authselect select` (RHEL/Fedora) plutot qu'en editant les fichiers PAM a la main."
+  },
+  "impact": {
+    "en": "A PAM stack missing `pam_unix.so` is severe, it can allow unauthenticated access or, conversely, lock everyone out depending on what replaced it. **Precautions:** keep a root shell open before touching PAM, make changes through `pam-auth-update`/`authselect` (which validate the stack), and confirm you can still log in from a separate session before closing your current one.",
+    "fr": "Une pile PAM depourvue de `pam_unix.so` est grave : elle peut autoriser un acces non authentifie ou, a l'inverse, bloquer tout le monde selon ce qui l'a remplacee. **Precautions :** gardez un shell root ouvert avant de toucher a PAM, effectuez les changements via `pam-auth-update`/`authselect` (qui valident la pile), et verifiez que vous pouvez toujours vous connecter depuis une session distincte avant de fermer la session courante."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

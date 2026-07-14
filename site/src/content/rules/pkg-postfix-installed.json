@@ -1,0 +1,78 @@
+{
+  "id": "pkg-postfix-installed",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "10.5.1",
+      "6.3.2.4"
+    ],
+    "pci-dss": "10.5.1"
+  },
+  "check": [
+    "describe package('postfix') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "postfix",
+    "resource": "package"
+  },
+  "title": {
+    "en": "The Postfix package is installed",
+    "fr": "Le paquet Postfix est installé"
+  },
+  "summary": {
+    "en": "Ensures a local **MTA** (`postfix`) is installed so the system can send email notifications for important events.",
+    "fr": "Garantit qu'un **MTA** local (`postfix`) est installé pour que le système puisse envoyer des notifications par e-mail pour les événements importants."
+  },
+  "rationale": {
+    "en": "A local **Mail Transfer Agent** (MTA) such as **Postfix** is needed so the system can deliver email notifications about important events, service failures, audit-system warnings, cron job output and security alerts. Many monitoring and compliance mechanisms (including auditd's `space_left_action = email`) rely on a working local mailer. Without an MTA, these notifications are silently dropped, and operators may miss the early signal of a failure or a compromise.",
+    "fr": "Un **agent de transfert de courrier** (MTA) local tel que **Postfix** est nécessaire pour que le système puisse délivrer des notifications par e-mail sur des événements importants, pannes de service, avertissements du système d'audit, sorties de tâches cron et alertes de sécurité. De nombreux mécanismes de supervision et de conformité (dont `space_left_action = email` d'auditd) reposent sur un mailer local fonctionnel. Sans MTA, ces notifications sont silencieusement abandonnées, et les exploitants peuvent manquer le premier signe d'une panne ou d'une compromission."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective** package state with `package('postfix')` (resolved through `dpkg-query` or `rpm`). The presence of a mail alias in a config file does not guarantee a working mailer; Pavois confirms the Postfix package is actually installed rather than inferring mail capability from configuration text.",
+    "fr": "Pavois vérifie l'état **effectif** du paquet avec `package('postfix')` (résolu via `dpkg-query` ou `rpm`). La présence d'un alias de messagerie dans un fichier de configuration ne garantit pas un mailer fonctionnel ; Pavois confirme que le paquet Postfix est réellement installé plutôt que de déduire la capacité d'envoi à partir d'un texte de configuration."
+  },
+  "verify": {
+    "en": "On Debian/Ubuntu run `dpkg-query -W -f='${Status}\\n' postfix` (expected `install ok installed`); on RHEL run `rpm -q postfix` (expected a versioned name). Confirm the service with `systemctl status postfix`.",
+    "fr": "Sur Debian/Ubuntu, exécutez `dpkg-query -W -f='${Status}\\n' postfix` (attendu `install ok installed`) ; sur RHEL, exécutez `rpm -q postfix` (attendu un nom versionné). Confirmez le service avec `systemctl status postfix`."
+  },
+  "logs": {
+    "en": "Mail delivery and queue activity are logged in `/var/log/mail.log` (Debian/Ubuntu) or via `journalctl -u postfix`. Installation history is in `/var/log/dpkg.log` or `/var/log/dnf.log`.",
+    "fr": "La distribution du courrier et l'activité de la file sont tracées dans `/var/log/mail.log` (Debian/Ubuntu) ou via `journalctl -u postfix`. L'historique d'installation se trouve dans `/var/log/dpkg.log` ou `/var/log/dnf.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan installs the `postfix` package via the **package** resource (`action: install`). It is applied with `pavois harden apply`. By default Postfix should be configured for **local-only** delivery; relay/relayhost settings and ensuring it does not listen on external interfaces are governed by separate hardening controls.",
+    "fr": "Le plan de durcissement de Pavois installe le paquet `postfix` via la ressource **package** (`action: install`). Il s'applique avec `pavois harden apply`. Par défaut, Postfix doit être configuré en distribution **locale uniquement** ; les réglages de relais/relayhost et le fait qu'il n'écoute pas sur des interfaces externes relèvent de contrôles de durcissement distincts."
+  },
+  "impact": {
+    "en": "Installing Postfix is generally safe, but be aware it provides a network-facing service: a default install may bind to a port and, if exposed, could be abused as an **open relay**. - After install, confirm Postfix listens only on loopback (`inet_interfaces = loopback-only`) unless this host is an intended mail server. - If another MTA (e.g. `sendmail`, `exim`) is already present, installing Postfix can conflict or change the default `/usr/sbin/sendmail` provider; reconcile MTAs before applying.",
+    "fr": "Installer Postfix est généralement sans danger, mais sachez qu'il fournit un service exposé au réseau : une installation par défaut peut écouter sur un port et, si elle est exposée, être détournée en **relais ouvert**. - Après l'installation, vérifiez que Postfix n'écoute que sur la boucle locale (`inet_interfaces = loopback-only`) sauf si cet hôte est un serveur de messagerie voulu. - Si un autre MTA (par ex. `sendmail`, `exim`) est déjà présent, installer Postfix peut créer un conflit ou changer le fournisseur `/usr/sbin/sendmail` par défaut ; réconciliez les MTA avant d'appliquer."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

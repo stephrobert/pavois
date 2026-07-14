@@ -1,0 +1,65 @@
+{
+  "id": "service-rngd-enabled",
+  "supported_os": [
+    "fedora",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "low",
+  "domain": "systemd services",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {},
+  "check": [
+    "describe service('rngd.service') do",
+    "  it { should be_enabled }",
+    "  it { should be_running }",
+    "end"
+  ],
+  "remediation": {
+    "action": [
+      "enable",
+      "start"
+    ],
+    "name": "rngd.service",
+    "resource": "service"
+  },
+  "title": {
+    "en": "Enable the Hardware RNG Entropy Gatherer Service",
+    "fr": "Activer le service collecteur d'entropie du générateur matériel d'aléa (RNG)"
+  },
+  "summary": {
+    "en": "Ensures the **`rngd.service`** (hardware RNG entropy gatherer) is enabled at boot and running, feeding hardware randomness into the kernel entropy pool.",
+    "fr": "Garantit que le service **`rngd.service`** (collecteur d'entropie du RNG matériel) est activé au démarrage et en cours d'exécution, alimentant le pool d'entropie du noyau avec de l'aléa matériel."
+  },
+  "rationale": {
+    "en": "**`rngd`** transfers randomness from a hardware source (CPU `RDRAND`, a TPM, or a dedicated HWRNG) into the kernel's random device. Adequate entropy is the foundation of all cryptography: TLS session keys, SSH host keys, password hashing salts and token generation all draw from it. On servers and especially in VMs, the entropy pool can starve at boot, causing **slow or blocking key generation** and, in the worst case, **predictable random values** that weaken keys. Running `rngd` keeps the pool healthy so cryptographic operations are both fast and strong.",
+    "fr": "**`rngd`** transfère de l'aléa depuis une source matérielle (instruction CPU `RDRAND`, un TPM ou un HWRNG dédié) vers le périphérique aléatoire du noyau. Une entropie suffisante est le socle de toute la cryptographie : clés de session TLS, clés d'hôte SSH, sels de hachage de mots de passe et génération de tokens en dépendent tous. Sur les serveurs et surtout dans les VM, le pool d'entropie peut s'épuiser au démarrage, provoquant une **génération de clés lente ou bloquante** et, dans le pire des cas, des **valeurs aléatoires prévisibles** qui affaiblissent les clés. Faire tourner `rngd` maintient le pool en bonne santé pour des opérations cryptographiques à la fois rapides et robustes."
+  },
+  "check_note": {
+    "en": "Pavois asserts the **effective state** of `rngd.service` via systemd (`service('rngd.service')`), checking it is both *enabled* and *running*. This catches a daemon that is installed but never started or has crashed, a file or package check would report success while the entropy pool actually receives nothing.",
+    "fr": "Pavois vérifie l'**état effectif** de `rngd.service` via systemd (`service('rngd.service')`), en contrôlant qu'il est à la fois *enabled* et *running*. Cela détecte un démon installé mais jamais démarré ou planté, une vérification de fichier ou de paquet signalerait un succès alors que le pool d'entropie ne reçoit en réalité rien."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled rngd.service` and `systemctl is-active rngd.service`; expect **`enabled`** and **`active`**. Confirm the pool is healthy with `cat /proc/sys/kernel/random/entropy_avail` (should stay comfortably high, hundreds+).",
+    "fr": "Exécutez `systemctl is-enabled rngd.service` et `systemctl is-active rngd.service` ; attendez **`enabled`** et **`active`**. Confirmez la santé du pool avec `cat /proc/sys/kernel/random/entropy_avail` (doit rester confortablement élevé, plusieurs centaines et plus)."
+  },
+  "logs": {
+    "en": "Check `journalctl -u rngd.service` for the entropy source it selected and any errors (e.g. no hardware RNG found). `systemctl show rngd.service -p ActiveState -p UnitFileState` gives the state Pavois reads. The live entropy level is visible in `/proc/sys/kernel/random/entropy_avail`.",
+    "fr": "Consultez `journalctl -u rngd.service` pour la source d'entropie sélectionnée et les éventuelles erreurs (par ex. aucun RNG matériel trouvé). `systemctl show rngd.service -p ActiveState -p UnitFileState` donne l'état lu par Pavois. Le niveau d'entropie en direct est visible dans `/proc/sys/kernel/random/entropy_avail`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the **`service`** resource named **`rngd`** with actions **`enable`** then **`start`**: it enables the unit at boot and starts it now. Applied with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource **`service`** nommée **`rngd`** avec les actions **`enable`** puis **`start`** : il active l'unité au démarrage et la lance immédiatement. Appliqué avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Enabling `rngd` is **very low-risk** and generally improves availability of cryptographic operations. The one caveat: on hardware or VMs **without a usable RNG source**, `rngd` may fail to start (no source), this is harmless but will leave the rule non-compliant; in that case rely on the kernel's built-in `jitterentropy`/`CRNG` instead, or pass a virtualized RNG to the guest (`virtio-rng`). **Before applying**: on bare metal confirm a HWRNG exists; in VMs ensure the hypervisor exposes `virtio-rng` so the daemon has a source to read from.",
+    "fr": "Activer `rngd` est **très peu risqué** et améliore généralement la disponibilité des opérations cryptographiques. Seule réserve : sur du matériel ou des VM **dépourvus de source RNG utilisable**, `rngd` peut échouer à démarrer (aucune source), sans danger, mais la règle restera non conforme ; dans ce cas, appuyez-vous plutôt sur le `jitterentropy`/`CRNG` intégré au noyau, ou exposez un RNG virtualisé à l'invité (`virtio-rng`). **Avant d'appliquer** : sur bare metal confirmez l'existence d'un HWRNG ; en VM assurez-vous que l'hyperviseur expose `virtio-rng` pour que le démon ait une source à lire."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

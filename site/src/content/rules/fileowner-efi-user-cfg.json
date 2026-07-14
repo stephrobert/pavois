@@ -1,0 +1,68 @@
+{
+  "id": "fileowner-efi-user-cfg",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R29",
+    "cis": "1.4.2",
+    "nist": "3.4.5"
+  },
+  "check": [
+    "only_if { file('/boot/efi/EFI/redhat/user.cfg').exist? }",
+    "describe file('/boot/efi/EFI/redhat/user.cfg') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/boot/efi/EFI/redhat/user.cfg",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify /boot/efi/EFI/redhat/user.cfg User Ownership",
+    "fr": "Vérifier le propriétaire de /boot/efi/EFI/redhat/user.cfg"
+  },
+  "summary": {
+    "en": "Ensures the GRUB password file `/boot/efi/EFI/redhat/user.cfg` is owned by the `root` user (UID 0).",
+    "fr": "Garantit que le fichier de mot de passe GRUB `/boot/efi/EFI/redhat/user.cfg` appartient à l'utilisateur `root` (UID 0)."
+  },
+  "rationale": {
+    "en": "`/boot/efi/EFI/redhat/user.cfg` stores the **GRUB bootloader password hash** (`GRUB2_PASSWORD`). Only `root` should be able to modify these boot parameters. If a non-root user owns the file they could remove or replace the password and bypass boot protection; even read access lets an attacker harvest the hash for offline cracking, or spot security weaknesses to exploit at boot.",
+    "fr": "`/boot/efi/EFI/redhat/user.cfg` stocke le **hash du mot de passe du chargeur GRUB** (`GRUB2_PASSWORD`). Seul `root` doit pouvoir modifier ces paramètres d'amorçage. Si un utilisateur non root possède ce fichier, il pourrait supprimer ou remplacer le mot de passe et contourner la protection au démarrage ; même un accès en lecture permet à un attaquant de récupérer le hash pour un cassage hors ligne, ou de repérer des faiblesses de sécurité à exploiter au démarrage."
+  },
+  "check_note": {
+    "en": "Pavois stats the live inode of `/boot/efi/EFI/redhat/user.cfg` and asserts its **owner is UID 0**. The check is skipped when the file is absent (no GRUB password configured). Reading the actual filesystem metadata reflects the **effective** ownership in force, not a templated default.",
+    "fr": "Pavois interroge l'inode réel de `/boot/efi/EFI/redhat/user.cfg` et vérifie que son **propriétaire est l'UID 0**. Le contrôle est ignoré lorsque le fichier est absent (aucun mot de passe GRUB configuré). Lire les métadonnées réelles du système de fichiers reflète la propriété **effective** en vigueur, et non une valeur par défaut issue d'un gabarit."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /boot/efi/EFI/redhat/user.cfg`. The expected output is `root 0`.",
+    "fr": "Exécutez `stat -c '%U %u' /boot/efi/EFI/redhat/user.cfg`. La sortie attendue est `root 0`."
+  },
+  "logs": {
+    "en": "There is no runtime log for this static file. To detect tampering, set an audit watch: `auditctl -w /boot/efi/EFI/redhat/user.cfg -p wa -k grub`, then review events in `/var/log/audit/audit.log` (grep for `key=\"grub\"`).",
+    "fr": "Il n'existe pas de journal d'exécution pour ce fichier statique. Pour détecter une altération, posez une surveillance audit : `auditctl -w /boot/efi/EFI/redhat/user.cfg -p wa -k grub`, puis examinez les événements dans `/var/log/audit/audit.log` (recherchez `key=\"grub\"`)."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so it must be fixed **manually**: run `chown root /boot/efi/EFI/redhat/user.cfg` to restore root ownership.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être corrigée **manuellement** : exécutez `chown root /boot/efi/EFI/redhat/user.cfg` pour rétablir la propriété root."
+  },
+  "impact": {
+    "en": "A non-root owner of `user.cfg` can strip or replace the GRUB password, defeating the **boot-time access control**, and can read the password hash for offline attack. Fixing it is low-risk: `chown root` does not alter the password hash, so existing boot protection keeps working. Pair this with restrictive permissions (`chmod 600`) so the hash is not world-readable.",
+    "fr": "Un propriétaire non root de `user.cfg` peut supprimer ou remplacer le mot de passe GRUB, mettant en échec le **contrôle d'accès au démarrage**, et peut lire le hash du mot de passe pour une attaque hors ligne. La correction présente peu de risque : `chown root` n'altère pas le hash, la protection d'amorçage existante continue de fonctionner. Combinez-la avec des permissions restrictives (`chmod 600`) afin que le hash ne soit pas lisible par tous."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

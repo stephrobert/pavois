@@ -1,0 +1,66 @@
+{
+  "id": "fileowner-etc-sestatus-conf",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R50"
+  },
+  "check": [
+    "only_if { file('/etc/sestatus.conf').exist? }",
+    "describe file('/etc/sestatus.conf') do",
+    "  its('uid') { should eq 0 }",
+    "end"
+  ],
+  "remediation": {
+    "owner": "root",
+    "path": "/etc/sestatus.conf",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify User Who Owns /etc/sestatus.conf File",
+    "fr": "Verifier l'utilisateur proprietaire du fichier /etc/sestatus.conf"
+  },
+  "summary": {
+    "en": "Ensures the SELinux status-reporting config `/etc/sestatus.conf` is owned by `root` (UID 0).",
+    "fr": "Garantit que la configuration de rapport d'etat SELinux `/etc/sestatus.conf` appartient a `root` (UID 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/sestatus.conf` file controls which files and processes the `sestatus -v` command reports on when verifying SELinux state. If a non-root account owns it, that user could alter the output an administrator relies on to confirm SELinux is enforcing, masking a weakened security context. Setting **`root` (UID 0)** as the owner ensures exclusive privileged control over this SELinux-related configuration.",
+    "fr": "Le fichier `/etc/sestatus.conf` controle quels fichiers et processus la commande `sestatus -v` rapporte lors de la verification de l'etat SELinux. Si un compte non-root le possede, cet utilisateur pourrait alterer la sortie sur laquelle un administrateur se fie pour confirmer que SELinux est en mode enforcing, masquant un contexte de securite affaibli. Definir **`root` (UID 0)** comme proprietaire garantit un controle privilegie exclusif de cette configuration liee a SELinux."
+  },
+  "check_note": {
+    "en": "Pavois inspects the **live filesystem** with the InSpec `file('/etc/sestatus.conf')` resource and asserts `uid == 0`, guarded by `only_if`. Reading the real inode owner reflects the **effective** on-disk state, catching a `chown` that could let a user manipulate SELinux status reporting.",
+    "fr": "Pavois inspecte le **systeme de fichiers reel** via la ressource InSpec `file('/etc/sestatus.conf')` et verifie `uid == 0`, protege par `only_if`. Lire le proprietaire reel de l'inode reflete l'etat **effectif** sur le disque et detecte un `chown` qui permettrait a un utilisateur de manipuler le rapport d'etat SELinux."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u %n' /etc/sestatus.conf`. Expected output: `root 0 /etc/sestatus.conf`. The numeric `0` confirms root ownership.",
+    "fr": "Executez `stat -c '%U %u %n' /etc/sestatus.conf`. Sortie attendue : `root 0 /etc/sestatus.conf`. Le `0` numerique confirme la propriete par root."
+  },
+  "logs": {
+    "en": "Watch the file with `auditctl -w /etc/sestatus.conf -p wa -k selinux-conf` and inspect `/var/log/audit/audit.log` (`grep 'key=\"selinux-conf\"'`). The effective SELinux mode itself is shown by `sestatus` and `getenforce`; AVC denials appear in the audit log (`grep AVC`).",
+    "fr": "Surveillez le fichier avec `auditctl -w /etc/sestatus.conf -p wa -k selinux-conf` et inspectez `/var/log/audit/audit.log` (`grep 'key=\"selinux-conf\"'`). Le mode SELinux effectif est affiche par `sestatus` et `getenforce` ; les refus AVC apparaissent dans le journal d'audit (`grep AVC`)."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped for this rule. Apply it manually with `chown root /etc/sestatus.conf` (run as root or via `sudo`); the file should remain group `root` and mode `0644`.",
+    "fr": "Aucune remediation automatisee n'est fournie pour cette regle. Appliquez-la manuellement avec `chown root /etc/sestatus.conf` (en root ou via `sudo`) ; le fichier doit rester en groupe `root` et mode `0644`."
+  },
+  "impact": {
+    "en": "A non-root owner could manipulate what the SELinux status check reports, hiding a degraded posture. **Risk of applying:** none, `/etc/sestatus.conf` only influences `sestatus -v` output; `chown root` does not change SELinux enforcement or break any service.",
+    "fr": "Un proprietaire non-root pourrait manipuler ce que le controle d'etat SELinux rapporte, masquant une posture degradee. **Risque a l'application :** nul, `/etc/sestatus.conf` n'influence que la sortie de `sestatus -v` ; `chown root` ne change pas l'application de SELinux ni ne casse de service."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

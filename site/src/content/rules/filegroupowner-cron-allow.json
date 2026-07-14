@@ -1,0 +1,84 @@
+{
+  "id": "filegroupowner-cron-allow",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File ownership",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "2.2.6",
+      "2.4.1.8",
+      "2.4.1.9"
+    ],
+    "nist": [
+      "AC-6(1)",
+      "CM-6(a)"
+    ],
+    "pci-dss": "2.2.6"
+  },
+  "check": [
+    "only_if { file('/etc/cron.allow').exist? }",
+    "describe file('/etc/cron.allow') do",
+    "  its('group') { should eq 'crontab' }",
+    "end"
+  ],
+  "remediation": {
+    "group": "crontab",
+    "path": "/etc/cron.allow",
+    "resource": "file"
+  },
+  "title": {
+    "en": "Verify Group Who Owns /etc/cron.allow file",
+    "fr": "Vérifier le groupe propriétaire du fichier /etc/cron.allow"
+  },
+  "summary": {
+    "en": "Ensures `/etc/cron.allow`, the list of users permitted to use `cron`, is group-owned by `root` (gid `0`).",
+    "fr": "Garantit que `/etc/cron.allow`, la liste des utilisateurs autorisés à utiliser `cron`, a `root` (gid `0`) pour groupe propriétaire."
+  },
+  "rationale": {
+    "en": "`/etc/cron.allow` decides **which users may create cron jobs**. If its group owner is not `root` (gid `0`), a non-privileged group could add itself to the allow list and schedule recurring commands, or read the list of authorized users. Because cron jobs run unattended, this is a common persistence and privilege-escalation vector.",
+    "fr": "`/etc/cron.allow` décide **quels utilisateurs peuvent créer des tâches cron**. Si son groupe propriétaire n'est pas `root` (gid `0`), un groupe non privilégié pourrait s'ajouter à la liste d'autorisation et planifier des commandes récurrentes, ou lire la liste des utilisateurs autorisés. Comme les tâches cron s'exécutent sans surveillance, c'est un vecteur courant de persistance et d'élévation de privilèges."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective ownership** of `/etc/cron.allow` from the inode (via `stat`) and asserts `gid == 0`. Checking the live inode catches drift from package updates or manual edits rather than trusting a template. The `only_if` guard skips the check when the file is absent (some systems rely solely on `cron.deny`).",
+    "fr": "Pavois lit la **propriété effective** de `/etc/cron.allow` depuis l'inode (via `stat`) et vérifie `gid == 0`. Contrôler l'inode réel détecte la dérive due aux mises à jour de paquets ou aux modifications manuelles plutôt que de se fier à un modèle. La garde `only_if` ignore le contrôle lorsque le fichier est absent (certains systèmes ne s'appuient que sur `cron.deny`)."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /etc/cron.allow`. Expected output: **`root 0`**. If the file does not exist the control is skipped.",
+    "fr": "Exécutez `stat -c '%G %g' /etc/cron.allow`. Sortie attendue : **`root 0`**. Si le fichier n'existe pas, le contrôle est ignoré."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default. Inspect with `ls -l /etc/cron.allow` or `stat /etc/cron.allow`. With an auditd watch (`auditctl -w /etc/cron.allow -p wa`), `chown` events appear in `/var/log/audit/audit.log`. Cron job execution is logged in `/var/log/syslog` / `journalctl -u cron` (Debian) or `journalctl -u crond` (RHEL).",
+    "fr": "Les changements de propriété ne sont pas journalisés par défaut. Inspectez avec `ls -l /etc/cron.allow` ou `stat /etc/cron.allow`. Avec une surveillance auditd (`auditctl -w /etc/cron.allow -p wa`), les événements `chown` apparaissent dans `/var/log/audit/audit.log`. L'exécution des tâches cron est journalisée dans `/var/log/syslog` / `journalctl -u cron` (Debian) ou `journalctl -u crond` (RHEL)."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so it must be applied **manually**: run `chgrp root /etc/cron.allow` (or `chown :root /etc/cron.allow`) to restore the `root` group owner.",
+    "fr": "Aucun plan de durcissement automatisé n'est encore défini pour cette règle ; elle doit donc être appliquée **manuellement** : exécutez `chgrp root /etc/cron.allow` (ou `chown :root /etc/cron.allow`) pour restaurer le groupe propriétaire `root`."
+  },
+  "impact": {
+    "en": "A wrong group owner on `/etc/cron.allow` lets an unprivileged group grant itself cron access, a path to persistence and privilege escalation. **Precautions:** restoring `root` group ownership is low-risk and does not change who is currently authorized; verify no configuration manager will revert it, and remember that the presence of `cron.allow` makes cron deny-by-default, confirm all legitimate cron users are listed before relying on it.",
+    "fr": "Un mauvais groupe propriétaire sur `/etc/cron.allow` permet à un groupe non privilégié de s'octroyer l'accès à cron, une voie vers la persistance et l'élévation de privilèges. **Précautions :** restaurer la propriété de groupe `root` est peu risqué et ne change pas qui est actuellement autorisé ; vérifiez qu'aucun gestionnaire de configuration ne l'annulera, et rappelez-vous que la présence de `cron.allow` rend cron interdit par défaut, confirmez que tous les utilisateurs cron légitimes y figurent avant de vous y fier."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

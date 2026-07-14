@@ -1,0 +1,80 @@
+{
+  "id": "partition-var-log",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {
+    "bp28": "R28",
+    "cis": "1.1.2.6.1",
+    "nist": [
+      "AU-4",
+      "CM-6(a)",
+      "SC-5(2)"
+    ]
+  },
+  "check": [
+    "describe mount('/var/log') do",
+    "  it { should be_mounted }",
+    "end"
+  ],
+  "remediation": {
+    "command": "# /var/log should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /var/log >/dev/null 2>&1 && echo '/var/log is already a mount point' || echo '/var/log is NOT separate'\n# Then: dedicate an LVM volume / disk to /var/log and add it to /etc/fstab.\n",
+    "reason": "a separate /var/log filesystem needs partitioning/LVM/tmpfs, not a safe runtime change",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Ensure /var/log Located On Separate Partition",
+    "fr": "Placer /var/log sur une partition distincte"
+  },
+  "summary": {
+    "en": "Mounts `/var/log` on a **dedicated filesystem** so log growth is contained and cannot exhaust the root partition.",
+    "fr": "Monte `/var/log` sur un **système de fichiers dédié** afin de contenir la croissance des journaux et d'éviter qu'elle ne sature la partition racine."
+  },
+  "rationale": {
+    "en": "Mounting `/var/log` on its own partition separates log files from other data in `/var` and prevents **runaway logging from filling the root filesystem**, which would crash services and lock out administrators. A dedicated partition also lets you apply restrictive mount options and preserves logs needed for incident investigation.",
+    "fr": "Monter `/var/log` sur sa propre partition sépare les journaux des autres données de `/var` et empêche qu'une **journalisation incontrôlée ne sature le système de fichiers racine**, ce qui ferait planter les services et exclurait les administrateurs. Une partition dédiée permet aussi d'appliquer des options de montage restrictives et préserve les journaux nécessaires aux investigations d'incident."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** mount table via the `mount('/var/log')` resource (`findmnt` / `/proc/self/mountinfo`), not `/etc/fstab`. `fstab` only records intent, a mount can fail at boot or be shadowed by another mount. Inspecting the live kernel state proves `/var/log` is **currently** a separate mounted filesystem.",
+    "fr": "Pavois lit la table de montage **effective** via la ressource `mount('/var/log')` (`findmnt` / `/proc/self/mountinfo`), et non `/etc/fstab`. `fstab` n'enregistre qu'une intention, un montage peut échouer au démarrage ou être masqué par un autre montage. Inspecter l'état réel du noyau prouve que `/var/log` est **actuellement** un système de fichiers monté séparément."
+  },
+  "verify": {
+    "en": "Run `findmnt /var/log`. A returned line confirms a dedicated filesystem; empty output means `/var/log` shares `/var` or `/`, and the rule fails.",
+    "fr": "Exécutez `findmnt /var/log`. Une ligne renvoyée confirme un système de fichiers dédié ; une sortie vide signifie que `/var/log` partage `/var` ou `/`, et la règle échoue."
+  },
+  "logs": {
+    "en": "Confirm with `findmnt /var/log` and watch usage with `df -h /var/log`. System logs themselves live under `/var/log/` (e.g. `/var/log/syslog`, `journalctl --disk-usage` for the journal footprint).",
+    "fr": "Confirmez avec `findmnt /var/log` et surveillez l'usage avec `df -h /var/log`. Les journaux système résident sous `/var/log/` (par ex. `/var/log/syslog`, `journalctl --disk-usage` pour l'empreinte du journal)."
+  },
+  "remediation_note": {
+    "en": "There is **no automated harden plan**: separating `/var/log` requires repartitioning, which cannot be done safely on a running system. Apply it **manually**, ideally at install time, by giving `/var/log` its own partition or LVM volume and declaring it in `/etc/fstab`.",
+    "fr": "Il n'existe **aucun plan de durcissement automatisé** : séparer `/var/log` nécessite un repartitionnement, impossible à réaliser sans risque sur un système en fonctionnement. Appliquez-la **manuellement**, idéalement à l'installation, en attribuant à `/var/log` sa propre partition ou volume LVM et en le déclarant dans `/etc/fstab`."
+  },
+  "impact": {
+    "en": "Without a separate `/var/log`, a verbose service or a log-flood attack can fill the root filesystem and **take the host offline**. **Precautions before migrating:** move the data with logging services stopped (or `systemctl stop rsyslog systemd-journald` momentarily), copy with `rsync -aHAX` to keep permissions, restore SELinux contexts where applicable (`restorecon -R /var/log`), size the volume for your retention, and keep console/rescue access in case the mount fails at boot.",
+    "fr": "Sans `/var/log` séparé, un service verbeux ou une attaque par saturation de journaux peut remplir le système de fichiers racine et **mettre l'hôte hors ligne**. **Précautions avant migration :** déplacez les données avec les services de journalisation arrêtés (ou `systemctl stop rsyslog systemd-journald` momentanément), copiez avec `rsync -aHAX` pour conserver les permissions, restaurez les contextes SELinux le cas échéant (`restorecon -R /var/log`), dimensionnez le volume selon votre rétention et conservez un accès console/secours au cas où le montage échouerait au démarrage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

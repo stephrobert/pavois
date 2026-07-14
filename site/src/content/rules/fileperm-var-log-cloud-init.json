@@ -1,0 +1,79 @@
+{
+  "id": "fileperm-var-log-cloud-init",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "File permissions",
+  "evidence_type": "persistent-config",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": [
+      "6.1.4.1",
+      "6.2.2.1"
+    ]
+  },
+  "check": [
+    "['/var/log/cloud-init.log', '/var/log/cloud-init-output.log'].each do |f|",
+    "  next unless file(f).exist?",
+    "  describe file(f) do",
+    "    it { should_not be_writable.by('group') }",
+    "    it { should_not be_readable.by('other') }",
+    "    it { should_not be_writable.by('other') }",
+    "    it { should_not be_executable.by('other') }",
+    "    it { should_not be_setuid }",
+    "    it { should_not be_setgid }",
+    "  end",
+    "end"
+  ],
+  "remediation": {
+    "command": "for f in /var/log/cloud-init.log /var/log/cloud-init-output.log; do [ -e \"$f\" ] && chmod g-wx,o-rwx \"$f\"; done; true",
+    "name": "fileperm-var-log-cloud-init-tighten",
+    "not_if": "! find /var/log/cloud-init.log /var/log/cloud-init-output.log -maxdepth 0 \\( -perm /g=wx -o -perm /o=rwx \\) 2>/dev/null | grep -q .",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Verify Permissions on /var/log/cloud-init.log(.*) Files",
+    "fr": "Verifier les permissions des fichiers /var/log/cloud-init.log(.*)"
+  },
+  "summary": {
+    "en": "Ensures `/var/log/cloud-init` (and its log files) is not writable by group/other and carries no execute/setuid/setgid/sticky bits.",
+    "fr": "Garantit que `/var/log/cloud-init` (et ses fichiers de journaux) n'est pas modifiable par le groupe/les autres et ne porte aucun bit d'execution/setuid/setgid/sticky."
+  },
+  "rationale": {
+    "en": "cloud-init logs the entire first-boot provisioning: user-data, network config, and sometimes **secrets injected at deployment** (passwords, tokens, SSH keys, instance metadata). If non-root users can write to these logs they can tamper with provisioning evidence; if the logs are over-exposed, sensitive bootstrap data leaks. Access must be confined to `root` so this debugging detail stays with authorized personnel.",
+    "fr": "cloud-init journalise tout l'approvisionnement au premier demarrage : user-data, configuration reseau et parfois des **secrets injectes au deploiement** (mots de passe, jetons, cles SSH, metadonnees d'instance). Si des utilisateurs non-root peuvent ecrire dans ces journaux, ils peuvent alterer les preuves d'approvisionnement ; si les journaux sont trop exposes, des donnees d'amorcage sensibles fuitent. L'acces doit etre confine a `root` afin que ces details de debogage restent reserves au personnel autorise."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective inode mode** of `/var/log/cloud-init` and asserts no group/other write and no special bits. Reading the live mode catches the common case where a custom cloud image or a provisioning script created the log world-readable or group-writable, drift that a static packaging manifest would never reveal.",
+    "fr": "Pavois lit le **mode effectif de l'inode** de `/var/log/cloud-init` et verifie l'absence d'ecriture groupe/autres et l'absence de bits speciaux. Lire le mode reel detecte le cas frequent ou une image cloud personnalisee ou un script d'approvisionnement a cree le journal lisible par tous ou modifiable par le groupe, une derive qu'un manifeste de paquet statique ne revelerait jamais."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %G %a' /var/log/cloud-init` and `stat -c '%a' /var/log/cloud-init.log`. Expected: owner `root`, mode `640` or stricter, no write for group/other.",
+    "fr": "Executez `stat -c '%U %G %a' /var/log/cloud-init` et `stat -c '%a' /var/log/cloud-init.log`. Attendu : proprietaire `root`, mode `640` ou plus strict, aucune ecriture pour le groupe/les autres."
+  },
+  "logs": {
+    "en": "Provisioning detail is in `/var/log/cloud-init.log` and `/var/log/cloud-init-output.log`; cloud-init's status is shown by `cloud-init status --long` and `journalctl -u cloud-init`. Re-check the mode after any re-run of cloud-init.",
+    "fr": "Le detail de l'approvisionnement est dans `/var/log/cloud-init.log` et `/var/log/cloud-init-output.log` ; l'etat de cloud-init est affiche par `cloud-init status --long` et `journalctl -u cloud-init`. Re-verifiez le mode apres toute reexecution de cloud-init."
+  },
+  "remediation_note": {
+    "en": "No automated remediation ships for this rule. Tighten manually: `chown root:adm /var/log/cloud-init.log && chmod 640 /var/log/cloud-init.log` and apply the same to the `/var/log/cloud-init` directory. cloud-init's own `def_log_file_mode` (in `/etc/cloud/cloud.cfg`) can set the log mode at creation.",
+    "fr": "Aucune remediation automatique n'est fournie pour cette regle. Restreignez manuellement : `chown root:adm /var/log/cloud-init.log && chmod 640 /var/log/cloud-init.log` et appliquez de meme au repertoire `/var/log/cloud-init`. Le `def_log_file_mode` de cloud-init (dans `/etc/cloud/cloud.cfg`) peut definir le mode du journal a la creation."
+  },
+  "impact": {
+    "en": "Over-exposed cloud-init logs can leak provisioning secrets and let attackers tamper with deployment evidence. Restricting to `root`/`adm` is safe. **Precaution:** on systems that re-run cloud-init (re-deploys, golden-image rebuilds), the log may be recreated with the default mode, set `def_log_file_mode` in cloud-init config so the hardening persists rather than being undone on the next boot.",
+    "fr": "Des journaux cloud-init trop exposes peuvent divulguer des secrets d'approvisionnement et permettre aux attaquants d'alterer les preuves de deploiement. Restreindre a `root`/`adm` est sans danger. **Precaution :** sur les systemes qui reexecutent cloud-init (redeploiements, reconstructions d'image de reference), le journal peut etre recree avec le mode par defaut, definissez `def_log_file_mode` dans la configuration cloud-init pour que le durcissement persiste au lieu d'etre annule au prochain demarrage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

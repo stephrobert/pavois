@@ -1,0 +1,77 @@
+{
+  "id": "cmdline-mce",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel command line",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R8"
+  },
+  "check": [
+    "describe command('cat /proc/cmdline') do",
+    "  its('stdout') { should match(/(^| )mce=0( |$)/) }",
+    "end",
+    "describe command(\"grep -hwsF 'mce=0' /etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
+    "end"
+  ],
+  "remediation": {
+    "param": "mce=0",
+    "reboot_required": true,
+    "resource": "kernel_cmdline"
+  },
+  "title": {
+    "en": "Force kernel panic on uncorrected MCEs",
+    "fr": "Forcer un kernel panic sur les MCE non corrigées"
+  },
+  "summary": {
+    "en": "Requires the **`mce=0`** kernel boot parameter so an uncorrected Machine Check Exception triggers an immediate kernel panic instead of a recoverable `SIGBUS`.",
+    "fr": "Exige le paramètre de démarrage noyau **`mce=0`** afin qu'une Machine Check Exception non corrigée déclenche un kernel panic immédiat au lieu d'un `SIGBUS` récupérable."
+  },
+  "rationale": {
+    "en": "An uncorrected **Machine Check Exception (MCE)** signals memory or CPU corruption. By default the kernel tolerates such errors by sending a `SIGBUS` to the affected process and continuing to run. Leaving the system alive after corruption lets an attacker **retry a hardware fault-injection attack** (such as **Rowhammer**) repeatedly until a bit-flip lands in a useful location. Forcing a kernel panic on uncorrected MCEs (`mce=0`) turns each corruption event into a hard stop, removing the attacker's ability to iterate.",
+    "fr": "Une **Machine Check Exception (MCE)** non corrigée signale une corruption mémoire ou CPU. Par défaut, le noyau tolère ces erreurs en envoyant un `SIGBUS` au processus concerné puis poursuit son exécution. Laisser le système en vie après une corruption permet à un attaquant de **rejouer une attaque par injection de faute matérielle** (telle que **Rowhammer**) jusqu'à ce qu'un bit-flip atteigne un emplacement utile. Forcer un kernel panic sur les MCE non corrigées (`mce=0`) transforme chaque corruption en arrêt brutal, supprimant la capacité de l'attaquant à itérer."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel command line** from `/proc/cmdline` and checks that `mce=0` is present. `/proc/cmdline` is the **effective** boot line the running kernel actually parsed, not `/etc/default/grub` or a drop-in in `/etc/default/grub.d/`, which may have been edited without rebuilding the bootloader config. Reading the file would report a value that is not yet in effect; reading `/proc/cmdline` cannot be fooled.",
+    "fr": "Pavois lit la **ligne de commande noyau active** depuis `/proc/cmdline` et vérifie la présence de `mce=0`. `/proc/cmdline` est la ligne de boot **effective** réellement analysée par le noyau en cours, et non `/etc/default/grub` ou un drop-in dans `/etc/default/grub.d/`, qui peut avoir été modifié sans régénérer la configuration du bootloader. Lire le fichier rapporterait une valeur pas encore en vigueur ; lire `/proc/cmdline` ne peut être trompé."
+  },
+  "verify": {
+    "en": "Run `cat /proc/cmdline` and confirm the output contains a standalone `mce=0` token, for example:\n\n```\nBOOT_IMAGE=/vmlinuz ... mce=0 ...\n```",
+    "fr": "Lancez `cat /proc/cmdline` et confirmez que la sortie contient le jeton autonome `mce=0`, par exemple :\n\n```\nBOOT_IMAGE=/vmlinuz ... mce=0 ...\n```"
+  },
+  "logs": {
+    "en": "Machine Check events are logged by the kernel, inspect `dmesg | grep -i mce` or `journalctl -k | grep -i mce`. With `mce=0`, an uncorrected error appears as a panic in the kernel ring buffer just before the system halts.",
+    "fr": "Les évènements Machine Check sont journalisés par le noyau, inspectez `dmesg | grep -i mce` ou `journalctl -k | grep -i mce`. Avec `mce=0`, une erreur non corrigée apparaît comme un panic dans le ring buffer noyau juste avant l'arrêt du système."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the **`kernel_cmdline`** resource to add the `mce=0` parameter to the bootloader configuration (GRUB) and regenerate it, so the option is present on the next boot. Because it is a boot parameter, a **reboot is required** for it to take effect.",
+    "fr": "`pavois harden apply` utilise la ressource **`kernel_cmdline`** pour ajouter le paramètre `mce=0` à la configuration du bootloader (GRUB) et la régénérer, afin que l'option soit présente au prochain démarrage. S'agissant d'un paramètre de boot, un **redémarrage est requis** pour qu'il prenne effet."
+  },
+  "impact": {
+    "en": "With `mce=0`, any uncorrected hardware error becomes a **hard system halt** instead of a recoverable event. On flaky or aging hardware this can turn isolated memory glitches into unexpected downtime. Precautions:\n\n- Avoid on hosts with **known marginal RAM/CPU**; replace the hardware first.\n- Validate on a **non-critical node** and ensure monitoring/auto-restart is in place before fleet-wide rollout.\n- Keep a **serial/console or out-of-band path** so a panic is visible on headless machines.\n- The change only applies **after reboot**, so schedule a maintenance window.",
+    "fr": "Avec `mce=0`, toute erreur matérielle non corrigée devient un **arrêt brutal du système** au lieu d'un évènement récupérable. Sur du matériel défaillant ou vieillissant, cela peut transformer des anomalies mémoire isolées en indisponibilités imprévues. Précautions :\n\n- À éviter sur les hôtes à **RAM/CPU marginaux connus** ; remplacez d'abord le matériel.\n- Validez sur un **nœud non critique** et assurez-vous d'avoir une supervision/redémarrage automatique avant un déploiement de masse.\n- Conservez un **accès console série ou hors-bande** pour que le panic soit visible sur les machines sans écran.\n- Le changement ne s'applique qu'**après redémarrage** ; planifiez une fenêtre de maintenance."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

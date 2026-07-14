@@ -1,0 +1,73 @@
+{
+  "id": "kconfig-module-sig-sha512",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel build",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R18"
+  },
+  "check": [
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_MODULE_SIG_SHA512=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
+    "  its('stdout') { should match(/^CONFIG_MODULE_SIG_SHA512=y$/) }",
+    "end"
+  ],
+  "remediation": {
+    "resource": "kernel_build"
+  },
+  "title": {
+    "en": "Sign kernel modules with SHA-512",
+    "fr": "Signer les modules du noyau avec SHA-512"
+  },
+  "summary": {
+    "en": "Requires the running kernel to be built with `CONFIG_MODULE_SIG_SHA512=y` so module signatures use the strong SHA-512 hash.",
+    "fr": "Exige que le noyau en cours d'exécution soit compilé avec `CONFIG_MODULE_SIG_SHA512=y` afin que les signatures de modules utilisent le hachage robuste SHA-512."
+  },
+  "rationale": {
+    "en": "The hash algorithm chosen for module signatures determines how hard it is to forge one. Weak hashes (SHA-1, MD5) are vulnerable to collision attacks that could let an attacker craft a counterfeit signature and load a malicious module. Selecting `CONFIG_MODULE_SIG_SHA512=y` uses SHA-512, a strong hash with no practical collision attack, making forged module signatures infeasible.",
+    "fr": "L'algorithme de hachage choisi pour les signatures de modules détermine la difficulté d'en forger une. Les hachages faibles (SHA-1, MD5) sont vulnérables aux attaques par collision qui pourraient permettre à un attaquant de fabriquer une signature contrefaite et de charger un module malveillant. Sélectionner `CONFIG_MODULE_SIG_SHA512=y` utilise SHA-512, un hachage robuste sans attaque par collision pratique, rendant la contrefaçon de signatures de modules irréalisable."
+  },
+  "check_note": {
+    "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)`, falling back to `/proc/config.gz`, so the result reflects the booted kernel rather than a static file. Pavois expects `CONFIG_MODULE_SIG_SHA512=y`.",
+    "fr": "Pavois lit la configuration de compilation du noyau **en cours d'exécution** via `/boot/config-$(uname -r)`, avec repli sur `/proc/config.gz`, de sorte que le résultat reflète le noyau démarré plutôt qu'un fichier statique. Pavois attend `CONFIG_MODULE_SIG_SHA512=y`."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_MODULE_SIG_SHA512=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep '^CONFIG_MODULE_SIG_SHA512='`). Expected output: `CONFIG_MODULE_SIG_SHA512=y`.",
+    "fr": "Exécutez `grep '^CONFIG_MODULE_SIG_SHA512=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep '^CONFIG_MODULE_SIG_SHA512='`). Sortie attendue : `CONFIG_MODULE_SIG_SHA512=y`."
+  },
+  "logs": {
+    "en": "`modinfo <module>` shows the signature hash algorithm in its `sig_hashalgo` field (expected `sha512`). `dmesg | grep -i module` and `journalctl -k` show any signature errors at load time.",
+    "fr": "`modinfo <module>` affiche l'algorithme de hachage de signature dans son champ `sig_hashalgo` (attendu `sha512`). `dmesg | grep -i module` et `journalctl -k` montrent toute erreur de signature au chargement."
+  },
+  "remediation_note": {
+    "en": "No automated remediation: `CONFIG_MODULE_SIG_SHA512` is a **kernel build-time option** that selects the signing hash at compile time and cannot be changed at runtime. Use a distribution kernel that signs modules with SHA-512, or rebuild with this option. Apply manually; `pavois harden apply` cannot change a compiled-in setting.",
+    "fr": "Aucune remédiation automatique : `CONFIG_MODULE_SIG_SHA512` est une **option de compilation du noyau** qui sélectionne le hachage de signature à la compilation et ne peut pas être modifiée à l'exécution. Utilisez un noyau de distribution qui signe les modules avec SHA-512, ou recompilez avec cette option. À appliquer manuellement ; `pavois harden apply` ne peut pas modifier un paramètre compilé en dur."
+  },
+  "impact": {
+    "en": "Using a weak signing hash leaves the door open to forged module signatures, undermining the whole module-signing chain. There is no runtime breakage risk from this check itself; it is a build-time property of the kernel. When selecting kernels, prefer distribution kernels (which already use SHA-256/SHA-512) and ensure all modules are re-signed with the matching hash if you rebuild, so enforcement does not reject them.",
+    "fr": "Utiliser un hachage de signature faible laisse la porte ouverte à la contrefaçon de signatures de modules, fragilisant toute la chaîne de signature. Ce contrôle ne présente aucun risque de casse à l'exécution ; c'est une propriété de compilation du noyau. Lors du choix des noyaux, préférez les noyaux de distribution (qui utilisent déjà SHA-256/SHA-512) et assurez-vous que tous les modules sont re-signés avec le hachage correspondant si vous recompilez, afin que l'application stricte ne les rejette pas."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

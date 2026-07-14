@@ -1,0 +1,61 @@
+{
+  "id": "pkg-s-nail-installed",
+  "supported_os": [
+    "fedora",
+    "rhel10",
+    "rhel9"
+  ],
+  "os_versions": {
+    "rhel10": "1.0.0",
+    "rhel9": "2.0.0"
+  },
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe package('s-nail') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "s-nail",
+    "resource": "package"
+  },
+  "title": {
+    "en": "The s-nail Package Is Installed",
+    "fr": "Le paquet s-nail est installé"
+  },
+  "summary": {
+    "en": "Ensures the **`s-nail`** package is **installed** so the system can send `mail`/`mailx` notifications for security and operational events.",
+    "fr": "Garantit que le paquet **`s-nail`** est **installé** afin que le système puisse envoyer des notifications `mail`/`mailx` pour les événements de sécurité et d'exploitation."
+  },
+  "rationale": {
+    "en": "`s-nail` provides the **`mail`/`mailx`** command-line MUA used by system tooling to send notifications. **Emails are used to notify designated personnel about important system events** such as cron job output, AIDE integrity reports, audit-disk-full warnings, and service failures. Without a mail client installed, these automated alerts are silently dropped and operators lose visibility into the health and security posture of the host.",
+    "fr": "`s-nail` fournit le client de messagerie en ligne de commande **`mail`/`mailx`** utilisé par les outils système pour envoyer des notifications. **Les e-mails servent à avertir le personnel désigné d'événements importants** tels que la sortie des tâches cron, les rapports d'intégrité AIDE, les alertes de disque d'audit plein et les défaillances de services. Sans client de messagerie installé, ces alertes automatiques sont perdues silencieusement et les exploitants n'ont plus de visibilité sur l'état de santé et la posture de sécurité de l'hôte."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** install state from the RPM database via CINC/InSpec's `package` resource and asserts `s-nail` is present. This is more reliable than checking for a `/usr/bin/mail` symlink, because the package state is what `dnf`/the audit subsystem depend on to provide a working mail transport for notifications.",
+    "fr": "Pavois lit l'état d'installation **effectif** dans la base RPM via la ressource `package` de CINC/InSpec et vérifie que `s-nail` est présent. C'est plus fiable que de chercher un lien symbolique `/usr/bin/mail`, car l'état du paquet est ce sur quoi `dnf` et le sous-système d'audit s'appuient pour fournir un transport de courrier fonctionnel pour les notifications."
+  },
+  "verify": {
+    "en": "Run `rpm -q s-nail`; a compliant host returns a version string such as **`s-nail-14.9.24-...`** (not `package s-nail is not installed`). Confirm the command exists with `command -v mail`.",
+    "fr": "Exécutez `rpm -q s-nail` ; un hôte conforme renvoie une chaîne de version telle que **`s-nail-14.9.24-...`** (et non `package s-nail is not installed`). Confirmez la présence de la commande avec `command -v mail`."
+  },
+  "logs": {
+    "en": "- Installation is logged in `/var/log/dnf.log` and visible via `rpm -q --last s-nail`.\n- Outgoing mail attempts and delivery are recorded by the MTA in `/var/log/maillog`.",
+    "fr": "- L'installation est journalisée dans `/var/log/dnf.log` et visible via `rpm -q --last s-nail`.\n- Les tentatives d'envoi et la remise des courriers sont enregistrées par le MTA dans `/var/log/maillog`."
+  },
+  "remediation_note": {
+    "en": "The harden plan declares a **`package`** resource for `s-nail` with action **`install`**; `pavois harden apply` installs it via `dnf`. Note that `s-nail` only provides the **client**, actual delivery still requires a configured MTA (e.g. Postfix) listening locally.",
+    "fr": "Le plan de durcissement déclare une ressource **`package`** pour `s-nail` avec l'action **`install`** ; `pavois harden apply` l'installe via `dnf`. Notez que `s-nail` ne fournit que le **client**, la remise effective nécessite encore un MTA configuré (par ex. Postfix) à l'écoute en local."
+  },
+  "impact": {
+    "en": "Installing `s-nail` is low-risk and adds no listening service. The precaution is **completeness, not breakage**: a mail client without a working local MTA still cannot deliver notifications, so pair this with a configured Postfix/sendmail. There is no lockout risk and no reboot required.",
+    "fr": "Installer `s-nail` présente un faible risque et n'ajoute aucun service à l'écoute. La précaution porte sur la **complétude, pas sur un risque de panne** : un client de messagerie sans MTA local fonctionnel ne peut toujours pas remettre les notifications, associez-le donc à un Postfix/sendmail configuré. Aucun risque de blocage et aucun redémarrage requis."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

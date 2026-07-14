@@ -1,0 +1,77 @@
+{
+  "id": "sysctl-net-ipv4-conf-all-arp_ignore",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Kernel & network (sysctl)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R12"
+  },
+  "check": [
+    "describe kernel_parameter('net.ipv4.conf.all.arp_ignore') do",
+    "  its('value') { should cmp 2 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.all.arp_ignore[[:space:]]*=[[:space:]]*2([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
+    "end"
+  ],
+  "remediation": {
+    "key": "net.ipv4.conf.all.arp_ignore",
+    "resource": "sysctl",
+    "value": "2"
+  },
+  "title": {
+    "en": "Configure Response Mode of ARP Requests for All IPv4 Interfaces",
+    "fr": "Configurer le mode de réponse aux requêtes ARP pour toutes les interfaces IPv4"
+  },
+  "summary": {
+    "en": "Sets `net.ipv4.conf.all.arp_ignore=2` so the host answers ARP only for the receiving interface's own IP from a same-subnet sender.",
+    "fr": "Définit `net.ipv4.conf.all.arp_ignore=2` pour que l'hôte ne réponde aux requêtes ARP que pour l'IP propre à l'interface de réception, depuis un émetteur du même sous-réseau."
+  },
+  "rationale": {
+    "en": "`net.ipv4.conf.all.arp_ignore` decides which ARP requests the host answers. In the default mode (`0`) the host replies to an ARP request for **any** of its local addresses regardless of which interface the request arrived on, which on a multi-homed host causes **ARP flux**: a neighbor can learn the host's IP behind the wrong MAC/interface, and an attacker can exploit the ambiguity to map and target the host. Setting it to `2` makes the host reply **only when the target IP is local to the receiving interface and the sender is on the same subnet**, producing deterministic, harder-to-abuse ARP behavior.",
+    "fr": "`net.ipv4.conf.all.arp_ignore` détermine à quelles requêtes ARP l'hôte répond. Dans le mode par défaut (`0`), l'hôte répond à une requête ARP pour **n'importe laquelle** de ses adresses locales quelle que soit l'interface de réception, ce qui provoque sur un hôte multi-rattaché un **flux ARP** : un voisin peut apprendre l'IP de l'hôte derrière la mauvaise MAC/interface, et un attaquant peut exploiter cette ambiguïté pour cartographier et cibler l'hôte. Le mettre à `2` fait que l'hôte ne répond **que lorsque l'IP cible est locale à l'interface de réception et que l'émetteur est sur le même sous-réseau**, produisant un comportement ARP déterministe et plus difficile à détourner."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** via `kernel_parameter('net.ipv4.conf.all.arp_ignore')` and asserts it equals `2`. ARP reply behavior is governed by the running kernel value, so a `sysctl.d` entry written but not reloaded, or overridden by a per-interface key, would leave the host answering ARP differently than the file suggests. Only the effective value confirms the actual ARP response mode in force.",
+    "fr": "Pavois lit la **valeur noyau effective** via `kernel_parameter('net.ipv4.conf.all.arp_ignore')` et vérifie qu'elle vaut `2`. Le comportement de réponse ARP est régi par la valeur noyau effective ; une entrée de `sysctl.d` écrite mais non rechargée, ou écrasée par une clé d'interface, ferait que l'hôte répond aux requêtes ARP différemment de ce qu'indique le fichier. Seule la valeur effective confirme le mode de réponse ARP réellement en vigueur."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.conf.all.arp_ignore`. Expected output:\n\n```\nnet.ipv4.conf.all.arp_ignore = 2\n```",
+    "fr": "Exécutez `sysctl net.ipv4.conf.all.arp_ignore`. Sortie attendue :\n\n```\nnet.ipv4.conf.all.arp_ignore = 2\n```"
+  },
+  "logs": {
+    "en": "- `sysctl net.ipv4.conf.all.arp_ignore` shows the current value.\n- `cat /proc/sys/net/ipv4/conf/all/arp_ignore` is the raw kernel value.\n- Observe the live neighbor/ARP table with `ip neigh show`, and use `sysctl -a | grep arp_ignore` to see both `all` and per-interface values, which combine.",
+    "fr": "- `sysctl net.ipv4.conf.all.arp_ignore` affiche la valeur courante.\n- `cat /proc/sys/net/ipv4/conf/all/arp_ignore` est la valeur brute du noyau.\n- Observez la table des voisins/ARP réelle avec `ip neigh show`, et utilisez `sysctl -a | grep arp_ignore` pour voir les valeurs `all` et par interface, qui se combinent."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv4.conf.all.arp_ignore` to `2`. It writes the key into a Pavois-managed drop-in and reloads it so the stricter ARP reply mode is **active immediately** and **persistent across reboots**. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour positionner `net.ipv4.conf.all.arp_ignore` à `2`. Il écrit la clé dans un drop-in géré par Pavois puis le recharge, de sorte que le mode de réponse ARP plus strict soit **actif immédiatement** et **persistant après redémarrage**. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "On a single-homed host this rarely changes anything visible. The important caveat is **multi-homed hosts, load balancers and clustering**: technologies like LVS/IPVS Direct Routing, keepalived/VRRP and some HA setups deliberately rely on cross-interface ARP and may **break** with `arp_ignore=2`. **Before applying**, audit any host that owns shared/virtual IPs or runs an L4 load balancer. There is no SSH-lockout risk on a normal single-interface server, but on clustered nodes validate failover after applying.",
+    "fr": "Sur un hôte à interface unique, cette règle ne change rarement quoi que ce soit de visible. La réserve importante concerne les **hôtes multi-rattachés, répartiteurs de charge et clusters** : des technologies comme LVS/IPVS en routage direct, keepalived/VRRP et certaines configurations HA s'appuient délibérément sur l'ARP inter-interfaces et peuvent **casser** avec `arp_ignore=2`. **Avant d'appliquer**, auditez tout hôte possédant des IP partagées/virtuelles ou exécutant un répartiteur de charge L4. Il n'y a pas de risque de blocage SSH sur un serveur normal à interface unique, mais sur les nœuds en cluster, validez le basculement après application."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,74 @@
+{
+  "id": "partition-opt",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel10": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {
+    "bp28": "R28"
+  },
+  "check": [
+    "describe mount('/opt') do",
+    "  it { should be_mounted }",
+    "end"
+  ],
+  "remediation": {
+    "command": "# /opt should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /opt >/dev/null 2>&1 && echo '/opt is already a mount point' || echo '/opt is NOT separate'\n# Then: dedicate an LVM volume / disk to /opt and add it to /etc/fstab.\n",
+    "reason": "a separate /opt filesystem needs partitioning/LVM/tmpfs, not a safe runtime change",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Ensure /opt Located On Separate Partition",
+    "fr": "S'assurer que /opt est sur une partition separee"
+  },
+  "summary": {
+    "en": "Verifies that **`/opt`** is mounted on its own partition so restrictive options can be applied to third-party software.",
+    "fr": "Verifie que **`/opt`** est monte sur sa propre partition afin d'appliquer des options restrictives aux logiciels tiers."
+  },
+  "rationale": {
+    "en": "`/opt` holds additional software, often installed outside the package manager. Putting it on a separate partition lets you apply restrictions such as **`nosuid`** and **`nodev`** to that third-party code, isolates it from the root filesystem, and prevents an over-grown `/opt` from filling `/`.",
+    "fr": "`/opt` heberge des logiciels supplementaires, souvent installes en dehors du gestionnaire de paquets. Le placer sur une partition separee permet d'appliquer des restrictions comme **`nosuid`** et **`nodev`** a ce code tiers, l'isole du systeme de fichiers racine et empeche un `/opt` trop volumineux de saturer `/`."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `mount('/opt')` resource, reading the **effective** mount table (`/proc/self/mountinfo`) rather than `/etc/fstab`. It reflects what the kernel has actually mounted, distinguishing a real separate mount from an fstab entry that never took effect.",
+    "fr": "Pavois utilise la ressource InSpec `mount('/opt')`, lisant la table de montage **effective** (`/proc/self/mountinfo`) plutot que `/etc/fstab`. Elle reflete ce que le noyau a reellement monte, distinguant un vrai montage separe d'une entree fstab jamais appliquee."
+  },
+  "verify": {
+    "en": "Run:\n\n```bash\nfindmnt /opt\n```\n\nExpected: a row showing `/opt` on its own device/partition. No output means `/opt` is part of the root filesystem and the rule fails.",
+    "fr": "Executez :\n\n```bash\nfindmnt /opt\n```\n\nAttendu : une ligne montrant `/opt` sur son propre peripherique/partition. Aucune sortie signifie que `/opt` fait partie du systeme de fichiers racine et la regle echoue."
+  },
+  "logs": {
+    "en": "Check the live mount with `findmnt /opt` or `mount | grep ' /opt '`; the persistent entry is in `/etc/fstab`. Mount-unit events appear via `journalctl -u opt.mount` and kernel mount activity via `journalctl -k`.",
+    "fr": "Verifiez le montage actif avec `findmnt /opt` ou `mount | grep ' /opt '` ; l'entree persistante est dans `/etc/fstab`. Les evenements d'unite de montage apparaissent via `journalctl -u opt.mount` et l'activite de montage du noyau via `journalctl -k`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule, relocating `/opt` to its own partition is a **manual** disk-layout change, best done at install time. On an existing host it requires a new filesystem, copying data with `rsync -aXS`, an `/etc/fstab` entry and a remount; Pavois will not perform this automatically.",
+    "fr": "Aucun plan de durcissement automatise n'est fourni pour cette regle, deplacer `/opt` sur sa propre partition est une modification **manuelle** de l'agencement disque, ideale a l'installation. Sur un hote existant, cela exige un nouveau systeme de fichiers, la copie des donnees avec `rsync -aXS`, une entree `/etc/fstab` et un remontage ; Pavois ne l'effectue pas automatiquement."
+  },
+  "impact": {
+    "en": "Moving `/opt` on a live system can disrupt software installed there (paths, running services), and `nosuid`/`noexec` may break vendor apps that ship setuid helpers or run scripts from `/opt`. **Precautions:** back up `/opt`, stop affected services during the migration, verify the new mount before removing old data, and test the third-party software before tightening mount options. The control only requires the mount to exist.",
+    "fr": "Deplacer `/opt` sur un systeme en service peut perturber les logiciels qui y sont installes (chemins, services en cours), et `nosuid`/`noexec` peuvent casser des applications editeur fournissant des binaires setuid ou executant des scripts depuis `/opt`. **Precautions :** sauvegardez `/opt`, arretez les services concernes pendant la migration, verifiez le nouveau montage avant de supprimer les anciennes donnees, et testez les logiciels tiers avant de durcir les options de montage. Le controle exige seulement l'existence du montage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}
