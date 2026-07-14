@@ -27,10 +27,13 @@ const catLabels: Record<string, { en: string; fr: string }> = {
 const catLabel = (c: string): string => catLabels[c]?.[lang] ?? c;
 const md = (s: string): string => (s ? (marked.parse(s, { async: false, gfm: true }) as string) : '');
 
+// The 192 terms are all translated (en_status: done on every one), so the English fallback to the
+// French text is a dead branch kept as a safety net; it used to also compute an `fb` flag that no
+// template ever read.
 function def(e: any) {
   const en = e.data.en;
-  if (lang === 'en' && en?.short) return { short: en.short, full: en.full as string, fb: false };
-  return { short: e.data.fr.short, full: e.data.fr.full as string, fb: lang === 'en' };
+  if (lang === 'en' && en?.short) return { short: en.short, full: en.full as string };
+  return { short: e.data.fr.short, full: e.data.fr.full as string };
 }
 
 // A-Z grouping.
