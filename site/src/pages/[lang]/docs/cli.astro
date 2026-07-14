@@ -32,7 +32,13 @@ type Cmd = {
 };
 
 const commands: Cmd[] = (cli as unknown as Cmd).sub ?? [];
-const toc = commands.map((c) => ({ depth: 2, slug: c.name, text: `pavois ${c.name}` }));
+// The exit codes are the contract every CI job encodes. The site stated three different versions of
+// them; they now come from the binary that produces them.
+const exits = ((cli as unknown as { exit_codes?: { code: number; meaning: string }[] }).exit_codes) ?? [];
+const toc = [
+  { depth: 2, slug: 'exit-codes', text: fr ? 'Codes de sortie' : 'Exit codes' },
+  ...commands.map((c) => ({ depth: 2, slug: c.name, text: `pavois ${c.name}` })),
+];
 const nFlags = commands.reduce(
   (n, c) => n + (c.flags?.length ?? 0) + (c.sub ?? []).reduce((m, s) => m + (s.flags?.length ?? 0), 0),
   0
@@ -68,6 +74,26 @@ const desc = fr
 
   <div class="wrap layout-doc">
     <div class="doc-col">
+      {exits.length > 0 && (
+        <section class="cli-cmd">
+          <h2 id="exit-codes">{fr ? 'Codes de sortie' : 'Exit codes'}</h2>
+          <p class="cli-short">
+            {fr
+              ? 'Le verdict que votre pipeline lit. Les codes 100/101 de CINC sont absorbés en interne : un contrôle qui échoue est un résultat normal, pas une erreur.'
+              : 'The verdict your pipeline reads. CINC\'s own 100/101 are swallowed internally: a failing control is a normal outcome, not an error.'}
+          </p>
+          <table class="cli-flags">
+            <tbody>
+              {exits.map((e) => (
+                <tr>
+                  <td class="f">{e.code}</td>
+                  <td class="u">{e.meaning}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
       {
         commands.map((c) => (
           <section class="cli-cmd">
