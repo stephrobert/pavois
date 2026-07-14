@@ -1,7 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
-import { marked } from 'marked';
 import Base from '../../../layouts/Base.astro';
+import { renderMarkdown } from '../../../lib/markdown';
 import { ui, languages, type Lang } from '../../../i18n/ui';
 
 export function getStaticPaths() {
@@ -25,7 +25,10 @@ const catLabels: Record<string, { en: string; fr: string }> = {
   reseau: { en: 'Network', fr: 'Réseau' },
 };
 const catLabel = (c: string): string => catLabels[c]?.[lang] ?? c;
-const md = (s: string): string => (s ? (marked.parse(s, { async: false, gfm: true }) as string) : '');
+// The entries cross-reference each other (/glossary/#selinux) and link out to the handbook. Without
+// { lang }, a root-relative link stays unprefixed and 404s: the site has no page outside /en/ /fr/.
+const INTERNAL = 'glossary|handbook|rules|standards|docs|start|installation|audit|blog|about';
+const md = (s: string): string => (s ? renderMarkdown(s, { lang, internal: INTERNAL }).html : '');
 
 // The 192 terms are all translated (en_status: done on every one), so the English fallback to the
 // French text is a dead branch kept as a safety net; it used to also compute an `fb` flag that no
