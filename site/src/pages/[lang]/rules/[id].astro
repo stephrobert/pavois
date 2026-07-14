@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import { marked } from 'marked';
 import { highlight } from '../../../lib/markdown';
 import Base from '../../../layouts/Base.astro';
+import Toc from '../../../components/Toc.astro';
 import { osLabel } from '../../../lib/os';
 import { ui, languages, type Lang } from '../../../i18n/ui';
 import domainRefs from '../../../data/domain-refs.json';
@@ -23,6 +24,15 @@ const t = ui[lang];
 const tr = (f?: { en: string; fr: string }) => (f ? f[lang] : '');
 const md = (f?: { en: string; fr: string }) =>
   f ? (marked.parse(f[lang], { async: false, gfm: true }) as string) : '';
+// The summary is markdown like every other authored field, and it was being interpolated as RAW
+// TEXT: the page literally printed `Force **\`PermitRootLogin no\`**`, asterisks and backticks and
+// all, on 1578 pages. Inline-parsed, so it stays one <p> (the CSS already styles `.rule-desc code`,
+// which is the tell that it was always meant to be rendered).
+const mdi = (f?: { en: string; fr: string }) =>
+  f ? (marked.parseInline(f[lang], { async: false, gfm: true }) as string) : '';
+// …and a <meta description> must be plain text: no markdown syntax, no HTML.
+const plain = (f?: { en: string; fr: string }) =>
+  f ? f[lang].replace(/[*_`]/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') : '';
 const fmtVal = (v: any): string =>
   v && typeof v === 'object' && !Array.isArray(v)
     ? Object.entries(v)
@@ -210,11 +220,25 @@ const srcT = {
   manuals: { en: 'Manual pages', fr: 'Pages de manuel' },
   handbookLink: { en: 'Pavois handbook', fr: 'manuel Pavois' },
 };
+
+// The fiche's sections are fixed and known, so its table of contents is data, not a parse of the
+// rendered HTML: only the sections this rule actually has get an entry.
+const toc = [
+  data.rationale && { depth: 2, slug: 'why', text: t.secWhy },
+  { depth: 2, slug: 'check', text: t.secCheck },
+  data.verify && { depth: 2, slug: 'verify', text: t.secVerify },
+  data.logs && { depth: 2, slug: 'logs', text: t.secLogs },
+  { depth: 2, slug: 'remediation', text: t.secRemediation },
+  data.impact && { depth: 2, slug: 'impact', text: t.secImpact },
+  { depth: 2, slug: 'mapping', text: mapTable.head[lang] },
+  { depth: 2, slug: 'sources', text: tr(srcT.title) },
+].filter(Boolean) as { depth: number; slug: string; text: string }[];
+
 ---
 
 <Base
   title={`${data.title[lang]} · Pavois`}
-  description={tr(data.summary) || tr(data.rationale)}
+  description={plain(data.summary) || plain(data.rationale)}
   lang={lang}
   ogType="article"
   schema="TechArticle"
@@ -226,7 +250,7 @@ const srcT = {
     { name: data.title[lang], path: `/${lang}/rules/${data.id}/` },
   ]}
 >
-  <article class="wrap rule">
+  <div class="wrap page-head rule-head">
     <a class="back" href={`/${lang}/rules/`}>← {t.allRules}</a>
 
     <div class="rule-meta">
@@ -247,7 +271,7 @@ const srcT = {
       )}
     </div>
     <h1 class="rule-h1">{data.title[lang]}</h1>
-    {data.summary && <p class="rule-desc">{tr(data.summary)}</p>}
+    {data.summary && <p class="rule-desc" set:html={mdi(data.summary)} />}
     {ev && <p class="ev-note">{ev.blurb[lang]}</p>}
     {pv && data.evidence_type !== 'manual' && (
       <div class="proves">
@@ -302,19 +326,22 @@ const srcT = {
       )
     }
 
-    <div class="layout">
+  </div>
+
+  <div class="wrap layout-doc rule-body">
+    <div class="doc-col">
       <div class="body">
         {
           data.rationale && (
             <section>
-              <h2>{t.secWhy}</h2>
+              <h2 id="why">{t.secWhy}</h2>
               <div class="prose" set:html={md(data.rationale)} />
             </section>
           )
         }
 
         <section>
-          <h2>{t.secCheck}</h2>
+          <h2 id="check">{t.secCheck}</h2>
           {data.check_note && <div class="prose" set:html={md(data.check_note)} />}
           {data.check.length > 0 && <Fragment set:html={highlight(data.check.join('\n'), 'ruby')} />}
         </section>
@@ -322,7 +349,7 @@ const srcT = {
         {
           data.verify && (
             <section class="op">
-              <h2>{t.secVerify}</h2>
+              <h2 id="verify">{t.secVerify}</h2>
               <div class="prose" set:html={md(data.verify)} />
             </section>
           )
@@ -331,14 +358,14 @@ const srcT = {
         {
           data.logs && (
             <section class="op">
-              <h2>{t.secLogs}</h2>
+              <h2 id="logs">{t.secLogs}</h2>
               <div class="prose" set:html={md(data.logs)} />
             </section>
           )
         }
 
         <section>
-          <h2>{t.secRemediation}</h2>
+          <h2 id="remediation">{t.secRemediation}</h2>
           {
             hasRem ? (
               <>
@@ -368,7 +395,7 @@ const srcT = {
         {
           data.impact && (
             <section class="warn">
-              <h2>{t.secImpact}</h2>
+              <h2 id="impact">{t.secImpact}</h2>
               <div class="prose" set:html={md(data.impact)} />
             </section>
           )
@@ -377,7 +404,7 @@ const srcT = {
         {
           mappingRows.length > 0 && (
             <section>
-              <h2>{mapTable.head[lang]}</h2>
+              <h2 id="mapping">{mapTable.head[lang]}</h2>
               <table class="maptable">
                 <thead>
                   <tr>
@@ -412,7 +439,7 @@ const srcT = {
         {
           hasSources && (
             <section class="sources">
-              <h2>{tr(srcT.title)}</h2>
+              <h2 id="sources">{tr(srcT.title)}</h2>
               <div class="src-grid">
                 {(dref.handbook || dref.blog) && (
                   <div class="src-col">
@@ -482,5 +509,6 @@ const srcT = {
         }
       </div>
     </div>
-  </article>
+    <Toc headings={toc} lang={lang} />
+  </div>
 </Base>
