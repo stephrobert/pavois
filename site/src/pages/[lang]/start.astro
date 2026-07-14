@@ -233,47 +233,52 @@ ready - try:  pavois scan local --sudo
 
     <h2 id="revert">{fr ? '8. Revenir en arrière' : '8. Reverting a change'}</h2>
     <p>
-      <b>{fr ? 'Il n’existe pas de commande d’annulation.' : 'There is no revert command.'}</b>
+      <b>{fr ? 'Pavois sait annuler un durcissement.' : 'Pavois can undo a hardening run.'}</b>
       {fr
-        ? ' Autant le dire avant que tu ne le découvres sur un serveur de production : '
-        : ' Better said before you find out on a production box: '}
-      <code>pavois harden</code>
-      {fr ? ' n’a que ' : ' has only '}<code>plan</code>{fr ? ' et ' : ' and '}<code>apply</code>
-      {fr ? ', et n’écrit aucune sauvegarde des fichiers qu’il modifie.' : ', and it writes no backup of the files it changes.'}
+        ? ' Aucun autre outil ne le fait : OpenSCAP vous tend un script bash, Lynis se contente de conseiller, CIS-CAT ne remédie pas. C’est possible ici pour une raison précise : le plan est déclaratif, donc ce que le run va toucher est connu AVANT qu’il ne tourne.'
+        : ' No other tool does: OpenSCAP hands you a bash script, Lynis only advises, CIS-CAT does not remediate. It is possible here for one precise reason: the plan is declarative, so what the run will touch is known BEFORE it runs.'}
     </p>
-    <p>{fr ? 'Ce qui est réversible, et ce qui ne l’est pas :' : 'What is reversible, and what is not:'}</p>
-    <ul>
-      <li>
-        <b>{fr ? 'Les drop-ins sont réversibles.' : 'Drop-ins are reversible.'}</b>
-        {fr
-          ? ' Pavois dépose des fichiers qui portent son nom, et le retrait du fichier annule le réglage : '
-          : ' Pavois drops files that carry its name, and removing the file undoes the setting: '}
-        <code>/etc/ssh/sshd_config.d/99-pavois.conf</code>, <code>/etc/sysctl.d/zz-pavois.conf</code>,
-        <code>/etc/audit/rules.d/99-pavois.rules</code>, <code>/etc/systemd/journald.conf.d/99-pavois-*.conf</code>,
-        <code>/etc/modprobe.d/pavois-*.conf</code>, <code>/etc/profile.d/99-pavois-*.sh</code>.
-      </li>
-      <li>
-        <b>{fr ? 'Les éditions en place ne le sont pas.' : 'In-place edits are not.'}</b>
-        {fr
-          ? ' Une ligne réécrite dans /etc/login.defs, une pile PAM modifiée, un chmod : rien ne mémorise la valeur d’origine. Un retour arrière consiste à ré-appliquer l’ancienne valeur, à la main.'
-          : ' A line rewritten in /etc/login.defs, a modified PAM stack, a chmod: nothing remembers the original value. Rolling back means re-applying the old value, by hand.'}
-      </li>
-    </ul>
     <p>
       {fr
-        ? 'La conséquence pratique est simple, et c’est la seule recommandation honnête : '
-        : 'The practical consequence is simple, and it is the only honest recommendation: '}
-      <b>{fr ? 'prends un instantané (snapshot VM, ou une sauvegarde de /etc) avant le premier apply' : 'take a snapshot (VM snapshot, or a backup of /etc) before the first apply'}</b>
+        ? 'Avant de converger, '
+        : 'Before it converges, '}<code>harden apply</code>
       {fr
-        ? ', et fais ton premier essai sur un clone, pas sur la production. Le plan est déclaratif et opt-in précisément pour que tu puisses n’activer que ce que tu comprends.'
-        : ', and make your first run on a clone, not on production. The plan is declarative and opt-in precisely so you can enable only what you understand.'}
+        ? ' photographie l’état antérieur : le contenu de chaque fichier que la recette va écrire, la liste de ceux qui n’existaient pas encore (le rollback les supprime), et l’état installé/activé de chaque paquet et service touché.'
+        : ' photographs the prior state: the content of every file the recipe will write, the list of those that did not exist yet (a rollback deletes them), and the installed/enabled state of every package and service it touches.'}
     </p>
-    <Fragment set:html={highlight(`# ${fr ? 'annuler les reglages deposes en drop-in (le gros du durcissement)' : 'undo the drop-in settings (the bulk of the hardening)'}
-sudo rm -f /etc/ssh/sshd_config.d/99-pavois.conf /etc/sysctl.d/zz-pavois.conf \\
-           /etc/systemd/journald.conf.d/99-pavois-*.conf /etc/modprobe.d/pavois-*.conf
-sudo systemctl reload ssh && sudo sysctl --system`, 'bash')} />
+    <Fragment set:html={highlight(`# ${fr ? 'l apply ecrit un point de restauration, puis converge' : 'the apply writes a restore point, then converges'}
+./go/pavois harden apply --target user@host --key ~/.ssh/id --sudo-prompt --yes plan.yml
+# pavois: 📸 restore point → restore-points/user_192-0-2-10-20260714-1505
 
-    <h2 id="fleet">{fr ? '9. Toute une flotte' : '9. A whole fleet'}</h2>
+# ${fr ? 'annuler : fichiers restaures, paquets purges, services remis, demons recharges' : 'undo: files restored, packages purged, services restored, daemons reloaded'}
+./go/pavois harden rollback restore-points/user_192-0-2-10-20260714-1505 --key ~/.ssh/id --sudo-prompt --yes`, 'bash')} />
+    <p>
+      {fr
+        ? 'Mesuré sur une debian 12 neuve, un apply complet de 268 items puis un rollback : '
+        : 'Measured on a fresh debian 12, a full 268-item apply then a rollback: '}
+      <b>{fr ? '604 des 620 contrôles reviennent à leur état exact d’avant (98 %)' : '604 of the 620 controls return to their exact prior state (98%)'}</b>.
+      {fr
+        ? ' Le rollback recharge aussi les démons : un sshd_config restauré que personne n’a rechargé n’a rien annulé.'
+        : ' The rollback also reloads the daemons: a restored sshd_config nobody reloaded has undone nothing.'}
+    </p>
+    <p>
+      <b>{fr ? 'Ce n’est pas une machine à remonter le temps, et le manifeste le dit.' : 'It is not a time machine, and the manifest says so.'}</b>
+      {fr
+        ? ' Les 2 % qui ne reviennent pas sont inhérents au fait de défaire une installation : un système de fichiers déjà monté (/tmp en tmpfs) n’est pas démonté à chaud ; un chmod piloté par un '
+        : ' The 2% that do not return are inherent to undoing an installation: a filesystem already mounted (/tmp as tmpfs) is not unmounted under a running system; a chmod driven by a '}
+      <code>find /</code>
+      {fr
+        ? ' ne peut pas être énuméré à l’avance ; purger un paquet supprime son utilisateur système, et retirer un outil retire la commande qui servait à vérifier. Chaque remédiation concernée est NOMMÉE dans le manifeste, jamais passée sous silence.'
+        : ' cannot be enumerated in advance; purging a package removes its system user, and removing a tool removes the very command a control checked with. Every affected remediation is NAMED in the manifest, never hidden.'}
+    </p>
+    <p class="muted">
+      {fr
+        ? 'Reste la règle de prudence : prends un instantané avant le premier apply en production, et fais ton premier essai sur un clone. Un rollback à 98 % est un filet, pas un permis d’imprudence.'
+        : 'The prudent rule still stands: take a snapshot before the first apply in production, and make your first run on a clone. A 98% rollback is a safety net, not a licence for recklessness.'}
+    </p>
+
+
+<h2 id="fleet">{fr ? '9. Toute une flotte' : '9. A whole fleet'}</h2>
     <p>
       {fr
         ? 'Un run de pavois audite UNE cible. Il n’y a pas d’agrégation de flotte intégrée : c’est un manque assumé, pas une fonction cachée.'
