@@ -21,7 +21,27 @@ const t = ui[lang];
 // written /start/ in the prose stayed unprefixed, and the site has no page outside /en/ and /fr/.
 const INTERNAL =
   'handbook|rules|standards|docs|glossary|downloads|attribution|sample-report|start|installation|audit|blog|about';
-const { html: bodyHtml, headings } = renderMarkdown(page.body[lang], { lang, internal: INTERNAL });
+
+// Corpus figures are DERIVED from the rule base, never typed into the prose: a hand-written "789"
+// goes stale the moment a control is added, and it did (786 vs 789, 8 vs 9 OS). The body uses
+// {{controls}} / {{osCount}} / {{cisMapped}} / {{normRefs}} tokens, substituted here from the same
+// collection the homepage counts, so a chapter cannot drift from the corpus it describes.
+const allRules = await getCollection('rules');
+const flat = (v: any): any[] => (Array.isArray(v) ? v : v ? [v] : []);
+const corpus = {
+  controls: allRules.length,
+  osCount: new Set(allRules.flatMap((r) => r.data.supported_os)).size,
+  cisMapped: allRules.filter((r) => flat(r.data.norms?.cis).length > 0).length,
+  normRefs: allRules.reduce(
+    (a, r) => a + Object.values(r.data.norms ?? {}).reduce((s: number, v: any) => s + flat(v).length, 0),
+    0
+  ),
+};
+const withStats = page.body[lang].replace(
+  /\{\{(controls|osCount|cisMapped|normRefs)\}\}/g,
+  (_m, k: keyof typeof corpus) => corpus[k].toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')
+);
+const { html: bodyHtml, headings } = renderMarkdown(withStats, { lang, internal: INTERNAL });
 
 // FAQPage JSON-LD: parse the `## FAQ` section (blocks of `**Question?** Answer.`) so the Q&A is
 // eligible for rich results and, above all, gets cited by answer engines (GEO). Strip inline

@@ -2,35 +2,35 @@
   "id": "pkg-avahi-daemon-removed",
   "title": {
     "en": "Uninstall avahi Server Package",
-    "fr": "Desinstaller le paquet serveur avahi"
+    "fr": "Désinstaller le paquet serveur avahi"
   },
   "summary": {
     "en": "Ensures the **avahi-daemon** (Bonjour/mDNS zero-configuration service discovery) package is **not installed**.",
-    "fr": "Garantit que le paquet **avahi-daemon** (decouverte de services zero-configuration Bonjour/mDNS) n'est **pas installe**."
+    "fr": "Garantit que le paquet **avahi-daemon** (découverte de services zero-configuration Bonjour/mDNS) n'est **pas installé**."
   },
   "rationale": {
     "en": "**avahi-daemon** advertises and discovers services on the local network via mDNS/DNS-SD, continuously broadcasting host information and listening on UDP/5353. Servers rarely need automatic service discovery, and the daemon has a history of remotely exploitable vulnerabilities. Removing it reduces the network attack surface and stops unnecessary broadcast traffic (CIS 2.1.2, NIST CM-7 least functionality).",
-    "fr": "**avahi-daemon** annonce et decouvre des services sur le reseau local via mDNS/DNS-SD, diffusant en continu des informations sur l'hote et ecoutant sur UDP/5353. Les serveurs ont rarement besoin de la decouverte automatique de services, et le demon a un historique de vulnerabilites exploitables a distance. Le supprimer reduit la surface d'attaque reseau et stoppe un trafic de diffusion inutile (CIS 2.1.2, NIST CM-7 moindre fonctionnalite)."
+    "fr": "**avahi-daemon** annonce et découvre des services sur le réseau local via mDNS/DNS-SD, diffusant en continu des informations sur l'hôte et écoutant sur UDP/5353. Les serveurs ont rarement besoin de la découverte automatique de services, et le démon a un historique de vulnérabilités exploitables à distance. Le supprimer réduit la surface d'attaque réseau et stoppe un trafic de diffusion inutile (CIS 2.1.2, NIST CM-7 moindre fonctionnalité)."
   },
   "check_note": {
     "en": "Pavois asks `dpkg` (via the InSpec `package` resource) whether `avahi-daemon` is installed and expects it absent. Checking the **effective package state** catches the service even if its unit was masked but the binary left installed.",
-    "fr": "Pavois interroge `dpkg` (via la ressource InSpec `package`) pour savoir si `avahi-daemon` est installe et l'attend absent. Verifier l'**etat effectif des paquets** detecte le service meme si son unite a ete masquee mais le binaire laisse installe."
+    "fr": "Pavois interroge `dpkg` (via la ressource InSpec `package`) pour savoir si `avahi-daemon` est installé et l'attend absent. Vérifier l'**état effectif des paquets** détecte le service même si son unité a été masquée mais le binaire laissé installé."
   },
   "verify": {
     "en": "Run `dpkg -s avahi-daemon`, expected `package 'avahi-daemon' is not installed`. Confirm nothing listens on mDNS with `ss -lunp | grep 5353` (expected no output).",
-    "fr": "Executez `dpkg -s avahi-daemon`, attendu `package 'avahi-daemon' is not installed`. Verifiez que rien n'ecoute sur mDNS avec `ss -lunp | grep 5353` (attendu : aucune sortie)."
+    "fr": "Exécutez `dpkg -s avahi-daemon`, attendu `package 'avahi-daemon' is not installed`. Vérifiez que rien n'écoute sur mDNS avec `ss -lunp | grep 5353` (attendu : aucune sortie)."
   },
   "logs": {
     "en": "- `dpkg -l avahi-daemon` confirms removal.\n- While installed, the daemon logs to `journalctl -u avahi-daemon`; its listening socket is visible with `ss -lunp` (UDP/5353).",
-    "fr": "- `dpkg -l avahi-daemon` confirme la suppression.\n- Tant qu'il est installe, le demon journalise dans `journalctl -u avahi-daemon` ; sa socket d'ecoute est visible avec `ss -lunp` (UDP/5353)."
+    "fr": "- `dpkg -l avahi-daemon` confirme la suppression.\n- Tant qu'il est installé, le démon journalise dans `journalctl -u avahi-daemon` ; sa socket d'écoute est visible avec `ss -lunp` (UDP/5353)."
   },
   "remediation_note": {
     "en": "Pavois's harden plan removes the `avahi-daemon` package (`package` resource, `remove` action) with `pavois harden apply`, which stops the mDNS responder and disables its socket.",
-    "fr": "Le plan de durcissement de Pavois supprime le paquet `avahi-daemon` (ressource `package`, action `remove`) avec `pavois harden apply`, ce qui arrete le repondeur mDNS et desactive sa socket."
+    "fr": "Le plan de durcissement de Pavois supprime le paquet `avahi-daemon` (ressource `package`, action `remove`) avec `pavois harden apply`, ce qui arrête le répondeur mDNS et désactive sa socket."
   },
   "impact": {
     "en": "Removing avahi breaks **`.local` hostname resolution** and zero-config discovery of network printers and devices, noticeable on desktops/labs but rarely on servers. Before applying, confirm no application relies on mDNS (e.g. CUPS auto-discovery, Chromecast/IoT integration). On headless servers the impact is typically none.",
-    "fr": "Supprimer avahi casse la **resolution des noms `.local`** et la decouverte zero-config des imprimantes et peripheriques reseau, perceptible sur les postes/labos mais rarement sur les serveurs. Avant d'appliquer, verifiez qu'aucune application ne depend de mDNS (par exemple l'auto-decouverte CUPS, l'integration Chromecast/IoT). Sur les serveurs sans interface, l'impact est generalement nul."
+    "fr": "Supprimer avahi casse la **résolution des noms `.local`** et la découverte zero-config des imprimantes et périphériques réseau, perceptible sur les postes/labos mais rarement sur les serveurs. Avant d'appliquer, vérifiez qu'aucune application ne dépend de mDNS (par exemple l'auto-découverte CUPS, l'intégration Chromecast/IoT). Sur les serveurs sans interface, l'impact est généralement nul."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

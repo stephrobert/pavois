@@ -14,7 +14,6 @@
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -39,35 +38,35 @@
   },
   "title": {
     "en": "Ensure /dev/shm is configured",
-    "fr": "S'assurer que /dev/shm est configure"
+    "fr": "S'assurer que /dev/shm est configuré"
   },
   "summary": {
     "en": "Verifies that **`/dev/shm`** is explicitly mounted so hardening options (`nodev`, `nosuid`, `noexec`) can be enforced on shared memory.",
-    "fr": "Verifie que **`/dev/shm`** est monte explicitement afin que des options de durcissement (`nodev`, `nosuid`, `noexec`) puissent etre appliquees a la memoire partagee."
+    "fr": "Vérifie que **`/dev/shm`** est monté explicitement afin que des options de durcissement (`nodev`, `nosuid`, `noexec`) puissent être appliquées à la mémoire partagée."
   },
   "rationale": {
     "en": "`/dev/shm` is a world-writable shared-memory tmpfs where any user can drop and run files, much like `/tmp`. Mounting it explicitly lets you apply **`nodev`, `nosuid` and `noexec`**, making it useless for installing executable code, blocking hardlink races against setuid binaries, and reducing it as a staging ground for attacks.",
-    "fr": "`/dev/shm` est un tmpfs de memoire partagee accessible en ecriture a tous, ou n'importe quel utilisateur peut deposer et executer des fichiers, comme `/tmp`. Le monter explicitement permet d'appliquer **`nodev`, `nosuid` et `noexec`**, le rendant inutile pour installer du code executable, bloquant les courses sur liens physiques contre des binaires setuid et reduisant son usage comme rampe de lancement d'attaques."
+    "fr": "`/dev/shm` est un tmpfs de mémoire partagée accessible en écriture à tous, où n'importe quel utilisateur peut déposer et exécuter des fichiers, comme `/tmp`. Le monter explicitement permet d'appliquer **`nodev`, `nosuid` et `noexec`**, le rendant inutile pour installer du code exécutable, bloquant les courses sur liens physiques contre des binaires setuid et réduisant son usage comme rampe de lancement d'attaques."
   },
   "check_note": {
     "en": "Pavois uses the InSpec `mount('/dev/shm')` resource, reading the **effective** mount table (`/proc/self/mountinfo`) rather than `/etc/fstab`. This shows the tmpfs as the kernel actually mounted it, including options applied at runtime or via systemd, which a file-only parse of fstab could not confirm.",
-    "fr": "Pavois utilise la ressource InSpec `mount('/dev/shm')`, lisant la table de montage **effective** (`/proc/self/mountinfo`) plutot que `/etc/fstab`. Cela montre le tmpfs tel que le noyau l'a reellement monte, y compris les options appliquees a chaud ou via systemd, ce qu'une simple analyse de fstab ne pourrait confirmer."
+    "fr": "Pavois utilise la ressource InSpec `mount('/dev/shm')`, lisant la table de montage **effective** (`/proc/self/mountinfo`) plutôt que `/etc/fstab`. Cela montre le tmpfs tel que le noyau l'a réellement monté, y compris les options appliquées à chaud ou via systemd, ce qu'une simple analyse de fstab ne pourrait confirmer."
   },
   "verify": {
     "en": "Run:\n\n```bash\nfindmnt /dev/shm\n```\n\nExpected: a `tmpfs` mounted at `/dev/shm`, ideally with `nodev,nosuid,noexec` in the options column. No output means `/dev/shm` is not configured as its own mount.",
-    "fr": "Executez :\n\n```bash\nfindmnt /dev/shm\n```\n\nAttendu : un `tmpfs` monte sur `/dev/shm`, idealement avec `nodev,nosuid,noexec` dans la colonne des options. Aucune sortie signifie que `/dev/shm` n'est pas configure comme un montage a part."
+    "fr": "Exécutez :\n\n```bash\nfindmnt /dev/shm\n```\n\nAttendu : un `tmpfs` monté sur `/dev/shm`, idéalement avec `nodev,nosuid,noexec` dans la colonne des options. Aucune sortie signifie que `/dev/shm` n'est pas configuré comme un montage à part."
   },
   "logs": {
     "en": "Check the live mount with `findmnt /dev/shm` or `mount | grep /dev/shm`; persistent config sits in `/etc/fstab` (or a systemd `dev-shm.mount` unit). Mount changes are visible via `journalctl -u dev-shm.mount` and `journalctl -k`.",
-    "fr": "Verifiez le montage actif avec `findmnt /dev/shm` ou `mount | grep /dev/shm` ; la configuration persistante est dans `/etc/fstab` (ou une unite systemd `dev-shm.mount`). Les changements de montage sont visibles via `journalctl -u dev-shm.mount` et `journalctl -k`."
+    "fr": "Vérifiez le montage actif avec `findmnt /dev/shm` ou `mount | grep /dev/shm` ; la configuration persistante est dans `/etc/fstab` (ou une unité systemd `dev-shm.mount`). Les changements de montage sont visibles via `journalctl -u dev-shm.mount` et `journalctl -k`."
   },
   "remediation_note": {
     "en": "No automated harden plan ships for this rule, so apply it **manually**: add a `tmpfs /dev/shm tmpfs defaults,nodev,nosuid,noexec 0 0` entry to `/etc/fstab`, then `mount -o remount /dev/shm`. Unlike the other partitions, `/dev/shm` is a tmpfs and needs no disk repartitioning.",
-    "fr": "Aucun plan de durcissement automatise n'est fourni pour cette regle : appliquez-la **manuellement**. Ajoutez une entree `tmpfs /dev/shm tmpfs defaults,nodev,nosuid,noexec 0 0` a `/etc/fstab`, puis `mount -o remount /dev/shm`. Contrairement aux autres partitions, `/dev/shm` est un tmpfs et ne necessite aucun repartitionnement disque."
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle : appliquez-la **manuellement**. Ajoutez une entrée `tmpfs /dev/shm tmpfs defaults,nodev,nosuid,noexec 0 0` à `/etc/fstab`, puis `mount -o remount /dev/shm`. Contrairement aux autres partitions, `/dev/shm` est un tmpfs et ne nécessite aucun repartitionnement disque."
   },
   "impact": {
     "en": "Adding `noexec` to `/dev/shm` is usually safe, but a few applications (some installers, certain runtimes, or sandboxes) execute code from shared memory and may break. **Precautions:** test critical services after the remount, and if something fails, identify the culprit before loosening the option rather than dropping `noexec` blindly. The remount is online and reversible.",
-    "fr": "Ajouter `noexec` a `/dev/shm` est generalement sans danger, mais quelques applications (certains installeurs, runtimes ou bacs a sable) executent du code depuis la memoire partagee et peuvent casser. **Precautions :** testez les services critiques apres le remontage, et en cas d'echec identifiez le coupable avant d'assouplir l'option plutot que de retirer `noexec` a l'aveugle. Le remontage est a chaud et reversible."
+    "fr": "Ajouter `noexec` à `/dev/shm` est généralement sans danger, mais quelques applications (certains installeurs, runtimes ou bacs à sable) exécutent du code depuis la mémoire partagée et peuvent casser. **Précautions :** testez les services critiques après le remontage, et en cas d'échec identifiez le coupable avant d'assouplir l'option plutôt que de retirer `noexec` à l'aveugle. Le remontage est à chaud et réversible."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

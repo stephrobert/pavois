@@ -2,35 +2,35 @@
   "id": "banner-motd",
   "title": {
     "en": "Ensure Message Of The Day Is Configured Properly",
-    "fr": "S'assurer que le message du jour est correctement configure"
+    "fr": "S'assurer que le message du jour est correctement configuré"
   },
   "summary": {
     "en": "Sets `/etc/motd` (the message-of-the-day shown **after** a successful login) to an authorized-use notice containing **no OS/version escape sequences** (`\\s`, `\\m`, `\\r`, `\\v`, `\\l`).",
-    "fr": "Definit `/etc/motd` (le message du jour affiche **apres** une connexion reussie) sur un avis d'utilisation autorisee ne contenant **aucune sequence d'echappement** revelant l'OS ou la version (`\\s`, `\\m`, `\\r`, `\\v`, `\\l`)."
+    "fr": "Définit `/etc/motd` (le message du jour affiché **après** une connexion réussie) sur un avis d'utilisation autorisée ne contenant **aucune séquence d'échappement** révélant l'OS ou la version (`\\s`, `\\m`, `\\r`, `\\v`, `\\l`)."
   },
   "rationale": {
     "en": "The message of the day should restate the **legal status** of access and the monitoring policy for users who have just logged in. It must not contain `\\s`/`\\r`/`\\m` style escapes that reveal the OS, kernel release and architecture, even post-login this needlessly broadcasts system details that aid lateral-movement targeting. Authorized users can obtain those details deliberately with `uname -a`.",
-    "fr": "Le message du jour doit rappeler le **statut legal** de l'acces et la politique de surveillance aux utilisateurs qui viennent de se connecter. Il ne doit pas contenir d'echappements de type `\\s`/`\\r`/`\\m` qui revelent l'OS, la version du noyau et l'architecture, meme apres connexion, cela diffuse inutilement des details systeme qui facilitent le ciblage en deplacement lateral. Les utilisateurs autorises peuvent obtenir ces details deliberement via `uname -a`."
+    "fr": "Le message du jour doit rappeler le **statut légal** de l'accès et la politique de surveillance aux utilisateurs qui viennent de se connecter. Il ne doit pas contenir d'échappements de type `\\s`/`\\r`/`\\m` qui révèlent l'OS, la version du noyau et l'architecture, même après connexion, cela diffuse inutilement des détails système qui facilitent le ciblage en déplacement latéral. Les utilisateurs autorisés peuvent obtenir ces détails délibérément via `uname -a`."
   },
   "check_note": {
     "en": "Pavois reads `/etc/motd` and asserts it is **non-empty** and **free of `\\[smrvlSMRVL]` escapes**. On modern systems `pam_motd` may also assemble dynamic content from `/etc/update-motd.d/`, but the static `/etc/motd` is the file this rule governs; reading it directly reflects what is shown after login.",
-    "fr": "Pavois lit `/etc/motd` et verifie qu'il est **non vide** et **exempt des echappements `\\[smrvlSMRVL]`**. Sur les systemes modernes, `pam_motd` peut aussi assembler du contenu dynamique depuis `/etc/update-motd.d/`, mais le fichier statique `/etc/motd` est celui que regit cette regle ; le lire directement reflete ce qui s'affiche apres connexion."
+    "fr": "Pavois lit `/etc/motd` et vérifie qu'il est **non vide** et **exempt des échappements `\\[smrvlSMRVL]`**. Sur les systèmes modernes, `pam_motd` peut aussi assembler du contenu dynamique depuis `/etc/update-motd.d/`, mais le fichier statique `/etc/motd` est celui que régit cette règle ; le lire directement reflète ce qui s'affiche après connexion."
   },
   "verify": {
     "en": "Run `cat /etc/motd` (clear notice, no `\\` escapes). Log in interactively and confirm the same text appears after authentication; on Ubuntu also check `/etc/update-motd.d/` is not re-injecting OS details.",
-    "fr": "Executez `cat /etc/motd` (avis clair, aucun echappement `\\`). Connectez-vous de maniere interactive et confirmez que le meme texte apparait apres authentification ; sur Ubuntu, verifiez aussi que `/etc/update-motd.d/` ne reinjecte pas de details sur l'OS."
+    "fr": "Exécutez `cat /etc/motd` (avis clair, aucun échappement `\\`). Connectez-vous de manière interactive et confirmez que le même texte apparaît après authentification ; sur Ubuntu, vérifiez aussi que `/etc/update-motd.d/` ne réinjecte pas de détails sur l'OS."
   },
   "logs": {
     "en": "No runtime log; MOTD is a display artifact rendered by `pam_motd`. Login events appear in `/var/log/auth.log` or `journalctl _COMM=login` / `journalctl -u ssh`. Ownership/mode: `stat /etc/motd` (expect `root:root`, `0644`).",
-    "fr": "Aucun journal d'execution ; le MOTD est un element d'affichage rendu par `pam_motd`. Les evenements de connexion apparaissent dans `/var/log/auth.log` ou via `journalctl _COMM=login` / `journalctl -u ssh`. Propriete/mode : `stat /etc/motd` (attendu `root:root`, `0644`)."
+    "fr": "Aucun journal d'exécution ; le MOTD est un élément d'affichage rendu par `pam_motd`. Les événements de connexion apparaissent dans `/var/log/auth.log` ou via `journalctl _COMM=login` / `journalctl -u ssh`. Propriété/mode : `stat /etc/motd` (attendu `root:root`, `0644`)."
   },
   "remediation_note": {
     "en": "`pavois harden apply` writes `/etc/motd` with a neutral authorized-access notice, owner `root:root`, mode `0644`, and **no dynamic escapes**. No reboot or service restart is needed, `pam_motd` renders the new content at the next login.",
-    "fr": "`pavois harden apply` ecrit `/etc/motd` avec un avis d'acces autorise neutre, proprietaire `root:root`, mode `0644`, et **aucun echappement dynamique**. Aucun redemarrage ni redemarrage de service n'est necessaire : `pam_motd` rend le nouveau contenu a la connexion suivante."
+    "fr": "`pavois harden apply` écrit `/etc/motd` avec un avis d'accès autorisé neutre, propriétaire `root:root`, mode `0644`, et **aucun échappement dynamique**. Aucun redémarrage ni redémarrage de service n'est nécessaire : `pam_motd` rend le nouveau contenu à la connexion suivante."
   },
   "impact": {
     "en": "Cosmetic and safe, only the post-login message changes; no service interruption. **Precautions:** on Ubuntu the dynamic `/etc/update-motd.d/` scripts can append OS/version info and override this intent; disable or sanitise those scripts if strict compliance is required. Keep custom wording free of `\\` escapes to avoid reintroducing the fingerprint leak.",
-    "fr": "Cosmetique et sans risque, seul le message post-connexion change ; aucune interruption de service. **Precautions :** sur Ubuntu, les scripts dynamiques `/etc/update-motd.d/` peuvent ajouter des informations OS/version et contredire cette intention ; desactivez ou assainissez ces scripts si une conformite stricte est exigee. Gardez tout texte personnalise exempt d'echappements `\\` pour ne pas reintroduire la fuite d'empreinte."
+    "fr": "Cosmétique et sans risque, seul le message post-connexion change ; aucune interruption de service. **Précautions :** sur Ubuntu, les scripts dynamiques `/etc/update-motd.d/` peuvent ajouter des informations OS/version et contredire cette intention ; désactivez ou assainissez ces scripts si une conformité stricte est exigée. Gardez tout texte personnalisé exempt d'échappements `\\` pour ne pas réintroduire la fuite d'empreinte."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

@@ -14,7 +14,6 @@
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -49,35 +48,35 @@
   },
   "title": {
     "en": "Verify User Who Owns passwd File",
-    "fr": "Verifier l'utilisateur proprietaire du fichier passwd"
+    "fr": "Vérifier l'utilisateur propriétaire du fichier passwd"
   },
   "summary": {
     "en": "Ensures the local account database `/etc/passwd` is owned by `root` (UID 0).",
-    "fr": "Garantit que la base des comptes locaux `/etc/passwd` appartient a `root` (UID 0)."
+    "fr": "Garantit que la base des comptes locaux `/etc/passwd` appartient à `root` (UID 0)."
   },
   "rationale": {
     "en": "The `/etc/passwd` file lists every local account along with its UID, GID, home directory and login shell. If a non-root account owns it, that user could add accounts, change UIDs (e.g. give themselves UID 0) or alter login shells, a direct path to **privilege escalation**. Setting **`root` (UID 0)** as the owner restricts modification to privileged users and protects the integrity of the account database.",
-    "fr": "Le fichier `/etc/passwd` liste chaque compte local avec son UID, GID, repertoire personnel et shell de connexion. Si un compte non-root le possede, cet utilisateur pourrait ajouter des comptes, changer des UID (par ex. s'attribuer l'UID 0) ou modifier les shells, une voie directe vers l'**escalade de privileges**. Definir **`root` (UID 0)** comme proprietaire restreint la modification aux utilisateurs privilegies et protege l'integrite de la base des comptes."
+    "fr": "Le fichier `/etc/passwd` liste chaque compte local avec son UID, GID, répertoire personnel et shell de connexion. Si un compte non-root le possède, cet utilisateur pourrait ajouter des comptes, changer des UID (par ex. s'attribuer l'UID 0) ou modifier les shells, une voie directe vers l'**escalade de privilèges**. Définir **`root` (UID 0)** comme propriétaire restreint la modification aux utilisateurs privilégiés et protège l'intégrité de la base des comptes."
   },
   "check_note": {
     "en": "Pavois inspects the **live filesystem** with the InSpec `file('/etc/passwd')` resource and asserts `uid == 0`, guarded by `only_if`. Reading the real inode owner (not a provisioning manifest) reveals the **effective** state on disk, including any `chown` performed after deployment by an operator script or an attacker who gained transient root.",
-    "fr": "Pavois inspecte le **systeme de fichiers reel** via la ressource InSpec `file('/etc/passwd')` et verifie `uid == 0`, protege par `only_if`. Lire le proprietaire reel de l'inode (et non un manifeste de provisionnement) revele l'etat **effectif** sur le disque, y compris tout `chown` effectue apres deploiement par un script d'operateur ou un attaquant ayant obtenu un acces root transitoire."
+    "fr": "Pavois inspecte le **système de fichiers réel** via la ressource InSpec `file('/etc/passwd')` et vérifie `uid == 0`, protégé par `only_if`. Lire le propriétaire réel de l'inode (et non un manifeste de provisionnement) révèle l'état **effectif** sur le disque, y compris tout `chown` effectué après déploiement par un script d'opérateur ou un attaquant ayant obtenu un accès root transitoire."
   },
   "verify": {
     "en": "Run `stat -c '%U %u %n' /etc/passwd`. Expected output: `root 0 /etc/passwd`. The numeric `0` confirms root ownership.",
-    "fr": "Executez `stat -c '%U %u %n' /etc/passwd`. Sortie attendue : `root 0 /etc/passwd`. Le `0` numerique confirme la propriete par root."
+    "fr": "Exécutez `stat -c '%U %u %n' /etc/passwd`. Sortie attendue : `root 0 /etc/passwd`. Le `0` numérique confirme la propriété par root."
   },
   "logs": {
     "en": "Distributions usually ship an audit rule watching this file (key `identity`). Inspect `/var/log/audit/audit.log` with `grep 'key=\"identity\"'` to see any write/attribute change. If absent, add `auditctl -w /etc/passwd -p wa -k identity`. Account additions also surface via `journalctl` (useradd/usermod).",
-    "fr": "Les distributions livrent generalement une regle d'audit surveillant ce fichier (cle `identity`). Inspectez `/var/log/audit/audit.log` avec `grep 'key=\"identity\"'` pour voir toute modification d'ecriture/attribut. Si absente, ajoutez `auditctl -w /etc/passwd -p wa -k identity`. Les ajouts de comptes apparaissent aussi via `journalctl` (useradd/usermod)."
+    "fr": "Les distributions livrent généralement une règle d'audit surveillant ce fichier (clé `identity`). Inspectez `/var/log/audit/audit.log` avec `grep 'key=\"identity\"'` pour voir toute modification d'écriture/attribut. Si absente, ajoutez `auditctl -w /etc/passwd -p wa -k identity`. Les ajouts de comptes apparaissent aussi via `journalctl` (useradd/usermod)."
   },
   "remediation_note": {
     "en": "No automated remediation is shipped for this rule. Apply it manually with `chown root /etc/passwd` (run as root or via `sudo`); the file must remain group `root` and mode `0644`.",
-    "fr": "Aucune remediation automatisee n'est fournie pour cette regle. Appliquez-la manuellement avec `chown root /etc/passwd` (en root ou via `sudo`) ; le fichier doit rester en groupe `root` et mode `0644`."
+    "fr": "Aucune remédiation automatisée n'est fournie pour cette règle. Appliquez-la manuellement avec `chown root /etc/passwd` (en root ou via `sudo`) ; le fichier doit rester en groupe `root` et mode `0644`."
   },
   "impact": {
     "en": "A non-root owner of `/etc/passwd` is a serious escalation vector. **Risk of applying:** very low, restoring `root` ownership is the system default and does not break logins. **Precaution:** do NOT also tighten the mode below `0644`; `/etc/passwd` must stay world-readable, as countless tools (`ls -l`, `id`, name resolution) depend on it. Only the owner is corrected here.",
-    "fr": "Un proprietaire non-root de `/etc/passwd` constitue un vecteur d'escalade serieux. **Risque a l'application :** tres faible, restaurer la propriete `root` est la valeur par defaut du systeme et ne casse pas les connexions. **Precaution :** ne durcissez PAS le mode en dessous de `0644` ; `/etc/passwd` doit rester lisible par tous, car d'innombrables outils (`ls -l`, `id`, resolution de noms) en dependent. Seul le proprietaire est corrige ici."
+    "fr": "Un propriétaire non-root de `/etc/passwd` constitue un vecteur d'escalade sérieux. **Risque à l'application :** très faible, restaurer la propriété `root` est la valeur par défaut du système et ne casse pas les connexions. **Précaution :** ne durcissez PAS le mode en dessous de `0644` ; `/etc/passwd` doit rester lisible par tous, car d'innombrables outils (`ls -l`, `id`, résolution de noms) en dépendent. Seul le propriétaire est corrigé ici."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

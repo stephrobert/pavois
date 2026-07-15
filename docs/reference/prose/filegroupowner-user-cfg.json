@@ -2,7 +2,7 @@
   "id": "filegroupowner-user-cfg",
   "title": {
     "en": "Verify /boot/grub2/user.cfg Group Ownership",
-    "fr": "Verifier le groupe proprietaire de /boot/grub2/user.cfg"
+    "fr": "Vérifier le groupe propriétaire de /boot/grub2/user.cfg"
   },
   "summary": {
     "en": "Ensures `/boot/grub2/user.cfg` (the GRUB superuser password file) is group-owned by `root` (GID 0).",
@@ -10,27 +10,27 @@
   },
   "rationale": {
     "en": "`/boot/grub2/user.cfg` stores the GRUB bootloader superuser password (as a PBKDF2 hash). That password gates editing boot entries and reaching single-user mode. If a non-root group owns the file, members could read the hash for offline cracking or tamper with it. Setting the group to `root` (GID 0) ensures only the most privileged group can access the bootloader credential.",
-    "fr": "`/boot/grub2/user.cfg` stocke le mot de passe superutilisateur du chargeur d'amorcage GRUB (sous forme de hachage PBKDF2). Ce mot de passe controle l'edition des entrees de demarrage et l'acces au mode mono-utilisateur. Si un groupe non root possede le fichier, ses membres pourraient lire le hachage pour le casser hors ligne ou l'alterer. Definir le groupe sur `root` (GID 0) garantit que seul le groupe le plus privilegie peut acceder a cette donnee d'authentification du chargeur d'amorcage."
+    "fr": "`/boot/grub2/user.cfg` stocke le mot de passe superutilisateur du chargeur d'amorçage GRUB (sous forme de hachage PBKDF2). Ce mot de passe contrôle l'édition des entrées de démarrage et l'accès au mode mono-utilisateur. Si un groupe non root possède le fichier, ses membres pourraient lire le hachage pour le casser hors ligne ou l'altérer. Définir le groupe sur `root` (GID 0) garantit que seul le groupe le plus privilégié peut accéder à cette donnée d'authentification du chargeur d'amorçage."
   },
   "check_note": {
     "en": "Pavois reads the **resolved** numeric GID of `/boot/grub2/user.cfg` via the InSpec `file` resource and asserts it equals `0`. It checks the live inode metadata at audit time, so the result reflects the file's actual ownership rather than a documented default.",
-    "fr": "Pavois lit le GID numerique **resolu** de `/boot/grub2/user.cfg` via la ressource InSpec `file` et verifie qu'il vaut `0`. Il inspecte les metadonnees reelles de l'inode au moment de l'audit, de sorte que le resultat reflete la propriete reelle du fichier plutot qu'une valeur par defaut documentee."
+    "fr": "Pavois lit le GID numérique **résolu** de `/boot/grub2/user.cfg` via la ressource InSpec `file` et vérifie qu'il vaut `0`. Il inspecte les métadonnées réelles de l'inode au moment de l'audit, de sorte que le résultat reflète la propriété réelle du fichier plutôt qu'une valeur par défaut documentée."
   },
   "verify": {
     "en": "Run `stat -c '%g %G' /boot/grub2/user.cfg`. The expected output is:\n\n- `0 root`\n\nList it with `ls -l /boot/grub2/user.cfg` to confirm the group column shows `root`.",
-    "fr": "Executez `stat -c '%g %G' /boot/grub2/user.cfg`. La sortie attendue est :\n\n- `0 root`\n\nAffichez-le avec `ls -l /boot/grub2/user.cfg` pour confirmer que la colonne du groupe indique `root`."
+    "fr": "Exécutez `stat -c '%g %G' /boot/grub2/user.cfg`. La sortie attendue est :\n\n- `0 root`\n\nAffichez-le avec `ls -l /boot/grub2/user.cfg` pour confirmer que la colonne du groupe indique `root`."
   },
   "logs": {
     "en": "GRUB credential file changes are not logged by default. To trace them, add an auditd watch (`auditctl -w /boot/grub2/user.cfg -p wa -k grub_cfg`) and grep `/var/log/audit/audit.log` for `key=\"grub_cfg\"`.",
-    "fr": "Les changements du fichier d'authentification GRUB ne sont pas journalises par defaut. Pour les tracer, ajoutez une surveillance auditd (`auditctl -w /boot/grub2/user.cfg -p wa -k grub_cfg`) et recherchez `key=\"grub_cfg\"` dans `/var/log/audit/audit.log`."
+    "fr": "Les changements du fichier d'authentification GRUB ne sont pas journalisés par défaut. Pour les tracer, ajoutez une surveillance auditd (`auditctl -w /boot/grub2/user.cfg -p wa -k grub_cfg`) et recherchez `key=\"grub_cfg\"` dans `/var/log/audit/audit.log`."
   },
   "remediation_note": {
     "en": "This rule has no automated harden plan in Pavois. Apply it manually by setting the group to `root`: `chgrp root /boot/grub2/user.cfg` (or `chown :root /boot/grub2/user.cfg`).",
-    "fr": "Cette regle n'a pas de plan de durcissement automatise dans Pavois. Appliquez-la manuellement en definissant le groupe sur `root` : `chgrp root /boot/grub2/user.cfg` (ou `chown :root /boot/grub2/user.cfg`)."
+    "fr": "Cette règle n'a pas de plan de durcissement automatisé dans Pavois. Appliquez-la manuellement en définissant le groupe sur `root` : `chgrp root /boot/grub2/user.cfg` (ou `chown :root /boot/grub2/user.cfg`)."
   },
   "impact": {
     "en": "If a non-root group owns this file, the GRUB superuser hash can leak, enabling offline cracking and physical-access boot tampering. Correcting group ownership has no runtime effect, it does not change the password or boot flow. **Precaution:** this is a RHEL-family path (BIOS GRUB2); on UEFI the file may live under `/boot/efi/EFI/<distro>/user.cfg`. Verify the real path before acting, and do not delete or empty the file or you may disable the bootloader password protection entirely.",
-    "fr": "Si un groupe non root possede ce fichier, le hachage du superutilisateur GRUB peut fuiter, permettant un cassage hors ligne et une alteration du demarrage par acces physique. Corriger le groupe proprietaire n'a aucun effet a l'execution, cela ne change ni le mot de passe ni le flux de demarrage. **Precaution :** il s'agit d'un chemin de la famille RHEL (GRUB2 BIOS) ; en UEFI le fichier peut se trouver sous `/boot/efi/EFI/<distro>/user.cfg`. Verifiez le chemin reel avant d'agir, et ne supprimez ni ne videz le fichier sous peine de desactiver entierement la protection par mot de passe du chargeur d'amorcage."
+    "fr": "Si un groupe non root possède ce fichier, le hachage du superutilisateur GRUB peut fuiter, permettant un cassage hors ligne et une altération du démarrage par accès physique. Corriger le groupe propriétaire n'a aucun effet à l'exécution, cela ne change ni le mot de passe ni le flux de démarrage. **Précaution :** il s'agit d'un chemin de la famille RHEL (GRUB2 BIOS) ; en UEFI le fichier peut se trouver sous `/boot/efi/EFI/<distro>/user.cfg`. Vérifiez le chemin réel avant d'agir, et ne supprimez ni ne videz le fichier sous peine de désactiver entièrement la protection par mot de passe du chargeur d'amorçage."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

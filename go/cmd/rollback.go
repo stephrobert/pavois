@@ -18,11 +18,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Undo. No hardening tool has it.
+// Undo, owned by the tool that did the hardening.
 //
-// OpenSCAP hands you a bash script and wishes you luck; Lynis only advises; CIS-CAT does not
-// remediate at all; an Ansible role is not a transaction either. So "we tested on a clone" is the
-// industry's whole answer, and it is why most operators never apply a remediation to production.
+// Among the compliance scanners that remediate, none ships the inverse of its own remediation:
+// OpenSCAP hands you a bash script and wishes you luck; the CIS Build Kits apply and do not
+// unapply; Lynis and CIS-CAT do not remediate at all; an Ansible role is not a transaction either.
+// (Bastille Linux tried it in 2003 with RevertBastille and died; CalCom sells it commercially.)
+// Where you have NixOS generations, rpm-ostree or ZFS/LVM snapshots, those are strictly better —
+// this is for the mutable hosts that have none. It is why most operators never apply to production.
 //
 // pavois can do better for one specific reason: the plan says, BEFORE anything runs, exactly which
 // files, packages and services the converge will touch. That is enough to photograph the prior
@@ -44,6 +47,7 @@ var (
 	rbKey        string
 	rbSudoPrompt bool
 	rbYes        bool
+	rbTarget     string
 )
 
 type rpFile struct {
@@ -72,6 +76,10 @@ type restorePoint struct {
 	Files    []rpFile `json:"files"`
 	Packages []rpPkg  `json:"packages"`
 	Services []rpSvc  `json:"services"`
+	// SHA-256 of restore-point.tar.gz, recorded at capture. A rollback ships that tarball back and
+	// extracts it AS ROOT with `tar -P -C /`; verifying the hash first refuses a corrupted or
+	// swapped archive before it can write arbitrary paths on the target.
+	ArchiveSHA256 string `json:"archive_sha256,omitempty"`
 	// Remediations whose effects a file-level rollback cannot fully undo. Named, never hidden.
 	Irreversible []string `json:"irreversible,omitempty"`
 }
@@ -98,9 +106,10 @@ var (
 // restore files it is SURE about, and say so about the rest.
 var execPathRe = regexp.MustCompile(`(?:/etc|/boot|/usr/local/(?:s?bin|etc))/[A-Za-z0-9._/-]+`)
 
-// The limits, measured on a live debian12 (a full 268-item apply, then a rollback): 98% of the 620
-// controls returned to their exact prior state. The 2% that did not are inherent to undoing an
-// installation, not defects, and they are NAMED rather than hidden:
+// The limits, measured on a live debian12 (a full 268-item apply, then a rollback): 597 of the 620
+// controls returned to their exact prior state (96%); 604 of 620 (97%) end in the same verdict.
+// The 23 that differ are inherent to undoing an installation, not defects, and they are NAMED
+// rather than hidden (three even regress from pass to fail: purging a package orphans its files):
 //
 //   - a filesystem the run MOUNTED (/tmp as tmpfs) stays mounted: /etc/fstab is restored, but a
 //     rollback does not unmount a live filesystem under a running system;
@@ -312,6 +321,7 @@ func init() {
 	hardenRollbackCmd.Flags().StringVar(&rbKey, "key", "", "SSH private key for the target")
 	hardenRollbackCmd.Flags().BoolVar(&rbSudoPrompt, "sudo-prompt", false, "prompt for the sudo password (no echo; also reads PAVOIS_SUDO_PASSWORD)")
 	hardenRollbackCmd.Flags().BoolVar(&rbYes, "yes", false, "do not ask for confirmation")
+	hardenRollbackCmd.Flags().StringVar(&rbTarget, "target", "", "restore to this host instead of the one recorded in the manifest (e.g. a clone)")
 }
 
 func runHardenRollback(cmd *cobra.Command, args []string) error {
@@ -326,8 +336,26 @@ func runHardenRollback(cmd *cobra.Command, args []string) error {
 	}
 	out := cmd.OutOrStdout()
 	target := rp.Target
-	if haTarget != "" {
-		target = haTarget
+	if rbTarget != "" {
+		target = rbTarget // restore to a different host (e.g. a clone) than the one captured
+	}
+
+	// Integrity gate: the tarball is about to be extracted AS ROOT with `tar -P -C /` on the target.
+	// Refuse it unless it still hashes to what we recorded at capture. An empty recorded hash means
+	// the restore point predates this check; warn rather than block so old restore points still work.
+	tarPath := filepath.Join(dir, "restore-point.tar.gz")
+	if rp.ArchiveSHA256 != "" {
+		sum, _, err := sha256File(tarPath)
+		if err != nil {
+			return fmt.Errorf("hash restore point archive: %w", err)
+		}
+		if sum != rp.ArchiveSHA256 {
+			return fmt.Errorf("restore point integrity check FAILED: %s does not match the hash in manifest.json "+
+				"(expected %s, got %s); refusing to extract it as root", tarPath, rp.ArchiveSHA256, sum)
+		}
+	} else {
+		_, _ = fmt.Fprintln(os.Stderr, "pavois: warning: this restore point has no recorded archive hash (captured "+
+			"before integrity checks); its contents cannot be verified before extraction")
 	}
 
 	created := 0
@@ -356,7 +384,6 @@ func runHardenRollback(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("read sudo password: %w", err)
 	}
 	opts := sshOptsFor(rbKey)
-	tarPath := filepath.Join(dir, "restore-point.tar.gz")
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: shipping the restore point back…")
 	scp := exec.Command("scp", append(append(opts, tarPath), target+":/tmp/pavois-restore-point.tar.gz")...) //nolint:gosec // fixed args
 	scp.Stdout, scp.Stderr = os.Stderr, os.Stderr
@@ -485,6 +512,11 @@ func writeRestorePoint(p planFile, recipe, target, planPath, dir string, opts []
 	}
 	for i := range rp.Files {
 		rp.Files[i].Existed = existing[rp.Files[i].Path]
+	}
+	// Record the archive hash so the rollback can prove the tarball it extracts as root is the one
+	// we captured, not something that replaced it in restore-points/ since.
+	if sum, _, err := sha256File(filepath.Join(dir, "restore-point.tar.gz")); err == nil {
+		rp.ArchiveSHA256 = sum
 	}
 	b, err := json.MarshalIndent(rp, "", "  ")
 	if err != nil {

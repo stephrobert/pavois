@@ -14,7 +14,6 @@
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -59,31 +58,31 @@
   },
   "summary": {
     "en": "Forces `pam_pwquality` to require passwords of at least **15 characters** by setting `minlen = 15`.",
-    "fr": "Force `pam_pwquality` a exiger des mots de passe d'au moins **15 caracteres** en posant `minlen = 15`."
+    "fr": "Force `pam_pwquality` à exiger des mots de passe d'au moins **15 caractères** en posant `minlen = 15`."
   },
   "rationale": {
     "en": "Length is the single strongest lever on password strength: each additional character multiplies the number of combinations an attacker must test. The shorter the password, the fewer combinations to try before it is compromised. A minimum of **15 characters** exponentially raises the time and resources needed for brute-force attacks. Short passwords, even complex ones, fall quickly to modern GPU-accelerated cracking.",
-    "fr": "La longueur est le levier le plus puissant sur la robustesse d'un mot de passe : chaque caractere supplementaire multiplie le nombre de combinaisons que l'attaquant doit tester. Plus le mot de passe est court, moins il y a de combinaisons a essayer avant compromission. Un minimum de **15 caracteres** augmente exponentiellement le temps et les ressources necessaires aux attaques par force brute. Les mots de passe courts, meme complexes, cedent vite face au cassage moderne accelere par GPU."
+    "fr": "La longueur est le levier le plus puissant sur la robustesse d'un mot de passe : chaque caractère supplémentaire multiplie le nombre de combinaisons que l'attaquant doit tester. Plus le mot de passe est court, moins il y a de combinaisons à essayer avant compromission. Un minimum de **15 caractères** augmente exponentiellement le temps et les ressources nécessaires aux attaques par force brute. Les mots de passe courts, même complexes, cèdent vite face au cassage moderne accéléré par GPU."
   },
   "check_note": {
     "en": "Pavois reads the **effective** `minlen` value across `/etc/security/pwquality.conf` **and** all drop-ins under `/etc/security/pwquality.conf.d/`, keeping the **last** definition that wins at runtime. A file-based scanner reading only the main config would miss a stricter (or weaker) value set in a drop-in. The control passes only when the resolved value is `>= 15`.",
-    "fr": "Pavois lit la valeur **effective** de `minlen` a travers `/etc/security/pwquality.conf` **et** tous les drop-ins sous `/etc/security/pwquality.conf.d/`, en conservant la **derniere** definition qui l'emporte a l'execution. Un scanner base sur les fichiers lisant uniquement la config principale manquerait une valeur plus stricte (ou plus faible) posee dans un drop-in. Le controle passe uniquement quand la valeur resolue est `>= 15`."
+    "fr": "Pavois lit la valeur **effective** de `minlen` à travers `/etc/security/pwquality.conf` **et** tous les drop-ins sous `/etc/security/pwquality.conf.d/`, en conservant la **dernière** définition qui l'emporte à l'exécution. Un scanner basé sur les fichiers lisant uniquement la config principale manquerait une valeur plus stricte (ou plus faible) posée dans un drop-in. Le contrôle passe uniquement quand la valeur résolue est `>= 15`."
   },
   "verify": {
     "en": "Run `grep -rh '^[[:space:]]*minlen' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. The effective line must read `minlen = 15` (or any value `>= 15`).",
-    "fr": "Executez `grep -rh '^[[:space:]]*minlen' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. La ligne effective doit indiquer `minlen = 15` (ou toute valeur `>= 15`)."
+    "fr": "Exécutez `grep -rh '^[[:space:]]*minlen' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. La ligne effective doit indiquer `minlen = 15` (ou toute valeur `>= 15`)."
   },
   "logs": {
     "en": "Password changes rejected for being too short are logged via PAM in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL family) with `pam_pwquality` messages like **\"The password is shorter than 15 characters\"**. Inspect the live setting with `grep -r minlen /etc/security/pwquality.conf.d/`.",
-    "fr": "Les changements de mot de passe rejetes car trop courts sont journalises via PAM dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL) avec des messages `pam_pwquality` comme **\"The password is shorter than 15 characters\"**. Inspectez le reglage actif avec `grep -r minlen /etc/security/pwquality.conf.d/`."
+    "fr": "Les changements de mot de passe rejetés car trop courts sont journalisés via PAM dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL) avec des messages `pam_pwquality` comme **\"The password is shorter than 15 characters\"**. Inspectez le réglage actif avec `grep -r minlen /etc/security/pwquality.conf.d/`."
   },
   "remediation_note": {
     "en": "`pavois harden apply` writes `minlen = 15` to the drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via the idempotent `keyval` resource. The `99-` prefix ensures it overrides any earlier value. No service restart is needed; it applies at the next password change.",
-    "fr": "`pavois harden apply` ecrit `minlen = 15` dans le drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via la ressource idempotente `keyval`. Le prefixe `99-` garantit qu'il surcharge toute valeur anterieure. Aucun redemarrage n'est requis ; cela s'applique au prochain changement de mot de passe."
+    "fr": "`pavois harden apply` écrit `minlen = 15` dans le drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via la ressource idempotente `keyval`. Le préfixe `99-` garantit qu'il surcharge toute valeur antérieure. Aucun redémarrage n'est requis ; cela s'applique au prochain changement de mot de passe."
   },
   "impact": {
     "en": "Existing passwords stay valid; only **new** passwords must be 15+ characters. Users with shorter habits will be rejected at change time and should be guided toward passphrases. Lockout risk is low, but before applying confirm that automated provisioning, service accounts and password-rotation scripts generate passwords of at least 15 characters, otherwise account creation may fail.",
-    "fr": "Les mots de passe existants restent valides ; seuls les **nouveaux** mots de passe doivent faire 15 caracteres ou plus. Les utilisateurs habitues a plus court seront rejetes au moment du changement et devraient etre orientes vers des phrases de passe. Le risque de blocage est faible, mais avant d'appliquer, confirmez que le provisionnement automatise, les comptes de service et les scripts de rotation generent des mots de passe d'au moins 15 caracteres, sinon la creation de comptes pourrait echouer."
+    "fr": "Les mots de passe existants restent valides ; seuls les **nouveaux** mots de passe doivent faire 15 caractères ou plus. Les utilisateurs habitués à plus court seront rejetés au moment du changement et devraient être orientés vers des phrases de passe. Le risque de blocage est faible, mais avant d'appliquer, confirmez que le provisionnement automatisé, les comptes de service et les scripts de rotation génèrent des mots de passe d'au moins 15 caractères, sinon la création de comptes pourrait échouer."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

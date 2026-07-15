@@ -14,7 +14,6 @@
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -58,35 +57,35 @@
   },
   "title": {
     "en": "Record Events that Modify the System's Network Environment",
-    "fr": "Enregistrer les evenements modifiant l'environnement reseau du systeme"
+    "fr": "Enregistrer les événements modifiant l'environnement réseau du système"
   },
   "summary": {
     "en": "Ensures `auditd` has an active rule tagged `system-locale` (or `audit_rules_networkconfig_modification`) that records changes to network identity and configuration (`sethostname`/`setdomainname` syscalls and files like `/etc/hosts`, `/etc/hostname`, `/etc/issue`, network config dirs).",
-    "fr": "Garantit que `auditd` possede une regle active taguee `system-locale` (ou `audit_rules_networkconfig_modification`) qui enregistre les changements d'identite et de configuration reseau (appels systeme `sethostname`/`setdomainname` et fichiers comme `/etc/hosts`, `/etc/hostname`, `/etc/issue`, repertoires de configuration reseau)."
+    "fr": "Garantit que `auditd` possède une règle active taguée `system-locale` (ou `audit_rules_networkconfig_modification`) qui enregistre les changements d'identité et de configuration réseau (appels système `sethostname`/`setdomainname` et fichiers comme `/etc/hosts`, `/etc/hostname`, `/etc/issue`, répertoires de configuration réseau)."
   },
   "rationale": {
     "en": "The network environment (hostname, domain, hosts file, interface configuration) should not be modified by anything other than deliberate administrator action. An attacker altering DNS resolution, the hostname or routing can redirect traffic or evade detection. Auditing every change to network parameters preserves a record for review and investigation.",
-    "fr": "L'environnement reseau (nom d'hote, domaine, fichier hosts, configuration des interfaces) ne devrait etre modifie que par une action deliberee de l'administrateur. Un attaquant alterant la resolution DNS, le nom d'hote ou le routage peut rediriger le trafic ou echapper a la detection. Auditer chaque changement des parametres reseau preserve une trace pour revue et investigation."
+    "fr": "L'environnement réseau (nom d'hôte, domaine, fichier hosts, configuration des interfaces) ne devrait être modifié que par une action délibérée de l'administrateur. Un attaquant altérant la résolution DNS, le nom d'hôte ou le routage peut rediriger le trafic ou échapper à la détection. Auditer chaque changement des paramètres réseau préserve une trace pour revue et investigation."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks for a loaded rule carrying the `system-locale` (or `audit_rules_networkconfig_modification`) key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule present in a file but not loaded gives false assurance. `auditctl -l` reflects only what the kernel enforces now.",
-    "fr": "Pavois execute `auditctl -l` et verifie la presence d'une regle chargee portant la cle `system-locale` (ou `audit_rules_networkconfig_modification`). Lire le **jeu de regles vivant du noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : une regle presente dans un fichier mais non chargee donne une fausse assurance. `auditctl -l` ne reflete que ce que le noyau applique."
+    "fr": "Pavois exécute `auditctl -l` et vérifie la présence d'une règle chargée portant la clé `system-locale` (ou `audit_rules_networkconfig_modification`). Lire le **jeu de règles vivant du noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : une règle présente dans un fichier mais non chargée donne une fausse assurance. `auditctl -l` ne reflète que ce que le noyau applique."
   },
   "verify": {
     "en": "Run `auditctl -l | grep system-locale`. You should see a syscall rule such as `-a always,exit -F arch=b64 -S sethostname,setdomainname -k system-locale` plus watches like `-w /etc/hosts -p wa -k system-locale` and `-w /etc/hostname -p wa -k system-locale`. Empty output means the rule is not loaded.",
-    "fr": "Executez `auditctl -l | grep system-locale`. Vous devez voir une regle d'appel systeme telle que `-a always,exit -F arch=b64 -S sethostname,setdomainname -k system-locale` ainsi que des surveillances comme `-w /etc/hosts -p wa -k system-locale` et `-w /etc/hostname -p wa -k system-locale`. Une sortie vide signifie que la regle n'est pas chargee."
+    "fr": "Exécutez `auditctl -l | grep system-locale`. Vous devez voir une règle d'appel système telle que `-a always,exit -F arch=b64 -S sethostname,setdomainname -k system-locale` ainsi que des surveillances comme `-w /etc/hosts -p wa -k system-locale` et `-w /etc/hostname -p wa -k system-locale`. Une sortie vide signifie que la règle n'est pas chargée."
   },
   "logs": {
     "en": "Triggered events land in `/var/log/audit/audit.log`. Search with `grep 'key=\"system-locale\"' /var/log/audit/audit.log` (prefer grep over `ausearch -k system-locale`, which can wrongly report no matches).",
-    "fr": "Les evenements declenches arrivent dans `/var/log/audit/audit.log`. Recherchez avec `grep 'key=\"system-locale\"' /var/log/audit/audit.log` (preferez grep a `ausearch -k system-locale`, qui peut signaler a tort aucune correspondance)."
+    "fr": "Les événements déclenchés arrivent dans `/var/log/audit/audit.log`. Recherchez avec `grep 'key=\"system-locale\"' /var/log/audit/audit.log` (préférez grep à `ausearch -k system-locale`, qui peut signaler à tort aucune correspondance)."
   },
   "remediation_note": {
     "en": "Pavois's harden plan uses the `audit_ruleset` resource to write the network-environment syscall and watch rules into `/etc/audit/rules.d/`, then reloads auditd. Because the audit config may be immutable, a **reboot is required** to fully apply. Run `pavois harden apply`.",
-    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour ecrire les regles d'appels systeme et de surveillance de l'environnement reseau dans `/etc/audit/rules.d/`, puis recharge auditd. Comme la configuration d'audit peut etre immuable, un **redemarrage est necessaire** pour une application complete. Executez `pavois harden apply`."
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour écrire les règles d'appels système et de surveillance de l'environnement réseau dans `/etc/audit/rules.d/`, puis recharge auditd. Comme la configuration d'audit peut être immuable, un **redémarrage est nécessaire** pour une application complète. Exécutez `pavois harden apply`."
   },
   "impact": {
     "en": "Without this rule, changes to hostname, DNS resolution and interface config go unrecorded, easing traffic redirection and evasion. The rule is log-only and cannot block changes, so it breaks nothing. Precautions: cloud-init, DHCP clients and network managers legitimately rewrite these files at boot, generating events, size `audit.log` rotation and `space_left_action` so a full disk does not halt the host when `auditd` is set to `halt`.",
-    "fr": "Sans cette regle, les changements de nom d'hote, de resolution DNS et de configuration d'interface ne sont pas enregistres, facilitant la redirection de trafic et l'evasion. La regle ne fait que journaliser et ne peut bloquer les changements, elle ne casse donc rien. Precautions : cloud-init, les clients DHCP et les gestionnaires reseau reecrivent legitimement ces fichiers au demarrage, generant des evenements, dimensionnez la rotation de `audit.log` et `space_left_action` afin qu'un disque plein n'arrete pas l'hote lorsque `auditd` est sur `halt`."
+    "fr": "Sans cette règle, les changements de nom d'hôte, de résolution DNS et de configuration d'interface ne sont pas enregistrés, facilitant la redirection de trafic et l'évasion. La règle ne fait que journaliser et ne peut bloquer les changements, elle ne casse donc rien. Précautions : cloud-init, les clients DHCP et les gestionnaires réseau réécrivent légitimement ces fichiers au démarrage, générant des événements, dimensionnez la rotation de `audit.log` et `space_left_action` afin qu'un disque plein n'arrête pas l'hôte lorsque `auditd` est sur `halt`."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

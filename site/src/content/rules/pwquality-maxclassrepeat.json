@@ -7,7 +7,6 @@
     "rhel9"
   ],
   "os_versions": {
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0"
   },
@@ -29,35 +28,35 @@
   },
   "title": {
     "en": "Ensure PAM Enforces Password Requirements - Maximum Consecutive Repeating Characters from Same Character Class",
-    "fr": "Garantir que PAM impose des exigences de mot de passe - Maximum de caracteres consecutifs repetes de la meme classe de caracteres"
+    "fr": "Garantir que PAM impose des exigences de mot de passe - Maximum de caractères consécutifs répétés de la même classe de caractères"
   },
   "summary": {
     "en": "Limits how many consecutive characters may come from the **same character class** (e.g. all digits, all lowercase) in a password by setting `maxclassrepeat = 4`.",
-    "fr": "Limite le nombre de caracteres consecutifs pouvant provenir de la **meme classe de caracteres** (ex. tous chiffres, toutes minuscules) dans un mot de passe en posant `maxclassrepeat = 4`."
+    "fr": "Limite le nombre de caractères consécutifs pouvant provenir de la **même classe de caractères** (ex. tous chiffres, toutes minuscules) dans un mot de passe en posant `maxclassrepeat = 4`."
   },
   "rationale": {
     "en": "A complex password increases the time and resources needed to compromise it. The `maxclassrepeat` parameter rejects passwords with long stretches drawn from a **single class** (e.g. `aaaaa`, `12345` of digits, `abcde` of lowercase). Such monoclass runs reduce effective entropy and produce predictable structures that cracking tools exploit. Capping them at **4** forces interleaving of classes and widens the search space.",
-    "fr": "Un mot de passe complexe augmente le temps et les ressources necessaires pour le compromettre. Le parametre `maxclassrepeat` rejette les mots de passe comportant de longs segments tires d'une **seule classe** (ex. `aaaaa`, `12345` de chiffres, `abcde` de minuscules). Ces suites monoclasse reduisent l'entropie effective et produisent des structures previsibles exploitees par les outils de cassage. Les plafonner a **4** impose un entrelacement des classes et elargit l'espace de recherche."
+    "fr": "Un mot de passe complexe augmente le temps et les ressources nécessaires pour le compromettre. Le paramètre `maxclassrepeat` rejette les mots de passe comportant de longs segments tirés d'une **seule classe** (ex. `aaaaa`, `12345` de chiffres, `abcde` de minuscules). Ces suites monoclasse réduisent l'entropie effective et produisent des structures prévisibles exploitées par les outils de cassage. Les plafonner à **4** impose un entrelacement des classes et élargit l'espace de recherche."
   },
   "check_note": {
     "en": "Pavois reads the **effective** `maxclassrepeat` value across `/etc/security/pwquality.conf` **and** all drop-ins under `/etc/security/pwquality.conf.d/`, keeping the **last** definition that wins at runtime. A file-based scanner reading only the main config would miss a value set in a drop-in. The control passes only when the resolved value is `<= 4` (and non-zero, since `0` disables the check).",
-    "fr": "Pavois lit la valeur **effective** de `maxclassrepeat` a travers `/etc/security/pwquality.conf` **et** tous les drop-ins sous `/etc/security/pwquality.conf.d/`, en conservant la **derniere** definition qui l'emporte a l'execution. Un scanner base sur les fichiers lisant uniquement la config principale manquerait une valeur posee dans un drop-in. Le controle passe uniquement quand la valeur resolue est `<= 4` (et non nulle, car `0` desactive le controle)."
+    "fr": "Pavois lit la valeur **effective** de `maxclassrepeat` à travers `/etc/security/pwquality.conf` **et** tous les drop-ins sous `/etc/security/pwquality.conf.d/`, en conservant la **dernière** définition qui l'emporte à l'exécution. Un scanner basé sur les fichiers lisant uniquement la config principale manquerait une valeur posée dans un drop-in. Le contrôle passe uniquement quand la valeur résolue est `<= 4` (et non nulle, car `0` désactive le contrôle)."
   },
   "verify": {
     "en": "Run `grep -rh '^[[:space:]]*maxclassrepeat' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. The effective line must read `maxclassrepeat = 4` (or any value `1`..`4`).",
-    "fr": "Executez `grep -rh '^[[:space:]]*maxclassrepeat' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. La ligne effective doit indiquer `maxclassrepeat = 4` (ou toute valeur `1`..`4`)."
+    "fr": "Exécutez `grep -rh '^[[:space:]]*maxclassrepeat' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. La ligne effective doit indiquer `maxclassrepeat = 4` (ou toute valeur `1`..`4`)."
   },
   "logs": {
     "en": "Password changes rejected for too many same-class characters in a row are logged via PAM in `/var/log/secure` (RHEL family) with `pam_pwquality` messages like **\"Too many characters of the same class consecutively\"**. Inspect the live setting with `grep -r maxclassrepeat /etc/security/pwquality.conf.d/`.",
-    "fr": "Les changements de mot de passe rejetes pour trop de caracteres consecutifs de la meme classe sont journalises via PAM dans `/var/log/secure` (famille RHEL) avec des messages `pam_pwquality` comme **\"Too many characters of the same class consecutively\"**. Inspectez le reglage actif avec `grep -r maxclassrepeat /etc/security/pwquality.conf.d/`."
+    "fr": "Les changements de mot de passe rejetés pour trop de caractères consécutifs de la même classe sont journalisés via PAM dans `/var/log/secure` (famille RHEL) avec des messages `pam_pwquality` comme **\"Too many characters of the same class consecutively\"**. Inspectez le réglage actif avec `grep -r maxclassrepeat /etc/security/pwquality.conf.d/`."
   },
   "remediation_note": {
     "en": "`pavois harden apply` writes `maxclassrepeat = 4` to the drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via the idempotent `keyval` resource. The `99-` prefix ensures it overrides any earlier value. No service restart is needed; it applies at the next password change.",
-    "fr": "`pavois harden apply` ecrit `maxclassrepeat = 4` dans le drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via la ressource idempotente `keyval`. Le prefixe `99-` garantit qu'il surcharge toute valeur anterieure. Aucun redemarrage n'est requis ; cela s'applique au prochain changement de mot de passe."
+    "fr": "`pavois harden apply` écrit `maxclassrepeat = 4` dans le drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via la ressource idempotente `keyval`. Le préfixe `99-` garantit qu'il surcharge toute valeur antérieure. Aucun redémarrage n'est requis ; cela s'applique au prochain changement de mot de passe."
   },
   "impact": {
     "en": "This control applies only to RHEL 8/9 (it is not part of CIS/STIG profiles, hence empty `norms`). Existing passwords stay valid; only **new** passwords are constrained. Users picking passwords with five or more consecutive same-class characters will be rejected. Lockout risk is minimal; setting `maxclassrepeat = 0` would disable the check, so confirm the value is `1`..`4`.",
-    "fr": "Ce controle s'applique uniquement a RHEL 8/9 (il ne fait pas partie des profils CIS/STIG, d'ou les `norms` vides). Les mots de passe existants restent valides ; seuls les **nouveaux** mots de passe sont contraints. Les utilisateurs choisissant des mots de passe avec cinq caracteres consecutifs de la meme classe ou plus seront rejetes. Le risque de blocage est minime ; mettre `maxclassrepeat = 0` desactiverait le controle, confirmez donc que la valeur est `1`..`4`."
+    "fr": "Ce contrôle s'applique uniquement à RHEL 8/9 (il ne fait pas partie des profils CIS/STIG, d'où les `norms` vides). Les mots de passe existants restent valides ; seuls les **nouveaux** mots de passe sont contraints. Les utilisateurs choisissant des mots de passe avec cinq caractères consécutifs de la même classe ou plus seront rejetés. Le risque de blocage est minime ; mettre `maxclassrepeat = 0` désactiverait le contrôle, confirmez donc que la valeur est `1`..`4`."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

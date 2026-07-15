@@ -2,35 +2,35 @@
   "id": "audit-execution-chacl",
   "title": {
     "en": "Record Any Attempts to Run chacl",
-    "fr": "Enregistrer toute tentative d'execution de chacl"
+    "fr": "Enregistrer toute tentative d'exécution de chacl"
   },
   "summary": {
     "en": "Ensures `auditd` has an active rule tagged `privileged` that records every execution of `chacl` (and other privileged/setuid binaries) so ACL changes are traceable.",
-    "fr": "Garantit que `auditd` possede une regle active taguee `privileged` qui enregistre chaque execution de `chacl` (et des autres binaires privilegies/setuid) afin que les changements d'ACL soient tracables."
+    "fr": "Garantit que `auditd` possède une règle active taguée `privileged` qui enregistre chaque exécution de `chacl` (et des autres binaires privilégiés/setuid) afin que les changements d'ACL soient traçables."
   },
   "rationale": {
     "en": "`chacl` changes POSIX Access Control Lists and can silently widen access to sensitive files. Without audit records specific to your security and mission needs, it is difficult to establish, correlate and investigate the events around an incident or identify who is responsible. Logging executions of privileged tools like `chacl` provides the evidence needed to reconstruct an attacker's actions.",
-    "fr": "`chacl` modifie les listes de controle d'acces POSIX et peut elargir silencieusement l'acces a des fichiers sensibles. Sans enregistrements d'audit adaptes a vos besoins de securite et de mission, il est difficile d'etablir, correler et investiguer les evenements autour d'un incident ou d'identifier le responsable. Journaliser les executions d'outils privilegies comme `chacl` fournit la preuve necessaire pour reconstituer les actions d'un attaquant."
+    "fr": "`chacl` modifie les listes de contrôle d'accès POSIX et peut élargir silencieusement l'accès à des fichiers sensibles. Sans enregistrements d'audit adaptés à vos besoins de sécurité et de mission, il est difficile d'établir, corréler et investiguer les événements autour d'un incident ou d'identifier le responsable. Journaliser les exécutions d'outils privilégiés comme `chacl` fournit la preuve nécessaire pour reconstituer les actions d'un attaquant."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks for a loaded rule carrying the `privileged` key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: privileged-command rules are generated per-binary and easy to miss in files, and a rule present in a file but never loaded gives a false sense of coverage. `auditctl -l` reflects only what the kernel enforces now.",
-    "fr": "Pavois execute `auditctl -l` et verifie la presence d'une regle chargee portant la cle `privileged`. Lire le **jeu de regles vivant du noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : les regles de commandes privilegiees sont generees par binaire et faciles a oublier dans les fichiers, et une regle presente mais jamais chargee donne une fausse impression de couverture. `auditctl -l` ne reflete que ce que le noyau applique."
+    "fr": "Pavois exécute `auditctl -l` et vérifie la présence d'une règle chargée portant la clé `privileged`. Lire le **jeu de règles vivant du noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : les règles de commandes privilégiées sont générées par binaire et faciles à oublier dans les fichiers, et une règle présente mais jamais chargée donne une fausse impression de couverture. `auditctl -l` ne reflète que ce que le noyau applique."
   },
   "verify": {
     "en": "Run `auditctl -l | grep -E 'chacl.*privileged'`. You should see a rule such as `-a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=unset -k privileged`. Empty output means the rule is not loaded.",
-    "fr": "Executez `auditctl -l | grep -E 'chacl.*privileged'`. Vous devez voir une regle telle que `-a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=unset -k privileged`. Une sortie vide signifie que la regle n'est pas chargee."
+    "fr": "Exécutez `auditctl -l | grep -E 'chacl.*privileged'`. Vous devez voir une règle telle que `-a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=unset -k privileged`. Une sortie vide signifie que la règle n'est pas chargée."
   },
   "logs": {
     "en": "Triggered events land in `/var/log/audit/audit.log`. Search with `grep 'key=\"privileged\"' /var/log/audit/audit.log` (prefer grep over `ausearch -k privileged`, which can wrongly report no matches).",
-    "fr": "Les evenements declenches arrivent dans `/var/log/audit/audit.log`. Recherchez avec `grep 'key=\"privileged\"' /var/log/audit/audit.log` (preferez grep a `ausearch -k privileged`, qui peut signaler a tort aucune correspondance)."
+    "fr": "Les événements déclenchés arrivent dans `/var/log/audit/audit.log`. Recherchez avec `grep 'key=\"privileged\"' /var/log/audit/audit.log` (préférez grep à `ausearch -k privileged`, qui peut signaler à tort aucune correspondance)."
   },
   "remediation_note": {
     "en": "Pavois's harden plan uses the `audit_ruleset` resource to add the per-binary execution watches (including `chacl`) into `/etc/audit/rules.d/`, then reloads auditd. Because the audit config may be immutable, a **reboot is required** to fully apply. Run `pavois harden apply`.",
-    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour ajouter les surveillances d'execution par binaire (dont `chacl`) dans `/etc/audit/rules.d/`, puis recharge auditd. Comme la configuration d'audit peut etre immuable, un **redemarrage est necessaire** pour une application complete. Executez `pavois harden apply`."
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour ajouter les surveillances d'exécution par binaire (dont `chacl`) dans `/etc/audit/rules.d/`, puis recharge auditd. Comme la configuration d'audit peut être immuable, un **redémarrage est nécessaire** pour une application complète. Exécutez `pavois harden apply`."
   },
   "impact": {
     "en": "Without this rule, privileged ACL changes are invisible to investigators. The rule only logs and cannot block `chacl`, so it cannot break operations. Precautions: privileged-command rules can be numerous and noisy; ensure `audit.log` rotation and `space_left_action`/`admin_space_left_action` are tuned so the system is not halted by a full log volume when `auditd` is set to `halt` on disk-full.",
-    "fr": "Sans cette regle, les changements d'ACL privilegies sont invisibles pour les enqueteurs. La regle ne fait que journaliser et ne peut bloquer `chacl`, elle ne casse donc aucune operation. Precautions : les regles de commandes privilegiees peuvent etre nombreuses et bruyantes ; assurez-vous que la rotation de `audit.log` et `space_left_action`/`admin_space_left_action` sont reglees afin que le systeme ne soit pas arrete par un volume de logs plein lorsque `auditd` est configure sur `halt` en cas de disque plein."
+    "fr": "Sans cette règle, les changements d'ACL privilégiés sont invisibles pour les enquêteurs. La règle ne fait que journaliser et ne peut bloquer `chacl`, elle ne casse donc aucune opération. Précautions : les règles de commandes privilégiées peuvent être nombreuses et bruyantes ; assurez-vous que la rotation de `audit.log` et `space_left_action`/`admin_space_left_action` sont réglées afin que le système ne soit pas arrêté par un volume de logs plein lorsque `auditd` est configuré sur `halt` en cas de disque plein."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"
