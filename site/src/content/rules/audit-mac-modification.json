@@ -14,7 +14,6 @@
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -54,35 +53,35 @@
   },
   "title": {
     "en": "Record Events that Modify the System's Mandatory Access Controls",
-    "fr": "Enregistrer les evenements modifiant les controles d'acces obligatoires du systeme"
+    "fr": "Enregistrer les événements modifiant les contrôles d'accès obligatoires du système"
   },
   "summary": {
     "en": "Ensures `auditd` has an active rule tagged `MAC-policy` that watches the Mandatory Access Control configuration directories (`/etc/selinux/` or `/etc/apparmor/`, `/etc/apparmor.d/`) for changes.",
-    "fr": "Garantit que `auditd` possede une regle active taguee `MAC-policy` qui surveille les repertoires de configuration du controle d'acces obligatoire (`/etc/selinux/` ou `/etc/apparmor/`, `/etc/apparmor.d/`) pour detecter les changements."
+    "fr": "Garantit que `auditd` possède une règle active taguée `MAC-policy` qui surveille les répertoires de configuration du contrôle d'accès obligatoire (`/etc/selinux/` ou `/etc/apparmor/`, `/etc/apparmor.d/`) pour détecter les changements."
   },
   "rationale": {
     "en": "The system's Mandatory Access Control policy (SELinux or AppArmor) is a core security boundary and should not be changed by anything other than deliberate administrator action. An attacker who weakens or disables MAC policy can escape confinement; auditing every change to it ensures such tampering is recorded and reviewable.",
-    "fr": "La politique de controle d'acces obligatoire du systeme (SELinux ou AppArmor) est une frontiere de securite essentielle et ne devrait etre modifiee que par une action deliberee de l'administrateur. Un attaquant qui affaiblit ou desactive la politique MAC peut s'evader du confinement ; auditer chaque changement garantit que toute alteration est enregistree et verifiable."
+    "fr": "La politique de contrôle d'accès obligatoire du système (SELinux ou AppArmor) est une frontière de sécurité essentielle et ne devrait être modifiée que par une action délibérée de l'administrateur. Un attaquant qui affaiblit ou désactive la politique MAC peut s'évader du confinement ; auditer chaque changement garantit que toute altération est enregistrée et vérifiable."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks for a loaded rule carrying the `MAC-policy` key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule present in a file but not loaded gives false assurance. `auditctl -l` reflects only what the kernel enforces now.",
-    "fr": "Pavois execute `auditctl -l` et verifie la presence d'une regle chargee portant la cle `MAC-policy`. Lire le **jeu de regles vivant du noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : une regle presente dans un fichier mais non chargee donne une fausse assurance. `auditctl -l` ne reflete que ce que le noyau applique."
+    "fr": "Pavois exécute `auditctl -l` et vérifie la présence d'une règle chargée portant la clé `MAC-policy`. Lire le **jeu de règles vivant du noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : une règle présente dans un fichier mais non chargée donne une fausse assurance. `auditctl -l` ne reflète que ce que le noyau applique."
   },
   "verify": {
     "en": "Run `auditctl -l | grep MAC-policy`. On SELinux systems you should see `-w /etc/selinux/ -p wa -k MAC-policy`; on AppArmor systems `-w /etc/apparmor/ -p wa -k MAC-policy` and `-w /etc/apparmor.d/ -p wa -k MAC-policy`. Empty output means the rule is not loaded.",
-    "fr": "Executez `auditctl -l | grep MAC-policy`. Sur les systemes SELinux vous devez voir `-w /etc/selinux/ -p wa -k MAC-policy` ; sur les systemes AppArmor `-w /etc/apparmor/ -p wa -k MAC-policy` et `-w /etc/apparmor.d/ -p wa -k MAC-policy`. Une sortie vide signifie que la regle n'est pas chargee."
+    "fr": "Exécutez `auditctl -l | grep MAC-policy`. Sur les systèmes SELinux vous devez voir `-w /etc/selinux/ -p wa -k MAC-policy` ; sur les systèmes AppArmor `-w /etc/apparmor/ -p wa -k MAC-policy` et `-w /etc/apparmor.d/ -p wa -k MAC-policy`. Une sortie vide signifie que la règle n'est pas chargée."
   },
   "logs": {
     "en": "Triggered events land in `/var/log/audit/audit.log`. Search with `grep 'key=\"MAC-policy\"' /var/log/audit/audit.log`. MAC subsystem state is also visible via `getenforce`/`sestatus` (SELinux) or `aa-status` (AppArmor) (prefer grep over `ausearch -k MAC-policy`, which can wrongly report no matches).",
-    "fr": "Les evenements declenches arrivent dans `/var/log/audit/audit.log`. Recherchez avec `grep 'key=\"MAC-policy\"' /var/log/audit/audit.log`. L'etat du sous-systeme MAC est aussi visible via `getenforce`/`sestatus` (SELinux) ou `aa-status` (AppArmor) (preferez grep a `ausearch -k MAC-policy`, qui peut signaler a tort aucune correspondance)."
+    "fr": "Les événements déclenchés arrivent dans `/var/log/audit/audit.log`. Recherchez avec `grep 'key=\"MAC-policy\"' /var/log/audit/audit.log`. L'état du sous-système MAC est aussi visible via `getenforce`/`sestatus` (SELinux) ou `aa-status` (AppArmor) (préférez grep à `ausearch -k MAC-policy`, qui peut signaler à tort aucune correspondance)."
   },
   "remediation_note": {
     "en": "Pavois's harden plan uses the `audit_ruleset` resource to write the MAC-policy watch rules (SELinux or AppArmor paths, per OS) into `/etc/audit/rules.d/`, then reloads auditd. Because the audit config may be immutable, a **reboot is required** to fully apply. Run `pavois harden apply`.",
-    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour ecrire les regles de surveillance de la politique MAC (chemins SELinux ou AppArmor selon l'OS) dans `/etc/audit/rules.d/`, puis recharge auditd. Comme la configuration d'audit peut etre immuable, un **redemarrage est necessaire** pour une application complete. Executez `pavois harden apply`."
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour écrire les règles de surveillance de la politique MAC (chemins SELinux ou AppArmor selon l'OS) dans `/etc/audit/rules.d/`, puis recharge auditd. Comme la configuration d'audit peut être immuable, un **redémarrage est nécessaire** pour une application complète. Exécutez `pavois harden apply`."
   },
   "impact": {
     "en": "Without this rule, an attacker can disable or relax SELinux/AppArmor with no audit trail. The rule is log-only and cannot block policy changes, so it breaks nothing. Precautions: legitimate policy updates (package installs shipping AppArmor profiles, `semanage` operations) generate events, size `audit.log` rotation and `space_left_action` so a full disk does not halt the host when `auditd` is set to `halt`.",
-    "fr": "Sans cette regle, un attaquant peut desactiver ou assouplir SELinux/AppArmor sans trace d'audit. La regle ne fait que journaliser et ne peut bloquer les changements de politique, elle ne casse donc rien. Precautions : les mises a jour legitimes de politique (paquets livrant des profils AppArmor, operations `semanage`) generent des evenements, dimensionnez la rotation de `audit.log` et `space_left_action` afin qu'un disque plein n'arrete pas l'hote lorsque `auditd` est sur `halt`."
+    "fr": "Sans cette règle, un attaquant peut désactiver ou assouplir SELinux/AppArmor sans trace d'audit. La règle ne fait que journaliser et ne peut bloquer les changements de politique, elle ne casse donc rien. Précautions : les mises à jour légitimes de politique (paquets livrant des profils AppArmor, opérations `semanage`) génèrent des événements, dimensionnez la rotation de `audit.log` et `space_left_action` afin qu'un disque plein n'arrête pas l'hôte lorsque `auditd` est sur `halt`."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

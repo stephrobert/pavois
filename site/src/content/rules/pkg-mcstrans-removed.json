@@ -14,7 +14,6 @@
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -39,35 +38,35 @@
   },
   "title": {
     "en": "Uninstall mcstrans Package",
-    "fr": "Desinstaller le paquet mcstrans"
+    "fr": "Désinstaller le paquet mcstrans"
   },
   "summary": {
     "en": "Removes the **mcstrans** package (SELinux label-translation daemon), which is unneeded on virtually all systems.",
-    "fr": "Supprime le paquet **mcstrans** (demon de traduction d'etiquettes SELinux), inutile sur la quasi-totalite des systemes."
+    "fr": "Supprime le paquet **mcstrans** (démon de traduction d'étiquettes SELinux), inutile sur la quasi-totalité des systèmes."
   },
   "rationale": {
     "en": "The **mcstrans** package provides the `mcstransd` daemon, which translates SELinux **MCS/MLS sensitivity labels** into human-readable form. It is only useful on systems that actually use multi-level/multi-category security, which is rare. Because it runs as a daemon that few environments need, removing it **reduces the amount of potentially vulnerable, unmonitored code** running on the host and shrinks the attack surface.",
-    "fr": "Le paquet **mcstrans** fournit le demon `mcstransd`, qui traduit les **etiquettes de sensibilite MCS/MLS** de SELinux en forme lisible. Il n'est utile que sur les systemes utilisant reellement la securite multi-niveaux/multi-categories, ce qui est rare. Comme il s'execute en demon dont peu d'environnements ont besoin, le supprimer **reduit la quantite de code potentiellement vulnerable et non surveille** sur l'hote et diminue la surface d'attaque."
+    "fr": "Le paquet **mcstrans** fournit le démon `mcstransd`, qui traduit les **étiquettes de sensibilité MCS/MLS** de SELinux en forme lisible. Il n'est utile que sur les systèmes utilisant réellement la sécurité multi-niveaux/multi-catégories, ce qui est rare. Comme il s'exécute en démon dont peu d'environnements ont besoin, le supprimer **réduit la quantité de code potentiellement vulnérable et non surveillé** sur l'hôte et diminue la surface d'attaque."
   },
   "check_note": {
     "en": "Pavois queries the package database through the InSpec `package('mcstrans')` resource and asserts `should_not be_installed`, resolving via `dpkg`/`rpm`. This is the **effective** state: the only reliable test of whether the `mcstransd` daemon code is present is the package inventory itself, not the presence or absence of a running process (which can be stopped yet still installed and re-startable).",
-    "fr": "Pavois interroge la base de paquets via la ressource InSpec `package('mcstrans')` et verifie `should_not be_installed`, en s'appuyant sur `dpkg`/`rpm`. C'est l'etat **effectif** : le seul test fiable de la presence du code `mcstransd` est l'inventaire de paquets lui-meme, et non l'etat d'un processus en cours (qui peut etre arrete tout en restant installe et redemarrable)."
+    "fr": "Pavois interroge la base de paquets via la ressource InSpec `package('mcstrans')` et vérifie `should_not be_installed`, en s'appuyant sur `dpkg`/`rpm`. C'est l'état **effectif** : le seul test fiable de la présence du code `mcstransd` est l'inventaire de paquets lui-même, et non l'état d'un processus en cours (qui peut être arrêté tout en restant installé et redémarrable)."
   },
   "verify": {
     "en": "RHEL: `rpm -q mcstrans` should print `package mcstrans is not installed`. Debian/Ubuntu: `dpkg -s mcstrans` should report `not installed`. Confirm no daemon is running with `systemctl status mcstransd` (expect `not-found`/inactive).",
-    "fr": "RHEL : `rpm -q mcstrans` doit afficher `package mcstrans is not installed`. Debian/Ubuntu : `dpkg -s mcstrans` doit indiquer `not installed`. Verifiez l'absence de demon avec `systemctl status mcstransd` (attendu : `not-found`/inactif)."
+    "fr": "RHEL : `rpm -q mcstrans` doit afficher `package mcstrans is not installed`. Debian/Ubuntu : `dpkg -s mcstrans` doit indiquer `not installed`. Vérifiez l'absence de démon avec `systemctl status mcstransd` (attendu : `not-found`/inactif)."
   },
   "logs": {
     "en": "Removal is recorded in `/var/log/dpkg.log` (Debian/Ubuntu) or `dnf history` (RHEL). Any prior `mcstransd` activity would have appeared in `journalctl -u mcstransd`; after removal there should be no such unit.",
-    "fr": "La suppression est tracee dans `/var/log/dpkg.log` (Debian/Ubuntu) ou `dnf history` (RHEL). Toute activite anterieure de `mcstransd` aurait figure dans `journalctl -u mcstransd` ; apres suppression, cette unite ne doit plus exister."
+    "fr": "La suppression est tracée dans `/var/log/dpkg.log` (Debian/Ubuntu) ou `dnf history` (RHEL). Toute activité antérieure de `mcstransd` aurait figuré dans `journalctl -u mcstransd` ; après suppression, cette unité ne doit plus exister."
   },
   "remediation_note": {
     "en": "Pavois's harden plan declares a `package` resource for **mcstrans** with action `remove`; `pavois harden apply` uninstalls it via the native package manager (`apt`/`dnf`). Removing the package also disables `mcstransd`. This does **not** affect SELinux enforcement itself, only the optional human-readable translation of MCS/MLS labels.",
-    "fr": "Le plan de durcissement de Pavois declare une ressource `package` pour **mcstrans** avec l'action `remove` ; `pavois harden apply` le desinstalle via le gestionnaire de paquets natif (`apt`/`dnf`). Supprimer le paquet desactive aussi `mcstransd`. Cela n'affecte **pas** l'application de SELinux elle-meme, seulement la traduction lisible optionnelle des etiquettes MCS/MLS."
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` pour **mcstrans** avec l'action `remove` ; `pavois harden apply` le désinstalle via le gestionnaire de paquets natif (`apt`/`dnf`). Supprimer le paquet désactive aussi `mcstransd`. Cela n'affecte **pas** l'application de SELinux elle-même, seulement la traduction lisible optionnelle des étiquettes MCS/MLS."
   },
   "impact": {
     "en": "Removing mcstrans is safe on standard systems: SELinux enforcement is unaffected and only the cosmetic translation of sensitivity labels is lost. **Precautions:** if you operate a genuine **MLS/MCS** deployment where administrators read translated labels (e.g. via `chcat` workflows), keep the package, as raw labels become harder to interpret. On Debian/Ubuntu the package is usually absent anyway, so the rule is typically already satisfied.",
-    "fr": "Supprimer mcstrans est sans danger sur les systemes standard : l'application de SELinux n'est pas affectee et seule la traduction cosmetique des etiquettes de sensibilite est perdue. **Precautions :** si vous exploitez un veritable deploiement **MLS/MCS** ou les administrateurs lisent des etiquettes traduites (par ex. via des flux `chcat`), conservez le paquet, car les etiquettes brutes deviennent plus difficiles a interpreter. Sur Debian/Ubuntu, le paquet est generalement absent, donc la regle est souvent deja satisfaite."
+    "fr": "Supprimer mcstrans est sans danger sur les systèmes standard : l'application de SELinux n'est pas affectée et seule la traduction cosmétique des étiquettes de sensibilité est perdue. **Précautions :** si vous exploitez un véritable déploiement **MLS/MCS** où les administrateurs lisent des étiquettes traduites (par ex. via des flux `chcat`), conservez le paquet, car les étiquettes brutes deviennent plus difficiles à interpréter. Sur Debian/Ubuntu, le paquet est généralement absent, donc la règle est souvent déjà satisfaite."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

@@ -2,7 +2,7 @@
   "id": "fileperm-audit-binaries",
   "title": {
     "en": "Verify that audit tools Have Mode 0755 or less",
-    "fr": "Verifier que les outils d'audit ont le mode 0755 ou moins"
+    "fr": "Vérifier que les outils d'audit ont le mode 0755 ou moins"
   },
   "summary": {
     "en": "Ensures the audit tooling (here `/sbin/auditctl`) is not group/other-writable and carries no setuid, setgid or sticky bit, i.e. mode `0755` or stricter.",
@@ -10,27 +10,27 @@
   },
   "rationale": {
     "en": "Protecting audit information means protecting the **tools used to view and control it**. The audit binaries (`auditctl`, `auditd`, `ausearch`, `aureport`, `autrace`, `augenrules`, `audisp-*`) must not be group/other-writable, nor carry **setuid/setgid** bits. A writable audit tool could be replaced with a trojaned version that silently disables logging or hides events; an unexpected setuid bit would let any user run it with elevated rights. Mode `0755` or stricter keeps modification and special privileges in root's hands.",
-    "fr": "Proteger l'information d'audit, c'est proteger les **outils servant a la consulter et la controler**. Les binaires d'audit (`auditctl`, `auditd`, `ausearch`, `aureport`, `autrace`, `augenrules`, `audisp-*`) ne doivent etre modifiables ni par le groupe ni par les autres, ni porter de bits **setuid/setgid**. Un outil d'audit modifiable pourrait etre remplace par une version piegee qui desactive silencieusement la journalisation ou masque des evenements ; un bit setuid inattendu permettrait a tout utilisateur de l'executer avec des droits eleves. Le mode `0755` ou plus strict garde la modification et les privileges speciaux entre les mains de root."
+    "fr": "Protéger l'information d'audit, c'est protéger les **outils servant à la consulter et la contrôler**. Les binaires d'audit (`auditctl`, `auditd`, `ausearch`, `aureport`, `autrace`, `augenrules`, `audisp-*`) ne doivent être modifiables ni par le groupe ni par les autres, ni porter de bits **setuid/setgid**. Un outil d'audit modifiable pourrait être remplacé par une version piégée qui désactive silencieusement la journalisation ou masque des événements ; un bit setuid inattendu permettrait à tout utilisateur de l'exécuter avec des droits élevés. Le mode `0755` ou plus strict garde la modification et les privilèges spéciaux entre les mains de root."
   },
   "check_note": {
     "en": "Pavois inspects the binary's **live mode bits** with the InSpec `file` resource, the actual setuid/setgid/write bits the kernel honors at exec time, instead of trusting the package's shipped mode. This catches a binary whose permissions were altered after install (a classic tampering technique to weaken auditing). The `only_if` guard skips the check when `/sbin/auditctl` is absent (audit not installed).",
-    "fr": "Pavois inspecte les **bits de mode reels** du binaire avec la ressource InSpec `file`, les bits setuid/setgid/ecriture reellement honores par le noyau a l'execution, au lieu de se fier au mode livre par le paquet. Cela detecte un binaire dont les permissions ont ete alterees apres installation (technique classique de sabotage pour affaiblir l'audit). La garde `only_if` ignore le controle si `/sbin/auditctl` est absent (audit non installe)."
+    "fr": "Pavois inspecte les **bits de mode réels** du binaire avec la ressource InSpec `file`, les bits setuid/setgid/écriture réellement honorés par le noyau à l'exécution, au lieu de se fier au mode livré par le paquet. Cela détecte un binaire dont les permissions ont été altérées après installation (technique classique de sabotage pour affaiblir l'audit). La garde `only_if` ignore le contrôle si `/sbin/auditctl` est absent (audit non installé)."
   },
   "verify": {
     "en": "Run `stat -c '%a %U %G %n' /sbin/auditctl` (and the other audit binaries). Expected output is `755 root root /sbin/auditctl` or stricter, with no leading `4`/`2` setuid/setgid digit.",
-    "fr": "Executez `stat -c '%a %U %G %n' /sbin/auditctl` (et les autres binaires d'audit). La sortie attendue est `755 root root /sbin/auditctl` ou plus strict, sans chiffre setuid/setgid `4`/`2` en tete."
+    "fr": "Exécutez `stat -c '%a %U %G %n' /sbin/auditctl` (et les autres binaires d'audit). La sortie attendue est `755 root root /sbin/auditctl` ou plus strict, sans chiffre setuid/setgid `4`/`2` en tête."
   },
   "logs": {
     "en": "The audit framework itself logs to `/var/log/audit/audit.log`; check its health with `auditctl -s` and `systemctl status auditd`. Tampering with the binaries can be tracked by adding an auditd watch on them and grepping `/var/log/audit/audit.log` for the matching key.",
-    "fr": "Le cadre d'audit journalise lui-meme dans `/var/log/audit/audit.log` ; verifiez son etat avec `auditctl -s` et `systemctl status auditd`. La falsification des binaires peut etre suivie en ajoutant une regle auditd de surveillance sur ceux-ci et en recherchant la cle correspondante dans `/var/log/audit/audit.log`."
+    "fr": "Le cadre d'audit journalise lui-même dans `/var/log/audit/audit.log` ; vérifiez son état avec `auditctl -s` et `systemctl status auditd`. La falsification des binaires peut être suivie en ajoutant une règle auditd de surveillance sur ceux-ci et en recherchant la clé correspondante dans `/var/log/audit/audit.log`."
   },
   "remediation_note": {
     "en": "No automated remediation is defined, so apply it **manually**: `chmod 0755 /sbin/auditctl` (and the other audit binaries: `auditd`, `ausearch`, `aureport`, `autrace`, `augenrules`, `audisp-*`), removing any setuid/setgid/sticky and group/other write bits. Many distributions ship these correctly; a failure usually means a binary was modified post-install.",
-    "fr": "Aucune remediation automatique n'est definie ; appliquez-la **manuellement** : `chmod 0755 /sbin/auditctl` (et les autres binaires d'audit : `auditd`, `ausearch`, `aureport`, `autrace`, `augenrules`, `audisp-*`), en retirant tout bit setuid/setgid/sticky et d'ecriture groupe/autres. De nombreuses distributions les livrent correctement ; un echec signifie generalement qu'un binaire a ete modifie apres installation."
+    "fr": "Aucune remédiation automatique n'est définie ; appliquez-la **manuellement** : `chmod 0755 /sbin/auditctl` (et les autres binaires d'audit : `auditd`, `ausearch`, `aureport`, `autrace`, `augenrules`, `audisp-*`), en retirant tout bit setuid/setgid/sticky et d'écriture groupe/autres. De nombreuses distributions les livrent correctement ; un échec signifie généralement qu'un binaire a été modifié après installation."
   },
   "impact": {
     "en": "Risk if not applied: a tampered or setuid audit tool can disable logging or escalate privileges, blinding incident response. Precautions: setting mode `0755` is non-disruptive, these tools are run by root and need only standard execute permission. Do not strip the execute bit (`x`) for owner/group/other system use, and avoid going below the package default, as some helper services invoke `ausearch`/`aureport` as their own service user.",
-    "fr": "Risque en cas de non-application : un outil d'audit pirate ou setuid peut desactiver la journalisation ou elever les privileges, aveuglant la reponse a incident. Precautions : appliquer le mode `0755` est sans impact, ces outils sont executes par root et n'ont besoin que de la permission d'execution standard. Ne retirez pas le bit d'execution (`x`), et evitez de descendre sous la valeur par defaut du paquet, car certains services auxiliaires invoquent `ausearch`/`aureport` sous leur propre utilisateur de service."
+    "fr": "Risque en cas de non-application : un outil d'audit piraté ou setuid peut désactiver la journalisation ou élever les privilèges, aveuglant la réponse à incident. Précautions : appliquer le mode `0755` est sans impact, ces outils sont exécutés par root et n'ont besoin que de la permission d'exécution standard. Ne retirez pas le bit d'exécution (`x`), et évitez de descendre sous la valeur par défaut du paquet, car certains services auxiliaires invoquent `ausearch`/`aureport` sous leur propre utilisateur de service."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

@@ -39,35 +39,35 @@
   },
   "title": {
     "en": "Verify Permissions of Files in /var/log/gdm3",
-    "fr": "Verifier les permissions des fichiers dans /var/log/gdm3"
+    "fr": "Vérifier les permissions des fichiers dans /var/log/gdm3"
   },
   "summary": {
     "en": "Ensures the `/var/log/gdm3` directory is not readable/writable/executable by other and not executable by group, with no setuid/setgid/sticky bits.",
-    "fr": "Garantit que le repertoire `/var/log/gdm3` n'est ni lisible, ni modifiable, ni executable par les autres et n'est pas executable par le groupe, sans bits setuid/setgid/sticky."
+    "fr": "Garantit que le répertoire `/var/log/gdm3` n'est ni lisible, ni modifiable, ni exécutable par les autres et n'est pas exécutable par le groupe, sans bits setuid/setgid/sticky."
   },
   "rationale": {
     "en": "The `/var/log/gdm3` directory holds logs of the **GNOME Display Manager** (the graphical login daemon), including session start details and X/Wayland diagnostics that can expose usernames, display configuration and local environment data. If readable or writable by other, an attacker can harvest this information or tamper with login evidence. Access should be restricted to `root` and the GDM service account.",
-    "fr": "Le repertoire `/var/log/gdm3` contient les journaux du **gestionnaire d'affichage GNOME** (le demon de connexion graphique), y compris les details de demarrage de session et les diagnostics X/Wayland pouvant exposer des noms d'utilisateurs, la configuration de l'affichage et des donnees de l'environnement local. S'il est lisible ou modifiable par les autres, un attaquant peut recolter ces informations ou alterer les preuves de connexion. L'acces devrait etre restreint a `root` et au compte de service GDM."
+    "fr": "Le répertoire `/var/log/gdm3` contient les journaux du **gestionnaire d'affichage GNOME** (le démon de connexion graphique), y compris les détails de démarrage de session et les diagnostics X/Wayland pouvant exposer des noms d'utilisateurs, la configuration de l'affichage et des données de l'environnement local. S'il est lisible ou modifiable par les autres, un attaquant peut récolter ces informations ou altérer les preuves de connexion. L'accès devrait être restreint à `root` et au compte de service GDM."
   },
   "check_note": {
     "en": "Pavois reads the **effective inode mode** of `/var/log/gdm3` and asserts no access for other, no group execute, and no special bits. Reading the live mode catches drift introduced when GDM (or a desktop install/upgrade) recreates the directory, which a static packaging manifest would not reflect.",
-    "fr": "Pavois lit le **mode effectif de l'inode** de `/var/log/gdm3` et verifie l'absence d'acces pour les autres, l'absence d'execution pour le groupe et l'absence de bits speciaux. Lire le mode reel detecte la derive introduite lorsque GDM (ou une installation/mise a jour de bureau) recree le repertoire, ce qu'un manifeste de paquet statique ne refleterait pas."
+    "fr": "Pavois lit le **mode effectif de l'inode** de `/var/log/gdm3` et vérifie l'absence d'accès pour les autres, l'absence d'exécution pour le groupe et l'absence de bits spéciaux. Lire le mode réel détecte la dérive introduite lorsque GDM (ou une installation/mise à jour de bureau) recrée le répertoire, ce qu'un manifeste de paquet statique ne refléterait pas."
   },
   "verify": {
     "en": "Run `stat -c '%U %G %a' /var/log/gdm3`. Expected: owner `root`, mode `750` or stricter, no read/write/execute for other.",
-    "fr": "Executez `stat -c '%U %G %a' /var/log/gdm3`. Attendu : proprietaire `root`, mode `750` ou plus strict, aucune lecture/ecriture/execution pour les autres."
+    "fr": "Exécutez `stat -c '%U %G %a' /var/log/gdm3`. Attendu : propriétaire `root`, mode `750` ou plus strict, aucune lecture/écriture/exécution pour les autres."
   },
   "logs": {
     "en": "GDM session logs live under `/var/log/gdm3/`; the display manager's service state is shown by `systemctl status gdm3` and `journalctl -u gdm3`. Re-check the directory mode after a desktop package upgrade.",
-    "fr": "Les journaux de session GDM resident sous `/var/log/gdm3/` ; l'etat du service du gestionnaire d'affichage est affiche par `systemctl status gdm3` et `journalctl -u gdm3`. Re-verifiez le mode du repertoire apres une mise a jour de paquet de bureau."
+    "fr": "Les journaux de session GDM résident sous `/var/log/gdm3/` ; l'état du service du gestionnaire d'affichage est affiché par `systemctl status gdm3` et `journalctl -u gdm3`. Re-vérifiez le mode du répertoire après une mise à jour de paquet de bureau."
   },
   "remediation_note": {
     "en": "No automated remediation ships for this rule. Tighten manually: `chown root:gdm /var/log/gdm3 && chmod 750 /var/log/gdm3` and restrict the log files inside with `chmod 640 /var/log/gdm3/*`.",
-    "fr": "Aucune remediation automatique n'est fournie pour cette regle. Restreignez manuellement : `chown root:gdm /var/log/gdm3 && chmod 750 /var/log/gdm3` et restreignez les fichiers de journaux a l'interieur avec `chmod 640 /var/log/gdm3/*`."
+    "fr": "Aucune remédiation automatique n'est fournie pour cette règle. Restreignez manuellement : `chown root:gdm /var/log/gdm3 && chmod 750 /var/log/gdm3` et restreignez les fichiers de journaux à l'intérieur avec `chmod 640 /var/log/gdm3/*`."
   },
   "impact": {
     "en": "Over-exposed GDM logs leak session and environment details. Restricting to `root`/`gdm` is safe on graphical systems. This control only applies where GDM is installed (the `only_if` guards it), so headless servers are unaffected. **Precaution:** keep the `gdm` group able to traverse/read where it legitimately needs to, over-restricting `/var/log/gdm3` could prevent the display manager from writing its logs.",
-    "fr": "Des journaux GDM trop exposes divulguent des details de session et d'environnement. Restreindre a `root`/`gdm` est sans danger sur les systemes graphiques. Ce controle ne s'applique que la ou GDM est installe (le `only_if` le protege), donc les serveurs sans interface graphique ne sont pas affectes. **Precaution :** laissez le groupe `gdm` traverser/lire la ou il en a legitimement besoin, restreindre excessivement `/var/log/gdm3` pourrait empecher le gestionnaire d'affichage d'ecrire ses journaux."
+    "fr": "Des journaux GDM trop exposés divulguent des détails de session et d'environnement. Restreindre à `root`/`gdm` est sans danger sur les systèmes graphiques. Ce contrôle ne s'applique que là où GDM est installé (le `only_if` le protège), donc les serveurs sans interface graphique ne sont pas affectés. **Précaution :** laissez le groupe `gdm` traverser/lire là où il en a légitimement besoin, restreindre excessivement `/var/log/gdm3` pourrait empêcher le gestionnaire d'affichage d'écrire ses journaux."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

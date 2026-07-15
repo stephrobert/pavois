@@ -14,7 +14,6 @@
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -45,35 +44,35 @@
   },
   "title": {
     "en": "Verify Who Owns /etc/shells File",
-    "fr": "Verifier le proprietaire du fichier /etc/shells"
+    "fr": "Vérifier le propriétaire du fichier /etc/shells"
   },
   "summary": {
     "en": "Ensures the valid-login-shells list `/etc/shells` is owned by `root` (UID 0).",
-    "fr": "Garantit que la liste des shells de connexion valides `/etc/shells` appartient a `root` (UID 0)."
+    "fr": "Garantit que la liste des shells de connexion valides `/etc/shells` appartient à `root` (UID 0)."
   },
   "rationale": {
     "en": "The `/etc/shells` file lists the full pathnames of valid login shells. It is consulted by programs such as `chsh`, FTP daemons and `getusershell()`-based services to decide whether an account is allowed an interactive shell. If a non-root account owns it, that user could add an arbitrary binary as a 'shell' to gain or broaden interactive access. Setting **`root` (UID 0)** as the owner protects this access-control list.",
-    "fr": "Le fichier `/etc/shells` liste les chemins complets des shells de connexion valides. Il est consulte par des programmes comme `chsh`, les demons FTP et les services bases sur `getusershell()` pour decider si un compte a droit a un shell interactif. Si un compte non-root le possede, cet utilisateur pourrait ajouter un binaire arbitraire comme « shell » pour obtenir ou elargir un acces interactif. Definir **`root` (UID 0)** comme proprietaire protege cette liste de controle d'acces."
+    "fr": "Le fichier `/etc/shells` liste les chemins complets des shells de connexion valides. Il est consulté par des programmes comme `chsh`, les démons FTP et les services basés sur `getusershell()` pour décider si un compte a droit à un shell interactif. Si un compte non-root le possède, cet utilisateur pourrait ajouter un binaire arbitraire comme « shell » pour obtenir ou élargir un accès interactif. Définir **`root` (UID 0)** comme propriétaire protège cette liste de contrôle d'accès."
   },
   "check_note": {
     "en": "Pavois inspects the **live filesystem** with the InSpec `file('/etc/shells')` resource and asserts `uid == 0`, guarded by `only_if` so it is skipped when the file is absent. Reading the real inode owner reflects the **effective** on-disk state, catching a `chown` that would let a user register an unauthorized shell.",
-    "fr": "Pavois inspecte le **systeme de fichiers reel** via la ressource InSpec `file('/etc/shells')` et verifie `uid == 0`, protege par `only_if` afin d'etre ignore si le fichier est absent. Lire le proprietaire reel de l'inode reflete l'etat **effectif** sur le disque et detecte un `chown` qui permettrait a un utilisateur d'enregistrer un shell non autorise."
+    "fr": "Pavois inspecte le **système de fichiers réel** via la ressource InSpec `file('/etc/shells')` et vérifie `uid == 0`, protégé par `only_if` afin d'être ignoré si le fichier est absent. Lire le propriétaire réel de l'inode reflète l'état **effectif** sur le disque et détecte un `chown` qui permettrait à un utilisateur d'enregistrer un shell non autorisé."
   },
   "verify": {
     "en": "Run `stat -c '%U %u %n' /etc/shells`. Expected output: `root 0 /etc/shells`. The numeric `0` confirms root ownership.",
-    "fr": "Executez `stat -c '%U %u %n' /etc/shells`. Sortie attendue : `root 0 /etc/shells`. Le `0` numerique confirme la propriete par root."
+    "fr": "Exécutez `stat -c '%U %u %n' /etc/shells`. Sortie attendue : `root 0 /etc/shells`. Le `0` numérique confirme la propriété par root."
   },
   "logs": {
     "en": "Watch the file with `auditctl -w /etc/shells -p wa -k shells` and inspect `/var/log/audit/audit.log` (`grep 'key=\"shells\"'`). Shell-change attempts via `chsh` are logged by PAM in `/var/log/auth.log` / `journalctl`.",
-    "fr": "Surveillez le fichier avec `auditctl -w /etc/shells -p wa -k shells` et inspectez `/var/log/audit/audit.log` (`grep 'key=\"shells\"'`). Les tentatives de changement de shell via `chsh` sont journalisees par PAM dans `/var/log/auth.log` / `journalctl`."
+    "fr": "Surveillez le fichier avec `auditctl -w /etc/shells -p wa -k shells` et inspectez `/var/log/audit/audit.log` (`grep 'key=\"shells\"'`). Les tentatives de changement de shell via `chsh` sont journalisées par PAM dans `/var/log/auth.log` / `journalctl`."
   },
   "remediation_note": {
     "en": "No automated remediation is shipped for this rule. Apply it manually with `chown root /etc/shells` (run as root or via `sudo`); the file should remain group `root` and mode `0644`.",
-    "fr": "Aucune remediation automatisee n'est fournie pour cette regle. Appliquez-la manuellement avec `chown root /etc/shells` (en root ou via `sudo`) ; le fichier doit rester en groupe `root` et mode `0644`."
+    "fr": "Aucune remédiation automatisée n'est fournie pour cette règle. Appliquez-la manuellement avec `chown root /etc/shells` (en root ou via `sudo`) ; le fichier doit rester en groupe `root` et mode `0644`."
   },
   "impact": {
     "en": "A non-root owner could register an arbitrary binary as a login shell, broadening interactive access. **Risk of applying:** none, `chown root` does not change which shells are listed and does not affect existing logins. Keep the file world-readable (`0644`) so `getusershell()` consumers still work.",
-    "fr": "Un proprietaire non-root pourrait enregistrer un binaire arbitraire comme shell de connexion, elargissant l'acces interactif. **Risque a l'application :** nul, `chown root` ne change pas la liste des shells ni n'affecte les connexions existantes. Gardez le fichier lisible par tous (`0644`) pour que les consommateurs de `getusershell()` fonctionnent toujours."
+    "fr": "Un propriétaire non-root pourrait enregistrer un binaire arbitraire comme shell de connexion, élargissant l'accès interactif. **Risque à l'application :** nul, `chown root` ne change pas la liste des shells ni n'affecte les connexions existantes. Gardez le fichier lisible par tous (`0644`) pour que les consommateurs de `getusershell()` fonctionnent toujours."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

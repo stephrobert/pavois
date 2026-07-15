@@ -14,7 +14,6 @@
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -52,31 +51,31 @@
   },
   "summary": {
     "en": "Ensures the core logging service `systemd-journald.service` is **enabled** and **running** so kernel, service, and application logs are captured.",
-    "fr": "Garantit que le service de journalisation central `systemd-journald.service` est **active** et **en cours d'execution** afin que les logs du noyau, des services et des applications soient captures."
+    "fr": "Garantit que le service de journalisation central `systemd-journald.service` est **activé** et **en cours d'exécution** afin que les logs du noyau, des services et des applications soient capturés."
   },
   "rationale": {
     "en": "`systemd-journald` is the core logging service that collects and stores structured log data from the kernel, services, and applications. In the event of a system failure, the system must preserve the information needed to determine the cause and to return to operation with the least disruption. If journald is not running, no journal is captured: security events go unrecorded, post-incident forensics are impossible, and other tools (rsyslog, journal-upload, audit forwarding) that depend on the journal lose their source. Reliable logging is a foundational control for accountability and incident response.",
-    "fr": "`systemd-journald` est le service de journalisation central qui collecte et stocke les donnees de log structurees du noyau, des services et des applications. En cas de defaillance systeme, le systeme doit conserver les informations necessaires pour determiner la cause et reprendre l'exploitation avec un minimum de perturbation. Si journald n'est pas actif, aucun journal n'est capture : les evenements de securite ne sont pas enregistres, l'analyse post-incident est impossible, et les autres outils (rsyslog, journal-upload, transfert d'audit) qui dependent du journal perdent leur source. Une journalisation fiable est un controle fondamental pour la tracabilite et la reponse aux incidents."
+    "fr": "`systemd-journald` est le service de journalisation central qui collecte et stocke les données de log structurées du noyau, des services et des applications. En cas de défaillance système, le système doit conserver les informations nécessaires pour déterminer la cause et reprendre l'exploitation avec un minimum de perturbation. Si journald n'est pas actif, aucun journal n'est capturé : les événements de sécurité ne sont pas enregistrés, l'analyse post-incident est impossible, et les autres outils (rsyslog, journal-upload, transfert d'audit) qui dépendent du journal perdent leur source. Une journalisation fiable est un contrôle fondamental pour la traçabilité et la réponse aux incidents."
   },
   "check_note": {
     "en": "Pavois reads the **effective unit state** via `service('systemd-journald.service')` (`systemctl is-enabled` / `is-active`). journald is socket-activated and normally `static`, so Pavois confirms it is actually running rather than merely installed. Checking effective state catches a masked or crashed journald, a condition a file-based check of `/etc/systemd/journald.conf` would entirely miss while logging is silently broken.",
-    "fr": "Pavois lit l'**etat effectif de l'unite** via `service('systemd-journald.service')` (`systemctl is-enabled` / `is-active`). journald est active par socket et generalement `static`, donc Pavois confirme qu'il tourne reellement plutot que simplement installe. Verifier l'etat effectif detecte un journald masque ou plante, une situation qu'un controle base sur le fichier `/etc/systemd/journald.conf` manquerait totalement pendant que la journalisation est silencieusement cassee."
+    "fr": "Pavois lit l'**état effectif de l'unité** via `service('systemd-journald.service')` (`systemctl is-enabled` / `is-active`). journald est activé par socket et généralement `static`, donc Pavois confirme qu'il tourne réellement plutôt que simplement installé. Vérifier l'état effectif détecte un journald masqué ou planté, une situation qu'un contrôle basé sur le fichier `/etc/systemd/journald.conf` manquerait totalement pendant que la journalisation est silencieusement cassée."
   },
   "verify": {
     "en": "Run `systemctl is-active systemd-journald.service` (expect `active`) and confirm log flow with `journalctl --no-pager -n 5` (should return recent entries). `systemctl status systemd-journald.service` should show `Active: active (running)`.",
-    "fr": "Executez `systemctl is-active systemd-journald.service` (attendu `active`) et confirmez le flux de logs avec `journalctl --no-pager -n 5` (doit retourner des entrees recentes). `systemctl status systemd-journald.service` doit montrer `Active: active (running)`."
+    "fr": "Exécutez `systemctl is-active systemd-journald.service` (attendu `active`) et confirmez le flux de logs avec `journalctl --no-pager -n 5` (doit retourner des entrées récentes). `systemctl status systemd-journald.service` doit montrer `Active: active (running)`."
   },
   "logs": {
     "en": "The daemon's own health is in `journalctl -u systemd-journald.service`. Overall journal availability and storage are shown by `journalctl --disk-usage` and `journalctl --verify`. If the journal is empty or `--verify` reports corruption, logging integrity is compromised.",
-    "fr": "L'etat de sante du demon est dans `journalctl -u systemd-journald.service`. La disponibilite et le stockage du journal sont indiques par `journalctl --disk-usage` et `journalctl --verify`. Si le journal est vide ou que `--verify` signale une corruption, l'integrite de la journalisation est compromise."
+    "fr": "L'état de santé du démon est dans `journalctl -u systemd-journald.service`. La disponibilité et le stockage du journal sont indiqués par `journalctl --disk-usage` et `journalctl --verify`. Si le journal est vide ou que `--verify` signale une corruption, l'intégrité de la journalisation est compromise."
   },
   "remediation_note": {
     "en": "Pavois's harden plan acts on the **service** resource named `systemd-journald`: it runs `enable` and `start` so the journal is captured at boot and immediately. It is applied with `pavois harden apply`. journald is shipped with systemd and normally always present; this control mainly guards against an accidentally masked unit.",
-    "fr": "Le plan de durcissement de Pavois agit sur la ressource **service** nommee `systemd-journald` : il execute `enable` et `start` pour que le journal soit capture au boot et immediatement. Il s'applique avec `pavois harden apply`. journald est livre avec systemd et presque toujours present ; ce controle protege surtout contre une unite masquee par accident."
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource **service** nommée `systemd-journald` : il exécute `enable` et `start` pour que le journal soit capturé au boot et immédiatement. Il s'applique avec `pavois harden apply`. journald est livré avec systemd et presque toujours présent ; ce contrôle protège surtout contre une unité masquée par accident."
   },
   "impact": {
     "en": "There is essentially no downside to keeping journald running, it is a core system component. The real risk is the opposite: a missing or masked journald means **silent loss of all logging**. **Precautions:** ensure `Storage=` in `/etc/systemd/journald.conf` is set appropriately (`persistent` to survive reboots) and that `/var/log/journal` has adequate space and rotation (`SystemMaxUse=`) so the journal cannot exhaust the disk.",
-    "fr": "Il n'y a quasiment aucun inconvenient a maintenir journald actif, c'est un composant systeme central. Le vrai risque est inverse : un journald absent ou masque signifie une **perte silencieuse de toute la journalisation**. **Precautions :** assurez-vous que `Storage=` dans `/etc/systemd/journald.conf` est correctement defini (`persistent` pour survivre aux redemarrages) et que `/var/log/journal` dispose d'un espace suffisant et d'une rotation (`SystemMaxUse=`) afin que le journal ne sature pas le disque."
+    "fr": "Il n'y a quasiment aucun inconvénient à maintenir journald actif, c'est un composant système central. Le vrai risque est inverse : un journald absent ou masqué signifie une **perte silencieuse de toute la journalisation**. **Précautions :** assurez-vous que `Storage=` dans `/etc/systemd/journald.conf` est correctement défini (`persistent` pour survivre aux redémarrages) et que `/var/log/journal` dispose d'un espace suffisant et d'une rotation (`SystemMaxUse=`) afin que le journal ne sature pas le disque."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

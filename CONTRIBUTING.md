@@ -109,12 +109,12 @@ docs/reference/rules.yml ──gen──▶ docs/reference/pavois-content/<os>.y
 To add or change a control: edit `rules.yml` (effective check + standard mappings + level), then:
 
 ```bash
-mise run gen           # render the 8 per-OS reference files from rules.yml
+mise run gen           # render the 9 per-OS reference files from rules.yml
 mise run gen:evidence  # (re)classify evidence_type from the check, written back into rules.yml
 mise run gen:reboot    # (re)classify reboot_survivable (the persistence axis of the verdict)
 mise run gen:socle     # assign the SOCLE-<DOM>-<FAM>-<N> ref to new controls
 mise run regen         # rebuild the .rb corpus + OSCAL from the reference
-mise run gen:verify    # CI guard: the 8 OS files match render(rules.yml)
+mise run gen:verify    # CI guard: the 9 OS files match render(rules.yml)
 mise run validate          # cross-validate CIS coverage against >= 2 authoritative sources
 mise run validate:mappings # cross-validate NIST + PCI-DSS tags vs ciso-assistant
 mise run validate:bp28     # validate ANSSI-BP-028 tags against the official v2.0 PDF

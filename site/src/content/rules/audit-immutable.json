@@ -14,7 +14,6 @@
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -56,31 +55,31 @@
   },
   "summary": {
     "en": "Ensures the audit subsystem is locked with `-e 2` so the loaded ruleset is **immutable** until the next reboot and cannot be changed at runtime.",
-    "fr": "Garantit que le sous-systeme d'audit est verrouille avec `-e 2` afin que le jeu de regles charge soit **immuable** jusqu'au prochain redemarrage et ne puisse etre modifie a chaud."
+    "fr": "Garantit que le sous-système d'audit est verrouillé avec `-e 2` afin que le jeu de règles chargé soit **immuable** jusqu'au prochain redémarrage et ne puisse être modifié à chaud."
   },
   "rationale": {
     "en": "Making the audit configuration immutable prevents both accidental and malicious modification of the audit rules at runtime. An attacker who gains root could otherwise disable auditing (`auditctl -e 0`) or delete rules to operate undetected. With `-e 2`, any change requires a reboot, which itself is an auditable, noticeable event. The trade-off: legitimate rule changes also require a reboot.",
-    "fr": "Rendre la configuration d'audit immuable empeche toute modification accidentelle comme malveillante des regles d'audit a chaud. Un attaquant ayant obtenu les droits root pourrait sinon desactiver l'audit (`auditctl -e 0`) ou supprimer des regles pour agir sans etre detecte. Avec `-e 2`, tout changement exige un redemarrage, lui-meme un evenement auditable et remarquable. Le compromis : les changements legitimes de regles necessitent aussi un redemarrage."
+    "fr": "Rendre la configuration d'audit immuable empêche toute modification accidentelle comme malveillante des règles d'audit à chaud. Un attaquant ayant obtenu les droits root pourrait sinon désactiver l'audit (`auditctl -e 0`) ou supprimer des règles pour agir sans être détecté. Avec `-e 2`, tout changement exige un redémarrage, lui-même un événement auditable et remarquable. Le compromis : les changements légitimes de règles nécessitent aussi un redémarrage."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -s` and checks that the kernel reports `enabled 2`. Reading the **live audit status** beats inspecting the trailing `-e 2` line in a rules file: the immutable flag is only effective once the kernel has applied it. A file containing `-e 2` that was never loaded leaves the system mutable; `auditctl -s` shows the real, enforced state.",
-    "fr": "Pavois execute `auditctl -s` et verifie que le noyau renvoie `enabled 2`. Lire l'**etat d'audit vivant** vaut mieux qu'inspecter la ligne finale `-e 2` d'un fichier de regles : le drapeau d'immuabilite n'est effectif qu'une fois applique par le noyau. Un fichier contenant `-e 2` jamais charge laisse le systeme modifiable ; `auditctl -s` montre l'etat reel applique."
+    "fr": "Pavois exécute `auditctl -s` et vérifie que le noyau renvoie `enabled 2`. Lire l'**état d'audit vivant** vaut mieux qu'inspecter la ligne finale `-e 2` d'un fichier de règles : le drapeau d'immuabilité n'est effectif qu'une fois appliqué par le noyau. Un fichier contenant `-e 2` jamais chargé laisse le système modifiable ; `auditctl -s` montre l'état réel appliqué."
   },
   "verify": {
     "en": "Run `auditctl -s | grep enabled`. The expected output is `enabled 2` (1 = enabled but mutable, 0 = disabled). Once immutable, `auditctl -e 0` is refused until reboot.",
-    "fr": "Executez `auditctl -s | grep enabled`. La sortie attendue est `enabled 2` (1 = active mais modifiable, 0 = desactive). Une fois immuable, `auditctl -e 0` est refuse jusqu'au redemarrage."
+    "fr": "Exécutez `auditctl -s | grep enabled`. La sortie attendue est `enabled 2` (1 = activé mais modifiable, 0 = désactivé). Une fois immuable, `auditctl -e 0` est refusé jusqu'au redémarrage."
   },
   "logs": {
     "en": "`auditctl -s` reports the live status (enabled, flag, backlog). Service messages appear via `journalctl -u auditd`, and any attempt to change rules while immutable is denied (surfaced to the calling process as an error).",
-    "fr": "`auditctl -s` indique l'etat vivant (enabled, drapeau, backlog). Les messages de service apparaissent via `journalctl -u auditd`, et toute tentative de modifier les regles en mode immuable est refusee (remontee au processus appelant comme une erreur)."
+    "fr": "`auditctl -s` indique l'état vivant (enabled, drapeau, backlog). Les messages de service apparaissent via `journalctl -u auditd`, et toute tentative de modifier les règles en mode immuable est refusée (remontée au processus appelant comme une erreur)."
   },
   "remediation_note": {
     "en": "Pavois's harden plan uses the `audit_ruleset` resource to append the `-e 2` directive as the **last** line of the loaded ruleset (it must come last, after all rules). Because immutability only takes hold on the next boot, a **reboot is required**. Run `pavois harden apply`.",
-    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour ajouter la directive `-e 2` comme **derniere** ligne du jeu de regles charge (elle doit venir en dernier, apres toutes les regles). Comme l'immuabilite ne prend effet qu'au prochain demarrage, un **redemarrage est necessaire**. Executez `pavois harden apply`."
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour ajouter la directive `-e 2` comme **dernière** ligne du jeu de règles chargé (elle doit venir en dernier, après toutes les règles). Comme l'immuabilité ne prend effet qu'au prochain démarrage, un **redémarrage est nécessaire**. Exécutez `pavois harden apply`."
   },
   "impact": {
     "en": "After applying, the audit ruleset is frozen: you **cannot add, remove or reload rules without rebooting**. Apply this rule **last**, only after all other audit rules are in place and verified, otherwise you lock in an incomplete ruleset and must reboot to fix it. It does not affect logins or services. On systems needing frequent audit-rule changes, weigh the operational cost of the mandatory reboot.",
-    "fr": "Une fois applique, le jeu de regles d'audit est fige : vous **ne pouvez plus ajouter, retirer ou recharger de regles sans redemarrer**. Appliquez cette regle **en dernier**, uniquement apres que toutes les autres regles d'audit sont en place et verifiees, sinon vous figez un jeu de regles incomplet et devez redemarrer pour corriger. Elle n'affecte ni les connexions ni les services. Sur les systemes necessitant des changements frequents de regles d'audit, pesez le cout operationnel du redemarrage obligatoire."
+    "fr": "Une fois appliqué, le jeu de règles d'audit est figé : vous **ne pouvez plus ajouter, retirer ou recharger de règles sans redémarrer**. Appliquez cette règle **en dernier**, uniquement après que toutes les autres règles d'audit sont en place et vérifiées, sinon vous figez un jeu de règles incomplet et devez redémarrer pour corriger. Elle n'affecte ni les connexions ni les services. Sur les systèmes nécessitant des changements fréquents de règles d'audit, pesez le coût opérationnel du redémarrage obligatoire."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

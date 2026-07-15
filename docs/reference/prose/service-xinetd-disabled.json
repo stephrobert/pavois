@@ -2,35 +2,35 @@
   "id": "service-xinetd-disabled",
   "title": {
     "en": "Disable xinetd Service",
-    "fr": "Desactiver le service xinetd"
+    "fr": "Désactiver le service xinetd"
   },
   "summary": {
     "en": "Ensures the legacy super-server `xinetd.service` is **disabled** and **not running** so on-demand legacy network services are not exposed.",
-    "fr": "Garantit que le super-serveur historique `xinetd.service` est **desactive** et **arrete** afin que les services reseau historiques a la demande ne soient pas exposes."
+    "fr": "Garantit que le super-serveur historique `xinetd.service` est **désactivé** et **arrêté** afin que les services réseau historiques à la demande ne soient pas exposés."
   },
   "rationale": {
     "en": "`xinetd` is a legacy super-server that listens on behalf of other programs and launches them on demand. Modern systems use systemd socket activation instead, so xinetd is rarely necessary. Keeping it running can silently expose obsolete or insecure services configured under `/etc/xinetd.d/` (telnet, tftp, rsh, etc.) and adds the xinetd daemon itself as an attack surface. Disabling it enforces least functionality and removes a path to legacy network services.",
-    "fr": "`xinetd` est un super-serveur historique qui ecoute pour le compte d'autres programmes et les lance a la demande. Les systemes modernes utilisent l'activation par socket de systemd a la place, donc xinetd est rarement necessaire. Le laisser actif peut exposer silencieusement des services obsoletes ou non securises configures sous `/etc/xinetd.d/` (telnet, tftp, rsh, etc.) et ajoute le demon xinetd lui-meme comme surface d'attaque. Le desactiver applique le principe de moindre fonctionnalite et supprime une voie vers des services reseau historiques."
+    "fr": "`xinetd` est un super-serveur historique qui écoute pour le compte d'autres programmes et les lance à la demande. Les systèmes modernes utilisent l'activation par socket de systemd à la place, donc xinetd est rarement nécessaire. Le laisser actif peut exposer silencieusement des services obsolètes ou non sécurisés configurés sous `/etc/xinetd.d/` (telnet, tftp, rsh, etc.) et ajoute le démon xinetd lui-même comme surface d'attaque. Le désactiver applique le principe de moindre fonctionnalité et supprime une voie vers des services réseau historiques."
   },
   "check_note": {
     "en": "Pavois reads the **effective unit state** via `service('xinetd.service')` (`systemctl is-enabled` / `is-active`), including drop-in overrides. Because xinetd itself spawns other listeners from `/etc/xinetd.d/`, confirming the daemon is not running is the only reliable way to know none of those sub-services can be launched, a file scan would have to parse every fragment, while the effective unit state settles it in one check.",
-    "fr": "Pavois lit l'**etat effectif de l'unite** via `service('xinetd.service')` (`systemctl is-enabled` / `is-active`), y compris les surcharges drop-in. Comme xinetd lui-meme engendre d'autres services d'ecoute depuis `/etc/xinetd.d/`, confirmer que le demon ne tourne pas est le seul moyen fiable de savoir qu'aucun de ces sous-services ne peut etre lance, un balayage de fichiers devrait analyser chaque fragment, tandis que l'etat effectif de l'unite tranche en un seul controle."
+    "fr": "Pavois lit l'**état effectif de l'unité** via `service('xinetd.service')` (`systemctl is-enabled` / `is-active`), y compris les surcharges drop-in. Comme xinetd lui-même engendre d'autres services d'écoute depuis `/etc/xinetd.d/`, confirmer que le démon ne tourne pas est le seul moyen fiable de savoir qu'aucun de ces sous-services ne peut être lancé, un balayage de fichiers devrait analyser chaque fragment, tandis que l'état effectif de l'unité tranche en un seul contrôle."
   },
   "verify": {
     "en": "Run `systemctl is-enabled xinetd.service` (expect `disabled`/`masked`/not found) and `systemctl is-active xinetd.service` (expect `inactive`). Spot-check that the legacy listeners it would manage are gone with `ss -lntu` (no unexpected ports for services defined in `/etc/xinetd.d/`).",
-    "fr": "Executez `systemctl is-enabled xinetd.service` (attendu `disabled`/`masked`/introuvable) et `systemctl is-active xinetd.service` (attendu `inactive`). Verifiez par sondage que les services historiques qu'il gererait ont disparu avec `ss -lntu` (aucun port inattendu pour les services definis dans `/etc/xinetd.d/`)."
+    "fr": "Exécutez `systemctl is-enabled xinetd.service` (attendu `disabled`/`masked`/introuvable) et `systemctl is-active xinetd.service` (attendu `inactive`). Vérifiez par sondage que les services historiques qu'il gérerait ont disparu avec `ss -lntu` (aucun port inattendu pour les services définis dans `/etc/xinetd.d/`)."
   },
   "logs": {
     "en": "Daemon transitions are in `journalctl -u xinetd.service`; xinetd's own per-connection logging goes to syslog (`/var/log/syslog` on Debian/Ubuntu, `/var/log/messages` on RHEL). After disabling, no further xinetd-spawned connections should be logged; confirm listeners with `ss -lntu`.",
-    "fr": "Les transitions du demon sont dans `journalctl -u xinetd.service` ; la journalisation par connexion propre a xinetd va vers syslog (`/var/log/syslog` sur Debian/Ubuntu, `/var/log/messages` sur RHEL). Apres desactivation, aucune nouvelle connexion engendree par xinetd ne doit etre journalisee ; confirmez les services d'ecoute avec `ss -lntu`."
+    "fr": "Les transitions du démon sont dans `journalctl -u xinetd.service` ; la journalisation par connexion propre à xinetd va vers syslog (`/var/log/syslog` sur Debian/Ubuntu, `/var/log/messages` sur RHEL). Après désactivation, aucune nouvelle connexion engendrée par xinetd ne doit être journalisée ; confirmez les services d'écoute avec `ss -lntu`."
   },
   "remediation_note": {
     "en": "Pavois's harden plan acts on the **service** resource named `xinetd`: it runs `disable` and `stop` so the super-server does not start at boot and is stopped now, which also prevents any sub-service in `/etc/xinetd.d/` from being launched. It is applied with `pavois harden apply`. If no legacy service needs it, remove the `xinetd` package to eliminate it entirely.",
-    "fr": "Le plan de durcissement de Pavois agit sur la ressource **service** nommee `xinetd` : il execute `disable` et `stop` pour que le super-serveur ne demarre pas au boot et soit arrete maintenant, ce qui empeche aussi tout sous-service de `/etc/xinetd.d/` d'etre lance. Il s'applique avec `pavois harden apply`. Si aucun service historique n'en a besoin, supprimez le paquet `xinetd` pour l'eliminer entierement."
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource **service** nommée `xinetd` : il exécute `disable` et `stop` pour que le super-serveur ne démarre pas au boot et soit arrêté maintenant, ce qui empêche aussi tout sous-service de `/etc/xinetd.d/` d'être lancé. Il s'applique avec `pavois harden apply`. Si aucun service historique n'en a besoin, supprimez le paquet `xinetd` pour l'éliminer entièrement."
   },
   "impact": {
     "en": "Disabling xinetd stops **every service it manages** at once, so any legacy daemon still wired through `/etc/xinetd.d/` (e.g. a custom or appliance service) goes offline. **Precautions:** review `/etc/xinetd.d/` for active entries (`disable = no`) before applying; migrate anything still needed to a native systemd socket/service unit; and confirm no monitoring or integration depends on an xinetd-launched listener.",
-    "fr": "Desactiver xinetd arrete d'un coup **tous les services qu'il gere**, donc tout demon historique encore cable via `/etc/xinetd.d/` (par exemple un service personnalise ou d'equipement) devient indisponible. **Precautions :** examinez `/etc/xinetd.d/` pour les entrees actives (`disable = no`) avant d'appliquer ; migrez tout ce qui est encore necessaire vers une unite socket/service native de systemd ; et confirmez qu'aucun monitoring ou integration ne depend d'un service d'ecoute lance par xinetd."
+    "fr": "Désactiver xinetd arrête d'un coup **tous les services qu'il gère**, donc tout démon historique encore câblé via `/etc/xinetd.d/` (par exemple un service personnalisé ou d'équipement) devient indisponible. **Précautions :** examinez `/etc/xinetd.d/` pour les entrées actives (`disable = no`) avant d'appliquer ; migrez tout ce qui est encore nécessaire vers une unité socket/service native de systemd ; et confirmez qu'aucun monitoring ou intégration ne dépend d'un service d'écoute lancé par xinetd."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

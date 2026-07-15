@@ -2,35 +2,35 @@
   "id": "pkg-nginx-removed",
   "title": {
     "en": "Uninstall nginx Package",
-    "fr": "Desinstaller le paquet nginx"
+    "fr": "Désinstaller le paquet nginx"
   },
   "summary": {
     "en": "Removes the **nginx** web/reverse-proxy package when the host has no need to serve web content.",
-    "fr": "Supprime le paquet web/reverse-proxy **nginx** lorsque l'hote n'a aucun besoin de servir du contenu web."
+    "fr": "Supprime le paquet web/reverse-proxy **nginx** lorsque l'hôte n'a aucun besoin de servir du contenu web."
   },
   "rationale": {
     "en": "The **nginx** package installs a web/reverse-proxy server that, once started, listens for inbound connections and exposes a network-facing service. Per the principle of **least functionality** (NIST CM-7), software that is not required should not be present. If there is no need to make web server software available on this host, removing it provides a safeguard **against its activation**, removes a frequently targeted listening service, and eliminates a class of web vulnerabilities and misconfigurations from the attack surface.",
-    "fr": "Le paquet **nginx** installe un serveur web/reverse-proxy qui, une fois demarre, ecoute les connexions entrantes et expose un service reseau. Selon le principe de **moindre fonctionnalite** (NIST CM-7), un logiciel non requis ne devrait pas etre present. Si aucun serveur web n'est necessaire sur cet hote, le supprimer protege **contre son activation**, retire un service en ecoute frequemment cible, et elimine de la surface d'attaque toute une classe de vulnerabilites et d'erreurs de configuration web."
+    "fr": "Le paquet **nginx** installe un serveur web/reverse-proxy qui, une fois démarré, écoute les connexions entrantes et expose un service réseau. Selon le principe de **moindre fonctionnalité** (NIST CM-7), un logiciel non requis ne devrait pas être présent. Si aucun serveur web n'est nécessaire sur cet hôte, le supprimer protège **contre son activation**, retire un service en écoute fréquemment ciblé, et élimine de la surface d'attaque toute une classe de vulnérabilités et d'erreurs de configuration web."
   },
   "check_note": {
     "en": "Pavois queries the package database through the InSpec `package('nginx')` resource and asserts `should_not be_installed`, resolving via `dpkg`/`rpm`. Reading the **effective** package inventory is more reliable than checking whether nginx is currently listening on port 80/443: a stopped service is still installed and can be re-enabled, and config under `/etc/nginx/` does not prove the binary is gone. The package state is the ground truth for least-functionality compliance.",
-    "fr": "Pavois interroge la base de paquets via la ressource InSpec `package('nginx')` et verifie `should_not be_installed`, en s'appuyant sur `dpkg`/`rpm`. Lire l'inventaire **effectif** est plus fiable que de verifier si nginx ecoute actuellement sur le port 80/443 : un service arrete reste installe et peut etre reactive, et la configuration sous `/etc/nginx/` ne prouve pas la disparition du binaire. L'etat du paquet est la verite de terrain pour la conformite au principe de moindre fonctionnalite."
+    "fr": "Pavois interroge la base de paquets via la ressource InSpec `package('nginx')` et vérifie `should_not be_installed`, en s'appuyant sur `dpkg`/`rpm`. Lire l'inventaire **effectif** est plus fiable que de vérifier si nginx écoute actuellement sur le port 80/443 : un service arrêté reste installé et peut être réactivé, et la configuration sous `/etc/nginx/` ne prouve pas la disparition du binaire. L'état du paquet est la vérité de terrain pour la conformité au principe de moindre fonctionnalité."
   },
   "verify": {
     "en": "RHEL: `rpm -q nginx` should print `package nginx is not installed`. Debian/Ubuntu: `dpkg -s nginx` should report `not installed`. Confirm nothing listens on the web ports with `ss -lntp | grep -E ':80|:443'` (no nginx process expected).",
-    "fr": "RHEL : `rpm -q nginx` doit afficher `package nginx is not installed`. Debian/Ubuntu : `dpkg -s nginx` doit indiquer `not installed`. Confirmez qu'aucun service n'ecoute sur les ports web avec `ss -lntp | grep -E ':80|:443'` (aucun processus nginx attendu)."
+    "fr": "RHEL : `rpm -q nginx` doit afficher `package nginx is not installed`. Debian/Ubuntu : `dpkg -s nginx` doit indiquer `not installed`. Confirmez qu'aucun service n'écoute sur les ports web avec `ss -lntp | grep -E ':80|:443'` (aucun processus nginx attendu)."
   },
   "logs": {
     "en": "Removal is logged in `/var/log/dpkg.log` (Debian/Ubuntu) or `dnf history` (RHEL). Prior nginx activity, access and error events, appears in `/var/log/nginx/access.log`, `/var/log/nginx/error.log` and `journalctl -u nginx`. After removal no `nginx` unit should remain.",
-    "fr": "La suppression est journalisee dans `/var/log/dpkg.log` (Debian/Ubuntu) ou `dnf history` (RHEL). L'activite anterieure de nginx, acces et erreurs, apparait dans `/var/log/nginx/access.log`, `/var/log/nginx/error.log` et `journalctl -u nginx`. Apres suppression, aucune unite `nginx` ne doit subsister."
+    "fr": "La suppression est journalisée dans `/var/log/dpkg.log` (Debian/Ubuntu) ou `dnf history` (RHEL). L'activité antérieure de nginx, accès et erreurs, apparaît dans `/var/log/nginx/access.log`, `/var/log/nginx/error.log` et `journalctl -u nginx`. Après suppression, aucune unité `nginx` ne doit subsister."
   },
   "remediation_note": {
     "en": "Pavois's harden plan declares a `package` resource for **nginx** with action `remove`; `pavois harden apply` uninstalls it via the native package manager (`apt`/`dnf`), which also stops the `nginx` service. Depending on distro packaging, config under `/etc/nginx/` may be left behind (e.g. apt without `purge`); remove it manually if you want a clean state.",
-    "fr": "Le plan de durcissement de Pavois declare une ressource `package` pour **nginx** avec l'action `remove` ; `pavois harden apply` le desinstalle via le gestionnaire de paquets natif (`apt`/`dnf`), ce qui arrete aussi le service `nginx`. Selon le packaging de la distribution, la configuration sous `/etc/nginx/` peut subsister (par ex. apt sans `purge`) ; supprimez-la manuellement pour un etat propre."
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` pour **nginx** avec l'action `remove` ; `pavois harden apply` le désinstalle via le gestionnaire de paquets natif (`apt`/`dnf`), ce qui arrête aussi le service `nginx`. Selon le packaging de la distribution, la configuration sous `/etc/nginx/` peut subsister (par ex. apt sans `purge`) ; supprimez-la manuellement pour un état propre."
   },
   "impact": {
     "en": "If this host actually serves web content or acts as a reverse proxy/load balancer, removing **nginx** takes those sites and routes offline. **Precautions:** before applying, confirm the host has no web-serving role, check `ss -lntp` for listeners on 80/443 and review `/etc/nginx/`. If nginx is required, do **not** remove it; instead harden the configuration (disable unused modules, restrict listeners). On hosts with no web role, removal is safe and enforces least functionality.",
-    "fr": "Si cet hote sert reellement du contenu web ou fait office de reverse-proxy/repartiteur de charge, supprimer **nginx** met hors ligne ces sites et routes. **Precautions :** avant d'appliquer, confirmez que l'hote n'a aucun role de serveur web, verifiez `ss -lntp` pour des ecoutes sur 80/443 et examinez `/etc/nginx/`. Si nginx est requis, ne le supprimez **pas** ; durcissez plutot la configuration (desactiver les modules inutiles, restreindre les ecoutes). Sur les hotes sans role web, la suppression est sans danger et applique le principe de moindre fonctionnalite."
+    "fr": "Si cet hôte sert réellement du contenu web ou fait office de reverse-proxy/répartiteur de charge, supprimer **nginx** met hors ligne ces sites et routes. **Précautions :** avant d'appliquer, confirmez que l'hôte n'a aucun rôle de serveur web, vérifiez `ss -lntp` pour des écoutes sur 80/443 et examinez `/etc/nginx/`. Si nginx est requis, ne le supprimez **pas** ; durcissez plutôt la configuration (désactiver les modules inutiles, restreindre les écoutes). Sur les hôtes sans rôle web, la suppression est sans danger et applique le principe de moindre fonctionnalité."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

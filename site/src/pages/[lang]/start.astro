@@ -30,7 +30,7 @@ const toc = sections.map((s) => ({ depth: 2, slug: s.slug, text: fr ? s.fr : s.e
 
 const title = fr ? 'Démarrer · Pavois' : 'Get started · Pavois';
 const desc = fr
-  ? 'Construis Pavois depuis les sources, lance ton premier scan A à E, puis durcis une cible et re-scanne. Trois commandes, du build au verdict.'
+  ? 'Construisez Pavois depuis les sources, lancez votre premier scan A à E, puis durcissez une cible et re-scannez. Trois commandes, du build au verdict.'
   : 'Build Pavois from source, run your first A to E scan, then harden a target and re-scan. Three commands, from build to verdict.';
 const crumbs = [
   { name: 'Pavois', path: `/${lang}/` },
@@ -50,8 +50,9 @@ const crumbs = [
     <p>{fr
       ? 'Le chemin le plus court, sur l’hôte courant (la config effective exige root). Build une fois, puis vérifie, scanne, consulte :'
       : 'The shortest path, on the current host (effective config needs root). Build once, then check, scan, browse:'}</p>
-    <Fragment set:html={highlight(`# ${fr ? 'mise épingle la chaîne d’outils (Go, Node, Python). Une ligne, une fois :' : 'mise pins the toolchain (Go, Node, Python). One line, once:'}
-curl https://mise.run | sh && export PATH="$HOME/.local/bin:$PATH"
+    <Fragment set:html={highlight(`# ${fr ? 'mise épingle la chaîne d’outils (Go, Node, Python). Dépôt signé, jamais un script tubé :' : 'mise pins the toolchain (Go, Node, Python). A signed repository, never a piped script:'}
+sudo apt install -y extrepo && sudo extrepo enable mise   # Debian 11+ / Ubuntu 22.04+
+sudo apt update && sudo apt install -y mise
 
 git clone https://github.com/stephrobert/pavois.git && cd pavois
 mise trust && mise install && mise run build && mise run regen
@@ -59,16 +60,20 @@ mise trust && mise install && mise run build && mise run regen
 ./go/pavois scan local --sudo --format html # ${fr ? 'audite cet hôte, note A à E' : 'audit this host, A to E grade'}
 ./go/pavois serve                           # http://localhost:8098`, 'bash')} />
     <p class="muted">{fr
-      ? 'Une fois la première release publiée, remplace le build par le téléchargement du binaire signé (section ci-dessous). Pour une cible distante : '
-      : 'Once the first release ships, swap the build for the signed binary download (section below). For a remote target: '}<code>scan user@host</code>.</p>
+      ? 'Pavois ne vous demandera jamais de tuber un script depuis Internet dans un shell : un outil de durcissement qui commence par un curl | sh a déjà perdu le débat. extrepo active le dépôt APT signé de mise ; sur Fedora ou RHEL, c’est '
+      : 'Pavois will never ask you to pipe a script from the internet into a shell: a hardening tool whose first line is curl | sh has already lost the argument. extrepo enables mise’s signed APT repository; on Fedora or RHEL it is '}
+      <code>dnf copr enable jdxcode/mise && dnf install mise</code>.</p>
 
     <p class="muted">{fr
-      ? 'Tu refuses d’installer un gestionnaire de chaîne d’outils pour essayer un scanner ? C’est légitime : avec Go 1.22+ déjà présent, '
-      : 'Do not want to install a toolchain manager just to try a scanner? Fair: with Go 1.22+ already present, '}
-      <code>cd go && go build -o pavois .</code>
-      {fr
-        ? ' suffit à produire le binaire ; il te manquera seulement les tâches mise (rendu du corpus, site).'
-        : ' produces the binary; you only lose the mise tasks (corpus rendering, site).'}</p>
+      ? 'Vous refusez d’installer un gestionnaire de chaîne d’outils pour essayer un scanner ? C’est légitime, et rien ne vous y oblige. Avec Go 1.26+ et python3 (module pyyaml) déjà présents :'
+      : 'Do not want to install a toolchain manager just to try a scanner? Fair, and nothing forces you to. With Go 1.26+ and python3 (pyyaml module) already present:'}</p>
+    <Fragment set:html={highlight(`cd go && go build -o pavois . && cd ..   # ${fr ? 'le binaire' : 'the binary'}
+python3 tools/gen.py render               # ${fr ? 'la référence par OS depuis rules.yml' : 'the per-OS reference from rules.yml'}
+bash tools/render.sh                      # ${fr ? 'le corpus InSpec (.rb)' : 'the InSpec corpus (.rb)'}
+./go/pavois doctor`, 'bash')} />
+    <p class="muted">{fr
+      ? 'Vous perdez seulement les tâches mise (le site, les validations). Pour une cible distante : '
+      : 'You only lose the mise tasks (the site, the validations). For a remote target: '}<code>scan user@host</code>.</p>
 
     <h2 id="prerequisites">{fr ? 'Prérequis' : 'Prerequisites'}</h2>
     <p>
@@ -83,7 +88,7 @@ mise trust && mise install && mise run build && mise run regen
 
     <h2 id="install">{fr ? 'Installer un binaire vérifié (une fois publié)' : 'Install a verified binary (once released)'}</h2>
     <p>{fr
-      ? 'Aucune release n’est publiée à ce jour : la section ci-dessous décrit ce que fera la première, pas ce que tu peux faire aujourd’hui (aujourd’hui, c’est le build depuis les sources, juste en dessous). Chaque release publiera un binaire statique par plateforme et un fichier checksums.txt. Sans numéro de version, gh prend la dernière :'
+      ? 'Aucune release n’est publiée à ce jour : la section ci-dessous décrit ce que fera la première, pas ce que vous pouvez faire aujourd’hui (aujourd’hui, c’est le build depuis les sources, juste en dessous). Chaque release publiera un binaire statique par plateforme et un fichier checksums.txt. Sans numéro de version, gh prend la dernière :'
       : 'No release is published yet: the section below describes what the first one will do, not what you can do today (today, that is the build from source, right underneath). Each release will ship a static binary per platform plus a checksums.txt. With no tag, gh takes the latest:'}</p>
     <Fragment set:html={highlight(`gh release download --repo stephrobert/pavois \\
   --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
@@ -95,7 +100,7 @@ chmod +x pavois-linux-amd64 && ./pavois-linux-amd64 version`, 'bash')} />
       : 'sha256sum confirms integrity against the published checksums; gh attestation verify confirms the SLSA provenance, that the file is exactly what the release workflow built (available once the repository is public).'}</p>
 
     <h2 id="build">{fr ? '1. Construire depuis les sources' : '1. Build from source'}</h2>
-    <p>{fr ? 'Clone le dépôt, installe la chaîne épinglée, compile le binaire, régénère le corpus :' : 'Clone the repository, install the pinned toolchain, compile the binary, regenerate the corpus:'}</p>
+    <p>{fr ? 'Clonez le dépôt, installez la chaîne épinglée, compilez le binaire, régénérez le corpus :' : 'Clone the repository, install the pinned toolchain, compile the binary, regenerate the corpus:'}</p>
     <Fragment set:html={highlight(`git clone https://github.com/stephrobert/pavois.git
 cd pavois
 mise trust && mise install   # ${fr ? 'Go, Node, Python épinglés' : 'pinned Go, Node, Python'}
@@ -120,7 +125,7 @@ ready - try:  pavois scan local --sudo
     <h2 id="scan">{fr ? '2. Premier scan (note A à E)' : '2. First scan (A to E grade)'}</h2>
     <p>{fr ? 'Le plus simple : auditer l’hôte courant avec sudo (la config effective exige root) :' : 'Simplest path: audit the current host with sudo (effective config needs root):'}</p>
     <Fragment set:html={highlight(`./go/pavois scan local --sudo`, 'bash')} />
-    <p>{fr ? 'Pour une cible distante via SSH (ton ~/.ssh/config et ta clé) :' : 'For a remote target over SSH (your ~/.ssh/config and key):'}</p>
+    <p>{fr ? 'Pour une cible distante via SSH (votre ~/.ssh/config et votre clé) :' : 'For a remote target over SSH (your ~/.ssh/config and key):'}</p>
     <Fragment set:html={highlight(`./go/pavois scan user@host --key ~/.ssh/id_ed25519 --sudo`, 'bash')} />
     <p class="muted">{fr ? 'Le profil (OS) est auto-détecté ; --profile ne sert que pour un profil custom.' : 'The OS profile is auto-detected; --profile is only for a custom profile.'}</p>
     <Fragment set:html={highlight(`# ${fr ? '(profil personnalisé, optionnel)' : '(custom profile, optional)'}
@@ -134,13 +139,13 @@ ready - try:  pavois scan local --sudo
     <p><a href={`/${lang}/sample-report/`}>{fr ? 'Voir un rapport d’exemple (scan réel) + campagne avant/après →' : 'See a sample report (real scan) + before/after campaign →'}</a></p>
 
     <h2 id="harden">{fr ? '3. Durcir, puis prouver' : '3. Harden, then prove'}</h2>
-    <p>{fr ? 'Planifie les correctifs, active ceux que tu veux, converge un run Chef natif, et re-scanne :' : 'Plan the fixes, opt into the ones you want, converge a native Chef run, and re-scan:'}</p>
+    <p>{fr ? 'Planifiez les correctifs, activez ceux que vous voulez, convergez un run Chef natif, et re-scannez :' : 'Plan the fixes, opt into the ones you want, converge a native Chef run, and re-scan:'}</p>
     <Fragment set:html={highlight(`./go/pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo
 # ${fr ? 'édite le plan : passe des règles à apply: true' : 'edit the plan: flip rules to apply: true'}
 ./go/pavois harden apply hardening-plan-debian12.yml --scan`, 'bash')} />
     <p>
       {fr
-        ? 'Ajoute --reboot pour redémarrer la cible et re-scanner après le boot : un PASS y est alors reboot-proven. '
+        ? 'Ajoutez --reboot pour redémarrer la cible et re-scanner après le boot : un PASS y est alors reboot-proven. '
         : 'Add --reboot to reboot the target and re-scan after boot: a PASS there is reboot-proven. '}
       <a href={`/${lang}/handbook/qualified-verdict/`}>{fr ? 'Voir le verdict qualifié.' : 'See the qualified verdict.'}</a>
     </p>
@@ -185,7 +190,7 @@ ready - try:  pavois scan local --sudo
       <li>
         <b>dangerous</b>
         {fr
-          ? ' : un mot de passe GRUB, un pare-feu en deny par défaut, kernel.modules_disabled. Ces règles peuvent te verrouiller dehors : elles exigent un acquittement explicite dans le plan et ne s’appliquent jamais toutes seules.'
+          ? ' : un mot de passe GRUB, un pare-feu en deny par défaut, kernel.modules_disabled. Ces règles peuvent vous verrouiller dehors : elles exigent un acquittement explicite dans le plan et ne s’appliquent jamais toutes seules.'
           : ': a GRUB password, a default-deny firewall, kernel.modules_disabled. These can lock you out: they require an explicit acknowledgement in the plan and never apply on their own.'}
       </li>
     </ul>
@@ -218,7 +223,7 @@ ready - try:  pavois scan local --sudo
     </p>
 
     <h2 id="ci">{fr ? '7. En CI' : '7. In CI'}</h2>
-    <p>{fr ? 'Le code de sortie porte le verdict, et le format de sortie s’adapte à ton outillage :' : 'The exit code carries the verdict, and the output format fits your tooling:'}</p>
+    <p>{fr ? 'Le code de sortie porte le verdict, et le format de sortie s’adapte à votre outillage :' : 'The exit code carries the verdict, and the output format fits your tooling:'}</p>
     <Fragment set:html={highlight(`# ${fr ? 'échoue la CI sous 80/100 ; SARIF pour GitHub code scanning' : 'fail the build under 80/100; SARIF for GitHub code scanning'}
 ./go/pavois scan user@host --key ~/.ssh/id --sudo --fail-under 80 --format sarif --out ./out
 
@@ -233,10 +238,12 @@ ready - try:  pavois scan local --sudo
 
     <h2 id="revert">{fr ? '8. Revenir en arrière' : '8. Reverting a change'}</h2>
     <p>
-      <b>{fr ? 'Pavois sait annuler un durcissement.' : 'Pavois can undo a hardening run.'}</b>
+      <b>{fr ? 'Pavois sait annuler son propre durcissement.' : 'Pavois can undo its own hardening run.'}</b>
       {fr
-        ? ' Aucun autre outil ne le fait : OpenSCAP vous tend un script bash, Lynis se contente de conseiller, CIS-CAT ne remédie pas. C’est possible ici pour une raison précise : le plan est déclaratif, donc ce que le run va toucher est connu AVANT qu’il ne tourne.'
-        : ' No other tool does: OpenSCAP hands you a bash script, Lynis only advises, CIS-CAT does not remediate. It is possible here for one precise reason: the plan is declarative, so what the run will touch is known BEFORE it runs.'}
+        ? ' Parmi les outils qui remédient (OpenSCAP, l’USG d’Ubuntu, les CIS Build Kits, ansible-lockdown), aucun ne livre l’inverse de sa propre remédiation. C’est possible ici pour une raison précise : le plan est déclaratif, donc ce que le run va toucher est connu AVANT qu’il ne tourne. Là où vous disposez d’instantanés (NixOS, rpm-ostree, ZFS, LVM, une VM), ceux-là sont strictement meilleurs : servez-vous-en. Le '
+        : ' Among the tools that remediate (OpenSCAP, Ubuntu’s USG, the CIS Build Kits, ansible-lockdown), none ships the inverse of its own remediation. It is possible here for one precise reason: the plan is declarative, so what the run will touch is known BEFORE it runs. Where you have snapshots (NixOS, rpm-ostree, ZFS, LVM, a VM), those are strictly better: use them. The '}
+      <a href={`/${lang}/handbook/rollback/`}>{fr ? 'chapitre rollback' : 'rollback chapter'}</a>
+      {fr ? ' détaille le précédent (Bastille Linux, 2003) et les limites.' : ' covers the prior art (Bastille Linux, 2003) and the limits.'}
     </p>
     <p>
       {fr
@@ -256,7 +263,7 @@ ready - try:  pavois scan local --sudo
       {fr
         ? 'Mesuré sur une debian 12 neuve, un apply complet de 268 items puis un rollback : '
         : 'Measured on a fresh debian 12, a full 268-item apply then a rollback: '}
-      <b>{fr ? '604 des 620 contrôles reviennent à leur état exact d’avant (98 %)' : '604 of the 620 controls return to their exact prior state (98%)'}</b>.
+      <b>{fr ? '597 des 620 contrôles reviennent à un état identique, soit 96 %' : '597 of the 620 controls return to an identical state, that is 96%'}</b>.
       {fr
         ? ' Le rollback recharge aussi les démons : un sshd_config restauré que personne n’a rechargé n’a rien annulé.'
         : ' The rollback also reloads the daemons: a restored sshd_config nobody reloaded has undone nothing.'}
@@ -264,17 +271,21 @@ ready - try:  pavois scan local --sudo
     <p>
       <b>{fr ? 'Ce n’est pas une machine à remonter le temps, et le manifeste le dit.' : 'It is not a time machine, and the manifest says so.'}</b>
       {fr
-        ? ' Les 2 % qui ne reviennent pas sont inhérents au fait de défaire une installation : un système de fichiers déjà monté (/tmp en tmpfs) n’est pas démonté à chaud ; un chmod piloté par un '
-        : ' The 2% that do not return are inherent to undoing an installation: a filesystem already mounted (/tmp as tmpfs) is not unmounted under a running system; a chmod driven by a '}
-      <code>find /</code>
+        ? ' Les 23 qui ne reviennent pas sont '
+        : ' The 23 that do not return are '}
+      <a href="/benchmark/rollback-divergences-debian12.csv">{fr ? 'publiés un par un' : 'published one by one'}</a>
       {fr
-        ? ' ne peut pas être énuméré à l’avance ; purger un paquet supprime son utilisateur système, et retirer un outil retire la commande qui servait à vérifier. Chaque remédiation concernée est NOMMÉE dans le manifeste, jamais passée sous silence.'
-        : ' cannot be enumerated in advance; purging a package removes its system user, and removing a tool removes the very command a control checked with. Every affected remediation is NAMED in the manifest, never hidden.'}
+        ? ' : douze durcissements ont survécu au rollback (un /tmp déjà monté, une valeur sysctl vivante), sept contrôles sont devenus applicables (les journaux que le run a créés existent toujours), un a cessé de l’être, et '
+        : ': twelve hardenings survived the rollback (a /tmp already mounted, a live sysctl value), seven controls became applicable (the logs the run created still exist), one stopped being applicable, and '}
+      <b>{fr ? 'trois contrôles qui PASSAIENT échouent désormais' : 'three controls that PASSED now fail'}</b>
+      {fr
+        ? ' (purger un paquet supprime son utilisateur système, et ses fichiers deviennent sans propriétaire). Un rollback n’est pas une opération neutre, et le manifeste le dit avant que vous ne confirmiez.'
+        : ' (purging a package deletes its system user, and its files become unowned). A rollback is not a null operation, and the manifest says so before you confirm.'}
     </p>
     <p class="muted">
       {fr
-        ? 'Reste la règle de prudence : prends un instantané avant le premier apply en production, et fais ton premier essai sur un clone. Un rollback à 98 % est un filet, pas un permis d’imprudence.'
-        : 'The prudent rule still stands: take a snapshot before the first apply in production, and make your first run on a clone. A 98% rollback is a safety net, not a licence for recklessness.'}
+        ? 'Reste la règle de prudence : prenez un instantané avant le premier apply en production, et faites votre premier essai sur un clone. Un rollback à 96 % est un filet, pas un permis d’imprudence.'
+        : 'The prudent rule still stands: take a snapshot before the first apply in production, and make your first run on a clone. A 96% rollback is a safety net, not a licence for recklessness.'}
     </p>
 
 
@@ -297,18 +308,18 @@ done < inventory.txt
 jq -r '.grade + " " + (.failed|tostring) + " " + .target' reports/*.json`, 'bash')} />
     <p class="muted">
       {fr
-        ? 'Le durcissement suit la même logique : un plan par hôte, revu, puis appliqué. Rien n’empêche de piloter la boucle depuis Ansible ou Rundeck : pavois est un binaire sans agent, qui utilise ton ssh_config et ton sudo.'
+        ? 'Le durcissement suit la même logique : un plan par hôte, revu, puis appliqué. Rien n’empêche de piloter la boucle depuis Ansible ou Rundeck : pavois est un binaire sans agent, qui utilise votre ssh_config et votre sudo.'
         : 'Hardening follows the same shape: one plan per host, reviewed, then applied. Nothing stops you driving the loop from Ansible or Rundeck: pavois is an agentless binary that uses your ssh_config and your sudo.'}
     </p>
 
     <h2 id="takeaways">{fr ? 'À retenir' : 'Key takeaways'}</h2>
     <ul>
       <li>{fr ? 'Trois commandes : ' : 'Three commands: '}<code>build</code>, <code>scan</code>, <code>harden</code>.</li>
-      <li>{fr ? 'Pas d’agent : Pavois utilise ton ~/.ssh/config et ton sudo, comme oscap/lynis.' : 'No agent: Pavois uses your ~/.ssh/config and your sudo, like oscap/lynis.'}</li>
+      <li>{fr ? 'Pas d’agent : Pavois utilise votre ~/.ssh/config et votre sudo, comme oscap/lynis.' : 'No agent: Pavois uses your ~/.ssh/config and your sudo, like oscap/lynis.'}</li>
       <li>{fr ? 'Un A net exige une posture reboot-proof, pas seulement active.' : 'A clean A requires a reboot-proof posture, not just a live one.'}</li>
       <li>{fr ? 'Un apply ne suffit pas : le durcissement modifie l’état sur lequel le plan a été calculé. Converge jusqu’au point fixe.' : 'One apply is not enough: hardening changes the very state the plan was computed from. Converge to a fixpoint.'}</li>
       <li>{fr ? 'Partitions et noyau ne se corrigent pas à chaud : ce sont des recettes, et la note remédiable dit ce que pavois peut atteindre sans elles.' : 'Partitions and the kernel are not fixable in place: they are recipes, and the remediable grade says what pavois can reach without them.'}</li>
-      <li>{fr ? 'Vérifie toujours qu’un hôte durci fonctionne encore : pare-feu, sshd, gestionnaire de paquets, journalisation.' : 'Always check a hardened host still works: firewall, sshd, package manager, logging.'}</li>
+      <li>{fr ? 'Vérifiez toujours qu’un hôte durci fonctionne encore : pare-feu, sshd, gestionnaire de paquets, journalisation.' : 'Always check a hardened host still works: firewall, sshd, package manager, logging.'}</li>
     </ul>
 
     <h2 id="next">{fr ? 'Prochaines étapes' : 'Next steps'}</h2>

@@ -14,7 +14,6 @@
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -52,31 +51,31 @@
   },
   "summary": {
     "en": "Removes the GNOME Display Manager (`gdm`) so headless and server systems carry no graphical login stack.",
-    "fr": "Supprime le gestionnaire d'affichage GNOME (`gdm`) afin que les systemes sans tete et serveurs ne portent aucune pile de connexion graphique."
+    "fr": "Supprime le gestionnaire d'affichage GNOME (`gdm`) afin que les systèmes sans tête et serveurs ne portent aucune pile de connexion graphique."
   },
   "rationale": {
     "en": "The **GNOME Display Manager (`gdm`)** pulls in a full graphical login stack that is unnecessary on servers, virtualization hypervisors and headless hosts. Each extra service is additional code that can contain vulnerabilities and additional attack surface. Removing the graphical environment from systems that do not need it enforces the principle of least functionality required by CIS and NIST CM-7.",
-    "fr": "Le **gestionnaire d'affichage GNOME (`gdm`)** entraine toute une pile de connexion graphique inutile sur les serveurs, hyperviseurs de virtualisation et hotes sans tete. Chaque service supplementaire represente du code additionnel pouvant contenir des vulnerabilites et une surface d'attaque accrue. Retirer l'environnement graphique des systemes qui n'en ont pas besoin applique le principe de fonctionnalite minimale exige par CIS et NIST CM-7."
+    "fr": "Le **gestionnaire d'affichage GNOME (`gdm`)** entraîne toute une pile de connexion graphique inutile sur les serveurs, hyperviseurs de virtualisation et hôtes sans tête. Chaque service supplémentaire représente du code additionnel pouvant contenir des vulnérabilités et une surface d'attaque accrue. Retirer l'environnement graphique des systèmes qui n'en ont pas besoin applique le principe de fonctionnalité minimale exigé par CIS et NIST CM-7."
   },
   "check_note": {
     "en": "Pavois queries the **package database** with `package('gdm')` to report the **effective** install state. This is more reliable than checking the default systemd target or an X session file: the display manager package can remain installed even when the system boots to `multi-user.target`, and only a package query reveals that residual surface.",
-    "fr": "Pavois interroge la **base de paquets** avec `package('gdm')` pour rapporter l'etat d'installation **effectif**. C'est plus fiable que de verifier la cible systemd par defaut ou un fichier de session X : le paquet du gestionnaire d'affichage peut rester installe meme si le systeme demarre sur `multi-user.target`, et seule une interrogation de paquet revele cette surface residuelle."
+    "fr": "Pavois interroge la **base de paquets** avec `package('gdm')` pour rapporter l'état d'installation **effectif**. C'est plus fiable que de vérifier la cible systemd par défaut ou un fichier de session X : le paquet du gestionnaire d'affichage peut rester installé même si le système démarre sur `multi-user.target`, et seule une interrogation de paquet révèle cette surface résiduelle."
   },
   "verify": {
     "en": "On RHEL-family run `rpm -q gdm`; on Debian/Ubuntu run `dpkg -s gdm3` (the package is named `gdm3` there). The rule passes when the result is `package ... is not installed`.",
-    "fr": "Sur la famille RHEL, executez `rpm -q gdm` ; sur Debian/Ubuntu, executez `dpkg -s gdm3` (le paquet s'y nomme `gdm3`). La regle passe lorsque le resultat est `package ... is not installed`."
+    "fr": "Sur la famille RHEL, exécutez `rpm -q gdm` ; sur Debian/Ubuntu, exécutez `dpkg -s gdm3` (le paquet s'y nomme `gdm3`). La règle passe lorsque le résultat est `package ... is not installed`."
   },
   "logs": {
     "en": "Confirm removal with `rpm -q gdm` / `dpkg -s gdm3`. The display manager's own activity (when present) is in `journalctl -u gdm` / `journalctl -u gdm3`; removal is logged in `/var/log/dnf.log` or `/var/log/dpkg.log`.",
-    "fr": "Confirmez la suppression avec `rpm -q gdm` / `dpkg -s gdm3`. L'activite du gestionnaire d'affichage (s'il est present) figure dans `journalctl -u gdm` / `journalctl -u gdm3` ; la suppression est journalisee dans `/var/log/dnf.log` ou `/var/log/dpkg.log`."
+    "fr": "Confirmez la suppression avec `rpm -q gdm` / `dpkg -s gdm3`. L'activité du gestionnaire d'affichage (s'il est présent) figure dans `journalctl -u gdm` / `journalctl -u gdm3` ; la suppression est journalisée dans `/var/log/dnf.log` ou `/var/log/dpkg.log`."
   },
   "remediation_note": {
     "en": "Pavois's harden plan removes the `gdm` package (resource `package`, action `remove`) when you run `pavois harden apply`. Removing the display manager stops the graphical login, so the host will boot to a text console afterwards.",
-    "fr": "Le plan de durcissement de Pavois supprime le paquet `gdm` (ressource `package`, action `remove`) lorsque vous lancez `pavois harden apply`. Retirer le gestionnaire d'affichage arrete la connexion graphique : l'hote demarrera ensuite sur une console texte."
+    "fr": "Le plan de durcissement de Pavois supprime le paquet `gdm` (ressource `package`, action `remove`) lorsque vous lancez `pavois harden apply`. Retirer le gestionnaire d'affichage arrête la connexion graphique : l'hôte démarrera ensuite sur une console texte."
   },
   "impact": {
     "en": "**Do not apply on workstations or any host where a graphical desktop is required**, removing `gdm` disables the graphical login and may drag in dependent GNOME packages. **Precaution:** only run this on servers/hypervisors that are administered over SSH or a text console; ensure you have working remote/console access before removing, since the local graphical session will no longer be available.",
-    "fr": "**Ne pas appliquer sur des postes de travail ni sur tout hote necessitant un bureau graphique**, supprimer `gdm` desactive la connexion graphique et peut entrainer des paquets GNOME dependants. **Precaution :** n'executez ceci que sur des serveurs/hyperviseurs administres en SSH ou via une console texte ; assurez-vous d'avoir un acces distant/console fonctionnel avant la suppression, car la session graphique locale ne sera plus disponible."
+    "fr": "**Ne pas appliquer sur des postes de travail ni sur tout hôte nécessitant un bureau graphique**, supprimer `gdm` désactive la connexion graphique et peut entraîner des paquets GNOME dépendants. **Précaution :** n'exécutez ceci que sur des serveurs/hyperviseurs administrés en SSH ou via une console texte ; assurez-vous d'avoir un accès distant/console fonctionnel avant la suppression, car la session graphique locale ne sera plus disponible."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

@@ -2,35 +2,35 @@
   "id": "repgroupowner-etc-ipsecd",
   "title": {
     "en": "Verify Group Who Owns /etc/ipsec.d Directory",
-    "fr": "Verifier le groupe proprietaire du repertoire /etc/ipsec.d"
+    "fr": "Vérifier le groupe propriétaire du répertoire /etc/ipsec.d"
   },
   "summary": {
     "en": "Ensures the `/etc/ipsec.d` directory, which holds Libreswan/IPsec configuration, is group-owned by `root`.",
-    "fr": "Garantit que le repertoire `/etc/ipsec.d`, qui contient la configuration Libreswan/IPsec, a pour groupe proprietaire `root`."
+    "fr": "Garantit que le répertoire `/etc/ipsec.d`, qui contient la configuration Libreswan/IPsec, a pour groupe propriétaire `root`."
   },
   "rationale": {
     "en": "The `/etc/ipsec.d` directory hosts Libreswan (IPsec) configuration, including secrets and connection definitions used to set up VPN tunnels. Group-ownership by `root` ensures exclusive control: if a non-privileged group owned it, members could read or tamper with IPsec keys and policies, potentially redirecting or decrypting VPN traffic. Protecting this directory is critical to the integrity and confidentiality of the host's encrypted connections.",
-    "fr": "Le repertoire `/etc/ipsec.d` heberge la configuration Libreswan (IPsec), y compris les secrets et les definitions de connexions utilises pour etablir les tunnels VPN. Une appartenance de groupe a `root` garantit un controle exclusif : si un groupe non privilegie le possedait, ses membres pourraient lire ou alterer les cles et politiques IPsec, et potentiellement detourner ou dechiffrer le trafic VPN. Proteger ce repertoire est essentiel pour l'integrite et la confidentialite des connexions chiffrees de l'hote."
+    "fr": "Le répertoire `/etc/ipsec.d` héberge la configuration Libreswan (IPsec), y compris les secrets et les définitions de connexions utilisés pour établir les tunnels VPN. Une appartenance de groupe à `root` garantit un contrôle exclusif : si un groupe non privilégié le possédait, ses membres pourraient lire ou altérer les clés et politiques IPsec, et potentiellement détourner ou déchiffrer le trafic VPN. Protéger ce répertoire est essentiel pour l'intégrité et la confidentialité des connexions chiffrées de l'hôte."
   },
   "check_note": {
     "en": "Pavois checks the **effective** group ownership of `/etc/ipsec.d` via the InSpec `file` resource, which reads the inode's real `gid` as resolved by the kernel (not a packaged default). The control is gated by `only_if { file('/etc/ipsec.d').exist? }`, so it is skipped on hosts without Libreswan installed rather than failing spuriously.",
-    "fr": "Pavois verifie l'appartenance de groupe **effective** de `/etc/ipsec.d` via la ressource InSpec `file`, qui lit le `gid` reel de l'inode tel que resolu par le noyau (et non une valeur par defaut du paquet). Le controle est conditionne par `only_if { file('/etc/ipsec.d').exist? }`, il est donc ignore sur les hotes sans Libreswan installe plutot que d'echouer a tort."
+    "fr": "Pavois vérifie l'appartenance de groupe **effective** de `/etc/ipsec.d` via la ressource InSpec `file`, qui lit le `gid` réel de l'inode tel que résolu par le noyau (et non une valeur par défaut du paquet). Le contrôle est conditionné par `only_if { file('/etc/ipsec.d').exist? }`, il est donc ignoré sur les hôtes sans Libreswan installé plutôt que d'échouer à tort."
   },
   "verify": {
     "en": "Run `stat -c '%G' /etc/ipsec.d` (or `ls -ld /etc/ipsec.d`). The output must be `root`.",
-    "fr": "Executez `stat -c '%G' /etc/ipsec.d` (ou `ls -ld /etc/ipsec.d`). La sortie doit etre `root`."
+    "fr": "Exécutez `stat -c '%G' /etc/ipsec.d` (ou `ls -ld /etc/ipsec.d`). La sortie doit être `root`."
   },
   "logs": {
     "en": "Ownership changes are not service-logged, but you can confirm current state with `stat -c '%U:%G %a' /etc/ipsec.d` and `find /etc/ipsec.d -not -group root` to spot any contained file with a non-root group. Use `auditd` watches on `/etc/ipsec.d` if you need an audit trail of modifications.",
-    "fr": "Les changements de proprietaire ne sont pas journalises par un service, mais vous pouvez confirmer l'etat courant avec `stat -c '%U:%G %a' /etc/ipsec.d` et `find /etc/ipsec.d -not -group root` pour reperer tout fichier contenu ayant un groupe non root. Utilisez des regles de surveillance `auditd` sur `/etc/ipsec.d` si vous avez besoin d'une piste d'audit des modifications."
+    "fr": "Les changements de propriétaire ne sont pas journalisés par un service, mais vous pouvez confirmer l'état courant avec `stat -c '%U:%G %a' /etc/ipsec.d` et `find /etc/ipsec.d -not -group root` pour repérer tout fichier contenu ayant un groupe non root. Utilisez des règles de surveillance `auditd` sur `/etc/ipsec.d` si vous avez besoin d'une piste d'audit des modifications."
   },
   "remediation_note": {
     "en": "`pavois harden apply` uses the `file` resource to set the group of `/etc/ipsec.d` to `root` (equivalent to `chgrp root /etc/ipsec.d`). It is idempotent and changes nothing if the group is already `root`.",
-    "fr": "`pavois harden apply` utilise la ressource `file` pour definir le groupe de `/etc/ipsec.d` a `root` (equivalent a `chgrp root /etc/ipsec.d`). C'est idempotent et ne change rien si le groupe est deja `root`."
+    "fr": "`pavois harden apply` utilise la ressource `file` pour définir le groupe de `/etc/ipsec.d` à `root` (équivalent à `chgrp root /etc/ipsec.d`). C'est idempotent et ne change rien si le groupe est déjà `root`."
   },
   "impact": {
     "en": "Impact is minimal: changing the directory's group to `root` only restricts non-root group access, which is the intended hardening. Precaution: confirm no legitimate Libreswan helper or management tool relies on a non-root group to read this directory before applying (uncommon). If `/etc/ipsec.d` does not exist, the rule is skipped and harden makes no change.",
-    "fr": "L'impact est minime : changer le groupe du repertoire pour `root` ne restreint que l'acces des groupes non root, ce qui est le durcissement voulu. Precaution : confirmez qu'aucun outil d'assistance ou de gestion Libreswan legitime ne depend d'un groupe non root pour lire ce repertoire avant d'appliquer (rare). Si `/etc/ipsec.d` n'existe pas, la regle est ignoree et harden ne change rien."
+    "fr": "L'impact est minime : changer le groupe du répertoire pour `root` ne restreint que l'accès des groupes non root, ce qui est le durcissement voulu. Précaution : confirmez qu'aucun outil d'assistance ou de gestion Libreswan légitime ne dépend d'un groupe non root pour lire ce répertoire avant d'appliquer (rare). Si `/etc/ipsec.d` n'existe pas, la règle est ignorée et harden ne change rien."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

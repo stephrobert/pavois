@@ -14,7 +14,6 @@
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -49,35 +48,35 @@
   },
   "title": {
     "en": "Ensure PAM Enforces Password Requirements - Authentication Retry Prompts Permitted Per-Session",
-    "fr": "Garantir que PAM impose des exigences de mot de passe - Nombre d'invites de nouvelle tentative autorisees par session"
+    "fr": "Garantir que PAM impose des exigences de mot de passe - Nombre d'invites de nouvelle tentative autorisées par session"
   },
   "summary": {
     "en": "Caps the number of password prompts `pam_pwquality` allows in a single session by setting `retry = 3`.",
-    "fr": "Plafonne le nombre d'invites de mot de passe autorisees par `pam_pwquality` dans une seule session en posant `retry = 3`."
+    "fr": "Plafonne le nombre d'invites de mot de passe autorisées par `pam_pwquality` dans une seule session en posant `retry = 3`."
   },
   "rationale": {
     "en": "Setting the number of per-session password prompts to a low value forces some software, such as SSH, to re-connect after exhausting its retries. This slows down and draws attention to certain password-guessing attacks by limiting how many attempts an attacker can make per connection. Note this is **distinct from account lockout**, which is enforced separately by `pam_faillock`; `retry` only bounds prompts within one authentication session.",
-    "fr": "Definir a une valeur basse le nombre d'invites de mot de passe par session force certains logiciels, comme SSH, a se reconnecter apres avoir epuise leurs tentatives. Cela ralentit et attire l'attention sur certaines attaques par devinette de mot de passe en limitant le nombre d'essais possibles par connexion. Notez que c'est **distinct du verrouillage de compte**, applique separement par `pam_faillock` ; `retry` ne borne que les invites au sein d'une seule session d'authentification."
+    "fr": "Définir à une valeur basse le nombre d'invites de mot de passe par session force certains logiciels, comme SSH, à se reconnecter après avoir épuisé leurs tentatives. Cela ralentit et attire l'attention sur certaines attaques par devinette de mot de passe en limitant le nombre d'essais possibles par connexion. Notez que c'est **distinct du verrouillage de compte**, appliqué séparément par `pam_faillock` ; `retry` ne borne que les invites au sein d'une seule session d'authentification."
   },
   "check_note": {
     "en": "Pavois reads the **effective** `retry` value across `/etc/security/pwquality.conf` **and** all drop-ins under `/etc/security/pwquality.conf.d/`, keeping the **last** definition that wins at runtime. A file-based scanner reading only the main config would miss a value set in a drop-in. The control passes only when the resolved value is `<= 3`.",
-    "fr": "Pavois lit la valeur **effective** de `retry` a travers `/etc/security/pwquality.conf` **et** tous les drop-ins sous `/etc/security/pwquality.conf.d/`, en conservant la **derniere** definition qui l'emporte a l'execution. Un scanner base sur les fichiers lisant uniquement la config principale manquerait une valeur posee dans un drop-in. Le controle passe uniquement quand la valeur resolue est `<= 3`."
+    "fr": "Pavois lit la valeur **effective** de `retry` à travers `/etc/security/pwquality.conf` **et** tous les drop-ins sous `/etc/security/pwquality.conf.d/`, en conservant la **dernière** définition qui l'emporte à l'exécution. Un scanner basé sur les fichiers lisant uniquement la config principale manquerait une valeur posée dans un drop-in. Le contrôle passe uniquement quand la valeur résolue est `<= 3`."
   },
   "verify": {
     "en": "Run `grep -rh '^[[:space:]]*retry' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. The effective line must read `retry = 3` (or any value `<= 3`).",
-    "fr": "Executez `grep -rh '^[[:space:]]*retry' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. La ligne effective doit indiquer `retry = 3` (ou toute valeur `<= 3`)."
+    "fr": "Exécutez `grep -rh '^[[:space:]]*retry' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. La ligne effective doit indiquer `retry = 3` (ou toute valeur `<= 3`)."
   },
   "logs": {
     "en": "Authentication and password-change retries are logged via PAM in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL family); look for repeated `pam_pwquality` failures within a session, and use `journalctl -u ssh` to correlate SSH re-connections. Inspect the live setting with `grep -r retry /etc/security/pwquality.conf.d/`.",
-    "fr": "Les nouvelles tentatives d'authentification et de changement de mot de passe sont journalisees via PAM dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL) ; cherchez les echecs `pam_pwquality` repetes au sein d'une session, et utilisez `journalctl -u ssh` pour correler les reconnexions SSH. Inspectez le reglage actif avec `grep -r retry /etc/security/pwquality.conf.d/`."
+    "fr": "Les nouvelles tentatives d'authentification et de changement de mot de passe sont journalisées via PAM dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL) ; cherchez les échecs `pam_pwquality` répétés au sein d'une session, et utilisez `journalctl -u ssh` pour corréler les reconnexions SSH. Inspectez le réglage actif avec `grep -r retry /etc/security/pwquality.conf.d/`."
   },
   "remediation_note": {
     "en": "`pavois harden apply` writes `retry = 3` to the drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via the idempotent `keyval` resource. The `99-` prefix ensures it overrides any earlier value. No service restart is needed; it applies at the next authentication.",
-    "fr": "`pavois harden apply` ecrit `retry = 3` dans le drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via la ressource idempotente `keyval`. Le prefixe `99-` garantit qu'il surcharge toute valeur anterieure. Aucun redemarrage n'est requis ; cela s'applique a la prochaine authentification."
+    "fr": "`pavois harden apply` écrit `retry = 3` dans le drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via la ressource idempotente `keyval`. Le préfixe `99-` garantit qu'il surcharge toute valeur antérieure. Aucun redémarrage n'est requis ; cela s'applique à la prochaine authentification."
   },
   "impact": {
     "en": "A low `retry` value mildly affects interactive UX: a user mistyping a new password more than 3 times must restart the operation (and over SSH, re-connect). This does **not** lock accounts. Precaution: ensure `retry` is not duplicated with a conflicting value in the PAM stack (`pam_pwquality.so retry=N` in `/etc/pam.d/`), since the PAM-line argument can override the `pwquality.conf` value on some distros.",
-    "fr": "Une valeur basse de `retry` affecte legerement l'experience interactive : un utilisateur qui se trompe plus de 3 fois en saisissant un nouveau mot de passe doit recommencer l'operation (et en SSH, se reconnecter). Cela ne **verrouille pas** les comptes. Precaution : assurez-vous que `retry` n'est pas duplique avec une valeur conflictuelle dans la pile PAM (`pam_pwquality.so retry=N` dans `/etc/pam.d/`), car l'argument de la ligne PAM peut surcharger la valeur de `pwquality.conf` sur certaines distributions."
+    "fr": "Une valeur basse de `retry` affecte légèrement l'expérience interactive : un utilisateur qui se trompe plus de 3 fois en saisissant un nouveau mot de passe doit recommencer l'opération (et en SSH, se reconnecter). Cela ne **verrouille pas** les comptes. Précaution : assurez-vous que `retry` n'est pas dupliqué avec une valeur conflictuelle dans la pile PAM (`pam_pwquality.so retry=N` dans `/etc/pam.d/`), car l'argument de la ligne PAM peut surcharger la valeur de `pwquality.conf` sur certaines distributions."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

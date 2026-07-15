@@ -127,9 +127,13 @@ description = "Generate the site's CLI reference from the BINARY itself (pavois 
 depends = ["build"]
 run = "{{config_root}}/go/pavois clidocs > {{config_root}}/site/src/data/cli.json"
 
+[tasks."gen:benchmarks"]
+description = "Generate site/src/data/benchmarks.json (the CIS benchmark version per OS, incl. the 3 inherited OSes) from docs/reference/norms.yml, so the CIS standard-page table cannot drift"
+run = "uv run --with pyyaml python3 tools/gen_benchmarks.py"
+
 [tasks."gen:pages"]
 description = "Generate the site's rule fiches from the rule base (one per neutral id, authored prose preserved)"
-depends = ["gen"]
+depends = ["gen", "gen:benchmarks"]
 run = "uv run --with pyyaml --with fastmcp python3 tools/generate_rule_pages.py"
 
 [tasks."site:verify"]

@@ -14,7 +14,6 @@
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -64,35 +63,35 @@
   },
   "title": {
     "en": "A host firewall is installed and active",
-    "fr": "Un pare-feu local est installe et actif"
+    "fr": "Un pare-feu local est installé et actif"
   },
   "summary": {
     "en": "Ensures at least one host firewall service (`ufw`, `nftables`, or `firewalld`) is installed and currently active.",
-    "fr": "Garantit qu'au moins un service de pare-feu local (`ufw`, `nftables` ou `firewalld`) est installe et actuellement actif."
+    "fr": "Garantit qu'au moins un service de pare-feu local (`ufw`, `nftables` ou `firewalld`) est installé et actuellement actif."
   },
   "rationale": {
     "en": "A host firewall is the last line of defense for a machine: it filters inbound and outbound traffic so that only intended services are reachable, even if a service is misconfigured to listen on all interfaces. Without an active firewall, every open port is exposed to the whole network, widening the attack surface and making lateral movement trivial after a single host is compromised. Requiring at least one of `ufw`/`nftables`/`firewalld` ensures a packet filter is actually running, not merely installed.",
-    "fr": "Un pare-feu local est la derniere ligne de defense d'une machine : il filtre le trafic entrant et sortant pour que seuls les services voulus soient accessibles, meme si un service est mal configure et ecoute sur toutes les interfaces. Sans pare-feu actif, chaque port ouvert est expose a tout le reseau, elargissant la surface d'attaque et rendant le deplacement lateral trivial des qu'un hote est compromis. Exiger au moins l'un de `ufw`/`nftables`/`firewalld` garantit qu'un filtre de paquets tourne reellement, et n'est pas seulement installe."
+    "fr": "Un pare-feu local est la dernière ligne de défense d'une machine : il filtre le trafic entrant et sortant pour que seuls les services voulus soient accessibles, même si un service est mal configuré et écoute sur toutes les interfaces. Sans pare-feu actif, chaque port ouvert est exposé à tout le réseau, élargissant la surface d'attaque et rendant le déplacement latéral trivial dès qu'un hôte est compromis. Exiger au moins l'un de `ufw`/`nftables`/`firewalld` garantit qu'un filtre de paquets tourne réellement, et n'est pas seulement installé."
   },
   "check_note": {
     "en": "Pavois loops over `ufw`, `nftables` and `firewalld` and runs `systemctl is-active --quiet <s>`; if any one is active it prints `ok`. This audits the **effective** runtime state via systemd, not the mere presence of a package or a config file, a firewall installed but stopped, masked, or failed to start is correctly reported as non-compliant.",
-    "fr": "Pavois parcourt `ufw`, `nftables` et `firewalld` et execute `systemctl is-active --quiet <s>` ; si l'un est actif il affiche `ok`. Cela audite l'etat d'execution **effectif** via systemd, et non la simple presence d'un paquet ou d'un fichier de configuration, un pare-feu installe mais arrete, masque ou en echec de demarrage est correctement signale non conforme."
+    "fr": "Pavois parcourt `ufw`, `nftables` et `firewalld` et exécute `systemctl is-active --quiet <s>` ; si l'un est actif il affiche `ok`. Cela audite l'état d'exécution **effectif** via systemd, et non la simple présence d'un paquet ou d'un fichier de configuration, un pare-feu installé mais arrêté, masqué ou en échec de démarrage est correctement signalé non conforme."
   },
   "verify": {
     "en": "Run `systemctl is-active ufw nftables firewalld`. Expected: at least one returns **`active`**. You can also confirm rules are loaded with `ufw status`, `nft list ruleset`, or `firewall-cmd --state` depending on the backend in use.",
-    "fr": "Executez `systemctl is-active ufw nftables firewalld`. Attendu : au moins un renvoie **`active`**. Vous pouvez aussi confirmer que des regles sont chargees avec `ufw status`, `nft list ruleset` ou `firewall-cmd --state` selon le backend utilise."
+    "fr": "Exécutez `systemctl is-active ufw nftables firewalld`. Attendu : au moins un renvoie **`active`**. Vous pouvez aussi confirmer que des règles sont chargées avec `ufw status`, `nft list ruleset` ou `firewall-cmd --state` selon le backend utilisé."
   },
   "logs": {
     "en": "Use `systemctl status firewalld` (or `ufw`/`nftables`) to see start/stop events, and `journalctl -u firewalld` for the service journal. Inspect the live ruleset with `nft list ruleset` or `iptables-save`; dropped packets appear in `journalctl -k` / `/var/log/kern.log` when logging targets are configured.",
-    "fr": "Utilisez `systemctl status firewalld` (ou `ufw`/`nftables`) pour voir les evenements demarrage/arret, et `journalctl -u firewalld` pour le journal du service. Inspectez le jeu de regles actif avec `nft list ruleset` ou `iptables-save` ; les paquets rejetes apparaissent dans `journalctl -k` / `/var/log/kern.log` quand des cibles de journalisation sont configurees."
+    "fr": "Utilisez `systemctl status firewalld` (ou `ufw`/`nftables`) pour voir les événements démarrage/arrêt, et `journalctl -u firewalld` pour le journal du service. Inspectez le jeu de règles actif avec `nft list ruleset` ou `iptables-save` ; les paquets rejetés apparaissent dans `journalctl -k` / `/var/log/kern.log` quand des cibles de journalisation sont configurées."
   },
   "remediation_note": {
     "en": "Pavois's harden plan uses a **choose** resource: you pick one backend among `ufw`, `nftables`, or `firewalld` (default **firewalld**). It then installs the matching package and enables + starts the matching service. Applied with `pavois harden apply`. It establishes a running firewall but does not author a tailored ruleset, define your allow/deny policy afterward.",
-    "fr": "Le plan de durcissement de Pavois utilise une ressource **choose** : vous choisissez un backend parmi `ufw`, `nftables` ou `firewalld` (defaut **firewalld**). Il installe ensuite le paquet correspondant puis active et demarre le service correspondant. Applique avec `pavois harden apply`. Il met en place un pare-feu fonctionnel mais ne redige pas de jeu de regles sur mesure, definissez votre politique d'autorisation/refus ensuite."
+    "fr": "Le plan de durcissement de Pavois utilise une ressource **choose** : vous choisissez un backend parmi `ufw`, `nftables` ou `firewalld` (défaut **firewalld**). Il installe ensuite le paquet correspondant puis active et démarre le service correspondant. Appliqué avec `pavois harden apply`. Il met en place un pare-feu fonctionnel mais ne rédige pas de jeu de règles sur mesure, définissez votre politique d'autorisation/refus ensuite."
   },
   "impact": {
     "en": "**Lockout risk:** enabling a firewall with a default-deny policy can cut your SSH session if the default ruleset blocks port 22. Before applying on a remote host, explicitly allow SSH first (e.g. `ufw allow OpenSSH` / `firewall-cmd --add-service=ssh --permanent`) and keep an out-of-band console (serial/IPMI) available. Running two backends at once (e.g. `ufw` over `nftables`) can also produce confusing or conflicting rules, pick one backend per host.",
-    "fr": "**Risque de verrouillage :** activer un pare-feu avec une politique de refus par defaut peut couper votre session SSH si le jeu de regles par defaut bloque le port 22. Avant d'appliquer sur un hote distant, autorisez explicitement SSH d'abord (par ex. `ufw allow OpenSSH` / `firewall-cmd --add-service=ssh --permanent`) et gardez une console hors-bande (serie/IPMI) disponible. Faire tourner deux backends simultanement (par ex. `ufw` au-dessus de `nftables`) peut aussi produire des regles confuses ou conflictuelles, choisissez un seul backend par hote."
+    "fr": "**Risque de verrouillage :** activer un pare-feu avec une politique de refus par défaut peut couper votre session SSH si le jeu de règles par défaut bloque le port 22. Avant d'appliquer sur un hôte distant, autorisez explicitement SSH d'abord (par ex. `ufw allow OpenSSH` / `firewall-cmd --add-service=ssh --permanent`) et gardez une console hors-bande (série/IPMI) disponible. Faire tourner deux backends simultanément (par ex. `ufw` au-dessus de `nftables`) peut aussi produire des règles confuses ou conflictuelles, choisissez un seul backend par hôte."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

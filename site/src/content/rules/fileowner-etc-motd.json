@@ -14,7 +14,6 @@
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -43,35 +42,35 @@
   },
   "title": {
     "en": "Verify ownership of Message of the Day Banner",
-    "fr": "Verifier le proprietaire de la banniere Message du jour"
+    "fr": "Vérifier le propriétaire de la bannière Message du jour"
   },
   "summary": {
     "en": "Ensures `/etc/motd` (the post-login Message of the Day) is owned by `root` (UID 0).",
-    "fr": "Garantit que `/etc/motd` (le Message du jour post-connexion) appartient a `root` (UID 0)."
+    "fr": "Garantit que `/etc/motd` (le Message du jour post-connexion) appartient à `root` (UID 0)."
   },
   "rationale": {
     "en": "The `/etc/motd` file holds the **Message of the Day** shown after a user authenticates. If a non-root account owns it, that user can alter or replace the post-login notice, injecting misleading or malicious content seen by every operator. Setting **`root` (UID 0)** as the owner ensures only privileged users can change the banner, keeping the notification consistent with applicable laws, policies and standards.",
-    "fr": "Le fichier `/etc/motd` contient le **Message du jour** affiche apres l'authentification d'un utilisateur. Si un compte non-root le possede, cet utilisateur peut modifier ou remplacer l'avis post-connexion, injectant un contenu trompeur ou malveillant vu par chaque operateur. Definir **`root` (UID 0)** comme proprietaire garantit que seuls les utilisateurs privilegies peuvent changer la banniere, conformement aux lois, politiques et normes applicables."
+    "fr": "Le fichier `/etc/motd` contient le **Message du jour** affiché après l'authentification d'un utilisateur. Si un compte non-root le possède, cet utilisateur peut modifier ou remplacer l'avis post-connexion, injectant un contenu trompeur ou malveillant vu par chaque opérateur. Définir **`root` (UID 0)** comme propriétaire garantit que seuls les utilisateurs privilégiés peuvent changer la bannière, conformément aux lois, politiques et normes applicables."
   },
   "check_note": {
     "en": "Pavois inspects the **live filesystem** with the InSpec `file('/etc/motd')` resource and asserts `uid == 0`, guarded by `only_if` so the test is skipped when the file is absent. Reading the actual inode owner (rather than trusting a deployment template) reflects the **effective** state on disk, catching any post-deployment `chown`. Note on Debian/Ubuntu the MOTD is often assembled dynamically from `/etc/update-motd.d/` scripts, but the static `/etc/motd` must still be root-owned.",
-    "fr": "Pavois inspecte le **systeme de fichiers reel** via la ressource InSpec `file('/etc/motd')` et verifie `uid == 0`, protege par `only_if` afin d'ignorer le test si le fichier est absent. Lire le proprietaire reel de l'inode (plutot que de se fier a un modele de deploiement) reflete l'etat **effectif** sur le disque et detecte tout `chown` post-deploiement. Sur Debian/Ubuntu, le MOTD est souvent assemble dynamiquement par les scripts `/etc/update-motd.d/`, mais le `/etc/motd` statique doit lui aussi appartenir a root."
+    "fr": "Pavois inspecte le **système de fichiers réel** via la ressource InSpec `file('/etc/motd')` et vérifie `uid == 0`, protégé par `only_if` afin d'ignorer le test si le fichier est absent. Lire le propriétaire réel de l'inode (plutôt que de se fier à un modèle de déploiement) reflète l'état **effectif** sur le disque et détecte tout `chown` post-déploiement. Sur Debian/Ubuntu, le MOTD est souvent assemblé dynamiquement par les scripts `/etc/update-motd.d/`, mais le `/etc/motd` statique doit lui aussi appartenir à root."
   },
   "verify": {
     "en": "Run `stat -c '%U %u %n' /etc/motd`. Expected output: `root 0 /etc/motd`. The numeric `0` confirms the rule regardless of name-service mapping.",
-    "fr": "Executez `stat -c '%U %u %n' /etc/motd`. Sortie attendue : `root 0 /etc/motd`. Le `0` numerique confirme la regle quel que soit le mappage du service de noms."
+    "fr": "Exécutez `stat -c '%U %u %n' /etc/motd`. Sortie attendue : `root 0 /etc/motd`. Le `0` numérique confirme la règle quel que soit le mappage du service de noms."
   },
   "logs": {
     "en": "Ownership changes are not logged by default. With the audit framework, add `auditctl -w /etc/motd -p wa -k banner` then inspect `/var/log/audit/audit.log` (filter `grep 'key=\"banner\"'`). The MOTD is rendered at login by PAM (`pam_motd`), so display events appear in `/var/log/auth.log` / `journalctl`.",
-    "fr": "Les changements de proprietaire ne sont pas journalises par defaut. Avec le framework d'audit, ajoutez `auditctl -w /etc/motd -p wa -k banner` puis consultez `/var/log/audit/audit.log` (filtre `grep 'key=\"banner\"'`). Le MOTD est rendu a la connexion par PAM (`pam_motd`), les evenements d'affichage apparaissent donc dans `/var/log/auth.log` / `journalctl`."
+    "fr": "Les changements de propriétaire ne sont pas journalisés par défaut. Avec le framework d'audit, ajoutez `auditctl -w /etc/motd -p wa -k banner` puis consultez `/var/log/audit/audit.log` (filtre `grep 'key=\"banner\"'`). Le MOTD est rendu à la connexion par PAM (`pam_motd`), les événements d'affichage apparaissent donc dans `/var/log/auth.log` / `journalctl`."
   },
   "remediation_note": {
     "en": "No automated remediation is shipped for this rule. Apply it manually with `chown root /etc/motd` (run as root or via `sudo`); the file should remain group `root` and mode `0644`.",
-    "fr": "Aucune remediation automatisee n'est fournie pour cette regle. Appliquez-la manuellement avec `chown root /etc/motd` (en root ou via `sudo`) ; le fichier doit rester en groupe `root` et mode `0644`."
+    "fr": "Aucune remédiation automatisée n'est fournie pour cette règle. Appliquez-la manuellement avec `chown root /etc/motd` (en root ou via `sudo`) ; le fichier doit rester en groupe `root` et mode `0644`."
   },
   "impact": {
     "en": "A wrong owner lets a non-privileged user rewrite the message every authenticated user sees. **Risk of applying:** none in practice, `/etc/motd` is a static text file with no service dependency, so `chown root` does not affect logins. As a precaution, keep it world-readable (`0644`) so the message still renders.",
-    "fr": "Un mauvais proprietaire permet a un utilisateur non privilegie de reecrire le message vu par chaque utilisateur authentifie. **Risque a l'application :** nul en pratique, `/etc/motd` est un fichier texte statique sans dependance de service, donc `chown root` n'affecte pas les connexions. Par precaution, gardez-le lisible par tous (`0644`) pour que le message s'affiche toujours."
+    "fr": "Un mauvais propriétaire permet à un utilisateur non privilégié de réécrire le message vu par chaque utilisateur authentifié. **Risque à l'application :** nul en pratique, `/etc/motd` est un fichier texte statique sans dépendance de service, donc `chown root` n'affecte pas les connexions. Par précaution, gardez-le lisible par tous (`0644`) pour que le message s'affiche toujours."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

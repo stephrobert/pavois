@@ -14,7 +14,6 @@
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -39,35 +38,35 @@
   },
   "title": {
     "en": "Avoid using remember in pam_unix module",
-    "fr": "Eviter l'option remember dans le module pam_unix"
+    "fr": "Éviter l'option remember dans le module pam_unix"
   },
   "summary": {
     "en": "Ensures the **`remember=`** argument is not set on `pam_unix.so`, so password history is left to `pam_pwhistory.so` and the strong password hash is preserved.",
-    "fr": "Garantit que l'argument **`remember=`** n'est pas pose sur `pam_unix.so`, afin que l'historique des mots de passe soit confie a `pam_pwhistory.so` et que le hachage fort soit preserve."
+    "fr": "Garantit que l'argument **`remember=`** n'est pas posé sur `pam_unix.so`, afin que l'historique des mots de passe soit confié à `pam_pwhistory.so` et que le hachage fort soit préservé."
   },
   "rationale": {
     "en": "Password history must be enforced by **`pam_pwhistory.so`**, not by the `remember=` argument on `pam_unix.so`. When `pam_unix` handles history it writes the old hashes to `/etc/security/opasswd` using its own (weaker) hashing, undermining the stronger algorithm and rounds used elsewhere. Removing `remember=` from `pam_unix` keeps history handling in the module designed for it and preserves a robust hash, making cracking of stored passwords harder.",
-    "fr": "L'historique des mots de passe doit etre gere par **`pam_pwhistory.so`**, et non par l'argument `remember=` de `pam_unix.so`. Lorsque `pam_unix` gere l'historique, il ecrit les anciens condensats dans `/etc/security/opasswd` avec son propre hachage (plus faible), affaiblissant l'algorithme et le nombre de tours utilises ailleurs. Retirer `remember=` de `pam_unix` laisse la gestion de l'historique au module concu pour cela et preserve un hachage robuste, rendant plus difficile le cassage des mots de passe stockes."
+    "fr": "L'historique des mots de passe doit être géré par **`pam_pwhistory.so`**, et non par l'argument `remember=` de `pam_unix.so`. Lorsque `pam_unix` gère l'historique, il écrit les anciens condensats dans `/etc/security/opasswd` avec son propre hachage (plus faible), affaiblissant l'algorithme et le nombre de tours utilisés ailleurs. Retirer `remember=` de `pam_unix` laisse la gestion de l'historique au module conçu pour cela et préserve un hachage robuste, rendant plus difficile le cassage des mots de passe stockés."
   },
   "check_note": {
     "en": "Pavois greps the **effective** PAM tree under `/etc/pam.d/` for active `pam_unix.so` lines and fails if any carries `remember=`. Inspecting the resolved stack (with `@include`d files) catches the argument wherever it is actually applied, unlike a check tied to one assumed file.",
-    "fr": "Pavois recherche dans l'arborescence PAM **effective** sous `/etc/pam.d/` les lignes `pam_unix.so` actives et echoue si l'une porte `remember=`. Inspecter la pile resolue (avec les fichiers `@include`) capte l'argument la ou il est reellement applique, contrairement a un controle lie a un seul fichier suppose."
+    "fr": "Pavois recherche dans l'arborescence PAM **effective** sous `/etc/pam.d/` les lignes `pam_unix.so` actives et échoue si l'une porte `remember=`. Inspecter la pile résolue (avec les fichiers `@include`) capte l'argument là où il est réellement appliqué, contrairement à un contrôle lié à un seul fichier supposé."
   },
   "verify": {
     "en": "Run:\n\n```bash\ngrep -rE '^[^#]*\\bpam_unix\\.so\\b' /etc/pam.d/ | grep 'remember='\n```\n\nExpected: **no output**, no active `pam_unix.so` line should contain `remember=`. Any match indicates the misconfiguration.",
-    "fr": "Executez :\n\n```bash\ngrep -rE '^[^#]*\\bpam_unix\\.so\\b' /etc/pam.d/ | grep 'remember='\n```\n\nAttendu : **aucune sortie**, aucune ligne `pam_unix.so` active ne doit contenir `remember=`. Toute correspondance signale la mauvaise configuration."
+    "fr": "Exécutez :\n\n```bash\ngrep -rE '^[^#]*\\bpam_unix\\.so\\b' /etc/pam.d/ | grep 'remember='\n```\n\nAttendu : **aucune sortie**, aucune ligne `pam_unix.so` active ne doit contenir `remember=`. Toute correspondance signale la mauvaise configuration."
   },
   "logs": {
     "en": "Password-change events and history rejections are recorded in **`/var/log/auth.log`** (Debian/Ubuntu) or **`/var/log/secure`** (RHEL/Fedora). Watch `journalctl -t passwd -f` while changing a password to see which module enforces history; the old-hash store is `/etc/security/opasswd`.",
-    "fr": "Les changements de mot de passe et les rejets pour historique sont enregistres dans **`/var/log/auth.log`** (Debian/Ubuntu) ou **`/var/log/secure`** (RHEL/Fedora). Observez `journalctl -t passwd -f` lors d'un changement de mot de passe pour voir quel module applique l'historique ; le stockage des anciens condensats est `/etc/security/opasswd`."
+    "fr": "Les changements de mot de passe et les rejets pour historique sont enregistrés dans **`/var/log/auth.log`** (Debian/Ubuntu) ou **`/var/log/secure`** (RHEL/Fedora). Observez `journalctl -t passwd -f` lors d'un changement de mot de passe pour voir quel module applique l'historique ; le stockage des anciens condensats est `/etc/security/opasswd`."
   },
   "remediation_note": {
     "en": "No automated harden plan ships for this rule, so it must be applied **manually**: edit the `password` stack (`/etc/pam.d/common-password`, or `password-auth`/`system-auth` on RHEL/Fedora) and remove the `remember=` argument from the `pam_unix.so` line, configuring history on a dedicated `pam_pwhistory.so` line instead.",
-    "fr": "Aucun plan de durcissement automatise n'est fourni pour cette regle : elle doit etre appliquee **manuellement**. Editez la pile `password` (`/etc/pam.d/common-password`, ou `password-auth`/`system-auth` sous RHEL/Fedora) et retirez l'argument `remember=` de la ligne `pam_unix.so`, en configurant plutot l'historique sur une ligne `pam_pwhistory.so` dediee."
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle : elle doit être appliquée **manuellement**. Éditez la pile `password` (`/etc/pam.d/common-password`, ou `password-auth`/`system-auth` sous RHEL/Fedora) et retirez l'argument `remember=` de la ligne `pam_unix.so`, en configurant plutôt l'historique sur une ligne `pam_pwhistory.so` dédiée."
   },
   "impact": {
     "en": "Leaving `remember=` on `pam_unix` weakens stored-hash protection but does not block logins; the fix is low-risk if password history is also configured on `pam_pwhistory.so` so the policy is not lost. **Precautions:** keep a root shell open, edit via `pam-auth-update`/`authselect` where possible, and verify a password change still works (and still rejects reuse) from a second session before closing your current one.",
-    "fr": "Conserver `remember=` sur `pam_unix` affaiblit la protection des condensats stockes mais ne bloque pas les connexions ; la correction est peu risquee si l'historique est aussi configure sur `pam_pwhistory.so` pour ne pas perdre la politique. **Precautions :** gardez un shell root ouvert, editez via `pam-auth-update`/`authselect` si possible, et verifiez qu'un changement de mot de passe fonctionne toujours (et refuse toujours la reutilisation) depuis une seconde session avant de fermer la session courante."
+    "fr": "Conserver `remember=` sur `pam_unix` affaiblit la protection des condensats stockés mais ne bloque pas les connexions ; la correction est peu risquée si l'historique est aussi configuré sur `pam_pwhistory.so` pour ne pas perdre la politique. **Précautions :** gardez un shell root ouvert, éditez via `pam-auth-update`/`authselect` si possible, et vérifiez qu'un changement de mot de passe fonctionne toujours (et refuse toujours la réutilisation) depuis une seconde session avant de fermer la session courante."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

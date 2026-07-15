@@ -12,23 +12,34 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-PVE=${PVE:-root@203.0.113.11}
-ISO=/var/lib/vz/template/iso
+# This orchestrates YOUR Proxmox lab; it ships with NO topology baked in. Point it at your own
+# hypervisor and fleet through the environment (or a local, untracked campaign.env):
+#
+#   PVE            ssh target of the Proxmox host        e.g. root@203.0.113.11
+#   ISO            directory holding the cloud images    e.g. /var/lib/vz/template/iso
+#   CK_GW          gateway of the VM subnet              e.g. 203.0.113.1
+#   PAVOIS_SSH_FROM  CIDR allowed to reach the VMs       e.g. 203.0.113.0/24
+#   PAVOIS_SUDO_PASSWORD  sudo password of the CK_USER account on the VMs (required, no default)
+#   FLEET_FILE     path to a file of `os:vmid:ip:image` rows (one per line); required
+#   PAVOIS_VMIDS   space-separated VMIDs this script is ALLOWED to destroy (safety allowlist)
+#
+# A sample fleet file lives at tools/clean_room_campaign.env.example. Real lab values (IPs, VMIDs,
+# passwords) are NEVER committed: this is a public repo (see the repo hygiene rules in CONTRIBUTING).
+[ -f campaign.env ] && . ./campaign.env
+
+: "${PVE:?set PVE to your Proxmox ssh target, e.g. root@203.0.113.11 (never commit it)}"
+: "${PAVOIS_SUDO_PASSWORD:?set PAVOIS_SUDO_PASSWORD (no default; lab-only, never commit it)}"
+: "${FLEET_FILE:?set FLEET_FILE to a file of os:vmid:ip:image rows (see .env.example)}"
+: "${PAVOIS_VMIDS:?set PAVOIS_VMIDS to the space-separated VMIDs this script may destroy}"
+ISO=${ISO:?set ISO to the cloud-image directory}
+CK_GW=${CK_GW:?set CK_GW to the VM subnet gateway}
+PAVOIS_SSH_FROM=${PAVOIS_SSH_FROM:?set PAVOIS_SSH_FROM to the CIDR allowed to reach the VMs}
 LOGDIR=${LOGDIR:-/tmp/pavois-campaign}
 mkdir -p "$LOGDIR"
 
-# os:vmid:ip:image
-# VMIDs are pavois-only. 141-143 are the lab's saltminions and 150 is ascender-lab: this script
-# DESTROYS the VMID it is given, so the range must never drift into someone else's machines.
-FLEET=(
-  "rhel9:140:203.0.113.70:$ISO/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2"
-  "rhel8:131:203.0.113.71:$ISO/AlmaLinux-8-GenericCloud-latest.x86_64.qcow2"
-  "rhel10:133:203.0.113.63:$ISO/AlmaLinux-10-GenericCloud-latest.x86_64.qcow2"
-  "fedora:136:203.0.113.66:$ISO/fedora-42-cloud.qcow2"
-  "ubuntu2604:138:203.0.113.68:$ISO/ubuntu-26.04-server-cloudimg-amd64.img"
-  "ubuntu2204:139:203.0.113.69:$ISO/jammy-server-cloudimg-amd64.img"
-)
-PAVOIS_VMIDS="131 133 134 135 136 137 138 139 140"
+# os:vmid:ip:image, read from your (untracked) FLEET_FILE. This script DESTROYS the VMID in each
+# row, so PAVOIS_VMIDS is a hard allowlist and every VM is re-checked by name (pavois-*) below.
+mapfile -t FLEET < <(grep -vE '^\s*(#|$)' "$FLEET_FILE")
 
 want=("$@")
 [ ${#want[@]} -eq 0 ] && want=(rhel9 rhel8 rhel10 fedora ubuntu2604 ubuntu2204)
@@ -45,9 +56,9 @@ run_one() {
     return 1
   fi
   ssh "$PVE" "qm stop $vmid >/dev/null 2>&1; qm destroy $vmid --purge >/dev/null 2>&1" || true
-  PVE=$PVE CK_VMID=$vmid CK_IP=$ip CK_GW=203.0.113.1 CK_OS=$os CK_USER=pavois \
+  PVE=$PVE CK_VMID=$vmid CK_IP=$ip CK_GW=$CK_GW CK_OS=$os CK_USER=${CK_USER:-pavois} \
   CK_CLOUDIMG=$img CK_MEM=8192 CK_CORES=6 \
-  PAVOIS_SUDO_PASSWORD=${PAVOIS_SUDO_PASSWORD:?set PAVOIS_SUDO_PASSWORD} PAVOIS_SSH_FROM=203.0.113.0/24 \
+  PAVOIS_SUDO_PASSWORD=$PAVOIS_SUDO_PASSWORD PAVOIS_SSH_FROM=$PAVOIS_SSH_FROM \
     tools/clean_room_validate.sh all >"$log" 2>&1
   # the VM only needs to be scannable from here on: give the RAM back to the next build
   ssh "$PVE" "qm shutdown $vmid --timeout 90 >/dev/null 2>&1; sleep 10; \

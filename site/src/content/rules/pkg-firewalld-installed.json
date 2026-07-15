@@ -7,7 +7,6 @@
     "rhel9"
   ],
   "os_versions": {
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0"
   },
@@ -38,31 +37,31 @@
   },
   "summary": {
     "en": "Ensures the `firewalld` host-based firewall package is installed so network access can be filtered by zone, port and service.",
-    "fr": "Garantit que le paquet de pare-feu local `firewalld` est installe afin de filtrer l'acces reseau par zone, port et service."
+    "fr": "Garantit que le paquet de pare-feu local `firewalld` est installé afin de filtrer l'accès réseau par zone, port et service."
   },
   "rationale": {
     "en": "`firewalld` provides a simple and effective way to **block or limit remote access** to the system by port, service and protocol. A host without a host-based firewall exposes every listening service to the network, widening the attack surface and making it far harder to enforce a least-exposure policy. Centralised, zone-based firewall rules let the system take enforcement action against unauthorised connections, which is required by CIS and PCI-DSS network-control baselines.",
-    "fr": "`firewalld` offre un moyen simple et efficace de **bloquer ou limiter l'acces distant** au systeme par port, service et protocole. Un hote sans pare-feu local expose au reseau chaque service en ecoute, elargit la surface d'attaque et rend bien plus difficile l'application d'une politique d'exposition minimale. Des regles de pare-feu centralisees et organisees en zones permettent au systeme d'agir contre les connexions non autorisees, ce qu'exigent les referentiels de controle reseau CIS et PCI-DSS."
+    "fr": "`firewalld` offre un moyen simple et efficace de **bloquer ou limiter l'accès distant** au système par port, service et protocole. Un hôte sans pare-feu local expose au réseau chaque service en écoute, élargit la surface d'attaque et rend bien plus difficile l'application d'une politique d'exposition minimale. Des règles de pare-feu centralisées et organisées en zones permettent au système d'agir contre les connexions non autorisées, ce qu'exigent les référentiels de contrôle réseau CIS et PCI-DSS."
   },
   "check_note": {
     "en": "Pavois queries the **package database** through `package('firewalld')`, reporting whether the firewall software is actually present rather than inferring it from leftover zone files. This reflects the **effective** state: a system can have `/etc/firewalld/` fragments yet no firewalld binary, and only a package-manager query tells the truth.",
-    "fr": "Pavois interroge la **base de paquets** via `package('firewalld')` et rapporte si le logiciel de pare-feu est reellement present, plutot que de le deduire de fichiers de zones residuels. Cela reflete l'etat **effectif** : un systeme peut posseder des fragments dans `/etc/firewalld/` sans aucun binaire firewalld, et seule une interrogation du gestionnaire de paquets dit la verite."
+    "fr": "Pavois interroge la **base de paquets** via `package('firewalld')` et rapporte si le logiciel de pare-feu est réellement présent, plutôt que de le déduire de fichiers de zones résiduels. Cela reflète l'état **effectif** : un système peut posséder des fragments dans `/etc/firewalld/` sans aucun binaire firewalld, et seule une interrogation du gestionnaire de paquets dit la vérité."
   },
   "verify": {
     "en": "Run `rpm -q firewalld`. It passes when a versioned package name is printed (e.g. `firewalld-1.x.x-x.elx.noarch`) and fails on `package firewalld is not installed`. Confirm the service is running with `systemctl is-active firewalld` and inspect active rules with `firewall-cmd --list-all`.",
-    "fr": "Executez `rpm -q firewalld`. La regle passe lorsqu'un nom de paquet versionne s'affiche (par ex. `firewalld-1.x.x-x.elx.noarch`) et echoue sur `package firewalld is not installed`. Confirmez que le service tourne avec `systemctl is-active firewalld` et inspectez les regles actives avec `firewall-cmd --list-all`."
+    "fr": "Exécutez `rpm -q firewalld`. La règle passe lorsqu'un nom de paquet versionné s'affiche (par ex. `firewalld-1.x.x-x.elx.noarch`) et échoue sur `package firewalld is not installed`. Confirmez que le service tourne avec `systemctl is-active firewalld` et inspectez les règles actives avec `firewall-cmd --list-all`."
   },
   "logs": {
     "en": "Install state: `rpm -q firewalld`. Runtime activity and rule reloads are visible via `journalctl -u firewalld`; dropped/rejected packets can be logged through firewalld's `LogDenied` setting and read in `/var/log/messages` or `dmesg`.",
-    "fr": "Etat d'installation : `rpm -q firewalld`. L'activite a l'execution et les rechargements de regles sont visibles via `journalctl -u firewalld` ; les paquets rejetes peuvent etre journalises grace au reglage `LogDenied` de firewalld et lus dans `/var/log/messages` ou `dmesg`."
+    "fr": "État d'installation : `rpm -q firewalld`. L'activité à l'exécution et les rechargements de règles sont visibles via `journalctl -u firewalld` ; les paquets rejetés peuvent être journalisés grâce au réglage `LogDenied` de firewalld et lus dans `/var/log/messages` ou `dmesg`."
   },
   "remediation_note": {
     "en": "Pavois's harden plan installs the `firewalld` package (resource `package`, action `install`) when you run `pavois harden apply`. Installing the package does not open or close any port by itself, you must enable the service (`systemctl enable --now firewalld`) and define the zones/services your host needs.",
-    "fr": "Le plan de durcissement de Pavois installe le paquet `firewalld` (ressource `package`, action `install`) lorsque vous lancez `pavois harden apply`. Installer le paquet n'ouvre ni ne ferme aucun port en soi : vous devez activer le service (`systemctl enable --now firewalld`) et definir les zones/services dont votre hote a besoin."
+    "fr": "Le plan de durcissement de Pavois installe le paquet `firewalld` (ressource `package`, action `install`) lorsque vous lancez `pavois harden apply`. Installer le paquet n'ouvre ni ne ferme aucun port en soi : vous devez activer le service (`systemctl enable --now firewalld`) et définir les zones/services dont votre hôte a besoin."
   },
   "impact": {
     "en": "Without `firewalld`, all listening services are reachable from the network with no host-level filtering. **Precaution before enabling:** starting firewalld applies the **default zone**, which may drop traffic to ports you rely on, most importantly **SSH (22/tcp)**. Before activating on a remote host, add the SSH service to the active zone (`firewall-cmd --permanent --add-service=ssh`) or you can lock yourself out. Verify rules with `firewall-cmd --list-all` before reloading.",
-    "fr": "Sans `firewalld`, tous les services en ecoute sont accessibles depuis le reseau sans filtrage au niveau de l'hote. **Precaution avant activation :** demarrer firewalld applique la **zone par defaut**, qui peut bloquer le trafic vers des ports dont vous dependez, surtout **SSH (22/tcp)**. Avant d'activer sur un hote distant, ajoutez le service SSH a la zone active (`firewall-cmd --permanent --add-service=ssh`) sous peine de vous verrouiller dehors. Verifiez les regles avec `firewall-cmd --list-all` avant de recharger."
+    "fr": "Sans `firewalld`, tous les services en écoute sont accessibles depuis le réseau sans filtrage au niveau de l'hôte. **Précaution avant activation :** démarrer firewalld applique la **zone par défaut**, qui peut bloquer le trafic vers des ports dont vous dépendez, surtout **SSH (22/tcp)**. Avant d'activer sur un hôte distant, ajoutez le service SSH à la zone active (`firewall-cmd --permanent --add-service=ssh`) sous peine de vous verrouiller dehors. Vérifiez les règles avec `firewall-cmd --list-all` avant de recharger."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"

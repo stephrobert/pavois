@@ -226,7 +226,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 	res := audit.Evaluate(rep, machine, scStandard, scLevel)
 
 	// Name the report so a directory listing is self-describing and chronologically sortable:
-	//   <YYYYMMDD-HHMM>_<os>_<target>_<grade>.{json,html}   e.g. 20260701-1405_debian12_example-host_B
+	//   <YYYYMMDD-HHMM>_<os>_<target>_<grade>.{json,html}   e.g. 20260701-1405_debian12_web01_B
 	// Only when we produced the scan (not with --from, which points at the user's own file).
 	if scFrom == "" {
 		letter, _, _ := audit.GradeResult(res)

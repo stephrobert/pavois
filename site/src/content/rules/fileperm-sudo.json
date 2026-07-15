@@ -14,7 +14,6 @@
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel10": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -42,35 +41,35 @@
   },
   "title": {
     "en": "Ensure That the sudo Binary Has the Correct Permissions",
-    "fr": "S'assurer que le binaire sudo possede les permissions correctes"
+    "fr": "S'assurer que le binaire sudo possède les permissions correctes"
   },
   "summary": {
     "en": "Restricts permissions on the `/usr/bin/sudo` binary so it cannot be read or written by group/other, nor written by its owner.",
-    "fr": "Restreint les permissions du binaire `/usr/bin/sudo` afin qu'il ne soit ni lisible ni modifiable par le groupe/les autres, ni modifiable par son proprietaire."
+    "fr": "Restreint les permissions du binaire `/usr/bin/sudo` afin qu'il ne soit ni lisible ni modifiable par le groupe/les autres, ni modifiable par son propriétaire."
   },
   "rationale": {
     "en": "The `sudo` binary is **setuid root**: anyone who can run it gains a path to root privileges. Its permissions must stay tightly controlled (`---x--x--x` with the setuid bit). If `sudo` becomes **writable** by a non-root user, that user can replace or patch the binary and capture every invocation, including the credentials and commands of administrators, an instant privilege-escalation and credential-theft vector. Over-permissive read access also helps an attacker analyze the binary to craft exploits.",
-    "fr": "Le binaire `sudo` est **setuid root** : quiconque peut l'executer dispose d'un chemin vers les privileges root. Ses permissions doivent rester strictement controlees (`---x--x--x` avec le bit setuid). Si `sudo` devient **modifiable** par un utilisateur non-root, celui-ci peut remplacer ou alterer le binaire et capturer chaque invocation, y compris les identifiants et commandes des administrateurs, un vecteur immediat d'escalade de privileges et de vol d'identifiants. Un acces en lecture trop large aide aussi un attaquant a analyser le binaire pour concevoir des exploits."
+    "fr": "Le binaire `sudo` est **setuid root** : quiconque peut l'exécuter dispose d'un chemin vers les privilèges root. Ses permissions doivent rester strictement contrôlées (`---x--x--x` avec le bit setuid). Si `sudo` devient **modifiable** par un utilisateur non-root, celui-ci peut remplacer ou altérer le binaire et capturer chaque invocation, y compris les identifiants et commandes des administrateurs, un vecteur immédiat d'escalade de privilèges et de vol d'identifiants. Un accès en lecture trop large aide aussi un attaquant à analyser le binaire pour concevoir des exploits."
   },
   "check_note": {
     "en": "Pavois inspects the **actual on-disk mode** of `/usr/bin/sudo` and asserts it is not writable by owner/group/other and not readable/executable by group/other. The InSpec `file` resource reads the effective inode permissions resolved by the kernel, exactly what `sudo` runs with, rather than trusting a packaging manifest that may have been tampered with after install.",
-    "fr": "Pavois inspecte le **mode reel sur disque** de `/usr/bin/sudo` et verifie qu'il n'est modifiable ni par le proprietaire, ni par le groupe, ni par les autres, et qu'il n'est ni lisible ni executable par le groupe/les autres. La ressource InSpec `file` lit les permissions effectives de l'inode resolues par le noyau, exactement celles avec lesquelles `sudo` s'execute, plutot que de se fier a un manifeste de paquet potentiellement altere apres installation."
+    "fr": "Pavois inspecte le **mode réel sur disque** de `/usr/bin/sudo` et vérifie qu'il n'est modifiable ni par le propriétaire, ni par le groupe, ni par les autres, et qu'il n'est ni lisible ni exécutable par le groupe/les autres. La ressource InSpec `file` lit les permissions effectives de l'inode résolues par le noyau, exactement celles avec lesquelles `sudo` s'exécute, plutôt que de se fier à un manifeste de paquet potentiellement altéré après installation."
   },
   "verify": {
     "en": "Run `stat -c '%U %G %a' /usr/bin/sudo`. Expected: owner and group `root` with a mode such as `4111` (setuid, `---x--x--x`). The binary must show **no write bits** for group or other and no read bit for group/other.",
-    "fr": "Executez `stat -c '%U %G %a' /usr/bin/sudo`. Attendu : proprietaire et groupe `root` avec un mode tel que `4111` (setuid, `---x--x--x`). Le binaire ne doit presenter **aucun bit d'ecriture** pour le groupe ou les autres, ni de bit de lecture pour le groupe/les autres."
+    "fr": "Exécutez `stat -c '%U %G %a' /usr/bin/sudo`. Attendu : propriétaire et groupe `root` avec un mode tel que `4111` (setuid, `---x--x--x`). Le binaire ne doit présenter **aucun bit d'écriture** pour le groupe ou les autres, ni de bit de lecture pour le groupe/les autres."
   },
   "logs": {
     "en": "Package integrity changes are visible with `dpkg --verify sudo` (Debian/Ubuntu) or `rpm -V sudo` (RHEL/Alma); a `..?......` or `M` flag on the binary signals a mode change. `sudo` usage itself is logged to `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL).",
-    "fr": "Les changements d'integrite du paquet sont visibles via `dpkg --verify sudo` (Debian/Ubuntu) ou `rpm -V sudo` (RHEL/Alma) ; un indicateur `..?......` ou `M` sur le binaire signale un changement de mode. L'utilisation de `sudo` est elle-meme journalisee dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL)."
+    "fr": "Les changements d'intégrité du paquet sont visibles via `dpkg --verify sudo` (Debian/Ubuntu) ou `rpm -V sudo` (RHEL/Alma) ; un indicateur `..?......` ou `M` sur le binaire signale un changement de mode. L'utilisation de `sudo` est elle-même journalisée dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL)."
   },
   "remediation_note": {
     "en": "No automated remediation ships for this rule. Restore the package default manually: `chown root:root /usr/bin/sudo` then `chmod 4111 /usr/bin/sudo` (or re-install the `sudo` package to reset the vendor mode).",
-    "fr": "Aucune remediation automatique n'est fournie pour cette regle. Restaurez la valeur par defaut du paquet manuellement : `chown root:root /usr/bin/sudo` puis `chmod 4111 /usr/bin/sudo` (ou reinstallez le paquet `sudo` pour retablir le mode editeur)."
+    "fr": "Aucune remédiation automatique n'est fournie pour cette règle. Restaurez la valeur par défaut du paquet manuellement : `chown root:root /usr/bin/sudo` puis `chmod 4111 /usr/bin/sudo` (ou réinstallez le paquet `sudo` pour rétablir le mode éditeur)."
   },
   "impact": {
     "en": "A writable or world-readable `sudo` binary lets a local attacker hijack privilege escalation and steal admin credentials. Fixing it is low-risk: the correct mode is the vendor default. **Do not strip the setuid bit** (`chmod 0111`), `sudo` would no longer be able to elevate and every `sudo` command would fail with a permissions error. Keep mode `4111` so the setuid-root behavior is preserved.",
-    "fr": "Un binaire `sudo` modifiable ou lisible par tous permet a un attaquant local de detourner l'escalade de privileges et de voler les identifiants administrateur. La correction est peu risquee : le mode correct est la valeur par defaut de l'editeur. **Ne retirez pas le bit setuid** (`chmod 0111`), `sudo` ne pourrait plus elever les privileges et chaque commande `sudo` echouerait avec une erreur de permissions. Conservez le mode `4111` pour preserver le comportement setuid-root."
+    "fr": "Un binaire `sudo` modifiable ou lisible par tous permet à un attaquant local de détourner l'escalade de privilèges et de voler les identifiants administrateur. La correction est peu risquée : le mode correct est la valeur par défaut de l'éditeur. **Ne retirez pas le bit setuid** (`chmod 0111`), `sudo` ne pourrait plus élever les privilèges et chaque commande `sudo` échouerait avec une erreur de permissions. Conservez le mode `4111` pour préserver le comportement setuid-root."
   },
   "datePublished": "2026-06-28",
   "dateModified": "2026-07-14"
