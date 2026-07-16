@@ -20,6 +20,17 @@ description = "Build the pavois Go binary"
 dir = "{{config_root}}/go"
 run = "go build -o pavois ."
 
+[tasks.fuzz]
+description = "Fuzz the parsers fed by input pavois does not control (InSpec JSON, the rollback's recipe). Longer run: FUZZTIME=5m mise run fuzz"
+dir = "{{config_root}}/go"
+run = """
+t="${FUZZTIME:-30s}"
+echo "fuzzing for $t per target (set FUZZTIME to change)"
+go test ./internal/audit/ -run '^$' -fuzz 'FuzzProves' -fuzztime="$t"
+go test ./internal/audit/ -run '^$' -fuzz 'FuzzEvaluate' -fuzztime="$t"
+go test ./cmd/ -run '^$' -fuzz 'FuzzPlannedTargets' -fuzztime="$t"
+"""
+
 [tasks.scan]
 description = "Scan a target, e.g. `mise run scan -- local --profile effective-config`"
 depends = ["build"]

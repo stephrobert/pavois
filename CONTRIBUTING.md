@@ -199,6 +199,9 @@ CI enforces all of these; run them locally first.
 cd go && gofmt -l . && go vet ./... && go build ./... && go test -race ./... && golangci-lint run ./...
 govulncheck ./...
 
+# fuzz the parsers fed by input pavois does not control (see "Fuzzing" below)
+mise run fuzz                 # 30s per target; FUZZTIME=5m mise run fuzz for a real session
+
 # Python tooling (tools/) — test-vms/ is local-only (gitignored), lint it yourself if you touch it
 ruff check tools/ && ruff format --check tools/ && bandit -r tools/ -c pyproject.toml
 
@@ -208,6 +211,26 @@ mise run build && ./go/pavois scan local --profile linux/ubuntu2404
 
 Go follows the **go-production-engineer** standard: simple, idiomatic, explicit error handling (wrap
 with `%w`), no needless abstraction, tests for meaningful behavior, documented public symbols.
+
+### Fuzzing
+
+pavois fuzzes the parsers it feeds with input **it does not control**, because those are the ones an
+operator cannot vet before they run:
+
+| Target | Input it parses | Why it is worth fuzzing |
+|---|---|---|
+| `FuzzEvaluate` (`internal/audit`) | the InSpec JSON report | produced by a **separate engine**, often on a remote target; a malformed or hostile report must never panic pavois, and the grade must stay inside its published bounds (a grade out of 0..100 would silently break the `--fail-under` CI gate people trust) |
+| `FuzzProves` (`internal/audit`) | the `evidence_type` tag | free-form text out of the report's tags; it decides what a PASS is allowed to claim |
+| `FuzzPlannedTargets` (`cmd`) | the compiled Chef recipe | it decides what a rollback **restores and deletes**. A parsing slip here does not produce a wrong report, it deletes the wrong file on someone's host. Its invariants are asserted: never a glob, never an empty path (which would resolve to `/`), and every captured path must actually occur in the recipe rather than be synthesised |
+
+```bash
+mise run fuzz                 # 30s per target (what CI runs)
+FUZZTIME=5m mise run fuzz     # a real session before touching a parser
+```
+
+Seed corpora run on every `go test`, so they are permanent regression tests. If the fuzzer finds a
+crasher, Go writes it to `testdata/fuzz/<Target>/`: **commit that file** — it becomes a named
+regression test that runs forever after.
 
 ### No rule change ships without a real scan
 
