@@ -63,6 +63,18 @@ jobs:
         working-directory: pavois/go
         run: go test -race ./...
 
+      # Fuzz the parsers that consume input pavois does not control: the InSpec JSON a separate
+      # engine produces on a remote target, and the compiled recipe that decides what a rollback
+      # DELETES. Seed corpora run on every `go test`; this step actually mutates, briefly, so a
+      # regression surfaces in CI rather than on someone's host. Any crasher is written to
+      # testdata/fuzz/ and becomes a permanent regression test.
+      - name: go test (fuzz)
+        working-directory: pavois/go
+        run: |
+          go test ./internal/audit/ -run '^$' -fuzz 'FuzzProves' -fuzztime=30s
+          go test ./internal/audit/ -run '^$' -fuzz 'FuzzEvaluate' -fuzztime=60s
+          go test ./cmd/ -run '^$' -fuzz 'FuzzPlannedTargets' -fuzztime=60s
+
       - name: golangci-lint
         working-directory: pavois/go
         run: |
