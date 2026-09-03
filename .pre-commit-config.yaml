@@ -2,12 +2,9 @@
 # ships via mise). Go hooks run against the ./go module and use the toolchain on PATH
 # (provided by `mise install`). Run on all files: `pre-commit run --all-files`.
 #
-# `pre-commit install` wires the pre-commit hook and nothing else unless it is told which hook
-# types to install. The pre-push hook declared at the end of this file would then sit here doing
-# nothing on every machine — a control that reads as one. Declaring the types makes the single
-# documented install command sufficient.
-default_install_hook_types: [pre-commit, pre-push]
-
+# The pre-push stage is NOT wired here on purpose: `.git/hooks/pre-push` also refuses a direct push
+# to main, and letting pre-commit install its own would overwrite that guard. tools/hooks/pre-push
+# owns the stage and runs both jobs; `mise run hooks:install` installs it alongside these hooks.
 repos:
   # General hygiene + a hard stop on accidentally committing secrets/keys (this repo
   # ships public — see the publish-hygiene rules).
@@ -87,21 +84,3 @@ repos:
         entry: trufflehog git file://. --since-commit HEAD --config=.trufflehog-lab.yaml --include-detectors=CustomRegex --results=verified,unverified,unknown --no-verification --fail --no-update
         language: system
         pass_filenames: false
-
-      # On pre-push, and only this one. The per-file hooks above judge what a commit touched;
-      # this runs the whole offline gate set on what is about to leave the machine, which is a
-      # different question — a branch can be green commit by commit and red as a whole.
-      #
-      # Why `prepush` and not, say, `site:verify` or a scan: the gate set is deterministic,
-      # offline and takes ~30s. site:verify regenerates content (a hook must not rewrite the tree
-      # it checks) and a real scan needs a live VM, so as hooks they would fail on the environment
-      # rather than on the code — and the reflex that teaches is `--no-verify`, which disables
-      # every hook in this file at once. `mise run testplan` is what names those heavier runs
-      # instead, and prepush prints it on every push.
-      - id: prepush
-        name: the gates a pull request will fail on
-        language: system
-        entry: mise run prepush
-        pass_filenames: false
-        always_run: true
-        stages: [pre-push]

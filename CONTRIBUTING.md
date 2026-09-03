@@ -156,7 +156,7 @@ then `mise run gen:verify` and `mise run coverage:gap` to confirm it closes an S
 
 ```bash
 mise install          # pinned toolchain: Go, Node, Python, gh, golangci-lint, ruff, trufflehog
-pre-commit install    # quality + secret hooks on every commit
+mise run hooks:install  # quality + secret hooks on commit, and the gate + no-main guard on push
 ```
 
 ## Debugging a hardened test VM
@@ -198,10 +198,12 @@ When you test remediations on an Incus VM:
 mise run prepush     # 13s, offline, deterministic — installed as a pre-push hook
 ```
 
-`pre-commit install` wires it automatically (the config declares `pre-commit` and `pre-push` hook
-types). It runs the build, the Go tests and linters, `gen:verify`, `lint:rules`,
-`validate:mappings` and `validate:i18n` — everything a pull request fails on that costs seconds and
-needs no target.
+Install it with **`mise run hooks:install`** (not `pre-commit install` alone: the pre-push stage is
+owned by `tools/hooks/pre-push`, which also refuses a direct push to `main` — letting pre-commit
+install its own hook there would overwrite that guard).
+
+It runs the build, the Go tests and linters, `gen:verify`, `lint:rules`, `validate:mappings` and
+`validate:i18n` — everything a pull request fails on that costs seconds and needs no target.
 
 **What it deliberately does not do**, and why it must stay that way: a gate you cannot clear is the
 gate everybody learns to skip with `--no-verify`, which switches off every other hook at the same
