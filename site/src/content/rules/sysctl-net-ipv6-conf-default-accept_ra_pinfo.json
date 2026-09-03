@@ -1,16 +1,17 @@
 {
   "id": "sysctl-net-ipv6-conf-default-accept_ra_pinfo",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -28,6 +29,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.default.accept_ra_pinfo') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.default.accept_ra_pinfo[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -39,14 +43,13 @@
     "en": "Configure Accepting Prefix Information in Router Advertisements on All IPv6 Interfaces By Default",
     "fr": "Configurer l'acceptation des informations de préfixe dans les annonces de routeur sur toutes les interfaces IPv6 par défaut"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`net.ipv6.conf.default.accept_ra_pinfo` controls whether the host learns network **prefixes** from Router Advertisements. If enabled, an attacker who can inject forged RAs can advertise rogue prefixes, causing the host to autoconfigure addresses on attacker-controlled networks and to route traffic through a malicious gateway, a classic **man-in-the-middle** vector. Disabling prefix-information acceptance by default prevents an untrusted on-link host from reshaping the system's IPv6 addressing.",
-    "fr": "`net.ipv6.conf.default.accept_ra_pinfo` contrôle si l'hôte apprend les **préfixes** réseau à partir des annonces de routeur. S'il est activé, un attaquant capable d'injecter de fausses RA peut annoncer des préfixes malveillants, amenant l'hôte à autoconfigurer des adresses sur des réseaux contrôlés par l'attaquant et à router le trafic via une passerelle malveillante, un vecteur classique d'**homme du milieu**. Désactiver par défaut l'acceptation des informations de préfixe empêche un hôte non fiable du même lien de remodeler l'adressage IPv6 du système."
-  },
   "summary": {
     "en": "Sets the default for new IPv6 interfaces to **ignore prefix information in Router Advertisements** via `net.ipv6.conf.default.accept_ra_pinfo = 0`.",
     "fr": "Définit la valeur par défaut des nouvelles interfaces IPv6 pour **ignorer les informations de préfixe des annonces de routeur** via `net.ipv6.conf.default.accept_ra_pinfo = 0`."
+  },
+  "rationale": {
+    "en": "`net.ipv6.conf.default.accept_ra_pinfo` controls whether the host learns network **prefixes** from Router Advertisements. If enabled, an attacker who can inject forged RAs can advertise rogue prefixes, causing the host to autoconfigure addresses on attacker-controlled networks and to route traffic through a malicious gateway, a classic **man-in-the-middle** vector. Disabling prefix-information acceptance by default prevents an untrusted on-link host from reshaping the system's IPv6 addressing.",
+    "fr": "`net.ipv6.conf.default.accept_ra_pinfo` contrôle si l'hôte apprend les **préfixes** réseau à partir des annonces de routeur. S'il est activé, un attaquant capable d'injecter de fausses RA peut annoncer des préfixes malveillants, amenant l'hôte à autoconfigurer des adresses sur des réseaux contrôlés par l'attaquant et à router le trafic via une passerelle malveillante, un vecteur classique d'**homme du milieu**. Désactiver par défaut l'acceptation des informations de préfixe empêche un hôte non fiable du même lien de remodeler l'adressage IPv6 du système."
   },
   "check_note": {
     "en": "Pavois reads the **effective** runtime value of `net.ipv6.conf.default.accept_ra_pinfo` from the kernel rather than parsing a config file. The live value is the result of merging `/etc/sysctl.conf`, all drop-ins in `/etc/sysctl.d/` and `/run/sysctl.d/`, kernel command-line parameters and any runtime `sysctl -w`. A file scan can be green while the running kernel still accepts RA prefix info; Pavois reports the truth as the kernel sees it.",
@@ -67,5 +70,7 @@
   "impact": {
     "en": "On a host relying on **SLAAC** for IPv6 addressing, refusing prefix information stops it from forming global IPv6 addresses, breaking IPv6 connectivity. Before applying, confirm the host uses **static IPv6 or DHCPv6**, or is IPv4-only. Routers and statically-addressed servers are unaffected. Combine with the other `accept_ra*` rules for a coherent posture rather than toggling one in isolation.",
     "fr": "Sur un hôte s'appuyant sur **SLAAC** pour l'adressage IPv6, refuser les informations de préfixe l'empêche de former des adresses IPv6 globales, rompant la connectivité IPv6. Avant d'appliquer, vérifiez que l'hôte utilise un adressage **IPv6 statique ou DHCPv6**, ou qu'il est uniquement IPv4. Les routeurs et serveurs à adressage statique ne sont pas affectés. Combinez ce réglage avec les autres règles `accept_ra*` pour une posture cohérente plutôt que de n'en basculer qu'une isolément."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

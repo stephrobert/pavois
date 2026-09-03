@@ -1,16 +1,17 @@
 {
   "id": "misc-sssd-ldap-start-tls",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -36,19 +37,22 @@
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# If SSSD with LDAP is configured, enable StartTLS in /etc/sssd/sssd.conf:\n#   ldap_id_use_start_tls = true\n# then: systemctl restart sssd\n",
+    "reason": "only applies if SSSD/LDAP is in use, enable StartTLS in sssd.conf deliberately",
+    "resource": "manual"
+  },
   "title": {
     "en": "Configure SSSD LDAP Backend to Use TLS For All Transactions",
     "fr": "Configurer le backend LDAP de SSSD pour utiliser TLS sur toutes les transactions"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "When SSSD queries LDAP over a plain connection, usernames, group memberships and, depending on the bind method, credentials traverse the network unencrypted, readable and modifiable by anyone on the path. Enabling StartTLS on the identity lookups encrypts the channel and provides integrity protection, preventing eavesdropping, credential theft and tampering with the directory data that drives authentication and authorization decisions.",
-    "fr": "Lorsque SSSD interroge LDAP sur une connexion en clair, les noms d'utilisateur, les appartenances de groupe et, selon la méthode de bind, les identifiants transitent en clair sur le réseau, lisibles et modifiables par quiconque sur le chemin. Activer StartTLS sur les requêtes d'identité chiffre le canal et fournit une protection d'intégrité, empêchant l'écoute, le vol d'identifiants et l'altération des données d'annuaire qui pilotent les décisions d'authentification et d'autorisation."
-  },
   "summary": {
     "en": "Sets `ldap_id_use_start_tls = true` in SSSD so every LDAP lookup (identity and authentication) is wrapped in **StartTLS**, never sent in clear text.",
     "fr": "Définit `ldap_id_use_start_tls = true` dans SSSD afin que chaque requête LDAP (identité et authentification) soit encapsulée dans **StartTLS** et jamais envoyée en clair."
+  },
+  "rationale": {
+    "en": "When SSSD queries LDAP over a plain connection, usernames, group memberships and, depending on the bind method, credentials traverse the network unencrypted, readable and modifiable by anyone on the path. Enabling StartTLS on the identity lookups encrypts the channel and provides integrity protection, preventing eavesdropping, credential theft and tampering with the directory data that drives authentication and authorization decisions.",
+    "fr": "Lorsque SSSD interroge LDAP sur une connexion en clair, les noms d'utilisateur, les appartenances de groupe et, selon la méthode de bind, les identifiants transitent en clair sur le réseau, lisibles et modifiables par quiconque sur le chemin. Activer StartTLS sur les requêtes d'identité chiffre le canal et fournit une protection d'intégrité, empêchant l'écoute, le vol d'identifiants et l'altération des données d'annuaire qui pilotent les décisions d'authentification et d'autorisation."
   },
   "check_note": {
     "en": "The control only runs when `/etc/sssd/sssd.conf` exists, then greps the SSSD tree under `/etc/sssd/` for `ldap_id_use_start_tls = true`. Since SSSD offers no straightforward runtime dump of this setting, the on-disk directive across all config fragments is the authoritative reflection of what the daemon loads, and Pavois reads the whole tree, not a single file, so drop-ins are not missed.",
@@ -69,5 +73,7 @@
   "impact": {
     "en": "Enabling StartTLS requires the LDAP server to support TLS on its `ldap://` port and the client to trust the server's CA; if either is missing, SSSD will **fail to bind and authentication will break** for all directory users. Before applying, confirm the server offers StartTLS and the CA is installed, keep a local admin account for recovery, and restart SSSD in a maintenance window while watching `journalctl -u sssd`. This control only evaluates when SSSD is actually in use.",
     "fr": "Activer StartTLS exige que le serveur LDAP prenne en charge TLS sur son port `ldap://` et que le client fasse confiance à l'AC du serveur ; si l'un manque, SSSD **échouera au bind et l'authentification sera cassée** pour tous les utilisateurs de l'annuaire. Avant d'appliquer, vérifiez que le serveur propose StartTLS et que l'AC est installée, conservez un compte administrateur local pour la récupération, et redémarrez SSSD dans une fenêtre de maintenance en surveillant `journalctl -u sssd`. Ce contrôle ne s'évalue que lorsque SSSD est réellement utilisé."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

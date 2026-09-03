@@ -2,14 +2,18 @@
   "id": "dconf-gnome-screensaver-lock-enabled",
   "supported_os": [
     "debian12",
+    "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -36,25 +40,27 @@
     ]
   },
   "check": [
+    "only_if { command('dconf').exist? }",
     "describe command('{ s=$(grep -rhE \\'^[[:space:]]*lock-enabled[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null | tail -1 | sed -E \\'s/^[^=]*=[[:space:]]*//\\' | tr -d \"\\'\\\\\"\"); [ \"$s\" = \"true\" ] && grep -rqxF \\'/org/gnome/desktop/screensaver/lock-enabled\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
   "remediation": {
-    "resource": "dconf"
+    "key": "org/gnome/desktop/screensaver/lock-enabled",
+    "resource": "dconf",
+    "value": "true"
   },
   "title": {
     "en": "Enable GNOME3 Screensaver Lock After Idle Period",
     "fr": "Activer le verrouillage du screensaver GNOME3 après une période d'inactivité"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`lock-enabled` is the master switch that makes the GNOME screensaver actually require a password when it activates. With idle-delay and idle-activation set but `lock-enabled=false`, **the screensaver runs but never locks**, the session stays accessible, defeating the whole point of an idle timeout. Enabling it ensures an unattended workstation demands re-authentication.",
-    "fr": "`lock-enabled` est l'interrupteur maître qui fait que le screensaver GNOME exige réellement un mot de passe lors de son activation. Avec le délai et l'activation d'inactivité définis mais `lock-enabled=false`, **le screensaver tourne mais ne verrouille jamais**, la session reste accessible, annulant tout l'intérêt d'une temporisation d'inactivité. L'activer garantit qu'un poste sans surveillance exige une ré-authentification."
-  },
   "summary": {
     "en": "Forces the GNOME screensaver to lock the session when it activates, via `lock-enabled=true` in the system `dconf` database, locked against user override.",
     "fr": "Force le screensaver GNOME à verrouiller la session lors de son activation, via `lock-enabled=true` dans la base `dconf` du système, verrouillé contre toute modification par l'utilisateur."
+  },
+  "rationale": {
+    "en": "`lock-enabled` is the master switch that makes the GNOME screensaver actually require a password when it activates. With idle-delay and idle-activation set but `lock-enabled=false`, **the screensaver runs but never locks**, the session stays accessible, defeating the whole point of an idle timeout. Enabling it ensures an unattended workstation demands re-authentication.",
+    "fr": "`lock-enabled` est l'interrupteur maître qui fait que le screensaver GNOME exige réellement un mot de passe lors de son activation. Avec le délai et l'activation d'inactivité définis mais `lock-enabled=false`, **le screensaver tourne mais ne verrouille jamais**, la session reste accessible, annulant tout l'intérêt d'une temporisation d'inactivité. L'activer garantit qu'un poste sans surveillance exige une ré-authentification."
   },
   "check_note": {
     "en": "Pavois reads the **effective** `dconf` configuration: it resolves the last-defined `lock-enabled` value across `/etc/dconf/db/*.d/` drop-ins, requires `true`, and checks `/org/gnome/desktop/screensaver/lock-enabled` is in a `locks/` file so users cannot disable locking. Evaluating the resolved value (last keyfile wins) mirrors how dconf applies the policy and avoids a false pass if a later drop-in turns it off.",
@@ -75,5 +81,7 @@
   "impact": {
     "en": "Low impact: users will need to re-authenticate after the screensaver activates, which is the intended behavior. **Precaution:** ensure users know their password (especially on systems where they normally only use a smartcard or SSO), and exempt kiosk/dashboard hosts that must keep the screen accessible. Combine with a sensible `idle-delay` so locking is not premature.",
     "fr": "Impact faible : les utilisateurs devront se ré-authentifier après l'activation du screensaver, ce qui est le comportement attendu. **Précaution :** assurez-vous que les utilisateurs connaissent leur mot de passe (surtout sur les systèmes où ils n'utilisent normalement qu'une carte à puce ou le SSO), et exemptez les hôtes borne/tableau de bord devant garder l'écran accessible. Associez à un `idle-delay` raisonnable pour que le verrouillage ne soit pas prématuré."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

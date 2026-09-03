@@ -2,10 +2,13 @@
   "id": "sysctl-net-ipv6-conf-default-forwarding",
   "supported_os": [
     "fedora",
-    "rhel8"
+    "rhel10",
+    "rhel8",
+    "rhel9"
   ],
   "os_versions": {
-    "rhel8": "4.0.0"
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
   },
   "severity": "medium",
   "domain": "Kernel & network (sysctl)",
@@ -17,6 +20,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.default.forwarding') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.default.forwarding[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -28,14 +34,13 @@
     "en": "Disable Kernel Parameter for IPv6 Forwarding by default",
     "fr": "Désactiver le paramètre noyau de transfert IPv6 par défaut"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "IPv6 forwarding lets the kernel pass packets from one interface to another, turning the host into a **router**. This capability is only appropriate for systems explicitly acting as routers or gateways. On an ordinary host or server, leaving forwarding enabled is unnecessary functionality that can be abused to relay traffic, bypass network segmentation or pivot between networks. Disabling it by default keeps the host from inadvertently routing traffic between networks.",
-    "fr": "Le transfert IPv6 permet au noyau de faire passer des paquets d'une interface à une autre, transformant l'hôte en **routeur**. Cette capacité n'est appropriée que pour les systèmes agissant explicitement comme routeurs ou passerelles. Sur un hôte ou serveur ordinaire, laisser le transfert activé est une fonctionnalité inutile qui peut être détournée pour relayer du trafic, contourner la segmentation réseau ou rebondir entre réseaux. Le désactiver par défaut empêche l'hôte de router par inadvertance du trafic entre réseaux."
-  },
   "summary": {
     "en": "Prevents new IPv6 interfaces from routing packets between interfaces by setting `net.ipv6.conf.default.forwarding = 0`.",
     "fr": "Empêche les nouvelles interfaces IPv6 de router des paquets entre interfaces en réglant `net.ipv6.conf.default.forwarding = 0`."
+  },
+  "rationale": {
+    "en": "IPv6 forwarding lets the kernel pass packets from one interface to another, turning the host into a **router**. This capability is only appropriate for systems explicitly acting as routers or gateways. On an ordinary host or server, leaving forwarding enabled is unnecessary functionality that can be abused to relay traffic, bypass network segmentation or pivot between networks. Disabling it by default keeps the host from inadvertently routing traffic between networks.",
+    "fr": "Le transfert IPv6 permet au noyau de faire passer des paquets d'une interface à une autre, transformant l'hôte en **routeur**. Cette capacité n'est appropriée que pour les systèmes agissant explicitement comme routeurs ou passerelles. Sur un hôte ou serveur ordinaire, laisser le transfert activé est une fonctionnalité inutile qui peut être détournée pour relayer du trafic, contourner la segmentation réseau ou rebondir entre réseaux. Le désactiver par défaut empêche l'hôte de router par inadvertance du trafic entre réseaux."
   },
   "check_note": {
     "en": "Pavois reads the **effective** kernel value of `net.ipv6.conf.default.forwarding`, not a config file. The live value merges `/etc/sysctl.conf`, drop-ins in `/etc/sysctl.d/` and `/run/sysctl.d/`, kernel boot parameters and any runtime `sysctl -w` (container runtimes, libvirt and firewalld can flip forwarding at runtime). A clean file can hide a kernel that still forwards; Pavois reports the enforced value.",
@@ -56,5 +61,7 @@
   "impact": {
     "en": "Critical on systems that are **meant to route IPv6**, routers, gateways, VPN concentrators, container/VM hosts using IPv6 NAT or bridging, and Kubernetes nodes, where disabling forwarding will break inter-network traffic, container connectivity or VPN routing. Do NOT apply this rule on such systems. On ordinary hosts and servers it is safe and recommended. Before applying, confirm the host is not a router and that no container/VM networking depends on IPv6 forwarding.",
     "fr": "Critique sur les systèmes **censés router l'IPv6**, routeurs, passerelles, concentrateurs VPN, hôtes de conteneurs/VM utilisant le NAT ou le pontage IPv6, et nœuds Kubernetes, où désactiver le transfert rompra le trafic inter-réseaux, la connectivité des conteneurs ou le routage VPN. N'appliquez PAS cette règle sur de tels systèmes. Sur les hôtes et serveurs ordinaires, elle est sûre et recommandée. Avant d'appliquer, vérifiez que l'hôte n'est pas un routeur et qu'aucun réseau de conteneur/VM ne dépend du transfert IPv6."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

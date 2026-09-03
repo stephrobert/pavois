@@ -1,17 +1,17 @@
 {
   "id": "fileownership-sshd-pub-key",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -33,28 +33,27 @@
     ]
   },
   "check": [
-    "only_if { file('/etc/ssh').exist? }",
-    "describe file('/etc/ssh') do",
-    "  its('uid') { should eq 0 }",
+    "describe command('find /etc/ssh -name \"ssh_host_*_key.pub\" -type f ! -uid 0 2>/dev/null') do",
+    "  its('stdout.strip') { should eq '' }",
     "end"
   ],
   "remediation": {
-    "owner": "root",
-    "path": "/etc/ssh",
-    "resource": "file"
+    "command": "chown root /etc/ssh/ssh_host_*_key.pub 2>/dev/null || true",
+    "name": "chown-sshd-pub-keys",
+    "not_if": "[ -z \"$(find /etc/ssh -name 'ssh_host_*_key.pub' -type f ! -uid 0 2>/dev/null)\" ]",
+    "resource": "exec"
   },
   "title": {
     "en": "Verify Ownership on SSH Server Public *.pub Key Files",
     "fr": "Vérifier la propriété des fichiers de clés publiques *.pub du serveur SSH"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The `/etc/ssh` directory holds the SSH server's host keys, both private and public (`*.pub`). The public host keys are what clients pin to detect server impersonation. If a non-root user owns this directory, they can replace a public key, or the private key it pairs with, enabling a man-in-the-middle attack where clients silently trust a rogue server. Keeping `/etc/ssh` owned by **root** (uid 0) ensures only the superuser can touch the keys that anchor SSH trust.",
-    "fr": "Le répertoire `/etc/ssh` contient les clés d'hôte du serveur SSH, privées comme publiques (`*.pub`). Les clés d'hôte publiques sont celles que les clients épinglent pour détecter une usurpation du serveur. Si un utilisateur non-root possède ce répertoire, il peut remplacer une clé publique, ou la clé privée associée, permettant une attaque de l'homme du milieu où les clients font silencieusement confiance à un serveur malveillant. Conserver `/etc/ssh` sous la propriété de **root** (uid 0) garantit que seul le superutilisateur peut toucher aux clés qui ancrent la confiance SSH."
-  },
   "summary": {
     "en": "Ensures the SSH configuration and host-key directory `/etc/ssh` is owned by **root** (uid 0).",
     "fr": "Garantit que le répertoire de configuration et de clés d'hôte SSH `/etc/ssh` appartient à **root** (uid 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/ssh` directory holds the SSH server's host keys, both private and public (`*.pub`). The public host keys are what clients pin to detect server impersonation. If a non-root user owns this directory, they can replace a public key, or the private key it pairs with, enabling a man-in-the-middle attack where clients silently trust a rogue server. Keeping `/etc/ssh` owned by **root** (uid 0) ensures only the superuser can touch the keys that anchor SSH trust.",
+    "fr": "Le répertoire `/etc/ssh` contient les clés d'hôte du serveur SSH, privées comme publiques (`*.pub`). Les clés d'hôte publiques sont celles que les clients épinglent pour détecter une usurpation du serveur. Si un utilisateur non-root possède ce répertoire, il peut remplacer une clé publique, ou la clé privée associée, permettant une attaque de l'homme du milieu où les clients font silencieusement confiance à un serveur malveillant. Conserver `/etc/ssh` sous la propriété de **root** (uid 0) garantit que seul le superutilisateur peut toucher aux clés qui ancrent la confiance SSH."
   },
   "check_note": {
     "en": "Pavois asserts that the live directory `/etc/ssh` has owner uid `0`, skipped via `only_if` if it is absent. It reads the **effective** owner from the filesystem (`stat`), so a manual `chown` on the directory that holds the host keys is caught even if no config-management tool reports drift.",
@@ -75,5 +74,7 @@
   "impact": {
     "en": "A non-root owner of `/etc/ssh` can subvert host-key trust and enable man-in-the-middle attacks against everyone who connects. Restoring root ownership is safe and does not interrupt existing SSH sessions. **Precaution:** do not relax permissions while fixing ownership, private host keys must stay mode 0600 root:root, or sshd will refuse to start; verify with `sshd -t` after any change, and keep a second session or console open in case sshd needs a restart.",
     "fr": "Un propriétaire non-root de `/etc/ssh` peut détourner la confiance des clés d'hôte et permettre des attaques de l'homme du milieu contre tous ceux qui se connectent. Restaurer la propriété root est sans danger et n'interrompt pas les sessions SSH existantes. **Précaution :** n'assouplissez pas les permissions en corrigeant la propriété, les clés d'hôte privées doivent rester en mode 0600 root:root, sinon sshd refusera de démarrer ; vérifiez avec `sshd -t` après toute modification, et gardez une seconde session ou une console ouverte au cas où sshd devrait être redémarré."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

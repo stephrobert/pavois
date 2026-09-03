@@ -1,10 +1,21 @@
 {
   "id": "pam-faillock-root-unlock-time",
   "supported_os": [
-    "debian12"
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "debian12": "1.1.0"
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
   },
   "severity": "medium",
   "domain": "Accounts (faillock)",
@@ -19,7 +30,7 @@
     "end"
   ],
   "remediation": {
-    "file": "/etc/security/faillock.conf.d/99-pavois.conf",
+    "file": "/etc/security/faillock.conf",
     "key": "root_unlock_time",
     "resource": "keyval",
     "value": "60"
@@ -28,11 +39,34 @@
     "en": "Set Root Lockout Time for Failed Password Attempts",
     "fr": "Définir la durée de verrouillage de root après des échecs d'authentification"
   },
-  "needs_translation": [
-    "rationale.fr"
-  ],
+  "summary": {
+    "en": "Set `root_unlock_time` to at least 60 seconds so that, when the root account is locked by `pam_faillock` after repeated failed authentications, it stays locked long enough to make password guessing impractical instead of being immediately retryable.",
+    "fr": "Fixe `root_unlock_time` à 60 secondes au minimum afin que, lorsque le compte root est verrouillé par `pam_faillock` après des échecs d'authentification répétés, il le reste assez longtemps pour rendre la devinette de mot de passe impraticable, au lieu d'être réessayable immédiatement."
+  },
   "rationale": {
     "en": "By limiting the number of failed logon attempts the risk of unauthorized root access via password guessing, otherwise known as brute-forcing, is reduced. Limits are imposed by locking the account.",
-    "fr": "By limiting the number of failed logon attempts the risk of unauthorized root access via password guessing, otherwise known as brute-forcing, is reduced. Limits are imposed by locking the account."
-  }
+    "fr": "En limitant le nombre de tentatives de connexion en échec, on réduit le risque d'accès root non autorisé par devinette de mot de passe, autrement dit par force brute. La limite est imposée en verrouillant le compte."
+  },
+  "check_note": {
+    "en": "Pavois greps `root_unlock_time` across `/etc/security/faillock.conf` **and** the `/etc/security/faillock.conf.d/` drop-in directory, keeps the **last** occurrence (`tail -1`, the one `pam_faillock` itself would honour) and requires the value to be `>= 60`. Auditing the whole drop-in set, not just the main file, is what catches a lower value re-introduced by a later fragment. Note that `root_unlock_time` is only meaningful if `pam_faillock` is actually in the PAM stack and root lockout is enabled (`even_deny_root`), which are separate controls.",
+    "fr": "Pavois recherche `root_unlock_time` dans `/etc/security/faillock.conf` **et** dans le répertoire de drop-ins `/etc/security/faillock.conf.d/`, retient la **dernière** occurrence (`tail -1`, celle que `pam_faillock` honorerait lui-même) et exige une valeur `>= 60`. C'est le fait d'auditer l'ensemble des drop-ins, et pas seulement le fichier principal, qui permet de détecter une valeur plus basse réintroduite par un fragment ultérieur. À noter : `root_unlock_time` n'a de sens que si `pam_faillock` est réellement présent dans la pile PAM et que le verrouillage de root est activé (`even_deny_root`), ce qui relève de contrôles distincts."
+  },
+  "verify": {
+    "en": "Read back the resolved directive:\n\n```\ngrep -rE '^[[:space:]]*root_unlock_time' /etc/security/faillock.conf /etc/security/faillock.conf.d/\n/etc/security/faillock.conf:root_unlock_time = 60\n```\n\nThe live counter is inspected with `faillock --user root`, which lists the recorded failures and the time they occurred; `faillock --user root --reset` clears them.",
+    "fr": "Relisez la directive résolue :\n\n```\ngrep -rE '^[[:space:]]*root_unlock_time' /etc/security/faillock.conf /etc/security/faillock.conf.d/\n/etc/security/faillock.conf:root_unlock_time = 60\n```\n\nLe compteur en vigueur s'inspecte avec `faillock --user root`, qui liste les échecs enregistrés et leur horodatage ; `faillock --user root --reset` les efface."
+  },
+  "logs": {
+    "en": "Lockouts are logged by PAM in `/var/log/auth.log` (Debian/Ubuntu) or `journalctl -u sshd` (RHEL family):\n\n```\nsshd[4567]: pam_faillock(sshd:auth): Consecutive login failures for user root account temporarily locked\n```\n\nWhen `pam_faillock` is configured with the `audit` option, the failed attempts are also recorded by auditd; grep the raw log rather than relying on `ausearch`:\n\n```\ngrep -E 'ANOM_LOGIN_FAILURES|RESP_ACCT_LOCK' /var/log/audit/audit.log\n```",
+    "fr": "Les verrouillages sont journalisés par PAM dans `/var/log/auth.log` (Debian/Ubuntu) ou via `journalctl -u sshd` (famille RHEL) :\n\n```\nsshd[4567]: pam_faillock(sshd:auth): Consecutive login failures for user root account temporarily locked\n```\n\nLorsque `pam_faillock` est configuré avec l'option `audit`, les tentatives en échec sont aussi enregistrées par auditd ; grepez le journal brut plutôt que de compter sur `ausearch` :\n\n```\ngrep -E 'ANOM_LOGIN_FAILURES|RESP_ACCT_LOCK' /var/log/audit/audit.log\n```"
+  },
+  "remediation_note": {
+    "en": "The Pavois harden plan uses a `keyval` remediation that writes `root_unlock_time = 60` into `/etc/security/faillock.conf`. This resource is **aggregated**: Pavois rewrites the whole file with the complete set of faillock keys it manages (`deny`, `unlock_time`, `even_deny_root`, `audit`, …), so the file always reflects the full desired state rather than a patched line. Any hand-added key in that file is therefore overwritten at the next apply, and a plan generated from a stale scan can drop a setting you expected to keep: always regenerate the plan from a current scan.",
+    "fr": "Le plan de durcissement Pavois utilise une remédiation `keyval` qui écrit `root_unlock_time = 60` dans `/etc/security/faillock.conf`. Cette ressource est **agrégée** : Pavois réécrit l'intégralité du fichier avec l'ensemble des clés faillock qu'il gère (`deny`, `unlock_time`, `even_deny_root`, `audit`, etc.), de sorte que le fichier reflète toujours l'état désiré complet plutôt qu'une ligne rapiécée. Toute clé ajoutée à la main dans ce fichier est donc écrasée à l'application suivante, et un plan généré depuis un scan périmé peut supprimer un réglage que vous vouliez conserver : régénérez toujours le plan depuis un scan récent."
+  },
+  "impact": {
+    "en": "Without a root unlock delay, an attacker with access to a root login prompt can retry passwords without any cost. The reverse configuration is the real danger: combined with `even_deny_root`, a `root_unlock_time` of `0` means **root is locked permanently** and can only be recovered from a physical console, single-user mode or a rescue boot. Even the recommended 60 seconds turns repeated failures into a denial of service on root (an attacker can keep the account locked by failing on purpose). **Before applying**, keep a root session or an out-of-band console open, keep an unprivileged sudo-capable account available as an alternate path, and remember `faillock --user root --reset` clears the counter immediately.",
+    "fr": "Sans délai de déverrouillage pour root, un attaquant ayant accès à une invite de connexion root peut réessayer des mots de passe sans le moindre coût. C'est la configuration inverse qui est réellement dangereuse : associé à `even_deny_root`, un `root_unlock_time` à `0` signifie que **root est verrouillé définitivement** et n'est récupérable que depuis une console physique, un mode mono-utilisateur ou un démarrage de secours. Même les 60 secondes recommandées transforment des échecs répétés en déni de service sur root (un attaquant peut maintenir le compte verrouillé en échouant volontairement). **Avant d'appliquer**, gardez une session root ou une console hors bande ouverte, conservez un compte non privilégié disposant de sudo comme voie de repli, et rappelez-vous que `faillock --user root --reset` remet le compteur à zéro immédiatement."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

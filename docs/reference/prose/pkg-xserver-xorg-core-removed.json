@@ -1,0 +1,37 @@
+{
+  "id": "pkg-xserver-xorg-core-removed",
+  "title": {
+    "en": "Remove the X Windows Package Group",
+    "fr": "Supprimer le groupe de paquets X Windows"
+  },
+  "summary": {
+    "en": "Ensures the core X server package `xserver-xorg-core` is **not installed** on headless Debian/Ubuntu hosts.",
+    "fr": "Garantit que le paquet cœur du serveur X `xserver-xorg-core` n'est **pas installé** sur les hôtes Debian/Ubuntu sans interface graphique."
+  },
+  "rationale": {
+    "en": "Unnecessary service packages must not be installed in order to **decrease the attack surface** of the system. `xserver-xorg-core` is the core X server package on Debian/Ubuntu; the X Window System has a long history of security vulnerabilities and is not needed on a headless server. Unless graphical login is specifically approved and documented, the X server should not be present.",
+    "fr": "Les paquets de service inutiles ne doivent pas être installés afin de **réduire la surface d'attaque** du système. `xserver-xorg-core` est le paquet cœur du serveur X sur Debian/Ubuntu ; le système X Window a une longue histoire de vulnérabilités de sécurité et n'est pas nécessaire sur un serveur sans interface graphique. Sauf si la connexion graphique est spécifiquement approuvée et documentée, le serveur X ne doit pas être présent."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database via the InSpec `package('xserver-xorg-core')` resource (`dpkg -s`). This is the Debian/Ubuntu equivalent of `xorg-x11-server-common` on RHEL: it is the core dependency of the graphical stack, so its absence means no X server can run regardless of which desktop metapackages once existed.",
+    "fr": "Pavois interroge la base de paquets via la ressource InSpec `package('xserver-xorg-core')` (`dpkg -s`). C'est l'équivalent Debian/Ubuntu de `xorg-x11-server-common` sur RHEL : c'est la dépendance cœur de la pile graphique, son absence signifie donc qu'aucun serveur X ne peut tourner quels que soient les métapaquets de bureau jadis présents."
+  },
+  "verify": {
+    "en": "Run `dpkg -s xserver-xorg-core`. Expected output: `dpkg-query: package 'xserver-xorg-core' is not installed and no information is available`.",
+    "fr": "Exécutez `dpkg -s xserver-xorg-core`. Sortie attendue : `dpkg-query: package 'xserver-xorg-core' is not installed and no information is available`."
+  },
+  "logs": {
+    "en": "- Package state: `dpkg -s xserver-xorg-core` / `apt list --installed | grep xserver-xorg-core`; removal recorded in `/var/log/dpkg.log` and `/var/log/apt/history.log`.\n- Default boot target: `systemctl get-default` (should be `multi-user.target` on a headless host).",
+    "fr": "- État du paquet : `dpkg -s xserver-xorg-core` / `apt list --installed | grep xserver-xorg-core` ; suppression enregistrée dans `/var/log/dpkg.log` et `/var/log/apt/history.log`.\n- Cible de démarrage par défaut : `systemctl get-default` (devrait être `multi-user.target` sur un hôte sans interface)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource for `xserver-xorg-core` with action `remove`, so `pavois harden apply` uninstalls it (`apt-get purge xserver-xorg-core`). As the core X dependency, removing it pulls the rest of the X graphical stack with it.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` pour `xserver-xorg-core` avec l'action `remove`, donc `pavois harden apply` le désinstalle (`apt-get purge xserver-xorg-core`). En tant que dépendance cœur de X, le retirer entraîne avec lui le reste de la pile graphique X."
+  },
+  "impact": {
+    "en": "Removing the core X server uninstalls the graphical environment: local desktop sessions, X11 forwarding, and GUI applications stop working. **Before applying:** confirm the machine is meant to be headless and that no admin relies on a local or X11-forwarded GUI, check `systemctl get-default` and `apt list --installed | grep -E 'gdm|gnome|xfce|kde'`. On a server this is the intended hardening; on a workstation it is destructive. No SSH lockout risk (X is independent of SSH login); set the default target to `multi-user.target` afterward.",
+    "fr": "Retirer le serveur X cœur désinstalle l'environnement graphique : les sessions de bureau locales, le transfert X11 et les applications graphiques cessent de fonctionner. **Avant d'appliquer :** confirmez que la machine est destinée à fonctionner sans interface et qu'aucun administrateur ne dépend d'une interface graphique locale ou transférée via X11, vérifiez `systemctl get-default` et `apt list --installed | grep -E 'gdm|gnome|xfce|kde'`. Sur un serveur c'est le durcissement souhaité ; sur un poste de travail c'est destructeur. Aucun risque de verrouillage SSH (X est indépendant de la connexion SSH) ; basculez ensuite la cible par défaut sur `multi-user.target`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

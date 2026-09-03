@@ -1,0 +1,37 @@
+{
+  "id": "fileowner-etc-ipsec-conf",
+  "title": {
+    "en": "Verify User Who Owns /etc/ipsec.conf File",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier /etc/ipsec.conf"
+  },
+  "summary": {
+    "en": "Ensures the `/etc/ipsec.conf` file is owned by the `root` user (UID 0).",
+    "fr": "Garantit que le fichier `/etc/ipsec.conf` appartient à l'utilisateur `root` (UID 0)."
+  },
+  "rationale": {
+    "en": "`/etc/ipsec.conf` holds the **Libreswan IPsec** configuration: connection definitions, encryption algorithms and peer policies. If a non-root user owns it, they could weaken or disable VPN encryption, redirect a tunnel to a malicious peer, or expose traffic, undermining network confidentiality. Assigning ownership to `root` ensures exclusive control of the Libreswan configuration.",
+    "fr": "`/etc/ipsec.conf` contient la configuration **IPsec Libreswan** : définitions de connexions, algorithmes de chiffrement et politiques de pairs. Si un utilisateur non root le possède, il pourrait affaiblir ou désactiver le chiffrement VPN, rediriger un tunnel vers un pair malveillant ou exposer le trafic, compromettant la confidentialité du réseau. Attribuer la propriété à `root` garantit un contrôle exclusif de la configuration Libreswan."
+  },
+  "check_note": {
+    "en": "Pavois stats the live inode of `/etc/ipsec.conf` and asserts its **owner is UID 0**. The check is skipped on systems without Libreswan (file absent). Reading the actual filesystem metadata reflects the **effective** ownership the IPsec daemon relies on, not an assumed default.",
+    "fr": "Pavois interroge l'inode réel de `/etc/ipsec.conf` et vérifie que son **propriétaire est l'UID 0**. Le contrôle est ignoré sur les systèmes sans Libreswan (fichier absent). Lire les métadonnées réelles du système de fichiers reflète la propriété **effective** sur laquelle le démon IPsec s'appuie, et non une valeur supposée par défaut."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /etc/ipsec.conf`. The expected output is `root 0`.",
+    "fr": "Exécutez `stat -c '%U %u' /etc/ipsec.conf`. La sortie attendue est `root 0`."
+  },
+  "logs": {
+    "en": "IPsec tunnel activity is logged via `journalctl -u ipsec` and `ipsec status`. To detect file tampering, set an audit watch: `auditctl -w /etc/ipsec.conf -p wa -k ipsec`, then review `/var/log/audit/audit.log` (grep for `key=\"ipsec\"`).",
+    "fr": "L'activité des tunnels IPsec est consignée via `journalctl -u ipsec` et `ipsec status`. Pour détecter une altération du fichier, posez une surveillance audit : `auditctl -w /etc/ipsec.conf -p wa -k ipsec`, puis examinez `/var/log/audit/audit.log` (recherchez `key=\"ipsec\"`)."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so it must be fixed **manually**: run `chown root /etc/ipsec.conf` to restore root ownership.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être corrigée **manuellement** : exécutez `chown root /etc/ipsec.conf` pour rétablir la propriété root."
+  },
+  "impact": {
+    "en": "A non-root owner can rewrite IPsec policy to **weaken or hijack the VPN**, exposing traffic. Fixing it is low-risk: `chown root` does not change any connection definition, so existing tunnels keep working. Verify no management tooling writes the file as a non-root user before applying; the change takes effect immediately, no IPsec restart required.",
+    "fr": "Un propriétaire non root peut réécrire la politique IPsec pour **affaiblir ou détourner le VPN**, exposant le trafic. La correction présente peu de risque : `chown root` ne modifie aucune définition de connexion, les tunnels existants continuent de fonctionner. Vérifiez qu'aucun outil de gestion n'écrit le fichier en tant qu'utilisateur non root avant d'appliquer ; le changement prend effet immédiatement, sans redémarrage d'IPsec."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

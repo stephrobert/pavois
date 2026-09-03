@@ -2,11 +2,20 @@
   "id": "service-nginx-disabled",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -35,14 +44,13 @@
     "en": "Disable nginx Service",
     "fr": "Désactiver le service nginx"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "An **nginx** instance listens on the network (typically `80`/`443`) and exposes a parser, TLS stack and any configured virtual hosts to remote attackers. On a machine that is not meant to serve HTTP, a forgotten or default nginx install needlessly **widens the attack surface**: a single nginx CVE, a misconfigured `location` block or an exposed status page can become an entry point or an information leak. If the role is not required, the service should be stopped and disabled.",
-    "fr": "Une instance **nginx** écoute sur le réseau (généralement `80`/`443`) et expose à des attaquants distants un analyseur, une pile TLS et tout hôte virtuel configuré. Sur une machine qui n'a pas vocation à servir du HTTP, une installation nginx oubliée ou par défaut **élargit inutilement la surface d'attaque** : une seule CVE nginx, un bloc `location` mal configuré ou une page de statut exposée peut devenir un point d'entrée ou une fuite d'information. Si ce rôle n'est pas requis, le service doit être arrêté et désactivé."
-  },
   "summary": {
     "en": "Ensures the **`nginx.service`** unit is neither enabled at boot nor running, unless the host is intentionally a web server.",
     "fr": "Garantit que l'unité **`nginx.service`** n'est ni activée au démarrage ni en cours d'exécution, sauf si l'hôte est volontairement un serveur web."
+  },
+  "rationale": {
+    "en": "An **nginx** instance listens on the network (typically `80`/`443`) and exposes a parser, TLS stack and any configured virtual hosts to remote attackers. On a machine that is not meant to serve HTTP, a forgotten or default nginx install needlessly **widens the attack surface**: a single nginx CVE, a misconfigured `location` block or an exposed status page can become an entry point or an information leak. If the role is not required, the service should be stopped and disabled.",
+    "fr": "Une instance **nginx** écoute sur le réseau (généralement `80`/`443`) et expose à des attaquants distants un analyseur, une pile TLS et tout hôte virtuel configuré. Sur une machine qui n'a pas vocation à servir du HTTP, une installation nginx oubliée ou par défaut **élargit inutilement la surface d'attaque** : une seule CVE nginx, un bloc `location` mal configuré ou une page de statut exposée peut devenir un point d'entrée ou une fuite d'information. Si ce rôle n'est pas requis, le service doit être arrêté et désactivé."
   },
   "check_note": {
     "en": "Pavois queries the **effective service state** via `service('nginx.service')`, which resolves both the *enabled* (boot-time) and *running* (current) status from systemd, not from a config file. This matters because a unit can be masked, overridden by a drop-in under `/etc/systemd/system/nginx.service.d/`, or socket-activated, facts only systemd knows. A file-based scanner that just checks whether the nginx package is installed would miss a service that is installed but actively running, or vice-versa.",
@@ -63,5 +71,7 @@
   "impact": {
     "en": "If nginx is **legitimately serving traffic** (web app, reverse proxy, ACME/Let's Encrypt HTTP-01 challenge), disabling it will take that service offline and may break dependent applications or certificate renewals. **Before applying**: confirm the host is not meant to serve HTTP (`ss -tlnp | grep -E ':80|:443'`, check for vhosts in `/etc/nginx/sites-enabled/`), and that no reverse-proxy or load-balancer role depends on it. On a host that genuinely needs nginx, this rule does not apply and should be scoped out.",
     "fr": "Si nginx **sert légitimement du trafic** (application web, reverse proxy, challenge ACME/Let's Encrypt HTTP-01), le désactiver mettra ce service hors ligne et pourra casser les applications dépendantes ou le renouvellement des certificats. **Avant d'appliquer** : confirmez que l'hôte n'a pas vocation à servir du HTTP (`ss -tlnp | grep -E ':80|:443'`, vérifiez les vhosts dans `/etc/nginx/sites-enabled/`) et qu'aucun rôle de reverse-proxy ou de répartiteur de charge n'en dépend. Sur un hôte qui a réellement besoin de nginx, cette règle ne s'applique pas et doit être exclue du périmètre."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

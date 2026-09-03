@@ -1,0 +1,37 @@
+{
+  "id": "sudo-noexec",
+  "title": {
+    "en": "Ensure Privileged Escalated Commands Cannot Execute Other Commands - sudo NOEXEC",
+    "fr": "S'assurer que les commandes privilégiées ne peuvent pas en exécuter d'autres - sudo NOEXEC"
+  },
+  "summary": {
+    "en": "Enable the `Defaults noexec` option so commands run under `sudo` cannot spawn further sub-commands (e.g. a shell escape) via the C library exec functions.",
+    "fr": "Active l'option `Defaults noexec` afin que les commandes exécutées sous `sudo` ne puissent pas lancer d'autres sous-commandes (par ex. une évasion de shell) via les fonctions exec de la bibliothèque C."
+  },
+  "rationale": {
+    "en": "Many interactive programs (editors like `vi`, pagers like `less`, even `awk` or `find -exec`) can launch a sub-shell. When run via `sudo`, that sub-shell would inherit **root privileges**, giving the user a full root shell from a narrowly scoped privilege. `noexec` uses an `LD_PRELOAD` wrapper to neutralise the `exec*()` family, so privileged commands run but cannot **escalate into arbitrary command execution**, a classic sudo jailbreak.",
+    "fr": "De nombreux programmes interactifs (éditeurs comme `vi`, pagineurs comme `less`, voire `awk` ou `find -exec`) peuvent lancer un sous-shell. Exécuté via `sudo`, ce sous-shell hériterait des **privilèges root**, offrant à l'utilisateur un shell root complet à partir d'un privilège pourtant restreint. `noexec` s'appuie sur un préchargement `LD_PRELOAD` pour neutraliser la famille `exec*()` : les commandes privilégiées s'exécutent mais ne peuvent **pas dériver vers l'exécution de commandes arbitraires**, une évasion sudo classique."
+  },
+  "check_note": {
+    "en": "Pavois greps the **active sudoers tree**, `/etc/sudoers` and every file under `/etc/sudoers.d/`, for an uncommented `Defaults ... noexec`. Because `sudo` assembles its policy from the main file plus all drop-ins, scanning the whole tree reflects the **effective** policy rather than a single file a later drop-in could override.",
+    "fr": "Pavois recherche dans l'**arborescence sudoers active**, `/etc/sudoers` et chaque fichier sous `/etc/sudoers.d/`, une directive non commentée `Defaults ... noexec`. Comme `sudo` construit sa politique à partir du fichier principal et de tous les drop-ins, parcourir toute l'arborescence reflète la politique **effective** plutôt qu'un seul fichier qu'un drop-in ultérieur pourrait écraser."
+  },
+  "verify": {
+    "en": "Run `sudo grep -rE '^[^#]*Defaults.*noexec' /etc/sudoers /etc/sudoers.d/`. A matching, uncommented line confirms the option is active. To test behaviour, `sudo vi` then `:!sh` should fail to spawn a shell when `noexec` is in force.",
+    "fr": "Exécutez `sudo grep -rE '^[^#]*Defaults.*noexec' /etc/sudoers /etc/sudoers.d/`. Une ligne correspondante, non commentée, confirme que l'option est active. Pour tester le comportement, `sudo vi` puis `:!sh` ne doit pas réussir à lancer un shell lorsque `noexec` est en vigueur."
+  },
+  "logs": {
+    "en": "`sudo` invocations are logged to `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL), and via `journalctl -t sudo`. A blocked exec attempt typically leaves the parent command in the sudo log while the sub-process never starts, helping correlate attempted shell escapes.",
+    "fr": "Les appels à `sudo` sont journalisés dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL), et via `journalctl -t sudo`. Une tentative d'exec bloquée laisse en général la commande parente dans le journal sudo tandis que le sous-processus ne démarre jamais, ce qui aide à corréler les tentatives d'évasion de shell."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan writes a `file` resource at `/etc/sudoers.d/99-Pavois-noexec` containing `Defaults noexec`, owned `root:root` with mode `0440`, validated with `visudo -cf` before activation. Apply it with `pavois harden apply`. The dedicated drop-in keeps the change isolated and reversible.",
+    "fr": "Le plan de durcissement de Pavois écrit une ressource `file` dans `/etc/sudoers.d/99-Pavois-noexec` contenant `Defaults noexec`, appartenant à `root:root` avec le mode `0440`, validée avec `visudo -cf` avant activation. Appliquez-le avec `pavois harden apply`. Le drop-in dédié isole la modification et la rend réversible."
+  },
+  "impact": {
+    "en": "A blanket `noexec` will break legitimate sudo commands that must launch sub-processes, package managers, build tools, `systemctl` chains or admin scripts that call other binaries. **Before applying**, identify such commands and exempt them with a per-command `NOEXEC:`/`EXEC:` override (e.g. `user ALL = EXEC: /usr/bin/apt`) instead of dropping the global default. The drop-in is validated by `visudo` before activation, so it cannot corrupt sudoers; test critical admin workflows right after applying.",
+    "fr": "Un `noexec` global cassera les commandes sudo légitimes devant lancer des sous-processus, gestionnaires de paquets, outils de build, chaînes `systemctl` ou scripts d'admin appelant d'autres binaires. **Avant d'appliquer**, identifiez ces commandes et exemptez-les avec une dérogation par commande `NOEXEC:`/`EXEC:` (par ex. `user ALL = EXEC: /usr/bin/apt`) plutôt que de supprimer le défaut global. Le drop-in est validé par `visudo` avant activation : il ne peut donc pas corrompre sudoers ; testez les workflows d'admin critiques juste après l'application."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

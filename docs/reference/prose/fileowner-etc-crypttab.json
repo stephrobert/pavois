@@ -1,0 +1,37 @@
+{
+  "id": "fileowner-etc-crypttab",
+  "title": {
+    "en": "Verify User Who Owns /etc/crypttab File",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier /etc/crypttab"
+  },
+  "summary": {
+    "en": "Ensures the `/etc/crypttab` file is owned by the `root` user (UID 0).",
+    "fr": "Garantit que le fichier `/etc/crypttab` appartient à l'utilisateur `root` (UID 0)."
+  },
+  "rationale": {
+    "en": "`/etc/crypttab` describes the **encrypted block devices** unlocked at boot, including key file paths and cipher options. Ownership by `root` is critical: if a non-root user owns it, they could redirect a volume to an attacker-controlled key file, disable encryption options, or point a device at a malicious mapping, undermining the system's data-at-rest protection. Assigning ownership to `root` ensures exclusive control of the encrypted block devices configuration.",
+    "fr": "`/etc/crypttab` décrit les **périphériques de bloc chiffrés** déverrouillés au démarrage, y compris les chemins des fichiers de clés et les options de chiffrement. La propriété par `root` est critique : si un utilisateur non root le possède, il pourrait rediriger un volume vers un fichier de clé contrôlé par un attaquant, désactiver des options de chiffrement ou faire pointer un périphérique vers un mappage malveillant, compromettant la protection des données au repos. Attribuer la propriété à `root` garantit un contrôle exclusif de la configuration des périphériques de bloc chiffrés."
+  },
+  "check_note": {
+    "en": "Pavois stats the live inode of `/etc/crypttab` and asserts its **owner is UID 0**. The check is skipped on systems without encrypted volumes (file absent). Reading the actual filesystem metadata reflects the **effective** ownership systemd-cryptsetup relies on at boot, not an assumed default.",
+    "fr": "Pavois interroge l'inode réel de `/etc/crypttab` et vérifie que son **propriétaire est l'UID 0**. Le contrôle est ignoré sur les systèmes sans volume chiffré (fichier absent). Lire les métadonnées réelles du système de fichiers reflète la propriété **effective** sur laquelle systemd-cryptsetup s'appuie au démarrage, et non une valeur supposée par défaut."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /etc/crypttab`. The expected output is `root 0`.",
+    "fr": "Exécutez `stat -c '%U %u' /etc/crypttab`. La sortie attendue est `root 0`."
+  },
+  "logs": {
+    "en": "Volume unlocking at boot is logged via `journalctl -u systemd-cryptsetup@*`. To detect tampering with the file, set an audit watch: `auditctl -w /etc/crypttab -p wa -k crypttab`, then review `/var/log/audit/audit.log` (grep for `key=\"crypttab\"`).",
+    "fr": "Le déverrouillage des volumes au démarrage est consigné via `journalctl -u systemd-cryptsetup@*`. Pour détecter une altération du fichier, posez une surveillance audit : `auditctl -w /etc/crypttab -p wa -k crypttab`, puis examinez `/var/log/audit/audit.log` (recherchez `key=\"crypttab\"`)."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so it must be fixed **manually**: run `chown root /etc/crypttab` to restore root ownership.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être corrigée **manuellement** : exécutez `chown root /etc/crypttab` pour rétablir la propriété root."
+  },
+  "impact": {
+    "en": "A non-root owner can tamper with the encrypted-device mapping and **subvert disk encryption** or cause boot failures. Fixing it is low-risk: `chown root` does not change the volume definitions, so unlocking continues to work. Verify nothing legitimately writes to `/etc/crypttab` as a non-root user before applying (rare); the change takes effect immediately, no reboot required.",
+    "fr": "Un propriétaire non root peut altérer le mappage des périphériques chiffrés et **détourner le chiffrement de disque** ou provoquer des échecs de démarrage. La correction présente peu de risque : `chown root` ne modifie pas les définitions de volumes, le déverrouillage continue de fonctionner. Vérifiez qu'aucun processus légitime n'écrit dans `/etc/crypttab` en tant qu'utilisateur non root avant d'appliquer (rare) ; le changement prend effet immédiatement, sans redémarrage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

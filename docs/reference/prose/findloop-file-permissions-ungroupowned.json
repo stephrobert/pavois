@@ -1,0 +1,37 @@
+{
+  "id": "findloop-file-permissions-ungroupowned",
+  "title": {
+    "en": "Ensure all files are owned by a group",
+    "fr": "Vérifier que tous les fichiers appartiennent à un groupe"
+  },
+  "summary": {
+    "en": "Ensures no file on a local filesystem has an unassigned group owner (a GID not present in `/etc/group`).",
+    "fr": "Garantit qu'aucun fichier d'un système de fichiers local n'a un groupe propriétaire non attribué (un GID absent de `/etc/group`)."
+  },
+  "rationale": {
+    "en": "A file with no valid group owner (its GID does not map to any entry in `/etc/group`) is not a direct vulnerability, but it is a strong signal that something is wrong: leftover files from a deleted account, a botched software install or removal, or an intruder's artifacts. Worse, if a new group is later created and reuses that GID, it silently inherits access to the orphaned files. Files should be repaired and the root cause investigated.",
+    "fr": "Un fichier sans groupe propriétaire valide (son GID ne correspond à aucune entrée de `/etc/group`) n'est pas une vulnérabilité directe, mais c'est un signal fort d'anomalie : restes d'un compte supprimé, installation ou désinstallation logicielle bâclée, ou artefacts d'un intrus. Pire, si un nouveau groupe est créé plus tard en réutilisant ce GID, il hérite silencieusement de l'accès aux fichiers orphelins. Les fichiers doivent être réparés et la cause racine investiguée."
+  },
+  "check_note": {
+    "en": "Pavois runs `find / -xdev -nogroup` and expects **empty output**, any returned path is a file whose group GID maps to no group. The `-xdev` flag keeps the scan on the local filesystem. Resolving GIDs against the live `/etc/group` (rather than a static report) catches orphans left by recently deleted accounts and files extracted from foreign archives, which no config-file audit would surface.",
+    "fr": "Pavois lance `find / -xdev -nogroup` et attend une **sortie vide** : tout chemin renvoyé est un fichier dont le GID de groupe ne correspond à aucun groupe. Le drapeau `-xdev` maintient l'analyse sur le système de fichiers local. Résoudre les GID par rapport au `/etc/group` réel (plutôt qu'un rapport statique) détecte les orphelins laissés par des comptes récemment supprimés et les fichiers extraits d'archives étrangères, qu'aucun audit de fichier de configuration ne révélerait."
+  },
+  "verify": {
+    "en": "Run the scan manually:\n\n```\nfind / -xdev -nogroup\n```\n\n**Expected output: nothing** (empty). For each printed path, check the raw GID with `stat -c '%g %n' <file>` and assign a valid group with `chgrp <group> <file>` once you understand why it was orphaned.",
+    "fr": "Lancez l'analyse manuellement :\n\n```\nfind / -xdev -nogroup\n```\n\n**Sortie attendue : rien** (vide). Pour chaque chemin affiché, vérifiez le GID brut avec `stat -c '%g %n' <fichier>` et attribuez un groupe valide avec `chgrp <groupe> <fichier>` une fois la cause de l'orphelinat comprise."
+  },
+  "logs": {
+    "en": "List offenders with their raw GID using `find / -xdev -nogroup -printf '%G %p\\n'`. Cross-reference any reused GID against `getent group`. There is no dedicated log; group reassignments are recorded only if an `auditd` watch on `chgrp` is configured.",
+    "fr": "Listez les fautifs avec leur GID brut via `find / -xdev -nogroup -printf '%G %p\\n'`. Recoupez tout GID réutilisé avec `getent group`. Il n'y a pas de journal dédié ; les réattributions de groupe ne sont enregistrées que si une surveillance `auditd` sur `chgrp` est configurée."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied **manually**. Do not blindly reassign: first investigate why each file is group-orphaned (deleted account, bad install, intrusion). Once understood, give it a valid group with `chgrp <group> <file>`, or remove the file if it is genuine leftover debris.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être appliquée **manuellement**. Ne réattribuez pas aveuglément : recherchez d'abord pourquoi chaque fichier est orphelin de groupe (compte supprimé, mauvaise installation, intrusion). Une fois compris, donnez-lui un groupe valide avec `chgrp <groupe> <fichier>`, ou supprimez le fichier s'il s'agit de vrais débris résiduels."
+  },
+  "impact": {
+    "en": "Risk if left as-is: a future group created with the same GID silently gains access to these files, and the orphans may mask intrusion artifacts. Before fixing: a group-orphaned file can be evidence, preserve it for investigation before changing it. Avoid a blanket `chgrp` to a single group, which could grant unintended access; assign the correct owning group case by case and delete only confirmed debris.",
+    "fr": "Risque en l'état : un futur groupe créé avec le même GID obtient silencieusement l'accès à ces fichiers, et les orphelins peuvent masquer des artefacts d'intrusion. Avant de corriger : un fichier orphelin de groupe peut être une preuve, conservez-le pour investigation avant de le modifier. Évitez un `chgrp` global vers un seul groupe, qui pourrait accorder un accès non voulu ; attribuez le bon groupe propriétaire au cas par cas et ne supprimez que les débris confirmés."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

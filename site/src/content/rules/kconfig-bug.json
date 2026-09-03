@@ -1,16 +1,17 @@
 {
   "id": "kconfig-bug",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R19"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_BUG=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_BUG='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_BUG=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_BUG=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Enable support for BUG()",
     "fr": "Activer la prise en charge de BUG()"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_BUG=y` makes the kernel's `BUG()` and `BUG_ON()` macros actually trip, printing a backtrace and killing the offending context (oops/panic), when an internal invariant is violated. With it disabled, those checks are compiled out and the kernel **silently continues in a corrupted state**, which can mask exploitation, turn detectable faults into stealthy memory corruption, and make a security bug behave unpredictably instead of failing safe. Enabling it ensures the kernel fails loudly rather than running compromised.",
-    "fr": "`CONFIG_BUG=y` fait réellement déclencher les macros `BUG()` et `BUG_ON()` du noyau, affichant une trace et tuant le contexte fautif (oops/panic), lorsqu'un invariant interne est violé. Désactivée, ces vérifications sont retirées à la compilation et le noyau **continue silencieusement dans un état corrompu**, ce qui peut masquer une exploitation, transformer des fautes détectables en corruption mémoire furtive, et rendre un bug de sécurité imprévisible au lieu d'échouer proprement. L'activer garantit que le noyau échoue bruyamment plutôt que de continuer compromis."
-  },
   "summary": {
     "en": "Ensures the running kernel is built with `CONFIG_BUG=y`, so `BUG()`/`BUG_ON()` assertions trigger and report critical internal errors instead of being silently ignored.",
     "fr": "Garantit que le noyau en cours d'exécution est compilé avec `CONFIG_BUG=y`, afin que les assertions `BUG()`/`BUG_ON()` se déclenchent et signalent les erreurs internes critiques au lieu d'être ignorées silencieusement."
+  },
+  "rationale": {
+    "en": "`CONFIG_BUG=y` makes the kernel's `BUG()` and `BUG_ON()` macros actually trip, printing a backtrace and killing the offending context (oops/panic), when an internal invariant is violated. With it disabled, those checks are compiled out and the kernel **silently continues in a corrupted state**, which can mask exploitation, turn detectable faults into stealthy memory corruption, and make a security bug behave unpredictably instead of failing safe. Enabling it ensures the kernel fails loudly rather than running compromised.",
+    "fr": "`CONFIG_BUG=y` fait réellement déclencher les macros `BUG()` et `BUG_ON()` du noyau, affichant une trace et tuant le contexte fautif (oops/panic), lorsqu'un invariant interne est violé. Désactivée, ces vérifications sont retirées à la compilation et le noyau **continue silencieusement dans un état corrompu**, ce qui peut masquer une exploitation, transformer des fautes détectables en corruption mémoire furtive, et rendre un bug de sécurité imprévisible au lieu d'échouer proprement. L'activer garantit que le noyau échoue bruyamment plutôt que de continuer compromis."
   },
   "check_note": {
     "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)` (fallback `/proc/config.gz`) and asserts `CONFIG_BUG=y`. Keying on `uname -r` reflects the exact image GRUB booted, more reliable than reading an arbitrary `/boot/config-*` when multiple kernels are installed.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "**Risk if disabled:** kernel self-checks are compiled out, so corruption and invariant violations go unnoticed and the kernel may keep running in an unsafe state, masking exploits.\n\n**Precautions before changing it:** this is enabled by default everywhere, so a failure is rare and usually means a custom kernel. Replacing the kernel requires a reboot, keep the prior kernel in GRUB as a fallback and validate boot on a console. Enabling `CONFIG_BUG` has no downside on production systems beyond a negligible code-size increase.",
     "fr": "**Risque si désactivé :** les auto-vérifications du noyau sont retirées à la compilation, donc corruptions et violations d'invariants passent inaperçues et le noyau peut continuer dans un état non sûr, masquant des exploits.\n\n**Précautions avant de modifier :** c'est activé par défaut partout, donc un échec est rare et signale généralement un noyau personnalisé. Remplacer le noyau nécessite un redémarrage, conservez le noyau précédent dans GRUB en repli et validez le démarrage sur une console. Activer `CONFIG_BUG` n'a aucun inconvénient en production hormis une augmentation négligeable de la taille du code."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

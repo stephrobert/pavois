@@ -1,17 +1,17 @@
 {
   "id": "sysctl-kernel-kptr_restrict",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -36,6 +36,9 @@
   "check": [
     "describe kernel_parameter('kernel.kptr_restrict') do",
     "  its('value') { should cmp 2 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*kernel.kptr_restrict[[:space:]]*=[[:space:]]*2([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -47,14 +50,13 @@
     "en": "Restrict Exposed Kernel Pointer Addresses Access",
     "fr": "Restreindre l'exposition des adresses de pointeurs noyau"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Exposing kernel pointers (through procfs or `seq_printf()`) leaks the addresses of kernel writeable structures, which may contain function pointers. If a write vulnerability in the kernel allows tampering with one of these structures, the leaked addresses make the kernel far easier to compromise reliably (defeating KASLR). Setting `kptr_restrict = 2` replaces kernel pointers printed via these interfaces with `0` for **all** users, regardless of `CAP_SYSLOG`.",
-    "fr": "L'exposition des pointeurs noyau (via procfs ou `seq_printf()`) divulgue les adresses de structures noyau modifiables, susceptibles de contenir des pointeurs de fonction. Si une vulnérabilité d'écriture dans le noyau permet d'altérer l'une de ces structures, les adresses divulguées rendent la compromission fiable bien plus facile (en mettant en échec KASLR). Fixer `kptr_restrict = 2` remplace par `0` les pointeurs noyau affichés par ces interfaces pour **tous** les utilisateurs, indépendamment de `CAP_SYSLOG`."
-  },
   "summary": {
     "en": "Sets `kernel.kptr_restrict = 2` so kernel pointer addresses are hidden (printed as `0`) from every user, including those with `CAP_SYSLOG`.",
     "fr": "Fixe `kernel.kptr_restrict = 2` afin que les adresses de pointeurs noyau soient masquées (affichées en `0`) pour tous les utilisateurs, y compris ceux disposant de `CAP_SYSLOG`."
+  },
+  "rationale": {
+    "en": "Exposing kernel pointers (through procfs or `seq_printf()`) leaks the addresses of kernel writeable structures, which may contain function pointers. If a write vulnerability in the kernel allows tampering with one of these structures, the leaked addresses make the kernel far easier to compromise reliably (defeating KASLR). Setting `kptr_restrict = 2` replaces kernel pointers printed via these interfaces with `0` for **all** users, regardless of `CAP_SYSLOG`.",
+    "fr": "L'exposition des pointeurs noyau (via procfs ou `seq_printf()`) divulgue les adresses de structures noyau modifiables, susceptibles de contenir des pointeurs de fonction. Si une vulnérabilité d'écriture dans le noyau permet d'altérer l'une de ces structures, les adresses divulguées rendent la compromission fiable bien plus facile (en mettant en échec KASLR). Fixer `kptr_restrict = 2` remplace par `0` les pointeurs noyau affichés par ces interfaces pour **tous** les utilisateurs, indépendamment de `CAP_SYSLOG`."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** with `kernel_parameter('kernel.kptr_restrict')` (equivalent to `sysctl kernel.kptr_restrict`), not a line in `/etc/sysctl.conf` or `/etc/sysctl.d/*.conf`. A file may declare `2` while the running kernel is still at `0` or `1` because a later drop-in overrode it, the file was never applied, or a `sysctl -w` changed it at runtime. Auditing the effective parameter is the only reliable proof of what the kernel enforces now.",
@@ -75,5 +77,7 @@
   "impact": {
     "en": "**Risk if not applied:** kernel pointer addresses leak through `/proc`, weakening KASLR and giving an attacker the precise targets needed to turn a write primitive into reliable kernel code execution.\n\n**Precautions before applying:**\n- Value `2` hides pointers even from privileged tools. Some **performance/debugging tooling** (`perf`, eBPF tracers, `systemtap`, certain profilers) may show `0x0` addresses or lose symbol resolution. On dedicated profiling hosts you may prefer `1`; for hardened production servers `2` is the recommended value.\n- The change is harmless to applications and fully reversible at runtime, so no lockout risk.",
     "fr": "**Risque si non appliqué :** les adresses de pointeurs noyau fuient via `/proc`, affaiblissant KASLR et fournissant à un attaquant les cibles précises pour transformer une primitive d'écriture en exécution de code noyau fiable.\n\n**Précautions avant application :**\n- La valeur `2` masque les pointeurs même aux outils privilégiés. Certains **outils de performance/débogage** (`perf`, traceurs eBPF, `systemtap`, certains profileurs) peuvent afficher des adresses `0x0` ou perdre la résolution des symboles. Sur des hôtes dédiés au profilage, préférez `1` ; pour des serveurs de production durcis, `2` est la valeur recommandée.\n- Le changement est inoffensif pour les applications et entièrement réversible à chaud, sans risque de blocage."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

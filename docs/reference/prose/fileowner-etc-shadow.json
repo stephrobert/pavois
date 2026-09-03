@@ -1,0 +1,37 @@
+{
+  "id": "fileowner-etc-shadow",
+  "title": {
+    "en": "Verify User Who Owns shadow File",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier shadow"
+  },
+  "summary": {
+    "en": "Ensures the password-hash database `/etc/shadow` is owned by `root` (UID 0).",
+    "fr": "Garantit que la base des empreintes de mots de passe `/etc/shadow` appartient à `root` (UID 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/shadow` file lists local accounts and stores their **password hashes** and aging metadata. If a non-root account owns it, that user could read the hashes (enabling offline cracking) or edit them to set/clear passwords, a direct credential-compromise and **privilege-escalation** path. Setting **`root` (UID 0)** as the owner keeps this highly sensitive file under exclusive privileged control.",
+    "fr": "Le fichier `/etc/shadow` liste les comptes locaux et stocke leurs **empreintes de mots de passe** et métadonnées de vieillissement. Si un compte non-root le possède, cet utilisateur pourrait lire les empreintes (permettant un cassage hors-ligne) ou les modifier pour définir/effacer des mots de passe, une voie directe de compromission d'identifiants et d'**escalade de privilèges**. Définir **`root` (UID 0)** comme propriétaire maintient ce fichier hautement sensible sous contrôle privilégié exclusif."
+  },
+  "check_note": {
+    "en": "Pavois inspects the **live filesystem** with the InSpec `file('/etc/shadow')` resource and asserts `uid == 0`, guarded by `only_if`. Reading the real inode owner (not a provisioning template) reveals the **effective** state on disk, catching any post-deployment `chown` that would expose password hashes.",
+    "fr": "Pavois inspecte le **système de fichiers réel** via la ressource InSpec `file('/etc/shadow')` et vérifie `uid == 0`, protégé par `only_if`. Lire le propriétaire réel de l'inode (et non un modèle de provisionnement) révèle l'état **effectif** sur le disque et détecte tout `chown` post-déploiement qui exposerait les empreintes de mots de passe."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u %n' /etc/shadow`. Expected output: `root 0 /etc/shadow`. The numeric `0` confirms root ownership.",
+    "fr": "Exécutez `stat -c '%U %u %n' /etc/shadow`. Sortie attendue : `root 0 /etc/shadow`. Le `0` numérique confirme la propriété par root."
+  },
+  "logs": {
+    "en": "Distributions usually ship an audit rule on this file (key `identity`); inspect `/var/log/audit/audit.log` with `grep 'key=\"identity\"'`. If absent, add `auditctl -w /etc/shadow -p wa -k identity`. Password changes are also logged by PAM in `/var/log/auth.log` / `journalctl` (passwd, pam_unix).",
+    "fr": "Les distributions livrent généralement une règle d'audit sur ce fichier (clé `identity`) ; inspectez `/var/log/audit/audit.log` avec `grep 'key=\"identity\"'`. Si absente, ajoutez `auditctl -w /etc/shadow -p wa -k identity`. Les changements de mot de passe sont aussi journalisés par PAM dans `/var/log/auth.log` / `journalctl` (passwd, pam_unix)."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped for this rule. Apply it manually with `chown root /etc/shadow` (run as root or via `sudo`); the file should be group `shadow` (Debian/Ubuntu) or `root` (RHEL) and mode `0640`/`0000` per distro, never widen its permissions.",
+    "fr": "Aucune remédiation automatisée n'est fournie pour cette règle. Appliquez-la manuellement avec `chown root /etc/shadow` (en root ou via `sudo`) ; le fichier doit être en groupe `shadow` (Debian/Ubuntu) ou `root` (RHEL) et mode `0640`/`0000` selon la distribution, n'élargissez jamais ses permissions."
+  },
+  "impact": {
+    "en": "A non-root owner of `/etc/shadow` directly exposes every password hash and enables account takeover. **Risk of applying:** very low, `root` ownership is the system default and does not break authentication. **Precaution:** correct only the owner; do NOT relax the group/mode (Debian uses group `shadow` with `0640`, RHEL uses `0000`), widening them is itself a finding.",
+    "fr": "Un propriétaire non-root de `/etc/shadow` expose directement chaque empreinte de mot de passe et permet la prise de contrôle de comptes. **Risque à l'application :** très faible, la propriété `root` est la valeur par défaut et ne casse pas l'authentification. **Précaution :** ne corrigez que le propriétaire ; ne relâchez PAS le groupe/mode (Debian utilise le groupe `shadow` avec `0640`, RHEL utilise `0000`), les élargir est lui-même un écart."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

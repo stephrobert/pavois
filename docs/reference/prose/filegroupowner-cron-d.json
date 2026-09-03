@@ -1,0 +1,37 @@
+{
+  "id": "filegroupowner-cron-d",
+  "title": {
+    "en": "Verify Group Who Owns cron.d",
+    "fr": "Vérifier le groupe propriétaire de cron.d"
+  },
+  "summary": {
+    "en": "Ensures the `/etc/cron.d` directory is group-owned by **`root` (gid 0)**.",
+    "fr": "Garantit que le répertoire `/etc/cron.d` est détenu par le groupe **`root` (gid 0)**."
+  },
+  "rationale": {
+    "en": "The `/etc/cron.d` directory holds drop-in crontab files that **run as root** on a fixed schedule. If the directory is group-owned by a non-privileged group, a member of that group could add, replace, or alter a cron job and obtain **arbitrary command execution as root** (privilege escalation). Restricting group ownership to **`root` (gid 0)** ensures only highly-privileged accounts can change what the system runs on a schedule.",
+    "fr": "Le répertoire `/etc/cron.d` contient des fichiers crontab additionnels qui **s'exécutent en tant que root** selon une planification fixe. Si le répertoire est détenu par un groupe non privilégié, un membre de ce groupe pourrait ajouter, remplacer ou modifier une tâche cron et obtenir l'**exécution de commandes arbitraires en root** (élévation de privilèges). Restreindre la propriété de groupe à **`root` (gid 0)** garantit que seuls les comptes hautement privilégiés peuvent modifier ce que le système exécute de façon planifiée."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** group owner of `/etc/cron.d` on the live system via the InSpec `file` resource and asserts `gid == 0`. It inspects the actual inode metadata as the kernel sees it (resolving symlinks and bind mounts), not a packaging manifest or a documented default, so a directory whose ownership was changed after install is caught.",
+    "fr": "Pavois lit le groupe propriétaire **effectif** de `/etc/cron.d` sur le système en cours d'exécution via la ressource InSpec `file` et vérifie `gid == 0`. Il inspecte les métadonnées réelles de l'inode telles que le noyau les voit (en résolvant liens symboliques et montages bind), et non un manifeste de paquet ou une valeur par défaut documentée : un répertoire dont la propriété a été modifiée après l'installation est donc détecté."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /etc/cron.d`. Expected output: **`root 0`**. Any other group name or non-zero gid means the rule is not applied.",
+    "fr": "Exécutez `stat -c '%G %g' /etc/cron.d`. Sortie attendue : **`root 0`**. Tout autre nom de groupe ou gid non nul signifie que la règle n'est pas appliquée."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default. To observe a change, watch the file with auditd: `auditctl -w /etc/cron.d -p wa -k cron-perms`, then inspect events with `grep 'key=\"cron-perms\"' /var/log/audit/audit.log`. Cron execution itself is visible in `journalctl -u cron` (Debian/Ubuntu) or `journalctl -u crond` (RHEL family).",
+    "fr": "Les changements de propriété ne sont pas journalisés par défaut. Pour observer une modification, surveillez le répertoire avec auditd : `auditctl -w /etc/cron.d -p wa -k cron-perms`, puis examinez les événements avec `grep 'key=\"cron-perms\"' /var/log/audit/audit.log`. L'exécution de cron elle-même est visible via `journalctl -u cron` (Debian/Ubuntu) ou `journalctl -u crond` (famille RHEL)."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is defined for this rule, so it must be applied **manually**. Restore the correct group ownership with `chgrp root /etc/cron.d` (equivalently `chown :root /etc/cron.d`).",
+    "fr": "Aucune remédiation automatique n'est définie pour cette règle ; elle doit donc être appliquée **manuellement**. Rétablissez le bon groupe propriétaire avec `chgrp root /etc/cron.d` (équivalent à `chown :root /etc/cron.d`)."
+  },
+  "impact": {
+    "en": "A non-`root` group owner on `/etc/cron.d` is a privilege-escalation path: group members can plant root-run jobs. Applying the fix is low-risk, `chgrp root` only changes group ownership, not permissions or content, and cron keeps working. **Precaution:** confirm no legitimate tooling depends on a custom group on this directory before changing it, and apply ownership before tightening any group-write permissions to avoid locking out an administrative workflow.",
+    "fr": "Un groupe propriétaire autre que `root` sur `/etc/cron.d` constitue une voie d'élévation de privilèges : les membres du groupe peuvent y déposer des tâches exécutées en root. Appliquer le correctif présente peu de risques, `chgrp root` ne change que la propriété de groupe, ni les permissions ni le contenu, et cron continue de fonctionner. **Précaution :** vérifiez qu'aucun outil légitime ne dépend d'un groupe personnalisé sur ce répertoire avant de le modifier, et appliquez la propriété avant de restreindre d'éventuelles permissions d'écriture de groupe pour ne pas bloquer un flux d'administration."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

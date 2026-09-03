@@ -1,17 +1,17 @@
 {
   "id": "mount-tmp-nodev",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -37,21 +37,29 @@
   "check": [
     "describe mount('/tmp') do",
     "  its('options') { should include 'nodev' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /tmp 2>/dev/null; grep -hsE '[[:space:]]/tmp[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /tmp 2>/dev/null) 2>/dev/null; } | grep -ow 'nodev'\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "device": "tmpfs",
+    "fstype": "tmpfs",
+    "mount_point": "/tmp",
+    "option": "nodev",
+    "resource": "mount"
+  },
   "title": {
     "en": "Add nodev Option to /tmp",
     "fr": "Ajouter l'option nodev à /tmp"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The only legitimate place for device files is `/dev` on the root partition (chroot jails being the rare exception). Mounting `/tmp` with **`nodev`** tells the kernel to ignore any character or block special device found there. Without it, an attacker who can write to the world-writable `/tmp` could plant a device node (for example a copy of `/dev/sda` or `/dev/mem`) and use it to bypass filesystem permissions and read or tamper with raw disk or kernel memory.",
-    "fr": "Le seul emplacement légitime pour les fichiers de périphérique est `/dev` sur la partition racine (les prisons chroot étant la rare exception). Monter `/tmp` avec **`nodev`** indique au noyau d'ignorer tout périphérique spécial (caractère ou bloc) qui s'y trouverait. Sans cette option, un attaquant capable d'écrire dans le `/tmp` accessible à tous pourrait y créer un nœud de périphérique (par exemple une copie de `/dev/sda` ou `/dev/mem`) et l'utiliser pour contourner les permissions du système de fichiers et lire ou altérer le disque brut ou la mémoire noyau."
-  },
   "summary": {
     "en": "Mounts `/tmp` with the **`nodev`** option so the kernel refuses to interpret device files placed in that directory.",
     "fr": "Monte `/tmp` avec l'option **`nodev`** afin que le noyau refuse d'interpréter les fichiers de périphérique placés dans ce répertoire."
+  },
+  "rationale": {
+    "en": "The only legitimate place for device files is `/dev` on the root partition (chroot jails being the rare exception). Mounting `/tmp` with **`nodev`** tells the kernel to ignore any character or block special device found there. Without it, an attacker who can write to the world-writable `/tmp` could plant a device node (for example a copy of `/dev/sda` or `/dev/mem`) and use it to bypass filesystem permissions and read or tamper with raw disk or kernel memory.",
+    "fr": "Le seul emplacement légitime pour les fichiers de périphérique est `/dev` sur la partition racine (les prisons chroot étant la rare exception). Monter `/tmp` avec **`nodev`** indique au noyau d'ignorer tout périphérique spécial (caractère ou bloc) qui s'y trouverait. Sans cette option, un attaquant capable d'écrire dans le `/tmp` accessible à tous pourrait y créer un nœud de périphérique (par exemple une copie de `/dev/sda` ou `/dev/mem`) et l'utiliser pour contourner les permissions du système de fichiers et lire ou altérer le disque brut ou la mémoire noyau."
   },
   "check_note": {
     "en": "Pavois inspects the **effective** mount with `mount('/tmp')` and asserts that its resolved options include `nodev`. This reads the live mount table (what the kernel actually applied), not `/etc/fstab`, so it catches a partition remounted at runtime, an option dropped by a `systemd` mount unit, or an entry that never took effect, which a file-based scanner reading `/etc/fstab` alone would miss.",
@@ -72,5 +80,7 @@
   "impact": {
     "en": "Functional impact is low: legitimate software almost never needs device nodes under `/tmp`. **Precautions:** ensure `/tmp` is a real separate mount (or a `tmpfs`) before adding the option, on systems where `/tmp` lives on the root filesystem there is no dedicated mount to set it on, and you must first carve out a partition or a `tmpfs` unit. Apply with `mount -o remount /tmp`; if a remount fails because of busy files, schedule it for the next reboot rather than forcing it.",
     "fr": "L'impact fonctionnel est faible : les logiciels légitimes n'ont presque jamais besoin de nœuds de périphérique sous `/tmp`. **Précautions :** assurez-vous que `/tmp` est un montage séparé réel (ou un `tmpfs`) avant d'ajouter l'option, sur les systèmes où `/tmp` réside sur le système de fichiers racine, il n'existe pas de montage dédié sur lequel la poser, et vous devez d'abord créer une partition ou une unité `tmpfs`. Appliquez avec `mount -o remount /tmp` ; si un remontage échoue à cause de fichiers ouverts, planifiez-le au prochain redémarrage plutôt que de le forcer."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

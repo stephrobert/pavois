@@ -1,10 +1,13 @@
 {
   "id": "filegroupowner-var-log",
   "supported_os": [
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "rhel8": "4.0.0",
@@ -35,35 +38,36 @@
   },
   "title": {
     "en": "Verify Group Who Owns /var/log Directory",
-    "fr": "Verifier le groupe proprietaire du repertoire /var/log"
-  },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/var/log` is the parent directory for all system logs. Its group ownership governs who can create, rename or remove log files inside it. If a non-root group owns the directory, members could delete or substitute logs to hide activity, or stage files that interfere with logging. Setting the group to `root` (GID 0) keeps control of the log tree with the most privileged group.",
-    "fr": "`/var/log` est le repertoire parent de tous les journaux systeme. Son groupe proprietaire determine qui peut creer, renommer ou supprimer des fichiers de journaux a l'interieur. Si un groupe non root possede le repertoire, ses membres pourraient supprimer ou remplacer des journaux pour masquer une activite, ou y deposer des fichiers perturbant la journalisation. Definir le groupe sur `root` (GID 0) garde le controle de l'arborescence des journaux au groupe le plus privilegie."
+    "fr": "Vérifier le groupe propriétaire du répertoire /var/log"
   },
   "summary": {
     "en": "Ensures the `/var/log` directory is group-owned by `root` (GID 0) so only the root group controls the system log tree.",
-    "fr": "Garantit que le repertoire `/var/log` appartient au groupe `root` (GID 0) afin que seul le groupe root controle l'arborescence des journaux systeme."
+    "fr": "Garantit que le répertoire `/var/log` appartient au groupe `root` (GID 0) afin que seul le groupe root contrôle l'arborescence des journaux système."
+  },
+  "rationale": {
+    "en": "`/var/log` is the parent directory for all system logs. Its group ownership governs who can create, rename or remove log files inside it. If a non-root group owns the directory, members could delete or substitute logs to hide activity, or stage files that interfere with logging. Setting the group to `root` (GID 0) keeps control of the log tree with the most privileged group.",
+    "fr": "`/var/log` est le répertoire parent de tous les journaux système. Son groupe propriétaire détermine qui peut créer, renommer ou supprimer des fichiers de journaux à l'intérieur. Si un groupe non root possède le répertoire, ses membres pourraient supprimer ou remplacer des journaux pour masquer une activité, ou y déposer des fichiers perturbant la journalisation. Définir le groupe sur `root` (GID 0) garde le contrôle de l'arborescence des journaux au groupe le plus privilégié."
   },
   "check_note": {
     "en": "Pavois reads the **resolved** numeric GID of `/var/log` via the InSpec `file` resource and asserts it equals `0`. It inspects the live inode metadata, so the result reflects the directory's actual ownership rather than an installer default.",
-    "fr": "Pavois lit le GID numerique **resolu** de `/var/log` via la ressource InSpec `file` et verifie qu'il vaut `0`. Il inspecte les metadonnees reelles de l'inode, de sorte que le resultat reflete la propriete reelle du repertoire plutot qu'une valeur par defaut de l'installateur."
+    "fr": "Pavois lit le GID numérique **résolu** de `/var/log` via la ressource InSpec `file` et vérifie qu'il vaut `0`. Il inspecte les métadonnées réelles de l'inode, de sorte que le résultat reflète la propriété réelle du répertoire plutôt qu'une valeur par défaut de l'installateur."
   },
   "verify": {
     "en": "Run `stat -c '%g %G' /var/log`. The expected output is:\n\n- `0 root`\n\nList it with `ls -ld /var/log` to confirm the group column shows `root`.",
-    "fr": "Executez `stat -c '%g %G' /var/log`. La sortie attendue est :\n\n- `0 root`\n\nAffichez-le avec `ls -ld /var/log` pour confirmer que la colonne du groupe indique `root`."
+    "fr": "Exécutez `stat -c '%g %G' /var/log`. La sortie attendue est :\n\n- `0 root`\n\nAffichez-le avec `ls -ld /var/log` pour confirmer que la colonne du groupe indique `root`."
   },
   "logs": {
     "en": "Changes to the directory are not logged by syslog itself. To trace them, add an auditd watch (`auditctl -w /var/log -p wa -k logperms`) and grep `/var/log/audit/audit.log` for `key=\"logperms\"`. General logging health is visible with `journalctl --disk-usage` and `systemctl status rsyslog`.",
-    "fr": "Les changements sur le repertoire ne sont pas journalises par syslog lui-meme. Pour les tracer, ajoutez une surveillance auditd (`auditctl -w /var/log -p wa -k logperms`) et recherchez `key=\"logperms\"` dans `/var/log/audit/audit.log`. L'etat general de la journalisation est visible avec `journalctl --disk-usage` et `systemctl status rsyslog`."
+    "fr": "Les changements sur le répertoire ne sont pas journalisés par syslog lui-même. Pour les tracer, ajoutez une surveillance auditd (`auditctl -w /var/log -p wa -k logperms`) et recherchez `key=\"logperms\"` dans `/var/log/audit/audit.log`. L'état général de la journalisation est visible avec `journalctl --disk-usage` et `systemctl status rsyslog`."
   },
   "remediation_note": {
     "en": "This rule has no automated harden plan in Pavois. Apply it manually by setting the directory group to `root`: `chgrp root /var/log` (do not use `-R`, since some subdirectories legitimately use other groups such as `adm` or `utmp`).",
-    "fr": "Cette regle n'a pas de plan de durcissement automatise dans Pavois. Appliquez-la manuellement en definissant le groupe du repertoire sur `root` : `chgrp root /var/log` (n'utilisez pas `-R`, car certains sous-repertoires utilisent legitimement d'autres groupes comme `adm` ou `utmp`)."
+    "fr": "Cette règle n'a pas de plan de durcissement automatisé dans Pavois. Appliquez-la manuellement en définissant le groupe du répertoire sur `root` : `chgrp root /var/log` (n'utilisez pas `-R`, car certains sous-répertoires utilisent légitimement d'autres groupes comme `adm` ou `utmp`)."
   },
   "impact": {
     "en": "If a non-root group owns `/var/log`, its members could remove or replace log files to erase evidence, undermining audit and forensics. Correcting the directory's group is non-disruptive. **Precaution:** change only the `/var/log` directory itself, NOT recursively, files like `/var/log/auth.log` (group `adm`) and `/var/log/lastlog` (group `utmp`) must keep their own groups, so a recursive `chgrp` would break other compliance rules and possibly logging.",
-    "fr": "Si un groupe non root possede `/var/log`, ses membres pourraient supprimer ou remplacer des fichiers de journaux pour effacer des preuves, compromettant l'audit et la forensique. Corriger le groupe du repertoire est sans impact. **Precaution :** ne modifiez que le repertoire `/var/log` lui-meme, PAS de maniere recursive, des fichiers comme `/var/log/auth.log` (groupe `adm`) et `/var/log/lastlog` (groupe `utmp`) doivent conserver leurs propres groupes, donc un `chgrp` recursif casserait d'autres regles de conformite et potentiellement la journalisation."
-  }
+    "fr": "Si un groupe non root possède `/var/log`, ses membres pourraient supprimer ou remplacer des fichiers de journaux pour effacer des preuves, compromettant l'audit et la forensique. Corriger le groupe du répertoire est sans impact. **Précaution :** ne modifiez que le répertoire `/var/log` lui-même, PAS de manière récursive, des fichiers comme `/var/log/auth.log` (groupe `adm`) et `/var/log/lastlog` (groupe `utmp`) doivent conserver leurs propres groupes, donc un `chgrp` récursif casserait d'autres règles de conformité et potentiellement la journalisation."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

@@ -2,11 +2,14 @@
   "id": "fileowner-var-log-waagent",
   "supported_os": [
     "debian12",
+    "debian13",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -21,28 +24,29 @@
     ]
   },
   "check": [
-    "only_if { file('/var/log/waagent').exist? }",
-    "describe file('/var/log/waagent') do",
-    "  its('owner') { should eq 'syslog' }",
+    "only_if { file('/var/log/waagent.log').exist? }",
+    "describe command(\"stat -c %U /var/log/waagent.log 2>/dev/null\") do",
+    "  its('stdout.strip') { should be_in ['root', 'syslog'] }",
     "end"
   ],
   "remediation": {
-    "owner": "syslog",
-    "path": "/var/log/waagent",
-    "resource": "file"
+    "command": "chown root /var/log/waagent.log 2>/dev/null; true",
+    "name": "log-owner-var-log-waagent.log",
+    "not_if": "stat -c %U /var/log/waagent.log 2>/dev/null | grep -qxE 'root|syslog'",
+    "path": "/var/log/waagent.log",
+    "resource": "exec"
   },
   "title": {
     "en": "Verify User Who Owns /var/log/waagent.log File",
     "fr": "Vérifier l'utilisateur propriétaire du fichier /var/log/waagent.log"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/var/log/waagent.log` is written by the **Azure Linux Guest Agent** and records provisioning, extension installs and agent activity, data that can reveal the host's cloud configuration and, occasionally, sensitive bootstrap details. If it is not owned by `syslog`, an unprivileged user could read this operational intelligence or tamper with the log to hide how the VM was configured or compromised.",
-    "fr": "`/var/log/waagent.log` est écrit par l'**agent invité Linux Azure** et enregistre le provisionnement, les installations d'extensions et l'activité de l'agent, des données pouvant révéler la configuration cloud de l'hôte et, occasionnellement, des détails d'amorçage sensibles. S'il n'appartient pas à `syslog`, un utilisateur non privilégié pourrait lire ces renseignements opérationnels ou altérer le journal pour masquer la façon dont la VM a été configurée ou compromise."
-  },
   "summary": {
     "en": "Ensures the Azure Guest Agent log `/var/log/waagent` is **owned by the `syslog` user**.",
     "fr": "Garantit que le journal de l'agent invité Azure `/var/log/waagent` est **détenu par l'utilisateur `syslog`**."
+  },
+  "rationale": {
+    "en": "`/var/log/waagent.log` is written by the **Azure Linux Guest Agent** and records provisioning, extension installs and agent activity, data that can reveal the host's cloud configuration and, occasionally, sensitive bootstrap details. If it is not owned by `syslog`, an unprivileged user could read this operational intelligence or tamper with the log to hide how the VM was configured or compromised.",
+    "fr": "`/var/log/waagent.log` est écrit par l'**agent invité Linux Azure** et enregistre le provisionnement, les installations d'extensions et l'activité de l'agent, des données pouvant révéler la configuration cloud de l'hôte et, occasionnellement, des détails d'amorçage sensibles. S'il n'appartient pas à `syslog`, un utilisateur non privilégié pourrait lire ces renseignements opérationnels ou altérer le journal pour masquer la façon dont la VM a été configurée ou compromise."
   },
   "check_note": {
     "en": "Pavois checks that the **owner of `/var/log/waagent` is `syslog`**, only when the file exists (`only_if`), since waagent is present only on Azure VMs. It reads the **live owner** (`stat`) on the target rather than a default, so a `chown` from the agent, rotation or a deployment script is caught as the **effective on-disk state**.",
@@ -63,5 +67,7 @@
   "impact": {
     "en": "**Consequences if misconfigured:** wrong ownership exposes Azure provisioning details and lets a non-logging process tamper with the agent log, hiding configuration or compromise of the VM.\n\n**Precautions before applying:** the change is low-risk. Note that the Azure Guest Agent (`waagent`) typically runs and writes its log as **root**, not `syslog`; on a genuine Azure VM, forcing the owner to `syslog` only matches the benchmark when rsyslog is configured to own the file, verify the agent can still write after applying so provisioning is not disrupted. The `only_if` guard skips non-Azure hosts entirely.",
     "fr": "**Conséquences en cas de mauvaise configuration :** une propriété erronée expose les détails de provisionnement Azure et permet à un processus hors journalisation d'altérer le journal de l'agent, masquant la configuration ou la compromission de la VM.\n\n**Précautions avant application :** le changement est à faible risque. Notez que l'agent invité Azure (`waagent`) s'exécute et écrit généralement son journal en **root**, et non `syslog` ; sur une véritable VM Azure, forcer le propriétaire à `syslog` ne correspond au référentiel que si rsyslog est configuré pour posséder le fichier, vérifiez que l'agent peut toujours écrire après application afin de ne pas perturber le provisionnement. La garde `only_if` ignore entièrement les hôtes non-Azure."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

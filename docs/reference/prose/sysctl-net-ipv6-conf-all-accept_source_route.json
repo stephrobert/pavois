@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-net-ipv6-conf-all-accept_source_route",
+  "title": {
+    "en": "Disable Kernel Parameter for Accepting Source-Routed Packets on all IPv6 Interfaces",
+    "fr": "Désactiver le paramètre noyau d'acceptation des paquets à routage par la source sur toutes les interfaces IPv6"
+  },
+  "summary": {
+    "en": "Sets `net.ipv6.conf.all.accept_source_route` to `0` so the host refuses source-routed IPv6 packets on all interfaces.",
+    "fr": "Fixe `net.ipv6.conf.all.accept_source_route` à `0` afin que l'hôte refuse les paquets IPv6 à routage par la source sur toutes les interfaces."
+  },
+  "rationale": {
+    "en": "Source-routed packets let the **sender dictate the path** a packet takes, overriding the routing the network would normally choose. An attacker can use this to bypass firewalls and routing-based security controls, reach otherwise unreachable hosts, or spoof return paths. Accepting source-routed traffic has almost no legitimate use on modern hosts and should be disabled unless explicitly required.",
+    "fr": "Les paquets à routage par la source permettent à **l'émetteur de dicter le chemin** emprunté par un paquet, contournant le routage que le réseau choisirait normalement. Un attaquant peut s'en servir pour contourner les pare-feu et les contrôles de sécurité fondés sur le routage, atteindre des hôtes autrement inaccessibles ou usurper les chemins de retour. Accepter le trafic à routage par la source n'a presque aucun usage légitime sur les hôtes modernes et doit être désactivé sauf nécessité explicite."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.all.accept_source_route`) and asserts it is `0`. The live value is authoritative: a value in `/etc/sysctl.d/*` may be **overridden** by a later drop-in or never applied, so a file-based scanner can falsely report compliance while the kernel still accepts source routing.",
+    "fr": "Pavois lit la valeur **effective** au runtime via la ressource `kernel_parameter` (équivalent à `sysctl net.ipv6.conf.all.accept_source_route`) et vérifie qu'elle vaut `0`. La valeur active fait foi : une valeur dans `/etc/sysctl.d/*` peut être **écrasée** par un drop-in ultérieur ou jamais appliquée ; un scanner basé fichiers peut donc signaler à tort la conformité alors que le noyau accepte encore le routage par la source."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv6.conf.all.accept_source_route` (or `cat /proc/sys/net/ipv6/conf/all/accept_source_route`). Expected output:\n\n- `net.ipv6.conf.all.accept_source_route = 0`",
+    "fr": "Exécutez `sysctl net.ipv6.conf.all.accept_source_route` (ou `cat /proc/sys/net/ipv6/conf/all/accept_source_route`). Sortie attendue :\n\n- `net.ipv6.conf.all.accept_source_route = 0`"
+  },
+  "logs": {
+    "en": "No dedicated log. Check the live value with `sysctl net.ipv6.conf.all.accept_source_route` and audit its source with `sysctl --system`.",
+    "fr": "Aucun journal dédié. Vérifiez la valeur active avec `sysctl net.ipv6.conf.all.accept_source_route` et auditez son origine avec `sysctl --system`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv6.conf.all.accept_source_route` to `0`, persisting it in a Pavois-owned `/etc/sysctl.d/` drop-in and applying it live (no reboot). Run it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour fixer `net.ipv6.conf.all.accept_source_route` à `0`, le rend persistant via un drop-in `/etc/sysctl.d/` géré par Pavois et l'applique à chaud (sans redémarrage). Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "No practical impact on normal hosts: source routing is effectively obsolete and disabled by default on most distributions. The only systems that might rely on it are specialised network appliances doing deliberate path selection, do not enforce there. No risk of lockout.",
+    "fr": "Aucun impact pratique sur les hôtes normaux : le routage par la source est de fait obsolète et désactivé par défaut sur la plupart des distributions. Les seuls systèmes susceptibles d'en dépendre sont des équipements réseau spécialisés effectuant une sélection de chemin délibérée, ne pas appliquer dans ce cas. Aucun risque de blocage d'accès."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,17 +1,17 @@
 {
   "id": "logindefs-pass_min_days",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -41,19 +41,24 @@
     "  its('PASS_MIN_DAYS') { should cmp >= 1 }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "file": "/etc/login.defs",
+    "key": "PASS_MIN_DAYS",
+    "resource": "conf_line",
+    "sep": "space",
+    "value": "1"
+  },
   "title": {
     "en": "Set Password Minimum Age",
     "fr": "Définir l'âge minimal des mots de passe"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Enforcing a minimum password lifetime prevents users from rapidly cycling through password changes to defeat password-history/reuse controls. With `PASS_MIN_DAYS` of at least **1**, a user cannot change a password and immediately revert to a favorite one in the same session, preserving the integrity of the reuse policy.",
-    "fr": "Imposer une durée de vie minimale empêche les utilisateurs d'enchaîner rapidement les changements de mot de passe pour contourner les contrôles d'historique/réutilisation. Avec un `PASS_MIN_DAYS` d'au moins **1**, un utilisateur ne peut pas changer son mot de passe puis revenir immédiatement à un mot de passe favori dans la même session, préservant l'intégrité de la politique de réutilisation."
-  },
   "summary": {
     "en": "Ensures `PASS_MIN_DAYS` in `/etc/login.defs` is at least **1**, blocking immediate repeated password changes.",
     "fr": "Garantit que `PASS_MIN_DAYS` dans `/etc/login.defs` vaut au moins **1**, bloquant les changements de mot de passe répétés et immédiats."
+  },
+  "rationale": {
+    "en": "Enforcing a minimum password lifetime prevents users from rapidly cycling through password changes to defeat password-history/reuse controls. With `PASS_MIN_DAYS` of at least **1**, a user cannot change a password and immediately revert to a favorite one in the same session, preserving the integrity of the reuse policy.",
+    "fr": "Imposer une durée de vie minimale empêche les utilisateurs d'enchaîner rapidement les changements de mot de passe pour contourner les contrôles d'historique/réutilisation. Avec un `PASS_MIN_DAYS` d'au moins **1**, un utilisateur ne peut pas changer son mot de passe puis revenir immédiatement à un mot de passe favori dans la même session, préservant l'intégrité de la politique de réutilisation."
   },
   "check_note": {
     "en": "Pavois uses the InSpec `login_defs` resource to read the **effective resolved value** of `PASS_MIN_DAYS`, parsing `/etc/login.defs` the way `useradd`/`chage` interpret it (last uncommented setting wins). This is the default for newly created accounts; per-user values in `/etc/shadow` can differ.",
@@ -74,5 +79,7 @@
   "impact": {
     "en": "Low risk. **Caution:** a non-zero minimum age means a user who must change their password (e.g. after a reset) cannot change it again until the delay elapses, set the new password correctly the first time. Keep `PASS_MIN_DAYS` well below `PASS_MAX_DAYS` so users always have a window to renew before expiry. For helpdesk-forced resets, clear the minimum temporarily with `chage --mindays 0 <user>`.",
     "fr": "Risque faible. **Attention :** un âge minimal non nul signifie qu'un utilisateur devant changer son mot de passe (par exemple après une réinitialisation) ne pourra pas le rechanger avant la fin du délai, définissez correctement le nouveau mot de passe du premier coup. Gardez `PASS_MIN_DAYS` bien inférieur à `PASS_MAX_DAYS` pour que les utilisateurs aient toujours une fenêtre de renouvellement avant expiration. Pour les réinitialisations forcées par le support, annulez temporairement le minimum avec `chage --mindays 0 <user>`."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

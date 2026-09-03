@@ -1,17 +1,17 @@
 {
   "id": "sysctl-net-ipv6-conf-all-accept_redirects",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -41,6 +41,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.all.accept_redirects') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.all.accept_redirects[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -52,14 +55,13 @@
     "en": "Disable Accepting ICMP Redirects for All IPv6 Interfaces",
     "fr": "Désactiver l'acceptation des redirections ICMP sur toutes les interfaces IPv6"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "An ICMPv6 redirect tells a host to use a different next-hop router for a destination. Because these messages are **unauthenticated**, an attacker on the local link can forge a redirect to insert a malicious gateway into the host's routing cache, enabling a **man-in-the-middle attack** or traffic blackholing. End hosts rarely need to act on redirects; ignoring them removes this avenue.",
-    "fr": "Une redirection ICMPv6 indique à un hôte d'utiliser un autre routeur de prochain saut pour une destination. Comme ces messages ne sont **pas authentifiés**, un attaquant sur le lien local peut forger une redirection pour insérer une passerelle malveillante dans le cache de routage de l'hôte, permettant une attaque de **l'homme du milieu** ou un blackholing du trafic. Les hôtes terminaux ont rarement besoin de traiter les redirections ; les ignorer supprime ce vecteur."
-  },
   "summary": {
     "en": "Sets `net.ipv6.conf.all.accept_redirects` to `0` so the host ignores ICMPv6 redirect messages on all interfaces.",
     "fr": "Fixe `net.ipv6.conf.all.accept_redirects` à `0` afin que l'hôte ignore les messages de redirection ICMPv6 sur toutes les interfaces."
+  },
+  "rationale": {
+    "en": "An ICMPv6 redirect tells a host to use a different next-hop router for a destination. Because these messages are **unauthenticated**, an attacker on the local link can forge a redirect to insert a malicious gateway into the host's routing cache, enabling a **man-in-the-middle attack** or traffic blackholing. End hosts rarely need to act on redirects; ignoring them removes this avenue.",
+    "fr": "Une redirection ICMPv6 indique à un hôte d'utiliser un autre routeur de prochain saut pour une destination. Comme ces messages ne sont **pas authentifiés**, un attaquant sur le lien local peut forger une redirection pour insérer une passerelle malveillante dans le cache de routage de l'hôte, permettant une attaque de **l'homme du milieu** ou un blackholing du trafic. Les hôtes terminaux ont rarement besoin de traiter les redirections ; les ignorer supprime ce vecteur."
   },
   "check_note": {
     "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.all.accept_redirects`) and asserts it is `0`. The live kernel value is authoritative: a value declared in `/etc/sysctl.conf` or `/etc/sysctl.d/*` may be **overridden** by a later drop-in or never loaded, so a file-only scanner (OVAL/oscap) can report compliant while the kernel still accepts redirects.",
@@ -80,5 +82,7 @@
   "impact": {
     "en": "Negligible on end systems and servers: legitimate ICMPv6 redirects only optimise routing within a single subnet, and modern networks do not depend on them. After applying, the host simply keeps its configured/default route instead of adopting redirect-suggested next hops. Do not enforce on routers that intentionally process redirects. No risk of lockout.",
     "fr": "Négligeable sur les systèmes terminaux et serveurs : les redirections ICMPv6 légitimes ne font qu'optimiser le routage au sein d'un même sous-réseau, et les réseaux modernes n'en dépendent pas. Après application, l'hôte conserve simplement sa route configurée/par défaut au lieu d'adopter les prochains sauts suggérés par redirection. Ne pas appliquer aux routeurs qui traitent volontairement les redirections. Aucun risque de blocage d'accès."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

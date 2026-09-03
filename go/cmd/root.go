@@ -34,7 +34,7 @@ systemctl, dpkg/rpm...) via CINC Auditor, maps each control to N standards
 	SilenceErrors: true,
 	// Banner (logo + version + tagline) as soon as any command is launched.
 	PersistentPreRun: func(_ *cobra.Command, _ []string) {
-		screport.Banner(os.Stderr, bannerOpts())
+		_ = screport.Banner(os.Stderr, bannerOpts()) // best-effort banner to stderr
 	},
 }
 

@@ -1,0 +1,37 @@
+{
+  "id": "filegroupowner-at-allow",
+  "title": {
+    "en": "Verify Group Who Owns /etc/at.allow file",
+    "fr": "Vérifier le groupe propriétaire du fichier /etc/at.allow"
+  },
+  "summary": {
+    "en": "Ensures `/etc/at.allow`, the list of users permitted to use the `at` scheduler, is group-owned by `root` (gid `0`).",
+    "fr": "Garantit que `/etc/at.allow`, la liste des utilisateurs autorisés à utiliser le planificateur `at`, a `root` (gid `0`) pour groupe propriétaire."
+  },
+  "rationale": {
+    "en": "`/etc/at.allow` decides **which users may schedule jobs** with `at`. If its group owner is not `root` (gid `0`), a non-privileged group could add itself to the allow list and gain the ability to run scheduled commands, or read the list of authorized users, information useful to an attacker mapping privileged accounts.",
+    "fr": "`/etc/at.allow` décide **quels utilisateurs peuvent planifier des tâches** avec `at`. Si son groupe propriétaire n'est pas `root` (gid `0`), un groupe non privilégié pourrait s'ajouter à la liste d'autorisation et obtenir la possibilité d'exécuter des commandes planifiées, ou lire la liste des utilisateurs autorisés, une information utile à un attaquant cartographiant les comptes privilégiés."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective ownership** of `/etc/at.allow` as resolved by the kernel and asserts `gid == 0`. The InSpec `file` resource queries the inode's actual group id via `stat`, so it reflects the real on-disk state at scan time, including ownership drift caused by package updates, restore scripts or manual edits, rather than what a configuration template claims.",
+    "fr": "Pavois lit la **propriété effective** de `/etc/at.allow` telle que résolue par le noyau et vérifie `gid == 0`. La ressource InSpec `file` interroge l'identifiant de groupe réel de l'inode via `stat`, reflétant ainsi l'état réel sur disque au moment du scan, y compris une dérive de propriété causée par des mises à jour de paquets, des scripts de restauration ou des modifications manuelles, plutôt que ce qu'un modèle de configuration prétend."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /etc/at.allow`. Expected output: **`root 0`**. The file may legitimately not exist; if so, the control is skipped (the `only_if` guard).",
+    "fr": "Exécutez `stat -c '%G %g' /etc/at.allow`. Sortie attendue : **`root 0`**. Le fichier peut légitimement ne pas exister ; dans ce cas le contrôle est ignoré (garde `only_if`)."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default. Inspect current state with `ls -l /etc/at.allow` or `stat /etc/at.allow`. If auditd watches this path (`auditctl -w /etc/at.allow -p wa`), `chown` events appear in `/var/log/audit/audit.log`.",
+    "fr": "Les changements de propriété ne sont pas journalisés par défaut. Inspectez l'état courant avec `ls -l /etc/at.allow` ou `stat /etc/at.allow`. Si auditd surveille ce chemin (`auditctl -w /etc/at.allow -p wa`), les événements `chown` apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so it must be applied **manually**: run `chgrp root /etc/at.allow` (or `chown :root /etc/at.allow`) to restore the `root` group owner.",
+    "fr": "Aucun plan de durcissement automatisé n'est encore défini pour cette règle ; elle doit donc être appliquée **manuellement** : exécutez `chgrp root /etc/at.allow` (ou `chown :root /etc/at.allow`) pour restaurer le groupe propriétaire `root`."
+  },
+  "impact": {
+    "en": "A wrong group owner on `/etc/at.allow` lets an unprivileged group read or alter who may use `at`, potentially escalating to scheduled command execution. **Precautions:** changing the group to `root` is low-risk and does not affect users already listed; verify the file is not intentionally managed by a configuration tool (Ansible/Puppet) that would revert the change, and confirm `at` is still installed before assuming the file should exist.",
+    "fr": "Un mauvais groupe propriétaire sur `/etc/at.allow` permet à un groupe non privilégié de lire ou modifier qui peut utiliser `at`, avec un risque d'escalade vers l'exécution de commandes planifiées. **Précautions :** changer le groupe pour `root` est peu risqué et n'affecte pas les utilisateurs déjà listés ; vérifiez que le fichier n'est pas géré intentionnellement par un outil de configuration (Ansible/Puppet) qui annulerait la modification, et confirmez qu'`at` est toujours installé avant de supposer que le fichier doit exister."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

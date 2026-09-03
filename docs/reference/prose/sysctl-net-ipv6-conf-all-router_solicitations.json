@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-net-ipv6-conf-all-router_solicitations",
+  "title": {
+    "en": "Configure Denying Router Solicitations on All IPv6 Interfaces",
+    "fr": "Configurer le refus des sollicitations de routeur sur toutes les interfaces IPv6"
+  },
+  "summary": {
+    "en": "Sets `net.ipv6.conf.all.router_solicitations` to `0` so the host sends no IPv6 Router Solicitation messages on any interface.",
+    "fr": "Fixe `net.ipv6.conf.all.router_solicitations` à `0` afin que l'hôte n'émette aucun message de sollicitation de routeur IPv6 sur aucune interface."
+  },
+  "rationale": {
+    "en": "Router Solicitations are sent by a host to actively ask local routers to send Router Advertisements. Emitting them **announces the host's presence** on the segment and triggers RA-based autoconfiguration that a rogue router could answer. A statically configured host has no need to solicit routers; suppressing these messages reduces its visibility and removes an autoconfiguration trigger.",
+    "fr": "Les sollicitations de routeur sont envoyées par un hôte pour demander activement aux routeurs locaux d'émettre des annonces de routeur. Les émettre **annonce la présence de l'hôte** sur le segment et déclenche l'autoconfiguration par RA qu'un routeur malveillant pourrait honorer. Un hôte configuré statiquement n'a pas besoin de solliciter les routeurs ; supprimer ces messages réduit sa visibilité et élimine un déclencheur d'autoconfiguration."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.all.router_solicitations`) and asserts it is `0`. The live value is authoritative: a value in `/etc/sysctl.d/*` may be **overridden** by a later drop-in or never applied, so reading the running parameter avoids the false pass a file-based scanner (OVAL/oscap) can give.",
+    "fr": "Pavois lit la valeur **effective** au runtime via la ressource `kernel_parameter` (équivalent à `sysctl net.ipv6.conf.all.router_solicitations`) et vérifie qu'elle vaut `0`. La valeur active fait foi : une valeur dans `/etc/sysctl.d/*` peut être **écrasée** par un drop-in ultérieur ou jamais appliquée ; lire le paramètre actif évite le faux succès d'un scanner basé fichiers (OVAL/oscap)."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv6.conf.all.router_solicitations` (or `cat /proc/sys/net/ipv6/conf/all/router_solicitations`). Expected output:\n\n- `net.ipv6.conf.all.router_solicitations = 0`",
+    "fr": "Exécutez `sysctl net.ipv6.conf.all.router_solicitations` (ou `cat /proc/sys/net/ipv6/conf/all/router_solicitations`). Sortie attendue :\n\n- `net.ipv6.conf.all.router_solicitations = 0`"
+  },
+  "logs": {
+    "en": "No dedicated log. Check the live value with `sysctl net.ipv6.conf.all.router_solicitations` and audit its source with `sysctl --system`. RS emission can be observed on the wire with `tcpdump -i <iface> icmp6 and ip6[40] == 133`.",
+    "fr": "Aucun journal dédié. Vérifiez la valeur active avec `sysctl net.ipv6.conf.all.router_solicitations` et auditez son origine avec `sysctl --system`. L'émission de RS s'observe sur le réseau avec `tcpdump -i <iface> icmp6 and ip6[40] == 133`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv6.conf.all.router_solicitations` to `0`, persisting it in a Pavois-owned `/etc/sysctl.d/` drop-in and applying it live (no reboot). Run it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour fixer `net.ipv6.conf.all.router_solicitations` à `0`, le rend persistant via un drop-in `/etc/sysctl.d/` géré par Pavois et l'applique à chaud (sans redémarrage). Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "On hosts that depend on **SLAAC**, not sending Router Solicitations can delay or prevent learning a default route (the host then waits passively for unsolicited RAs, or gets no address at all), breaking IPv6 connectivity. Apply only where the host uses **static IPv6** or DHCPv6, confirm the addressing model first. No effect on IPv4-only systems.",
+    "fr": "Sur les hôtes dépendant de **SLAAC**, ne pas émettre de sollicitations de routeur peut retarder ou empêcher l'apprentissage d'une route par défaut (l'hôte attend alors passivement des RA non sollicitées, ou n'obtient aucune adresse), cassant la connectivité IPv6. À appliquer uniquement quand l'hôte utilise une **IPv6 statique** ou DHCPv6, confirmez d'abord le modèle d'adressage. Sans effet sur les systèmes IPv4 uniquement."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

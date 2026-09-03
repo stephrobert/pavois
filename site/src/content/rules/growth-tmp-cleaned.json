@@ -1,0 +1,70 @@
+{
+  "id": "growth-tmp-cleaned",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2204",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2204": "3.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Hardening (posture)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe command('systemctl is-active systemd-tmpfiles-clean.timer 2>/dev/null') do",
+    "  its('stdout.strip') { should eq 'active' }",
+    "end"
+  ],
+  "remediation": {
+    "action": [
+      "enable",
+      "start"
+    ],
+    "name": "systemd-tmpfiles-clean.timer",
+    "resource": "service"
+  },
+  "title": {
+    "en": "Temporary filesystems are cleaned (systemd-tmpfiles)",
+    "fr": "Les systèmes de fichiers temporaires sont nettoyés (systemd-tmpfiles)"
+  },
+  "summary": {
+    "en": "Require `systemd-tmpfiles-clean.timer` to be active, so `/tmp` and `/var/tmp` are aged out according to the `tmpfiles.d` rules instead of growing without limit. This **pavois-native** `growth-*` control follows the family rule: every filesystem pavois separates (and the pavois partition recipe separates `/tmp` and `/var/tmp`) must carry a mechanism that keeps it from filling.",
+    "fr": "Exige que `systemd-tmpfiles-clean.timer` soit actif, afin que `/tmp` et `/var/tmp` soient purgés selon les règles `tmpfiles.d` au lieu de croître sans limite. Ce contrôle **natif pavois** de la famille `growth-*` suit la règle de la famille : tout système de fichiers que pavois sépare (et la recette de partitionnement pavois sépare `/tmp` et `/var/tmp`) doit porter un mécanisme qui l'empêche de se remplir."
+  },
+  "check_note": {
+    "en": "Pavois asks systemd for the timer's **runtime state** (`systemctl is-active systemd-tmpfiles-clean.timer`), which must be exactly `active`. A timer can be present on disk and still be `disabled`, `masked`, or simply never started: only the resolved state proves the cleanup will fire. The control audits the **cleaner**, not the current size of `/tmp`, because a `/tmp` that is empty today says nothing about the one that fills up in three weeks.",
+    "fr": "Pavois demande à systemd l'**état à l'exécution** de la minuterie (`systemctl is-active systemd-tmpfiles-clean.timer`), qui doit valoir exactement `active`. Une minuterie peut exister sur le disque tout en étant `disabled`, `masked`, ou n'avoir jamais été démarrée : seul l'état résolu prouve que le nettoyage se déclenchera. Le contrôle audite le **nettoyeur**, pas la taille actuelle de `/tmp`, car un `/tmp` vide aujourd'hui ne dit rien de celui qui se remplira dans trois semaines."
+  },
+  "verify": {
+    "en": "Check the timer and its next elapse, then dry-run the cleanup:\n\n```\nsystemctl is-active systemd-tmpfiles-clean.timer\nsystemctl list-timers systemd-tmpfiles-clean.timer --all\nsystemd-tmpfiles --clean --dry-run\n```\n\nThe dry run prints exactly which entries the next pass would remove, and under which `tmpfiles.d` rule.",
+    "fr": "Vérifiez la minuterie et sa prochaine échéance, puis simulez le nettoyage :\n\n```\nsystemctl is-active systemd-tmpfiles-clean.timer\nsystemctl list-timers systemd-tmpfiles-clean.timer --all\nsystemd-tmpfiles --clean --dry-run\n```\n\nLa simulation affiche exactement les entrées que la prochaine passe supprimerait, et sous quelle règle `tmpfiles.d`."
+  },
+  "logs": {
+    "en": "Every pass is logged by `journalctl -u systemd-tmpfiles-clean.service`, one line per removed path. That unit log is the audit trail: it shows what was deleted and when, which is what you need the day a service complains that its state file vanished from `/tmp`.",
+    "fr": "Chaque passe est journalisée par `journalctl -u systemd-tmpfiles-clean.service`, à raison d'une ligne par chemin supprimé. Ce journal d'unité constitue la piste d'audit : il montre ce qui a été supprimé et quand, exactement ce dont vous avez besoin le jour où un service se plaint que son fichier d'état a disparu de `/tmp`."
+  },
+  "remediation_note": {
+    "en": "Pavois manages `systemd-tmpfiles-clean.timer` as a service resource with the actions `enable` and `start`: the timer is enabled for the next boot **and** started in the running system, so the cleanup does not wait for a reboot. The ageing policy itself is not overridden: pavois relies on the distribution's `tmpfiles.d` rules (typically 10 days for `/tmp`, 30 for `/var/tmp`), which remain yours to tune.",
+    "fr": "Pavois gère `systemd-tmpfiles-clean.timer` comme une ressource de service avec les actions `enable` et `start` : la minuterie est activée pour le prochain démarrage **et** démarrée dans le système courant, de sorte que le nettoyage n'attend pas un redémarrage. La politique de vieillissement n'est pas surchargée : pavois s'appuie sur les règles `tmpfiles.d` de la distribution (typiquement 10 jours pour `/tmp`, 30 pour `/var/tmp`), qui restent à votre main."
+  },
+  "impact": {
+    "en": "Once the timer runs, files in `/tmp` and `/var/tmp` older than the configured age **are deleted**. Applications that (incorrectly) keep long-lived sockets, lock files or state under `/tmp` can break on the first pass. Inventory them before enabling, and move persistent state to `/run` (volatile) or `/var/lib` (durable), or carve an exemption with your own `tmpfiles.d` rule. This is the cheap end of a lesson the `growth-*` family learned the expensive way: a hardened host whose separate log filesystem reached 100% and powered the machine off six seconds into every boot, with every control green.",
+    "fr": "Une fois la minuterie active, les fichiers de `/tmp` et `/var/tmp` plus vieux que l'âge configuré **sont supprimés**. Les applications qui conservent (à tort) des sockets, verrous ou états durables sous `/tmp` peuvent casser dès la première passe. Inventoriez-les avant l'activation, puis déplacez l'état persistant vers `/run` (volatil) ou `/var/lib` (durable), ou taillez une exemption avec votre propre règle `tmpfiles.d`. C'est la version peu coûteuse d'une leçon que la famille `growth-*` a apprise cher : un hôte durci dont le système de fichiers de journaux séparé a atteint 100 % et coupait la machine six secondes après chaque démarrage, tous contrôles au vert."
+  },
+  "datePublished": "2026-07-14",
+  "dateModified": "2026-07-14"
+}

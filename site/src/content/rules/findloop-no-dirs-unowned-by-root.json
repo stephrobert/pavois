@@ -3,13 +3,18 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
     "debian13": "1.0.0",
+    "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
@@ -22,7 +27,8 @@
     "cis": "5.4.2.5"
   },
   "check": [
-    "describe command('timeout 90 find / -xdev -type d -nouser 2>/dev/null') do",
+    "describe command(\"timeout 90 find / -xdev -type d -nouser -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null\") do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
@@ -35,14 +41,13 @@
     "en": "Ensure no directories are unowned by a valid user",
     "fr": "Vérifier qu'aucun répertoire n'est sans utilisateur propriétaire valide"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "A directory with no valid owner (its UID maps to no entry in `/etc/passwd`) is a strong sign that something is amiss: residue of a deleted account, a botched install or an intruder's artifact. If a new account later reuses that UID, it silently inherits ownership, and write control, over the orphaned directory and everything created in it. Directories in privileged paths that are not owned by a valid (ideally root) user can let an unprivileged user manipulate the execution environment, opening a privilege-escalation path.",
-    "fr": "Un répertoire sans propriétaire valide (son UID ne correspond à aucune entrée de `/etc/passwd`) est un signe fort d'anomalie : résidu d'un compte supprimé, installation bâclée ou artefact d'intrus. Si un nouveau compte réutilise plus tard cet UID, il hérite silencieusement de la propriété, et du contrôle en écriture, du répertoire orphelin et de tout ce qui y est créé. Des répertoires de chemins privilégiés sans propriétaire valide (idéalement root) peuvent laisser un utilisateur non privilégié manipuler l'environnement d'exécution, ouvrant une voie d'élévation de privilèges."
-  },
   "summary": {
     "en": "Ensures no directory on a local filesystem has an unassigned user owner (a UID not present in `/etc/passwd`).",
     "fr": "Garantit qu'aucun répertoire d'un système de fichiers local n'a un utilisateur propriétaire non attribué (un UID absent de `/etc/passwd`)."
+  },
+  "rationale": {
+    "en": "A directory with no valid owner (its UID maps to no entry in `/etc/passwd`) is a strong sign that something is amiss: residue of a deleted account, a botched install or an intruder's artifact. If a new account later reuses that UID, it silently inherits ownership, and write control, over the orphaned directory and everything created in it. Directories in privileged paths that are not owned by a valid (ideally root) user can let an unprivileged user manipulate the execution environment, opening a privilege-escalation path.",
+    "fr": "Un répertoire sans propriétaire valide (son UID ne correspond à aucune entrée de `/etc/passwd`) est un signe fort d'anomalie : résidu d'un compte supprimé, installation bâclée ou artefact d'intrus. Si un nouveau compte réutilise plus tard cet UID, il hérite silencieusement de la propriété, et du contrôle en écriture, du répertoire orphelin et de tout ce qui y est créé. Des répertoires de chemins privilégiés sans propriétaire valide (idéalement root) peuvent laisser un utilisateur non privilégié manipuler l'environnement d'exécution, ouvrant une voie d'élévation de privilèges."
   },
   "check_note": {
     "en": "Pavois runs `find / -xdev -type d -nouser` and expects **empty output**, any returned path is a directory whose UID maps to no user. The `-xdev` flag keeps the scan on the local filesystem. Resolving UIDs against the live `/etc/passwd` (not a static report) catches orphans left by recently deleted accounts and directories unpacked from foreign archives, which a config-file audit would never surface.",
@@ -63,5 +68,7 @@
   "impact": {
     "en": "Risk if left as-is: a future account created with the same UID silently takes ownership and write control of the directory and its contents, and the orphan may mask intrusion artifacts. Before fixing: an orphaned directory can be evidence, preserve it for investigation before changing it. Verify the intended owner before running `chown` (assigning the wrong user could grant unintended control), and delete only directories confirmed to be debris.",
     "fr": "Risque en l'état : un futur compte créé avec le même UID prend silencieusement la propriété et le contrôle en écriture du répertoire et de son contenu, et l'orphelin peut masquer des artefacts d'intrusion. Avant de corriger : un répertoire orphelin peut être une preuve, conservez-le pour investigation avant de le modifier. Vérifiez le propriétaire prévu avant de lancer `chown` (attribuer le mauvais utilisateur pourrait accorder un contrôle non voulu), et ne supprimez que les répertoires confirmés comme débris."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

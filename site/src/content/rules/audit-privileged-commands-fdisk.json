@@ -2,7 +2,8 @@
   "id": "audit-privileged-commands-fdisk",
   "supported_os": [
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "ubuntu2204": "3.0.0",
@@ -33,6 +34,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)modules\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'modules' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -43,14 +47,13 @@
     "en": "Ensure auditd Collects Information on the Use of Privileged Commands - fdisk",
     "fr": "Vérifier qu'auditd journalise l'usage des commandes privilégiées - fdisk"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`fdisk` and the related disk/module tooling can repartition storage and manipulate low-level device state, exactly the kind of privileged action an attacker uses to plant persistence or destroy data. Auditing its use (under the **`modules`** key on this platform) records who invoked it and when, so misuse of privileged functions by insiders or compromised accounts can be detected and investigated.",
-    "fr": "`fdisk` et l'outillage disque/modules associé peuvent repartitionner le stockage et manipuler l'état bas niveau des périphériques, précisément le type d'action privilégiée qu'un attaquant emploie pour installer une persistance ou détruire des données. Auditer son usage (sous la clé **`modules`** sur cette plateforme) enregistre qui l'a invoqué et quand, afin de détecter et d'investiguer l'abus de fonctions privilégiées par des initiés ou des comptes compromis."
-  },
   "summary": {
     "en": "Ensures auditd has a live rule (keyed **`modules`**) recording use of the privileged `fdisk` command.",
     "fr": "Garantit qu'auditd possède une règle active (clé **`modules`**) journalisant l'usage de la commande privilégiée `fdisk`."
+  },
+  "rationale": {
+    "en": "`fdisk` and the related disk/module tooling can repartition storage and manipulate low-level device state, exactly the kind of privileged action an attacker uses to plant persistence or destroy data. Auditing its use (under the **`modules`** key on this platform) records who invoked it and when, so misuse of privileged functions by insiders or compromised accounts can be detected and investigated.",
+    "fr": "`fdisk` et l'outillage disque/modules associé peuvent repartitionner le stockage et manipuler l'état bas niveau des périphériques, précisément le type d'action privilégiée qu'un attaquant emploie pour installer une persistance ou détruire des données. Auditer son usage (sous la clé **`modules`** sur cette plateforme) enregistre qui l'a invoqué et quand, afin de détecter et d'investiguer l'abus de fonctions privilégiées par des initiés ou des comptes compromis."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks the loaded ruleset for a rule keyed `modules`. This inspects the effective kernel ruleset, not the rule files: a rule sitting in `/etc/audit/rules.d/` but never loaded (parse error or no reload) would fool a file-based scanner but correctly fails here.",
@@ -71,5 +74,7 @@
   "impact": {
     "en": "Without this rule, privileged disk operations leave no audit trail, hampering forensics and failing CIS/STIG/BP-028 audit requirements. Applying it only adds an audit watch and may require a reboot; impact is minimal since `fdisk` is invoked rarely, so log growth is negligible.",
     "fr": "Sans cette règle, les opérations disque privilégiées ne laissent aucune trace d'audit, gênant l'analyse forensique et faisant échouer les exigences CIS/STIG/BP-028. L'appliquer ajoute seulement une surveillance d'audit et peut nécessiter un redémarrage ; l'impact est minime car `fdisk` est rarement invoqué, la croissance des journaux est négligeable."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

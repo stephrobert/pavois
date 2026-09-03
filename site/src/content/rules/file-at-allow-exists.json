@@ -4,10 +4,12 @@
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -31,8 +33,8 @@
   ],
   "remediation": {
     "content": "",
-    "group": "root",
-    "mode": "0600",
+    "group": "daemon",
+    "mode": "0640",
     "owner": "root",
     "path": "/etc/at.allow",
     "resource": "file"
@@ -41,14 +43,13 @@
     "en": "Ensure that /etc/at.allow exists",
     "fr": "Garantir l'existence de /etc/at.allow"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The `at` daemon decides who may schedule jobs based on `at.allow`/`at.deny`. When `at.allow` exists, only users listed in it (plus root) can schedule jobs, a default-deny posture. An allow list is far safer than a deny list: forgetting to add a new account to a deny list silently grants access, whereas an allow list grants nothing by default. An empty, root-owned `at.allow` blocks all non-root scheduling.",
-    "fr": "Le démon `at` décide qui peut planifier des tâches selon `at.allow`/`at.deny`. Lorsque `at.allow` existe, seuls les utilisateurs qui y figurent (et root) peuvent planifier des tâches, une posture par défaut de refus. Une liste d'autorisation est bien plus sûre qu'une liste d'interdiction : oublier d'ajouter un nouveau compte à une liste d'interdiction accorde silencieusement l'accès, alors qu'une liste d'autorisation n'accorde rien par défaut. Un `at.allow` vide appartenant à root bloque toute planification non-root."
-  },
   "summary": {
     "en": "Ensures `/etc/at.allow` exists (owned by **root:root**, mode **0600**) so `at` job scheduling is restricted to an explicit allow list.",
     "fr": "Garantit l'existence de `/etc/at.allow` (propriété **root:root**, mode **0600**) afin que la planification de tâches `at` soit limitée à une liste d'autorisation explicite."
+  },
+  "rationale": {
+    "en": "The `at` daemon decides who may schedule jobs based on `at.allow`/`at.deny`. When `at.allow` exists, only users listed in it (plus root) can schedule jobs, a default-deny posture. An allow list is far safer than a deny list: forgetting to add a new account to a deny list silently grants access, whereas an allow list grants nothing by default. An empty, root-owned `at.allow` blocks all non-root scheduling.",
+    "fr": "Le démon `at` décide qui peut planifier des tâches selon `at.allow`/`at.deny`. Lorsque `at.allow` existe, seuls les utilisateurs qui y figurent (et root) peuvent planifier des tâches, une posture par défaut de refus. Une liste d'autorisation est bien plus sûre qu'une liste d'interdiction : oublier d'ajouter un nouveau compte à une liste d'interdiction accorde silencieusement l'accès, alors qu'une liste d'autorisation n'accorde rien par défaut. Un `at.allow` vide appartenant à root bloque toute planification non-root."
   },
   "check_note": {
     "en": "Pavois verifies the **actual** file `/etc/at.allow` exists on the live system (the InSpec `file` resource queries the real inode, not a config template). The presence of this file is itself the effective access-control state the `at` daemon reads at job-submission time.",
@@ -69,5 +70,7 @@
   "impact": {
     "en": "Creating an empty `at.allow` immediately blocks all non-root users from using `at`. If legitimate users or scripts rely on `at`, add their usernames to the file before or right after applying, otherwise their scheduling will silently fail. No service restart is required; the change takes effect on the next `at` submission.",
     "fr": "Créer un `at.allow` vide bloque immédiatement tous les utilisateurs non-root de l'usage d'`at`. Si des utilisateurs ou scripts légitimes dépendent d'`at`, ajoutez leurs noms d'utilisateurs au fichier avant ou juste après l'application, sinon leur planification échouera silencieusement. Aucun redémarrage de service n'est requis ; le changement prend effet à la prochaine soumission `at`."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

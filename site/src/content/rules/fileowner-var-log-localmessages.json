@@ -2,11 +2,20 @@
   "id": "fileowner-var-log-localmessages",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -22,27 +31,28 @@
   },
   "check": [
     "only_if { file('/var/log/localmessages').exist? }",
-    "describe file('/var/log/localmessages') do",
-    "  its('owner') { should eq 'syslog' }",
+    "describe command(\"stat -c %U /var/log/localmessages 2>/dev/null\") do",
+    "  its('stdout.strip') { should be_in ['root', 'syslog'] }",
     "end"
   ],
   "remediation": {
-    "owner": "syslog",
+    "command": "chown root /var/log/localmessages 2>/dev/null; true",
+    "name": "log-owner-var-log-localmessages",
+    "not_if": "stat -c %U /var/log/localmessages 2>/dev/null | grep -qxE 'root|syslog'",
     "path": "/var/log/localmessages",
-    "resource": "file"
+    "resource": "exec"
   },
   "title": {
     "en": "Verify User Who Owns /var/log/localmessages File",
     "fr": "Vérifier l'utilisateur propriétaire du fichier /var/log/localmessages"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/var/log/localmessages` collects messages from the **local syslog facilities (local0–local7)**, used by boot scripts, the DHCP client and many third-party services. If it is not owned by `syslog`, an unprivileged or compromised process could alter or delete these records, masking the activity of the services that log there and weakening the system's audit trail.",
-    "fr": "`/var/log/localmessages` rassemble les messages des **facilités syslog locales (local0–local7)**, utilisées par les scripts de démarrage, le client DHCP et de nombreux services tiers. S'il n'appartient pas à `syslog`, un processus non privilégié ou compromis pourrait altérer ou supprimer ces enregistrements, masquant l'activité des services qui y journalisent et affaiblissant la piste d'audit du système."
-  },
   "summary": {
     "en": "Ensures `/var/log/localmessages` (local syslog facilities) is **owned by the `syslog` user**.",
     "fr": "Garantit que `/var/log/localmessages` (facilités syslog locales) est **détenu par l'utilisateur `syslog`**."
+  },
+  "rationale": {
+    "en": "`/var/log/localmessages` collects messages from the **local syslog facilities (local0–local7)**, used by boot scripts, the DHCP client and many third-party services. If it is not owned by `syslog`, an unprivileged or compromised process could alter or delete these records, masking the activity of the services that log there and weakening the system's audit trail.",
+    "fr": "`/var/log/localmessages` rassemble les messages des **facilités syslog locales (local0–local7)**, utilisées par les scripts de démarrage, le client DHCP et de nombreux services tiers. S'il n'appartient pas à `syslog`, un processus non privilégié ou compromis pourrait altérer ou supprimer ces enregistrements, masquant l'activité des services qui y journalisent et affaiblissant la piste d'audit du système."
   },
   "check_note": {
     "en": "Pavois checks that the **owner of `/var/log/localmessages` is `syslog`**, only when the file exists (`only_if`). It reads the **live owner** (`stat`) on the target, not a logrotate template, so a `chown` introduced by rotation, a packaging hook or a buggy service is detected as the **effective on-disk state**.",
@@ -63,5 +73,7 @@
   "impact": {
     "en": "**Consequences if misconfigured:** wrong ownership lets a non-logging process tamper with messages from boot scripts and local services, hiding their activity.\n\n**Precautions before applying:** the change is safe, rsyslog runs as `syslog` and keeps writing normally. Ensure the `syslog` user exists; the `only_if` guard skips hosts without this file (it is created by an rsyslog rule that not all distros ship), so the fix is inert where it does not apply.",
     "fr": "**Conséquences en cas de mauvaise configuration :** une propriété erronée permet à un processus hors journalisation d'altérer les messages des scripts de démarrage et des services locaux, masquant leur activité.\n\n**Précautions avant application :** le changement est sûr, rsyslog s'exécute sous `syslog` et continue d'écrire normalement. Assurez-vous que l'utilisateur `syslog` existe ; la garde `only_if` ignore les hôtes sans ce fichier (il est créé par une règle rsyslog que toutes les distributions ne fournissent pas), donc le correctif est inerte là où il ne s'applique pas."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

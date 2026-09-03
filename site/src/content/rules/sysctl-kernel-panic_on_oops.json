@@ -1,16 +1,17 @@
 {
   "id": "sysctl-kernel-panic_on_oops",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -28,6 +29,9 @@
   "check": [
     "describe kernel_parameter('kernel.panic_on_oops') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*kernel.panic_on_oops[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -39,14 +43,13 @@
     "en": "Kernel panic on oops",
     "fr": "Panique du noyau en cas d'oops"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "A kernel **oops** signals that the kernel reached an inconsistent, potentially corrupted state. By default the kernel logs the oops and tries to continue, leaving the system running in an undefined state that an attacker may deliberately provoke and then exploit. Setting `kernel.panic_on_oops = 1` makes the kernel **panic (halt) immediately** on any oops, denying the attacker a window to leverage the corrupted state and turning a silent corruption into a fail-stop event.",
-    "fr": "Un **oops** du noyau signale que celui-ci a atteint un état incohérent, potentiellement corrompu. Par défaut, le noyau journalise l'oops et tente de continuer, laissant le système dans un état indéfini qu'un attaquant peut provoquer délibérément puis exploiter. Fixer `kernel.panic_on_oops = 1` force le noyau à **paniquer (s'arrêter) immédiatement** à chaque oops, privant l'attaquant d'une fenêtre pour exploiter l'état corrompu et transformant une corruption silencieuse en arrêt franc."
-  },
   "summary": {
     "en": "Sets `kernel.panic_on_oops = 1` so the kernel halts (panics) immediately on an oops instead of continuing in a corrupted state.",
     "fr": "Fixe `kernel.panic_on_oops = 1` afin que le noyau s'arrête (panique) immédiatement lors d'un oops au lieu de continuer dans un état corrompu."
+  },
+  "rationale": {
+    "en": "A kernel **oops** signals that the kernel reached an inconsistent, potentially corrupted state. By default the kernel logs the oops and tries to continue, leaving the system running in an undefined state that an attacker may deliberately provoke and then exploit. Setting `kernel.panic_on_oops = 1` makes the kernel **panic (halt) immediately** on any oops, denying the attacker a window to leverage the corrupted state and turning a silent corruption into a fail-stop event.",
+    "fr": "Un **oops** du noyau signale que celui-ci a atteint un état incohérent, potentiellement corrompu. Par défaut, le noyau journalise l'oops et tente de continuer, laissant le système dans un état indéfini qu'un attaquant peut provoquer délibérément puis exploiter. Fixer `kernel.panic_on_oops = 1` force le noyau à **paniquer (s'arrêter) immédiatement** à chaque oops, privant l'attaquant d'une fenêtre pour exploiter l'état corrompu et transformant une corruption silencieuse en arrêt franc."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** with `kernel_parameter('kernel.panic_on_oops')` (equivalent to `sysctl kernel.panic_on_oops`), not a line in `/etc/sysctl.d/*.conf`. A config file may declare `1` while the running kernel is still `0` because the file was never applied, a boot parameter overrode it, or a later drop-in won. Only the effective parameter proves the kernel's current behaviour.",
@@ -67,5 +70,7 @@
   "impact": {
     "en": "**Risk if not applied:** the kernel keeps running after an oops in an undefined, possibly corrupted state, which an attacker can exploit and which can also cause silent data corruption.\n\n**Precautions before applying:**\n- This trades **availability for integrity**: a single oops that previously left the box limping along will now **halt the machine**. On systems prone to occasional driver oopses, an unexpected reboot/halt can cause downtime.\n- Pair this with `kdump`/automatic reboot (`kernel.panic` timeout) so a panicked host captures a crash dump and recovers, rather than staying down. Validate on a non-critical host first.",
     "fr": "**Risque si non appliqué :** le noyau continue après un oops dans un état indéfini, potentiellement corrompu, qu'un attaquant peut exploiter et qui peut aussi causer une corruption silencieuse de données.\n\n**Précautions avant application :**\n- C'est un arbitrage **disponibilité contre intégrité** : un simple oops qui auparavant laissait la machine fonctionner tant bien que mal va désormais **arrêter la machine**. Sur des systèmes sujets à des oops occasionnels de pilotes, un arrêt/redémarrage inattendu peut entraîner une indisponibilité.\n- Associez ce réglage à `kdump`/redémarrage automatique (délai `kernel.panic`) pour qu'un hôte en panique capture un dump et redémarre, plutôt que de rester hors service. Validez d'abord sur un hôte non critique."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

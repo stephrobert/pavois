@@ -1,16 +1,17 @@
 {
   "id": "sysctl-net-ipv6-conf-default-accept_ra_rtr_pref",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -28,6 +29,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.default.accept_ra_rtr_pref') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.default.accept_ra_rtr_pref[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -39,14 +43,13 @@
     "en": "Configure Accepting Router Preference in Router Advertisements on All IPv6 Interfaces By Default",
     "fr": "Configurer l'acceptation de la préférence de routeur dans les annonces de routeur sur toutes les interfaces IPv6 par défaut"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`net.ipv6.conf.default.accept_ra_rtr_pref` controls whether the host honours the **Router Preference** field of Router Advertisements to pick its default router. If enabled, a malicious host can advertise itself with a high preference and make the system prefer an attacker-controlled gateway, enabling a **man-in-the-middle** position over IPv6 traffic. Disabling it by default removes the attacker's ability to influence default-router selection through forged RAs.",
-    "fr": "`net.ipv6.conf.default.accept_ra_rtr_pref` contrôle si l'hôte respecte le champ **Préférence de routeur** des annonces de routeur pour choisir son routeur par défaut. S'il est activé, un hôte malveillant peut s'annoncer avec une préférence élevée et faire en sorte que le système privilégie une passerelle contrôlée par l'attaquant, permettant une position d'**homme du milieu** sur le trafic IPv6. Le désactiver par défaut retire à l'attaquant la capacité d'influencer la sélection du routeur par défaut via de fausses RA."
-  },
   "summary": {
     "en": "Sets the default for new IPv6 interfaces to **ignore the router-preference field of Router Advertisements** via `net.ipv6.conf.default.accept_ra_rtr_pref = 0`.",
     "fr": "Définit la valeur par défaut des nouvelles interfaces IPv6 pour **ignorer le champ de préférence de routeur des annonces de routeur** via `net.ipv6.conf.default.accept_ra_rtr_pref = 0`."
+  },
+  "rationale": {
+    "en": "`net.ipv6.conf.default.accept_ra_rtr_pref` controls whether the host honours the **Router Preference** field of Router Advertisements to pick its default router. If enabled, a malicious host can advertise itself with a high preference and make the system prefer an attacker-controlled gateway, enabling a **man-in-the-middle** position over IPv6 traffic. Disabling it by default removes the attacker's ability to influence default-router selection through forged RAs.",
+    "fr": "`net.ipv6.conf.default.accept_ra_rtr_pref` contrôle si l'hôte respecte le champ **Préférence de routeur** des annonces de routeur pour choisir son routeur par défaut. S'il est activé, un hôte malveillant peut s'annoncer avec une préférence élevée et faire en sorte que le système privilégie une passerelle contrôlée par l'attaquant, permettant une position d'**homme du milieu** sur le trafic IPv6. Le désactiver par défaut retire à l'attaquant la capacité d'influencer la sélection du routeur par défaut via de fausses RA."
   },
   "check_note": {
     "en": "Pavois reads the **effective** kernel value of `net.ipv6.conf.default.accept_ra_rtr_pref`, not a config file. The live value merges `/etc/sysctl.conf`, drop-ins in `/etc/sysctl.d/` and `/run/sysctl.d/`, kernel boot parameters and runtime `sysctl -w`. A clean file does not guarantee a clean running kernel, Pavois reports the actual enforced value.",
@@ -67,5 +70,7 @@
   "impact": {
     "en": "Low operational impact: this only stops the host from ranking routers by their advertised preference. On a SLAAC client that legitimately accepts RAs, default-router selection falls back to other criteria, which is acceptable. The change is safe on routers and statically-addressed servers. If the host depends on RA-based addressing, apply it together with the other `accept_ra*` rules for a coherent IPv6 posture.",
     "fr": "Impact opérationnel faible : cela empêche seulement l'hôte de classer les routeurs selon leur préférence annoncée. Sur un client SLAAC qui accepte légitimement les RA, la sélection du routeur par défaut se rabat sur d'autres critères, ce qui est acceptable. Le changement est sans risque sur les routeurs et serveurs à adressage statique. Si l'hôte dépend de l'adressage par RA, appliquez-le avec les autres règles `accept_ra*` pour une posture IPv6 cohérente."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

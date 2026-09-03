@@ -1,17 +1,17 @@
 {
   "id": "mount-tmp-nosuid",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -38,21 +38,29 @@
   "check": [
     "describe mount('/tmp') do",
     "  its('options') { should include 'nosuid' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /tmp 2>/dev/null; grep -hsE '[[:space:]]/tmp[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /tmp 2>/dev/null) 2>/dev/null; } | grep -ow 'nosuid'\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "device": "tmpfs",
+    "fstype": "tmpfs",
+    "mount_point": "/tmp",
+    "option": "nosuid",
+    "resource": "mount"
+  },
   "title": {
     "en": "Add nosuid Option to /tmp",
     "fr": "Ajouter l'option nosuid à /tmp"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "SUID and SGID executables run with the privileges of their owner (often root) rather than the calling user, so their presence must be tightly controlled. The **`nosuid`** option makes the kernel ignore the set-user-ID and set-group-ID bits on any binary under `/tmp`. Because `/tmp` is world-writable, an attacker could otherwise drop a SUID-root binary there and use it for privilege escalation; `nosuid` neutralises that path.",
-    "fr": "Les exécutables SUID et SGID s'exécutent avec les privilèges de leur propriétaire (souvent root) plutôt que de l'utilisateur appelant ; leur présence doit donc être strictement contrôlée. L'option **`nosuid`** force le noyau à ignorer les bits set-user-ID et set-group-ID de tout binaire sous `/tmp`. Comme `/tmp` est accessible en écriture à tous, un attaquant pourrait sinon y déposer un binaire SUID-root et l'utiliser pour une élévation de privilèges ; `nosuid` neutralise cette voie."
-  },
   "summary": {
     "en": "Mounts `/tmp` with the **`nosuid`** option so the kernel ignores set-UID/set-GID bits on binaries in that directory.",
     "fr": "Monte `/tmp` avec l'option **`nosuid`** afin que le noyau ignore les bits set-UID/set-GID des binaires de ce répertoire."
+  },
+  "rationale": {
+    "en": "SUID and SGID executables run with the privileges of their owner (often root) rather than the calling user, so their presence must be tightly controlled. The **`nosuid`** option makes the kernel ignore the set-user-ID and set-group-ID bits on any binary under `/tmp`. Because `/tmp` is world-writable, an attacker could otherwise drop a SUID-root binary there and use it for privilege escalation; `nosuid` neutralises that path.",
+    "fr": "Les exécutables SUID et SGID s'exécutent avec les privilèges de leur propriétaire (souvent root) plutôt que de l'utilisateur appelant ; leur présence doit donc être strictement contrôlée. L'option **`nosuid`** force le noyau à ignorer les bits set-user-ID et set-group-ID de tout binaire sous `/tmp`. Comme `/tmp` est accessible en écriture à tous, un attaquant pourrait sinon y déposer un binaire SUID-root et l'utiliser pour une élévation de privilèges ; `nosuid` neutralise cette voie."
   },
   "check_note": {
     "en": "Pavois inspects the **effective** mount with `mount('/tmp')` and asserts that its resolved options include `nosuid`. It reads the live kernel mount table, the options actually enforced, instead of `/etc/fstab`, so it catches a partition remounted without the flag, an override by a `systemd` mount unit, or an fstab entry that never applied, which a file-based scanner would wrongly pass.",
@@ -73,5 +81,7 @@
   "impact": {
     "en": "Functional impact is low: legitimate workloads do not place SUID/SGID binaries in `/tmp`. **Precautions:** confirm `/tmp` is a dedicated mount before applying; apply with `mount -o remount /tmp`. The risk is negligible compared with `noexec`, since only the privilege bits are stripped, normal (non-SUID) programs are unaffected.",
     "fr": "L'impact fonctionnel est faible : les charges légitimes ne placent pas de binaires SUID/SGID dans `/tmp`. **Précautions :** confirmez que `/tmp` est un montage dédié avant d'appliquer ; appliquez avec `mount -o remount /tmp`. Le risque est négligeable face à `noexec`, car seuls les bits de privilège sont neutralisés, les programmes normaux (non SUID) ne sont pas affectés."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

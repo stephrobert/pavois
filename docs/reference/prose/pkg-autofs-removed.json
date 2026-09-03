@@ -1,0 +1,37 @@
+{
+  "id": "pkg-autofs-removed",
+  "title": {
+    "en": "Remove autofs Package",
+    "fr": "Supprimer le paquet autofs"
+  },
+  "summary": {
+    "en": "Ensures the **autofs** automounter package is **not installed**, removing on-demand filesystem mounting unless it is explicitly required.",
+    "fr": "Garantit que le paquet d'automontage **autofs** n'est **pas installé**, supprimant le montage de systèmes de fichiers à la demande sauf besoin explicite."
+  },
+  "rationale": {
+    "en": "With automounting enabled, anyone with physical access can attach a USB drive or disc and have its contents mounted automatically into the filesystem, even without permission to mount it themselves, a vector for malware delivery and data exfiltration. Removing **autofs** shrinks the attack surface on systems that do not need network or removable-media automounts (CIS 2.1.1).",
+    "fr": "Avec l'automontage activé, toute personne disposant d'un accès physique peut connecter une clé USB ou un disque et voir son contenu monté automatiquement dans le système de fichiers, même sans droit de le monter elle-même, un vecteur de diffusion de malware et d'exfiltration de données. Supprimer **autofs** réduit la surface d'attaque sur les systèmes qui n'ont pas besoin d'automontages réseau ou de média amovibles (CIS 2.1.1)."
+  },
+  "check_note": {
+    "en": "Pavois asks `dpkg` (via the InSpec `package` resource) whether `autofs` is installed and expects it absent. Checking the **effective package state** is authoritative, it catches the automounter regardless of any leftover unit files or config.",
+    "fr": "Pavois interroge `dpkg` (via la ressource InSpec `package`) pour savoir si `autofs` est installé et l'attend absent. Vérifier l'**état effectif des paquets** fait autorité, il détecte l'automonteur quels que soient les fichiers d'unité ou de config résiduels."
+  },
+  "verify": {
+    "en": "Run `dpkg -s autofs`, expected `package 'autofs' is not installed`. Optionally confirm no automount service is active with `systemctl is-active autofs` (expected `inactive`/not found).",
+    "fr": "Exécutez `dpkg -s autofs`, attendu `package 'autofs' is not installed`. Vérifiez éventuellement qu'aucun service d'automontage n'est actif avec `systemctl is-active autofs` (attendu `inactive`/introuvable)."
+  },
+  "logs": {
+    "en": "- `dpkg -l autofs` confirms removal.\n- Mount/unmount activity (and any residual automount events) appears in `journalctl -u autofs` while installed, and current mounts are visible with `findmnt`.",
+    "fr": "- `dpkg -l autofs` confirme la suppression.\n- L'activité de montage/démontage (et tout événement d'automontage résiduel) apparaît dans `journalctl -u autofs` tant qu'il est installé, et les montages courants sont visibles avec `findmnt`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan removes the `autofs` package (`package` resource, `remove` action) with `pavois harden apply`, which also stops and disables the automounter.",
+    "fr": "Le plan de durcissement de Pavois supprime le paquet `autofs` (ressource `package`, action `remove`) avec `pavois harden apply`, ce qui arrête et désactive aussi l'automonteur."
+  },
+  "impact": {
+    "en": "Removing autofs breaks any workflow that relies on on-demand mounts, commonly **NFS home directories**, automounted network shares, or removable-media automounting in kiosk/lab setups. Before applying, confirm no `/etc/auto.master` maps are in use (`findmnt` for `autofs` mounts) and that users do not depend on automounted homes, or you risk inaccessible directories after removal.",
+    "fr": "Supprimer autofs casse tout flux reposant sur des montages à la demande, typiquement les **répertoires personnels NFS**, les partages réseau automontés ou l'automontage de média amovibles dans les configs kiosque/labo. Avant d'appliquer, vérifiez qu'aucune carte `/etc/auto.master` n'est utilisée (`findmnt` pour les montages `autofs`) et que les utilisateurs ne dépendent pas de homes automontés, sous peine de répertoires inaccessibles après suppression."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

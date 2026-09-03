@@ -1,16 +1,17 @@
 {
   "id": "kconfig-strict-module-rwx",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R18"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_STRICT_MODULE_RWX=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_STRICT_MODULE_RWX='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_STRICT_MODULE_RWX=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_STRICT_MODULE_RWX=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Make the module text and rodata read-only",
     "fr": "Rendre le texte et les rodata des modules en lecture seule"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_STRICT_MODULE_RWX=y` extends strict W^X (write-xor-execute) enforcement to loadable kernel modules: a module's executable code is mapped read-only and its read-only data non-executable. This denies attackers the ability to patch module code in place or execute module data as code, the same protection as `STRICT_KERNEL_RWX` but applied to the dynamically loaded module region, which is otherwise a soft target for rootkits.",
-    "fr": "`CONFIG_STRICT_MODULE_RWX=y` étend l'application stricte du W^X (écriture XOR exécution) aux modules noyau chargeables : le code exécutable d'un module est mappé en lecture seule et ses données en lecture seule non exécutables. Cela prive les attaquants de la possibilité de modifier le code d'un module en place ou d'exécuter ses données comme du code, la même protection que `STRICT_KERNEL_RWX`, mais appliquée à la zone des modules chargés dynamiquement, sinon cible facile pour les rootkits."
-  },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_STRICT_MODULE_RWX=y`, mapping module code read-only and module rodata non-executable.",
     "fr": "Exige un noyau compilé avec `CONFIG_STRICT_MODULE_RWX=y`, mappant le code des modules en lecture seule et leurs rodata non exécutables."
+  },
+  "rationale": {
+    "en": "`CONFIG_STRICT_MODULE_RWX=y` extends strict W^X (write-xor-execute) enforcement to loadable kernel modules: a module's executable code is mapped read-only and its read-only data non-executable. This denies attackers the ability to patch module code in place or execute module data as code, the same protection as `STRICT_KERNEL_RWX` but applied to the dynamically loaded module region, which is otherwise a soft target for rootkits.",
+    "fr": "`CONFIG_STRICT_MODULE_RWX=y` étend l'application stricte du W^X (écriture XOR exécution) aux modules noyau chargeables : le code exécutable d'un module est mappé en lecture seule et ses données en lecture seule non exécutables. Cela prive les attaquants de la possibilité de modifier le code d'un module en place ou d'exécuter ses données comme du code, la même protection que `STRICT_KERNEL_RWX`, mais appliquée à la zone des modules chargés dynamiquement, sinon cible facile pour les rootkits."
   },
   "check_note": {
     "en": "Pavois reads the build configuration of the **running** kernel via `/boot/config-$(uname -r)` or `/proc/config.gz` and confirms `CONFIG_STRICT_MODULE_RWX=y`. Reading the booted kernel's effective config proves the module memory protections are compiled into the kernel actually in use, not just an installed default.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "Without strict module RWX, loaded module code stays writable, so an attacker with a kernel write primitive can hijack a legitimate module to hide a rootkit. **Precautions:** the remedy is a kernel change requiring a reboot, schedule a maintenance window and keep a fallback boot entry. A few legacy or out-of-tree modules that self-modify their own code at load time may need updating; validate third-party modules (e.g. proprietary GPU drivers) after switching. Performance overhead is negligible.",
     "fr": "Sans RWX strict des modules, le code des modules chargés reste inscriptible : un attaquant disposant d'une primitive d'écriture noyau peut détourner un module légitime pour dissimuler un rootkit. **Précautions :** le remède est un changement de noyau imposant un redémarrage, planifiez une fenêtre de maintenance et gardez une entrée de boot de repli. Quelques anciens modules ou modules hors arbre qui automodifient leur propre code au chargement peuvent nécessiter une mise à jour ; validez les modules tiers (par ex. pilotes GPU propriétaires) après le changement. Le surcoût de performance est négligeable."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

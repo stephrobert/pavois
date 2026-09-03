@@ -1,0 +1,37 @@
+{
+  "id": "auditd-space-left-action",
+  "title": {
+    "en": "Configure auditd space_left Action on Low Disk Space",
+    "fr": "Configurer l'action space_left d'auditd en cas d'espace disque faible"
+  },
+  "summary": {
+    "en": "Sets `space_left_action` in `/etc/audit/auditd.conf` to a notifying/protective action (`email`, `exec`, `single` or `halt`) when free audit-log space gets low.",
+    "fr": "Définit `space_left_action` dans `/etc/audit/auditd.conf` sur une action de notification/protection (`email`, `exec`, `single` ou `halt`) lorsque l'espace libre pour les journaux d'audit devient faible."
+  },
+  "rationale": {
+    "en": "`space_left_action` triggers when free disk space crosses the `space_left` threshold, an **early warning** before the partition is full. Notifying administrators (`email`/`exec`) at this point lets them reclaim space or investigate **before** auditing stops or the more drastic `disk_full_action` fires. Leaving it at the default (`ignore`/`suspend`) means the first sign of trouble is lost or stalled audit records.",
+    "fr": "`space_left_action` se déclenche lorsque l'espace disque libre franchit le seuil `space_left`, un **avertissement précoce** avant que la partition ne soit pleine. Notifier les administrateurs (`email`/`exec`) à ce moment leur permet de récupérer de l'espace ou d'enquêter **avant** que l'audit ne s'arrête ou que le plus radical `disk_full_action` ne s'enclenche. Le laisser à la valeur par défaut (`ignore`/`suspend`) signifie que le premier signe de problème se traduit par des enregistrements perdus ou bloqués."
+  },
+  "check_note": {
+    "en": "Pavois reads the effective `space_left_action` directive from `/etc/audit/auditd.conf` and accepts `email`, `exec`, `single` or `halt`. This value drives what the running daemon does at the low-space threshold, so the configured directive is the reliable indicator.",
+    "fr": "Pavois lit la directive effective `space_left_action` dans `/etc/audit/auditd.conf` et accepte `email`, `exec`, `single` ou `halt`. Cette valeur pilote ce que fait le démon au seuil d'espace faible ; la directive configurée est donc l'indicateur fiable."
+  },
+  "verify": {
+    "en": "Run `grep -i '^[[:space:]]*space_left_action' /etc/audit/auditd.conf` (or `auditctl -s`). Expected output: `space_left_action = email` (or `exec`/`single`/`halt`).",
+    "fr": "Exécutez `grep -i '^[[:space:]]*space_left_action' /etc/audit/auditd.conf` (ou `auditctl -s`). Sortie attendue : `space_left_action = email` (ou `exec`/`single`/`halt`)."
+  },
+  "logs": {
+    "en": "When the threshold is crossed, auditd logs the action and any e-mail/exec result via `journalctl -u auditd`; the audit trail itself is in `/var/log/audit/audit.log`.",
+    "fr": "Au franchissement du seuil, auditd journalise l'action et le résultat de l'e-mail/exec via `journalctl -u auditd` ; la piste d'audit elle-même se trouve dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan writes `space_left_action = email` into `/etc/audit/auditd.conf` (a `conf_line` resource) and notifies the `auditd` service to reload. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois écrit `space_left_action = email` dans `/etc/audit/auditd.conf` (ressource `conf_line`) puis notifie le service `auditd` pour rechargement. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "`email` is benign but **silent if mail is not configured**: without a working MTA and a valid `action_mail_acct`, the warning goes nowhere. `single`/`halt` are protective but disruptive (the host drops to single-user mode or stops). **Precaution:** prefer `email` (or `exec` to a monitoring hook) and verify mail delivery, or wire `exec` to your alerting system. Reserve `single`/`halt` for hosts where missing audit data is unacceptable, and ensure console access for recovery.",
+    "fr": "`email` est inoffensif mais **silencieux si la messagerie n'est pas configurée** : sans MTA fonctionnel ni `action_mail_acct` valide, l'avertissement n'arrive nulle part. `single`/`halt` sont protecteurs mais perturbants (l'hôte passe en mode mono-utilisateur ou s'arrête). **Précaution :** préférez `email` (ou `exec` vers un hook de supervision) et vérifiez la remise des mails, ou branchez `exec` sur votre système d'alerte. Réservez `single`/`halt` aux hôtes où l'absence de données d'audit est inacceptable, et assurez un accès console pour la reprise."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

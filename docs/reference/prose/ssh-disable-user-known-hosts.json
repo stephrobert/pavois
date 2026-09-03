@@ -1,0 +1,37 @@
+{
+  "id": "ssh-disable-user-known-hosts",
+  "title": {
+    "en": "Disable SSH Support for User Known Hosts",
+    "fr": "Désactiver la prise en charge SSH des known_hosts utilisateur"
+  },
+  "summary": {
+    "en": "Forces `sshd` to ignore each user's `~/.ssh/known_hosts` file by setting **`IgnoreUserKnownHosts yes`**.",
+    "fr": "Force `sshd` à ignorer le fichier `~/.ssh/known_hosts` de chaque utilisateur en positionnant **`IgnoreUserKnownHosts yes`**."
+  },
+  "rationale": {
+    "en": "When host-based authentication is allowed, a user-controlled `~/.ssh/known_hosts` file can be used to bypass the system's trusted host list. By setting **`IgnoreUserKnownHosts yes`**, `sshd` trusts only the system-wide `/etc/ssh/ssh_known_hosts`, so an attacker who plants entries in a user's file cannot authenticate as another user or impersonate a trusted host. It is a defense-in-depth measure that guarantees a remote login still requires a password even if host-based trust is misconfigured elsewhere.",
+    "fr": "Lorsque l'authentification par hôte (host-based) est autorisée, un fichier `~/.ssh/known_hosts` contrôlé par l'utilisateur peut servir à contourner la liste des hôtes de confiance du système. En positionnant **`IgnoreUserKnownHosts yes`**, `sshd` ne fait confiance qu'au fichier système `/etc/ssh/ssh_known_hosts` : un attaquant qui injecterait des entrées dans le fichier d'un utilisateur ne pourra ni s'authentifier en tant qu'un autre utilisateur ni usurper un hôte de confiance. C'est une mesure de défense en profondeur qui garantit qu'une connexion distante exige toujours un mot de passe même si la confiance par hôte est mal configurée ailleurs."
+  },
+  "check_note": {
+    "en": "Pavois asserts the **runtime** value by parsing `sshd -T`, which prints the fully resolved effective configuration. Reading `/etc/ssh/sshd_config` alone would miss values set in `Include`d drop-ins under `/etc/ssh/sshd_config.d/` or contextual `Match` blocks, `sshd -T` reflects exactly what the running daemon enforces.",
+    "fr": "Pavois vérifie la valeur **effective à l'exécution** en analysant `sshd -T`, qui affiche la configuration entièrement résolue. Lire uniquement `/etc/ssh/sshd_config` raterait les valeurs définies dans les drop-ins `Include` sous `/etc/ssh/sshd_config.d/` ou dans des blocs `Match` contextuels, `sshd -T` reflète exactement ce que le démon en cours d'exécution applique."
+  },
+  "verify": {
+    "en": "Run `sudo sshd -T | grep -i ignoreuserknownhosts`. The expected output is **`ignoreuserknownhosts yes`**.",
+    "fr": "Exécutez `sudo sshd -T | grep -i ignoreuserknownhosts`. La sortie attendue est **`ignoreuserknownhosts yes`**."
+  },
+  "logs": {
+    "en": "Authentication attempts and the relevant decisions are recorded by `sshd` in `/var/log/secure` (RHEL family), follow them live with `journalctl -u sshd -f`. Host-based authentication rejections appear there with messages referencing the user's known_hosts handling.",
+    "fr": "Les tentatives d'authentification et les décisions associées sont consignées par `sshd` dans `/var/log/secure` (famille RHEL), suivez-les en direct avec `journalctl -u sshd -f`. Les rejets d'authentification par hôte y apparaissent avec des messages relatifs au traitement des known_hosts utilisateur."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` sets the `sshd_setting` directive **`ignoreuserknownhosts`** to **`yes`** in a managed drop-in, validates the file with `sshd -t -f %{path}`, then notifies a **reload** of the `ssh` service so the change takes effect without dropping existing sessions.",
+    "fr": "`pavois harden apply` définit la directive `sshd_setting` **`ignoreuserknownhosts`** sur **`yes`** dans un drop-in géré, valide le fichier avec `sshd -t -f %{path}`, puis déclenche un **reload** du service `ssh` pour que le changement prenne effet sans couper les sessions existantes."
+  },
+  "impact": {
+    "en": "Leaving `IgnoreUserKnownHosts` at the default **`no`** lets users seed their own trusted-host entries, which can be abused to bypass host-based access controls and impersonate trusted machines. Applying the rule is low-risk: it only affects host-based authentication and does not change password or public-key logins. Precaution: if you rely on **host-based authentication** (`HostbasedAuthentication yes`) with per-user `known_hosts`, those flows will break, migrate those entries into the system-wide `/etc/ssh/ssh_known_hosts` first. The reload (not restart) keeps your current SSH session alive, so there is no lockout risk.",
+    "fr": "Laisser `IgnoreUserKnownHosts` à sa valeur par défaut **`no`** permet aux utilisateurs d'alimenter leurs propres entrées d'hôtes de confiance, ce qui peut servir à contourner les contrôles d'accès par hôte et à usurper des machines de confiance. Appliquer la règle présente peu de risque : elle n'affecte que l'authentification par hôte et ne modifie ni les connexions par mot de passe ni par clé publique. Précaution : si vous dépendez de l'**authentification par hôte** (`HostbasedAuthentication yes`) avec des `known_hosts` par utilisateur, ces flux cesseront de fonctionner, migrez d'abord ces entrées dans le fichier système `/etc/ssh/ssh_known_hosts`. Le reload (et non un restart) préserve votre session SSH en cours, il n'y a donc aucun risque de blocage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

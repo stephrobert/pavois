@@ -1,0 +1,37 @@
+{
+  "id": "ssh-set-idle-timeout",
+  "title": {
+    "en": "Set SSH Client Alive Interval",
+    "fr": "Définir l'intervalle de vérification d'activité du client SSH"
+  },
+  "summary": {
+    "en": "Sets **`ClientAliveInterval 300`** so `sshd` probes idle sessions every 300 seconds, enabling automatic disconnection of inactive logins.",
+    "fr": "Définit **`ClientAliveInterval 300`** pour que `sshd` sonde les sessions inactives toutes les 300 secondes, permettant la déconnexion automatique des connexions inactives."
+  },
+  "rationale": {
+    "en": "Terminating idle SSH sessions promptly reduces the window in which an unattended, logged-in terminal can be hijacked by someone with physical or network access. Combined with `ClientAliveCountMax`, `ClientAliveInterval 300` causes the daemon to drop a session that has been idle for the configured time, enforcing a server-side inactivity timeout independent of client behavior.",
+    "fr": "Terminer rapidement les sessions SSH inactives réduit la fenêtre durant laquelle un terminal connecté et laissé sans surveillance peut être détourné par une personne disposant d'un accès physique ou réseau. Combiné à `ClientAliveCountMax`, `ClientAliveInterval 300` fait que le démon ferme une session restée inactive pendant la durée configurée, imposant un délai d'inactivité côté serveur indépendant du comportement du client."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** `clientaliveinterval` value from `sshd -T`, the daemon's resolved configuration. A scan of `/etc/ssh/sshd_config` could miss a value set in an `Include`d drop-in under `/etc/ssh/sshd_config.d/` or a `Match` block, `sshd -T` reflects exactly what the running daemon enforces.",
+    "fr": "Pavois lit la valeur **effective** de `clientaliveinterval` depuis `sshd -T`, la configuration résolue du démon. Un scan de `/etc/ssh/sshd_config` pourrait rater une valeur définie dans un drop-in `Include` sous `/etc/ssh/sshd_config.d/` ou dans un bloc `Match`, `sshd -T` reflète exactement ce que le démon en cours d'exécution applique."
+  },
+  "verify": {
+    "en": "Run `sudo sshd -T | grep -i clientaliveinterval`. The expected output is **`clientaliveinterval 300`**.",
+    "fr": "Exécutez `sudo sshd -T | grep -i clientaliveinterval`. La sortie attendue est **`clientaliveinterval 300`**."
+  },
+  "logs": {
+    "en": "Timed-out disconnections are logged by `sshd` (e.g. `Timeout, client not responding` / `Connection closed`) in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL family); follow with `journalctl -u ssh -f` (or `-u sshd`).",
+    "fr": "Les déconnexions par expiration sont consignées par `sshd` (par exemple `Timeout, client not responding` / `Connection closed`) dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL) ; suivez avec `journalctl -u ssh -f` (ou `-u sshd`)."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` sets the `sshd_setting` directive **`clientaliveinterval`** to **`300`** in a managed drop-in, validates it with `sshd -t -f %{path}`, then notifies a **reload** of the `ssh` service so the idle timeout takes effect without dropping live sessions. Pair it with `ssh-set-keepalive` (`ClientAliveCountMax 0`) for a hard 300-second idle limit.",
+    "fr": "`pavois harden apply` définit la directive `sshd_setting` **`clientaliveinterval`** sur **`300`** dans un drop-in géré, la valide avec `sshd -t -f %{path}`, puis déclenche un **reload** du service `ssh` pour que le délai d'inactivité prenne effet sans couper les sessions actives. À associer à `ssh-set-keepalive` (`ClientAliveCountMax 0`) pour une limite d'inactivité stricte de 300 secondes."
+  },
+  "impact": {
+    "en": "Without an idle timeout, an unattended SSH session can stay open indefinitely and be hijacked. Setting `ClientAliveInterval 300` is broadly safe. Precaution: long-running interactive jobs with no terminal output (compilations, REPLs, manual DB sessions) may be disconnected when idle, wrap them in `tmux`/`screen`, or `nohup`/`systemd-run` for unattended work. Note the timeout measures *server→client liveness probes*, so genuine traffic resets the timer. The reload preserves your current SSH session, so there is no lockout risk.",
+    "fr": "Sans délai d'inactivité, une session SSH laissée sans surveillance peut rester ouverte indéfiniment et être détournée. Définir `ClientAliveInterval 300` est globalement sûr. Précaution : des tâches interactives longues sans sortie sur le terminal (compilations, REPL, sessions BDD manuelles) peuvent être déconnectées une fois inactives, encapsulez-les dans `tmux`/`screen`, ou utilisez `nohup`/`systemd-run` pour le travail sans surveillance. Notez que le délai mesure les *sondes de vivacité serveur→client*, donc un trafic réel réinitialise le compteur. Le reload préserve votre session SSH en cours, il n'y a donc aucun risque de blocage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

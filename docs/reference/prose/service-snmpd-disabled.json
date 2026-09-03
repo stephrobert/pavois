@@ -1,0 +1,37 @@
+{
+  "id": "service-snmpd-disabled",
+  "title": {
+    "en": "Disable snmpd Service",
+    "fr": "Désactiver le service snmpd"
+  },
+  "summary": {
+    "en": "Ensures the **`snmpd.service`** (Simple Network Management Protocol agent) is neither enabled at boot nor running, unless SNMP monitoring is genuinely required.",
+    "fr": "Garantit que le service **`snmpd.service`** (agent SNMP) n'est ni activé au démarrage ni en cours d'exécution, sauf si la supervision SNMP est réellement nécessaire."
+  },
+  "rationale": {
+    "en": "The **SNMP agent** (`snmpd`, UDP **`161`**) exposes detailed system information, interfaces, routes, running processes, sometimes ARP and routing tables, to anyone who can reach it. **SNMPv1/v2c use a plaintext \"community string\"** as the only credential, frequently left at the default `public`, which leaks data to passive sniffers and lets attackers fingerprint the host; SNMP is also a known **UDP amplification DDoS** reflector. Where no monitoring uses SNMP, the agent is pure exposure. If needed, it should run only with **SNMPv3 (auth + privacy)** and tight ACLs; otherwise it should be stopped and disabled.",
+    "fr": "L'**agent SNMP** (`snmpd`, UDP **`161`**) expose des informations système détaillées, interfaces, routes, processus en cours, parfois tables ARP et de routage, à quiconque peut l'atteindre. **SNMPv1/v2c utilisent une \"community string\" en clair** comme unique identifiant, souvent laissée à la valeur par défaut `public`, ce qui divulgue des données aux renifleurs passifs et permet aux attaquants de cartographier l'hôte ; SNMP est aussi un réflecteur connu d'**attaques DDoS par amplification UDP**. Là où aucune supervision n'utilise SNMP, l'agent n'est qu'exposition. Si nécessaire, il ne doit tourner qu'en **SNMPv3 (authentification + chiffrement)** avec des ACL strictes ; sinon il doit être arrêté et désactivé."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective state** of `snmpd.service` from systemd, asserting it is neither *enabled* nor *running*. This reflects what is actually bound to UDP 161 regardless of whether `/etc/snmp/snmpd.conf` exists, and catches a daemon started by a drop-in override or one that is installed but masked. A file/package check cannot tell you the live listening state.",
+    "fr": "Pavois lit l'**état effectif** de `snmpd.service` depuis systemd, en vérifiant qu'il n'est ni *enabled* ni *running*. Cela reflète ce qui est réellement lié à l'UDP 161 indépendamment de l'existence de `/etc/snmp/snmpd.conf`, et détecte un démon démarré par une surcharge drop-in ou installé mais masqué. Une vérification de fichier/paquet ne peut pas indiquer l'état d'écoute réel."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled snmpd.service` and `systemctl is-active snmpd.service`; expect **`disabled`/`masked`** and **`inactive`**. Confirm nothing listens with `ss -ulnp | grep :161`.",
+    "fr": "Exécutez `systemctl is-enabled snmpd.service` et `systemctl is-active snmpd.service` ; attendez **`disabled`/`masked`** et **`inactive`**. Confirmez qu'aucun service n'écoute avec `ss -ulnp | grep :161`."
+  },
+  "logs": {
+    "en": "Inspect `journalctl -u snmpd.service` for start/stop and query activity. `systemctl show snmpd.service -p ActiveState -p UnitFileState` gives the machine-readable state Pavois asserts. Confirm UDP 161 is closed with `ss -ulnp | grep :161`.",
+    "fr": "Inspectez `journalctl -u snmpd.service` pour le démarrage/arrêt et l'activité des requêtes. `systemctl show snmpd.service -p ActiveState -p UnitFileState` donne l'état lisible par machine que Pavois vérifie. Confirmez la fermeture de l'UDP 161 avec `ss -ulnp | grep :161`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the **`service`** resource named **`snmpd`** with actions **`disable`** then **`stop`**: it removes boot enablement and stops the agent. Applied with `pavois harden apply`. Existing `/etc/snmp/` config is left untouched.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource **`service`** nommée **`snmpd`** avec les actions **`disable`** puis **`stop`** : il supprime l'activation au démarrage et arrête l'agent. Appliqué avec `pavois harden apply`. La configuration existante dans `/etc/snmp/` reste intacte."
+  },
+  "impact": {
+    "en": "Disabling `snmpd` **stops this host from being polled via SNMP**: NMS/monitoring platforms (Zabbix, LibreNMS, Nagios, Cacti, PRTG…) will lose interface counters, health metrics and traps from it, potentially triggering 'host down' alerts. **Before applying**: confirm the host is not monitored over SNMP, or that monitoring has an alternative agent (node_exporter, Zabbix agent). If SNMP is required, exclude this rule and instead **harden** the agent: SNMPv3 only, no default community, source ACLs. Disabling `snmpd` does not affect outbound SNMP *trap senders* configured elsewhere.",
+    "fr": "Désactiver `snmpd` **empêche cet hôte d'être interrogé via SNMP** : les plateformes de supervision (Zabbix, LibreNMS, Nagios, Cacti, PRTG…) perdront ses compteurs d'interfaces, métriques de santé et traps, déclenchant potentiellement des alertes « hôte injoignable ». **Avant d'appliquer** : confirmez que l'hôte n'est pas supervisé via SNMP, ou que la supervision dispose d'un agent alternatif (node_exporter, agent Zabbix). Si SNMP est requis, excluez cette règle et **durcissez** plutôt l'agent : SNMPv3 uniquement, pas de community par défaut, ACL par source. Désactiver `snmpd` n'affecte pas les *émetteurs de traps* SNMP sortants configurés ailleurs."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

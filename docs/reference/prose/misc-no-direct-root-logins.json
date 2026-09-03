@@ -1,0 +1,37 @@
+{
+  "id": "misc-no-direct-root-logins",
+  "title": {
+    "en": "Direct root Logins Not Allowed",
+    "fr": "Connexions root directes interdites"
+  },
+  "summary": {
+    "en": "Ensures `/etc/securetty` is **empty** so root cannot log in directly on any console; admins must authenticate then escalate via `su`/`sudo`.",
+    "fr": "Garantit que `/etc/securetty` est **vide** afin que root ne puisse se connecter directement sur aucune console ; les administrateurs doivent s'authentifier puis élever leurs droits via `su`/`sudo`."
+  },
+  "rationale": {
+    "en": "When users can log in **directly as root** on consoles and terminals, all administrative actions collapse into one shared, anonymous identity, you cannot tell *who* did what. The secure model is: each admin authenticates as themselves, then escalates with `su`/`sudo`, which produces an accountable, multi-factor-capable, per-command audit trail. The `/etc/securetty` file lists the TTYs on which root may log in; an **empty** file means no terminal allows a direct root login. This control is required for FISMA Low and Moderate baselines.",
+    "fr": "Lorsque les utilisateurs peuvent se connecter **directement en root** sur les consoles et terminaux, toutes les actions d'administration se fondent dans une seule identité partagée et anonyme, on ne peut savoir *qui* a fait quoi. Le modèle sûr est : chaque administrateur s'authentifie en son nom, puis élève ses droits avec `su`/`sudo`, ce qui produit une piste d'audit traçable, compatible multi-facteurs et par commande. Le fichier `/etc/securetty` liste les TTY sur lesquels root peut se connecter ; un fichier **vide** signifie qu'aucun terminal n'autorise une connexion root directe. Ce contrôle est requis pour les socles FISMA Low et Moderate."
+  },
+  "check_note": {
+    "en": "Pavois verifies that `/etc/securetty` exists but holds no entries (zero size). An empty `securetty` is the effective signal consulted by `pam_securetty.so` at login time: PAM denies a direct root login on any TTY that is not listed, and an empty list denies them all.",
+    "fr": "Pavois vérifie que `/etc/securetty` existe mais ne contient aucune entrée (taille nulle). Un `securetty` vide est le signal effectif consulté par `pam_securetty.so` au moment de la connexion : PAM refuse une connexion root directe sur tout TTY non listé, et une liste vide les refuse tous."
+  },
+  "verify": {
+    "en": "Confirm the file is empty:\n\n- `[ -s /etc/securetty ] && echo populated || echo empty`, expected output is **empty**.\n- `wc -l /etc/securetty`, expected `0 /etc/securetty`. A root console login attempt should then be rejected with `Login incorrect` even with the correct password.",
+    "fr": "Confirmez que le fichier est vide :\n\n- `[ -s /etc/securetty ] && echo populated || echo empty`, la sortie attendue est **empty**.\n- `wc -l /etc/securetty`, attendu `0 /etc/securetty`. Une tentative de connexion root en console doit alors être rejetée par `Login incorrect` même avec le bon mot de passe."
+  },
+  "logs": {
+    "en": "Login attempts are recorded by the auth stack:\n\n- `grep -E 'securetty|root' /var/log/auth.log` (Debian/Ubuntu) / `/var/log/secure` (RHEL), shows `pam_securetty(login:auth): access denied: tty 'ttyN'` when a direct root login is correctly blocked.\n- `journalctl -t login -t sshd` correlates console and SSH attempts.",
+    "fr": "Les tentatives de connexion sont enregistrées par la pile d'authentification :\n\n- `grep -E 'securetty|root' /var/log/auth.log` (Debian/Ubuntu) / `/var/log/secure` (RHEL), affiche `pam_securetty(login:auth): access denied: tty 'ttyN'` lorsqu'une connexion root directe est correctement bloquée.\n- `journalctl -t login -t sshd` corrèle les tentatives en console et en SSH."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule yet, so it must be applied **manually**: empty the file with `: > /etc/securetty` (or remove all its lines) while keeping the file present so `pam_securetty.so` keeps denying root. Note this governs console/TTY logins; root logins over SSH are governed separately by `PermitRootLogin`.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être appliquée **manuellement** : videz le fichier avec `: > /etc/securetty` (ou supprimez toutes ses lignes) tout en le conservant présent pour que `pam_securetty.so` continue de refuser root. Notez que ceci régit les connexions console/TTY ; les connexions root via SSH sont régies séparément par `PermitRootLogin`."
+  },
+  "impact": {
+    "en": "**Risk if not applied:** shared anonymous root logins erase accountability and remove a layer of authentication.\n\n**Precautions before applying:** make sure at least one non-root account can reach root via working `sudo`/`su` **before** you remove direct root access, otherwise an admin with no other path is locked out of privileged operations. Keep a privileged session open during the change, and remember single-user/rescue mode still lets you recover the console. SSH root access must be disabled separately.",
+    "fr": "**Risque si non appliqué :** les connexions root anonymes partagées effacent la traçabilité et suppriment une couche d'authentification.\n\n**Précautions avant application :** assurez-vous qu'au moins un compte non-root peut atteindre root via un `sudo`/`su` fonctionnel **avant** de retirer l'accès root direct, sinon un administrateur sans autre voie se retrouve privé d'opérations privilégiées. Gardez une session privilégiée ouverte pendant la modification, et rappelez-vous que le mode mono-utilisateur/secours permet toujours de récupérer la console. L'accès root par SSH doit être désactivé séparément."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

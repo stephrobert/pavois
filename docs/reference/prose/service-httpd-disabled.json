@@ -1,0 +1,37 @@
+{
+  "id": "service-httpd-disabled",
+  "title": {
+    "en": "Disable httpd Service",
+    "fr": "Désactiver le service httpd"
+  },
+  "summary": {
+    "en": "Ensures the Apache/httpd web server (`httpd.service`) is **disabled** and **not running** unless the host is an intentional web server.",
+    "fr": "Garantit que le serveur web Apache/httpd (`httpd.service`) est **désactivé** et **arrêté**, sauf si l'hôte est un serveur web voulu."
+  },
+  "rationale": {
+    "en": "An Apache/httpd web server exposes a network-facing service that is a frequent remote avenue of attack. Unless the host is an intended web server, it should be disabled to reduce the attack surface.",
+    "fr": "Un serveur web Apache/httpd expose un service accessible sur le réseau, qui constitue une voie d'attaque distante fréquente. À moins que l'hôte ne soit un serveur web voulu, il doit être désactivé pour réduire la surface d'attaque."
+  },
+  "check_note": {
+    "en": "Pavois queries the **resolved unit state** with `systemctl is-enabled` / `is-active` for `httpd.service`. The effective state catches a server enabled via a drop-in or socket activation that scanning `/etc/httpd/` or `/etc/apache2/` config files would miss.",
+    "fr": "Pavois interroge l'**état résolu de l'unité** avec `systemctl is-enabled` / `is-active` pour `httpd.service`. L'état effectif détecte un serveur activé via un drop-in ou une activation socket qu'un scan des fichiers de `/etc/httpd/` ou `/etc/apache2/` manquerait."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled httpd.service` (expected `disabled` or `not-found`) and `systemctl is-active httpd.service` (expected `inactive`).",
+    "fr": "Exécutez `systemctl is-enabled httpd.service` (résultat attendu `disabled` ou `not-found`) et `systemctl is-active httpd.service` (résultat attendu `inactive`)."
+  },
+  "logs": {
+    "en": "Check `systemctl show httpd.service` (fields `UnitFileState`, `ActiveState`) and `journalctl -u httpd.service`; HTTP request activity also appears in `/var/log/httpd/` or `/var/log/apache2/`.",
+    "fr": "Vérifiez `systemctl show httpd.service` (champs `UnitFileState`, `ActiveState`) et `journalctl -u httpd.service` ; l'activité des requêtes HTTP apparaît aussi dans `/var/log/httpd/` ou `/var/log/apache2/`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan applies a `service` resource for `httpd` with actions **disable** and **stop**, so the web server stays off across reboots and is stopped immediately. Apply it with `pavois harden apply`.",
+    "fr": "Le plan harden de Pavois applique une ressource `service` sur `httpd` avec les actions **disable** et **stop**, de sorte que le serveur web reste éteint après les redémarrages et soit arrêté immédiatement. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "On a host that is not a web server, disabling `httpd.service` has **no functional impact**. **Precaution:** if this machine serves websites or APIs over HTTP/HTTPS, do **not** disable it, those services would go offline; document the exception instead. Note that on Debian/Ubuntu the unit is usually `apache2.service`, so also confirm that one is in the intended state.",
+    "fr": "Sur un hôte qui n'est pas un serveur web, désactiver `httpd.service` n'a **aucun impact fonctionnel**. **Précaution :** si cette machine sert des sites ou des API en HTTP/HTTPS, ne la désactivez **pas**, ces services deviendraient indisponibles ; documentez plutôt l'exception. Notez que sous Debian/Ubuntu l'unité est généralement `apache2.service`, vérifiez donc aussi son état."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

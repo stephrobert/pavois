@@ -1,17 +1,20 @@
 {
   "id": "sysctl-fs-protected_regular",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
+    "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
@@ -30,6 +33,9 @@
   "check": [
     "describe kernel_parameter('fs.protected_regular') do",
     "  its('value') { should cmp 2 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*fs.protected_regular[[:space:]]*=[[:space:]]*2([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -41,14 +47,13 @@
     "en": "Enable Kernel Parameter to Enforce DAC on Regular files",
     "fr": "Activer le paramètre noyau pour appliquer le DAC sur les fichiers réguliers"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Available since Linux 4.19, `fs.protected_regular=2` prohibits a process from opening, with the `O_CREAT` intent, a regular file it does not own inside a world- or group-writable sticky directory (such as `/tmp`). This defends against a **file-spoofing** race where an attacker pre-creates a regular file at the path a privileged program expects to create itself, hijacking the data the program writes. Enforcing DAC on these opens prevents writes to an attacker-controlled file.",
-    "fr": "Disponible depuis Linux 4.19, `fs.protected_regular=2` interdit à un processus d'ouvrir, avec l'intention `O_CREAT`, un fichier régulier qu'il ne possède pas dans un répertoire sticky accessible en écriture par le groupe ou tous (comme `/tmp`). Cela protège contre une course par **usurpation de fichier**, où un attaquant pré-crée un fichier régulier à l'emplacement qu'un programme privilégié s'attend à créer lui-même, détournant les données que le programme écrit. Appliquer le DAC à ces ouvertures empêche les écritures vers un fichier contrôlé par l'attaquant."
-  },
   "summary": {
     "en": "Sets `fs.protected_regular=2` so a process cannot create-open a regular file it does not own in a world/group-writable sticky directory, blocking file-spoofing races.",
     "fr": "Définit `fs.protected_regular=2` pour qu'un processus ne puisse pas créer/ouvrir un fichier régulier qu'il ne possède pas dans un répertoire sticky accessible en écriture par le groupe ou tous, bloquant les courses par usurpation de fichier."
+  },
+  "rationale": {
+    "en": "Available since Linux 4.19, `fs.protected_regular=2` prohibits a process from opening, with the `O_CREAT` intent, a regular file it does not own inside a world- or group-writable sticky directory (such as `/tmp`). This defends against a **file-spoofing** race where an attacker pre-creates a regular file at the path a privileged program expects to create itself, hijacking the data the program writes. Enforcing DAC on these opens prevents writes to an attacker-controlled file.",
+    "fr": "Disponible depuis Linux 4.19, `fs.protected_regular=2` interdit à un processus d'ouvrir, avec l'intention `O_CREAT`, un fichier régulier qu'il ne possède pas dans un répertoire sticky accessible en écriture par le groupe ou tous (comme `/tmp`). Cela protège contre une course par **usurpation de fichier**, où un attaquant pré-crée un fichier régulier à l'emplacement qu'un programme privilégié s'attend à créer lui-même, détournant les données que le programme écrit. Appliquer le DAC à ces ouvertures empêche les écritures vers un fichier contrôlé par l'attaquant."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** via the `kernel_parameter` resource (equivalent to `sysctl fs.protected_regular`), not `/etc/sysctl.conf` or any `*.conf` drop-in. A value written to a file may never have been loaded (typo, ordering, an overriding drop-in); reading the running kernel reflects what is actually enforced.",
@@ -69,5 +74,7 @@
   "impact": {
     "en": "Low risk on modern systems. It only affects create-opens of files you do not own in shared sticky directories; normal applications write to files they own or in their own directories. Rare software that shares pre-created files in `/tmp` across users could see `EACCES`, test such workflows before enforcing. Reversible by resetting the key to `0` or `1`.",
     "fr": "Risque faible sur les systèmes modernes. Cela n'affecte que les créations/ouvertures de fichiers que vous ne possédez pas dans des répertoires sticky partagés ; les applications normales écrivent dans des fichiers qu'elles possèdent ou dans leurs propres répertoires. De rares logiciels partageant des fichiers pré-créés dans `/tmp` entre utilisateurs pourraient recevoir `EACCES`, testez ces flux avant d'appliquer. Réversible en remettant la clé à `0` ou `1`."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

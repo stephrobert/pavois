@@ -1,16 +1,17 @@
 {
   "id": "sysctl-net-ipv4-tcp_rfc1337",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -28,6 +29,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.tcp_rfc1337') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.tcp_rfc1337[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -39,14 +43,13 @@
     "en": "Enable Kernel Parameter to Use TCP RFC 1337 on IPv4 Interfaces",
     "fr": "Activer le paramètre noyau pour appliquer TCP RFC 1337 sur les interfaces IPv4"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "RFC 1337 describes the **TIME_WAIT assassination** hazard: when disabled, a RST received in the `TIME_WAIT` state closes the socket immediately instead of waiting out the `TIME_WAIT` period, which can let stale or spoofed segments corrupt a new connection reusing the same socket. Enabling RFC 1337 behavior drops such RSTs and protects connection integrity.",
-    "fr": "La RFC 1337 décrit le risque d'**assassinat de TIME_WAIT** : lorsqu'il est désactivé, un RST reçu dans l'état `TIME_WAIT` ferme la socket immédiatement au lieu d'attendre la fin de la période `TIME_WAIT`, ce qui peut laisser des segments périmés ou usurpés corrompre une nouvelle connexion réutilisant la même socket. Activer le comportement RFC 1337 ignore ces RST et protège l'intégrité des connexions."
-  },
   "summary": {
     "en": "Enables RFC 1337 protection against TIME_WAIT assassination by setting `net.ipv4.tcp_rfc1337` to **1**.",
     "fr": "Active la protection RFC 1337 contre l'assassinat de TIME_WAIT en positionnant `net.ipv4.tcp_rfc1337` à **1**."
+  },
+  "rationale": {
+    "en": "RFC 1337 describes the **TIME_WAIT assassination** hazard: when disabled, a RST received in the `TIME_WAIT` state closes the socket immediately instead of waiting out the `TIME_WAIT` period, which can let stale or spoofed segments corrupt a new connection reusing the same socket. Enabling RFC 1337 behavior drops such RSTs and protects connection integrity.",
+    "fr": "La RFC 1337 décrit le risque d'**assassinat de TIME_WAIT** : lorsqu'il est désactivé, un RST reçu dans l'état `TIME_WAIT` ferme la socket immédiatement au lieu d'attendre la fin de la période `TIME_WAIT`, ce qui peut laisser des segments périmés ou usurpés corrompre une nouvelle connexion réutilisant la même socket. Activer le comportement RFC 1337 ignore ces RST et protège l'intégrité des connexions."
   },
   "check_note": {
     "en": "Pavois reads the **live** value via `kernel_parameter('net.ipv4.tcp_rfc1337')`, reflecting the running kernel after all `sysctl.conf` / `/etc/sysctl.d/` drop-ins and runtime overrides are merged, not what a static read of `/etc/sysctl.conf` might claim.",
@@ -67,5 +70,7 @@
   "impact": {
     "en": "No meaningful downside on servers or workstations, it only changes how RSTs are handled in `TIME_WAIT`, hardening connection integrity. Precaution: in very rare high-churn scenarios that aggressively recycle TIME_WAIT sockets, keeping these sockets the full duration uses slightly more socket memory; this is negligible for normal workloads.",
     "fr": "Aucun inconvénient notable sur serveurs ou postes de travail, cela ne change que la gestion des RST en `TIME_WAIT`, renforçant l'intégrité des connexions. Précaution : dans de très rares scénarios à fort renouvellement qui recyclent agressivement les sockets TIME_WAIT, conserver ces sockets toute la durée consomme un peu plus de mémoire socket ; négligeable pour des charges normales."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

@@ -1,16 +1,17 @@
 {
   "id": "sysctl-net-ipv6-conf-default-max_addresses",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -28,6 +29,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.default.max_addresses') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.default.max_addresses[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -39,14 +43,13 @@
     "en": "Configure Maximum Number of Autoconfigured Addresses on All IPv6 Interfaces By Default",
     "fr": "Configurer le nombre maximal d'adresses autoconfigurées sur toutes les interfaces IPv6 par défaut"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`net.ipv6.conf.default.max_addresses` caps how many autoconfigured (SLAAC) IPv6 addresses an interface may hold. Without a tight cap, a flood of forged Router Advertisements carrying many prefixes can make the host configure a large number of addresses, exhausting memory and creating a **denial-of-service** condition, and it complicates auditing the host's true network identity. Limiting the count to the number of statically required addresses bounds this exposure; the value `1` enforces a strict single-address default.",
-    "fr": "`net.ipv6.conf.default.max_addresses` plafonne le nombre d'adresses IPv6 autoconfigurées (SLAAC) qu'une interface peut détenir. Sans plafond strict, un flot de fausses annonces de routeur portant de nombreux préfixes peut amener l'hôte à configurer un grand nombre d'adresses, épuisant la mémoire et créant une condition de **déni de service**, et compliquant l'audit de la véritable identité réseau de l'hôte. Limiter le nombre à celui des adresses statiquement requises borne cette exposition ; la valeur `1` impose une limite stricte d'une seule adresse par défaut."
-  },
   "summary": {
     "en": "Limits the number of autoconfigured IPv6 addresses per new interface to one by setting `net.ipv6.conf.default.max_addresses = 1`.",
     "fr": "Limite à une le nombre d'adresses IPv6 autoconfigurées par nouvelle interface en réglant `net.ipv6.conf.default.max_addresses = 1`."
+  },
+  "rationale": {
+    "en": "`net.ipv6.conf.default.max_addresses` caps how many autoconfigured (SLAAC) IPv6 addresses an interface may hold. Without a tight cap, a flood of forged Router Advertisements carrying many prefixes can make the host configure a large number of addresses, exhausting memory and creating a **denial-of-service** condition, and it complicates auditing the host's true network identity. Limiting the count to the number of statically required addresses bounds this exposure; the value `1` enforces a strict single-address default.",
+    "fr": "`net.ipv6.conf.default.max_addresses` plafonne le nombre d'adresses IPv6 autoconfigurées (SLAAC) qu'une interface peut détenir. Sans plafond strict, un flot de fausses annonces de routeur portant de nombreux préfixes peut amener l'hôte à configurer un grand nombre d'adresses, épuisant la mémoire et créant une condition de **déni de service**, et compliquant l'audit de la véritable identité réseau de l'hôte. Limiter le nombre à celui des adresses statiquement requises borne cette exposition ; la valeur `1` impose une limite stricte d'une seule adresse par défaut."
   },
   "check_note": {
     "en": "Pavois reads the **effective** kernel value of `net.ipv6.conf.default.max_addresses`, not a config file. The live value merges `/etc/sysctl.conf`, drop-ins in `/etc/sysctl.d/` and `/run/sysctl.d/`, kernel boot parameters and any runtime `sysctl -w`. A clean file does not prove the running kernel enforces the cap; Pavois reports the value actually in effect.",
@@ -67,5 +70,7 @@
   "impact": {
     "en": "A cap of `1` is appropriate for hosts with a single static or SLAAC address per interface, but it will **break legitimate multi-address setups**: SLAAC with **privacy extensions** (temporary addresses) needs at least 2-3, and hosts with multiple prefixes or aliases need more. Before applying, confirm the host does not use IPv6 privacy addresses or multiple IPv6 addresses per interface; if it does, raise the value to match the real requirement rather than leaving it at `1`.",
     "fr": "Un plafond de `1` convient aux hôtes avec une seule adresse statique ou SLAAC par interface, mais il **cassera les configurations multi-adresses légitimes** : SLAAC avec **extensions de confidentialité** (adresses temporaires) nécessite au moins 2-3 adresses, et les hôtes avec plusieurs préfixes ou alias en nécessitent davantage. Avant d'appliquer, vérifiez que l'hôte n'utilise pas d'adresses de confidentialité IPv6 ni plusieurs adresses IPv6 par interface ; si c'est le cas, augmentez la valeur pour correspondre au besoin réel plutôt que de la laisser à `1`."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

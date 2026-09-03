@@ -1,0 +1,37 @@
+{
+  "id": "service-systemd-journal-upload-enabled",
+  "title": {
+    "en": "Enable systemd-journal-upload Service",
+    "fr": "Activer le service systemd-journal-upload"
+  },
+  "summary": {
+    "en": "When a remote `URL=` is configured, ensures `systemd-journal-upload.service` is **enabled** and **running** so journal data is forwarded to a central log host.",
+    "fr": "Lorsqu'une `URL=` distante est configurée, garantit que `systemd-journal-upload.service` est **activé** et **en cours d'exécution** afin que les données du journal soient transmises vers un hôte de logs central."
+  },
+  "rationale": {
+    "en": "Centralized logging through `systemd-journal-upload` is essential for security monitoring, incident response, and compliance. Forwarding journal data to a remote host protects log integrity from local tampering: if an attacker gains root on the local system, they can alter or delete locally stored logs to hide their activity. Remote logging keeps the audit trail intact even when the local host is compromised, and centralizing logs across machines lets defenders correlate events to detect distributed or lateral-movement attacks.",
+    "fr": "La journalisation centralisée via `systemd-journal-upload` est essentielle pour la surveillance de sécurité, la réponse aux incidents et la conformité. Transmettre les données du journal vers un hôte distant protège l'intégrité des logs contre toute altération locale : si un attaquant obtient les droits root sur le système local, il peut modifier ou supprimer les logs stockés localement pour masquer son activité. La journalisation distante maintient la piste d'audit intacte même lorsque l'hôte local est compromis, et centraliser les logs entre machines permet aux défenseurs de corréler les événements pour détecter les attaques distribuées ou les mouvements latéraux."
+  },
+  "check_note": {
+    "en": "The control is guarded by `only_if` on `grep -qsE \"^URL=\" /etc/systemd/journal-upload.conf`, it applies **only when a remote upload target is configured**, avoiding false positives on hosts that legitimately do not forward. When that holds, Pavois reads the **effective unit state** with `service('systemd-journal-upload.service')` (`systemctl is-enabled` / `is-active`), confirming forwarding is truly active rather than just configured. A config file with a `URL=` but a masked or crashed unit means logs are silently not leaving the host, exactly what effective-state checking catches.",
+    "fr": "Le contrôle est conditionné par `only_if` sur `grep -qsE \"^URL=\" /etc/systemd/journal-upload.conf`, il ne s'applique que **lorsqu'une cible de transfert distante est configurée**, évitant les faux positifs sur les hôtes qui ne transmettent légitimement pas. Quand c'est le cas, Pavois lit l'**état effectif de l'unité** via `service('systemd-journal-upload.service')` (`systemctl is-enabled` / `is-active`), confirmant que le transfert est réellement actif et pas seulement configuré. Un fichier de configuration avec une `URL=` mais une unité masquée ou plantée signifie que les logs ne quittent silencieusement pas l'hôte, exactement ce que détecte le contrôle de l'état effectif."
+  },
+  "verify": {
+    "en": "Confirm a target is set with `grep '^URL=' /etc/systemd/journal-upload.conf`, then run `systemctl is-enabled systemd-journal-upload && systemctl is-active systemd-journal-upload` (expect `enabled` then `active`). `journalctl -u systemd-journal-upload` should show successful uploads with no repeated connection errors.",
+    "fr": "Vérifiez qu'une cible est définie avec `grep '^URL=' /etc/systemd/journal-upload.conf`, puis exécutez `systemctl is-enabled systemd-journal-upload && systemctl is-active systemd-journal-upload` (attendu `enabled` puis `active`). `journalctl -u systemd-journal-upload` doit montrer des envois réussis sans erreurs de connexion répétées."
+  },
+  "logs": {
+    "en": "The uploader's status and connection state are in `journalctl -u systemd-journal-upload.service`, look for `Uploading...` progress and the absence of TLS or connection-refused errors. On the central server, verify that this host's entries are arriving (e.g. in `systemd-journal-remote` storage under `/var/log/journal/remote/`).",
+    "fr": "L'état de l'uploader et de la connexion sont dans `journalctl -u systemd-journal-upload.service`, recherchez la progression `Uploading...` et l'absence d'erreurs TLS ou de connexion refusée. Sur le serveur central, vérifiez que les entrées de cet hôte arrivent (par exemple dans le stockage `systemd-journal-remote` sous `/var/log/journal/remote/`)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the **service** resource named `systemd-journal-upload`: it runs `enable` and `start` so journal forwarding persists across reboots and runs now. It is applied with `pavois harden apply`. A valid `URL=` (and matching TLS key/cert paths) must already be set in `/etc/systemd/journal-upload.conf`, and the remote `systemd-journal-remote` collector must be listening, otherwise the unit starts but fails to deliver.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource **service** nommée `systemd-journal-upload` : il exécute `enable` et `start` pour que le transfert du journal persiste aux redémarrages et tourne maintenant. Il s'applique avec `pavois harden apply`. Une `URL=` valide (et les chemins de clé/certificat TLS correspondants) doit déjà être définie dans `/etc/systemd/journal-upload.conf`, et le collecteur distant `systemd-journal-remote` doit écouter, sinon l'unité démarre mais échoue à livrer."
+  },
+  "impact": {
+    "en": "Misconfiguration here is mostly a **silent reliability problem**: if the remote collector is unreachable or TLS certs are wrong, the uploader retries and buffers, potentially growing local state, while you believe logs are centralized when they are not. **Precautions:** provision and test the `systemd-journal-remote` server and TLS chain first; verify reachability and certificate validity; and monitor the uploader unit so a forwarding outage raises an alert rather than going unnoticed.",
+    "fr": "Une mauvaise configuration ici est surtout un **problème de fiabilité silencieux** : si le collecteur distant est injoignable ou si les certificats TLS sont incorrects, l'uploader retente et met en tampon, faisant potentiellement croître l'état local, alors que vous croyez les logs centralisés sans qu'ils le soient. **Précautions :** provisionnez et testez d'abord le serveur `systemd-journal-remote` et la chaîne TLS ; vérifiez la joignabilité et la validité des certificats ; et surveillez l'unité de l'uploader pour qu'une panne de transfert déclenche une alerte plutôt que de passer inaperçue."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

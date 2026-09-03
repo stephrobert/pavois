@@ -1,17 +1,17 @@
 {
   "id": "sysctl-kernel-randomize_va_space",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -36,10 +36,7 @@
       "SC-30",
       "SC-30(2)"
     ],
-    "pci-dss": [
-      "3.3.1.1",
-      "Req-2.2.1"
-    ],
+    "pci-dss": "3.3.1.1",
     "stig": [
       "UBTU-22-213020",
       "UBTU-24-700310"
@@ -48,6 +45,9 @@
   "check": [
     "describe kernel_parameter('kernel.randomize_va_space') do",
     "  its('value') { should cmp 2 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*kernel.randomize_va_space[[:space:]]*=[[:space:]]*2([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -59,14 +59,13 @@
     "en": "Enable Randomized Layout of Virtual Address Space",
     "fr": "Activer la disposition aléatoire de l'espace d'adressage virtuel"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Address Space Layout Randomization (ASLR) makes it much harder for an attacker to predict where injected attack code lands in a process's address space, and harder to locate existing code to reuse via Return-Oriented Programming (ROP). Setting `kernel.randomize_va_space = 2` enables **full ASLR**, randomizing the stack, heap (brk), mmap base, VDSO and shared libraries, significantly raising the cost of memory-corruption exploits.",
-    "fr": "La randomisation de l'espace d'adressage (ASLR) complique fortement la prédiction par un attaquant de l'emplacement du code d'attaque injecté dans l'espace d'adressage d'un processus, et la localisation du code existant à réutiliser via le Return-Oriented Programming (ROP). Fixer `kernel.randomize_va_space = 2` active l'**ASLR complète**, randomisant la pile, le tas (brk), la base mmap, le VDSO et les bibliothèques partagées, augmentant nettement le coût des exploits de corruption mémoire."
-  },
   "summary": {
     "en": "Sets `kernel.randomize_va_space = 2` to enable full ASLR (stack, heap, mmap, VDSO and shared libraries are randomized).",
     "fr": "Fixe `kernel.randomize_va_space = 2` pour activer l'ASLR complète (pile, tas, mmap, VDSO et bibliothèques partagées randomisés)."
+  },
+  "rationale": {
+    "en": "Address Space Layout Randomization (ASLR) makes it much harder for an attacker to predict where injected attack code lands in a process's address space, and harder to locate existing code to reuse via Return-Oriented Programming (ROP). Setting `kernel.randomize_va_space = 2` enables **full ASLR**, randomizing the stack, heap (brk), mmap base, VDSO and shared libraries, significantly raising the cost of memory-corruption exploits.",
+    "fr": "La randomisation de l'espace d'adressage (ASLR) complique fortement la prédiction par un attaquant de l'emplacement du code d'attaque injecté dans l'espace d'adressage d'un processus, et la localisation du code existant à réutiliser via le Return-Oriented Programming (ROP). Fixer `kernel.randomize_va_space = 2` active l'**ASLR complète**, randomisant la pile, le tas (brk), la base mmap, le VDSO et les bibliothèques partagées, augmentant nettement le coût des exploits de corruption mémoire."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** with `kernel_parameter('kernel.randomize_va_space')` (equivalent to `sysctl kernel.randomize_va_space`), not a `/etc/sysctl.d/*.conf` line. ASLR is commonly weakened by a stray `kernel.randomize_va_space = 0` left over from a debugging session or a low-quality container image; only reading the effective parameter detects that the running kernel actually has full randomization enabled.",
@@ -87,5 +86,7 @@
   "impact": {
     "en": "**Risk if not applied:** without full ASLR, memory addresses are predictable, making buffer-overflow and ROP exploits dramatically more reliable.\n\n**Precautions before applying:**\n- ASLR is enabled by default and safe for virtually all software. Only **niche workloads** that hardcode or pin virtual addresses (some JITs, legacy emulators, certain HPC/database tuning, or debugging with disabled randomization) may misbehave; test such applications.\n- No boot or login lockout risk; the change is fully reversible at runtime.",
     "fr": "**Risque si non appliqué :** sans ASLR complète, les adresses mémoire sont prévisibles, rendant les exploits par débordement de tampon et ROP nettement plus fiables.\n\n**Précautions avant application :**\n- L'ASLR est activée par défaut et sûre pour la quasi-totalité des logiciels. Seules des **charges de travail de niche** qui figent ou épinglent des adresses virtuelles (certains JIT, émulateurs hérités, réglages HPC/bases de données, ou débogage avec randomisation désactivée) peuvent dysfonctionner ; testez ces applications.\n- Aucun risque de blocage au démarrage ou à la connexion ; le changement est entièrement réversible à chaud."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

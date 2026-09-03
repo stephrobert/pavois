@@ -1,0 +1,37 @@
+{
+  "id": "fileperm-etc-ipsecd",
+  "title": {
+    "en": "Verify Permissions On /etc/ipsec.d Directory",
+    "fr": "Vérifier les permissions du répertoire /etc/ipsec.d"
+  },
+  "summary": {
+    "en": "Ensures the `/etc/ipsec.d` directory is not readable, writable or executable by group/other and carries no setuid, setgid or sticky bit (expected mode **0700 root:root**).",
+    "fr": "Garantit que le répertoire `/etc/ipsec.d` n'est ni lisible, ni modifiable, ni traversable par le groupe ou les autres et ne porte aucun bit setuid, setgid ou sticky (mode attendu **0700 root:root**)."
+  },
+  "rationale": {
+    "en": "`/etc/ipsec.d/` holds the **IPsec secrets material**: certificates, private keys, CRLs and per-connection configuration drop-ins for Libreswan/strongSwan. If the directory is **readable by group or other**, an attacker can list and copy private keys, breaking the confidentiality of every tunnel; if **writable**, they can plant a rogue key or config. Restricting it to **root** (mode **0700**) keeps the VPN's cryptographic material private and tamper-proof.",
+    "fr": "`/etc/ipsec.d/` contient le **matériel secret IPsec** : certificats, clés privées, CRL et fragments de configuration par connexion pour Libreswan/strongSwan. Si le répertoire est **lisible par le groupe ou les autres**, un attaquant peut lister et copier les clés privées, brisant la confidentialité de chaque tunnel ; s'il est **modifiable**, il peut y déposer une clé ou une configuration malveillante. Le restreindre à **root** (mode **0700**) garde le matériel cryptographique du VPN privé et inaltérable."
+  },
+  "check_note": {
+    "en": "Pavois reads the real inode permissions of the `/etc/ipsec.d` directory with the InSpec `file` resource (a `stat`), under `only_if`. For a directory, the group/other **read** bit allows listing and **execute** allows traversal, so both are forbidden along with write and any setuid/setgid/sticky bit, effectively **0700 root:root**. Inspecting the live directory mode catches drift from a manual change or a restore that a packaged-default assumption would miss.",
+    "fr": "Pavois lit les permissions réelles de l'inode du répertoire `/etc/ipsec.d` avec la ressource InSpec `file` (un `stat`), sous `only_if`. Pour un répertoire, le bit de **lecture** groupe/autres autorise le listage et le bit d'**exécution** la traversée ; les deux sont donc interdits, avec l'écriture et tout bit setuid/setgid/sticky, soit **0700 root:root**. Inspecter le mode réel du répertoire détecte une dérive due à un changement manuel ou une restauration qu'une hypothèse de défaut de paquet manquerait."
+  },
+  "verify": {
+    "en": "Run `stat -c '%a %U %G' /etc/ipsec.d`. Expected output is mode **700** owned by `root root`, i.e. `700 root root`. Any group/other read, write or execute bit, or a special bit, fails the rule.",
+    "fr": "Exécutez `stat -c '%a %U %G' /etc/ipsec.d`. La sortie attendue est le mode **700** appartenant à `root root`, soit `700 root root`. Tout bit de lecture, d'écriture ou d'exécution groupe/autres, ou un bit spécial, fait échouer la règle."
+  },
+  "logs": {
+    "en": "The IPsec daemon loads keys and certs from this directory; check `journalctl -u ipsec` / `journalctl -u strongswan` and `ipsec status` to confirm tunnels still negotiate after a permission change. Use `ls -ld /etc/ipsec.d` / `stat /etc/ipsec.d` to verify the mode.",
+    "fr": "Le démon IPsec charge les clés et certificats depuis ce répertoire ; vérifiez `journalctl -u ipsec` / `journalctl -u strongswan` et `ipsec status` pour confirmer que les tunnels négocient toujours après un changement de permissions. Utilisez `ls -ld /etc/ipsec.d` / `stat /etc/ipsec.d` pour vérifier le mode."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is defined, so apply it **manually**: `chmod 0700 /etc/ipsec.d && chown root:root /etc/ipsec.d`. Consider tightening the key files inside (`chmod 0600 /etc/ipsec.d/private/*`) as well, then `ipsec reload`.",
+    "fr": "Aucune remédiation automatique n'est définie ; appliquez-la **manuellement** : `chmod 0700 /etc/ipsec.d && chown root:root /etc/ipsec.d`. Pensez à durcir également les fichiers de clés à l'intérieur (`chmod 0600 /etc/ipsec.d/private/*`), puis `ipsec reload`."
+  },
+  "impact": {
+    "en": "Setting 0700 root:root on the directory is **safe**, the IPsec daemon runs as root and retains full access. There is no lockout risk. Precaution: if a non-root monitoring or backup user previously read this directory, it will lose access; that is intended for secret material, but adjust your tooling to run privileged instead. Verify tunnels with `ipsec status` afterwards. Leaving the directory world-readable exposes private VPN keys.",
+    "fr": "Appliquer 0700 root:root au répertoire est **sûr**, le démon IPsec s'exécute en root et conserve un accès complet. Aucun risque de blocage. Précaution : si un utilisateur de supervision ou de sauvegarde non-root lisait auparavant ce répertoire, il perdra l'accès ; c'est voulu pour du matériel secret, mais adaptez vos outils pour qu'ils s'exécutent en privilégié. Vérifiez ensuite les tunnels avec `ipsec status`. Laisser le répertoire lisible par tous expose les clés privées du VPN."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

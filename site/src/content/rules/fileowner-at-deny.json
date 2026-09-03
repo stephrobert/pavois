@@ -2,11 +2,20 @@
   "id": "fileowner-at-deny",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -24,22 +33,22 @@
     "end"
   ],
   "remediation": {
-    "owner": "root",
-    "path": "/etc/at.deny",
-    "resource": "file"
+    "command": "test -e /etc/at.deny && { chown root:root /etc/at.deny; chmod 0640 /etc/at.deny; }; true",
+    "name": "at-deny-perms",
+    "not_if": "! test -e /etc/at.deny",
+    "resource": "exec"
   },
   "title": {
     "en": "Verify User Who Owns /etc/at.deny file",
     "fr": "Vérifier l'utilisateur propriétaire du fichier /etc/at.deny"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/at.deny` is the deny-list controlling who is **forbidden** from scheduling `at` jobs. If it is not owned by **root** (uid 0), an unauthorized user could remove their own entry to gain `at` access, or read it to learn the scheduling policy. Root ownership keeps the deny-list authoritative and tamper-resistant.",
-    "fr": "`/etc/at.deny` est la liste d'interdiction déterminant qui est **interdit** de planifier des tâches `at`. S'il n'appartient pas à **root** (uid 0), un utilisateur non autorisé pourrait retirer sa propre entrée pour obtenir l'accès à `at`, ou le lire pour découvrir la politique de planification. La propriété par root maintient la liste d'interdiction autoritaire et résistante à l'altération."
-  },
   "summary": {
     "en": "Ensures `/etc/at.deny` is owned by **root** (uid 0).",
     "fr": "Garantit que `/etc/at.deny` appartient à **root** (uid 0)."
+  },
+  "rationale": {
+    "en": "`/etc/at.deny` is the deny-list controlling who is **forbidden** from scheduling `at` jobs. If it is not owned by **root** (uid 0), an unauthorized user could remove their own entry to gain `at` access, or read it to learn the scheduling policy. Root ownership keeps the deny-list authoritative and tamper-resistant.",
+    "fr": "`/etc/at.deny` est la liste d'interdiction déterminant qui est **interdit** de planifier des tâches `at`. S'il n'appartient pas à **root** (uid 0), un utilisateur non autorisé pourrait retirer sa propre entrée pour obtenir l'accès à `at`, ou le lire pour découvrir la politique de planification. La propriété par root maintient la liste d'interdiction autoritaire et résistante à l'altération."
   },
   "check_note": {
     "en": "Pavois reads the file's **effective owning uid** with the InSpec `file` resource and asserts it equals `0` (root), only when the file exists. Reading the live filesystem owner reflects the policy actually enforced now, catching `chown` drift, instead of trusting a package default.",
@@ -60,5 +69,7 @@
   "impact": {
     "en": "Non-root ownership lets a user edit the deny-list to bypass `at` restrictions, undermining job-scheduling controls. Restoring root ownership is operationally safe since `atd` runs as root. **Precaution:** if the file is absent the check is skipped; deleting `at.deny` while no `at.allow` exists makes `at` available to all users, decide your scheduling policy before changing either file.",
     "fr": "Une propriété autre que root permet à un utilisateur de modifier la liste d'interdiction pour contourner les restrictions `at`, affaiblissant les contrôles de planification. Rétablir la propriété root est sans danger opérationnel car `atd` tourne en root. **Précaution :** si le fichier est absent, le contrôle est ignoré ; supprimer `at.deny` sans qu'un `at.allow` existe rend `at` accessible à tous, définissez votre politique de planification avant de modifier l'un ou l'autre fichier."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

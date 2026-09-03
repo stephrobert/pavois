@@ -1,17 +1,17 @@
 {
   "id": "ssh-set-max-auth-tries",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -25,39 +25,38 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "5.1.16",
       "2.2.6",
+      "5.1.16",
       "5.1.18"
     ],
     "pci-dss": "2.2.6"
   },
   "check": [
     "describe command('sshd -T') do",
-    "  its('stdout') { should match(/^maxauthtries\\s+4$/i) }",
+    "  its('stdout') { should match(/^maxauthtries\\s+[1-4]$/i) }",
     "end"
   ],
   "remediation": {
     "directive": "maxauthtries",
     "notify": {
       "action": "reload",
-      "service": "ssh"
+      "service": "ssh.service"
     },
     "resource": "sshd_setting",
-    "value": "4",
+    "value": "3",
     "verify": "sshd -t -f %{path}"
   },
   "title": {
     "en": "Set SSH authentication attempt limit",
     "fr": "Définir la limite de tentatives d'authentification SSH"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`MaxAuthTries` caps the number of authentication attempts allowed per connection before `sshd` drops it. The default (`6`) gives an attacker more guesses per session, easing **brute-force and password-spraying** attacks. Lowering it to **`4`** forces an attacker to open far more connections to make the same number of guesses, which is slower, noisier and easier to detect or rate-limit.",
-    "fr": "`MaxAuthTries` limite le nombre de tentatives d'authentification autorisées par connexion avant que `sshd` ne la ferme. La valeur par défaut (`6`) offre à un attaquant plus d'essais par session, facilitant les attaques par **force brute et par pulvérisation de mots de passe**. L'abaisser à **`4`** oblige l'attaquant à ouvrir bien plus de connexions pour effectuer le même nombre d'essais, ce qui est plus lent, plus bruyant et plus facile à détecter ou à limiter."
-  },
   "summary": {
     "en": "Limit SSH authentication attempts per connection to **`4`** via `MaxAuthTries`.",
     "fr": "Limiter les tentatives d'authentification SSH par connexion à **`4`** via `MaxAuthTries`."
+  },
+  "rationale": {
+    "en": "`MaxAuthTries` caps the number of authentication attempts allowed per connection before `sshd` drops it. The default (`6`) gives an attacker more guesses per session, easing **brute-force and password-spraying** attacks. Lowering it to **`4`** forces an attacker to open far more connections to make the same number of guesses, which is slower, noisier and easier to detect or rate-limit.",
+    "fr": "`MaxAuthTries` limite le nombre de tentatives d'authentification autorisées par connexion avant que `sshd` ne la ferme. La valeur par défaut (`6`) offre à un attaquant plus d'essais par session, facilitant les attaques par **force brute et par pulvérisation de mots de passe**. L'abaisser à **`4`** oblige l'attaquant à ouvrir bien plus de connexions pour effectuer le même nombre d'essais, ce qui est plus lent, plus bruyant et plus facile à détecter ou à limiter."
   },
   "check_note": {
     "en": "Pavois asserts that the **effective** `sshd -T` output reports `maxauthtries 4`. Reading the running daemon reflects the value after all `Include` directives and `/etc/ssh/sshd_config.d/` drop-ins are merged, a file scan can miss an override and report a false pass or fail.",
@@ -78,5 +77,7 @@
   "impact": {
     "en": "Note that `sshd` counts each public key the client offers as one attempt. A user whose agent holds **many keys** can hit the limit before the right key is tried and be rejected with `Too many authentication failures`. Before applying, prune unused keys from agents or set `IdentitiesOnly yes` for the target host, keep a second session open, and rely on the built-in `sshd -t` validation to avoid breaking the listener.",
     "fr": "Notez que `sshd` compte chaque clé publique proposée par le client comme une tentative. Un utilisateur dont l'agent détient **de nombreuses clés** peut atteindre la limite avant que la bonne clé soit essayée et être rejeté avec `Too many authentication failures`. Avant d'appliquer, élaguez les clés inutilisées des agents ou définissez `IdentitiesOnly yes` pour l'hôte cible, gardez une seconde session ouverte, et appuyez-vous sur la validation intégrée `sshd -t` pour ne pas casser le service en écoute."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

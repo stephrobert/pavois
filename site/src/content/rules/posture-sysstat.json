@@ -1,17 +1,17 @@
 {
   "id": "posture-sysstat",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -29,12 +29,16 @@
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "sed -ri 's/^ENABLED=.*/ENABLED=\"true\"/' /etc/default/sysstat 2>/dev/null; systemctl enable --now sysstat sysstat.service 2>/dev/null; true",
+    "name": "enable-sysstat-collection",
+    "not_if": "grep -q '^ENABLED=\"true\"' /etc/default/sysstat 2>/dev/null",
+    "resource": "exec"
+  },
   "title": {
     "en": "System statistics collection (sysstat)",
     "fr": "Collecte des statistiques système (sysstat)"
   },
-  "needs_translation": [],
   "summary": {
     "en": "Requires the **sysstat** toolkit (the `sar` binary) to be installed so historical system-activity metrics are collected for monitoring and incident analysis.",
     "fr": "Exige l'installation de la suite **sysstat** (le binaire `sar`) afin que des métriques historiques d'activité système soient collectées pour la supervision et l'analyse d'incidents."
@@ -62,5 +66,7 @@
   "impact": {
     "en": "Installing sysstat is non-disruptive. The only considerations are a small, regular **CPU/I/O cost from the collection cron/timer** and **disk growth in `/var/log/sysstat`**, tune the retention with `HISTORY` in `/etc/sysstat/sysstat`. No services are affected, and on Debian/Ubuntu remember collection is **off until you set `ENABLED=\"true\"`**.",
     "fr": "Installer sysstat n'est pas perturbant. Les seuls points d'attention sont un léger **coût CPU/E-S régulier dû au cron/timer de collecte** et la **croissance du disque dans `/var/log/sysstat`**, ajustez la rétention avec `HISTORY` dans `/etc/sysstat/sysstat`. Aucun service n'est affecté, et sur Debian/Ubuntu, rappelez-vous que la collecte reste **inactive tant que vous n'avez pas mis `ENABLED=\"true\"`**."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

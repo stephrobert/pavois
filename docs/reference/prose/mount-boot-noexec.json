@@ -1,0 +1,37 @@
+{
+  "id": "mount-boot-noexec",
+  "title": {
+    "en": "Add noexec Option to /boot",
+    "fr": "Ajouter l'option noexec à /boot"
+  },
+  "summary": {
+    "en": "Mounts the `/boot` partition with the `noexec` option so no binary can be executed from it.",
+    "fr": "Monte la partition `/boot` avec l'option `noexec` afin qu'aucun binaire ne puisse y être exécuté."
+  },
+  "rationale": {
+    "en": "The `/boot` partition holds the kernel, initramfs and bootloader files. Once the boot process has finished, **no program should ever be executed from this partition**. Mounting it with `noexec` removes a staging area an attacker could use to run binaries, and reduces the attack surface against the boot chain.",
+    "fr": "La partition `/boot` contient le noyau, l'initramfs et les fichiers du chargeur d'amorçage. Une fois le démarrage terminé, **aucun programme ne devrait y être exécuté**. Monter cette partition avec `noexec` supprime une zone de stockage qu'un attaquant pourrait utiliser pour exécuter des binaires, et réduit la surface d'attaque sur la chaîne d'amorçage."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** mount table via `mount('/boot')` and asserts that the resolved option list contains `noexec`. This reflects how the kernel actually mounted the filesystem **right now**, including options injected by `systemd` mount units or remounts, whereas parsing `/etc/fstab` alone would miss a partition that was remounted with different options or mounted by a generator. If `/boot` is not a separate mount point, the control has no separate partition to harden.",
+    "fr": "Pavois lit la table de montage **effective** via `mount('/boot')` et vérifie que la liste d'options résolue contient `noexec`. Cela reflète la façon dont le noyau a réellement monté le système de fichiers **à cet instant**, y compris les options injectées par les unités de montage `systemd` ou par un remontage, alors que la simple lecture de `/etc/fstab` manquerait une partition remontée avec d'autres options ou montée par un générateur. Si `/boot` n'est pas un point de montage distinct, le contrôle n'a pas de partition séparée à durcir."
+  },
+  "verify": {
+    "en": "Run `findmnt /boot` (or `findmnt -no OPTIONS /boot`) and confirm `noexec` appears in the option list, e.g. `rw,nosuid,nodev,noexec,relatime`. You can also check `mount | grep ' /boot '`.",
+    "fr": "Exécutez `findmnt /boot` (ou `findmnt -no OPTIONS /boot`) et vérifiez que `noexec` figure dans la liste d'options, par exemple `rw,nosuid,nodev,noexec,relatime`. Vous pouvez aussi consulter `mount | grep ' /boot '`."
+  },
+  "logs": {
+    "en": "Use `findmnt /boot` to see the live mount options. Attempts to run a binary from a `noexec` mount fail with **Permission denied** and are visible in shell output; if auditd is configured, related `EXECVE` denials may appear in `/var/log/audit/audit.log`.",
+    "fr": "Utilisez `findmnt /boot` pour voir les options de montage en vigueur. Toute tentative d'exécuter un binaire depuis un montage `noexec` échoue avec **Permission denied** et apparaît dans la sortie du shell ; si auditd est configuré, des refus `EXECVE` associés peuvent apparaître dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "This rule has **no automated harden plan**: it must be applied **manually**. Add `noexec` to the `/boot` line in `/etc/fstab` (e.g. options `defaults,nosuid,nodev,noexec`), then `mount -o remount /boot` to apply it without rebooting. Verify with `findmnt /boot` before considering it done.",
+    "fr": "Cette règle **n'a pas de plan de durcissement automatisé** : elle doit être appliquée **manuellement**. Ajoutez `noexec` à la ligne `/boot` de `/etc/fstab` (par ex. options `defaults,nosuid,nodev,noexec`), puis `mount -o remount /boot` pour l'appliquer sans redémarrer. Vérifiez avec `findmnt /boot` avant de considérer la tâche terminée."
+  },
+  "impact": {
+    "en": "Without `noexec`, an attacker who can write to `/boot` could stage and run executables from it. Risks before applying are **low** for `/boot`: it normally holds only kernel images and no programs. **Precautions:** ensure kernel/bootloader update tooling (e.g. `grub-mkconfig`, `update-initramfs`, `kernel-install`) does not need to execute helper scripts directly from `/boot`, on standard distributions it does not. If `/boot` is **not a separate partition**, do not add the option to `/` blindly, as `noexec` on the root filesystem would break the system.",
+    "fr": "Sans `noexec`, un attaquant pouvant écrire dans `/boot` pourrait y déposer et exécuter des programmes. Le risque avant application est **faible** pour `/boot` : il ne contient normalement que des images de noyau et aucun programme. **Précautions :** assurez-vous que les outils de mise à jour du noyau/chargeur (par ex. `grub-mkconfig`, `update-initramfs`, `kernel-install`) n'ont pas besoin d'exécuter des scripts directement depuis `/boot`, ce n'est pas le cas sur les distributions standard. Si `/boot` **n'est pas une partition distincte**, n'ajoutez pas l'option à `/` aveuglément : `noexec` sur la racine casserait le système."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

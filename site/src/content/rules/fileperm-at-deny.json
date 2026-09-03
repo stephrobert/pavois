@@ -2,11 +2,20 @@
   "id": "fileperm-at-deny",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -32,41 +41,43 @@
     "end"
   ],
   "remediation": {
-    "mode": "0640",
-    "path": "/etc/at.deny",
-    "resource": "file"
+    "command": "test -e /etc/at.deny && { chown root:root /etc/at.deny; chmod 0640 /etc/at.deny; }; true",
+    "name": "at-deny-perms",
+    "not_if": "! test -e /etc/at.deny",
+    "resource": "exec"
   },
   "title": {
     "en": "Verify Permissions on /etc/at.deny file",
-    "fr": "Verifier les permissions du fichier /etc/at.deny"
-  },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/at.deny` is the deny-list of users **forbidden from scheduling `at` jobs** (it is consulted only when `at.allow` is absent). If it is world-readable or group/other-writable, an unauthorized user could read who is blocked or **edit the list to remove their own name**, bypassing the restriction and gaining the ability to run scheduled commands. Permissions of `0640` or stricter keep `at` access policy under root's control.",
-    "fr": "`/etc/at.deny` est la liste d'interdiction des utilisateurs **interdits de planifier des taches `at`** (consultee uniquement en l'absence de `at.allow`). S'il est lisible par tous ou modifiable par le groupe/les autres, un utilisateur non autorise pourrait lire qui est bloque ou **modifier la liste pour retirer son propre nom**, contournant la restriction et obtenant la capacite d'executer des commandes planifiees. Des permissions `0640` ou plus strictes maintiennent la politique d'acces `at` sous le controle de root."
+    "fr": "Vérifier les permissions du fichier /etc/at.deny"
   },
   "summary": {
     "en": "Ensures `/etc/at.deny` is not writable/readable by other or writable by group, and carries no executable or special (setuid/setgid/sticky) bits, i.e. mode `0640` or stricter.",
-    "fr": "Garantit que `/etc/at.deny` n'est ni accessible en ecriture/lecture par les autres ni en ecriture par le groupe, et ne porte aucun bit executable ou special (setuid/setgid/sticky), soit le mode `0640` ou plus strict."
+    "fr": "Garantit que `/etc/at.deny` n'est ni accessible en écriture/lecture par les autres ni en écriture par le groupe, et ne porte aucun bit exécutable ou spécial (setuid/setgid/sticky), soit le mode `0640` ou plus strict."
+  },
+  "rationale": {
+    "en": "`/etc/at.deny` is the deny-list of users **forbidden from scheduling `at` jobs** (it is consulted only when `at.allow` is absent). If it is world-readable or group/other-writable, an unauthorized user could read who is blocked or **edit the list to remove their own name**, bypassing the restriction and gaining the ability to run scheduled commands. Permissions of `0640` or stricter keep `at` access policy under root's control.",
+    "fr": "`/etc/at.deny` est la liste d'interdiction des utilisateurs **interdits de planifier des tâches `at`** (consultée uniquement en l'absence de `at.allow`). S'il est lisible par tous ou modifiable par le groupe/les autres, un utilisateur non autorisé pourrait lire qui est bloqué ou **modifier la liste pour retirer son propre nom**, contournant la restriction et obtenant la capacité d'exécuter des commandes planifiées. Des permissions `0640` ou plus strictes maintiennent la politique d'accès `at` sous le contrôle de root."
   },
   "check_note": {
     "en": "Pavois reads the file's **live mode bits** through the InSpec `file` resource, not a package default. Each `should_not be_writable/readable/executable/setuid…` matcher inspects the actual inode the kernel enforces, catching any permission loosened after install. The `only_if { file('/etc/at.deny').exist? }` guard skips the check (without failing) when the file is absent.",
-    "fr": "Pavois lit les **bits de mode reels** du fichier via la ressource InSpec `file`, pas une valeur par defaut de paquet. Chaque matcher `should_not be_writable/readable/executable/setuid…` inspecte l'inode reel applique par le noyau, detectant toute permission relachee apres installation. La garde `only_if { file('/etc/at.deny').exist? }` ignore le controle (sans echec) si le fichier est absent."
+    "fr": "Pavois lit les **bits de mode réels** du fichier via la ressource InSpec `file`, pas une valeur par défaut de paquet. Chaque matcher `should_not be_writable/readable/executable/setuid…` inspecte l'inode réel appliqué par le noyau, détectant toute permission relâchée après installation. La garde `only_if { file('/etc/at.deny').exist? }` ignore le contrôle (sans échec) si le fichier est absent."
   },
   "verify": {
     "en": "Run `stat -c '%a %U %G %n' /etc/at.deny`. Expected output is `640 root root /etc/at.deny` (or stricter, e.g. `600`).",
-    "fr": "Executez `stat -c '%a %U %G %n' /etc/at.deny`. La sortie attendue est `640 root root /etc/at.deny` (ou plus strict, par exemple `600`)."
+    "fr": "Exécutez `stat -c '%a %U %G %n' /etc/at.deny`. La sortie attendue est `640 root root /etc/at.deny` (ou plus strict, par exemple `600`)."
   },
   "logs": {
     "en": "`at` activity is recorded by `journalctl -u atd` and in `/var/log/syslog`. Permission changes on the file can be tracked with an auditd watch: `grep at.deny /var/log/audit/audit.log`.",
-    "fr": "L'activite `at` est enregistree par `journalctl -u atd` et dans `/var/log/syslog`. Les changements de permissions sur le fichier peuvent etre suivis via une regle auditd : `grep at.deny /var/log/audit/audit.log`."
+    "fr": "L'activité `at` est enregistrée par `journalctl -u atd` et dans `/var/log/syslog`. Les changements de permissions sur le fichier peuvent être suivis via une règle auditd : `grep at.deny /var/log/audit/audit.log`."
   },
   "remediation_note": {
     "en": "No automated remediation is defined, so apply it **manually**: `chown root:root /etc/at.deny && chmod 640 /etc/at.deny`. Note that CIS hardening usually prefers an explicit `at.allow` and the **removal** of `at.deny`; if you keep `at.deny`, this rule guarantees it stays protected.",
-    "fr": "Aucune remediation automatique n'est definie ; appliquez-la **manuellement** : `chown root:root /etc/at.deny && chmod 640 /etc/at.deny`. Notez que le durcissement CIS prefere generalement un `at.allow` explicite et la **suppression** de `at.deny` ; si vous conservez `at.deny`, cette regle garantit qu'il reste protege."
+    "fr": "Aucune remédiation automatique n'est définie ; appliquez-la **manuellement** : `chown root:root /etc/at.deny && chmod 640 /etc/at.deny`. Notez que le durcissement CIS préfère généralement un `at.allow` explicite et la **suppression** de `at.deny` ; si vous conservez `at.deny`, cette règle garantit qu'il reste protégé."
   },
   "impact": {
     "en": "Risk if not applied: a writable deny-list can be edited to escape the `at` restriction. Precautions: tightening these permissions is safe, only `root` and `atd` read this file. There is no lockout risk; just verify no non-root tooling parses `/etc/at.deny` before restricting read access.",
-    "fr": "Risque en cas de non-application : une liste d'interdiction modifiable peut etre editee pour echapper a la restriction `at`. Precautions : durcir ces permissions est sans danger, seuls `root` et `atd` lisent ce fichier. Aucun risque de blocage ; verifiez simplement qu'aucun outil non-root n'analyse `/etc/at.deny` avant de restreindre l'acces en lecture."
-  }
+    "fr": "Risque en cas de non-application : une liste d'interdiction modifiable peut être éditée pour échapper à la restriction `at`. Précautions : durcir ces permissions est sans danger, seuls `root` et `atd` lisent ce fichier. Aucun risque de blocage ; vérifiez simplement qu'aucun outil non-root n'analyse `/etc/at.deny` avant de restreindre l'accès en lecture."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

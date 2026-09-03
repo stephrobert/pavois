@@ -31,7 +31,7 @@ var gradeBand = map[string]string{
 
 // writeScorecard renders the A→E grade as a BIG colored LETTER (like pitstop/plumber)
 // + points + band, next to the letter.
-func writeScorecard(w io.Writer, letter string, points, passed, total, qualified int) {
+func writeScorecard(w io.Writer, letter string, points, passed, total, qualified, waived, na int) {
 	art := gradeArt[letter]
 	if art == nil {
 		art = gradeArt["E"]
@@ -52,6 +52,13 @@ func writeScorecard(w io.Writer, letter string, points, passed, total, qualified
 	}
 	if qualified > 0 {
 		info[4] = mut.Render(fmt.Sprintf("%d runtime-only pass(es) — persistence unproven", qualified))
+	}
+	// A waived or N/A control is OUT of the denominator above, so the grade RISES when you add
+	// one. Reporting the grade without these two numbers would let anyone fabricate an A by
+	// waiving what fails: they belong to the verdict, not to a footnote.
+	if waived > 0 || na > 0 {
+		info[5] = mut.Render(fmt.Sprintf("%d waived (accepted risk) · %d n/a · %d of %d evaluated",
+			waived, na, total, total+waived+na))
 	}
 	_, _ = fmt.Fprintln(w)
 	for i, line := range art {

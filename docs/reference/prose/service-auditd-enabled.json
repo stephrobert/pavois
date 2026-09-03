@@ -1,0 +1,37 @@
+{
+  "id": "service-auditd-enabled",
+  "title": {
+    "en": "Enable auditd Service",
+    "fr": "Activer le service auditd"
+  },
+  "summary": {
+    "en": "Enables and starts the **auditd** service so kernel audit records are persistently written and individual user actions are traceable.",
+    "fr": "Active et démarre le service **auditd** pour que les enregistrements d'audit du noyau soient écrits de façon persistante et que les actions des utilisateurs soient traçables."
+  },
+  "rationale": {
+    "en": "`auditd` is the user-space daemon that records the kernel's audit events to disk. Without it running, security-relevant events, logins, privilege use, file access, configuration changes, are **not captured**, making it impossible to reconstruct, correlate, or investigate an incident, an outage, or an attack. A working audit trail also provides **individual accountability**: actions can be uniquely traced to the user who performed them, which is mandated by CIS, PCI-DSS (Req-10), NIST AU-controls, and ANSSI R33.",
+    "fr": "`auditd` est le démon en espace utilisateur qui enregistre sur disque les événements d'audit du noyau. Sans son exécution, les événements sensibles, connexions, usage de privilèges, accès fichiers, changements de configuration, ne sont **pas capturés**, rendant impossible la reconstitution, la corrélation ou l'investigation d'un incident, d'une panne ou d'une attaque. Une piste d'audit fonctionnelle assure aussi une **imputabilité individuelle** : les actions peuvent être tracées de façon unique jusqu'à l'utilisateur qui les a réalisées, ce qu'exigent CIS, PCI-DSS (Req-10), les contrôles AU du NIST et l'ANSSI R33."
+  },
+  "check_note": {
+    "en": "Pavois queries systemd for the **effective** state of `auditd.service` (`systemctl is-enabled` / `is-active`), confirming the daemon is both enabled at boot and currently running. A file-based check (e.g. inspecting `/etc/audit/auditd.conf` or audit rules) cannot tell whether the daemon is actually alive and consuming the kernel audit backlog, a stopped `auditd` silently drops events even with a perfect config on disk.",
+    "fr": "Pavois interroge systemd sur l'état **effectif** de `auditd.service` (`systemctl is-enabled` / `is-active`), confirmant que le démon est activé au boot et en cours d'exécution. Une vérification sur fichier (par ex. `/etc/audit/auditd.conf` ou les règles d'audit) ne peut pas dire si le démon est réellement vivant et consomme le backlog d'audit du noyau, un `auditd` arrêté perd silencieusement des événements même avec une config parfaite sur disque."
+  },
+  "verify": {
+    "en": "Confirm the unit is up:\n\n```sh\nsystemctl is-enabled auditd.service\nsystemctl is-active auditd.service\n```\n\nExpect `enabled` and `active`. You can also confirm the kernel is feeding it with `auditctl -s` (look for `enabled 1` and a non-zero `pid`).",
+    "fr": "Confirmez que l'unité est active :\n\n```sh\nsystemctl is-enabled auditd.service\nsystemctl is-active auditd.service\n```\n\nAttendez `enabled` et `active`. Vous pouvez aussi confirmer que le noyau l'alimente avec `auditctl -s` (cherchez `enabled 1` et un `pid` non nul)."
+  },
+  "logs": {
+    "en": "Audit events are written to `/var/log/audit/audit.log`. Inspect the daemon itself with `systemctl status auditd.service` and `journalctl -u auditd.service`. Note: `ausearch` can return false \"no matches\", grep the raw log for a key, e.g. `grep 'key=\"...\"' /var/log/audit/audit.log`.",
+    "fr": "Les événements d'audit sont écrits dans `/var/log/audit/audit.log`. Inspectez le démon lui-même avec `systemctl status auditd.service` et `journalctl -u auditd.service`. Note : `ausearch` peut renvoyer de faux « no matches », grepez le journal brut sur une clé, par ex. `grep 'key=\"...\"' /var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the `service` resource named `auditd`: it runs **enable** (start at boot) then **start** (run now). Applied with `pavois harden apply`. After it runs, the audit daemon persistently records kernel events.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource `service` nommée `auditd` : il exécute **enable** (démarrage au boot) puis **start** (lancement immédiat). Appliqué avec `pavois harden apply`. Une fois exécuté, le démon d'audit enregistre durablement les événements du noyau."
+  },
+  "impact": {
+    "en": "Misconfiguration risk: with `auditd` stopped you lose forensic and compliance evidence and cannot attribute actions to users. **Precautions when enabling:** `auditd` writes to `/var/log/audit/`, ensure the partition has room and review the `space_left_action`/`disk_full_action` in `auditd.conf`, since an aggressive `halt`/`single` action on a full disk can take the host down. A very large audit ruleset can add I/O load; size log rotation accordingly. Enabling the service itself does not interrupt running workloads or sessions.",
+    "fr": "Risque de mauvaise configuration : avec `auditd` arrêté, vous perdez les preuves forensiques et de conformité et ne pouvez plus attribuer les actions aux utilisateurs. **Précautions à l'activation :** `auditd` écrit dans `/var/log/audit/`, assurez-vous que la partition a de la place et revoyez `space_left_action`/`disk_full_action` dans `auditd.conf`, car une action `halt`/`single` agressive sur disque plein peut arrêter l'hôte. Un jeu de règles d'audit très volumineux peut ajouter de la charge I/O ; dimensionnez la rotation des journaux en conséquence. Activer le service n'interrompt ni les charges en cours ni les sessions."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

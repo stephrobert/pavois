@@ -1,17 +1,17 @@
 {
   "id": "sysctl-net-ipv4-conf-all-send_redirects",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,8 +26,8 @@
   "norms": {
     "bp28": "R12",
     "cis": [
-      "3.3.2",
       "1.4.5",
+      "3.3.2",
       "3.3.1.4"
     ],
     "nist": [
@@ -43,6 +43,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.conf.all.send_redirects') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.all.send_redirects[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -52,35 +55,36 @@
   },
   "title": {
     "en": "Disable Kernel Parameter for Sending ICMP Redirects on all IPv4 Interfaces",
-    "fr": "Desactiver le parametre noyau d'envoi des redirections ICMP sur toutes les interfaces IPv4"
-  },
-  "needs_translation": [],
-  "rationale": {
-    "en": "ICMP redirect messages tell other hosts that a more direct route exists for a destination. By emitting them, a host leaks portions of its routing table, revealing network topology, and offers an attacker a primitive to influence neighbours' routing. Only systems acting as routers have a legitimate reason to send redirects; an ordinary host should keep this at **0**.",
-    "fr": "Les messages de redirection ICMP indiquent a d'autres hotes qu'une route plus directe existe pour une destination. En les emettant, un hote divulgue des portions de sa table de routage, revelant la topologie reseau, et offre a un attaquant un moyen d'influencer le routage des voisins. Seuls les systemes agissant comme routeurs ont une raison legitime d'envoyer des redirections ; un hote ordinaire doit garder cette valeur a **0**."
+    "fr": "Désactiver le paramètre noyau d'envoi des redirections ICMP sur toutes les interfaces IPv4"
   },
   "summary": {
     "en": "Forces `net.ipv4.conf.all.send_redirects` to **0** so the host never emits ICMP redirect messages on any IPv4 interface.",
-    "fr": "Force `net.ipv4.conf.all.send_redirects` a **0** afin que l'hote n'emette jamais de messages de redirection ICMP sur aucune interface IPv4."
+    "fr": "Force `net.ipv4.conf.all.send_redirects` à **0** afin que l'hôte n'émette jamais de messages de redirection ICMP sur aucune interface IPv4."
+  },
+  "rationale": {
+    "en": "ICMP redirect messages tell other hosts that a more direct route exists for a destination. By emitting them, a host leaks portions of its routing table, revealing network topology, and offers an attacker a primitive to influence neighbours' routing. Only systems acting as routers have a legitimate reason to send redirects; an ordinary host should keep this at **0**.",
+    "fr": "Les messages de redirection ICMP indiquent à d'autres hôtes qu'une route plus directe existe pour une destination. En les émettant, un hôte divulgue des portions de sa table de routage, révélant la topologie réseau, et offre à un attaquant un moyen d'influencer le routage des voisins. Seuls les systèmes agissant comme routeurs ont une raison légitime d'envoyer des redirections ; un hôte ordinaire doit garder cette valeur à **0**."
   },
   "check_note": {
     "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.all.send_redirects` from the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not a `/etc/sysctl.d/` file. A drop-in could say `0` while a later file or a runtime `sysctl -w` re-enabled sending. Auditing the effective parameter shows whether the kernel will actually emit redirects; reading a file misses such overrides.",
-    "fr": "Pavois lit la **valeur d'execution en direct** de `net.ipv4.conf.all.send_redirects` depuis le noyau (ressource InSpec `kernel_parameter`, equivalente a `sysctl`), et non un fichier `/etc/sysctl.d/`. Un drop-in pourrait indiquer `0` alors qu'un fichier ulterieur ou un `sysctl -w` a l'execution a reactive l'envoi. Auditer le parametre effectif montre si le noyau emettra reellement des redirections ; lire un fichier rate ces surcharges."
+    "fr": "Pavois lit la **valeur d'exécution en direct** de `net.ipv4.conf.all.send_redirects` depuis le noyau (ressource InSpec `kernel_parameter`, équivalente à `sysctl`), et non un fichier `/etc/sysctl.d/`. Un drop-in pourrait indiquer `0` alors qu'un fichier ultérieur ou un `sysctl -w` à l'exécution a réactivé l'envoi. Auditer le paramètre effectif montre si le noyau émettra réellement des redirections ; lire un fichier rate ces surcharges."
   },
   "verify": {
     "en": "Run `sysctl net.ipv4.conf.all.send_redirects`. Expected output:\n\n- `net.ipv4.conf.all.send_redirects = 0`",
-    "fr": "Executez `sysctl net.ipv4.conf.all.send_redirects`. Sortie attendue :\n\n- `net.ipv4.conf.all.send_redirects = 0`"
+    "fr": "Exécutez `sysctl net.ipv4.conf.all.send_redirects`. Sortie attendue :\n\n- `net.ipv4.conf.all.send_redirects = 0`"
   },
   "logs": {
     "en": "There is no dedicated event log for sending redirects. Inspect the state with `sysctl net.ipv4.conf.all.send_redirects` and review all per-interface values with `sysctl -a | grep send_redirects`. To observe whether redirects are emitted on the wire, capture with `tcpdump -ni any icmp[icmptype] == icmp-redirect`.",
-    "fr": "Il n'existe pas de journal d'evenements dedie a l'envoi de redirections. Inspectez l'etat avec `sysctl net.ipv4.conf.all.send_redirects` et passez en revue toutes les valeurs par interface avec `sysctl -a | grep send_redirects`. Pour observer si des redirections sont emises sur le reseau, capturez avec `tcpdump -ni any icmp[icmptype] == icmp-redirect`."
+    "fr": "Il n'existe pas de journal d'événements dédié à l'envoi de redirections. Inspectez l'état avec `sysctl net.ipv4.conf.all.send_redirects` et passez en revue toutes les valeurs par interface avec `sysctl -a | grep send_redirects`. Pour observer si des redirections sont émises sur le réseau, capturez avec `tcpdump -ni any icmp[icmptype] == icmp-redirect`."
   },
   "remediation_note": {
     "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv4.conf.all.send_redirects` to **0**, applying it to the running kernel and persisting it in a Pavois-managed drop-in under `/etc/sysctl.d/` so it survives reboot. Apply it with `pavois harden apply`.",
-    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour definir `net.ipv4.conf.all.send_redirects` a **0**, en l'appliquant au noyau en cours d'execution et en le persistant dans un drop-in gere par Pavois sous `/etc/sysctl.d/` afin qu'il survive au redemarrage. Appliquez-le avec `pavois harden apply`."
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour définir `net.ipv4.conf.all.send_redirects` à **0**, en l'appliquant au noyau en cours d'exécution et en le persistant dans un drop-in géré par Pavois sous `/etc/sysctl.d/` afin qu'il survive au redémarrage. Appliquez-le avec `pavois harden apply`."
   },
   "impact": {
     "en": "Safe on any host that is not a router. The only systems that should keep send_redirects enabled are deliberate IPv4 routers that rely on ICMP redirects to off-load suboptimal first-hop choices onto neighbours, an uncommon design. Disabling it does not affect a host's ability to receive traffic or remote access; it only stops the host advising others about better routes.",
-    "fr": "Sur sur tout hote qui n'est pas un routeur. Les seuls systemes qui devraient garder send_redirects active sont des routeurs IPv4 deliberes s'appuyant sur les redirections ICMP pour deleguer aux voisins les choix de premier saut sous-optimaux, une conception peu courante. Le desactiver n'affecte pas la capacite d'un hote a recevoir du trafic ni l'acces distant ; cela empeche seulement l'hote de conseiller aux autres de meilleures routes."
-  }
+    "fr": "Sûr sur tout hôte qui n'est pas un routeur. Les seuls systèmes qui devraient garder send_redirects activé sont des routeurs IPv4 délibérés s'appuyant sur les redirections ICMP pour déléguer aux voisins les choix de premier saut sous-optimaux, une conception peu courante. Le désactiver n'affecte pas la capacité d'un hôte à recevoir du trafic ni l'accès distant ; cela empêche seulement l'hôte de conseiller aux autres de meilleures routes."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

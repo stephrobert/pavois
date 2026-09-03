@@ -1,17 +1,17 @@
 {
   "id": "audit-time",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,9 +26,9 @@
   "norms": {
     "bp28": "R73",
     "cis": [
-      "6.3.3.4",
       "10.6.3",
-      "6.2.3.4"
+      "6.2.3.4",
+      "6.3.3.4"
     ],
     "nist": [
       "3.1.7",
@@ -42,6 +42,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)audit_time_rules\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'audit_time_rules' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -52,14 +55,13 @@
     "en": "Record attempts to alter time through adjtimex",
     "fr": "Enregistrer les tentatives de modification de l'heure via adjtimex"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "**Arbitrary changes to the system clock can be used to obfuscate nefarious activity in log files** (by skewing timestamps) and to confuse services that depend on accurate time, such as `sshd`, Kerberos and TLS certificate validation. The `adjtimex` syscall tunes the kernel clock and is the path NTP daemons use to slew time, so every such call should be audited. A reliable, accurate timeline is the backbone of incident investigation.",
-    "fr": "**Des modifications arbitraires de l'horloge système peuvent servir à masquer une activité malveillante dans les journaux** (en faussant les horodatages) et à perturber des services dépendant d'une heure exacte, comme `sshd`, Kerberos et la validation des certificats TLS. L'appel système `adjtimex` ajuste l'horloge du noyau et constitue la voie utilisée par les démons NTP pour caler l'heure : chacun de ces appels doit donc être audité. Une chronologie fiable et exacte est l'épine dorsale de toute investigation d'incident."
-  },
   "summary": {
     "en": "Enforces an **auditd** rule (key `audit_time_rules`) that records attempts to adjust the system clock via the `adjtimex` syscall.",
     "fr": "Impose une règle **auditd** (clé `audit_time_rules`) qui enregistre les tentatives d'ajustement de l'horloge système via l'appel système `adjtimex`."
+  },
+  "rationale": {
+    "en": "**Arbitrary changes to the system clock can be used to obfuscate nefarious activity in log files** (by skewing timestamps) and to confuse services that depend on accurate time, such as `sshd`, Kerberos and TLS certificate validation. The `adjtimex` syscall tunes the kernel clock and is the path NTP daemons use to slew time, so every such call should be audited. A reliable, accurate timeline is the backbone of incident investigation.",
+    "fr": "**Des modifications arbitraires de l'horloge système peuvent servir à masquer une activité malveillante dans les journaux** (en faussant les horodatages) et à perturber des services dépendant d'une heure exacte, comme `sshd`, Kerberos et la validation des certificats TLS. L'appel système `adjtimex` ajuste l'horloge du noyau et constitue la voie utilisée par les démons NTP pour caler l'heure : chacun de ces appels doit donc être audité. Une chronologie fiable et exacte est l'épine dorsale de toute investigation d'incident."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks a rule with the key `audit_time_rules` is loaded. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule on disk that was never loaded (no `augenrules --load`, syntax error, reload failure) would make a file scanner falsely **pass**. `auditctl -l` reflects what the kernel audits now.",
@@ -80,5 +82,7 @@
   "impact": {
     "en": "This is a **passive syscall watch**, it never blocks time adjustments, so NTP/`chrony` and manual `date`/`timedatectl` keep working; it only adds records to `/var/log/audit/audit.log`. Precautions:\n\n- An NTP daemon disciplines the clock by calling `adjtimex` periodically, so this rule can fire regularly on a normally running host, keep an eye on audit volume and ensure `/var/log/audit` has space and rotation.\n- If the ruleset is immutable (`-e 2`), the rule can only be added after a reboot.\n- Confirm the rule parsed with `augenrules --load` and re-check `auditctl -l`.",
     "fr": "Il s'agit d'une **surveillance d'appel système passive**, elle ne bloque jamais les ajustements d'heure, donc NTP/`chrony` et les `date`/`timedatectl` manuels continuent de fonctionner ; elle ajoute seulement des enregistrements dans `/var/log/audit/audit.log`. Précautions :\n\n- Un démon NTP discipline l'horloge en appelant `adjtimex` périodiquement, donc cette règle peut se déclencher régulièrement sur un hôte fonctionnant normalement, surveillez le volume d'audit et assurez-vous que `/var/log/audit` dispose d'espace et de rotation.\n- Si le jeu de règles est immuable (`-e 2`), la règle ne peut être ajoutée qu'après un redémarrage.\n- Confirmez que la règle a été analysée avec `augenrules --load` puis revérifiez `auditctl -l`."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

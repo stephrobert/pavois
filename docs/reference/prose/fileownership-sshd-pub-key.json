@@ -1,0 +1,37 @@
+{
+  "id": "fileownership-sshd-pub-key",
+  "title": {
+    "en": "Verify Ownership on SSH Server Public *.pub Key Files",
+    "fr": "Vérifier la propriété des fichiers de clés publiques *.pub du serveur SSH"
+  },
+  "summary": {
+    "en": "Ensures the SSH configuration and host-key directory `/etc/ssh` is owned by **root** (uid 0).",
+    "fr": "Garantit que le répertoire de configuration et de clés d'hôte SSH `/etc/ssh` appartient à **root** (uid 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/ssh` directory holds the SSH server's host keys, both private and public (`*.pub`). The public host keys are what clients pin to detect server impersonation. If a non-root user owns this directory, they can replace a public key, or the private key it pairs with, enabling a man-in-the-middle attack where clients silently trust a rogue server. Keeping `/etc/ssh` owned by **root** (uid 0) ensures only the superuser can touch the keys that anchor SSH trust.",
+    "fr": "Le répertoire `/etc/ssh` contient les clés d'hôte du serveur SSH, privées comme publiques (`*.pub`). Les clés d'hôte publiques sont celles que les clients épinglent pour détecter une usurpation du serveur. Si un utilisateur non-root possède ce répertoire, il peut remplacer une clé publique, ou la clé privée associée, permettant une attaque de l'homme du milieu où les clients font silencieusement confiance à un serveur malveillant. Conserver `/etc/ssh` sous la propriété de **root** (uid 0) garantit que seul le superutilisateur peut toucher aux clés qui ancrent la confiance SSH."
+  },
+  "check_note": {
+    "en": "Pavois asserts that the live directory `/etc/ssh` has owner uid `0`, skipped via `only_if` if it is absent. It reads the **effective** owner from the filesystem (`stat`), so a manual `chown` on the directory that holds the host keys is caught even if no config-management tool reports drift.",
+    "fr": "Pavois vérifie que le répertoire réel `/etc/ssh` a l'uid de propriétaire `0`, ignoré via `only_if` s'il est absent. Il lit le propriétaire **effectif** depuis le système de fichiers (`stat`), de sorte qu'un `chown` manuel sur le répertoire contenant les clés d'hôte est détecté même si aucun outil de gestion de configuration ne signale de dérive."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /etc/ssh`. Expected output: `root 0`. To check the key files too, run `find /etc/ssh -name '*.pub' -not -user root` and `find /etc/ssh -name 'ssh_host_*_key' -not -user root`, both should print nothing.",
+    "fr": "Exécutez `stat -c '%U %u' /etc/ssh`. Sortie attendue : `root 0`. Pour vérifier aussi les fichiers de clés, exécutez `find /etc/ssh -name '*.pub' -not -user root` et `find /etc/ssh -name 'ssh_host_*_key' -not -user root`, aucun des deux ne doit rien afficher."
+  },
+  "logs": {
+    "en": "Ownership has no continuous log; query it with `stat /etc/ssh`. SSH service activity and key-related warnings appear in `/var/log/auth.log` (Debian/Ubuntu) or via `journalctl -u ssh`; sshd refuses to start if it deems host-key ownership/permissions unsafe, and that error is logged there.",
+    "fr": "La propriété ne produit pas de journal continu ; interrogez-la avec `stat /etc/ssh`. L'activité du service SSH et les avertissements liés aux clés apparaissent dans `/var/log/auth.log` (Debian/Ubuntu) ou via `journalctl -u ssh` ; sshd refuse de démarrer s'il juge la propriété/les permissions des clés d'hôte non sûres, et cette erreur y est journalisée."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined, so apply it manually: `chown root:root /etc/ssh` and, to cover the contents, `chown root:root /etc/ssh/*.pub` (public keys) while leaving private host keys as root-owned mode 0600. Reinstalling `openssh-server` also restores correct ownership.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini, appliquez-la donc manuellement : `chown root:root /etc/ssh` et, pour couvrir le contenu, `chown root:root /etc/ssh/*.pub` (clés publiques) tout en laissant les clés d'hôte privées appartenir à root en mode 0600. Réinstaller `openssh-server` restaure également la bonne propriété."
+  },
+  "impact": {
+    "en": "A non-root owner of `/etc/ssh` can subvert host-key trust and enable man-in-the-middle attacks against everyone who connects. Restoring root ownership is safe and does not interrupt existing SSH sessions. **Precaution:** do not relax permissions while fixing ownership, private host keys must stay mode 0600 root:root, or sshd will refuse to start; verify with `sshd -t` after any change, and keep a second session or console open in case sshd needs a restart.",
+    "fr": "Un propriétaire non-root de `/etc/ssh` peut détourner la confiance des clés d'hôte et permettre des attaques de l'homme du milieu contre tous ceux qui se connectent. Restaurer la propriété root est sans danger et n'interrompt pas les sessions SSH existantes. **Précaution :** n'assouplissez pas les permissions en corrigeant la propriété, les clés d'hôte privées doivent rester en mode 0600 root:root, sinon sshd refusera de démarrer ; vérifiez avec `sshd -t` après toute modification, et gardez une seconde session ou une console ouverte au cas où sshd devrait être redémarré."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

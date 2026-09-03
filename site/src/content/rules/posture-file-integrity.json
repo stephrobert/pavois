@@ -1,17 +1,17 @@
 {
   "id": "posture-file-integrity",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -25,16 +25,19 @@
   "reboot_survivable": "no",
   "norms": {},
   "check": [
-    "describe command('for c in aide tripwire aa-status; do command -v $c >/dev/null 2>&1 && { echo ok; exit; }; done; echo ko') do",
+    "describe command('command -v aide >/dev/null 2>&1 || command -v tripwire >/dev/null 2>&1 && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "action": "install",
+    "name": "aide-common",
+    "resource": "package"
+  },
   "title": {
     "en": "A file integrity tool is installed",
     "fr": "Un outil de contrôle d'intégrité des fichiers est installé"
   },
-  "needs_translation": [],
   "summary": {
     "en": "Requires that a **file integrity / host monitoring tool**, `aide`, `tripwire`, or AppArmor (`aa-status`), is present so unexpected changes to critical files can be detected.",
     "fr": "Exige la présence d'un **outil de contrôle d'intégrité ou de surveillance de l'hôte**, `aide`, `tripwire` ou AppArmor (`aa-status`), afin de détecter les modifications inattendues des fichiers critiques."
@@ -62,5 +65,7 @@
   "impact": {
     "en": "Installing a FIM tool is non-disruptive. The practical considerations are operational: AIDE's **initial database must be built on a known-good system** (do it right after install, before exposing the host) and **re-baselined after every legitimate change** (updates, deployments), otherwise it produces noise. AppArmor in enforce mode can block applications with missing profiles, review denials before tightening profiles.",
     "fr": "Installer un outil FIM n'est pas perturbant. Les points d'attention sont opérationnels : la **base initiale d'AIDE doit être construite sur un système sain et connu** (faites-le juste après l'installation, avant d'exposer l'hôte) et **régénérée après chaque changement légitime** (mises à jour, déploiements), faute de quoi elle génère du bruit. AppArmor en mode enforce peut bloquer des applications dont le profil est incomplet, examinez les refus avant de durcir les profils."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

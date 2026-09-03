@@ -1,17 +1,17 @@
 {
   "id": "audit-media-export",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,10 +26,10 @@
   "norms": {
     "bp28": "R73",
     "cis": [
-      "6.3.3.10",
       "10.2.1.7",
       "6.2.3.10",
-      "6.3.3.19"
+      "6.3.3.19",
+      "6.3.3.10"
     ],
     "nist": [
       "3.1.7",
@@ -43,6 +43,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)export\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'export' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -51,35 +54,36 @@
   },
   "title": {
     "en": "Ensure auditd Collects Information on Exporting to Media (successful)",
-    "fr": "Garantir que auditd collecte les informations sur l'export vers des supports (reussi)"
-  },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Unauthorized exportation of data to external media can cause information leaks where classified data, personal data and intellectual property are lost. Creating an audit record each time a filesystem is mounted helps identify and guard against such loss and supports investigation of data-exfiltration attempts.",
-    "fr": "L'exportation non autorisee de donnees vers des supports externes peut provoquer des fuites d'informations ou des donnees classifiees, personnelles et de la propriete intellectuelle sont perdues. Creer un enregistrement d'audit a chaque montage de systeme de fichiers aide a identifier et a se premunir contre ces pertes et facilite l'investigation des tentatives d'exfiltration."
+    "fr": "Garantir que auditd collecte les informations sur l'export vers des supports (réussi)"
   },
   "summary": {
     "en": "Ensures `auditd` has an active rule tagged `export` that records successful `mount` syscalls by ordinary users, so exporting data to external/removable media is traceable.",
-    "fr": "Garantit que `auditd` possede une regle active taguee `export` qui enregistre les appels systeme `mount` reussis par les utilisateurs ordinaires, afin que l'export de donnees vers des supports externes/amovibles soit tracable."
+    "fr": "Garantit que `auditd` possède une règle active taguée `export` qui enregistre les appels système `mount` réussis par les utilisateurs ordinaires, afin que l'export de données vers des supports externes/amovibles soit traçable."
+  },
+  "rationale": {
+    "en": "Unauthorized exportation of data to external media can cause information leaks where classified data, personal data and intellectual property are lost. Creating an audit record each time a filesystem is mounted helps identify and guard against such loss and supports investigation of data-exfiltration attempts.",
+    "fr": "L'exportation non autorisée de données vers des supports externes peut provoquer des fuites d'informations où des données classifiées, personnelles et de la propriété intellectuelle sont perdues. Créer un enregistrement d'audit à chaque montage de système de fichiers aide à identifier et à se prémunir contre ces pertes et facilite l'investigation des tentatives d'exfiltration."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks for a loaded rule carrying the `export` key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule present in a file but not loaded gives false assurance. `auditctl -l` reflects only what the kernel enforces now.",
-    "fr": "Pavois execute `auditctl -l` et verifie la presence d'une regle chargee portant la cle `export`. Lire le **jeu de regles vivant du noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : une regle presente dans un fichier mais non chargee donne une fausse assurance. `auditctl -l` ne reflete que ce que le noyau applique."
+    "fr": "Pavois exécute `auditctl -l` et vérifie la présence d'une règle chargée portant la clé `export`. Lire le **jeu de règles vivant du noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : une règle présente dans un fichier mais non chargée donne une fausse assurance. `auditctl -l` ne reflète que ce que le noyau applique."
   },
   "verify": {
     "en": "Run `auditctl -l | grep export`. You should see syscall rules such as `-a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=unset -k export` (and a `b32` variant). Empty output means the rule is not loaded.",
-    "fr": "Executez `auditctl -l | grep export`. Vous devez voir des regles d'appels systeme telles que `-a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=unset -k export` (et une variante `b32`). Une sortie vide signifie que la regle n'est pas chargee."
+    "fr": "Exécutez `auditctl -l | grep export`. Vous devez voir des règles d'appels système telles que `-a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=unset -k export` (et une variante `b32`). Une sortie vide signifie que la règle n'est pas chargée."
   },
   "logs": {
     "en": "Triggered events land in `/var/log/audit/audit.log`. Search with `grep 'key=\"export\"' /var/log/audit/audit.log`. Currently mounted filesystems are visible via `findmnt` (prefer grep over `ausearch -k export`, which can wrongly report no matches).",
-    "fr": "Les evenements declenches arrivent dans `/var/log/audit/audit.log`. Recherchez avec `grep 'key=\"export\"' /var/log/audit/audit.log`. Les systemes de fichiers actuellement montes sont visibles via `findmnt` (preferez grep a `ausearch -k export`, qui peut signaler a tort aucune correspondance)."
+    "fr": "Les événements déclenchés arrivent dans `/var/log/audit/audit.log`. Recherchez avec `grep 'key=\"export\"' /var/log/audit/audit.log`. Les systèmes de fichiers actuellement montés sont visibles via `findmnt` (préférez grep à `ausearch -k export`, qui peut signaler à tort aucune correspondance)."
   },
   "remediation_note": {
     "en": "Pavois's harden plan uses the `audit_ruleset` resource to write the `mount` syscall rule into `/etc/audit/rules.d/`, then reloads auditd. Because the audit config may be immutable, a **reboot is required** to fully apply. Run `pavois harden apply`.",
-    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour ecrire la regle d'appel systeme `mount` dans `/etc/audit/rules.d/`, puis recharge auditd. Comme la configuration d'audit peut etre immuable, un **redemarrage est necessaire** pour une application complete. Executez `pavois harden apply`."
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour écrire la règle d'appel système `mount` dans `/etc/audit/rules.d/`, puis recharge auditd. Comme la configuration d'audit peut être immuable, un **redémarrage est nécessaire** pour une application complète. Exécutez `pavois harden apply`."
   },
   "impact": {
     "en": "Without this rule, copying data onto removable media leaves no record, hampering exfiltration investigations. The rule is log-only and cannot block mounts, so it breaks nothing. Precautions: mount activity from automounters, container runtimes and desktop sessions can be frequent, size `audit.log` rotation and `space_left_action` so a full disk does not halt the host when `auditd` is set to `halt`.",
-    "fr": "Sans cette regle, copier des donnees sur un support amovible ne laisse aucune trace, ce qui entrave les enquetes d'exfiltration. La regle ne fait que journaliser et ne peut bloquer les montages, elle ne casse donc rien. Precautions : l'activite de montage des automonteurs, runtimes de conteneurs et sessions de bureau peut etre frequente, dimensionnez la rotation de `audit.log` et `space_left_action` afin qu'un disque plein n'arrete pas l'hote lorsque `auditd` est sur `halt`."
-  }
+    "fr": "Sans cette règle, copier des données sur un support amovible ne laisse aucune trace, ce qui entrave les enquêtes d'exfiltration. La règle ne fait que journaliser et ne peut bloquer les montages, elle ne casse donc rien. Précautions : l'activité de montage des automonteurs, runtimes de conteneurs et sessions de bureau peut être fréquente, dimensionnez la rotation de `audit.log` et `space_left_action` afin qu'un disque plein n'arrête pas l'hôte lorsque `auditd` est sur `halt`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

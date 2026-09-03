@@ -2,7 +2,7 @@
 # machines and CI). Activate: `mise install` then `mise trust`. Run a task: `mise run <task>`
 # (alias `mise r <task>`). List: `mise tasks`. This replaces the ad-hoc bin/pavois + scripts.
 [tools]
-go = "1.26.4"        # the pavois binary (go/)
+go = "1.26.6"        # the pavois binary (go/)
 node = "22.22.0"     # the bilingual Astro hardening site (site/)
 python = "3.12.11"   # offline tooling: validation, reference render, norm-studio
 gh = "2.92.0"        # benchmark sources (ansible-lockdown, SSG releases)
@@ -10,6 +10,9 @@ gh = "2.92.0"        # benchmark sources (ansible-lockdown, SSG releases)
 golangci-lint = "2.12.2"  # Go linters (errcheck, gosec, staticcheck, errorlint, …)
 ruff = "0.14.9"           # Python lint + format
 trufflehog = "3.95.6"     # secret scanning (pre-commit + CI)
+actionlint = "1.7.12"
+zizmor = "1.30.0"
+"ubi:boostsecurityio/poutine" = "1.1.6"
 
 [env]
 CHEF_LICENSE = "accept-silent"   # CINC/InSpec runs non-interactively
@@ -19,6 +22,17 @@ CHEF_LICENSE = "accept-silent"   # CINC/InSpec runs non-interactively
 description = "Build the pavois Go binary"
 dir = "{{config_root}}/go"
 run = "go build -o pavois ."
+
+[tasks.fuzz]
+description = "Fuzz the parsers fed by input pavois does not control (InSpec JSON, the rollback's recipe). Longer run: FUZZTIME=5m mise run fuzz"
+dir = "{{config_root}}/go"
+run = """
+t="${FUZZTIME:-30s}"
+echo "fuzzing for $t per target (set FUZZTIME to change)"
+go test ./internal/audit/ -run '^$' -fuzz 'FuzzProves' -fuzztime="$t"
+go test ./internal/audit/ -run '^$' -fuzz 'FuzzEvaluate' -fuzztime="$t"
+go test ./cmd/ -run '^$' -fuzz 'FuzzPlannedTargets' -fuzztime="$t"
+"""
 
 [tasks.scan]
 description = "Scan a target, e.g. `mise run scan -- local --profile effective-config`"
@@ -54,6 +68,14 @@ run = "uv run --with pyyaml python3 tools/validate_all.py"
 description = "Validate ANSSI-BP-028 tags against the OFFICIAL v2.0 PDF (flags stale v1.2 R-numbers)"
 run = "uv run --with pyyaml python3 tools/validate_bp28.py"
 
+[tasks."focus"]
+description = "Single-OS view scoped to what you work on: focus <os> --failing | --domain X | --diff <os2>"
+run = "uv run --with pyyaml python3 tools/focus.py"
+
+[tasks."lint:rules"]
+description = "Coherence lint of rules.yml (SSG fossils, impossible checks, dangerous remediations, guard/remediation asymmetry)"
+run = "uv run --with pyyaml python3 tools/lint_rules.py"
+
 [tasks."validate:mappings"]
 description = "Cross-validate NIST + PCI-DSS tags vs intuitem/ciso-assistant frameworks (flags suspect refs)"
 run = "uv run --with pyyaml python3 tools/validate_mappings.py"
@@ -86,7 +108,7 @@ run = "uv run --with pyyaml python3 tools/gen_reboot_survivable.py"
 description = "Regenerate the site's sample scan + campaign reports from the anonymized fixtures (docs/examples/) — keeps them current and leak-free by construction"
 depends = ["build"]
 run = [
-  "{{config_root}}/go/pavois render {{config_root}}/docs/examples/after.json --machine 203.0.113.10 --transport ssh --timestamp '2026-06-28 10:00:00 UTC' --out {{config_root}}/site/public/sample-report.html",
+  "{{config_root}}/go/pavois render {{config_root}}/docs/examples/after.json --machine 203.0.113.10 --transport ssh --timestamp '2026-07-13 21:07:00 UTC' --out {{config_root}}/site/public/sample-report.html",
   "{{config_root}}/go/pavois diff {{config_root}}/docs/examples/before.json {{config_root}}/docs/examples/after.json --html {{config_root}}/site/public/sample-campaign.html --json {{config_root}}/site/public/sample-campaign.json",
 ]
 
@@ -114,6 +136,25 @@ run = "echo 'regen complete: corpus + OSCAL rebuilt from docs/reference/'"
 description = "Run the norm-studio MCP server (surfaces official sources, exploits reference docs)"
 run = "uv run --with fastmcp --with pyyaml tools/norm_studio/server.py"
 
+[tasks."gen:cli"]
+description = "Generate the site's CLI reference from the BINARY itself (pavois clidocs), so it cannot drift"
+depends = ["build"]
+run = "{{config_root}}/go/pavois clidocs > {{config_root}}/site/src/data/cli.json"
+
+[tasks."gen:benchmarks"]
+description = "Generate site/src/data/benchmarks.json (the CIS benchmark version per OS, incl. the 3 inherited OSes) from docs/reference/norms.yml, so the CIS standard-page table cannot drift"
+run = "uv run --with pyyaml python3 tools/gen_benchmarks.py"
+
+[tasks."gen:pages"]
+description = "Generate the site's rule fiches from the rule base (one per neutral id, authored prose preserved)"
+depends = ["gen", "gen:benchmarks"]
+run = "uv run --with pyyaml --with fastmcp python3 tools/generate_rule_pages.py"
+
+[tasks."site:verify"]
+description = "FAIL if the site content has drifted from the rule base (a control with no prose, prose about a control that no longer exists, an OS on no page)"
+depends = ["gen:pages"]
+run = "uv run --with pyyaml python3 tools/verify_site_content.py"
+
 # ---- Bilingual Astro site -------------------------------------------------------------------
 [tasks."site:dev"]
 description = "Dev server for the hardening site (FR/EN)"
@@ -122,9 +163,13 @@ run = "npm install && npm run dev"
 
 [tasks."site:build"]
 description = "Build the static hardening site"
-depends = ["oscal"]
+depends = ["gen:pages", "gen:cli", "gen:example", "oscal", "site:verify"]
 dir = "{{config_root}}/site"
 run = "npm install && npm run build"
+
+[tasks."site:links"]
+description = "FAIL if any internal link of the built site lands on a page that does not exist"
+run = "uv run python3 tools/check_site_links.py"
 
 [tasks."site:preview"]
 description = "Preview the built site locally"
@@ -154,6 +199,10 @@ run = "bash {{config_root}}/tools/benchmark/effective-config-bench.sh"
 description = "Pavois vs SSG/oscap coverage gap (triaged by oscap N/A). Args: --os <os> --datastream <ssg-ds.xml> [--oscap-results <xml>] [--pavois-report <json>] [--create-issues]"
 run = "uv run --with pyyaml python3 tools/coverage_gap.py"
 
+[tasks."gaps"]
+description = "PILOT: per-OS remediation-coverage gaps (parity = fix exists elsewhere, port it; orphan = none anywhere; manual/kernel skipped). Args: [os] | --parity. Drives cross-OS remediation parity."
+run = "uv run --with pyyaml python3 tools/remediation_gaps.py"
+
 [tasks."rule:show"]
 description = "Show one control + its mappings, e.g. `mise run rule:show -- --os debian12 --id ssh-disable-root-login`"
 depends = ["build"]
@@ -168,3 +217,85 @@ run = "{{config_root}}/go/pavois scan"
 description = "Copy the rendered .rb corpus into the binary's embed dir (for a self-contained release build)"
 depends = ["render"]
 run = "rm -rf {{config_root}}/go/internal/corpus/profiles/linux && cp -r {{config_root}}/profiles/linux {{config_root}}/go/internal/corpus/profiles/linux"
+
+[tasks."regression"]
+description = "PILOT: per-OS scan-result baseline + regression detector. Keeps the best result per OS; a re-scan that flips baseline-passing controls to FAIL (or drops lynis) exits non-zero. Args: <scan.json> --os <os> [--lynis N] [--update]"
+run = "uv run --with pyyaml python3 tools/regression.py"
+
+# ---- Gates: what must be true before pushing --------------------------------------------------
+[tasks.test]
+description = "Go tests (race detector on)"
+dir = "{{config_root}}/go"
+run = "go test -race ./..."
+
+[tasks.lint]
+description = "gofmt + go vet + golangci-lint over the Go module"
+dir = "{{config_root}}/go"
+run = """
+test -z "$(gofmt -l .)" || { echo 'gofmt needed:'; gofmt -l .; exit 1; }
+go vet ./...
+golangci-lint run ./...
+"""
+
+[tasks."lint:py"]
+description = "ruff check + ruff format --check + bandit over tools/ — exactly what python.yml runs"
+# The pre-commit hooks only see the files a commit touches, so a lint error in an untouched file
+# reaches CI unopposed. This is how tools/reconcile_os.py failed the first PR of this branch: 5
+# ruff errors in a file nobody had touched in months.
+run = """
+ruff check tools/
+ruff format --check tools/
+bandit -q -r tools/ -c pyproject.toml
+"""
+
+[tasks.testplan]
+description = "What this diff earns you, cheapest first, and what each run does NOT prove. `--check` fails on a path no rule sorts."
+run = "python3 {{config_root}}/tools/testplan.py"
+
+[tasks.prepush]
+description = "Everything a pull request will fail on that costs seconds and needs no target"
+# Deterministic, offline, 13s wall-clock measured on this repo (mise runs the dependencies in
+# parallel, so the total is the slowest gate, not the sum). That budget is
+# the selection rule, not an accident: a gate people cannot clear is the gate everybody learns to
+# skip with `--no-verify`, and a hook that is skipped protects nothing.
+#
+# What is deliberately OUT, and why:
+#   site:verify   31s, and it REGENERATES site/src/content/rules/ — a hook must not rewrite the
+#                 tree it is checking. Earned by a site/ or rules.yml diff instead (testplan).
+#   validate      needs the SSG datastreams: network, minutes.
+#   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
+#                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
+#                 so on every push, since nothing else will.
+depends = ["build", "test", "lint", "lint:py", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+run = "python3 {{config_root}}/tools/testplan.py --check"
+
+[tasks."lint:ci"]
+description = "Guard the pipeline itself: actionlint (+shellcheck on run: blocks), zizmor (workflow vulns), poutine (CI/CD exploitation chains)"
+# Same three tools, same versions as .github/workflows/workflow-security.yml. Pinned in [tools],
+# so `mise install` gives a contributor the exact CI gate rather than "whatever is on PATH".
+run = """
+actionlint
+zizmor --no-progress --min-severity=low .github/workflows/
+poutine analyze_local . --format pretty
+"""
+
+[tasks.falsify]
+description = "Replay the declared falsifications: prove each guarded test still BITES (mutate a copy, demand red)"
+# Minutes, and it copies + rebuilds the module per mutation, so it is deliberately OUT of prepush
+# (see the note there). `falsify:selftest` is the cheap half and belongs in CI.
+run = "uv run --with pyyaml python3 {{config_root}}/tools/falsify.py"
+
+[tasks."falsify:selftest"]
+description = "Prove the falsification harness itself: with nothing mutated, every declared test must stay GREEN"
+run = "uv run --with pyyaml python3 {{config_root}}/tools/falsify.py --selftest"
+
+[tasks."hooks:install"]
+description = "Install the git hooks: pre-commit (quality + secrets) and tools/hooks/pre-push (no push to main + the offline gate)"
+# The pre-push hook is versioned rather than left in .git/hooks: a control that lives on one
+# machine is a control that does not exist. It is copied, not symlinked, because git refuses to
+# run a hook it cannot stat through a broken link (a worktree, a moved checkout).
+run = """
+pre-commit install
+install -m 0755 {{config_root}}/tools/hooks/pre-push {{config_root}}/.git/hooks/pre-push
+echo "hooks installed: pre-commit (commit) + pre-push (no-main guard + mise run prepush)"
+"""

@@ -1,0 +1,37 @@
+{
+  "id": "service-rpcbind-disabled",
+  "title": {
+    "en": "Disable rpcbind Service",
+    "fr": "Désactiver le service rpcbind"
+  },
+  "summary": {
+    "en": "Ensures the **`rpcbind.service`** (ONC RPC port mapper) is neither enabled at boot nor running, unless the host genuinely needs RPC services such as NFS.",
+    "fr": "Garantit que le service **`rpcbind.service`** (mappeur de ports ONC RPC) n'est ni activé au démarrage ni en cours d'exécution, sauf si l'hôte a réellement besoin de services RPC tels que NFS."
+  },
+  "rationale": {
+    "en": "**`rpcbind`** is the port mapper for ONC RPC services (NFSv3, NIS, `rquotad`…): it listens on TCP/UDP **`111`** and tells remote clients which dynamic ports those services use. It is a well-known target, it has been abused for **UDP reflection/amplification DDoS** and historically carried RPC vulnerabilities, and it leaks the set of RPC services running on the host. On any system that is not an NFSv3/NIS client or server, `rpcbind` is dead weight that **needlessly exposes port 111** to the network. Disabling it shrinks the attack surface and removes a common amplification vector.",
+    "fr": "**`rpcbind`** est le mappeur de ports des services ONC RPC (NFSv3, NIS, `rquotad`…) : il écoute sur les ports TCP/UDP **`111`** et indique aux clients distants quels ports dynamiques ces services utilisent. C'est une cible bien connue, il a été détourné pour des **attaques DDoS par réflexion/amplification UDP** et a historiquement porté des vulnérabilités RPC, en plus de divulguer l'ensemble des services RPC tournant sur l'hôte. Sur tout système qui n'est ni client ni serveur NFSv3/NIS, `rpcbind` est un poids mort qui **expose inutilement le port 111** au réseau. Le désactiver réduit la surface d'attaque et supprime un vecteur d'amplification répandu."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective state** of `rpcbind.service` from systemd, checking it is neither *enabled* nor *running*. Crucially, `rpcbind` is **socket-activated**: `rpcbind.socket` can pull the daemon up on demand even when the service unit looks idle. Auditing the live systemd state (rather than a config file or a package check) reflects what is actually listening on port 111. Pair with `ss -lnp | grep :111` to confirm nothing is bound.",
+    "fr": "Pavois lit l'**état effectif** de `rpcbind.service` depuis systemd, en vérifiant qu'il n'est ni *enabled* ni *running*. Point clé : `rpcbind` est **activé par socket** : `rpcbind.socket` peut démarrer le démon à la demande même quand l'unité de service paraît au repos. Auditer l'état systemd réel (plutôt qu'un fichier de configuration ou la présence d'un paquet) reflète ce qui écoute effectivement sur le port 111. À compléter avec `ss -lnp | grep :111` pour confirmer qu'aucun service n'est lié."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled rpcbind.service` and `systemctl is-active rpcbind.service`; expect **`disabled`/`masked`** and **`inactive`**. Also check the socket: `systemctl is-active rpcbind.socket` and `ss -lnp | grep :111` (should return nothing).",
+    "fr": "Exécutez `systemctl is-enabled rpcbind.service` et `systemctl is-active rpcbind.service` ; attendez **`disabled`/`masked`** et **`inactive`**. Vérifiez aussi le socket : `systemctl is-active rpcbind.socket` et `ss -lnp | grep :111` (ne doit rien retourner)."
+  },
+  "logs": {
+    "en": "Inspect `journalctl -u rpcbind.service -u rpcbind.socket` for activation and stop events. `systemctl show rpcbind.service -p ActiveState -p UnitFileState` gives the machine-readable state. Confirm the port is closed with `ss -tulnp | grep :111`.",
+    "fr": "Inspectez `journalctl -u rpcbind.service -u rpcbind.socket` pour les événements d'activation et d'arrêt. `systemctl show rpcbind.service -p ActiveState -p UnitFileState` donne l'état lisible par machine. Confirmez la fermeture du port avec `ss -tulnp | grep :111`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the **`service`** resource named **`rpcbind`** with actions **`disable`** then **`stop`**: it removes boot enablement and stops the running daemon. Applied with `pavois harden apply`. Note: if `rpcbind.socket` is also active you may need to mask it as well to fully close port 111.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource **`service`** nommée **`rpcbind`** avec les actions **`disable`** puis **`stop`** : il supprime l'activation au démarrage et arrête le démon en cours. Appliqué avec `pavois harden apply`. Remarque : si `rpcbind.socket` est aussi actif, il peut être nécessaire de le masquer également pour fermer totalement le port 111."
+  },
+  "impact": {
+    "en": "Disabling `rpcbind` will **break NFSv3, NIS, and any RPC-dependent service** (`rquotad`, `rpc.statd`, some backup agents). NFSv4 does **not** need rpcbind, so pure NFSv4 mounts are unaffected. **Before applying**: confirm there are no NFSv3 mounts (`findmnt -t nfs,nfs3`), no NFS exports (`exportfs -v`), and no NIS client config. If the host is an NFSv3 client/server, exclude this rule or migrate to NFSv4 first to avoid mount failures.",
+    "fr": "Désactiver `rpcbind` **cassera NFSv3, NIS et tout service dépendant de RPC** (`rquotad`, `rpc.statd`, certains agents de sauvegarde). NFSv4 n'a **pas** besoin de rpcbind, donc les montages NFSv4 purs ne sont pas affectés. **Avant d'appliquer** : confirmez l'absence de montages NFSv3 (`findmnt -t nfs,nfs3`), d'exports NFS (`exportfs -v`) et de configuration cliente NIS. Si l'hôte est client/serveur NFSv3, excluez cette règle ou migrez d'abord vers NFSv4 pour éviter les échecs de montage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

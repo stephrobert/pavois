@@ -1,17 +1,17 @@
 {
   "id": "audit-session-events",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,9 +26,9 @@
   "norms": {
     "bp28": "R73",
     "cis": [
-      "6.3.3.11",
       "6.2.3.11",
-      "6.3.3.20"
+      "6.3.3.20",
+      "6.3.3.11"
     ],
     "nist": [
       "3.1.7",
@@ -49,6 +49,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)session\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'session' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -59,14 +62,13 @@
     "en": "Record Attempts to Alter Process and Session Initiation Information",
     "fr": "Journaliser les modifications des informations de processus et de session"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The files that track login sessions and process initiation, `/var/run/utmp`, `/var/log/wtmp` and `/var/log/btmp`, are prime targets for an attacker who wants to erase evidence of a login. Auditing writes to them (under the **`session`** key) records any manual tampering, preserving the session history needed to reconstruct who was on the system and to spot attempts to remove intrusion traces.",
-    "fr": "Les fichiers qui suivent les sessions de connexion et le démarrage des processus, `/var/run/utmp`, `/var/log/wtmp` et `/var/log/btmp`, sont des cibles de choix pour un attaquant voulant effacer la preuve d'une connexion. Auditer les écritures sur ces fichiers (sous la clé **`session`**) enregistre toute falsification manuelle, préservant l'historique de session nécessaire pour reconstituer qui était sur le système et repérer les tentatives d'effacement de traces d'intrusion."
-  },
   "summary": {
     "en": "Ensures auditd has a live rule (keyed **`session`**) recording changes to `utmp`/`wtmp`/`btmp` session records.",
     "fr": "Garantit qu'auditd possède une règle active (clé **`session`**) journalisant les modifications des enregistrements de session `utmp`/`wtmp`/`btmp`."
+  },
+  "rationale": {
+    "en": "The files that track login sessions and process initiation, `/var/run/utmp`, `/var/log/wtmp` and `/var/log/btmp`, are prime targets for an attacker who wants to erase evidence of a login. Auditing writes to them (under the **`session`** key) records any manual tampering, preserving the session history needed to reconstruct who was on the system and to spot attempts to remove intrusion traces.",
+    "fr": "Les fichiers qui suivent les sessions de connexion et le démarrage des processus, `/var/run/utmp`, `/var/log/wtmp` et `/var/log/btmp`, sont des cibles de choix pour un attaquant voulant effacer la preuve d'une connexion. Auditer les écritures sur ces fichiers (sous la clé **`session`**) enregistre toute falsification manuelle, préservant l'historique de session nécessaire pour reconstituer qui était sur le système et repérer les tentatives d'effacement de traces d'intrusion."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks the loaded ruleset for a rule keyed `session`. It reads the effective kernel ruleset rather than the rule files, so a watch present in `/etc/audit/rules.d/` but not loaded (parse error, missing reload, pending reboot) correctly fails here where a file scanner would be fooled.",
@@ -87,5 +89,7 @@
   "impact": {
     "en": "Without this rule, an attacker can edit session records to hide their presence with no audit trail, defeating forensic timelines and failing PCI/STIG requirements. Applying it adds audit watches and may require a reboot; impact is low, though every login updates these files so expect a steady (small) volume of session events.",
     "fr": "Sans cette règle, un attaquant peut éditer les enregistrements de session pour masquer sa présence sans laisser de trace d'audit, faussant la chronologie forensique et échouant aux exigences PCI/STIG. L'appliquer ajoute des surveillances d'audit et peut nécessiter un redémarrage ; l'impact est faible, mais chaque connexion met à jour ces fichiers, attendez-vous donc à un volume régulier (modeste) d'événements de session."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

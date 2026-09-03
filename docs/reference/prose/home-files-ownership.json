@@ -1,0 +1,37 @@
+{
+  "id": "home-files-ownership",
+  "title": {
+    "en": "All User Files and Directories In The Home Directory Must Have a Valid Owner",
+    "fr": "Tous les fichiers et répertoires du home doivent avoir un propriétaire valide"
+  },
+  "summary": {
+    "en": "Ensures **every** file and directory (recursively) inside each interactive user's home is **owned by that user**.",
+    "fr": "Garantit que **tous** les fichiers et répertoires (récursivement) du home de chaque utilisateur interactif **appartiennent à cet utilisateur**."
+  },
+  "rationale": {
+    "en": "If interactive users do not own all files within their home, unauthorized users may be able to access them. Files owned by another (or orphaned) UID are also a strong indicator of **system compromise**, for example malware dropped by a different account or leftovers from a deleted user.",
+    "fr": "Si les utilisateurs interactifs ne possèdent pas tous les fichiers de leur home, des utilisateurs non autorisés peuvent y accéder. Des fichiers appartenant à un autre UID (ou orphelins) sont aussi un fort indicateur de **compromission**, par exemple un logiciel malveillant déposé par un autre compte ou des restes d'un utilisateur supprimé."
+  },
+  "check_note": {
+    "en": "Pavois reads each interactive user's UID and home from the **live** `/etc/passwd`, then runs a **recursive** `find -P \"$h\" ! -uid \"$u\" ! -type l` (symlinks excluded). Matching against the **effective UID** of the owner catches deep files owned by another or now-deleted account anywhere in the tree, which file-template checks would miss.",
+    "fr": "Pavois lit l'UID et le home de chaque utilisateur interactif depuis le `/etc/passwd` **réel**, puis exécute un `find -P \"$h\" ! -uid \"$u\" ! -type l` **récursif** (liens symboliques exclus). La comparaison à l'**UID effectif** du propriétaire repère les fichiers profonds appartenant à un autre compte ou à un compte supprimé n'importe où dans l'arborescence, ce qu'un contrôle de modèle de fichier manquerait."
+  },
+  "verify": {
+    "en": "For a user, run `find ~user ! -uid $(id -u user) ! -type l -printf '%p %u\\n'`. Expected: **no output**. Orphaned files (no passwd entry) show as a numeric UID via `find ~user -nouser`.",
+    "fr": "Pour un utilisateur, exécutez `find ~user ! -uid $(id -u user) ! -type l -printf '%p %u\\n'`. Attendu : **aucune sortie**. Les fichiers orphelins (sans entrée passwd) apparaissent avec un UID numérique via `find ~user -nouser`."
+  },
+  "logs": {
+    "en": "Ownership is inspected directly, not logged. Audit recursively with `find ~user ! -uid $(id -u user) -printf '%p %u\\n'` and find orphans with `find ~user -nouser`. With file-integrity auditing enabled, `chown` events on home paths appear in `/var/log/audit/audit.log` under the relevant watch key.",
+    "fr": "L'appartenance est inspectée directement, non journalisée. Auditez récursivement avec `find ~user ! -uid $(id -u user) -printf '%p %u\\n'` et repérez les orphelins avec `find ~user -nouser`. Avec l'audit d'intégrité activé, les événements `chown` sur les chemins du home apparaissent dans `/var/log/audit/audit.log` sous la clé de surveillance concernée."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped (`remediation` is empty): **apply manually**. For each flagged user, reclaim ownership across their home, e.g. `find ~user ! -uid $(id -u user) ! -type l -exec chown $(id -un user) {} +`. Treat foreign-owned or orphaned files as suspicious and review them before mass-chowning.",
+    "fr": "Aucune remédiation automatique n'est fournie (`remediation` est vide) : **appliquez manuellement**. Pour chaque utilisateur signalé, reprenez la propriété sur tout son home, par ex. `find ~user ! -uid $(id -u user) ! -type l -exec chown $(id -un user) {} +`. Considérez les fichiers étrangers ou orphelins comme suspects et examinez-les avant un `chown` de masse."
+  },
+  "impact": {
+    "en": "Wrongly-owned home files can leak data and may hide an intrusion. **Precautions before applying:** capture current ownership for forensics first (`find ~user ! -uid $(id -u user) -printf '%p %u\\n'`), and beware of UID collisions after migrations and of recursing into bind mounts under the home, a blanket `chown` could re-home files that belong elsewhere. Investigate orphaned (`-nouser`) files instead of silently claiming them.",
+    "fr": "Des fichiers du home mal attribués peuvent fuiter des données et masquer une intrusion. **Précautions avant application :** relevez d'abord l'appartenance actuelle pour l'investigation (`find ~user ! -uid $(id -u user) -printf '%p %u\\n'`), et méfiez-vous des collisions d'UID après migration et de la récursion dans des montages liés sous le home, un `chown` global pourrait réattribuer des fichiers appartenant ailleurs. Examinez les fichiers orphelins (`-nouser`) plutôt que de les revendiquer silencieusement."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

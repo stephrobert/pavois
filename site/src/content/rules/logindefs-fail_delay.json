@@ -1,6 +1,8 @@
 {
   "id": "logindefs-fail_delay",
   "supported_os": [
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9"
   ],
@@ -18,19 +20,24 @@
     "  its('FAIL_DELAY') { should cmp >= 4 }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "file": "/etc/login.defs",
+    "key": "FAIL_DELAY",
+    "resource": "conf_line",
+    "sep": "space",
+    "value": "4"
+  },
   "title": {
     "en": "Ensure the Logon Failure Delay is Set Correctly in login.defs",
     "fr": "Définir correctement le délai après échec de connexion dans login.defs"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Increasing the time between a failed authentication attempt and the next credential prompt slows single-threaded brute-force attacks against console and other login interfaces. A `FAIL_DELAY` of at least **4 seconds** makes exhaustive password guessing impractically slow while remaining unobtrusive for legitimate users.",
-    "fr": "Augmenter le délai entre une tentative d'authentification échouée et l'invite de saisie suivante ralentit les attaques par force brute mono-thread contre la console et les autres interfaces de connexion. Un `FAIL_DELAY` d'au moins **4 secondes** rend le devinage exhaustif de mots de passe d'une lenteur prohibitive tout en restant discret pour les utilisateurs légitimes."
-  },
   "summary": {
     "en": "Ensures `FAIL_DELAY` in `/etc/login.defs` is at least **4 seconds**, delaying the prompt after a failed login.",
     "fr": "Garantit que `FAIL_DELAY` dans `/etc/login.defs` vaut au moins **4 secondes**, retardant l'invite après un échec de connexion."
+  },
+  "rationale": {
+    "en": "Increasing the time between a failed authentication attempt and the next credential prompt slows single-threaded brute-force attacks against console and other login interfaces. A `FAIL_DELAY` of at least **4 seconds** makes exhaustive password guessing impractically slow while remaining unobtrusive for legitimate users.",
+    "fr": "Augmenter le délai entre une tentative d'authentification échouée et l'invite de saisie suivante ralentit les attaques par force brute mono-thread contre la console et les autres interfaces de connexion. Un `FAIL_DELAY` d'au moins **4 secondes** rend le devinage exhaustif de mots de passe d'une lenteur prohibitive tout en restant discret pour les utilisateurs légitimes."
   },
   "check_note": {
     "en": "Pavois uses the InSpec `login_defs` resource to read the **effective resolved value** of `FAIL_DELAY`, parsing `/etc/login.defs` the way the `login` program interprets it (last uncommented setting wins). This reflects the delay actually enforced at login, not just a line that happens to appear in the file.",
@@ -51,5 +58,7 @@
   "impact": {
     "en": "Negligible risk. The only effect is a few seconds of delay after a failed console login, which is imperceptible to legitimate users. Note it applies to the `login` program path; SSH and other services enforce their own retry/throttle controls, so this is one layer among several.",
     "fr": "Risque négligeable. Le seul effet est un délai de quelques secondes après un échec de connexion console, imperceptible pour les utilisateurs légitimes. À noter qu'il s'applique au chemin du programme `login` ; SSH et d'autres services appliquent leurs propres contrôles de nouvelle tentative/limitation, ce n'est donc qu'une couche parmi plusieurs."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

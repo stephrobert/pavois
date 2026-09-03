@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-net-ipv6-conf-all-max_addresses",
+  "title": {
+    "en": "Configure Maximum Number of Autoconfigured Addresses on All IPv6 Interfaces",
+    "fr": "Configurer le nombre maximal d'adresses autoconfigurées sur toutes les interfaces IPv6"
+  },
+  "summary": {
+    "en": "Sets `net.ipv6.conf.all.max_addresses` to `1`, capping the number of autoconfigured IPv6 addresses an interface may hold to match a static, single-address policy.",
+    "fr": "Fixe `net.ipv6.conf.all.max_addresses` à `1`, limitant le nombre d'adresses IPv6 autoconfigurées qu'une interface peut détenir pour correspondre à une politique statique à une seule adresse."
+  },
+  "rationale": {
+    "en": "Each interface should hold only the IPv6 addresses it actually needs, ideally exactly the statically configured ones. An unbounded count lets autoconfiguration or a flood of forged Router Advertisements pile up many global addresses on an interface, which **consumes resources and complicates monitoring** by making it harder to know which addresses are legitimate. Capping the count keeps the address set predictable.",
+    "fr": "Chaque interface ne devrait détenir que les adresses IPv6 dont elle a réellement besoin, idéalement exactement celles configurées statiquement. Un nombre non borné permet à l'autoconfiguration ou à un flot de fausses annonces de routeur d'accumuler de nombreuses adresses globales sur une interface, ce qui **consomme des ressources et complique la supervision** en rendant difficile de savoir quelles adresses sont légitimes. Plafonner ce nombre garde l'ensemble d'adresses prévisible."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.all.max_addresses`) and asserts it is `1`. The live kernel value is authoritative: a value declared in `/etc/sysctl.d/*` may be **overridden** by a later drop-in or never applied, so reading the running parameter avoids the false pass a file-based scanner can give.",
+    "fr": "Pavois lit la valeur **effective** au runtime via la ressource `kernel_parameter` (équivalent à `sysctl net.ipv6.conf.all.max_addresses`) et vérifie qu'elle vaut `1`. La valeur active du noyau fait foi : une valeur déclarée dans `/etc/sysctl.d/*` peut être **écrasée** par un drop-in ultérieur ou jamais appliquée ; lire le paramètre actif évite le faux succès d'un scanner basé fichiers."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv6.conf.all.max_addresses` (or `cat /proc/sys/net/ipv6/conf/all/max_addresses`). Expected output:\n\n- `net.ipv6.conf.all.max_addresses = 1`",
+    "fr": "Exécutez `sysctl net.ipv6.conf.all.max_addresses` (ou `cat /proc/sys/net/ipv6/conf/all/max_addresses`). Sortie attendue :\n\n- `net.ipv6.conf.all.max_addresses = 1`"
+  },
+  "logs": {
+    "en": "No dedicated log. Check the live value with `sysctl net.ipv6.conf.all.max_addresses`, audit its source with `sysctl --system`, and count the addresses actually present with `ip -6 addr show`.",
+    "fr": "Aucun journal dédié. Vérifiez la valeur active avec `sysctl net.ipv6.conf.all.max_addresses`, auditez son origine avec `sysctl --system`, et comptez les adresses réellement présentes avec `ip -6 addr show`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv6.conf.all.max_addresses` to `1`, persisting it in a Pavois-owned `/etc/sysctl.d/` drop-in and applying it live (no reboot). Run it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour fixer `net.ipv6.conf.all.max_addresses` à `1`, le rend persistant via un drop-in `/etc/sysctl.d/` géré par Pavois et l'applique à chaud (sans redémarrage). Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "A cap of `1` is intended for hosts with a **single static IPv6 address per interface**. It will break setups that legitimately need several addresses per interface, SLAAC with privacy/temporary addresses (which use multiple addresses), virtual hosting, or interfaces bound to many service IPs. Before applying, confirm a single-address policy or raise the value to the real number of required addresses. Exceeding the cap silently prevents new addresses from being assigned.",
+    "fr": "Un plafond de `1` est destiné aux hôtes avec une **seule adresse IPv6 statique par interface**. Il cassera les configurations nécessitant légitimement plusieurs adresses par interface, SLAAC avec adresses temporaires/de confidentialité (qui utilisent plusieurs adresses), hébergement virtuel, ou interfaces liées à de nombreuses IP de service. Avant d'appliquer, confirmez une politique à adresse unique ou montez la valeur au nombre réel d'adresses requises. Dépasser le plafond empêche silencieusement l'attribution de nouvelles adresses."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}
