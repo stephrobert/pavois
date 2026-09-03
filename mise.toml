@@ -237,6 +237,17 @@ go vet ./...
 golangci-lint run ./...
 """
 
+[tasks."lint:py"]
+description = "ruff check + ruff format --check + bandit over tools/ — exactly what python.yml runs"
+# The pre-commit hooks only see the files a commit touches, so a lint error in an untouched file
+# reaches CI unopposed. This is how tools/reconcile_os.py failed the first PR of this branch: 5
+# ruff errors in a file nobody had touched in months.
+run = """
+ruff check tools/
+ruff format --check tools/
+bandit -q -r tools/ -c pyproject.toml
+"""
+
 [tasks.testplan]
 description = "What this diff earns you, cheapest first, and what each run does NOT prove. `--check` fails on a path no rule sorts."
 run = "python3 {{config_root}}/tools/testplan.py"
@@ -255,7 +266,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]
