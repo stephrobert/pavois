@@ -1,0 +1,37 @@
+{
+  "id": "pkg-pam-sss-installed",
+  "title": {
+    "en": "Install pam-sss Package",
+    "fr": "Installer le paquet pam-sss"
+  },
+  "summary": {
+    "en": "Ensures the `libpam-sss` package is installed so PAM can authenticate against a centralized identity provider via **SSSD**.",
+    "fr": "Garantit que le paquet `libpam-sss` est installé pour que PAM puisse authentifier auprès d'un fournisseur d'identité centralisé via **SSSD**."
+  },
+  "rationale": {
+    "en": "The `libpam-sss` package provides the PAM module for the **SSSD** (System Security Services Daemon), which integrates the host with centralized identity providers such as LDAP, Active Directory or Kerberos. Without it, PAM cannot authenticate against a domain, and the system is limited to local accounts, blocking centralized policy enforcement (account lockout, password policy, smartcard) and consistent identity management across the fleet.",
+    "fr": "Le paquet `libpam-sss` fournit le module PAM pour **SSSD** (System Security Services Daemon), qui intègre l'hôte à des fournisseurs d'identité centralisés tels que LDAP, Active Directory ou Kerberos. Sans lui, PAM ne peut pas authentifier auprès d'un domaine, et le système est limité aux comptes locaux, ce qui empêche l'application centralisée des politiques (verrouillage de compte, politique de mot de passe, carte à puce) et la gestion cohérente des identités sur l'ensemble du parc."
+  },
+  "check_note": {
+    "en": "Pavois queries the **effective** package state with `package('libpam-sss')` (resolved through `dpkg-query`), not by guessing from configuration files. A reference to `pam_sss.so` in a PAM stack is worthless if the module is not actually installed, so Pavois confirms the package is present rather than trusting that a config line implies it.",
+    "fr": "Pavois interroge l'état **effectif** du paquet avec `package('libpam-sss')` (résolu via `dpkg-query`), sans déduire à partir de fichiers de configuration. Une référence à `pam_sss.so` dans une pile PAM est inutile si le module n'est pas réellement installé : Pavois confirme donc la présence du paquet plutôt que de supposer qu'une ligne de configuration l'implique."
+  },
+  "verify": {
+    "en": "Run `dpkg-query -W -f='${Status}\\n' libpam-sss`. Expected output: `install ok installed`. You can also confirm the module file with `ls /usr/lib/*/security/pam_sss.so`.",
+    "fr": "Exécutez `dpkg-query -W -f='${Status}\\n' libpam-sss`. Sortie attendue : `install ok installed`. Vous pouvez aussi vérifier le fichier du module avec `ls /usr/lib/*/security/pam_sss.so`."
+  },
+  "logs": {
+    "en": "Package installation is logged in `/var/log/dpkg.log` (`grep libpam-sss /var/log/dpkg.log`). SSSD authentication activity appears in `/var/log/auth.log` and via `journalctl -u sssd`.",
+    "fr": "L'installation du paquet est tracée dans `/var/log/dpkg.log` (`grep libpam-sss /var/log/dpkg.log`). L'activité d'authentification SSSD apparaît dans `/var/log/auth.log` et via `journalctl -u sssd`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan installs the `libpam-sss` package via the **package** resource (`action: install`). It is applied with `pavois harden apply`. Note that installing the package does not by itself configure SSSD or wire `pam_sss.so` into the PAM stack, domain enrollment and `/etc/sssd/sssd.conf` remain a separate step.",
+    "fr": "Le plan de durcissement de Pavois installe le paquet `libpam-sss` via la ressource **package** (`action: install`). Il s'applique avec `pavois harden apply`. Notez que l'installation du paquet ne configure pas à elle seule SSSD ni n'intègre `pam_sss.so` dans la pile PAM : l'inscription au domaine et `/etc/sssd/sssd.conf` restent une étape distincte."
+  },
+  "impact": {
+    "en": "Installing the package alone is low-risk and does not change authentication behavior. The real risk is in the follow-up configuration: a misconfigured PAM stack referencing `pam_sss.so` while SSSD is down or unreachable can **lock out all domain users**. - Keep at least one working **local** privileged account before enabling SSSD in PAM. - Test domain login on a non-production session first. - Verify SSSD is running (`systemctl status sssd`) and reachable to its provider before making it required in the PAM stack.",
+    "fr": "Installer le paquet seul présente un risque faible et ne modifie pas le comportement d'authentification. Le vrai risque réside dans la configuration ultérieure : une pile PAM mal configurée référençant `pam_sss.so` alors que SSSD est arrêté ou injoignable peut **bloquer tous les utilisateurs du domaine**. - Conservez au moins un compte **local** privilégié fonctionnel avant d'activer SSSD dans PAM. - Testez d'abord la connexion au domaine sur une session hors production. - Vérifiez que SSSD fonctionne (`systemctl status sssd`) et joint son fournisseur avant de le rendre obligatoire dans la pile PAM."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

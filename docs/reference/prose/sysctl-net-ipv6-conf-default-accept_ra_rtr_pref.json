@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-net-ipv6-conf-default-accept_ra_rtr_pref",
+  "title": {
+    "en": "Configure Accepting Router Preference in Router Advertisements on All IPv6 Interfaces By Default",
+    "fr": "Configurer l'acceptation de la préférence de routeur dans les annonces de routeur sur toutes les interfaces IPv6 par défaut"
+  },
+  "summary": {
+    "en": "Sets the default for new IPv6 interfaces to **ignore the router-preference field of Router Advertisements** via `net.ipv6.conf.default.accept_ra_rtr_pref = 0`.",
+    "fr": "Définit la valeur par défaut des nouvelles interfaces IPv6 pour **ignorer le champ de préférence de routeur des annonces de routeur** via `net.ipv6.conf.default.accept_ra_rtr_pref = 0`."
+  },
+  "rationale": {
+    "en": "`net.ipv6.conf.default.accept_ra_rtr_pref` controls whether the host honours the **Router Preference** field of Router Advertisements to pick its default router. If enabled, a malicious host can advertise itself with a high preference and make the system prefer an attacker-controlled gateway, enabling a **man-in-the-middle** position over IPv6 traffic. Disabling it by default removes the attacker's ability to influence default-router selection through forged RAs.",
+    "fr": "`net.ipv6.conf.default.accept_ra_rtr_pref` contrôle si l'hôte respecte le champ **Préférence de routeur** des annonces de routeur pour choisir son routeur par défaut. S'il est activé, un hôte malveillant peut s'annoncer avec une préférence élevée et faire en sorte que le système privilégie une passerelle contrôlée par l'attaquant, permettant une position d'**homme du milieu** sur le trafic IPv6. Le désactiver par défaut retire à l'attaquant la capacité d'influencer la sélection du routeur par défaut via de fausses RA."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** kernel value of `net.ipv6.conf.default.accept_ra_rtr_pref`, not a config file. The live value merges `/etc/sysctl.conf`, drop-ins in `/etc/sysctl.d/` and `/run/sysctl.d/`, kernel boot parameters and runtime `sysctl -w`. A clean file does not guarantee a clean running kernel, Pavois reports the actual enforced value.",
+    "fr": "Pavois lit la valeur **effective** du noyau pour `net.ipv6.conf.default.accept_ra_rtr_pref`, pas un fichier de configuration. La valeur active fusionne `/etc/sysctl.conf`, les drop-ins dans `/etc/sysctl.d/` et `/run/sysctl.d/`, les paramètres de démarrage du noyau et les `sysctl -w` à chaud. Un fichier propre ne garantit pas un noyau propre, Pavois rapporte la valeur réellement appliquée."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv6.conf.default.accept_ra_rtr_pref` and confirm the output is `net.ipv6.conf.default.accept_ra_rtr_pref = 0`.",
+    "fr": "Exécutez `sysctl net.ipv6.conf.default.accept_ra_rtr_pref` et vérifiez que la sortie est `net.ipv6.conf.default.accept_ra_rtr_pref = 0`."
+  },
+  "logs": {
+    "en": "No dedicated log. Inspect runtime state with `sysctl net.ipv6.conf.default.accept_ra_rtr_pref` and `sysctl -a | grep accept_ra_rtr_pref`. To find which file set it, run `sysctl --system 2>&1 | grep accept_ra_rtr_pref`. The currently selected default router is visible via `ip -6 route show default`.",
+    "fr": "Aucun journal dédié. Inspectez l'état d'exécution avec `sysctl net.ipv6.conf.default.accept_ra_rtr_pref` et `sysctl -a | grep accept_ra_rtr_pref`. Pour trouver le fichier qui l'a défini, exécutez `sysctl --system 2>&1 | grep accept_ra_rtr_pref`. Le routeur par défaut actuellement sélectionné est visible via `ip -6 route show default`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv6.conf.default.accept_ra_rtr_pref = 0`, persisting it in a managed drop-in and applying it live. Run `pavois harden apply` to enforce it; it is re-applied at boot via the persisted entry.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour définir `net.ipv6.conf.default.accept_ra_rtr_pref = 0`, en le persistant dans un drop-in géré et en l'appliquant à chaud. Exécutez `pavois harden apply` pour l'imposer ; il est réappliqué au démarrage via l'entrée persistante."
+  },
+  "impact": {
+    "en": "Low operational impact: this only stops the host from ranking routers by their advertised preference. On a SLAAC client that legitimately accepts RAs, default-router selection falls back to other criteria, which is acceptable. The change is safe on routers and statically-addressed servers. If the host depends on RA-based addressing, apply it together with the other `accept_ra*` rules for a coherent IPv6 posture.",
+    "fr": "Impact opérationnel faible : cela empêche seulement l'hôte de classer les routeurs selon leur préférence annoncée. Sur un client SLAAC qui accepte légitimement les RA, la sélection du routeur par défaut se rabat sur d'autres critères, ce qui est acceptable. Le changement est sans risque sur les routeurs et serveurs à adressage statique. Si l'hôte dépend de l'adressage par RA, appliquez-le avec les autres règles `accept_ra*` pour une posture IPv6 cohérente."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

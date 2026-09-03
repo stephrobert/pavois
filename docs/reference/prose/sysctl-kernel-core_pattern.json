@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-kernel-core_pattern",
+  "title": {
+    "en": "Disable storing core dumps",
+    "fr": "Désactiver l'enregistrement des vidages mémoire (core dumps)"
+  },
+  "summary": {
+    "en": "Sets `kernel.core_pattern=|/bin/false` so crashing processes pipe their core to a no-op handler and no core dump is ever written to disk.",
+    "fr": "Définit `kernel.core_pattern=|/bin/false` pour que les processus qui plantent redirigent leur core vers un gestionnaire sans effet, de sorte qu'aucun core dump n'est jamais écrit sur disque."
+  },
+  "rationale": {
+    "en": "A core dump is a memory image written when the kernel terminates an application after a crash. That image can hold passwords, keys, tokens, or other sensitive in-memory data, and is generally useful only to developers debugging a fault. Setting `kernel.core_pattern=|/bin/false` pipes every core to `/bin/false`, which immediately exits without writing anything, so no core file is ever stored on disk, eliminating a common avenue for sensitive-data leakage.",
+    "fr": "Un core dump est une image mémoire écrite lorsque le noyau termine une application après un plantage. Cette image peut contenir des mots de passe, des clés, des jetons ou d'autres données sensibles en mémoire, et n'est généralement utile qu'aux développeurs qui déboguent une panne. Définir `kernel.core_pattern=|/bin/false` redirige chaque core vers `/bin/false`, qui se termine immédiatement sans rien écrire, aucun fichier de core n'est donc jamais stocké sur disque, éliminant une voie courante de fuite de données sensibles."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** via the `kernel_parameter` resource (equivalent to `sysctl kernel.core_pattern`), not `/etc/sysctl.conf` or any `*.conf` drop-in. On systemd hosts the pattern is often set to `|/usr/lib/systemd/systemd-coredump ...` at boot, which can silently override a file-declared value; reading the running kernel reveals the handler that is actually in effect.",
+    "fr": "Pavois lit la **valeur effective du noyau** via la ressource `kernel_parameter` (équivalent à `sysctl kernel.core_pattern`), et non `/etc/sysctl.conf` ou un drop-in `*.conf`. Sur les hôtes systemd, le pattern est souvent défini à `|/usr/lib/systemd/systemd-coredump ...` au démarrage, ce qui peut écraser silencieusement une valeur déclarée dans un fichier ; lire le noyau en cours d'exécution révèle le gestionnaire réellement en vigueur."
+  },
+  "verify": {
+    "en": "Run `sysctl kernel.core_pattern`, expected output `kernel.core_pattern = |/bin/false`.",
+    "fr": "Exécutez `sysctl kernel.core_pattern`, sortie attendue `kernel.core_pattern = |/bin/false`."
+  },
+  "logs": {
+    "en": "Read the current value with `sysctl kernel.core_pattern` or `cat /proc/sys/kernel/core_pattern`. With the no-op handler, crashes still log to `dmesg` / `journalctl -k` but `journalctl -u systemd-coredump` will show no stored dumps and `coredumpctl list` should be empty.",
+    "fr": "Lisez la valeur courante avec `sysctl kernel.core_pattern` ou `cat /proc/sys/kernel/core_pattern`. Avec le gestionnaire sans effet, les plantages sont toujours journalisés dans `dmesg` / `journalctl -k`, mais `journalctl -u systemd-coredump` ne montrera aucun dump stocké et `coredumpctl list` devrait être vide."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan sets the `sysctl` key `kernel.core_pattern` to `|/bin/false`, persisting it to a managed drop-in and applying it live so the running kernel and future boots both use it. Applied with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois définit la clé `sysctl` `kernel.core_pattern` à `|/bin/false`, la persiste dans un drop-in géré et l'applique à chaud, de sorte que le noyau en cours d'exécution comme les démarrages futurs l'utilisent. Appliqué avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Low operational risk: you lose the ability to collect core dumps for crash debugging on this host. On systemd systems this overrides `systemd-coredump`, so `coredumpctl` will have nothing to show. If you need to diagnose a specific crash, temporarily restore the default pattern, reproduce, then re-apply. Note a boot-time service may reset `core_pattern`; the managed drop-in re-asserts it. Reversible by changing the key.",
+    "fr": "Risque opérationnel faible : vous perdez la capacité de collecter des core dumps pour déboguer les plantages sur cet hôte. Sur les systèmes systemd, cela écrase `systemd-coredump`, donc `coredumpctl` n'aura rien à afficher. Si vous devez diagnostiquer un plantage précis, restaurez temporairement le pattern par défaut, reproduisez, puis ré-appliquez. À noter qu'un service au démarrage peut réinitialiser `core_pattern` ; le drop-in géré le ré-impose. Réversible en modifiant la clé."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,37 @@
+{
+  "id": "kmod-cramfs-disabled",
+  "title": {
+    "en": "Disable Mounting of cramfs",
+    "fr": "Désactiver le montage de cramfs"
+  },
+  "summary": {
+    "en": "Ensures the `cramfs` filesystem kernel module is not loaded and is blacklisted so cramfs images cannot be mounted.",
+    "fr": "Garantit que le module noyau du système de fichiers `cramfs` n'est pas chargé et est mis en liste noire afin qu'aucune image cramfs ne puisse être montée."
+  },
+  "rationale": {
+    "en": "**cramfs** is an obsolete compressed read-only filesystem that modern systems do not need. Its driver still parses on-disk structures, so a crafted cramfs image (e.g. inserted via USB and auto-mounted) could trigger a kernel parsing bug. Removing support for unneeded filesystem types reduces the local attack surface of the server.",
+    "fr": "**cramfs** est un système de fichiers compressé en lecture seule obsolète dont les systèmes modernes n'ont pas besoin. Son pilote analyse encore les structures sur disque ; une image cramfs forgée (par ex. insérée via USB et montée automatiquement) pourrait déclencher un bug d'analyse du noyau. Supprimer la prise en charge des types de systèmes de fichiers inutiles réduit la surface d'attaque locale du serveur."
+  },
+  "check_note": {
+    "en": "Pavois uses `kernel_module('cramfs')` to assert the module is **not loaded** and is **disabled** in the effective modprobe policy. Inspecting the live kernel plus the resolved modprobe config (not one `.conf`) catches a module blacklisted somewhere but still loaded, or re-enabled by an override drop-in.",
+    "fr": "Pavois utilise `kernel_module('cramfs')` pour vérifier que le module n'est **pas chargé** et qu'il est **désactivé** dans la politique modprobe effective. Inspecter le noyau vivant plus la config modprobe résolue (et non un seul `.conf`) détecte un module en liste noire quelque part mais encore chargé, ou réactivé par un override."
+  },
+  "verify": {
+    "en": "Run `lsmod | grep cramfs` (no output = not loaded) and `modprobe -n -v cramfs` (expect `install /bin/true` or `/bin/false`). `modprobe --showconfig | grep cramfs` shows the effective rules.",
+    "fr": "Exécutez `lsmod | grep cramfs` (aucune sortie = non chargé) et `modprobe -n -v cramfs` (attendu : `install /bin/true` ou `/bin/false`). `modprobe --showconfig | grep cramfs` affiche les règles effectives."
+  },
+  "logs": {
+    "en": "A blocked mount/load attempt is logged by the kernel: `journalctl -k | grep -i cramfs` / `dmesg | grep -i cramfs`. `lsmod` shows resident modules; `modprobe --showconfig` shows the policy.",
+    "fr": "Une tentative de montage/chargement bloquée est journalisée par le noyau : `journalctl -k | grep -i cramfs` / `dmesg | grep -i cramfs`. `lsmod` montre les modules résidents ; `modprobe --showconfig` montre la politique."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `kernel_module` resource to **blacklist** `cramfs`: it writes a modprobe rule (`install cramfs /bin/false` plus a blacklist entry) so the filesystem cannot be auto-loaded on mount, and unloads it if resident. `reboot_required` is true to guarantee removal.",
+    "fr": "`pavois harden apply` utilise la ressource `kernel_module` pour mettre `cramfs` en **liste noire** : il écrit une règle modprobe (`install cramfs /bin/false` plus une entrée blacklist) afin que le système de fichiers ne puisse être chargé automatiquement au montage, et le décharge s'il est résident. `reboot_required` est vrai pour garantir le retrait."
+  },
+  "impact": {
+    "en": "Disabling `cramfs` has **no impact** on normal operation. Precaution: a small number of embedded images or some `snap`/initramfs tooling historically used cramfs, verify no mounted filesystem is of type cramfs (`findmnt -t cramfs`, `cat /proc/filesystems | grep cramfs`) before applying. A reboot is needed to unload an already-loaded module.",
+    "fr": "Désactiver `cramfs` n'a **aucun impact** sur le fonctionnement normal. Précaution : quelques images embarquées ou certains outils `snap`/initramfs ont historiquement utilisé cramfs, vérifiez qu'aucun système de fichiers monté n'est de type cramfs (`findmnt -t cramfs`, `cat /proc/filesystems | grep cramfs`) avant d'appliquer. Un redémarrage est nécessaire pour décharger un module déjà chargé."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,22 +1,10 @@
 {
   "id": "kconfig-page-poisoning-no-sanity",
   "supported_os": [
-    "almalinux9",
-    "debian12",
-    "debian13",
-    "rhel8",
-    "rhel9",
-    "ubuntu2204",
-    "ubuntu2404"
+    "rhel8"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
-    "debian12": "1.1.0",
-    "debian13": "1.0.0",
-    "rhel8": "4.0.0",
-    "rhel9": "2.0.0",
-    "ubuntu2204": "3.0.0",
-    "ubuntu2404": "1.0.0"
+    "rhel8": "4.0.0"
   },
   "severity": "medium",
   "domain": "Kernel build",
@@ -26,23 +14,25 @@
     "bp28": "R17"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_PAGE_POISONING_NO_SANITY=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_PAGE_POISONING_NO_SANITY='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_PAGE_POISONING_NO_SANITY=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_PAGE_POISONING_NO_SANITY=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Enable poison without sanity check",
     "fr": "Activer l'empoisonnement sans vérification d'intégrité"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Page poisoning normally writes a pattern on free **and** verifies that pattern on the next allocation (the sanity check), to catch corruption. That verification read doubles the cost. `CONFIG_PAGE_POISONING_NO_SANITY=y` keeps the security benefit, freed memory is still overwritten so secrets are destroyed, while skipping the verification read, cutting the performance overhead so poisoning stays viable on production systems.",
-    "fr": "L'empoisonnement des pages écrit normalement un motif à la libération **et** vérifie ce motif lors de l'allocation suivante (la vérification d'intégrité), pour détecter une corruption. Cette lecture de vérification double le coût. `CONFIG_PAGE_POISONING_NO_SANITY=y` conserve le bénéfice de sécurité, la mémoire libérée est toujours écrasée, donc les secrets sont détruits, tout en supprimant la lecture de vérification, réduisant le surcoût en performance afin que l'empoisonnement reste viable sur les systèmes de production."
-  },
   "summary": {
     "en": "Requires the running kernel to be built with `CONFIG_PAGE_POISONING_NO_SANITY=y` so freed pages are still poisoned but the costly verify-on-alloc check is skipped.",
     "fr": "Exige que le noyau en cours d'exécution soit compilé avec `CONFIG_PAGE_POISONING_NO_SANITY=y` afin que les pages libérées soient toujours empoisonnées mais que la vérification coûteuse à l'allocation soit ignorée."
+  },
+  "rationale": {
+    "en": "Page poisoning normally writes a pattern on free **and** verifies that pattern on the next allocation (the sanity check), to catch corruption. That verification read doubles the cost. `CONFIG_PAGE_POISONING_NO_SANITY=y` keeps the security benefit, freed memory is still overwritten so secrets are destroyed, while skipping the verification read, cutting the performance overhead so poisoning stays viable on production systems.",
+    "fr": "L'empoisonnement des pages écrit normalement un motif à la libération **et** vérifie ce motif lors de l'allocation suivante (la vérification d'intégrité), pour détecter une corruption. Cette lecture de vérification double le coût. `CONFIG_PAGE_POISONING_NO_SANITY=y` conserve le bénéfice de sécurité, la mémoire libérée est toujours écrasée, donc les secrets sont détruits, tout en supprimant la lecture de vérification, réduisant le surcoût en performance afin que l'empoisonnement reste viable sur les systèmes de production."
   },
   "check_note": {
     "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)`, falling back to `/proc/config.gz`, so the result reflects the booted kernel. Pavois expects `CONFIG_PAGE_POISONING_NO_SANITY=y`.",
@@ -63,5 +53,7 @@
   "impact": {
     "en": "Disabling the sanity check trades a corruption-detection diagnostic for speed; the security benefit of overwriting freed memory is preserved. The only real downside is losing an early-warning signal for memory corruption, which matters more in debugging than in production. There is no runtime breakage risk and no lockout concern, it is a compile-time tuning flag. Note it only takes effect when `CONFIG_PAGE_POISONING` is also enabled.",
     "fr": "Désactiver la vérification d'intégrité échange un diagnostic de détection de corruption contre de la vitesse ; le bénéfice de sécurité lié à l'écrasement de la mémoire libérée est préservé. Le seul vrai inconvénient est la perte d'un signal d'alerte précoce de corruption mémoire, ce qui importe davantage en débogage qu'en production. Aucun risque de casse à l'exécution ni de blocage d'accès, c'est un drapeau de réglage à la compilation. Notez qu'elle ne prend effet que si `CONFIG_PAGE_POISONING` est aussi activé."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

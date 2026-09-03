@@ -1,17 +1,17 @@
 {
   "id": "fileowner-backup-etc-shadow",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -25,8 +25,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "7.1.6",
-      "2.2.6"
+      "2.2.6",
+      "7.1.6"
     ],
     "nist": "AC-6 (1)",
     "pci-dss": "2.2.6"
@@ -46,14 +46,13 @@
     "en": "Verify Group Who Owns Backup shadow File",
     "fr": "Vérifier le propriétaire du fichier de sauvegarde shadow"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The `/etc/shadow-` file is the backup of `/etc/shadow` and holds **password hashes** for every local account. If it is not owned by **root**, an unprivileged user could read these hashes and run **offline password cracking**, or tamper with them to weaken authentication. Because backup files are easy to forget, weak ownership here is a common path to credential compromise.",
-    "fr": "Le fichier `/etc/shadow-` est la sauvegarde de `/etc/shadow` et contient les **empreintes de mots de passe** de tous les comptes locaux. S'il n'appartient pas à **root**, un utilisateur non privilégié pourrait lire ces empreintes pour mener un **cassage de mots de passe hors ligne**, ou les altérer pour affaiblir l'authentification. Comme les fichiers de sauvegarde sont faciles à oublier, une propriété incorrecte est une voie courante vers la compromission d'identifiants."
-  },
   "summary": {
     "en": "Ensures the backup shadow file `/etc/shadow-` is owned by the **root** user (UID 0).",
     "fr": "Garantit que le fichier de sauvegarde shadow `/etc/shadow-` appartient à l'utilisateur **root** (UID 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/shadow-` file is the backup of `/etc/shadow` and holds **password hashes** for every local account. If it is not owned by **root**, an unprivileged user could read these hashes and run **offline password cracking**, or tamper with them to weaken authentication. Because backup files are easy to forget, weak ownership here is a common path to credential compromise.",
+    "fr": "Le fichier `/etc/shadow-` est la sauvegarde de `/etc/shadow` et contient les **empreintes de mots de passe** de tous les comptes locaux. S'il n'appartient pas à **root**, un utilisateur non privilégié pourrait lire ces empreintes pour mener un **cassage de mots de passe hors ligne**, ou les altérer pour affaiblir l'authentification. Comme les fichiers de sauvegarde sont faciles à oublier, une propriété incorrecte est une voie courante vers la compromission d'identifiants."
   },
   "check_note": {
     "en": "Pavois reads the **effective** owner of `/etc/shadow-` via the InSpec `file` resource and asserts `uid == 0`, only when the file exists (`only_if`). Reading the live inode ownership shows the true state on disk, including drift introduced after a manual edit or a misbehaving backup script, rather than an assumed default.",
@@ -74,5 +73,7 @@
   "impact": {
     "en": "**If misconfigured**, password hashes in the backup are exposed to offline cracking or tampering by non-root users, a direct credential-theft risk.\n\n**Precautions before applying:** `chown root /etc/shadow-` is safe and reversible. Confirm you target the backup (trailing `-`), not `/etc/shadow`. No service restart and no lockout risk; ownership of the active `/etc/shadow` is unaffected.",
     "fr": "**En cas de mauvaise configuration**, les empreintes de mots de passe de la sauvegarde sont exposées au cassage hors ligne ou à l'altération par des utilisateurs non root, un risque direct de vol d'identifiants.\n\n**Précautions avant application :** `chown root /etc/shadow-` est sûr et réversible. Vérifiez que vous ciblez la sauvegarde (suffixe `-`), pas `/etc/shadow`. Aucun redémarrage de service ni risque de blocage ; la propriété du `/etc/shadow` actif n'est pas modifiée."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

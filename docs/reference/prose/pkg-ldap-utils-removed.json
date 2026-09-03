@@ -1,0 +1,37 @@
+{
+  "id": "pkg-ldap-utils-removed",
+  "title": {
+    "en": "Ensure LDAP client is not installed",
+    "fr": "S'assurer que le client LDAP n'est pas installé"
+  },
+  "summary": {
+    "en": "Ensures the `ldap-utils` OpenLDAP client package is **not installed** on hosts that are not LDAP clients.",
+    "fr": "Garantit que le paquet client OpenLDAP `ldap-utils` n'est **pas installé** sur les hôtes qui ne sont pas clients LDAP."
+  },
+  "rationale": {
+    "en": "`ldap-utils` provides the OpenLDAP client commands (`ldapsearch`, `ldapadd`, `ldapmodify`…). If the system does not need to act as an LDAP client, the software should be removed to reduce the potential **attack surface** and to deny an attacker ready-made tools for querying or tampering with a directory service.",
+    "fr": "`ldap-utils` fournit les commandes client OpenLDAP (`ldapsearch`, `ldapadd`, `ldapmodify`…). Si le système n'a pas besoin d'agir comme client LDAP, le logiciel devrait être retiré afin de réduire la **surface d'attaque** potentielle et de priver un attaquant d'outils tout prêts pour interroger ou altérer un service d'annuaire."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database via InSpec `package('ldap-utils')` (`dpkg -s ldap-utils`) and asserts it is **not installed**. The package state is authoritative, it tells you exactly whether the client binaries are present, regardless of any leftover `/etc/ldap/ldap.conf`.",
+    "fr": "Pavois interroge la base de paquets via InSpec `package('ldap-utils')` (`dpkg -s ldap-utils`) et vérifie qu'il n'est **pas installé**. L'état du paquet fait autorité, il indique exactement si les binaires client sont présents, indépendamment d'un éventuel `/etc/ldap/ldap.conf` résiduel."
+  },
+  "verify": {
+    "en": "Run `dpkg -s ldap-utils`. The expected output is `package 'ldap-utils' is not installed`. An installed version line means the rule fails.",
+    "fr": "Exécutez `dpkg -s ldap-utils`. La sortie attendue est `package 'ldap-utils' is not installed`. Une ligne de version installée signifie que la règle échoue."
+  },
+  "logs": {
+    "en": "Confirm removal via `apt list --installed | grep ldap-utils` (should be empty) or `/var/log/apt/history.log`, which records the removal transaction. These are client CLI tools, so there is no service log.",
+    "fr": "Confirmez la suppression via `apt list --installed | grep ldap-utils` (doit être vide) ou `/var/log/apt/history.log`, qui consigne la transaction de suppression. Ce sont des outils client en ligne de commande, il n'y a donc pas de journal de service."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource named `ldap-utils` with action **remove**; `pavois harden apply` runs the equivalent of `apt-get remove ldap-utils` to reach the compliant state. If `remediation` were empty you would uninstall it manually.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` nommée `ldap-utils` avec l'action **remove** ; `pavois harden apply` exécute l'équivalent de `apt-get remove ldap-utils` pour atteindre l'état conforme. Si `remediation` était vide, il faudrait le désinstaller manuellement."
+  },
+  "impact": {
+    "en": "Removing `ldap-utils` only deletes the command-line query tools; it does not affect LDAP-based authentication, which is handled by `libnss-ldap`/`sssd`. **Precaution:** if administrators or scripts rely on `ldapsearch`/`ldapmodify` to manage a directory from this host, removing the package will **break those workflows**. Confirm no automation depends on these binaries before applying.",
+    "fr": "Retirer `ldap-utils` ne supprime que les outils de requête en ligne de commande ; cela n'affecte pas l'authentification LDAP, gérée par `libnss-ldap`/`sssd`. **Précaution :** si des administrateurs ou des scripts utilisent `ldapsearch`/`ldapmodify` pour gérer un annuaire depuis cet hôte, retirer le paquet **cassera ces traitements**. Vérifiez qu'aucune automatisation ne dépend de ces binaires avant d'appliquer."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

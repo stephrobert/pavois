@@ -1,17 +1,17 @@
 {
   "id": "account-accounts-no-uid-except-zero",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -34,29 +34,29 @@
       "IA-2",
       "IA-4(b)"
     ],
-    "pci-dss": [
-      "8.2.1",
-      "Req-8.5"
-    ]
+    "pci-dss": "8.2.1"
   },
   "check": [
     "describe command('awk -F: \\'($3==0 && $1!=\"root\"){print $1}\\' /etc/passwd') do",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# List accounts with uid 0 other than root; remove/fix each ONLY after confirming it is rogue.\nawk -F: '($3==0 && $1!=\"root\"){print $1}' /etc/passwd\n# for a confirmed rogue account: userdel <name>   (irreversible, verify it is not legitimate)\n",
+    "reason": "deleting an account is irreversible, a human must confirm it is rogue",
+    "resource": "manual"
+  },
   "title": {
     "en": "Verify Only Root Has UID 0",
     "fr": "Vérifier que seul root possède l'UID 0"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "An account has full root authority whenever its UID is `0`, regardless of its name. A second UID-0 account is a hidden backdoor: it grants total control, multiplies the password-guessing surface for privileged access, and breaks accountability because actions cannot be tied to a single administrator. Multiple admins should instead share root access through **sudo**, which is logged per-user.",
-    "fr": "Un compte dispose de toute l'autorité de root dès que son UID vaut `0`, quel que soit son nom. Un second compte UID 0 est une porte dérobée cachée : il donne le contrôle total, multiplie la surface d'attaque par devinette de mot de passe sur un accès privilégié et casse la traçabilité, car les actions ne peuvent plus être attribuées à un administrateur unique. Plusieurs administrateurs doivent partager l'accès root via **sudo**, qui est journalisé par utilisateur."
-  },
   "summary": {
     "en": "Ensures `root` is the **only** account with UID `0` in `/etc/passwd`.",
     "fr": "Garantit que `root` est le **seul** compte avec l'UID `0` dans `/etc/passwd`."
+  },
+  "rationale": {
+    "en": "An account has full root authority whenever its UID is `0`, regardless of its name. A second UID-0 account is a hidden backdoor: it grants total control, multiplies the password-guessing surface for privileged access, and breaks accountability because actions cannot be tied to a single administrator. Multiple admins should instead share root access through **sudo**, which is logged per-user.",
+    "fr": "Un compte dispose de toute l'autorité de root dès que son UID vaut `0`, quel que soit son nom. Un second compte UID 0 est une porte dérobée cachée : il donne le contrôle total, multiplie la surface d'attaque par devinette de mot de passe sur un accès privilégié et casse la traçabilité, car les actions ne peuvent plus être attribuées à un administrateur unique. Plusieurs administrateurs doivent partager l'accès root via **sudo**, qui est journalisé par utilisateur."
   },
   "check_note": {
     "en": "Pavois runs an `awk` query over `/etc/passwd` and lists every account whose UID is `0` but whose name is not `root`. The check passes only when that list is empty. Reading the resolved account database (rather than trusting a name) catches a renamed or duplicate superuser that a casual `grep root` would miss.",
@@ -77,5 +77,7 @@
   "impact": {
     "en": "A second UID-0 account is equivalent to an undetected root backdoor: full system compromise and loss of audit accountability. Before remediating, confirm the account is not a legitimate, documented service identity; back up `/etc/passwd`, `/etc/shadow` and `/etc/group`; and ensure at least one working root-capable login remains so you do not lock yourself out.",
     "fr": "Un second compte UID 0 équivaut à une porte dérobée root non détectée : compromission totale du système et perte de traçabilité. Avant de corriger, vérifiez que le compte n'est pas une identité de service légitime et documentée ; sauvegardez `/etc/passwd`, `/etc/shadow` et `/etc/group` ; et assurez-vous qu'il reste au moins un accès root fonctionnel pour ne pas vous verrouiller."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

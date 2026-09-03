@@ -1,0 +1,37 @@
+{
+  "id": "ssh-use-strong-kex",
+  "title": {
+    "en": "Use Only Strong Key Exchange algorithms",
+    "fr": "N'utiliser que des algorithmes d'échange de clés robustes"
+  },
+  "summary": {
+    "en": "Disable weak SSH key-exchange (`KexAlgorithms`) methods, the SHA-1-based Diffie-Hellman groups (`diffie-hellman-group1-sha1`, `diffie-hellman-group14-sha1`, `diffie-hellman-group-exchange-sha1`), so only strong KEX algorithms remain.",
+    "fr": "Désactive les méthodes d'échange de clés SSH (`KexAlgorithms`) faibles, les groupes Diffie-Hellman basés sur SHA-1 (`diffie-hellman-group1-sha1`, `diffie-hellman-group14-sha1`, `diffie-hellman-group-exchange-sha1`), afin de ne conserver que des algorithmes KEX robustes."
+  },
+  "rationale": {
+    "en": "Key exchange is the method by which the client and server agree on the cryptographic keys protecting the session. SHA-1-based Diffie-Hellman groups (especially the 1024-bit `group1`) are weak: SHA-1 is collision-prone and small DH groups are within reach of well-resourced attackers (Logjam-style precomputation). A compromised key exchange lets an attacker in a **man-in-the-middle** position derive the session keys, decrypt the tunnel and steal credentials. Removing these legacy KEX algorithms forces use of strong curves (Curve25519) and SHA-2 groups.",
+    "fr": "L'échange de clés est la méthode par laquelle le client et le serveur s'accordent sur les clés cryptographiques protégeant la session. Les groupes Diffie-Hellman basés sur SHA-1 (en particulier `group1` à 1024 bits) sont faibles : SHA-1 est sujet aux collisions et les petits groupes DH sont à la portée d'attaquants disposant de moyens (précalcul de type Logjam). Un échange de clés compromis permet à un attaquant en position d'**homme du milieu** de dériver les clés de session, déchiffrer le tunnel et voler des identifiants. Le retrait de ces algorithmes KEX hérités impose l'usage de courbes robustes (Curve25519) et de groupes SHA-2."
+  },
+  "check_note": {
+    "en": "Pavois runs `sshd -T` and matches the **effective** `kexalgorithms` line, which begins with the `-` exclusion of the weak SHA-1 groups. `sshd -T` prints the daemon's resolved configuration, after all `Include`, `Match` blocks and drop-ins, so a weak KEX re-enabled downstream is caught. Reading `/etc/ssh/sshd_config` directly would miss those includes and produce a **false negative**.",
+    "fr": "Pavois exécute `sshd -T` et compare la ligne `kexalgorithms` **effective**, qui commence par l'exclusion `-` des groupes SHA-1 faibles. `sshd -T` affiche la configuration résolue du démon, après tous les `Include`, blocs `Match` et drop-ins, de sorte qu'un KEX faible réactivé en aval est détecté. Lire directement `/etc/ssh/sshd_config` manquerait ces inclusions et produirait un **faux négatif**."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -i '^kexalgorithms'` and confirm none of `diffie-hellman-group1-sha1`, `diffie-hellman-group14-sha1` or `diffie-hellman-group-exchange-sha1` appears in the resolved list. The effective line should match:\n\n```\nkexalgorithms -diffie-hellman-group1-sha1,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha1\n```",
+    "fr": "Exécutez `sshd -T | grep -i '^kexalgorithms'` et vérifiez qu'aucun de `diffie-hellman-group1-sha1`, `diffie-hellman-group14-sha1` ou `diffie-hellman-group-exchange-sha1` n'apparaît dans la liste résolue. La ligne effective doit correspondre à :\n\n```\nkexalgorithms -diffie-hellman-group1-sha1,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha1\n```"
+  },
+  "logs": {
+    "en": "SSH negotiation events are logged to `/var/log/auth.log` (or `journalctl -u ssh`). A client able to use only a weak KEX is refused with `Unable to negotiate ... no matching key exchange method found`, which reveals legacy clients before enforcement.",
+    "fr": "Les événements de négociation SSH sont journalisés dans `/var/log/auth.log` (ou `journalctl -u ssh`). Un client ne pouvant utiliser qu'un KEX faible est rejeté avec `Unable to negotiate ... no matching key exchange method found`, ce qui révèle les clients hérités avant l'application."
+  },
+  "remediation_note": {
+    "en": "This rule has **no automated harden plan** in Pavois yet, so it must be applied **manually**: add `KexAlgorithms -diffie-hellman-group1-sha1,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha1` to a drop-in under `/etc/ssh/sshd_config.d/`, validate with `sshd -t`, then reload with `systemctl reload ssh`.",
+    "fr": "Cette règle n'a **pas encore de plan de durcissement automatisé** dans Pavois ; elle doit donc être appliquée **manuellement** : ajoutez `KexAlgorithms -diffie-hellman-group1-sha1,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha1` dans un drop-in sous `/etc/ssh/sshd_config.d/`, validez avec `sshd -t`, puis rechargez avec `systemctl reload ssh`."
+  },
+  "impact": {
+    "en": "Excluding SHA-1 DH groups can prevent connections from very old SSH clients or appliances that support no modern curve or SHA-2 group. **Before applying**, check your client fleet (recent OpenSSH negotiates Curve25519 by default) and keep a **second session or console** open. Validate the config with `sshd -t` before reloading, then open a fresh SSH session in a new terminal to confirm access before closing the original, avoiding a lockout.",
+    "fr": "Exclure les groupes DH SHA-1 peut empêcher les connexions de très anciens clients SSH ou d'équipements ne supportant aucune courbe moderne ni groupe SHA-2. **Avant d'appliquer**, vérifiez votre parc de clients (OpenSSH récent négocie Curve25519 par défaut) et gardez **une seconde session ou console** ouverte. Validez la configuration avec `sshd -t` avant le rechargement, puis ouvrez une nouvelle session SSH dans un autre terminal pour confirmer l'accès avant de fermer la session d'origine, afin d'éviter tout verrouillage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

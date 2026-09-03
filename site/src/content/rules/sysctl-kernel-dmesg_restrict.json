@@ -1,17 +1,17 @@
 {
   "id": "sysctl-kernel-dmesg_restrict",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -39,6 +39,9 @@
   "check": [
     "describe kernel_parameter('kernel.dmesg_restrict') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*kernel.dmesg_restrict[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -50,14 +53,13 @@
     "en": "Restrict Access to Kernel Message Buffer",
     "fr": "Restreindre l'accès au tampon des messages du noyau"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The kernel ring buffer (`dmesg`) often contains kernel pointers, memory addresses, module load details, and hardware information. An unprivileged user reading this can defeat **KASLR** and gather intelligence that helps craft a kernel exploit. Setting `kernel.dmesg_restrict=1` requires `CAP_SYSLOG` to read the buffer, limiting access to root and reducing the information available to a local attacker.",
-    "fr": "Le tampon circulaire du noyau (`dmesg`) contient souvent des pointeurs noyau, des adresses mémoire, des détails de chargement de modules et des informations matérielles. Un utilisateur non privilégié qui peut le lire peut contourner **KASLR** et recueillir des renseignements facilitant la conception d'un exploit noyau. Définir `kernel.dmesg_restrict=1` exige la capacité `CAP_SYSLOG` pour lire le tampon, limitant l'accès à root et réduisant les informations disponibles pour un attaquant local."
-  },
   "summary": {
     "en": "Sets `kernel.dmesg_restrict=1` so only privileged users (`CAP_SYSLOG`) can read the kernel ring buffer, hiding addresses that would aid a kernel exploit.",
     "fr": "Définit `kernel.dmesg_restrict=1` pour que seuls les utilisateurs privilégiés (`CAP_SYSLOG`) puissent lire le tampon circulaire du noyau, masquant les adresses qui faciliteraient un exploit noyau."
+  },
+  "rationale": {
+    "en": "The kernel ring buffer (`dmesg`) often contains kernel pointers, memory addresses, module load details, and hardware information. An unprivileged user reading this can defeat **KASLR** and gather intelligence that helps craft a kernel exploit. Setting `kernel.dmesg_restrict=1` requires `CAP_SYSLOG` to read the buffer, limiting access to root and reducing the information available to a local attacker.",
+    "fr": "Le tampon circulaire du noyau (`dmesg`) contient souvent des pointeurs noyau, des adresses mémoire, des détails de chargement de modules et des informations matérielles. Un utilisateur non privilégié qui peut le lire peut contourner **KASLR** et recueillir des renseignements facilitant la conception d'un exploit noyau. Définir `kernel.dmesg_restrict=1` exige la capacité `CAP_SYSLOG` pour lire le tampon, limitant l'accès à root et réduisant les informations disponibles pour un attaquant local."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** via the `kernel_parameter` resource (equivalent to `sysctl kernel.dmesg_restrict`), not `/etc/sysctl.conf` or any `*.conf` drop-in. A value written to a file may never have loaded (typo, ordering, an overriding drop-in); reading the running kernel reflects whether unprivileged `dmesg` access is actually blocked right now.",
@@ -78,5 +80,7 @@
   "impact": {
     "en": "Low operational risk. The only change is that non-root users can no longer run `dmesg`; administrators and root-run monitoring are unaffected. Some unprivileged diagnostic or hardware-detection scripts that parse `dmesg` may need to run with elevated privileges or read `journalctl -k` as root instead. Reversible by resetting the key to `0`.",
     "fr": "Risque opérationnel faible. Le seul changement est que les utilisateurs non root ne peuvent plus exécuter `dmesg` ; les administrateurs et la supervision lancée par root ne sont pas affectés. Certains scripts de diagnostic ou de détection matérielle non privilégiés qui analysent `dmesg` devront s'exécuter avec des privilèges élevés ou lire `journalctl -k` en tant que root. Réversible en remettant la clé à `0`."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

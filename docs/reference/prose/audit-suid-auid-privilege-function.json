@@ -1,0 +1,37 @@
+{
+  "id": "audit-suid-auid-privilege-function",
+  "title": {
+    "en": "Record Events When Executables Are Run As Another User",
+    "fr": "Enregistrer les événements lorsqu'un exécutable est lancé sous l'identité d'un autre utilisateur"
+  },
+  "summary": {
+    "en": "Enforces an **auditd** rule (key `user_emulation`) that records when a process runs under a different user identity than the logged-in `auid`.",
+    "fr": "Impose une règle **auditd** (clé `user_emulation`) qui enregistre l'exécution d'un processus sous une identité utilisateur différente de l'`auid` connecté."
+  },
+  "rationale": {
+    "en": "An **audit log of users running commands with temporary elevated privileges** (via `sudo`/`su`, where the real uid differs from the audit uid `auid`) is essential to reporting and accountability. Administrators correlate these audit records with `sudo`'s own logfile to confirm no unauthorized commands were run. Misuse of privileged functions, by careless authorized users or by an attacker on a compromised account, is a serious, ongoing concern, and auditing privilege emulation is a primary way to **detect such misuse and insider/advanced-persistent-threat activity**.",
+    "fr": "Un **journal d'audit des utilisateurs exécutant des commandes avec des privilèges temporairement élevés** (via `sudo`/`su`, où l'uid réel diffère de l'uid d'audit `auid`) est essentiel au reporting et à la responsabilité. Les administrateurs corrèlent ces enregistrements avec le journal propre de `sudo` pour confirmer qu'aucune commande non autorisée n'a été exécutée. Le détournement des fonctions privilégiées, par des utilisateurs autorisés négligents ou par un attaquant sur un compte compromis, est une préoccupation sérieuse et permanente, et auditer l'émulation de privilèges est un moyen primordial de **détecter cet abus et l'activité d'une menace interne ou persistante avancée**."
+  },
+  "check_note": {
+    "en": "Pavois runs `auditctl -l` and checks a rule with the key `user_emulation` is loaded. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule on disk that was never loaded (no `augenrules --load`, syntax error, reload failure) would make a file scanner falsely **pass**. `auditctl -l` reflects what the kernel audits now.",
+    "fr": "Pavois exécute `auditctl -l` et vérifie qu'une règle de clé `user_emulation` est chargée. Lire le **jeu de règles réellement chargé dans le noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : une règle sur disque jamais chargée (pas de `augenrules --load`, erreur de syntaxe, échec de rechargement) ferait passer à tort un scanner de fichiers. `auditctl -l` reflète ce que le noyau audite à l'instant présent."
+  },
+  "verify": {
+    "en": "Run `auditctl -l | grep -E '(-k |key=)user_emulation'` (as root). Expected output is the syscall rules tracking privilege emulation, for example:\n\n- `-a always,exit -F arch=b64 -C euid!=uid -F auid!=unset -S execve -k user_emulation`\n- `-a always,exit -F arch=b32 -C euid!=uid -F auid!=unset -S execve -k user_emulation`\n\nNo output means the rules are not loaded.",
+    "fr": "Exécutez `auditctl -l | grep -E '(-k |key=)user_emulation'` (en root). La sortie attendue est l'ensemble des règles d'appel système suivant l'émulation de privilèges, par exemple :\n\n- `-a always,exit -F arch=b64 -C euid!=uid -F auid!=unset -S execve -k user_emulation`\n- `-a always,exit -F arch=b32 -C euid!=uid -F auid!=unset -S execve -k user_emulation`\n\nAucune sortie signifie que les règles ne sont pas chargées."
+  },
+  "logs": {
+    "en": "Events go to `/var/log/audit/audit.log`. After running a command via `sudo`, find the record with `grep 'key=\"user_emulation\"' /var/log/audit/audit.log` (grep the raw log; `ausearch` can falsely report no matches). The record shows the `auid`, the effective `uid`, the executed program and the timestamp.",
+    "fr": "Les événements aboutissent dans `/var/log/audit/audit.log`. Après avoir lancé une commande via `sudo`, trouvez l'enregistrement avec `grep 'key=\"user_emulation\"' /var/log/audit/audit.log` (grep sur le journal brut ; `ausearch` peut signaler à tort l'absence de correspondance). L'enregistrement indique l'`auid`, l'`uid` effectif, le programme exécuté et l'horodatage."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `audit_ruleset` resource to add the missing `user_emulation` syscall rules to a Pavois-managed drop-in in `/etc/audit/rules.d/` and load them. Because the audit subsystem is locked once running, the change is fully effective only after a **reboot** (`reboot_required: true`).",
+    "fr": "`pavois harden apply` utilise la ressource `audit_ruleset` pour ajouter les règles d'appel système `user_emulation` manquantes dans un drop-in géré par Pavois sous `/etc/audit/rules.d/` et les charger. Le sous-système d'audit étant verrouillé une fois lancé, la modification n'est pleinement effective qu'après un **redémarrage** (`reboot_required: true`)."
+  },
+  "impact": {
+    "en": "These are **passive syscall watches**, they never block privilege emulation, so `sudo`/`su` keep working; they only add records to `/var/log/audit/audit.log`. Precautions:\n\n- Because the rule fires on every `execve` where `euid != uid`, hosts with heavy `sudo` usage (automation, CI runners) can generate substantial audit volume, ensure `/var/log/audit` has space and rotation, and consider `auditd`'s backlog limits.\n- If the ruleset is immutable (`-e 2`), the rule can only be added after a reboot.\n- Confirm the rule parsed with `augenrules --load` and re-check `auditctl -l`.",
+    "fr": "Ce sont des **surveillances d'appels système passives**, elles ne bloquent jamais l'émulation de privilèges, donc `sudo`/`su` continuent de fonctionner ; elles ajoutent seulement des enregistrements dans `/var/log/audit/audit.log`. Précautions :\n\n- Comme la règle se déclenche à chaque `execve` où `euid != uid`, les hôtes à fort usage de `sudo` (automatisation, runners CI) peuvent générer un volume d'audit important, assurez-vous que `/var/log/audit` dispose d'espace et de rotation, et surveillez les limites de backlog d'`auditd`.\n- Si le jeu de règles est immuable (`-e 2`), la règle ne peut être ajoutée qu'après un redémarrage.\n- Confirmez que la règle a été analysée avec `augenrules --load` puis revérifiez `auditctl -l`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,37 @@
+{
+  "id": "pkg-telnetd-ssl-removed",
+  "title": {
+    "en": "Uninstall the ssl compliant telnet server",
+    "fr": "Désinstaller le serveur telnet compatible SSL"
+  },
+  "summary": {
+    "en": "Ensures the SSL-capable telnet server package `telnetd-ssl` is **not installed**.",
+    "fr": "Garantit que le paquet serveur telnet compatible SSL `telnetd-ssl` n'est **pas installé**."
+  },
+  "rationale": {
+    "en": "Even with optional SSL support, `telnetd-ssl` is a legacy telnet server: SSL is not enforced, the protocol falls back to **cleartext**, and it duplicates a remote-access role already served securely by **SSH**. Removing it eliminates an unnecessary, weakly-protected login service.",
+    "fr": "Même avec un support SSL optionnel, `telnetd-ssl` reste un serveur telnet hérité : le SSL n'est pas imposé, le protocole retombe en **clair**, et il duplique un rôle d'accès distant déjà assuré de façon sûre par **SSH**. Le supprimer élimine un service de connexion superflu et faiblement protégé."
+  },
+  "check_note": {
+    "en": "Pavois verifies that the `telnetd-ssl` package is absent from the package database. A present binary can be started to expose a (possibly cleartext-fallback) login port, so the package query is the authoritative signal regardless of inetd/systemd unit state.",
+    "fr": "Pavois vérifie que le paquet `telnetd-ssl` est absent de la base de paquets. Un binaire présent peut être démarré pour exposer un port de connexion (avec repli possible en clair), donc la requête de paquet est le signal qui fait autorité quel que soit l'état d'une unité inetd/systemd."
+  },
+  "verify": {
+    "en": "Run `dpkg -s telnetd-ssl` and expect **`package 'telnetd-ssl' is not installed`**. Optionally confirm nothing listens on port 23 with `ss -lntp | grep ':23'` (no output).",
+    "fr": "Exécutez `dpkg -s telnetd-ssl` : attendez **`package 'telnetd-ssl' is not installed`**. Éventuellement, confirmez qu'aucun service n'écoute sur le port 23 avec `ss -lntp | grep ':23'` (aucune sortie)."
+  },
+  "logs": {
+    "en": "Removal is recorded in `grep telnetd-ssl /var/log/dpkg.log`. Past telnet logins, if the service ran, appear in `/var/log/auth.log`.",
+    "fr": "La suppression est enregistrée dans `grep telnetd-ssl /var/log/dpkg.log`. Les connexions telnet passées, si le service a tourné, apparaissent dans `/var/log/auth.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares the `telnetd-ssl` **package** resource with action **remove**, so `pavois harden apply` uninstalls it via `apt`.",
+    "fr": "Le plan de durcissement de Pavois déclare la ressource **package** `telnetd-ssl` avec l'action **remove** ; ainsi `pavois harden apply` la désinstalle via `apt`."
+  },
+  "impact": {
+    "en": "An installed `telnetd-ssl` is a redundant, weakly-protected login service whose SSL is not guaranteed. **Precaution before applying:** confirm **SSH works** and that no client connects over telnet/port 23; otherwise removal could cut off a host administered through this service. Once SSH is verified, removal is safe.",
+    "fr": "Un `telnetd-ssl` installé est un service de connexion redondant et faiblement protégé dont le SSL n'est pas garanti. **Précaution avant application :** assurez-vous que **SSH fonctionne** et qu'aucun client ne se connecte en telnet/port 23 ; sinon la suppression pourrait couper un hôte administré via ce service. Une fois SSH vérifié, la suppression est sûre."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

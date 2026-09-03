@@ -1,16 +1,17 @@
 {
   "id": "sysctl-net-ipv4-conf-all-arp_filter",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -27,26 +28,28 @@
   },
   "check": [
     "describe kernel_parameter('net.ipv4.conf.all.arp_filter') do",
-    "  its('value') { should cmp 0 }",
+    "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.all.arp_filter[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
     "key": "net.ipv4.conf.all.arp_filter",
     "resource": "sysctl",
-    "value": "0"
+    "value": "1"
   },
   "title": {
     "en": "Configure ARP filtering for All IPv4 Interfaces",
     "fr": "Configurer le filtrage ARP pour toutes les interfaces IPv4"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`net.ipv4.conf.all.arp_filter` controls how the kernel answers ARP requests on a multi-homed host. By default (`0`) the kernel treats the ARP table **globally** and may answer an ARP request received on one interface with the MAC of another interface. The expected, benchmarked value here is `0`: changing this setting affects how the host advertises its addresses and must match the documented network design. Pavois enforces the value the standard prescribes so the host's ARP behavior is **predictable and consistent** with the rest of the hardening baseline.",
-    "fr": "`net.ipv4.conf.all.arp_filter` contrôle la façon dont le noyau répond aux requêtes ARP sur un hôte multi-rattaché. Par défaut (`0`), le noyau traite la table ARP de manière **globale** et peut répondre à une requête ARP reçue sur une interface avec l'adresse MAC d'une autre interface. La valeur attendue et référencée ici est `0` : modifier ce réglage affecte la façon dont l'hôte annonce ses adresses et doit correspondre à la conception réseau documentée. Pavois applique la valeur prescrite par le standard afin que le comportement ARP de l'hôte soit **prévisible et cohérent** avec le reste de la base de durcissement."
-  },
   "summary": {
     "en": "Enforces `net.ipv4.conf.all.arp_filter=0`, the benchmarked ARP-handling mode for predictable multi-homed behavior.",
     "fr": "Impose `net.ipv4.conf.all.arp_filter=0`, le mode de gestion ARP référencé pour un comportement multi-rattaché prévisible."
+  },
+  "rationale": {
+    "en": "`net.ipv4.conf.all.arp_filter` controls how the kernel answers ARP requests on a multi-homed host. By default (`0`) the kernel treats the ARP table **globally** and may answer an ARP request received on one interface with the MAC of another interface. The expected, benchmarked value here is `0`: changing this setting affects how the host advertises its addresses and must match the documented network design. Pavois enforces the value the standard prescribes so the host's ARP behavior is **predictable and consistent** with the rest of the hardening baseline.",
+    "fr": "`net.ipv4.conf.all.arp_filter` contrôle la façon dont le noyau répond aux requêtes ARP sur un hôte multi-rattaché. Par défaut (`0`), le noyau traite la table ARP de manière **globale** et peut répondre à une requête ARP reçue sur une interface avec l'adresse MAC d'une autre interface. La valeur attendue et référencée ici est `0` : modifier ce réglage affecte la façon dont l'hôte annonce ses adresses et doit correspondre à la conception réseau documentée. Pavois applique la valeur prescrite par le standard afin que le comportement ARP de l'hôte soit **prévisible et cohérent** avec le reste de la base de durcissement."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** via `kernel_parameter('net.ipv4.conf.all.arp_filter')` and asserts it equals `0`. ARP behavior is determined by the running kernel value, not by what a file says: a `sysctl.d` entry written but not reloaded, or overridden by a per-interface key, would leave the host behaving differently than the config implies. Reading the effective value is the only way to confirm the actual ARP mode in force.",
@@ -67,5 +70,7 @@
   "impact": {
     "en": "Setting `arp_filter=0` matches the kernel default, so on single-homed hosts there is **no impact**. On **multi-homed** hosts with several interfaces on the same subnet, ARP handling can cause ARP flux (replies from the 'wrong' interface); if your design depends on per-interface ARP filtering, this rule's global `0` may conflict with that. **Before applying**, review multi-homed hosts and pair this with `arp_ignore`/`arp_announce` tuning as your topology requires. No remote-access lockout risk on ordinary single-interface servers.",
     "fr": "Définir `arp_filter=0` correspond à la valeur par défaut du noyau, donc sur les hôtes à interface unique il n'y a **aucun impact**. Sur les hôtes **multi-rattachés** ayant plusieurs interfaces sur le même sous-réseau, la gestion ARP peut provoquer un flux ARP (réponses depuis la « mauvaise » interface) ; si votre conception dépend d'un filtrage ARP par interface, le `0` global de cette règle peut entrer en conflit. **Avant d'appliquer**, examinez les hôtes multi-rattachés et combinez ceci avec le réglage de `arp_ignore`/`arp_announce` selon votre topologie. Aucun risque de blocage d'accès distant sur les serveurs ordinaires à interface unique."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

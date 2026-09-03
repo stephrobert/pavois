@@ -35,12 +35,11 @@ tools/validate.sh             # intégrité + fidélité référence==corpus, ru
 | `debian13` | Debian 13 | apt |
 | `ubuntu2404` | Ubuntu 24.04 LTS | apt |
 | `ubuntu2204` | Ubuntu 22.04 LTS | apt |
-| `rhel9` | RHEL 9 / Rocky 9 | dnf |
+| `rhel9` | RHEL 9 / Rocky 9 / AlmaLinux 9 | dnf |
 | `rhel8` | RHEL 8 / Rocky 8 / AlmaLinux 8 | dnf |
-| `almalinux9` | AlmaLinux 9 | dnf |
 | `fedora` | Fedora courante (42/43) | dnf |
 
-Les clones binaires de RHEL (Rocky, AlmaLinux 8) s'auditent avec le profil
+Les clones binaires de RHEL (Rocky, AlmaLinux) s'auditent avec le profil
 `rhel8`/`rhel9` — pas de profil dupliqué. La détection d'OS (`cinc-auditor detect`)
 choisit automatiquement le bon profil, avec repli sur la version mineure la plus
 proche de la même famille.

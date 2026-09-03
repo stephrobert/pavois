@@ -1,16 +1,17 @@
 {
   "id": "sysctl-net-ipv6-conf-all-accept_ra_rtr_pref",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -28,6 +29,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.all.accept_ra_rtr_pref') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.all.accept_ra_rtr_pref[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -39,14 +43,13 @@
     "en": "Configure Accepting Router Preference in Router Advertisements on All IPv6 Interfaces",
     "fr": "Configurer l'acceptation de la préférence de routeur dans les annonces de routeur sur toutes les interfaces IPv6"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The Router Preference (low/medium/high) in a Router Advertisement lets routers influence which default gateway a host prefers. Since RAs are **unauthenticated**, a rogue node can advertise itself with high preference to win gateway selection and **divert the host's traffic** through it (man-in-the-middle). Honouring router preference is unnecessary on hosts with statically configured routing.",
-    "fr": "La préférence de routeur (faible/moyenne/élevée) d'une annonce de routeur permet aux routeurs d'influencer la passerelle par défaut préférée d'un hôte. Comme les RA ne sont **pas authentifiées**, un nœud malveillant peut s'annoncer avec une préférence élevée pour remporter la sélection de passerelle et **détourner le trafic de l'hôte** par son intermédiaire (homme du milieu). Respecter la préférence de routeur est inutile sur des hôtes au routage configuré statiquement."
-  },
   "summary": {
     "en": "Sets `net.ipv6.conf.all.accept_ra_rtr_pref` to `0` so the host ignores the Router Preference field carried in IPv6 Router Advertisements on all interfaces.",
     "fr": "Fixe `net.ipv6.conf.all.accept_ra_rtr_pref` à `0` afin que l'hôte ignore le champ de préférence de routeur transporté dans les annonces de routeur IPv6 sur toutes les interfaces."
+  },
+  "rationale": {
+    "en": "The Router Preference (low/medium/high) in a Router Advertisement lets routers influence which default gateway a host prefers. Since RAs are **unauthenticated**, a rogue node can advertise itself with high preference to win gateway selection and **divert the host's traffic** through it (man-in-the-middle). Honouring router preference is unnecessary on hosts with statically configured routing.",
+    "fr": "La préférence de routeur (faible/moyenne/élevée) d'une annonce de routeur permet aux routeurs d'influencer la passerelle par défaut préférée d'un hôte. Comme les RA ne sont **pas authentifiées**, un nœud malveillant peut s'annoncer avec une préférence élevée pour remporter la sélection de passerelle et **détourner le trafic de l'hôte** par son intermédiaire (homme du milieu). Respecter la préférence de routeur est inutile sur des hôtes au routage configuré statiquement."
   },
   "check_note": {
     "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.all.accept_ra_rtr_pref`) and asserts it is `0`. Reading the live kernel value beats parsing `/etc/sysctl.d/*`, where a setting may be **overridden** by a later drop-in or simply never applied, a file-based scanner would report a false pass.",
@@ -67,5 +70,7 @@
   "impact": {
     "en": "This only affects how a host picks among **multiple** RA-advertising routers; it does not by itself remove IPv6 connectivity. On hosts using SLAAC with several upstream routers, ignoring router preference may lead to a less optimal default gateway choice. On static-IPv6 servers there is no impact. Do not enforce on routers that must honour preference signalling.",
     "fr": "Cela n'affecte que la façon dont un hôte choisit parmi **plusieurs** routeurs annonçant des RA ; cela ne supprime pas en soi la connectivité IPv6. Sur des hôtes en SLAAC avec plusieurs routeurs amont, ignorer la préférence de routeur peut conduire à un choix de passerelle par défaut moins optimal. Sur les serveurs à IPv6 statique, aucun impact. Ne pas appliquer aux routeurs devant respecter la signalisation de préférence."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

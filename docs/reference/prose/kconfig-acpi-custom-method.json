@@ -1,0 +1,37 @@
+{
+  "id": "kconfig-acpi-custom-method",
+  "title": {
+    "en": "Do not allow ACPI methods to be inserted/replaced at run time",
+    "fr": "Interdire l'insertion/le remplacement des méthodes ACPI à l'exécution"
+  },
+  "summary": {
+    "en": "Ensures the running kernel is built **without** `CONFIG_ACPI_CUSTOM_METHOD`, so ACPI methods cannot be inserted or replaced at run time.",
+    "fr": "Garantit que le noyau en cours d'exécution est compilé **sans** `CONFIG_ACPI_CUSTOM_METHOD`, afin qu'aucune méthode ACPI ne puisse être insérée ou remplacée à l'exécution."
+  },
+  "rationale": {
+    "en": "Enabling `CONFIG_ACPI_CUSTOM_METHOD` exposes `/sys/kernel/debug/acpi/custom_method`, which lets a **root (uid=0)** user write arbitrary kernel memory by redefining ACPI methods. This breaks the boundary that hardening relies on (lockdown, secure boot, signed modules): an attacker who reaches root can rewrite kernel code/data, bypass `CONFIG_STRICT_KERNEL_RWX`, and defeat other security measures. Disabling it removes a powerful primitive for privilege persistence and kernel tampering.",
+    "fr": "Activer `CONFIG_ACPI_CUSTOM_METHOD` expose `/sys/kernel/debug/acpi/custom_method`, qui permet à un utilisateur **root (uid=0)** d'écrire dans une mémoire noyau arbitraire en redéfinissant les méthodes ACPI. Cela brise la frontière sur laquelle repose le durcissement (lockdown, secure boot, modules signés) : un attaquant qui obtient root peut réécrire code/données du noyau, contourner `CONFIG_STRICT_KERNEL_RWX` et déjouer d'autres mesures de sécurité. Le désactiver supprime une primitive puissante de persistance et d'altération du noyau."
+  },
+  "check_note": {
+    "en": "Pavois reads the build-time configuration of the **kernel that is actually running**, `/boot/config-$(uname -r)` and, as a fallback, the in-kernel `/proc/config.gz`. It asserts the line is **not** `CONFIG_ACPI_CUSTOM_METHOD=y`. Querying the effective config of the live kernel (keyed on `uname -r`) is more reliable than reading a stray `config-*` file in `/boot`: it reflects the exact image GRUB booted, even when multiple kernels are installed.",
+    "fr": "Pavois lit la configuration de compilation du **noyau réellement en cours d'exécution**, `/boot/config-$(uname -r)` et, en repli, `/proc/config.gz` intégré au noyau. Il vérifie que la ligne n'est **pas** `CONFIG_ACPI_CUSTOM_METHOD=y`. Interroger la config effective du noyau vivant (indexée sur `uname -r`) est plus fiable que lire un fichier `config-*` quelconque dans `/boot` : cela reflète l'image exacte démarrée par GRUB, même si plusieurs noyaux sont installés."
+  },
+  "verify": {
+    "en": "Run `grep -h '^CONFIG_ACPI_CUSTOM_METHOD=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep CONFIG_ACPI_CUSTOM_METHOD`). Expected: either **no output** or `# CONFIG_ACPI_CUSTOM_METHOD is not set`. A line `CONFIG_ACPI_CUSTOM_METHOD=y` is a failure.",
+    "fr": "Exécutez `grep -h '^CONFIG_ACPI_CUSTOM_METHOD=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep CONFIG_ACPI_CUSTOM_METHOD`). Attendu : **aucune sortie** ou `# CONFIG_ACPI_CUSTOM_METHOD is not set`. Une ligne `CONFIG_ACPI_CUSTOM_METHOD=y` est un échec."
+  },
+  "logs": {
+    "en": "There is no runtime log; this is a static kernel build option. Inspect it with `zcat /proc/config.gz | grep ACPI_CUSTOM_METHOD` or `grep ACPI_CUSTOM_METHOD /boot/config-$(uname -r)`. If the option is set, the debugfs entry would appear at `/sys/kernel/debug/acpi/custom_method`.",
+    "fr": "Il n'y a pas de journal d'exécution ; c'est une option de compilation statique du noyau. Inspectez-la avec `zcat /proc/config.gz | grep ACPI_CUSTOM_METHOD` ou `grep ACPI_CUSTOM_METHOD /boot/config-$(uname -r)`. Si l'option est activée, l'entrée debugfs apparaît à `/sys/kernel/debug/acpi/custom_method`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped: this is a **kernel compile-time** option that cannot be toggled at run time. Apply it by booting a kernel built with `CONFIG_ACPI_CUSTOM_METHOD` unset, use the distribution's hardened/stock kernel that disables it, or rebuild the kernel. `pavois harden apply` cannot change it.",
+    "fr": "Aucune remédiation automatisée n'est fournie : c'est une option de **compilation du noyau** qui ne peut pas être basculée à l'exécution. Appliquez-la en démarrant un noyau compilé avec `CONFIG_ACPI_CUSTOM_METHOD` désactivé, utilisez le noyau durci/standard de la distribution qui le désactive, ou recompilez le noyau. `pavois harden apply` ne peut pas la modifier."
+  },
+  "impact": {
+    "en": "**Risk if left enabled:** a root-level attacker (or a kernel exploit that reaches root) gains a clean primitive to write arbitrary kernel memory, undermining lockdown and module-signing protections.\n\n**Precautions before changing it:** switching kernels is a reboot-level operation. Verify the replacement kernel still supports your hardware's ACPI tables, keep the old kernel entry in GRUB as a fallback, and confirm boot on a console (not just SSH) before removing the previous kernel. Disabling this option has no functional impact on normal systems, only out-of-tree ACPI debugging workflows use it.",
+    "fr": "**Risque si laissé activé :** un attaquant disposant de root (ou un exploit noyau atteignant root) obtient une primitive propre pour écrire dans la mémoire noyau arbitraire, sapant le lockdown et la signature des modules.\n\n**Précautions avant de modifier :** changer de noyau est une opération nécessitant un redémarrage. Vérifiez que le noyau de remplacement supporte toujours les tables ACPI de votre matériel, conservez l'ancienne entrée noyau dans GRUB en repli, et confirmez le démarrage sur une console (pas seulement en SSH) avant de retirer le noyau précédent. Désactiver cette option n'a aucun impact fonctionnel sur les systèmes normaux, seuls des workflows de débogage ACPI hors arbre l'utilisent."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

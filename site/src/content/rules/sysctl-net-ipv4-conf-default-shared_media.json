@@ -1,16 +1,17 @@
 {
   "id": "sysctl-net-ipv4-conf-default-shared_media",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -28,6 +29,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.conf.default.shared_media') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.default.shared_media[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -39,14 +43,13 @@
     "en": "Configure Sending and Accepting Shared Media Redirects by Default",
     "fr": "Configurer l'envoi et l'acceptation des redirections sur média partagé par défaut"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "This setting must be aligned with `net.ipv4.conf.default.secure_redirects` because it overrides it: if `shared_media` is enabled for an interface, secure redirects are implicitly enabled too. Leaving it on therefore re-opens the ICMP-redirect attack surface (routing-table tampering, man-in-the-middle) even when secure_redirects is set to 0.",
-    "fr": "Ce réglage doit être aligné avec `net.ipv4.conf.default.secure_redirects` car il le surcharge : si `shared_media` est activé sur une interface, les redirections sécurisées le sont implicitement aussi. Le laisser actif rouvre donc la surface d'attaque des redirections ICMP (altération de la table de routage, homme du milieu) même lorsque secure_redirects vaut 0."
-  },
   "summary": {
     "en": "Disables shared-media redirect behavior on new IPv4 interfaces by setting `net.ipv4.conf.default.shared_media` to **0**, so it cannot silently re-enable secure redirects.",
     "fr": "Désactive le comportement de redirection sur média partagé sur les nouvelles interfaces IPv4 en positionnant `net.ipv4.conf.default.shared_media` à **0**, l'empêchant de réactiver silencieusement les redirections sécurisées."
+  },
+  "rationale": {
+    "en": "This setting must be aligned with `net.ipv4.conf.default.secure_redirects` because it overrides it: if `shared_media` is enabled for an interface, secure redirects are implicitly enabled too. Leaving it on therefore re-opens the ICMP-redirect attack surface (routing-table tampering, man-in-the-middle) even when secure_redirects is set to 0.",
+    "fr": "Ce réglage doit être aligné avec `net.ipv4.conf.default.secure_redirects` car il le surcharge : si `shared_media` est activé sur une interface, les redirections sécurisées le sont implicitement aussi. Le laisser actif rouvre donc la surface d'attaque des redirections ICMP (altération de la table de routage, homme du milieu) même lorsque secure_redirects vaut 0."
   },
   "check_note": {
     "en": "Pavois reads the **live** kernel value via `kernel_parameter('net.ipv4.conf.default.shared_media')`, reflecting the running setting after all `sysctl.conf` / `/etc/sysctl.d/` drop-ins and runtime overrides are merged. This matters here because `shared_media` overrides `secure_redirects`, so only the effective value reveals the true state, a file scan of `/etc/sysctl.conf` alone cannot.",
@@ -67,5 +70,7 @@
   "impact": {
     "en": "Safe on standard hosts. Precaution: `shared_media` only matters in **shared-medium / multi-subnet-on-one-segment** topologies where multiple IP subnets share a single physical link; disabling it there may break expected redirect behavior. On ordinary point-to-point or switched LANs there is no functional impact. The `default` key applies to new interfaces only, align `net.ipv4.conf.all.shared_media` for existing ones.",
     "fr": "Sans danger sur les hôtes standard. Précaution : `shared_media` n'a d'importance que dans les topologies à **média partagé / plusieurs sous-réseaux sur un même segment** où plusieurs sous-réseaux IP partagent un seul lien physique ; le désactiver dans ce cas peut casser le comportement de redirection attendu. Sur un LAN commuté ou point à point ordinaire, aucun impact fonctionnel. La clé `default` ne s'applique qu'aux nouvelles interfaces, aligner `net.ipv4.conf.all.shared_media` pour les interfaces existantes."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

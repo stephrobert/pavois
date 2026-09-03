@@ -2,11 +2,20 @@
   "id": "groupownerships-var-log-sssd",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -22,7 +31,8 @@
   },
   "check": [
     "only_if { command('test -d /var/log/sssd').exit_status.zero? }",
-    "describe command('timeout 60 find -P /var/log/sssd -type f ! -group sssd ! -group root 2>/dev/null | head -1') do",
+    "describe command('timeout 60 find -P /var/log/sssd -type f ! -group sssd ! -group root -print -quit 2>/dev/null') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
@@ -33,35 +43,36 @@
   },
   "title": {
     "en": "Verify Grouponwership of Files in /var/log/sssd",
-    "fr": "Verifier la propriete de groupe des fichiers dans /var/log/sssd"
-  },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The `/var/log/sssd` directory contains debug logs for the System Security Services Daemon (SSSD), which mediates authentication against LDAP, Active Directory or Kerberos. These logs can expose usernames, group memberships, domain topology and authentication errors. If they are group-owned by an unexpected group, members could read this sensitive identity data or tamper with the logs. Restricting group ownership to `sssd` or `root` keeps it accessible only to authorized personnel.",
-    "fr": "Le repertoire `/var/log/sssd` contient les journaux de debogage du System Security Services Daemon (SSSD), qui assure l'authentification contre LDAP, Active Directory ou Kerberos. Ces journaux peuvent exposer noms d'utilisateurs, appartenances de groupes, topologie de domaine et erreurs d'authentification. S'ils ont pour groupe proprietaire un groupe inattendu, ses membres pourraient lire ces donnees d'identite sensibles ou alterer les journaux. Restreindre la propriete de groupe a `sssd` ou `root` les reserve au personnel autorise."
+    "fr": "Vérifier la propriété de groupe des fichiers dans /var/log/sssd"
   },
   "summary": {
     "en": "Ensures every file under `/var/log/sssd` is group-owned by `sssd` or `root` (when the directory exists).",
-    "fr": "Garantit que chaque fichier sous `/var/log/sssd` a pour groupe proprietaire `sssd` ou `root` (lorsque le repertoire existe)."
+    "fr": "Garantit que chaque fichier sous `/var/log/sssd` a pour groupe propriétaire `sssd` ou `root` (lorsque le répertoire existe)."
+  },
+  "rationale": {
+    "en": "The `/var/log/sssd` directory contains debug logs for the System Security Services Daemon (SSSD), which mediates authentication against LDAP, Active Directory or Kerberos. These logs can expose usernames, group memberships, domain topology and authentication errors. If they are group-owned by an unexpected group, members could read this sensitive identity data or tamper with the logs. Restricting group ownership to `sssd` or `root` keeps it accessible only to authorized personnel.",
+    "fr": "Le répertoire `/var/log/sssd` contient les journaux de débogage du System Security Services Daemon (SSSD), qui assure l'authentification contre LDAP, Active Directory ou Kerberos. Ces journaux peuvent exposer noms d'utilisateurs, appartenances de groupes, topologie de domaine et erreurs d'authentification. S'ils ont pour groupe propriétaire un groupe inattendu, ses membres pourraient lire ces données d'identité sensibles ou altérer les journaux. Restreindre la propriété de groupe à `sssd` ou `root` les réserve au personnel autorisé."
   },
   "check_note": {
     "en": "Guarded by `only_if test -d /var/log/sssd` so it is skipped where SSSD is not deployed. Pavois then runs `find -P /var/log/sssd -type f ! -group sssd ! -group root` and expects empty output. Reading the actual group on each inode catches debug logs created at runtime that a config-file review would not see.",
-    "fr": "Protege par `only_if test -d /var/log/sssd`, il est ignore la ou SSSD n'est pas deploye. Pavois execute alors `find -P /var/log/sssd -type f ! -group sssd ! -group root` et attend une sortie vide. Lire le groupe reel de chaque inode detecte les journaux de debogage crees a l'execution qu'un examen de fichier de configuration ne verrait pas."
+    "fr": "Protégé par `only_if test -d /var/log/sssd`, il est ignoré là où SSSD n'est pas déployé. Pavois exécute alors `find -P /var/log/sssd -type f ! -group sssd ! -group root` et attend une sortie vide. Lire le groupe réel de chaque inode détecte les journaux de débogage créés à l'exécution qu'un examen de fichier de configuration ne verrait pas."
   },
   "verify": {
     "en": "Run `sudo find /var/log/sssd -type f ! -group sssd ! -group root 2>/dev/null`. Expected output: **empty**. Inspect any returned file with `ls -l <path>` to see its wrong group.",
-    "fr": "Executez `sudo find /var/log/sssd -type f ! -group sssd ! -group root 2>/dev/null`. Sortie attendue : **vide**. Inspectez tout fichier renvoye avec `ls -l <chemin>` pour voir son groupe incorrect."
+    "fr": "Exécutez `sudo find /var/log/sssd -type f ! -group sssd ! -group root 2>/dev/null`. Sortie attendue : **vide**. Inspectez tout fichier renvoyé avec `ls -l <chemin>` pour voir son groupe incorrect."
   },
   "logs": {
     "en": "List offending files with their group via `find /var/log/sssd -type f -printf '%g %p\\n'`. There is no daemon log for ownership; verify directly with `stat -c '%G %n' /var/log/sssd/*`.",
-    "fr": "Listez les fichiers fautifs avec leur groupe via `find /var/log/sssd -type f -printf '%g %p\\n'`. Aucun journal de service pour la propriete ; verifiez directement avec `stat -c '%G %n' /var/log/sssd/*`."
+    "fr": "Listez les fichiers fautifs avec leur groupe via `find /var/log/sssd -type f -printf '%g %p\\n'`. Aucun journal de service pour la propriété ; vérifiez directement avec `stat -c '%G %n' /var/log/sssd/*`."
   },
   "remediation_note": {
     "en": "No automated harden plan is provided. Fix it manually with `chgrp sssd <file>` for each offending file, e.g. `find /var/log/sssd -type f ! -group sssd ! -group root -exec chgrp sssd {} +`.",
-    "fr": "Aucun plan de durcissement automatise n'est fourni. Corrigez manuellement avec `chgrp sssd <fichier>` pour chaque fichier fautif, par ex. `find /var/log/sssd -type f ! -group sssd ! -group root -exec chgrp sssd {} +`."
+    "fr": "Aucun plan de durcissement automatisé n'est fourni. Corrigez manuellement avec `chgrp sssd <fichier>` pour chaque fichier fautif, par ex. `find /var/log/sssd -type f ! -group sssd ! -group root -exec chgrp sssd {} +`."
   },
   "impact": {
     "en": "Changing the group of SSSD logs is low-risk and has no effect where SSSD is absent (the check is skipped). Set the `sssd` group so the daemon retains write access to its debug logs; an incorrect group could prevent SSSD from logging. A simple `chgrp` does not affect authentication itself, only the log files.",
-    "fr": "Changer le groupe des journaux SSSD presente peu de risque et n'a aucun effet la ou SSSD est absent (le controle est ignore). Attribuez le groupe `sssd` pour que le service conserve l'acces en ecriture a ses journaux de debogage ; un groupe incorrect pourrait empecher SSSD de journaliser. Un simple `chgrp` n'affecte pas l'authentification elle-meme, seulement les fichiers journaux."
-  }
+    "fr": "Changer le groupe des journaux SSSD présente peu de risque et n'a aucun effet là où SSSD est absent (le contrôle est ignoré). Attribuez le groupe `sssd` pour que le service conserve l'accès en écriture à ses journaux de débogage ; un groupe incorrect pourrait empêcher SSSD de journaliser. Un simple `chgrp` n'affecte pas l'authentification elle-même, seulement les fichiers journaux."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

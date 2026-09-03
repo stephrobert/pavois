@@ -1,0 +1,37 @@
+{
+  "id": "audit-dac-modification",
+  "title": {
+    "en": "Record Events that Modify the System's Discretionary Access Controls - chmod",
+    "fr": "Journaliser les modifications des contrôles d'accès discrétionnaires (DAC) - chmod"
+  },
+  "summary": {
+    "en": "Ensures auditd has a live rule tagged **`perm_mod`** recording every change to file permissions/ownership (DAC).",
+    "fr": "Garantit qu'auditd possède une règle active marquée **`perm_mod`** journalisant chaque modification de permissions/propriété de fichier (DAC)."
+  },
+  "rationale": {
+    "en": "Changes to file permissions, ownership and ACLs (the discretionary access controls) are how an attacker opens up files they should not reach, or hides the traces of an intrusion. Auditing the `chmod`/`chown`/`setxattr` family of syscalls under the **`perm_mod`** key produces an immutable record that lets responders reconstruct who altered access rights and when, surfacing patterns of abuse by both authorized and unauthorized users.",
+    "fr": "Les modifications de permissions, de propriété et d'ACL (les contrôles d'accès discrétionnaires) sont le moyen par lequel un attaquant ouvre l'accès à des fichiers interdits, ou efface les traces d'une intrusion. Auditer la famille d'appels système `chmod`/`chown`/`setxattr` sous la clé **`perm_mod`** produit un enregistrement immuable permettant aux intervenants de reconstituer qui a modifié les droits d'accès et quand, révélant les schémas d'abus par des utilisateurs autorisés comme non autorisés."
+  },
+  "check_note": {
+    "en": "Pavois runs `auditctl -l` and checks that the loaded ruleset contains a rule keyed `perm_mod`. This is the effective, kernel-loaded ruleset, not the contents of `/etc/audit/rules.d/`. A rule present in a file but never loaded (syntax error, missing `augenrules --load`, pending reboot) would pass a file scan yet fail here, which is exactly the gap Pavois is built to catch.",
+    "fr": "Pavois exécute `auditctl -l` et vérifie que l'ensemble de règles chargé contient une règle marquée `perm_mod`. Il s'agit de l'ensemble effectif chargé dans le noyau, et non du contenu de `/etc/audit/rules.d/`. Une règle présente dans un fichier mais jamais chargée (erreur de syntaxe, `augenrules --load` oublié, redémarrage en attente) passerait un scan de fichier tout en échouant ici : c'est précisément l'écart que Pavois est conçu pour détecter."
+  },
+  "verify": {
+    "en": "Run `auditctl -l | grep perm_mod`. **Expected:** one or more lines ending in `-k perm_mod` (or `key=perm_mod`), covering `chmod`, `chown`, `setxattr`, etc. No output means the rule is not loaded.",
+    "fr": "Exécutez `auditctl -l | grep perm_mod`. **Attendu :** une ou plusieurs lignes se terminant par `-k perm_mod` (ou `key=perm_mod`), couvrant `chmod`, `chown`, `setxattr`, etc. Aucune sortie signifie que la règle n'est pas chargée."
+  },
+  "logs": {
+    "en": "- Confirm the loaded rule: `auditctl -l | grep perm_mod`.\n- See recorded events: grep the raw log, e.g. `grep 'key=\"perm_mod\"' /var/log/audit/audit.log` (ausearch is unreliable here, prefer raw grep).\n- Service state: `systemctl status auditd`.",
+    "fr": "- Confirmer la règle chargée : `auditctl -l | grep perm_mod`.\n- Voir les événements enregistrés : grep du journal brut, ex. `grep 'key=\"perm_mod\"' /var/log/audit/audit.log` (ausearch est peu fiable ici, préférez un grep brut).\n- État du service : `systemctl status auditd`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `audit_ruleset` resource: it writes the DAC-modification audit rules (keyed `perm_mod`) into auditd's rules directory and reloads the ruleset. This rule is flagged `reboot_required`, so a reboot guarantees the new rules are active from boot and any immutable (`-e 2`) configuration takes effect.",
+    "fr": "`pavois harden apply` utilise la ressource `audit_ruleset` : elle écrit les règles d'audit des modifications DAC (clé `perm_mod`) dans le répertoire de règles d'auditd et recharge l'ensemble. Cette règle est marquée `reboot_required` : un redémarrage garantit que les nouvelles règles sont actives dès le démarrage et que toute configuration immuable (`-e 2`) prend effet."
+  },
+  "impact": {
+    "en": "Without this rule, permission and ownership tampering happens invisibly, crippling incident investigation and breaking PCI/STIG audit-trail requirements. Applying it adds audit rules and may require a reboot; on busy systems a high volume of `chmod`/`chown` events can grow `/var/log/audit/` quickly, so size `max_log_file`/`space_left` appropriately before enabling.",
+    "fr": "Sans cette règle, la falsification des permissions et de la propriété passe inaperçue, paralysant l'investigation d'incident et enfreignant les exigences de piste d'audit PCI/STIG. L'appliquer ajoute des règles d'audit et peut nécessiter un redémarrage ; sur des systèmes chargés, un fort volume d'événements `chmod`/`chown` peut faire grossir `/var/log/audit/` rapidement, dimensionnez donc `max_log_file`/`space_left` avant d'activer."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

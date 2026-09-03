@@ -1,16 +1,17 @@
 {
   "id": "kconfig-seccomp",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R20"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_SECCOMP=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_SECCOMP='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_SECCOMP=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_SECCOMP=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Enable seccomp to safely compute untrusted bytecode",
     "fr": "Activer seccomp pour exécuter sans risque du bytecode non fiable"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "seccomp enables the ability to filter system calls made by an application, effectively isolating the system's resources from it. `CONFIG_SECCOMP` is the base switch on which **seccomp-bpf** (`CONFIG_SECCOMP_FILTER`) builds; without it a process cannot restrict which syscalls it may issue, so a compromised or sandboxed program retains the full kernel interface and a much larger path to **privilege escalation or container escape**.",
-    "fr": "seccomp permet de filtrer les appels système émis par une application, isolant ainsi efficacement les ressources du système. `CONFIG_SECCOMP` est l'interrupteur de base sur lequel s'appuie **seccomp-bpf** (`CONFIG_SECCOMP_FILTER`) ; sans lui, un processus ne peut pas restreindre les appels système qu'il émet : un programme compromis ou mis en bac à sable conserve toute l'interface noyau et une voie bien plus large vers une **élévation de privilèges ou une évasion de conteneur**."
-  },
   "summary": {
     "en": "Requires the kernel to be built with **`CONFIG_SECCOMP=y`**, the base support that enables seccomp syscall confinement.",
     "fr": "Exige que le noyau soit compilé avec **`CONFIG_SECCOMP=y`**, le support de base qui active le confinement des appels système par seccomp."
+  },
+  "rationale": {
+    "en": "seccomp enables the ability to filter system calls made by an application, effectively isolating the system's resources from it. `CONFIG_SECCOMP` is the base switch on which **seccomp-bpf** (`CONFIG_SECCOMP_FILTER`) builds; without it a process cannot restrict which syscalls it may issue, so a compromised or sandboxed program retains the full kernel interface and a much larger path to **privilege escalation or container escape**.",
+    "fr": "seccomp permet de filtrer les appels système émis par une application, isolant ainsi efficacement les ressources du système. `CONFIG_SECCOMP` est l'interrupteur de base sur lequel s'appuie **seccomp-bpf** (`CONFIG_SECCOMP_FILTER`) ; sans lui, un processus ne peut pas restreindre les appels système qu'il émet : un programme compromis ou mis en bac à sable conserve toute l'interface noyau et une voie bien plus large vers une **élévation de privilèges ou une évasion de conteneur**."
   },
   "check_note": {
     "en": "Pavois reads the build options of the **running** kernel, `grep '^CONFIG_SECCOMP=' /boot/config-$(uname -r)` or `zcat /proc/config.gz`, and requires `y`. Reading the live kernel's own config (keyed on `uname -r`) reflects exactly the booted kernel, which a package-name guess or generic file cannot.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "If absent, no process can restrict its syscalls, so seccomp profiles in Docker/Podman/systemd are silently ineffective and sandboxes are far weaker. **Precautions:** this is an enabling capability, not an active restriction, so turning it on (via a compliant kernel) cannot break existing software. Leaving it off is the real risk. No lockout concern beyond the normal kernel switch.",
     "fr": "En son absence, aucun processus ne peut restreindre ses appels système : les profils seccomp de Docker/Podman/systemd sont silencieusement inefficaces et les bacs à sable bien plus faibles. **Précautions :** il s'agit d'une capacité d'activation, non d'une restriction active ; l'activer (via un noyau conforme) ne peut casser aucun logiciel existant. La laisser désactivée est le véritable risque. Aucune préoccupation de blocage au-delà du changement de noyau habituel."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

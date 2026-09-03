@@ -1,16 +1,17 @@
 {
   "id": "mount-opt-nosuid",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -28,21 +29,28 @@
   "check": [
     "describe mount('/opt') do",
     "  its('options') { should include 'nosuid' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /opt 2>/dev/null; grep -hsE '[[:space:]]/opt[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /opt 2>/dev/null) 2>/dev/null; } | grep -ow 'nosuid'\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "awk -v m=/opt -v o=nosuid '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,\",\");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4\",\"o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /opt && mount -o remount,nosuid /opt || true",
+    "name": "mount-opt-nosuid",
+    "not_if": "awk -v m=/opt '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\\n' | grep -qx nosuid",
+    "resource": "exec"
+  },
   "title": {
     "en": "Add nosuid Option to /opt",
     "fr": "Ajouter l'option nosuid à /opt"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The presence of **SUID** and **SGID** executables must be tightly controlled. `/opt` holds add-on / third-party software packages whose binaries should not normally need setuid/setgid privileges. Mounting `/opt` with `nosuid` makes the kernel ignore those bits, reducing the risk that a vulnerable or malicious third-party SUID binary becomes a privilege-escalation vector.",
-    "fr": "La présence d'exécutables **SUID** et **SGID** doit être strictement contrôlée. `/opt` héberge des logiciels additionnels / tiers dont les binaires ne devraient normalement pas nécessiter de privilèges setuid/setgid. Monter `/opt` avec `nosuid` force le noyau à ignorer ces bits, réduisant le risque qu'un binaire SUID tiers vulnérable ou malveillant devienne un vecteur d'élévation de privilèges."
-  },
   "summary": {
     "en": "Mounts the `/opt` partition with the `nosuid` option so setuid/setgid bits on third-party software are ignored.",
     "fr": "Monte la partition `/opt` avec l'option `nosuid` afin que les bits setuid/setgid des logiciels tiers soient ignorés."
+  },
+  "rationale": {
+    "en": "The presence of **SUID** and **SGID** executables must be tightly controlled. `/opt` holds add-on / third-party software packages whose binaries should not normally need setuid/setgid privileges. Mounting `/opt` with `nosuid` makes the kernel ignore those bits, reducing the risk that a vulnerable or malicious third-party SUID binary becomes a privilege-escalation vector.",
+    "fr": "La présence d'exécutables **SUID** et **SGID** doit être strictement contrôlée. `/opt` héberge des logiciels additionnels / tiers dont les binaires ne devraient normalement pas nécessiter de privilèges setuid/setgid. Monter `/opt` avec `nosuid` force le noyau à ignorer ces bits, réduisant le risque qu'un binaire SUID tiers vulnérable ou malveillant devienne un vecteur d'élévation de privilèges."
   },
   "check_note": {
     "en": "Pavois reads the **effective** mount via `mount('/opt')` and asserts the resolved options include `nosuid`. The live mount table reflects the kernel's real state, including options from `systemd` mount units or a remount, which a static read of `/etc/fstab` could misrepresent. If `/opt` is not a separate mount point, there is no dedicated partition to harden.",
@@ -63,5 +71,7 @@
   "impact": {
     "en": "Without `nosuid`, a third-party SUID binary in `/opt` could be exploited for privilege escalation. **Precaution:** some commercial or packaged software installed under `/opt` legitimately ships SUID/SGID helpers (certain VPN clients, backup agents, container runtimes). Inventory `/opt` for setuid files first, `find /opt -perm /6000 -type f`, and confirm none are required before applying. If `/opt` is **not a separate partition**, do not apply `nosuid` to `/`. The `remount` is reversible; test affected applications afterward.",
     "fr": "Sans `nosuid`, un binaire SUID tiers dans `/opt` pourrait être exploité pour une élévation de privilèges. **Précaution :** certains logiciels commerciaux ou packagés installés sous `/opt` livrent légitimement des assistants SUID/SGID (certains clients VPN, agents de sauvegarde, runtimes de conteneurs). Inventoriez d'abord les fichiers setuid de `/opt`, `find /opt -perm /6000 -type f`, et confirmez qu'aucun n'est requis avant d'appliquer. Si `/opt` **n'est pas une partition distincte**, n'appliquez pas `nosuid` à `/`. Le `remount` est réversible ; testez ensuite les applications concernées."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

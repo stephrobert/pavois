@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 
 	"github.com/spf13/cobra"
 
@@ -21,6 +24,9 @@ var doctorCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	RunE:  runDoctor,
 }
+
+// a control declaration starts a line: `control 'id' do`
+var controlDecl = regexp.MustCompile(`(?m)^control '`)
 
 func init() { rootCmd.AddCommand(doctorCmd) }
 
@@ -66,11 +72,25 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Rule corpus: the .rb the scanner executes are generated from the reference.
+	//
+	// This used to count the .rb FILES and call them controls: it reported "301 controls" on a
+	// corpus of 620 for debian12 alone, because a domain file holds many controls. A doctor that
+	// misreports the size of the corpus is worse than one that says nothing.
 	root := findRoot()
 	rb, _ := filepath.Glob(filepath.Join(root, "profiles", "linux", "*", "controls", "*.rb"))
+	ctrls, oses := 0, map[string]bool{}
+	_ = bytes.MinRead
+	for _, f := range rb {
+		b, err := os.ReadFile(f) //nolint:gosec // path from our own glob under the repo root
+		if err != nil {
+			continue
+		}
+		ctrls += len(controlDecl.FindAll(b, -1))
+		oses[filepath.Base(filepath.Dir(filepath.Dir(f)))] = true
+	}
 	switch {
 	case len(rb) > 0:
-		line("OK", "rule corpus", fmt.Sprintf("%d controls rendered under profiles/linux/", len(rb)))
+		line("OK", "rule corpus", fmt.Sprintf("%d controls rendered across %d OS profile(s)", ctrls, len(oses)))
 	case corpus.Available():
 		line("OK", "rule corpus", "embedded in this binary (self-contained release build)")
 	default:

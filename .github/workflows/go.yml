@@ -21,6 +21,10 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
       - name: Checkout pavois
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -62,6 +66,29 @@ jobs:
       - name: go test (race)
         working-directory: pavois/go
         run: go test -race ./...
+
+      # Fuzz the parsers that consume input pavois does not control: the InSpec JSON a separate
+      # engine produces on a remote target, and the compiled recipe that decides what a rollback
+      # DELETES. Seed corpora run on every `go test`; this step actually mutates, briefly, so a
+      # regression surfaces in CI rather than on someone's host. Any crasher is written to
+      # testdata/fuzz/ and becomes a permanent regression test.
+      - name: go test (fuzz)
+        working-directory: pavois/go
+        run: |
+          go test ./internal/audit/ -run '^$' -fuzz 'FuzzProves' -fuzztime=30s
+          go test ./internal/audit/ -run '^$' -fuzz 'FuzzEvaluate' -fuzztime=60s
+          go test ./cmd/ -run '^$' -fuzz 'FuzzPlannedTargets' -fuzztime=60s
+
+      # A green suite says nothing is broken. It does not say anything is GUARDED — a test can
+      # stop biting when a refactor moves an assertion or a case becomes unreachable, and nothing
+      # goes red the day it happens. Each declaration in tools/falsify.yml neuters one guard on a
+      # COPY of the module and demands its test go red; a mutant that fails to compile is reported
+      # VOID rather than as a pass, because every test failing is not evidence of a guard.
+      - name: falsify (the declared guards must still bite)
+        working-directory: pavois
+        run: |
+          python3 -m pip install --no-cache-dir --quiet pyyaml==6.0.2
+          python3 tools/falsify.py
 
       - name: golangci-lint
         working-directory: pavois/go

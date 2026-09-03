@@ -1,0 +1,37 @@
+{
+  "id": "pkg-usbguard-installed",
+  "title": {
+    "en": "Install usbguard Package",
+    "fr": "Installer le paquet usbguard"
+  },
+  "summary": {
+    "en": "Ensures the `usbguard` USB device authorization framework is **installed**.",
+    "fr": "Garantit que le cadriciel d'autorisation de périphériques USB `usbguard` est **installé**."
+  },
+  "rationale": {
+    "en": "`usbguard` is a framework that protects against **rogue USB devices** by implementing allow-listing / block-listing based on USB device attributes. Without it, any USB device plugged into the host is accepted by the kernel, enabling attacks such as malicious HID injection (BadUSB / Rubber Ducky), data exfiltration via mass-storage, or rogue network adapters that redirect traffic. Installing usbguard gives you a policy enforcement point so that only explicitly authorized devices are allowed.",
+    "fr": "`usbguard` est un cadriciel qui protège contre les **périphériques USB malveillants** en mettant en œuvre une liste d'autorisation / d'interdiction basée sur les attributs des périphériques USB. Sans lui, tout périphérique USB branché sur l'hôte est accepté par le noyau, ce qui rend possibles des attaques telles que l'injection HID malveillante (BadUSB / Rubber Ducky), l'exfiltration de données via stockage de masse, ou des cartes réseau pirates qui détournent le trafic. Installer usbguard fournit un point d'application de politique afin que seuls les périphériques explicitement autorisés soient acceptés."
+  },
+  "check_note": {
+    "en": "Pavois verifies presence through the InSpec `package('usbguard')` resource (backed by `rpm -q usbguard`). This is a prerequisite check: the package must exist before any policy can be loaded. Note that installing usbguard alone is not protective until a rule set is generated (`usbguard generate-policy`) and the service is enabled, Pavois treats the package as the baseline gate.",
+    "fr": "Pavois vérifie la présence via la ressource InSpec `package('usbguard')` (qui s'appuie sur `rpm -q usbguard`). C'est une vérification de prérequis : le paquet doit exister avant qu'une politique puisse être chargée. Notez qu'installer usbguard seul n'est pas protecteur tant qu'un jeu de règles n'est pas généré (`usbguard generate-policy`) et que le service n'est pas activé, Pavois considère le paquet comme la condition de base."
+  },
+  "verify": {
+    "en": "Run `rpm -q usbguard`. Expected output: a versioned package name such as `usbguard-1.0.0-...`. To confirm enforcement is active, also check `systemctl is-active usbguard` returns `active` and `usbguard list-rules` shows your policy.",
+    "fr": "Exécutez `rpm -q usbguard`. Sortie attendue : un nom de paquet versionné tel que `usbguard-1.0.0-...`. Pour confirmer que l'application est active, vérifiez aussi que `systemctl is-active usbguard` renvoie `active` et que `usbguard list-rules` affiche votre politique."
+  },
+  "logs": {
+    "en": "- Package state: `rpm -q usbguard`, transactions in `/var/log/dnf.rpm.log`.\n- Device authorization decisions and policy events: `journalctl -u usbguard` (allowed/blocked devices are logged here).",
+    "fr": "- État du paquet : `rpm -q usbguard`, transactions dans `/var/log/dnf.rpm.log`.\n- Décisions d'autorisation de périphériques et événements de politique : `journalctl -u usbguard` (les périphériques autorisés/bloqués y sont journalisés)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource for `usbguard` with action `install`, so `pavois harden apply` installs it (`dnf install usbguard`). The plan installs the package only; you must still generate an initial policy with `usbguard generate-policy` and enable the service so legitimate devices keep working.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` pour `usbguard` avec l'action `install`, donc `pavois harden apply` l'installe (`dnf install usbguard`). Le plan installe uniquement le paquet ; vous devez encore générer une politique initiale avec `usbguard generate-policy` et activer le service pour que les périphériques légitimes continuent de fonctionner."
+  },
+  "impact": {
+    "en": "Without usbguard the host accepts any USB device, leaving it exposed to BadUSB-class attacks and unauthorized storage/network devices. **Before enabling enforcement (precaution against lockout):** generate the policy *while* the devices you need (keyboard, mouse, KVM, smartcard readers) are connected, otherwise enabling the service can block your own input devices, on a remote server this is harmless (USB input is irrelevant over SSH), but on a console-managed machine it can lock out local administration. Installing the package alone, as this rule does, is non-disruptive.",
+    "fr": "Sans usbguard l'hôte accepte tout périphérique USB, ce qui l'expose aux attaques de type BadUSB et aux périphériques de stockage/réseau non autorisés. **Avant d'activer l'application (précaution contre le verrouillage) :** générez la politique *pendant* que les périphériques nécessaires (clavier, souris, KVM, lecteurs de cartes à puce) sont connectés, sinon activer le service peut bloquer vos propres périphériques de saisie, sur un serveur distant c'est sans conséquence (l'USB de saisie est inutile en SSH), mais sur une machine gérée par console cela peut verrouiller l'administration locale. Installer le seul paquet, comme le fait cette règle, est sans impact."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,16 +1,17 @@
 {
   "id": "kconfig-slab-freelist-random",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R17"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_SLAB_FREELIST_RANDOM=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_SLAB_FREELIST_RANDOM='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_SLAB_FREELIST_RANDOM=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_SLAB_FREELIST_RANDOM=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Randomize slab freelist",
     "fr": "Randomiser la freelist du slab"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_SLAB_FREELIST_RANDOM=y` randomizes the order in which free objects are handed out within a slab cache. This breaks the predictable, sequential layout that heap-overflow exploits rely on to place an attacker-controlled object adjacent to a target object, making reliable heap grooming much harder.",
-    "fr": "`CONFIG_SLAB_FREELIST_RANDOM=y` randomise l'ordre dans lequel les objets libres sont distribués au sein d'un cache slab. Cela casse l'agencement séquentiel et prévisible sur lequel s'appuient les exploits par débordement de tas pour placer un objet contrôlé par l'attaquant à côté d'un objet cible, rendant le « heap grooming » fiable bien plus difficile."
-  },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_SLAB_FREELIST_RANDOM=y`, randomizing slab object allocation order.",
     "fr": "Exige un noyau compilé avec `CONFIG_SLAB_FREELIST_RANDOM=y`, randomisant l'ordre d'allocation des objets du slab."
+  },
+  "rationale": {
+    "en": "`CONFIG_SLAB_FREELIST_RANDOM=y` randomizes the order in which free objects are handed out within a slab cache. This breaks the predictable, sequential layout that heap-overflow exploits rely on to place an attacker-controlled object adjacent to a target object, making reliable heap grooming much harder.",
+    "fr": "`CONFIG_SLAB_FREELIST_RANDOM=y` randomise l'ordre dans lequel les objets libres sont distribués au sein d'un cache slab. Cela casse l'agencement séquentiel et prévisible sur lequel s'appuient les exploits par débordement de tas pour placer un objet contrôlé par l'attaquant à côté d'un objet cible, rendant le « heap grooming » fiable bien plus difficile."
   },
   "check_note": {
     "en": "Pavois reads the build configuration of the **running** kernel via `/boot/config-$(uname -r)` or `/proc/config.gz` and confirms `CONFIG_SLAB_FREELIST_RANDOM=y`. Inspecting the effective config of the booted kernel, not a default or packaged file, proves the protection is compiled into the kernel actually in use.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "Without freelist randomization, slab allocation order is deterministic, giving heap-overflow exploits a reliable way to position objects and improving their success rate. **Precautions:** remediation means changing kernels and rebooting, schedule a maintenance window and keep the prior kernel in GRUB. The performance impact is negligible for typical workloads.",
     "fr": "Sans randomisation de la freelist, l'ordre d'allocation du slab est déterministe, offrant aux exploits par débordement de tas un moyen fiable de positionner les objets et augmentant leur taux de succès. **Précautions :** la remédiation implique un changement de noyau et un redémarrage, planifiez une fenêtre de maintenance et conservez le noyau précédent dans GRUB. L'impact sur les performances est négligeable pour les charges courantes."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

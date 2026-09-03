@@ -1,0 +1,37 @@
+{
+  "id": "ssh-disable-forwarding",
+  "title": {
+    "en": "Disable SSH Forwarding",
+    "fr": "Désactiver le forwarding SSH"
+  },
+  "summary": {
+    "en": "Forces **`DisableForwarding yes`**, the master switch that turns off all SSH forwarding (TCP, X11, agent, StreamLocal, tun).",
+    "fr": "Force **`DisableForwarding yes`**, l'interrupteur maître qui désactive tout forwarding SSH (TCP, X11, agent, StreamLocal, tun)."
+  },
+  "rationale": {
+    "en": "SSH forwarding lets an authenticated client tunnel arbitrary traffic through the server: TCP forwarding can be used to **pivot** into the internal network or bypass firewall segmentation, X11 and agent forwarding can leak credentials back to a compromised endpoint. Unless there is an operational need, `DisableForwarding yes` shuts every forwarding type in one directive, removing a powerful lateral-movement and exfiltration vector.",
+    "fr": "Le forwarding SSH permet à un client authentifié de tunneliser un trafic arbitraire à travers le serveur : le forwarding TCP peut servir à **rebondir** vers le réseau interne ou contourner la segmentation pare-feu, le forwarding X11 et agent peut fuiter des identifiants vers un poste compromis. Sauf besoin opérationnel, `DisableForwarding yes` ferme tous les types de forwarding en une seule directive, supprimant un puissant vecteur de mouvement latéral et d'exfiltration."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** value from `sshd -T`. `DisableForwarding` interacts with `AllowTcpForwarding`, `X11Forwarding`, `AllowAgentForwarding` and per-user `Match` overrides; only the resolved output shows the true result after all includes and drop-ins, which a raw read of `/etc/ssh/sshd_config` cannot.",
+    "fr": "Pavois lit la valeur **effective** via `sshd -T`. `DisableForwarding` interagit avec `AllowTcpForwarding`, `X11Forwarding`, `AllowAgentForwarding` et des surcharges `Match` par utilisateur ; seule la sortie résolue montre le résultat réel après tous les includes et drop-ins, ce qu'une lecture brute de `/etc/ssh/sshd_config` ne peut pas faire."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -i '^disableforwarding'`. Expected output is `disableforwarding yes`.",
+    "fr": "Exécutez `sshd -T | grep -i '^disableforwarding'`. La sortie attendue est `disableforwarding yes`."
+  },
+  "logs": {
+    "en": "Refused forwarding attempts are logged in `/var/log/auth.log` (Debian/Ubuntu) or `journalctl -u sshd` (RHEL family), e.g. lines mentioning `refused local port forward` when a client tries to open a tunnel.",
+    "fr": "Les tentatives de forwarding refusées sont journalisées dans `/var/log/auth.log` (Debian/Ubuntu) ou `journalctl -u sshd` (famille RHEL), par exemple des lignes mentionnant `refused local port forward` lorsqu'un client tente d'ouvrir un tunnel."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan writes the `sshd_setting` directive **`DisableForwarding yes`** in a managed drop-in, validates with `sshd -t`, then **reloads** the `ssh` service. Apply it with `pavois harden apply`.",
+    "fr": "Le plan harden de Pavois écrit la directive `sshd_setting` **`DisableForwarding yes`** dans un drop-in géré, valide avec `sshd -t`, puis **recharge** le service `ssh`. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "**Before applying**, confirm no workflow depends on SSH tunnels: `ssh -L`/`-R`/`-D` port forwards, `git`/`rsync` over jump hosts that proxy, X11-forwarded GUI apps (`ssh -X`), or `ForwardAgent` for chained logins. If any are needed, scope an exception with a `Match` block instead of forwarding globally. This change does not affect plain shell logins and the reload keeps current sessions alive.",
+    "fr": "**Avant d'appliquer**, vérifiez qu'aucun flux de travail ne dépend des tunnels SSH : forwarding de ports `ssh -L`/`-R`/`-D`, `git`/`rsync` via des hôtes de rebond, applications graphiques en X11 (`ssh -X`), ou `ForwardAgent` pour les connexions chaînées. Si l'un d'eux est nécessaire, ouvrez une exception ciblée via un bloc `Match` plutôt que d'autoriser le forwarding globalement. Ce changement n'affecte pas les connexions shell simples et le rechargement maintient les sessions en cours."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

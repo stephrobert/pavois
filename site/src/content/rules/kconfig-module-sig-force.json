@@ -1,16 +1,17 @@
 {
   "id": "kconfig-module-sig-force",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R18"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_MODULE_SIG_FORCE=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_MODULE_SIG_FORCE='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_MODULE_SIG_FORCE=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_MODULE_SIG_FORCE=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Require modules to be validly signed",
     "fr": "Exiger que les modules soient valablement signés"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_MODULE_SIG` only makes the kernel *able* to verify signatures; without `CONFIG_MODULE_SIG_FORCE=y` it still loads unsigned modules (it merely taints the kernel). Enforcement makes the kernel **refuse** any module that is unsigned or signed with an unknown key, closing the door an attacker would otherwise use to load arbitrary ring-0 code. This is the option that turns module signing from advisory into mandatory.",
-    "fr": "`CONFIG_MODULE_SIG` rend seulement le noyau *capable* de vérifier les signatures ; sans `CONFIG_MODULE_SIG_FORCE=y`, il charge tout de même les modules non signés (il se contente de marquer le noyau comme « taint »). L'application stricte fait que le noyau **refuse** tout module non signé ou signé avec une clé inconnue, fermant la porte qu'un attaquant utiliserait sinon pour charger du code arbitraire en ring 0. C'est l'option qui transforme la signature des modules d'indicative en obligatoire."
-  },
   "summary": {
     "en": "Requires the running kernel to be built with `CONFIG_MODULE_SIG_FORCE=y` so it rejects any module that is unsigned or signed with an untrusted key.",
     "fr": "Exige que le noyau en cours d'exécution soit compilé avec `CONFIG_MODULE_SIG_FORCE=y` afin qu'il rejette tout module non signé ou signé avec une clé non fiable."
+  },
+  "rationale": {
+    "en": "`CONFIG_MODULE_SIG` only makes the kernel *able* to verify signatures; without `CONFIG_MODULE_SIG_FORCE=y` it still loads unsigned modules (it merely taints the kernel). Enforcement makes the kernel **refuse** any module that is unsigned or signed with an unknown key, closing the door an attacker would otherwise use to load arbitrary ring-0 code. This is the option that turns module signing from advisory into mandatory.",
+    "fr": "`CONFIG_MODULE_SIG` rend seulement le noyau *capable* de vérifier les signatures ; sans `CONFIG_MODULE_SIG_FORCE=y`, il charge tout de même les modules non signés (il se contente de marquer le noyau comme « taint »). L'application stricte fait que le noyau **refuse** tout module non signé ou signé avec une clé inconnue, fermant la porte qu'un attaquant utiliserait sinon pour charger du code arbitraire en ring 0. C'est l'option qui transforme la signature des modules d'indicative en obligatoire."
   },
   "check_note": {
     "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)` with `/proc/config.gz` as a fallback, so the result reflects the kernel actually booted rather than a static file. Pavois expects `CONFIG_MODULE_SIG_FORCE=y`.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "Without enforcement, an attacker who can drop a module file can run code in the kernel undetected. The main risk when **enabling** enforcement is breaking legitimate out-of-tree modules: proprietary GPU drivers (NVIDIA), VirtualBox, DKMS-built modules and some kernel debug tools will fail to load if they are not signed with a trusted key. Before enforcing, sign every needed module (or enroll the key via MOK under Secure Boot), test in a non-production boot, and keep console/recovery access so a failed module load does not lock you out of required hardware.",
     "fr": "Sans application stricte, un attaquant capable de déposer un fichier de module peut exécuter du code dans le noyau sans être détecté. Le principal risque lors de l'**activation** est de casser des modules légitimes hors arbre : pilotes GPU propriétaires (NVIDIA), VirtualBox, modules construits par DKMS et certains outils de débogage noyau échoueront à se charger s'ils ne sont pas signés avec une clé de confiance. Avant d'appliquer la contrainte, signez chaque module nécessaire (ou enrôlez la clé via MOK sous Secure Boot), testez sur un démarrage hors production, et conservez un accès console/récupération afin qu'un échec de chargement ne vous prive pas du matériel requis."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

@@ -1,0 +1,37 @@
+{
+  "id": "dconf-gnome-login-retries",
+  "title": {
+    "en": "Set the GNOME3 Login Number of Failures",
+    "fr": "Définir le nombre d'échecs de connexion GNOME3"
+  },
+  "summary": {
+    "en": "Limits the number of authentication failures the GNOME login screen tolerates before resetting, via `allowed-failures` in the system `dconf` database, locked against user override.",
+    "fr": "Limite le nombre d'échecs d'authentification tolérés par l'écran de connexion GNOME avant réinitialisation, via `allowed-failures` dans la base `dconf` du système, verrouillé contre toute modification par l'utilisateur."
+  },
+  "rationale": {
+    "en": "Capping the number of password attempts the GNOME greeter accepts before resetting (`allowed-failures`) slows down interactive password-guessing at the login screen and forces an attacker to restart the prompt, which both reduces throughput and draws attention to repeated failures. Leaving it unbounded lets someone with physical access (or a remote display) hammer guesses against a logged-out console **with no friction**.",
+    "fr": "Limiter le nombre de tentatives de mot de passe que l'écran d'accueil GNOME accepte avant réinitialisation (`allowed-failures`) ralentit les attaques interactives par devinette au niveau de l'écran de connexion et force l'attaquant à relancer l'invite, ce qui réduit le débit et attire l'attention sur les échecs répétés. Le laisser illimité permet à quiconque ayant un accès physique (ou un affichage distant) d'enchaîner les essais sur une console déconnectée **sans aucune friction**."
+  },
+  "check_note": {
+    "en": "Pavois verifies in the **effective** `dconf` configuration that a drop-in under `/etc/dconf/db/*.d/` sets `allowed-failures`, and that `/org/gnome/login-screen/allowed-failures` is in a `locks/` file so it cannot be raised by a user. Reading the resolved dconf database catches the value in whichever keyfile defines it.",
+    "fr": "Pavois vérifie dans la configuration `dconf` **effective** qu'un drop-in sous `/etc/dconf/db/*.d/` définit `allowed-failures`, et que `/org/gnome/login-screen/allowed-failures` figure dans un fichier `locks/` afin qu'il ne puisse être relevé par un utilisateur. Lire la base dconf résolue capte la valeur dans le fichier de clés qui la définit."
+  },
+  "verify": {
+    "en": "Run `dconf read /org/gnome/login-screen/allowed-failures` (or `gsettings get org.gnome.login-screen allowed-failures`); the expected output is your configured small integer, e.g. `3`. Confirm the lock with `grep -r allowed-failures /etc/dconf/db/*/locks/`.",
+    "fr": "Exécutez `dconf read /org/gnome/login-screen/allowed-failures` (ou `gsettings get org.gnome.login-screen allowed-failures`) ; la sortie attendue est le petit entier configuré, p. ex. `3`. Confirmez le verrou avec `grep -r allowed-failures /etc/dconf/db/*/locks/`."
+  },
+  "logs": {
+    "en": "Failed greeter authentications are logged by the display manager: `journalctl -u gdm` and `journalctl _COMM=gdm-session-worker`. The PAM stack behind it records failures in `/var/log/secure` (Fedora/RHEL).",
+    "fr": "Les échecs d'authentification de l'écran d'accueil sont journalisés par le gestionnaire d'affichage : `journalctl -u gdm` et `journalctl _COMM=gdm-session-worker`. La pile PAM sous-jacente enregistre les échecs dans `/var/log/secure` (Fedora/RHEL)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `dconf` resource to write the keyfile setting `allowed-failures` to a small value and a matching `locks/` entry, then runs `dconf update`. Apply with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `dconf` pour écrire le fichier de clés définissant `allowed-failures` à une petite valeur et l'entrée `locks/` correspondante, puis exécute `dconf update`. Appliquez avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Low impact: legitimate users simply re-trigger the prompt after the cap. **Precaution:** set the limit high enough (e.g. 3) to avoid annoying users who mistype, but note this caps prompts only, it is not an account lockout, so pair it with `faillock`/`pam_faillock` for real lockout. Only affects machines running the GNOME greeter.",
+    "fr": "Impact faible : les utilisateurs légitimes relancent simplement l'invite après le seuil. **Précaution :** fixez la limite assez haut (p. ex. 3) pour ne pas gêner les utilisateurs qui se trompent de frappe, mais notez que cela ne plafonne que les invites, ce n'est pas un verrouillage de compte, alors associez-le à `faillock`/`pam_faillock` pour un vrai verrouillage. N'affecte que les machines exécutant l'écran d'accueil GNOME."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

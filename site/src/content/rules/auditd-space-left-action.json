@@ -1,17 +1,17 @@
 {
   "id": "auditd-space-left-action",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -25,9 +25,9 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "6.3.2.4",
       "10.5.1",
-      "6.2.2.4"
+      "6.2.2.4",
+      "6.3.2.4"
     ],
     "nist": [
       "3.3.1",
@@ -37,17 +37,14 @@
       "AU-5(b)",
       "CM-6(a)"
     ],
-    "pci-dss": [
-      "10.5.1",
-      "Req-10.7"
-    ],
+    "pci-dss": "10.5.1",
     "stig": [
       "UBTU-22-653040",
       "UBTU-24-900960"
     ]
   },
   "check": [
-    "describe command('grep -qiE \\'^[[:space:]]*space_left_action[[:space:]]*=[[:space:]]*(email|exec|single|halt)\\b\\' /etc/audit/auditd.conf 2>/dev/null && echo ok || echo ko') do",
+    "describe command('grep -qiE \\'^[[:space:]]*space_left_action[[:space:]]*=[[:space:]]*(email)\\b\\' /etc/audit/auditd.conf 2>/dev/null && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
@@ -62,14 +59,13 @@
     "en": "Configure auditd space_left Action on Low Disk Space",
     "fr": "Configurer l'action space_left d'auditd en cas d'espace disque faible"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`space_left_action` triggers when free disk space crosses the `space_left` threshold, an **early warning** before the partition is full. Notifying administrators (`email`/`exec`) at this point lets them reclaim space or investigate **before** auditing stops or the more drastic `disk_full_action` fires. Leaving it at the default (`ignore`/`suspend`) means the first sign of trouble is lost or stalled audit records.",
-    "fr": "`space_left_action` se déclenche lorsque l'espace disque libre franchit le seuil `space_left`, un **avertissement précoce** avant que la partition ne soit pleine. Notifier les administrateurs (`email`/`exec`) à ce moment leur permet de récupérer de l'espace ou d'enquêter **avant** que l'audit ne s'arrête ou que le plus radical `disk_full_action` ne s'enclenche. Le laisser à la valeur par défaut (`ignore`/`suspend`) signifie que le premier signe de problème se traduit par des enregistrements perdus ou bloqués."
-  },
   "summary": {
     "en": "Sets `space_left_action` in `/etc/audit/auditd.conf` to a notifying/protective action (`email`, `exec`, `single` or `halt`) when free audit-log space gets low.",
     "fr": "Définit `space_left_action` dans `/etc/audit/auditd.conf` sur une action de notification/protection (`email`, `exec`, `single` ou `halt`) lorsque l'espace libre pour les journaux d'audit devient faible."
+  },
+  "rationale": {
+    "en": "`space_left_action` triggers when free disk space crosses the `space_left` threshold, an **early warning** before the partition is full. Notifying administrators (`email`/`exec`) at this point lets them reclaim space or investigate **before** auditing stops or the more drastic `disk_full_action` fires. Leaving it at the default (`ignore`/`suspend`) means the first sign of trouble is lost or stalled audit records.",
+    "fr": "`space_left_action` se déclenche lorsque l'espace disque libre franchit le seuil `space_left`, un **avertissement précoce** avant que la partition ne soit pleine. Notifier les administrateurs (`email`/`exec`) à ce moment leur permet de récupérer de l'espace ou d'enquêter **avant** que l'audit ne s'arrête ou que le plus radical `disk_full_action` ne s'enclenche. Le laisser à la valeur par défaut (`ignore`/`suspend`) signifie que le premier signe de problème se traduit par des enregistrements perdus ou bloqués."
   },
   "check_note": {
     "en": "Pavois reads the effective `space_left_action` directive from `/etc/audit/auditd.conf` and accepts `email`, `exec`, `single` or `halt`. This value drives what the running daemon does at the low-space threshold, so the configured directive is the reliable indicator.",
@@ -90,5 +86,7 @@
   "impact": {
     "en": "`email` is benign but **silent if mail is not configured**: without a working MTA and a valid `action_mail_acct`, the warning goes nowhere. `single`/`halt` are protective but disruptive (the host drops to single-user mode or stops). **Precaution:** prefer `email` (or `exec` to a monitoring hook) and verify mail delivery, or wire `exec` to your alerting system. Reserve `single`/`halt` for hosts where missing audit data is unacceptable, and ensure console access for recovery.",
     "fr": "`email` est inoffensif mais **silencieux si la messagerie n'est pas configurée** : sans MTA fonctionnel ni `action_mail_acct` valide, l'avertissement n'arrive nulle part. `single`/`halt` sont protecteurs mais perturbants (l'hôte passe en mode mono-utilisateur ou s'arrête). **Précaution :** préférez `email` (ou `exec` vers un hook de supervision) et vérifiez la remise des mails, ou branchez `exec` sur votre système d'alerte. Réservez `single`/`halt` aux hôtes où l'absence de données d'audit est inacceptable, et assurez un accès console pour la reprise."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

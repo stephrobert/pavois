@@ -1,17 +1,17 @@
 {
   "id": "misc-postfix-network-listening-disabled",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,8 +26,8 @@
   "norms": {
     "bp28": "R74",
     "cis": [
-      "2.1.21",
       "1.4.2",
+      "2.1.21",
       "2.1.23"
     ],
     "nist": [
@@ -38,23 +38,28 @@
     "pci-dss": "1.4.2"
   },
   "check": [
+    "only_if { command('command -v postconf').exit_status.zero? }",
     "describe command('postconf -h inet_interfaces 2>/dev/null | grep -qiE \\'loopback-only|localhost\\' && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "postconf -e 'inet_interfaces = loopback-only' 2>/dev/null && systemctl restart postfix 2>/dev/null; true",
+    "name": "postfix-loopback",
+    "not_if": "postconf -h inet_interfaces 2>/dev/null | grep -qiE 'loopback-only|localhost'",
+    "resource": "exec"
+  },
   "title": {
     "en": "Disable Postfix Network Listening",
     "fr": "Désactiver l'écoute réseau de Postfix"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Most systems run Postfix only to deliver internal mail (cron job output, system notifications). When `inet_interfaces` is left at `all`, Postfix listens on every interface and exposes an **open SMTP service** to the network. This widens the attack surface to remote exploitation, spam relay abuse and information disclosure. Binding to `loopback-only`/`localhost` removes that exposure while keeping local mail working.",
-    "fr": "La plupart des systèmes n'exécutent Postfix que pour distribuer du courrier interne (sorties de tâches cron, notifications système). Lorsque `inet_interfaces` reste à `all`, Postfix écoute sur toutes les interfaces et expose un **service SMTP ouvert** sur le réseau. Cela élargit la surface d'attaque à l'exploitation distante, à l'abus de relais de spam et à la fuite d'informations. La liaison à `loopback-only`/`localhost` supprime cette exposition tout en conservant le courrier local."
-  },
   "summary": {
     "en": "Restricts Postfix to listen only on the loopback interface so it delivers **local** mail (cron, system reports) and never accepts mail from the network.",
     "fr": "Restreint Postfix à l'écoute sur l'interface de bouclage uniquement, afin qu'il traite le courrier **local** (cron, rapports système) sans jamais accepter de courrier venant du réseau."
+  },
+  "rationale": {
+    "en": "Most systems run Postfix only to deliver internal mail (cron job output, system notifications). When `inet_interfaces` is left at `all`, Postfix listens on every interface and exposes an **open SMTP service** to the network. This widens the attack surface to remote exploitation, spam relay abuse and information disclosure. Binding to `loopback-only`/`localhost` removes that exposure while keeping local mail working.",
+    "fr": "La plupart des systèmes n'exécutent Postfix que pour distribuer du courrier interne (sorties de tâches cron, notifications système). Lorsque `inet_interfaces` reste à `all`, Postfix écoute sur toutes les interfaces et expose un **service SMTP ouvert** sur le réseau. Cela élargit la surface d'attaque à l'exploitation distante, à l'abus de relais de spam et à la fuite d'informations. La liaison à `loopback-only`/`localhost` supprime cette exposition tout en conservant le courrier local."
   },
   "check_note": {
     "en": "Pavois queries the **effective** Postfix parameter with `postconf -h inet_interfaces`, which returns the value actually resolved by Postfix after parsing `main.cf` and any included settings. Reading `/etc/postfix/main.cf` directly would miss overrides, multi-instance setups and the compiled-in default, producing false results; `postconf` reports what the daemon truly uses.",
@@ -75,5 +80,7 @@
   "impact": {
     "en": "If the host is an **intended mail server** (MX, smarthost receiving network mail), restricting Postfix to loopback will break inbound delivery, apply this only to hosts that send local mail only. Before applying, confirm no remote system relies on this SMTP listener (`ss -ltnp | grep ':25'` and review firewall rules). After the change, test local delivery with `echo test | mail -s test root` and check `journalctl -u postfix`.",
     "fr": "Si l'hôte est un **serveur de messagerie volontaire** (MX, smarthost recevant du courrier réseau), restreindre Postfix au bouclage cassera la réception entrante, n'appliquez ceci qu'aux hôtes n'envoyant que du courrier local. Avant d'appliquer, vérifiez qu'aucun système distant ne dépend de cette écoute SMTP (`ss -ltnp | grep ':25'` et revue des règles pare-feu). Après le changement, testez la distribution locale avec `echo test | mail -s test root` et consultez `journalctl -u postfix`."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

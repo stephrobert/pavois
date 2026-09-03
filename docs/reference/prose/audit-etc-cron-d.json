@@ -1,0 +1,37 @@
+{
+  "id": "audit-etc-cron-d",
+  "title": {
+    "en": "Ensure auditd Collects Changes to Cron Jobs - /etc/cron.d/",
+    "fr": "S'assurer qu'auditd collecte les modifications des tâches cron - /etc/cron.d/"
+  },
+  "summary": {
+    "en": "Adds an audit watch on `/etc/cron.d/` (key `cronjobs`) so any change to scheduled jobs in that directory is recorded.",
+    "fr": "Ajoute une surveillance d'audit sur `/etc/cron.d/` (clé `cronjobs`) afin que toute modification des tâches planifiées de ce répertoire soit enregistrée."
+  },
+  "rationale": {
+    "en": "`/etc/cron.d/` is a classic **persistence and privilege-escalation foothold**: an attacker who drops or edits a file there can schedule arbitrary commands as root. Auditing changes to this directory keeps an accountable record of every modification, supporting both incident detection and forensic investigation. Without the watch, a malicious cron entry can be added and removed with no trace.",
+    "fr": "`/etc/cron.d/` est un point d'ancrage classique de **persistance et d'élévation de privilèges** : un attaquant qui y dépose ou modifie un fichier peut planifier des commandes arbitraires en tant que root. Auditer les modifications de ce répertoire conserve une trace responsabilisante de chaque changement, au service de la détection d'incident comme de l'investigation forensique. Sans cette surveillance, une entrée cron malveillante peut être ajoutée puis retirée sans laisser de trace."
+  },
+  "check_note": {
+    "en": "Pavois runs `auditctl -l`, the **effective, loaded** audit ruleset of the running kernel, and requires a rule keyed `cronjobs` watching `/etc/cron.d/`. Reading the live ruleset, not `/etc/audit/rules.d/*.rules`, is what makes this reliable: a rule sitting in a file but never loaded (no `augenrules --load`, or a syntax error) would falsely pass a file-based scan but correctly fail here.",
+    "fr": "Pavois exécute `auditctl -l`, le jeu de règles d'audit **effectif et chargé** dans le noyau en cours d'exécution, et exige une règle de clé `cronjobs` surveillant `/etc/cron.d/`. Lire le jeu de règles actif, et non `/etc/audit/rules.d/*.rules`, est ce qui rend ce contrôle fiable : une règle présente dans un fichier mais jamais chargée (pas de `augenrules --load`, ou une erreur de syntaxe) passerait à tort un scan basé sur les fichiers mais échouerait correctement ici."
+  },
+  "verify": {
+    "en": "Run `auditctl -l | grep cronjobs`. Expected output: a watch line such as `-w /etc/cron.d/ -p wa -k cronjobs`.",
+    "fr": "Exécutez `auditctl -l | grep cronjobs`. Sortie attendue : une ligne de surveillance du type `-w /etc/cron.d/ -p wa -k cronjobs`."
+  },
+  "logs": {
+    "en": "Changes to `/etc/cron.d/` are recorded in `/var/log/audit/audit.log` tagged `key=\"cronjobs\"`. Grep the raw log directly (`grep 'key=\"cronjobs\"' /var/log/audit/audit.log`) rather than relying on `ausearch -k cronjobs`, which can falsely report no matches.",
+    "fr": "Les modifications de `/etc/cron.d/` sont enregistrées dans `/var/log/audit/audit.log` avec l'étiquette `key=\"cronjobs\"`. Recherchez directement dans le journal brut (`grep 'key=\"cronjobs\"' /var/log/audit/audit.log`) plutôt que de vous fier à `ausearch -k cronjobs`, qui peut signaler à tort aucune correspondance."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `audit_ruleset` resource to add the `/etc/cron.d/` watch (key `cronjobs`) to the persistent audit rules and load it into the kernel; `reboot_required` is flagged because audit rules become fully immutable and authoritative only after a reboot (the `-e 2` enable flag). Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour ajouter la surveillance de `/etc/cron.d/` (clé `cronjobs`) aux règles d'audit persistantes et la charger dans le noyau ; `reboot_required` est signalé car les règles d'audit ne deviennent pleinement immuables et faisant autorité qu'après un redémarrage (option d'activation `-e 2`). Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "A directory watch is low-risk and adds negligible noise (cron files change rarely). The main consideration is the reboot: if the audit configuration is locked immutable (`-e 2`), further rule changes need a reboot to take effect. **Precaution:** load the rule with `augenrules --load` to apply it immediately, and schedule the reboot for the immutable flag during a maintenance window. Verify the rule shows in `auditctl -l` after loading so coverage is genuinely active.",
+    "fr": "Une surveillance de répertoire présente un risque faible et ajoute un bruit négligeable (les fichiers cron changent rarement). Le point d'attention principal est le redémarrage : si la configuration d'audit est verrouillée en immuable (`-e 2`), tout nouveau changement de règle nécessite un redémarrage pour prendre effet. **Précaution :** chargez la règle avec `augenrules --load` pour l'appliquer immédiatement, et planifiez le redémarrage pour le drapeau immuable durant une fenêtre de maintenance. Vérifiez que la règle apparaît dans `auditctl -l` après chargement pour que la couverture soit réellement active."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

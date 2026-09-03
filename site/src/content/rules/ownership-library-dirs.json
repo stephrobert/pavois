@@ -2,10 +2,12 @@
   "id": "ownership-library-dirs",
   "supported_os": [
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "rhel8": "4.0.0",
@@ -31,7 +33,8 @@
   },
   "check": [
     "only_if { command('test -d /lib').exit_status.zero? }",
-    "describe command('timeout 60 find -P /lib -type f ! -user 0 2>/dev/null | head -1') do",
+    "describe command('timeout 60 find -P /lib -type f ! -user 0 -print -quit 2>/dev/null') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
@@ -40,14 +43,13 @@
     "en": "Verify that Shared Library Files Have Root Ownership",
     "fr": "Vérifier que les fichiers de bibliothèques partagées appartiennent à root"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Files in the shared library directories are loaded into the address space of processes (including privileged ones) and of the kernel itself at runtime. If a non-root user owns one, they can overwrite it and inject code that runs with the privileges of every process that loads the library, root ownership is essential to protect system integrity.",
-    "fr": "Les fichiers des répertoires de bibliothèques partagées sont chargés dans l'espace d'adressage des processus (y compris privilégiés) et du noyau lui-même à l'exécution. Si un utilisateur non-root en possède un, il peut le réécrire et injecter du code s'exécutant avec les privilèges de chaque processus chargeant la bibliothèque, l'appartenance à root est indispensable pour protéger l'intégrité du système."
-  },
   "summary": {
     "en": "Ensure every file under the shared library directory `/lib` is **owned by root** (UID 0).",
     "fr": "S'assurer que chaque fichier sous le répertoire de bibliothèques partagées `/lib` **appartient à root** (UID 0)."
+  },
+  "rationale": {
+    "en": "Files in the shared library directories are loaded into the address space of processes (including privileged ones) and of the kernel itself at runtime. If a non-root user owns one, they can overwrite it and inject code that runs with the privileges of every process that loads the library, root ownership is essential to protect system integrity.",
+    "fr": "Les fichiers des répertoires de bibliothèques partagées sont chargés dans l'espace d'adressage des processus (y compris privilégiés) et du noyau lui-même à l'exécution. Si un utilisateur non-root en possède un, il peut le réécrire et injecter du code s'exécutant avec les privilèges de chaque processus chargeant la bibliothèque, l'appartenance à root est indispensable pour protéger l'intégrité du système."
   },
   "check_note": {
     "en": "Pavois runs `find -P /lib -type f ! -user 0` and expects **no output**, any file not owned by UID 0 is a finding. It enumerates the actual on-disk inodes (the effective ownership the loader sees), not a package manifest, so files added or re-owned after install are caught.",
@@ -68,5 +70,7 @@
   "impact": {
     "en": "**What can break:** very little, `chown root` on library files only removes non-standard ownership and rarely affects function. The real risk is masking a problem: a non-root-owned library often signals a compromised package or a misbehaving installer, so **investigate the cause** before re-owning. **Precautions:** review each offending file first; if it came from a third-party package, reinstall that package rather than just changing ownership, so permissions and content are both restored.",
     "fr": "**Ce qui peut casser :** très peu, `chown root` sur des fichiers de bibliothèque ne fait que retirer une appartenance non standard et affecte rarement le fonctionnement. Le vrai risque est de masquer un problème : une bibliothèque n'appartenant pas à root signale souvent un paquet compromis ou un installeur défaillant, donc **enquêtez sur la cause** avant de ré-attribuer. **Précautions :** examinez d'abord chaque fichier fautif ; s'il provient d'un paquet tiers, réinstallez ce paquet plutôt que de seulement changer l'appartenance, afin de restaurer à la fois les permissions et le contenu."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

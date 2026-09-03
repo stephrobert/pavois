@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-net-ipv6-conf-default-router_solicitations",
+  "title": {
+    "en": "Configure Denying Router Solicitations on All IPv6 Interfaces By Default",
+    "fr": "Configurer le refus des sollicitations de routeur sur toutes les interfaces IPv6 par défaut"
+  },
+  "summary": {
+    "en": "Stops new IPv6 interfaces from sending Router Solicitation messages by setting `net.ipv6.conf.default.router_solicitations = 0`.",
+    "fr": "Empêche les nouvelles interfaces IPv6 d'envoyer des messages de sollicitation de routeur en réglant `net.ipv6.conf.default.router_solicitations = 0`."
+  },
+  "rationale": {
+    "en": "`net.ipv6.conf.default.router_solicitations` sets how many Router Solicitation messages the host sends to discover routers when an interface comes up. Sending solicitations actively announces the host's presence on the link and invites Router Advertisements, which an attacker can answer with forged RAs to seize a **man-in-the-middle** position. On hosts that do not rely on SLAAC, setting this to `0` stops the host from soliciting routers, reducing its discoverability and its exposure to rogue RA replies.",
+    "fr": "`net.ipv6.conf.default.router_solicitations` définit combien de messages de sollicitation de routeur l'hôte envoie pour découvrir les routeurs lorsqu'une interface s'active. Envoyer des sollicitations annonce activement la présence de l'hôte sur le lien et invite des annonces de routeur, auxquelles un attaquant peut répondre par de fausses RA pour prendre une position d'**homme du milieu**. Sur les hôtes qui ne s'appuient pas sur SLAAC, régler ce paramètre à `0` empêche l'hôte de solliciter les routeurs, réduisant sa visibilité et son exposition aux réponses RA malveillantes."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** kernel value of `net.ipv6.conf.default.router_solicitations`, not a config file. The live value merges `/etc/sysctl.conf`, drop-ins in `/etc/sysctl.d/` and `/run/sysctl.d/`, kernel boot parameters and any runtime `sysctl -w`. A green file does not prove a green kernel; Pavois reports the value actually enforced.",
+    "fr": "Pavois lit la valeur **effective** du noyau pour `net.ipv6.conf.default.router_solicitations`, pas un fichier de configuration. La valeur active fusionne `/etc/sysctl.conf`, les drop-ins dans `/etc/sysctl.d/` et `/run/sysctl.d/`, les paramètres de démarrage du noyau et tout `sysctl -w` à chaud. Un fichier au vert ne prouve pas un noyau au vert ; Pavois rapporte la valeur réellement appliquée."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv6.conf.default.router_solicitations` and confirm the output is `net.ipv6.conf.default.router_solicitations = 0`.",
+    "fr": "Exécutez `sysctl net.ipv6.conf.default.router_solicitations` et vérifiez que la sortie est `net.ipv6.conf.default.router_solicitations = 0`."
+  },
+  "logs": {
+    "en": "No dedicated log. Inspect runtime state with `sysctl net.ipv6.conf.default.router_solicitations` and `sysctl -a | grep router_solicitations`. To find which file set it, run `sysctl --system 2>&1 | grep router_solicitations`. Outgoing solicitations can be captured with `tcpdump -i <if> 'icmp6 && ip6[40] == 133'`.",
+    "fr": "Aucun journal dédié. Inspectez l'état d'exécution avec `sysctl net.ipv6.conf.default.router_solicitations` et `sysctl -a | grep router_solicitations`. Pour trouver le fichier qui l'a défini, exécutez `sysctl --system 2>&1 | grep router_solicitations`. Les sollicitations sortantes peuvent être capturées avec `tcpdump -i <if> 'icmp6 && ip6[40] == 133'`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv6.conf.default.router_solicitations = 0`, persisting it in a managed drop-in and applying it live. Run `pavois harden apply` to enforce it; it is re-applied at boot via the persisted entry.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour définir `net.ipv6.conf.default.router_solicitations = 0`, en le persistant dans un drop-in géré et en l'appliquant à chaud. Exécutez `pavois harden apply` pour l'imposer ; il est réappliqué au démarrage via l'entrée persistante."
+  },
+  "impact": {
+    "en": "On a host that **relies on SLAAC**, suppressing router solicitations can delay or prevent it from discovering its default router on link-up, breaking IPv6 connectivity (the host will only learn routes from unsolicited periodic RAs, if any). Before applying, confirm the host uses **static IPv6 or DHCPv6**, or is IPv4-only. On routers and statically-addressed servers the change is safe and reversible by resetting the key.",
+    "fr": "Sur un hôte qui **s'appuie sur SLAAC**, supprimer les sollicitations de routeur peut retarder ou empêcher la découverte de son routeur par défaut à l'activation du lien, rompant la connectivité IPv6 (l'hôte n'apprendra les routes que via les RA périodiques non sollicitées, s'il y en a). Avant d'appliquer, vérifiez que l'hôte utilise un adressage **IPv6 statique ou DHCPv6**, ou qu'il est uniquement IPv4. Sur les routeurs et serveurs à adressage statique, le changement est sûr et réversible en réinitialisant la clé."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

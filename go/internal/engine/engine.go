@@ -219,6 +219,17 @@ func Detect(o Options) (name, release string) {
 // AuditorImage: CINC image pinned by digest (docker fallback).
 const AuditorImage = "cincproject/auditor@sha256:14b1a2efb89ab141adb58e93c6c1bdcf196c9623498a292cbfaee28c46603568"
 
+// waiverFile returns the profile's InSpec waiver file — the ACCEPTED RISKS: controls pavois
+// deliberately does not enforce (enforcing them would break the host, or the check is defective),
+// each with a justification an auditor can read. Empty when the profile is a URL or has none.
+func waiverFile(prof string) string {
+	w := filepath.Join(prof, "waivers.yml")
+	if fi, err := os.Stat(w); err == nil && !fi.IsDir() {
+		return w
+	}
+	return ""
+}
+
 // NativeBin returns the native CINC binary (cinc-auditor by preference, otherwise inspec).
 func NativeBin() string {
 	for _, b := range []string{"cinc-auditor", "inspec"} {
@@ -480,6 +491,13 @@ func Run(o Options) (int, error) {
 		// progress-bar -> runCinc parses it for progress (stderr); json ->
 		// file (pavois produces ITS OWN presentation). stdout is not polluted.
 		args := []string{"exec", prof, "--no-create-lockfile", "--reporter", "progress-bar", "json:" + o.JSONOut}
+		// Accepted risks: a control we deliberately do not enforce (enforcing it would break the
+		// host, or the check itself is defective) is listed in the profile's waivers.yml with a
+		// justification. cinc SKIPS it instead of failing it, and the justification rides along in
+		// the report — an auditable exception rather than a permanent red mark.
+		if w := waiverFile(prof); w != "" {
+			args = append(args, "--waiver-file", w)
+		}
 		// Expose the active standard to InSpec so a single merged rule can pick the per-norm
 		// threshold (e.g. PASS_MIN_LEN >= 15 for bp28, >= 12 for nist). "_default" = strictest.
 		std := o.Standard
@@ -590,27 +608,49 @@ func RunOnTarget(o Options) (int, error) {
 		return c.Run()
 	}
 	ssh := func(remote string) error {
-		// -tt forces a pseudo-tty so `sudo` keeps working even under `Defaults requiretty`
-		// (ANSSI BP-028 R39, which pavois itself can apply). The report is fetched via scp
-		// (a file), so tty CRLF translation never corrupts the parsed output.
-		c := exec.Command("ssh", append(append([]string{"-tt"}, base...), o.Target, remote)...)
+		// A hardened target has `Defaults use_pty`, which needs a controlling tty (-tt) or sudo dies
+		// with "a password is required"; but `ssh -tt` + a naked piped password races the pty line
+		// discipline and sudo times out. So when we have a password: force -tt AND drain it from
+		// ssh-stdin into a shell var first, feeding sudo via a bash here-string (no race, off argv).
+		// With no password (NOPASSWD) skip -tt entirely.
+		args := append(append([]string{}, base...), o.Target, remote)
+		if o.Sudo && o.SudoPass != "" {
+			wrapped := "IFS= read -r __P; " + remote + " <<<\"$__P\""
+			args = append(append([]string{"-tt"}, base...), o.Target, wrapped)
+		}
+		c := exec.Command("ssh", args...)
 		c.Stderr = os.Stderr
 		if o.Sudo && o.SudoPass != "" {
-			// Least-privilege scanner account (no NOPASSWD): feed the sudo password to the
-			// remote `sudo -S` over stdin — NEVER argv, so it can't leak via `ps` on either
-			// host. -tt writes it into the pty, where `sudo -S` reads it; a command that does
-			// not sudo just ignores the extra line. Sudo caches the credential per session,
-			// so the single line covers the one sudo in each remote command.
 			c.Stdin = strings.NewReader(o.SudoPass + "\n")
 		}
 		return c.Run()
 	}
 
 	_, _ = fmt.Fprintf(os.Stderr, "  ensuring cinc-auditor on %s…\n", o.Target)
-	ensure := "command -v cinc-auditor >/dev/null 2>&1 || command -v inspec >/dev/null 2>&1 || " +
-		"curl -L https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc-auditor"
-	if err := ssh(ensure); err != nil {
-		return 2, fmt.Errorf("ensure cinc-auditor on target: %w", err)
+	// FIRST check presence with NO sudo — cinc-auditor is world-executable in PATH, and a hardened
+	// target (use_pty) blocks a naked non-tty sudo, so we must never need sudo just to CHECK (that
+	// broke the post-harden re-scan). Only if it is genuinely absent do we sudo-install it.
+	checkArgs := append(append([]string{}, base...), o.Target, "command -v cinc-auditor >/dev/null 2>&1 || command -v inspec >/dev/null 2>&1")
+	if exec.Command("ssh", checkArgs...).Run() != nil { //nolint:gosec // fixed args, operator target
+		ensureSudo := "sudo "
+		if o.SudoPass != "" {
+			ensureSudo = "sudo -S "
+		}
+		// Install AS ROOT, downloading the installer to a FILE then running it (a `curl | bash` pipe
+		// or a nested `sudo bash` wedges on the target). Runs over ssh WITHOUT -tt and pipes the
+		// password: `ssh -tt` + stdin races the pty line discipline and `sudo -S` times out on rhel9;
+		// a plain pipe to sudo -S is reliable and the fresh (not-yet-hardened) target has no use_pty
+		// yet. The password never reaches argv. cinc-auditor absent -> pavois installs it itself.
+		install := ensureSudo + "sh -c 'curl -fsSL https://omnitruck.cinc.sh/install.sh -o /tmp/pavois-cinc-install.sh && sh /tmp/pavois-cinc-install.sh -P cinc-auditor'"
+		instArgs := append(append([]string{}, base...), o.Target, install)
+		ec := exec.Command("ssh", instArgs...) //nolint:gosec // fixed args, operator target
+		ec.Stdout, ec.Stderr = os.Stderr, os.Stderr
+		if o.Sudo && o.SudoPass != "" {
+			ec.Stdin = strings.NewReader(o.SudoPass + "\n")
+		}
+		if err := ec.Run(); err != nil {
+			return 2, fmt.Errorf("ensure cinc-auditor on target: %w", err)
+		}
 	}
 
 	const remoteProf, remoteJSON = "/tmp/pavois-profile", "/tmp/pavois-out.json"
@@ -630,11 +670,28 @@ func RunOnTarget(o Options) (int, error) {
 	if std == "" {
 		std = "_default" // no standard selected -> the merged rules use their most-secure threshold
 	}
-	exe := fmt.Sprintf("%senv CHEF_LICENSE=accept-silent $(command -v cinc-auditor || command -v inspec) "+
-		"exec %s -t local:// --no-create-lockfile --input pavois_standard=%s --reporter json:%s", sudo, remoteProf, std, remoteJSON)
-	if len(o.Controls) > 0 { // single-rule iteration: run only these controls
-		exe += " --controls " + strings.Join(o.Controls, " ")
+	// HOME is forced to a scratch dir: sudo keeps the caller's HOME, so cinc (running as root)
+	// creates a root-owned ~/.inspec in the audited user's home. An auditor must leave NO trace on
+	// the target, and pavois was failing its own home-files-permissions control on that garbage.
+	const remoteHome = "/tmp/pavois-home"
+	cincCmd := fmt.Sprintf("env HOME=%s CHEF_LICENSE=accept-silent $(command -v cinc-auditor || command -v inspec) "+
+		"exec %s -t local:// --no-create-lockfile --input pavois_standard=%s --reporter json:%s",
+		remoteHome, remoteProf, std, remoteJSON)
+	// Accepted risks travel with the profile (the whole dir is copied), so point cinc at the copy.
+	if waiverFile(prof) != "" {
+		cincCmd += " --waiver-file " + remoteProf + "/waivers.yml"
 	}
+	if len(o.Controls) > 0 { // single-rule iteration: run only these controls
+		cincCmd += " --controls " + strings.Join(o.Controls, " ")
+	}
+	// cinc-auditor must NOT inherit the -tt pty as stdin: on some targets (rhel9) train-local goes
+	// interactive on a tty and hangs, producing no report. `sudo -S` still reads the password from
+	// the pty, then the scan runs under `sh -c` with stdin on /dev/null. cincCmd has no single quotes.
+	exe := sudo + "sh -c '" + cincCmd + " </dev/null'"
+	// Drop any report left by a previous run FIRST: cinc writes it as root in the sticky /tmp, so
+	// only root can remove it. Without this, a scan that dies before writing (bad profile, cinc
+	// error) silently ships the STALE report back and pavois reports someone else's results.
+	_ = ssh(sudo + "rm -f " + remoteJSON)
 	_, _ = fmt.Fprintf(os.Stderr, "  scanning %s on the target (local, fast)…\n", o.Target)
 	rc := 0
 	if err := ssh(exe); err != nil {
@@ -645,11 +702,17 @@ func RunOnTarget(o Options) (int, error) {
 			return 2, err
 		}
 	}
+	if rc != 0 && rc != 100 && rc != 101 { // anything else = cinc itself failed, there is no report
+		return 2, fmt.Errorf("cinc-auditor failed on the target (exit %d) — no report produced", rc)
+	}
 	// cinc-auditor wrote the report as root; on a hardened box (umask 0027) the scp user
 	// can't read it. Make it world-readable before fetching (it's a transient report).
 	_ = ssh(sudo + "chmod 0644 " + remoteJSON)
 	if err := run("scp", append(append([]string{}, base...), o.Target+":"+remoteJSON, o.JSONOut)...); err != nil {
 		return 2, fmt.Errorf("fetch report from target: %w", err)
 	}
+	// Leave no trace: the profile copy, the report and the scratch HOME are ours, not the target's.
+	// (Older pavois versions left a root-owned ~/.inspec behind; remove that too.)
+	_ = ssh(sudo + "rm -rf " + remoteProf + " " + remoteJSON + " " + remoteHome + " ~/.inspec")
 	return rc, nil
 }

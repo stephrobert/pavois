@@ -1,16 +1,17 @@
 {
   "id": "sysctl-net-ipv6-conf-default-accept_ra_defrtr",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -28,6 +29,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.default.accept_ra_defrtr') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.default.accept_ra_defrtr[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -39,14 +43,13 @@
     "en": "Configure Accepting Default Router in Router Advertisements on All IPv6 Interfaces By Default",
     "fr": "Configurer l'acceptation du routeur par défaut dans les annonces de routeur sur toutes les interfaces IPv6 par défaut"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The default-router flag in a Router Advertisement tells a host to install the advertising router as its IPv6 default gateway. Because RAs are **unauthenticated**, a rogue node can advertise itself as the default router and **redirect all of the host's off-link traffic** through it (man-in-the-middle). Setting the `default` template ensures every interface created afterwards inherits the hardened behaviour, not just the ones present at boot.",
-    "fr": "Le drapeau de routeur par défaut d'une annonce de routeur indique à un hôte d'installer le routeur émetteur comme passerelle IPv6 par défaut. Comme les RA ne sont **pas authentifiées**, un nœud malveillant peut s'annoncer comme routeur par défaut et **rediriger tout le trafic off-link de l'hôte** par son intermédiaire (homme du milieu). Fixer le modèle `default` garantit que chaque interface créée ensuite hérite du comportement durci, pas seulement celles présentes au démarrage."
-  },
   "summary": {
     "en": "Sets the `default` template `net.ipv6.conf.default.accept_ra_defrtr` to `0` so newly created IPv6 interfaces ignore the default-router information carried in Router Advertisements.",
     "fr": "Fixe le modèle `default` `net.ipv6.conf.default.accept_ra_defrtr` à `0` afin que les interfaces IPv6 nouvellement créées ignorent l'information de routeur par défaut transportée dans les annonces de routeur."
+  },
+  "rationale": {
+    "en": "The default-router flag in a Router Advertisement tells a host to install the advertising router as its IPv6 default gateway. Because RAs are **unauthenticated**, a rogue node can advertise itself as the default router and **redirect all of the host's off-link traffic** through it (man-in-the-middle). Setting the `default` template ensures every interface created afterwards inherits the hardened behaviour, not just the ones present at boot.",
+    "fr": "Le drapeau de routeur par défaut d'une annonce de routeur indique à un hôte d'installer le routeur émetteur comme passerelle IPv6 par défaut. Comme les RA ne sont **pas authentifiées**, un nœud malveillant peut s'annoncer comme routeur par défaut et **rediriger tout le trafic off-link de l'hôte** par son intermédiaire (homme du milieu). Fixer le modèle `default` garantit que chaque interface créée ensuite hérite du comportement durci, pas seulement celles présentes au démarrage."
   },
   "check_note": {
     "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.default.accept_ra_defrtr`) and asserts it is `0`. The `default` key is the template applied to **future** interfaces, so reading the live kernel value matters: a value declared in `/etc/sysctl.d/*` may be **overridden** by a later drop-in or never applied, and only the running parameter proves the template is actually in force.",
@@ -67,5 +70,7 @@
   "impact": {
     "en": "On hosts that rely on **SLAAC/RA to learn their default gateway**, refusing the default-router flag leaves the new interfaces without an IPv6 default route, breaking off-link IPv6 connectivity. Note this `default` key only governs interfaces created **after** it is set; existing interfaces keep their per-interface value. Apply only where IPv6 routing is **static** or via DHCPv6, verify before enforcing. No effect on IPv4-only systems.",
     "fr": "Sur les hôtes dépendant de **SLAAC/RA pour apprendre leur passerelle par défaut**, refuser le drapeau de routeur par défaut laisse les nouvelles interfaces sans route IPv6 par défaut, cassant la connectivité IPv6 off-link. Notez que cette clé `default` ne régit que les interfaces créées **après** son réglage ; les interfaces existantes conservent leur valeur par interface. À appliquer uniquement quand le routage IPv6 est **statique** ou via DHCPv6, vérifiez avant d'appliquer. Sans effet sur les systèmes IPv4 uniquement."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

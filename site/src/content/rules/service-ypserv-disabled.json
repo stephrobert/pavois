@@ -2,11 +2,18 @@
   "id": "service-ypserv-disabled",
   "supported_os": [
     "debian12",
+    "debian13",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -35,14 +42,13 @@
     "en": "Disable ypserv Service",
     "fr": "Désactiver le service ypserv"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`ypserv` is the server for **NIS** (Network Information Service, formerly Yellow Pages), a legacy directory protocol that distributes user accounts, passwords and host maps over the network **without encryption or strong authentication**. Anyone on the network can query the maps and harvest password hashes, and the protocol is trivially spoofable. Unless the host is an actively-used NIS master, this service must be disabled to remove an obsolete and dangerous attack surface.",
-    "fr": "`ypserv` est le serveur **NIS** (Network Information Service, anciennement Yellow Pages), un protocole d'annuaire hérité qui distribue comptes, mots de passe et tables d'hôtes sur le réseau **sans chiffrement ni authentification forte**. N'importe qui sur le réseau peut interroger les tables et récupérer les empreintes de mots de passe, et le protocole est trivialement usurpable. Sauf si l'hôte est un maître NIS réellement utilisé, ce service doit être désactivé pour supprimer une surface d'attaque obsolète et dangereuse."
-  },
   "summary": {
     "en": "Ensures the `ypserv` (NIS/NIS+ directory) service is **stopped and disabled** so the host does not run a legacy directory server.",
     "fr": "Garantit que le service `ypserv` (annuaire NIS/NIS+) est **arrêté et désactivé** afin que l'hôte n'héberge pas de serveur d'annuaire hérité."
+  },
+  "rationale": {
+    "en": "`ypserv` is the server for **NIS** (Network Information Service, formerly Yellow Pages), a legacy directory protocol that distributes user accounts, passwords and host maps over the network **without encryption or strong authentication**. Anyone on the network can query the maps and harvest password hashes, and the protocol is trivially spoofable. Unless the host is an actively-used NIS master, this service must be disabled to remove an obsolete and dangerous attack surface.",
+    "fr": "`ypserv` est le serveur **NIS** (Network Information Service, anciennement Yellow Pages), un protocole d'annuaire hérité qui distribue comptes, mots de passe et tables d'hôtes sur le réseau **sans chiffrement ni authentification forte**. N'importe qui sur le réseau peut interroger les tables et récupérer les empreintes de mots de passe, et le protocole est trivialement usurpable. Sauf si l'hôte est un maître NIS réellement utilisé, ce service doit être désactivé pour supprimer une surface d'attaque obsolète et dangereuse."
   },
   "check_note": {
     "en": "Pavois asks **systemd** for the resolved state of the unit (`systemctl is-enabled ypserv.service` / `is-active`), not the presence of a config file. A unit can be masked, statically enabled, or pulled in by a socket or a target; only the effective state reported by systemd tells you whether it will actually start.",
@@ -63,5 +69,7 @@
   "impact": {
     "en": "Disabling `ypserv` is safe on any host that is not an NIS master. **Before applying**, confirm no clients rely on this machine for NIS maps: check `ypwhich`/`ypcat` usage on dependent hosts and grep for `nis` in `/etc/nsswitch.conf` on clients. If the host legitimately serves NIS, migrate clients to LDAP/Kerberos or SSSD first, otherwise dependent logins and host resolution will break.",
     "fr": "Désactiver `ypserv` est sans risque sur tout hôte qui n'est pas un maître NIS. **Avant d'appliquer**, vérifiez qu'aucun client ne dépend de cette machine pour les tables NIS : contrôlez l'usage de `ypwhich`/`ypcat` sur les hôtes dépendants et recherchez `nis` dans `/etc/nsswitch.conf` côté clients. Si l'hôte sert légitimement NIS, migrez d'abord les clients vers LDAP/Kerberos ou SSSD, sinon les connexions et la résolution d'hôtes dépendantes seront cassées."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

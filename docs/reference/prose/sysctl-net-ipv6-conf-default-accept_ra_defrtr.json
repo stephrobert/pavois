@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-net-ipv6-conf-default-accept_ra_defrtr",
+  "title": {
+    "en": "Configure Accepting Default Router in Router Advertisements on All IPv6 Interfaces By Default",
+    "fr": "Configurer l'acceptation du routeur par défaut dans les annonces de routeur sur toutes les interfaces IPv6 par défaut"
+  },
+  "summary": {
+    "en": "Sets the `default` template `net.ipv6.conf.default.accept_ra_defrtr` to `0` so newly created IPv6 interfaces ignore the default-router information carried in Router Advertisements.",
+    "fr": "Fixe le modèle `default` `net.ipv6.conf.default.accept_ra_defrtr` à `0` afin que les interfaces IPv6 nouvellement créées ignorent l'information de routeur par défaut transportée dans les annonces de routeur."
+  },
+  "rationale": {
+    "en": "The default-router flag in a Router Advertisement tells a host to install the advertising router as its IPv6 default gateway. Because RAs are **unauthenticated**, a rogue node can advertise itself as the default router and **redirect all of the host's off-link traffic** through it (man-in-the-middle). Setting the `default` template ensures every interface created afterwards inherits the hardened behaviour, not just the ones present at boot.",
+    "fr": "Le drapeau de routeur par défaut d'une annonce de routeur indique à un hôte d'installer le routeur émetteur comme passerelle IPv6 par défaut. Comme les RA ne sont **pas authentifiées**, un nœud malveillant peut s'annoncer comme routeur par défaut et **rediriger tout le trafic off-link de l'hôte** par son intermédiaire (homme du milieu). Fixer le modèle `default` garantit que chaque interface créée ensuite hérite du comportement durci, pas seulement celles présentes au démarrage."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.default.accept_ra_defrtr`) and asserts it is `0`. The `default` key is the template applied to **future** interfaces, so reading the live kernel value matters: a value declared in `/etc/sysctl.d/*` may be **overridden** by a later drop-in or never applied, and only the running parameter proves the template is actually in force.",
+    "fr": "Pavois lit la valeur **effective** au runtime via la ressource `kernel_parameter` (équivalent à `sysctl net.ipv6.conf.default.accept_ra_defrtr`) et vérifie qu'elle vaut `0`. La clé `default` est le modèle appliqué aux interfaces **futures** ; lire la valeur active du noyau est donc essentiel : une valeur déclarée dans `/etc/sysctl.d/*` peut être **écrasée** par un drop-in ultérieur ou jamais appliquée, et seul le paramètre actif prouve que le modèle est réellement en vigueur."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv6.conf.default.accept_ra_defrtr` (or `cat /proc/sys/net/ipv6/conf/default/accept_ra_defrtr`). Expected output:\n\n- `net.ipv6.conf.default.accept_ra_defrtr = 0`",
+    "fr": "Exécutez `sysctl net.ipv6.conf.default.accept_ra_defrtr` (ou `cat /proc/sys/net/ipv6/conf/default/accept_ra_defrtr`). Sortie attendue :\n\n- `net.ipv6.conf.default.accept_ra_defrtr = 0`"
+  },
+  "logs": {
+    "en": "No dedicated log. Check the live value with `sysctl net.ipv6.conf.default.accept_ra_defrtr`, audit its source with `sysctl --system`, and inspect the resulting default gateway with `ip -6 route show default`.",
+    "fr": "Aucun journal dédié. Vérifiez la valeur active avec `sysctl net.ipv6.conf.default.accept_ra_defrtr`, auditez son origine avec `sysctl --system`, et inspectez la passerelle par défaut obtenue avec `ip -6 route show default`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv6.conf.default.accept_ra_defrtr` to `0`, persisting it in a Pavois-owned `/etc/sysctl.d/` drop-in and applying it live (no reboot). Run it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour fixer `net.ipv6.conf.default.accept_ra_defrtr` à `0`, le rend persistant via un drop-in `/etc/sysctl.d/` géré par Pavois et l'applique à chaud (sans redémarrage). Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "On hosts that rely on **SLAAC/RA to learn their default gateway**, refusing the default-router flag leaves the new interfaces without an IPv6 default route, breaking off-link IPv6 connectivity. Note this `default` key only governs interfaces created **after** it is set; existing interfaces keep their per-interface value. Apply only where IPv6 routing is **static** or via DHCPv6, verify before enforcing. No effect on IPv4-only systems.",
+    "fr": "Sur les hôtes dépendant de **SLAAC/RA pour apprendre leur passerelle par défaut**, refuser le drapeau de routeur par défaut laisse les nouvelles interfaces sans route IPv6 par défaut, cassant la connectivité IPv6 off-link. Notez que cette clé `default` ne régit que les interfaces créées **après** son réglage ; les interfaces existantes conservent leur valeur par interface. À appliquer uniquement quand le routage IPv6 est **statique** ou via DHCPv6, vérifiez avant d'appliquer. Sans effet sur les systèmes IPv4 uniquement."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

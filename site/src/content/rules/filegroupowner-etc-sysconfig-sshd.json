@@ -1,10 +1,14 @@
 {
   "id": "filegroupowner-etc-sysconfig-sshd",
   "supported_os": [
-    "rhel8"
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9"
   ],
   "os_versions": {
-    "rhel8": "4.0.0"
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
   },
   "severity": "medium",
   "domain": "File ownership",
@@ -28,14 +32,13 @@
     "en": "Verify Group Who Owns /etc/sysconfig/sshd File",
     "fr": "Vérifier le groupe propriétaire du fichier /etc/sysconfig/sshd"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "On RHEL-family systems `/etc/sysconfig/sshd` holds environment options and command-line flags passed to the SSH daemon at start-up (for example crypto-policy overrides). If a non-privileged group owns it, an attacker could be granted write access and weaken the daemon's launch parameters, disabling FIPS mode, loosening ciphers, or pointing it at a rogue config. Group ownership by **root** (gid `0`) protects these start-up settings.",
-    "fr": "Sur les systèmes de la famille RHEL, `/etc/sysconfig/sshd` contient des options d'environnement et des indicateurs de ligne de commande passés au démon SSH au démarrage (par exemple des surcharges de politique cryptographique). Si un groupe non privilégié en est propriétaire, un attaquant pourrait obtenir un accès en écriture et affaiblir les paramètres de lancement du démon, désactiver le mode FIPS, assouplir les algorithmes ou pointer vers une configuration malveillante. La propriété par le groupe **root** (gid `0`) protège ces réglages de démarrage."
-  },
   "summary": {
     "en": "Ensures the SSH daemon environment file `/etc/sysconfig/sshd` is owned by group **root** (gid `0`).",
     "fr": "Garantit que le fichier d'environnement du démon SSH `/etc/sysconfig/sshd` appartient au groupe **root** (gid `0`)."
+  },
+  "rationale": {
+    "en": "On RHEL-family systems `/etc/sysconfig/sshd` holds environment options and command-line flags passed to the SSH daemon at start-up (for example crypto-policy overrides). If a non-privileged group owns it, an attacker could be granted write access and weaken the daemon's launch parameters, disabling FIPS mode, loosening ciphers, or pointing it at a rogue config. Group ownership by **root** (gid `0`) protects these start-up settings.",
+    "fr": "Sur les systèmes de la famille RHEL, `/etc/sysconfig/sshd` contient des options d'environnement et des indicateurs de ligne de commande passés au démon SSH au démarrage (par exemple des surcharges de politique cryptographique). Si un groupe non privilégié en est propriétaire, un attaquant pourrait obtenir un accès en écriture et affaiblir les paramètres de lancement du démon, désactiver le mode FIPS, assouplir les algorithmes ou pointer vers une configuration malveillante. La propriété par le groupe **root** (gid `0`) protège ces réglages de démarrage."
   },
   "check_note": {
     "en": "Pavois reads the real group id of `/etc/sysconfig/sshd` via InSpec's `file` resource and asserts `gid == 0`. It checks the **effective** ownership on disk, so drift from a manual `chgrp` or a package update is caught even when a config-management tool believes the file is correct.",
@@ -56,5 +59,7 @@
   "impact": {
     "en": "Weak ownership of this file can let an attacker tamper with how `sshd` is launched. Resetting the group to **root** is safe, the file is read by the SSH init/systemd unit running as root. No login session is affected. Precaution: keep the mode at `0640`/`0600`; if you edit the file, restart with `systemctl restart sshd` and keep an existing SSH session open until you confirm the new daemon accepts connections.",
     "fr": "Une propriété trop permissive de ce fichier peut permettre à un attaquant d'altérer le lancement de `sshd`. Remettre le groupe à **root** est sans danger, le fichier est lu par l'unité d'init/systemd SSH s'exécutant en root. Aucune session de connexion n'est affectée. Précaution : conservez le mode `0640`/`0600` ; si vous modifiez le fichier, redémarrez avec `systemctl restart sshd` et gardez une session SSH ouverte jusqu'à confirmer que le nouveau démon accepte les connexions."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

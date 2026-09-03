@@ -1,0 +1,37 @@
+{
+  "id": "kconfig-unmap-kernel-at-el0",
+  "title": {
+    "en": "Unmap kernel when running in userspace (aka KAISER)",
+    "fr": "Démapper le noyau lors de l'exécution en espace utilisateur (alias KAISER)"
+  },
+  "summary": {
+    "en": "Requires the kernel to be built with `CONFIG_UNMAP_KERNEL_AT_EL0=y`, enabling the KPTI/KAISER page-table isolation that mitigates Meltdown on arm64.",
+    "fr": "Exige que le noyau soit compilé avec `CONFIG_UNMAP_KERNEL_AT_EL0=y`, activant l'isolation des tables de pages KPTI/KAISER qui mitige Meltdown sur arm64."
+  },
+  "rationale": {
+    "en": "`CONFIG_UNMAP_KERNEL_AT_EL0` enables the **KPTI/KAISER** mitigation on **arm64**: kernel page tables are unmapped while running at exception level 0 (userspace). Without it, an unprivileged process can mount the **Meltdown** (CVE-2017-5754) side-channel attack to read kernel memory, including credentials, keys and other processes' secrets, across the user/kernel boundary.",
+    "fr": "`CONFIG_UNMAP_KERNEL_AT_EL0` active la mitigation **KPTI/KAISER** sur **arm64** : les tables de pages du noyau sont démappées pendant l'exécution au niveau d'exception 0 (espace utilisateur). Sans elle, un processus non privilégié peut exploiter l'attaque par canal auxiliaire **Meltdown** (CVE-2017-5754) pour lire la mémoire noyau, identifiants, clés et secrets d'autres processus, en franchissant la frontière utilisateur/noyau."
+  },
+  "check_note": {
+    "en": "Pavois reads the **build-time kernel config** of the **running** kernel, `/boot/config-$(uname -r)` or `/proc/config.gz`, and requires `CONFIG_UNMAP_KERNEL_AT_EL0=y`. This reflects the kernel actually booted, not a config file that may describe a different or not-yet-installed kernel: a file-based scanner reading a stale `/boot/config-*` could pass while the live kernel lacks the mitigation.",
+    "fr": "Pavois lit la **configuration de compilation** du noyau **en cours d'exécution**, `/boot/config-$(uname -r)` ou `/proc/config.gz`, et exige `CONFIG_UNMAP_KERNEL_AT_EL0=y`. Cela reflète le noyau réellement démarré, et non un fichier de config pouvant décrire un noyau différent ou non installé : un scanner basé fichiers lisant un `/boot/config-*` obsolète pourrait passer alors que le noyau vivant n'a pas la mitigation."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_UNMAP_KERNEL_AT_EL0=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep CONFIG_UNMAP_KERNEL_AT_EL0`). Expected output: `CONFIG_UNMAP_KERNEL_AT_EL0=y`. On arm64 you can also confirm the runtime state with `cat /sys/devices/system/cpu/vulnerabilities/meltdown` (expect `Mitigation: PTI`).",
+    "fr": "Exécutez `grep '^CONFIG_UNMAP_KERNEL_AT_EL0=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep CONFIG_UNMAP_KERNEL_AT_EL0`). Sortie attendue : `CONFIG_UNMAP_KERNEL_AT_EL0=y`. Sur arm64, confirmez aussi l'état d'exécution avec `cat /sys/devices/system/cpu/vulnerabilities/meltdown` (attendu : `Mitigation: PTI`)."
+  },
+  "logs": {
+    "en": "There is no audit-log trail for a build-time option. Inspect the booted kernel's view: `dmesg | grep -i 'kpti\\|meltdown\\|unmap'` and `cat /sys/devices/system/cpu/vulnerabilities/meltdown` show whether the mitigation is active at runtime.",
+    "fr": "Il n'y a pas de trace dans les journaux d'audit pour une option de compilation. Inspectez la vue du noyau démarré : `dmesg | grep -i 'kpti\\|meltdown\\|unmap'` et `cat /sys/devices/system/cpu/vulnerabilities/meltdown` indiquent si la mitigation est active à l'exécution."
+  },
+  "remediation_note": {
+    "en": "No automated remediation: `remediation` is empty because this is a **kernel build-time option** that cannot be toggled on a running system. Fixing it requires installing a vendor kernel compiled with `CONFIG_UNMAP_KERNEL_AT_EL0=y` (all current Debian/Ubuntu/RHEL arm64 kernels already enable it). Apply it manually by booting a compliant kernel, then re-run the scan.",
+    "fr": "Aucune remédiation automatique : `remediation` est vide car il s'agit d'une **option de compilation du noyau** non modifiable sur un système en marche. La correction passe par l'installation d'un noyau fournisseur compilé avec `CONFIG_UNMAP_KERNEL_AT_EL0=y` (tous les noyaux arm64 actuels Debian/Ubuntu/RHEL l'activent déjà). Appliquez-la manuellement en démarrant un noyau conforme, puis relancez le scan."
+  },
+  "impact": {
+    "en": "Failing the check means the **Meltdown mitigation is absent** on arm64: kernel memory is potentially readable by any local process. Precautions before changing kernel: KPTI/PTI adds a small **syscall/context-switch overhead** (typically a few percent), and switching kernels can affect **out-of-tree modules** (GPU, storage). Test the new kernel on a non-production host, keep the previous kernel entry in the bootloader for rollback, and verify hardware drivers load before committing.",
+    "fr": "Échouer au contrôle signifie que la **mitigation Meltdown est absente** sur arm64 : la mémoire noyau est potentiellement lisible par tout processus local. Précautions avant de changer de noyau : KPTI/PTI ajoute un léger **surcoût aux appels système / changements de contexte** (généralement quelques pour cent), et changer de noyau peut affecter les **modules hors arbre** (GPU, stockage). Testez le nouveau noyau sur un hôte hors production, conservez l'entrée du noyau précédent dans le chargeur d'amorçage pour pouvoir revenir en arrière, et vérifiez le chargement des pilotes matériels avant de valider."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

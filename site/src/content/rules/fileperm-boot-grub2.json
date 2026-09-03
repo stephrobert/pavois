@@ -35,33 +35,34 @@
     "en": "All GRUB configuration files must have mode 0600 or more restrictive",
     "fr": "Tous les fichiers de configuration GRUB doivent avoir le mode 0600 ou plus restrictif"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The GRUB2 configuration under `/boot/grub2` (notably `grub.cfg` and `user.cfg`) controls how the system boots and may store the **GRUB bootloader password hash**. If it is group/other-readable, that hash can be **extracted and cracked offline** to defeat boot-time protection; if it is writable, an attacker could inject kernel boot parameters (e.g. `init=/bin/bash`) to gain root at the next reboot. Mode `0600`, owned by `root`, keeps boot settings confidential and immutable to non-root users.",
-    "fr": "La configuration GRUB2 sous `/boot/grub2` (notamment `grub.cfg` et `user.cfg`) controle le demarrage du systeme et peut stocker le **hachage du mot de passe du chargeur GRUB**. S'il est lisible par le groupe/les autres, ce hachage peut etre **extrait et casse hors ligne** pour vaincre la protection au demarrage ; s'il est modifiable, un attaquant pourrait injecter des parametres de noyau (par ex. `init=/bin/bash`) pour obtenir root au prochain redemarrage. Le mode `0600`, appartenant a `root`, garde les parametres de demarrage confidentiels et immuables pour les utilisateurs non-root."
-  },
   "summary": {
     "en": "Ensures the GRUB2 configuration under `/boot/grub2` is not group/other-readable or writable and carries no executable or special (setuid/setgid/sticky) bits, i.e. mode `0600` or stricter.",
-    "fr": "Garantit que la configuration GRUB2 sous `/boot/grub2` n'est ni lisible ni modifiable par le groupe/les autres et ne porte aucun bit executable ou special (setuid/setgid/sticky), soit le mode `0600` ou plus strict."
+    "fr": "Garantit que la configuration GRUB2 sous `/boot/grub2` n'est ni lisible ni modifiable par le groupe/les autres et ne porte aucun bit exécutable ou spécial (setuid/setgid/sticky), soit le mode `0600` ou plus strict."
+  },
+  "rationale": {
+    "en": "The GRUB2 configuration under `/boot/grub2` (notably `grub.cfg` and `user.cfg`) controls how the system boots and may store the **GRUB bootloader password hash**. If it is group/other-readable, that hash can be **extracted and cracked offline** to defeat boot-time protection; if it is writable, an attacker could inject kernel boot parameters (e.g. `init=/bin/bash`) to gain root at the next reboot. Mode `0600`, owned by `root`, keeps boot settings confidential and immutable to non-root users.",
+    "fr": "La configuration GRUB2 sous `/boot/grub2` (notamment `grub.cfg` et `user.cfg`) contrôle le démarrage du système et peut stocker le **hachage du mot de passe du chargeur GRUB**. S'il est lisible par le groupe/les autres, ce hachage peut être **extrait et cassé hors ligne** pour vaincre la protection au démarrage ; s'il est modifiable, un attaquant pourrait injecter des paramètres de noyau (par ex. `init=/bin/bash`) pour obtenir root au prochain redémarrage. Le mode `0600`, appartenant à `root`, garde les paramètres de démarrage confidentiels et immuables pour les utilisateurs non-root."
   },
   "check_note": {
     "en": "Pavois reads the **live mode bits** of `/boot/grub2` via the InSpec `file` resource, the permissions the kernel enforces, instead of a packaging default. A regenerated `grub.cfg` (after `grub2-mkconfig`) can be re-created with looser permissions, which this catches. The `only_if` guard skips the check on systems where `/boot/grub2` is absent (e.g. UEFI-only layouts using `/boot/efi`).",
-    "fr": "Pavois lit les **bits de mode reels** de `/boot/grub2` via la ressource InSpec `file`, les permissions appliquees par le noyau, au lieu d'une valeur par defaut de paquet. Un `grub.cfg` regenere (apres `grub2-mkconfig`) peut etre recree avec des permissions plus larges, ce que cela detecte. La garde `only_if` ignore le controle sur les systemes ou `/boot/grub2` est absent (par ex. agencements UEFI utilisant `/boot/efi`)."
+    "fr": "Pavois lit les **bits de mode réels** de `/boot/grub2` via la ressource InSpec `file`, les permissions appliquées par le noyau, au lieu d'une valeur par défaut de paquet. Un `grub.cfg` régénéré (après `grub2-mkconfig`) peut être recréé avec des permissions plus larges, ce que cela détecte. La garde `only_if` ignore le contrôle sur les systèmes où `/boot/grub2` est absent (par ex. agencements UEFI utilisant `/boot/efi`)."
   },
   "verify": {
     "en": "Run `stat -c '%a %U %G %n' /boot/grub2/grub.cfg /boot/grub2/user.cfg 2>/dev/null`. Expected output shows `600 root root` (or stricter) for each existing file, with no group/other access.",
-    "fr": "Executez `stat -c '%a %U %G %n' /boot/grub2/grub.cfg /boot/grub2/user.cfg 2>/dev/null`. La sortie attendue affiche `600 root root` (ou plus strict) pour chaque fichier present, sans acces groupe/autres."
+    "fr": "Exécutez `stat -c '%a %U %G %n' /boot/grub2/grub.cfg /boot/grub2/user.cfg 2>/dev/null`. La sortie attendue affiche `600 root root` (ou plus strict) pour chaque fichier présent, sans accès groupe/autres."
   },
   "logs": {
     "en": "GRUB config is rebuilt by `grub2-mkconfig`/`grubby`; their runs appear in your package/transaction history (`dnf history`) or shell logs. Boot-time GRUB authentication events are visible in the console and, after boot, in `journalctl -b`. Track permission changes with an auditd watch and `grep grub2 /var/log/audit/audit.log`.",
-    "fr": "La config GRUB est reconstruite par `grub2-mkconfig`/`grubby` ; leurs executions apparaissent dans l'historique de paquets/transactions (`dnf history`) ou les journaux du shell. Les evenements d'authentification GRUB au demarrage sont visibles sur la console et, apres demarrage, dans `journalctl -b`. Suivez les changements de permissions via une regle auditd et `grep grub2 /var/log/audit/audit.log`."
+    "fr": "La config GRUB est reconstruite par `grub2-mkconfig`/`grubby` ; leurs exécutions apparaissent dans l'historique de paquets/transactions (`dnf history`) ou les journaux du shell. Les événements d'authentification GRUB au démarrage sont visibles sur la console et, après démarrage, dans `journalctl -b`. Suivez les changements de permissions via une règle auditd et `grep grub2 /var/log/audit/audit.log`."
   },
   "remediation_note": {
     "en": "No automated remediation is defined, so apply it **manually**: `chown root:root /boot/grub2/grub.cfg /boot/grub2/user.cfg && chmod 0600 /boot/grub2/grub.cfg /boot/grub2/user.cfg`. If you regenerate the config with `grub2-mkconfig -o /boot/grub2/grub.cfg`, re-check the mode afterwards.",
-    "fr": "Aucune remediation automatique n'est definie ; appliquez-la **manuellement** : `chown root:root /boot/grub2/grub.cfg /boot/grub2/user.cfg && chmod 0600 /boot/grub2/grub.cfg /boot/grub2/user.cfg`. Si vous regenerez la config avec `grub2-mkconfig -o /boot/grub2/grub.cfg`, reverifiez le mode ensuite."
+    "fr": "Aucune remédiation automatique n'est définie ; appliquez-la **manuellement** : `chown root:root /boot/grub2/grub.cfg /boot/grub2/user.cfg && chmod 0600 /boot/grub2/grub.cfg /boot/grub2/user.cfg`. Si vous régénérez la config avec `grub2-mkconfig -o /boot/grub2/grub.cfg`, revérifiez le mode ensuite."
   },
   "impact": {
     "en": "Risk if not applied: a readable GRUB config leaks the bootloader password hash; a writable one lets an attacker boot into a root shell. Precautions: setting mode `0600` is non-disruptive, GRUB reads its config in the early-boot environment before DAC applies, and only root edits it at runtime. Do not place `/boot/grub2` on a filesystem mounted with restrictive ACLs that block root, and remember that a GRUB superuser password must be paired with `--unrestricted` on normal menu entries or every boot will halt at the GRUB prompt.",
-    "fr": "Risque en cas de non-application : une config GRUB lisible divulgue le hachage du mot de passe du chargeur ; une config modifiable permet a un attaquant de demarrer dans un shell root. Precautions : appliquer le mode `0600` est sans impact, GRUB lit sa config dans l'environnement de demarrage precoce avant l'application du DAC, et seul root l'edite a l'execution. Ne placez pas `/boot/grub2` sur un systeme de fichiers monte avec des ACL restrictives bloquant root, et rappelez-vous qu'un mot de passe superutilisateur GRUB doit etre associe a `--unrestricted` sur les entrees de menu normales, sinon chaque demarrage s'arretera a l'invite GRUB."
-  }
+    "fr": "Risque en cas de non-application : une config GRUB lisible divulgue le hachage du mot de passe du chargeur ; une config modifiable permet à un attaquant de démarrer dans un shell root. Précautions : appliquer le mode `0600` est sans impact, GRUB lit sa config dans l'environnement de démarrage précoce avant l'application du DAC, et seul root l'édite à l'exécution. Ne placez pas `/boot/grub2` sur un système de fichiers monté avec des ACL restrictives bloquant root, et rappelez-vous qu'un mot de passe superutilisateur GRUB doit être associé à `--unrestricted` sur les entrées de menu normales, sinon chaque démarrage s'arrêtera à l'invite GRUB."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

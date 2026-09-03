@@ -1,0 +1,37 @@
+{
+  "id": "pkg-libpam-runtime-installed",
+  "title": {
+    "en": "Install pam-runtime Package",
+    "fr": "Installer le paquet pam-runtime"
+  },
+  "summary": {
+    "en": "Ensures the `libpam-runtime` package (PAM `common-*` config and `pam-auth-update`) is **installed**.",
+    "fr": "Garantit que le paquet `libpam-runtime` (configuration PAM `common-*` et `pam-auth-update`) est **installé**."
+  },
+  "rationale": {
+    "en": "`libpam-runtime` provides the runtime PAM configuration framework, the `pam-auth-update` tool and the `/etc/pam.d/common-*` files (`common-auth`, `common-password`, `common-account`, `common-session`), that many other hardening rules edit to enforce authentication policy. Without it, the common PAM stacks do not exist and PAM-based controls cannot be configured.",
+    "fr": "`libpam-runtime` fournit le cadre de configuration PAM à l'exécution, l'outil `pam-auth-update` et les fichiers `/etc/pam.d/common-*` (`common-auth`, `common-password`, `common-account`, `common-session`), que de nombreuses autres règles de durcissement modifient pour imposer la politique d'authentification. Sans lui, les piles PAM communes n'existent pas et les contrôles basés sur PAM ne peuvent être configurés."
+  },
+  "check_note": {
+    "en": "Pavois queries the package database via InSpec `package('libpam-runtime')` (`dpkg -s libpam-runtime`) and asserts it **is installed**. Confirming the package guarantees the `/etc/pam.d/common-*` files and `pam-auth-update` framework that other rules depend on are actually present.",
+    "fr": "Pavois interroge la base de paquets via InSpec `package('libpam-runtime')` (`dpkg -s libpam-runtime`) et vérifie qu'il **est installé**. Confirmer le paquet garantit que les fichiers `/etc/pam.d/common-*` et le cadre `pam-auth-update`, dont dépendent d'autres règles, sont réellement présents."
+  },
+  "verify": {
+    "en": "Run `dpkg -s libpam-runtime`. The expected output includes `Status: install ok installed`. Anything else means the rule fails.",
+    "fr": "Exécutez `dpkg -s libpam-runtime`. La sortie attendue contient `Status: install ok installed`. Toute autre valeur signifie que la règle échoue."
+  },
+  "logs": {
+    "en": "Confirm installation via `apt list --installed | grep libpam-runtime` or `/var/log/apt/history.log`. Changes applied through `pam-auth-update` reshape `/etc/pam.d/common-*`; resulting authentication events are logged in `/var/log/auth.log` and `journalctl`.",
+    "fr": "Confirmez l'installation via `apt list --installed | grep libpam-runtime` ou `/var/log/apt/history.log`. Les modifications appliquées via `pam-auth-update` remodèlent `/etc/pam.d/common-*` ; les événements d'authentification résultants sont consignés dans `/var/log/auth.log` et `journalctl`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource named `libpam-runtime` with action **install**; `pavois harden apply` runs the equivalent of `apt-get install libpam-runtime` to reach the compliant state. It is normally already present as an essential dependency.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` nommée `libpam-runtime` avec l'action **install** ; `pavois harden apply` exécute l'équivalent de `apt-get install libpam-runtime` pour atteindre l'état conforme. Il est normalement déjà présent en tant que dépendance essentielle."
+  },
+  "impact": {
+    "en": "This is a foundational package; installing it is safe and usually a no-op. **Precaution:** never *remove* `libpam-runtime`, deleting the `common-*` stacks would break the PAM configuration shared by login, sudo and SSH, potentially making the system **unable to authenticate any user** and causing lockout. Installing or reinstalling it has no adverse effect.",
+    "fr": "C'est un paquet fondamental ; l'installer est sans danger et généralement sans effet. **Précaution :** ne *retirez* jamais `libpam-runtime`, supprimer les piles `common-*` casserait la configuration PAM partagée par login, sudo et SSH, rendant potentiellement le système **incapable d'authentifier le moindre utilisateur** et provoquant un verrouillage. L'installer ou le réinstaller n'a aucun effet néfaste."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

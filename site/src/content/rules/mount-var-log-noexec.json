@@ -1,17 +1,17 @@
 {
   "id": "mount-var-log-noexec",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -38,21 +38,28 @@
   "check": [
     "describe mount('/var/log') do",
     "  its('options') { should include 'noexec' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /var/log 2>/dev/null; grep -hsE '[[:space:]]/var/log[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /var/log 2>/dev/null) 2>/dev/null; } | grep -ow 'noexec'\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "awk -v m=/var/log -v o=noexec '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,\",\");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4\",\"o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var/log && mount -o remount,noexec /var/log || true",
+    "name": "mount-var-log-noexec",
+    "not_if": "awk -v m=/var/log '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\\n' | grep -qx noexec",
+    "resource": "exec"
+  },
   "title": {
     "en": "Add noexec Option to /var/log",
     "fr": "Ajouter l'option noexec à /var/log"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/var/log` is meant to store log files, never executable code. The **`noexec`** option makes the kernel refuse to run any program located on this partition. Allowing execution there serves no operational purpose and would give an attacker who can write to the partition a place to stage and run malware while hiding among log files; `noexec` removes that opportunity.",
-    "fr": "`/var/log` est destiné à stocker des fichiers de log, jamais du code exécutable. L'option **`noexec`** force le noyau à refuser l'exécution de tout programme situé sur cette partition. Y autoriser l'exécution n'a aucune utilité opérationnelle et offrirait à un attaquant capable d'écrire sur la partition un endroit pour déposer et exécuter un malware en se cachant parmi les fichiers de log ; `noexec` supprime cette opportunité."
-  },
   "summary": {
     "en": "Mounts `/var/log` with the **`noexec`** option so the kernel refuses to execute any binary located there.",
     "fr": "Monte `/var/log` avec l'option **`noexec`** afin que le noyau refuse d'exécuter tout binaire qui s'y trouve."
+  },
+  "rationale": {
+    "en": "`/var/log` is meant to store log files, never executable code. The **`noexec`** option makes the kernel refuse to run any program located on this partition. Allowing execution there serves no operational purpose and would give an attacker who can write to the partition a place to stage and run malware while hiding among log files; `noexec` removes that opportunity.",
+    "fr": "`/var/log` est destiné à stocker des fichiers de log, jamais du code exécutable. L'option **`noexec`** force le noyau à refuser l'exécution de tout programme situé sur cette partition. Y autoriser l'exécution n'a aucune utilité opérationnelle et offrirait à un attaquant capable d'écrire sur la partition un endroit pour déposer et exécuter un malware en se cachant parmi les fichiers de log ; `noexec` supprime cette opportunité."
   },
   "check_note": {
     "en": "Pavois inspects the **effective** mount with `mount('/var/log')` and asserts its resolved options include `noexec`. It reads the live kernel mount table, the options actually enforced, rather than `/etc/fstab`, so it catches a partition remounted without the flag, a `systemd` mount-unit override, or an fstab entry that never applied, which a file-based scanner would wrongly pass.",
@@ -73,5 +80,7 @@
   "impact": {
     "en": "Functional impact is usually nil, but verify first: a few log-rotation or monitoring agents drop and run helper scripts under `/var/log`, check `logrotate` postrotate hooks and any vendor agents before applying. **Precautions:** the option can only be set if `/var/log` is a dedicated partition; on a default layout you must first carve it out (a disruptive change requiring planning, migration of existing logs, and a reboot). Quiesce logging services before migrating data so log files are not corrupted mid-write.",
     "fr": "L'impact fonctionnel est généralement nul, mais vérifiez d'abord : quelques agents de rotation de logs ou de supervision déposent et exécutent des scripts d'aide sous `/var/log`, vérifiez les hooks postrotate de `logrotate` et les éventuels agents tiers avant d'appliquer. **Précautions :** l'option ne peut être posée que si `/var/log` est une partition dédiée ; sur une disposition par défaut, vous devez d'abord la créer (changement perturbateur nécessitant planification, migration des logs existants et redémarrage). Mettez en pause les services de journalisation avant de migrer les données afin que les fichiers de log ne soient pas corrompus en cours d'écriture."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

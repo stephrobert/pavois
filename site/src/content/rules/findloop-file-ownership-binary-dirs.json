@@ -1,17 +1,17 @@
 {
   "id": "findloop-file-ownership-binary-dirs",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -38,22 +38,27 @@
   },
   "check": [
     "describe command('timeout 90 find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f ! -user root 2>/dev/null') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \\( ! -user root -o ! -group root \\) -exec chown root:root {} + 2>/dev/null; true",
+    "name": "fix-bindir-ownership",
+    "not_if": "test -z \"$(find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \\( ! -user root -o ! -group root \\) 2>/dev/null | head -1)\"",
+    "resource": "exec"
+  },
   "title": {
     "en": "Verify that system executables have root ownership",
     "fr": "Vérifier que les exécutables système appartiennent à root"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "System binaries are executed by privileged users and by system services, often with escalated rights. If an executable in a system command directory is owned by a non-root user, that user can overwrite the binary and have their code run with the privileges of the next caller, a textbook privilege-escalation and persistence vector. Restricting ownership to **root** ensures these programs cannot be co-opted.",
-    "fr": "Les binaires système sont exécutés par des utilisateurs privilégiés et par des services système, souvent avec des droits élevés. Si un exécutable d'un répertoire de commandes système appartient à un utilisateur non root, celui-ci peut réécrire le binaire et faire exécuter son code avec les privilèges du prochain appelant, un vecteur classique d'élévation de privilèges et de persistance. Restreindre la propriété à **root** garantit que ces programmes ne peuvent être détournés."
-  },
   "summary": {
     "en": "Ensures every executable in the system command directories (`/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin`, `/usr/local/sbin`) is owned by **root**.",
     "fr": "Garantit que chaque exécutable des répertoires de commandes système (`/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin`, `/usr/local/sbin`) appartient à **root**."
+  },
+  "rationale": {
+    "en": "System binaries are executed by privileged users and by system services, often with escalated rights. If an executable in a system command directory is owned by a non-root user, that user can overwrite the binary and have their code run with the privileges of the next caller, a textbook privilege-escalation and persistence vector. Restricting ownership to **root** ensures these programs cannot be co-opted.",
+    "fr": "Les binaires système sont exécutés par des utilisateurs privilégiés et par des services système, souvent avec des droits élevés. Si un exécutable d'un répertoire de commandes système appartient à un utilisateur non root, celui-ci peut réécrire le binaire et faire exécuter son code avec les privilèges du prochain appelant, un vecteur classique d'élévation de privilèges et de persistance. Restreindre la propriété à **root** garantit que ces programmes ne peuvent être détournés."
   },
   "check_note": {
     "en": "Pavois runs `find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f ! -user root` and expects **empty output**, any returned path is a binary owned by a non-root user. Scanning the real on-disk files (not the package database) catches manually installed tools, scripts dropped into `/usr/local/bin` and binaries whose owner was changed after install, which a package-manifest audit would never report.",
@@ -74,5 +79,7 @@
   "impact": {
     "en": "Risk if left as-is: a non-root-owned system binary lets its owner replace it and hijack any privileged process that later runs it. Before fixing: a very small number of third-party packages legitimately install helpers owned by a dedicated service account; running `chown root` on those could break the tool. Change ownership one file at a time, verify the binary's integrity (`rpm -Vf` or a trusted checksum) first, and never run a recursive `chown` over `/usr` blindly.",
     "fr": "Risque en l'état : un binaire système non détenu par root permet à son propriétaire de le remplacer et de détourner tout processus privilégié qui l'exécutera ensuite. Avant de corriger : un très petit nombre de paquets tiers installent légitimement des utilitaires appartenant à un compte de service dédié ; leur appliquer `chown root` pourrait casser l'outil. Changez la propriété fichier par fichier, vérifiez d'abord l'intégrité du binaire (`rpm -Vf` ou une somme de contrôle de confiance), et n'exécutez jamais un `chown` récursif sur `/usr` aveuglément."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

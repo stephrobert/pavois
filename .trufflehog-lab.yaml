@@ -1,0 +1,38 @@
+# Custom TruffleHog detectors for LAB TOPOLOGY leaks: the class of secret the default scan misses.
+#
+# The default hook runs `trufflehog --results=verified`, which only reports credentials TruffleHog
+# can confirm against a live API (a cloud key, a platform token). A private lab IP, an internal
+# hostname, or a plaintext lab password is NOT a verifiable secret, so the default scan waves it
+# through, exactly the leak that reached a tracked file once. This repo is public; those must never
+# ship.
+#
+# These are pure-regex detectors (RE2, so no look-around). They are wired as a SECOND pre-commit
+# hook that runs them in isolation (--include-detectors=CustomRegex) and surfaces unverified matches
+# (a regex hit is never "verified"). Two safety properties hold BY CONSTRUCTION:
+#   - Placeholders pass: RFC 5737 example ranges (203.0.113.x / 198.51.100.x / 192.0.2.x) are not in
+#     the private ranges below, and a parameterised password (value starting with `$`) is outside
+#     the value character class.
+#   - This file does not flag itself: the IP patterns use escaped dots (never a literal a.b.c.d), the
+#     hostname pattern is a prefix+digit class (never a concrete hostname), and the password pattern
+#     is followed by a character class (never a literal `NAME=value`). No comment below contains a
+#     matchable literal, on purpose.
+detectors:
+  # The lab's private /24 ranges (RFC 1918). A public repo must carry only RFC 5737 examples.
+  - name: lab-private-ip
+    keywords: ["168.10.", "76.154.", "168.122."]
+    regex:
+      ip: '(?:192\.168\.10|10\.76\.154|192\.168\.122)\.[0-9]{1,3}'
+
+  # Internal lab hostnames: the "master" prefix followed by a number (a real host on the hypervisor,
+  # and a documented false-friend, the ssh_config alias points elsewhere). Add prefixes as needed.
+  - name: lab-hostname
+    keywords: ["master"]
+    regex:
+      host: 'master[0-9]+'
+
+  # A LITERAL sudo password assigned to the env var. The safe, parameterised forms (value = a shell
+  # variable, so it starts with `$`) do not match, because `$` is outside the value character class.
+  - name: lab-sudo-password
+    keywords: ["SUDO_PASSWORD"]
+    regex:
+      pw: 'PAVOIS_SUDO_PASSWORD=[A-Za-z0-9._-]+'

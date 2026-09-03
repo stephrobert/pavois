@@ -1,16 +1,17 @@
 {
   "id": "sysctl-kernel-perf_cpu_time_max_percent",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -28,6 +29,9 @@
   "check": [
     "describe kernel_parameter('kernel.perf_cpu_time_max_percent') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*kernel.perf_cpu_time_max_percent[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -39,14 +43,13 @@
     "en": "Limit CPU consumption of the Perf system",
     "fr": "Limiter la consommation CPU du sous-système Perf"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`kernel.perf_cpu_time_max_percent` caps the maximum percentage of CPU time that the kernel Perf subsystem may consume handling performance events. Leaving Perf unbounded lets a high (or maliciously crafted) sampling load monopolise CPU and degrade or deny service. Restricting Perf to **1%** decreases the risk of availability problems caused by runaway profiling activity.",
-    "fr": "`kernel.perf_cpu_time_max_percent` plafonne le pourcentage maximal de temps CPU que le sous-système Perf du noyau peut consommer pour traiter les événements de performance. Laisser Perf sans limite permet à une charge d'échantillonnage élevée (ou conçue de façon malveillante) de monopoliser le CPU et de dégrader ou refuser le service. Restreindre Perf à **1%** réduit le risque de problèmes de disponibilité dus à une activité de profilage incontrôlée."
-  },
   "summary": {
     "en": "Sets `kernel.perf_cpu_time_max_percent = 1` to cap the CPU time the Perf subsystem may consume, protecting system availability.",
     "fr": "Fixe `kernel.perf_cpu_time_max_percent = 1` pour plafonner le temps CPU que le sous-système Perf peut consommer, protégeant la disponibilité du système."
+  },
+  "rationale": {
+    "en": "`kernel.perf_cpu_time_max_percent` caps the maximum percentage of CPU time that the kernel Perf subsystem may consume handling performance events. Leaving Perf unbounded lets a high (or maliciously crafted) sampling load monopolise CPU and degrade or deny service. Restricting Perf to **1%** decreases the risk of availability problems caused by runaway profiling activity.",
+    "fr": "`kernel.perf_cpu_time_max_percent` plafonne le pourcentage maximal de temps CPU que le sous-système Perf du noyau peut consommer pour traiter les événements de performance. Laisser Perf sans limite permet à une charge d'échantillonnage élevée (ou conçue de façon malveillante) de monopoliser le CPU et de dégrader ou refuser le service. Restreindre Perf à **1%** réduit le risque de problèmes de disponibilité dus à une activité de profilage incontrôlée."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel value** with `kernel_parameter('kernel.perf_cpu_time_max_percent')` (equivalent to `sysctl kernel.perf_cpu_time_max_percent`), not a `/etc/sysctl.d/*.conf` line. A file may declare `1` while the running kernel keeps a different value because a drop-in overrode it or the file was never applied. The effective parameter is the only authoritative proof.",
@@ -67,5 +70,7 @@
   "impact": {
     "en": "**Risk if not applied:** an unbounded Perf workload (intentional or not) can consume excessive CPU, degrading or denying service.\n\n**Precautions before applying:**\n- This is a **profiling/observability trade-off**. Capping Perf at 1% means heavy, legitimate `perf` runs will be **throttled** and the kernel may automatically lower the sampling rate, reducing profiling accuracy. On dedicated performance-analysis hosts you may need to relax this.\n- No application breakage or lockout risk; the change is fully reversible at runtime.",
     "fr": "**Risque si non appliqué :** une charge Perf sans limite (intentionnelle ou non) peut consommer un CPU excessif, dégradant ou refusant le service.\n\n**Précautions avant application :**\n- C'est un compromis **profilage/observabilité**. Plafonner Perf à 1% signifie que des exécutions `perf` légitimes et lourdes seront **bridées** et que le noyau peut abaisser automatiquement la fréquence d'échantillonnage, réduisant la précision du profilage. Sur des hôtes dédiés à l'analyse de performance, ce réglage peut devoir être assoupli.\n- Aucun risque de casse applicative ou de blocage ; le changement est entièrement réversible à chaud."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

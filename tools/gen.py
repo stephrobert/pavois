@@ -12,6 +12,7 @@ generate_rule_pages.py, `pavois oscal`) produce the corpus, site fiches and OSCA
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -41,12 +42,14 @@ SCALAR = [
     "requires_companion_control",
     "requires_package",
     "posture",
+    "remediation_class",  # auto | dangerous | install-time | kernel-build | manual
     "replaces",
     "merge_group",
     "thresholds",
     "note",
     "exclusive_group",
     "danger",
+    "waiver",  # accepted risk: justification for a control we deliberately do NOT enforce
 ]
 NORMS = ["bp28", "nist", "pci-dss", "cis", "stig"]
 
@@ -94,8 +97,81 @@ def invert(data):
     return lib
 
 
+OS_PROFILES = {}  # {os: primitives}, loaded lazily from docs/reference/os/<os>.yml
+
+
+def profile(os):
+    """The OS primitive profile: the ~40 facts that make a control distro-specific (package
+    names, grub dir, the group that owns /var/log...). A control references them as @{pkg.httpd}
+    instead of carrying nine copies of the same value, so a wrong fact is fixed in ONE cell
+    instead of hiding in one @os block among a thousand. That is how the phantom RHEL package
+    names sat unnoticed in the debian columns."""
+    if os not in OS_PROFILES:
+        p = ROOT / "docs" / "reference" / "os" / f"{os}.yml"
+        OS_PROFILES[os] = yaml.safe_load(p.read_text()) if p.exists() else {}
+    return OS_PROFILES[os]
+
+
+# Sigil: @{...}. NOT ${...} (shell remediations use it: `for u in ...; do ... ${u}.service`)
+# and NOT %{...} (harden.go uses %{path} in a file `verify:` command).
+VAR = re.compile(r"@\{([a-z_][\w.]*)\}")
+
+
+def subst(v, os, cid):
+    """Resolve @{primitive} against the OS profile. An unknown primitive is a HARD ERROR: it must
+    never render as an empty string, because package('') is installed nowhere and would pass
+    forever — a vacuous control, the very thing we are hunting."""
+    if isinstance(v, str):
+
+        def one(m):
+            node = profile(os)
+            for part in m.group(1).split("."):
+                if not isinstance(node, dict) or part not in node:
+                    raise SystemExit(f"{cid} [{os}]: unknown primitive @{{{m.group(1)}}}")
+                node = node[part]
+            if node is None or node == "":
+                raise SystemExit(f"{cid} [{os}]: primitive @{{{m.group(1)}}} is empty")
+            return str(node)
+
+        return VAR.sub(one, v)
+    if isinstance(v, list):
+        return [subst(x, os, cid) for x in v]
+    if isinstance(v, dict):
+        return {k: subst(x, os, cid) for k, x in v.items()}
+    return v
+
+
 def pick(v, os):
-    return v["@os"].get(os) if isinstance(v, dict) and "@os" in v else v
+    """Resolve a field for one OS: the @os override, else `default`, else the shared value.
+
+    Without the `default` fallback, a field written `@os: {debian12: ...}` silently resolved to
+    None on the eight other OSes and vanished from the render. That single missing line is what
+    produced 123 rhel10 controls with NO remediation at all against 3 on debian12: not 123
+    oversights, one generator semantics defect, multiplied. `default` makes the portable value
+    explicit and the hole a deliberate one.
+    """
+    if isinstance(v, dict) and "@os" in v:
+        return v["@os"].get(os, v.get("default"))
+    return v
+
+
+def assert_resolved(cid, os, field, val):
+    """No `@os` may survive the render, wherever it hides.
+
+    `pick()` only resolves a block that IS the value. Unioning the norm refs of two merged controls
+    left blocks INSIDE a list (`cis: [{'@os': {...}}, '6.1.4.1']`), which pick() handed straight
+    through: the raw dict travelled into the per-OS reference, into the site's JSON, and only
+    surfaced as an Astro schema error 800 pages later. An unresolved @os is a generator bug, so it
+    stops the generator.
+    """
+    if isinstance(val, dict):
+        if "@os" in val:
+            raise SystemExit(f"{cid} [{os}] {field}: an @os block survived the render (nested?)")
+        for k, v in val.items():
+            assert_resolved(cid, os, f"{field}.{k}", v)
+    elif isinstance(val, (list, tuple)):
+        for v in val:
+            assert_resolved(cid, os, field, v)
 
 
 def render(lib):
@@ -110,7 +186,7 @@ def render(lib):
                 if f in entry:
                     val = pick(entry[f], os)
                     if val is not None:
-                        ctrl[f] = val
+                        ctrl[f] = subst(val, os, cid)
             if "norms" in entry:
                 nm = {k: pick(v, os) for k, v in entry["norms"].items() if pick(v, os) is not None}
                 if nm:
@@ -118,7 +194,9 @@ def render(lib):
             if "template" in entry:  # check defined once as a template -> expand to verbatim check
                 t = pick(entry["template"], os)
                 if t is not None:
-                    ctrl["check"] = templates.expand(t)
+                    ctrl["check"] = templates.expand(subst(t, os, cid))
+            for f, v in ctrl.items():
+                assert_resolved(cid, os, f, v)
             out[os][cid] = ctrl
     return out
 

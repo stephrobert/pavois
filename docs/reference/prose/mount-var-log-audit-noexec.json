@@ -1,0 +1,37 @@
+{
+  "id": "mount-var-log-audit-noexec",
+  "title": {
+    "en": "Add noexec Option to /var/log/audit",
+    "fr": "Ajouter l'option noexec à /var/log/audit"
+  },
+  "summary": {
+    "en": "Mounts `/var/log/audit` with the **`noexec`** option so the kernel refuses to execute any binary located there.",
+    "fr": "Monte `/var/log/audit` avec l'option **`noexec`** afin que le noyau refuse d'exécuter tout binaire qui s'y trouve."
+  },
+  "rationale": {
+    "en": "`/var/log/audit` is meant to store the audit trail, never executable code. The **`noexec`** option makes the kernel refuse to run any program located on this partition. Allowing execution there serves no operational purpose and would give an attacker who can write to the partition a place to stage and run malware while blending in with log files; `noexec` removes that opportunity.",
+    "fr": "`/var/log/audit` est destiné à stocker la piste d'audit, jamais du code exécutable. L'option **`noexec`** force le noyau à refuser l'exécution de tout programme situé sur cette partition. Y autoriser l'exécution n'a aucune utilité opérationnelle et offrirait à un attaquant capable d'écrire sur la partition un endroit pour déposer et exécuter un malware en se fondant parmi les fichiers de log ; `noexec` supprime cette opportunité."
+  },
+  "check_note": {
+    "en": "Pavois inspects the **effective** mount with `mount('/var/log/audit')` and asserts its resolved options include `noexec`. It reads the live kernel mount table, the options actually enforced, rather than `/etc/fstab`, so it catches a partition remounted without the flag, a `systemd` mount-unit override, or an fstab entry that never applied, which a file-based scanner would wrongly pass.",
+    "fr": "Pavois inspecte le montage **effectif** via `mount('/var/log/audit')` et vérifie que ses options résolues incluent `noexec`. Il lit la table de montage active du noyau, les options réellement appliquées, plutôt que `/etc/fstab` ; il détecte donc une partition remontée sans le drapeau, un écrasement par une unité `systemd`, ou une entrée fstab jamais appliquée, ce qu'un scanner basé sur les fichiers validerait à tort."
+  },
+  "verify": {
+    "en": "Run `findmnt /var/log/audit` (or `findmnt -no OPTIONS /var/log/audit`) and confirm `noexec` is in the option list. Expected output contains `noexec`, e.g. `/var/log/audit ... rw,nosuid,nodev,noexec,relatime`.",
+    "fr": "Exécutez `findmnt /var/log/audit` (ou `findmnt -no OPTIONS /var/log/audit`) et confirmez que `noexec` figure dans la liste des options. La sortie attendue contient `noexec`, par exemple `/var/log/audit ... rw,nosuid,nodev,noexec,relatime`."
+  },
+  "logs": {
+    "en": "Mount state is queried live with `findmnt /var/log/audit` or `cat /proc/mounts`, not from a log. Boot-time and remount events appear via `journalctl -b | grep -i audit`. The audit subsystem itself writes to `/var/log/audit/audit.log`; blocked execution attempts surface there if a matching audit rule exists.",
+    "fr": "L'état du montage s'interroge en direct avec `findmnt /var/log/audit` ou `cat /proc/mounts`, pas depuis un log. Les événements de démarrage et de remontage apparaissent via `journalctl -b | grep -i audit`. Le sous-système d'audit écrit dans `/var/log/audit/audit.log` ; les tentatives d'exécution bloquées y apparaissent si une règle d'audit correspondante existe."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule yet, so it must be applied **manually**: this requires `/var/log/audit` to be a separate partition. Add `noexec` to its `/etc/fstab` entry, then `mount -o remount /var/log/audit`, or reboot, and re-scan to confirm.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle ; elle doit donc être appliquée **manuellement** : cela suppose que `/var/log/audit` soit une partition séparée. Ajoutez `noexec` à son entrée dans `/etc/fstab`, puis `mount -o remount /var/log/audit`, ou redémarrez, et relancez le scan pour confirmer."
+  },
+  "impact": {
+    "en": "Functional impact is essentially nil, nothing legitimately executes from the audit log directory. **Precautions:** the option can only be set if `/var/log/audit` is a dedicated partition; on a default layout you must first carve it out (a disruptive change requiring planning, migration of existing audit data, and a reboot). Stop `auditd` before migrating data so the active log is not corrupted.",
+    "fr": "L'impact fonctionnel est quasi nul, rien ne s'exécute légitimement depuis le répertoire des logs d'audit. **Précautions :** l'option ne peut être posée que si `/var/log/audit` est une partition dédiée ; sur une disposition par défaut, vous devez d'abord la créer (changement perturbateur nécessitant planification, migration des données d'audit existantes et redémarrage). Arrêtez `auditd` avant de migrer les données pour ne pas corrompre le log actif."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

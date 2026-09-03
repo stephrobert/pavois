@@ -1,0 +1,37 @@
+{
+  "id": "audit-suid-privilege-function",
+  "title": {
+    "en": "Record Events When Privileged Executables Are Run",
+    "fr": "Enregistrer les événements lorsqu'un exécutable privilégié est lancé"
+  },
+  "summary": {
+    "en": "Enforces an **auditd** rule (key `setuid`) that records every execution of a privileged setuid/setgid executable.",
+    "fr": "Impose une règle **auditd** (clé `setuid`) qui enregistre chaque exécution d'un exécutable privilégié setuid/setgid."
+  },
+  "rationale": {
+    "en": "**SUID/SGID binaries run with the privileges of their owner (often root) regardless of who launches them**, which makes them a favourite vector for privilege escalation. Misuse of these privileged functions, by careless authorized users or by an attacker on a compromised account, is a serious, ongoing concern with potentially severe impact. Auditing every execution of a privileged (setuid) executable is a primary way to **detect such misuse and insider/advanced-persistent-threat activity** and to establish accountability for elevated actions.",
+    "fr": "**Les binaires SUID/SGID s'exécutent avec les privilèges de leur propriétaire (souvent root) quel que soit l'utilisateur qui les lance**, ce qui en fait un vecteur privilégié d'élévation de privilèges. Le détournement de ces fonctions, par des utilisateurs autorisés négligents ou par un attaquant sur un compte compromis, est une préoccupation sérieuse et permanente, au potentiel d'impact sévère. Auditer chaque exécution d'un exécutable privilégié (setuid) est un moyen primordial de **détecter cet abus et l'activité d'une menace interne ou persistante avancée** et d'établir la responsabilité des actions élevées."
+  },
+  "check_note": {
+    "en": "Pavois runs `auditctl -l` and checks a rule with the key `setuid` is loaded. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule on disk that was never loaded (no `augenrules --load`, syntax error, reload failure) would make a file scanner falsely **pass**. `auditctl -l` reflects what the kernel audits now.",
+    "fr": "Pavois exécute `auditctl -l` et vérifie qu'une règle de clé `setuid` est chargée. Lire le **jeu de règles réellement chargé dans le noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : une règle sur disque jamais chargée (pas de `augenrules --load`, erreur de syntaxe, échec de rechargement) ferait passer à tort un scanner de fichiers. `auditctl -l` reflète ce que le noyau audite à l'instant présent."
+  },
+  "verify": {
+    "en": "Run `auditctl -l | grep -E '(-k |key=)setuid'` (as root). Expected output is the syscall rules tracking setuid execution, for example:\n\n- `-a always,exit -F arch=b64 -C euid=0 -F auid>=1000 -F auid!=unset -S execve -k setuid`\n- `-a always,exit -F arch=b32 -C euid=0 -F auid>=1000 -F auid!=unset -S execve -k setuid`\n\nNo output means the rules are not loaded.",
+    "fr": "Exécutez `auditctl -l | grep -E '(-k |key=)setuid'` (en root). La sortie attendue est l'ensemble des règles d'appel système suivant l'exécution setuid, par exemple :\n\n- `-a always,exit -F arch=b64 -C euid=0 -F auid>=1000 -F auid!=unset -S execve -k setuid`\n- `-a always,exit -F arch=b32 -C euid=0 -F auid>=1000 -F auid!=unset -S execve -k setuid`\n\nAucune sortie signifie que les règles ne sont pas chargées."
+  },
+  "logs": {
+    "en": "Events go to `/var/log/audit/audit.log`. After running a setuid binary, find the record with `grep 'key=\"setuid\"' /var/log/audit/audit.log` (grep the raw log; `ausearch` can falsely report no matches). The record shows the `auid`, the effective `uid`, the executed program and the timestamp.",
+    "fr": "Les événements aboutissent dans `/var/log/audit/audit.log`. Après avoir lancé un binaire setuid, trouvez l'enregistrement avec `grep 'key=\"setuid\"' /var/log/audit/audit.log` (grep sur le journal brut ; `ausearch` peut signaler à tort l'absence de correspondance). L'enregistrement indique l'`auid`, l'`uid` effectif, le programme exécuté et l'horodatage."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `audit_ruleset` resource to add the missing `setuid` syscall rules to a Pavois-managed drop-in in `/etc/audit/rules.d/` and load them. Because the audit subsystem is locked once running, the change is fully effective only after a **reboot** (`reboot_required: true`).",
+    "fr": "`pavois harden apply` utilise la ressource `audit_ruleset` pour ajouter les règles d'appel système `setuid` manquantes dans un drop-in géré par Pavois sous `/etc/audit/rules.d/` et les charger. Le sous-système d'audit étant verrouillé une fois lancé, la modification n'est pleinement effective qu'après un **redémarrage** (`reboot_required: true`)."
+  },
+  "impact": {
+    "en": "These are **passive syscall watches**, they never block setuid execution, so `passwd`, `sudo`, `mount` and other privileged tools keep working; they only add records to `/var/log/audit/audit.log`. Precautions:\n\n- The rule fires on every privileged `execve` by a normal user, so hosts where users frequently run setuid tools can produce significant audit volume, ensure `/var/log/audit` has space and rotation, and watch `auditd`'s backlog limit.\n- If the ruleset is immutable (`-e 2`), the rule can only be added after a reboot.\n- Confirm the rule parsed with `augenrules --load` and re-check `auditctl -l`.",
+    "fr": "Ce sont des **surveillances d'appels système passives**, elles ne bloquent jamais l'exécution setuid, donc `passwd`, `sudo`, `mount` et autres outils privilégiés continuent de fonctionner ; elles ajoutent seulement des enregistrements dans `/var/log/audit/audit.log`. Précautions :\n\n- La règle se déclenche à chaque `execve` privilégié par un utilisateur normal : les hôtes où les utilisateurs lancent souvent des outils setuid peuvent produire un volume d'audit important, assurez-vous que `/var/log/audit` dispose d'espace et de rotation, et surveillez la limite de backlog d'`auditd`.\n- Si le jeu de règles est immuable (`-e 2`), la règle ne peut être ajoutée qu'après un redémarrage.\n- Confirmez que la règle a été analysée avec `augenrules --load` puis revérifiez `auditctl -l`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

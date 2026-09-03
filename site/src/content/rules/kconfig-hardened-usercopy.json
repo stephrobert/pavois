@@ -1,16 +1,17 @@
 {
   "id": "kconfig-hardened-usercopy",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_HARDENED_USERCOPY=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_HARDENED_USERCOPY='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_HARDENED_USERCOPY=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_HARDENED_USERCOPY=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Harden memory copies between kernel and userspace",
     "fr": "Renforcer les copies mémoire entre le noyau et l'espace utilisateur"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_HARDENED_USERCOPY=y` makes the kernel validate every `copy_to_user`/`copy_from_user` against the bounds of the source/destination object. Without it, a copy that overruns a heap or stack object goes unchecked, turning ordinary bugs into **kernel memory disclosures** (leaking secrets, defeating KASLR) or **heap overflow** primitives that drive privilege-escalation exploits. Enabling it neutralizes entire classes of these attacks at low runtime cost.",
-    "fr": "`CONFIG_HARDENED_USERCOPY=y` fait valider par le noyau chaque `copy_to_user`/`copy_from_user` par rapport aux limites de l'objet source/destination. Sans cette option, une copie qui déborde un objet du tas ou de la pile n'est pas contrôlée, transformant des bugs ordinaires en **divulgations de mémoire noyau** (fuite de secrets, contournement de KASLR) ou en primitives de **dépassement de tas** utilisées pour l'élévation de privilèges. L'activer neutralise des classes entières d'attaques pour un coût d'exécution faible."
-  },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_HARDENED_USERCOPY=y` so userspace copies are bounds-checked against object size.",
     "fr": "Exige que le noyau soit compilé avec `CONFIG_HARDENED_USERCOPY=y` afin que les copies vers/depuis l'espace utilisateur soient bornées à la taille de l'objet."
+  },
+  "rationale": {
+    "en": "`CONFIG_HARDENED_USERCOPY=y` makes the kernel validate every `copy_to_user`/`copy_from_user` against the bounds of the source/destination object. Without it, a copy that overruns a heap or stack object goes unchecked, turning ordinary bugs into **kernel memory disclosures** (leaking secrets, defeating KASLR) or **heap overflow** primitives that drive privilege-escalation exploits. Enabling it neutralizes entire classes of these attacks at low runtime cost.",
+    "fr": "`CONFIG_HARDENED_USERCOPY=y` fait valider par le noyau chaque `copy_to_user`/`copy_from_user` par rapport aux limites de l'objet source/destination. Sans cette option, une copie qui déborde un objet du tas ou de la pile n'est pas contrôlée, transformant des bugs ordinaires en **divulgations de mémoire noyau** (fuite de secrets, contournement de KASLR) ou en primitives de **dépassement de tas** utilisées pour l'élévation de privilèges. L'activer neutralise des classes entières d'attaques pour un coût d'exécution faible."
   },
   "check_note": {
     "en": "Pavois reads the build configuration of the **running** kernel, `/boot/config-$(uname -r)` and the in-memory `/proc/config.gz`, and confirms `CONFIG_HARDENED_USERCOPY=y`. This targets the kernel actually booted, not a stale `/boot/config-*` left by a previous package, so a custom or vendor kernel that silently dropped the option is caught.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "If the option is absent, the kernel offers no bounds checking on userspace copies, leaving the system exposed to memory-disclosure and heap-overflow exploitation. Changing it requires booting a different kernel: validate that the replacement kernel still boots and loads all required drivers/modules **before** removing the old one. Keep the previous kernel entry in the bootloader so you can fall back if the new kernel fails to boot.",
     "fr": "Si l'option est absente, le noyau n'effectue aucun contrôle de bornes sur les copies utilisateur, exposant le système à l'exploitation par divulgation mémoire et dépassement de tas. La changer impose de démarrer un autre noyau : vérifiez que le noyau de remplacement démarre toujours et charge tous les pilotes/modules requis **avant** de retirer l'ancien. Conservez l'entrée du noyau précédent dans le chargeur d'amorçage pour pouvoir revenir en arrière si le nouveau noyau ne démarre pas."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

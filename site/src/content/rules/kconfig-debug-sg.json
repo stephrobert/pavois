@@ -1,16 +1,17 @@
 {
   "id": "kconfig-debug-sg",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R16"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_DEBUG_SG=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_DEBUG_SG='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_DEBUG_SG=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_DEBUG_SG=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Enable checks on scatter-gather (SG) table operations",
     "fr": "Activer les vérifications sur les opérations de tables scatter-gather (SG)"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "This can help find problems with drivers that do not properly initialize their SG tables.",
-    "fr": "Cela aide à détecter les pilotes qui n'initialisent pas correctement leurs tables SG."
-  },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_DEBUG_SG=y`, which adds runtime sanity checks on scatter-gather DMA table operations.",
     "fr": "Exige que le noyau soit compilé avec `CONFIG_DEBUG_SG=y`, ce qui ajoute des contrôles de cohérence à l'exécution sur les opérations de tables DMA scatter-gather."
+  },
+  "rationale": {
+    "en": "This can help find problems with drivers that do not properly initialize their SG tables.",
+    "fr": "Cela aide à détecter les pilotes qui n'initialisent pas correctement leurs tables SG."
   },
   "check_note": {
     "en": "Pavois reads the **effective** build flag of the running kernel via `/boot/config-$(uname -r)` or `/proc/config.gz`, keyed on `$(uname -r)`. It therefore reflects the kernel actually booted, not a stale `.config` from a build tree or another installed image that a fixed-path file scan might pick up.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "Scatter-gather (SG) tables describe the memory regions a driver hands to the DMA engine. A driver that builds a **malformed SG table** can make a device read or write the wrong physical memory, corrupting kernel data silently or enabling **DMA-based memory corruption**. `CONFIG_DEBUG_SG` adds magic-number and bounds checks that trap such bugs at the point they happen instead of letting them propagate. This is a **build-time** option, changeable only by booting a kernel compiled with it. **Precautions:** it costs a small amount of runtime overhead and is typically off in stock kernels; adopting a hardened kernel changes module ABI, so validate driver loading and run a soak test off production before deploying. No special reboot risk beyond a normal kernel swap.",
     "fr": "Les tables scatter-gather (SG) décrivent les régions mémoire qu'un pilote remet au moteur DMA. Un pilote qui construit une **table SG malformée** peut amener un périphérique à lire ou écrire la mauvaise mémoire physique, corrompant silencieusement des données noyau ou permettant une **corruption mémoire via DMA**. `CONFIG_DEBUG_SG` ajoute des vérifications de nombre magique et de bornes qui interceptent ces bogues au moment où ils surviennent au lieu de les laisser se propager. C'est une option **à la compilation**, modifiable uniquement en démarrant un noyau compilé avec. **Précautions :** elle induit un léger surcoût à l'exécution et est généralement désactivée dans les noyaux standard ; adopter un noyau durci change l'ABI des modules, donc vérifiez le chargement des pilotes et menez un test d'endurance hors production avant déploiement. Aucun risque de redémarrage particulier au-delà d'un échange de noyau classique."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

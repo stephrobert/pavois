@@ -4,10 +4,12 @@
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -38,14 +40,13 @@
     "en": "Verify Only Group Root Has GID 0",
     "fr": "Vérifier que seul le groupe root possède le GID 0"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "**GID 0** is the privileged `root` group: files owned by it and many privileged operations are gated on group `root`. If a second group also carries GID 0, it becomes an alias for the root group, its members and any file group-owned by it are treated as root-group, granting access that was meant to be reserved. This is a common privilege-escalation and backdoor technique, hence the **high** severity. Only the canonical `root` group must hold GID 0.",
-    "fr": "Le **GID 0** est celui du groupe privilégié `root` : les fichiers qu'il possède et de nombreuses opérations privilégiées dépendent du groupe `root`. Si un second groupe porte aussi le GID 0, il devient un alias du groupe root, ses membres et tout fichier qu'il possède en groupe sont traités comme appartenant au groupe root, accordant un accès censé être réservé. C'est une technique répandue d'élévation de privilèges et de porte dérobée, d'où la sévérité **haute**. Seul le groupe canonique `root` doit détenir le GID 0."
-  },
   "summary": {
     "en": "Ensures **no group other than `root`** has GID 0, preventing privileged-group aliasing.",
     "fr": "Garantit qu'**aucun groupe autre que `root`** ne possède le GID 0, empêchant l'aliasing du groupe privilégié."
+  },
+  "rationale": {
+    "en": "**GID 0** is the privileged `root` group: files owned by it and many privileged operations are gated on group `root`. If a second group also carries GID 0, it becomes an alias for the root group, its members and any file group-owned by it are treated as root-group, granting access that was meant to be reserved. This is a common privilege-escalation and backdoor technique, hence the **high** severity. Only the canonical `root` group must hold GID 0.",
+    "fr": "Le **GID 0** est celui du groupe privilégié `root` : les fichiers qu'il possède et de nombreuses opérations privilégiées dépendent du groupe `root`. Si un second groupe porte aussi le GID 0, il devient un alias du groupe root, ses membres et tout fichier qu'il possède en groupe sont traités comme appartenant au groupe root, accordant un accès censé être réservé. C'est une technique répandue d'élévation de privilèges et de porte dérobée, d'où la sévérité **haute**. Seul le groupe canonique `root` doit détenir le GID 0."
   },
   "check_note": {
     "en": "pavois scans every group entry (name + GID) and asserts that the only one with GID 0 is `root`. Evaluating the resolved entries rather than assuming `/etc/group` is the sole source keeps the check valid even when group data is partly served from another NSS backend.",
@@ -66,5 +67,7 @@
   "impact": {
     "en": "**Risk if not applied:** a second GID-0 group acts as a hidden root-equivalent, letting its members or its group-owned files bypass intended restrictions.\n\n**Precautions before applying:** before renumbering, inventory files group-owned by the offending group (`find / -xdev -group <group>`); after `groupmod` you must `chgrp` those files to the new GID or they become orphaned. Never reassign the `root` group itself. Do the change in a maintenance window and verify privileged services that depend on group root still start.",
     "fr": "**Risque si non appliqué :** un second groupe à GID 0 agit comme un équivalent root caché, permettant à ses membres ou à ses fichiers de contourner les restrictions prévues.\n\n**Précautions avant application :** avant de renuméroter, inventoriez les fichiers possédés en groupe par le groupe fautif (`find / -xdev -group <groupe>`) ; après `groupmod`, vous devez `chgrp` ces fichiers vers le nouveau GID sinon ils deviennent orphelins. Ne réattribuez jamais le groupe `root` lui-même. Effectuez la modification dans une fenêtre de maintenance et vérifiez que les services privilégiés dépendant du groupe root démarrent toujours."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

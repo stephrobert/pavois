@@ -1,17 +1,17 @@
 {
   "id": "partition-var-log-audit",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -37,19 +37,22 @@
     "  it { should be_mounted }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "# /var/log/audit should be its OWN filesystem (isolation + mount options). This needs (re)partitioning ,\n# offline disk/LVM work, not a safe runtime change.\nfindmnt /var/log/audit >/dev/null 2>&1 && echo '/var/log/audit is already a mount point' || echo '/var/log/audit is NOT separate'\n# Then: dedicate an LVM volume / disk to /var/log/audit and add it to /etc/fstab.\n",
+    "reason": "a separate /var/log/audit filesystem needs partitioning/LVM/tmpfs, not a safe runtime change",
+    "resource": "manual"
+  },
   "title": {
     "en": "Ensure /var/log/audit Located On Separate Partition",
     "fr": "Placer /var/log/audit sur une partition distincte"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Placing `/var/log/audit` on its own partition separates audit records from all other files and, critically, **guarantees space for auditing**. If audit logs shared a partition that filled up, `auditd` could halt or, depending on its disk-full policy, the kernel could **panic or stop the system**. A dedicated partition keeps the audit trail intact and isolates a log flood from the rest of the host.",
-    "fr": "Placer `/var/log/audit` sur sa propre partition sépare les enregistrements d'audit de tous les autres fichiers et, surtout, **garantit de l'espace pour l'audit**. Si les journaux d'audit partageaient une partition qui se remplissait, `auditd` pourrait s'arrêter ou, selon sa politique de disque plein, le noyau pourrait **paniquer ou stopper le système**. Une partition dédiée préserve la piste d'audit et isole une saturation des journaux du reste de l'hôte."
-  },
   "summary": {
     "en": "Mounts `/var/log/audit` on a **dedicated filesystem** so the audit trail has guaranteed space and cannot be disrupted by other files.",
     "fr": "Monte `/var/log/audit` sur un **système de fichiers dédié** afin que la piste d'audit dispose d'un espace garanti et ne puisse être perturbée par d'autres fichiers."
+  },
+  "rationale": {
+    "en": "Placing `/var/log/audit` on its own partition separates audit records from all other files and, critically, **guarantees space for auditing**. If audit logs shared a partition that filled up, `auditd` could halt or, depending on its disk-full policy, the kernel could **panic or stop the system**. A dedicated partition keeps the audit trail intact and isolates a log flood from the rest of the host.",
+    "fr": "Placer `/var/log/audit` sur sa propre partition sépare les enregistrements d'audit de tous les autres fichiers et, surtout, **garantit de l'espace pour l'audit**. Si les journaux d'audit partageaient une partition qui se remplissait, `auditd` pourrait s'arrêter ou, selon sa politique de disque plein, le noyau pourrait **paniquer ou stopper le système**. Une partition dédiée préserve la piste d'audit et isole une saturation des journaux du reste de l'hôte."
   },
   "check_note": {
     "en": "Pavois checks the **effective** mount table via the `mount('/var/log/audit')` resource (`findmnt` / `/proc/self/mountinfo`), not `/etc/fstab`. `fstab` only states intent; a mount may have failed at boot or been overridden by a nested mount or systemd `.mount` unit. Querying the live kernel state confirms the audit directory is **truly** on its own filesystem.",
@@ -70,5 +73,7 @@
   "impact": {
     "en": "Without isolation, a filled-up shared partition can stop auditing or trigger `auditd`'s disk-full action, which on hardened systems may **halt the machine** to avoid losing records. **Precautions before migrating:** stop `auditd` before moving its data, preserve SELinux contexts (`rsync -aHAX` then `restorecon -R /var/log/audit`), size the volume per your retention policy, and review `space_left_action` so a full audit disk fails the way you expect. Keep console/rescue access in case the mount fails at boot.",
     "fr": "Sans isolation, une partition partagée saturée peut arrêter l'audit ou déclencher l'action « disque plein » d'`auditd`, qui, sur des systèmes durcis, peut **arrêter la machine** pour éviter de perdre des enregistrements. **Précautions avant migration :** arrêtez `auditd` avant de déplacer ses données, préservez les contextes SELinux (`rsync -aHAX` puis `restorecon -R /var/log/audit`), dimensionnez le volume selon votre politique de rétention et vérifiez `space_left_action` pour qu'un disque d'audit plein échoue comme prévu. Conservez un accès console/secours au cas où le montage échouerait au démarrage."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

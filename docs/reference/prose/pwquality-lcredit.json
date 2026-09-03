@@ -1,0 +1,37 @@
+{
+  "id": "pwquality-lcredit",
+  "title": {
+    "en": "Ensure PAM Enforces Password Requirements - Minimum Lowercase Characters",
+    "fr": "Garantir que PAM impose des exigences de mot de passe - Minimum de caractères minuscules"
+  },
+  "summary": {
+    "en": "Forces `pam_pwquality` to require at least one lowercase letter in every new password by setting `lcredit = -1`.",
+    "fr": "Force `pam_pwquality` à exiger au moins une lettre minuscule dans chaque nouveau mot de passe en posant `lcredit = -1`."
+  },
+  "rationale": {
+    "en": "A complex password increases the time and resources needed to compromise it. The `lcredit` parameter controls how lowercase letters contribute to a password's strength: a value of `-1` means **at least one lowercase character is mandatory**. Requiring lowercase letters enlarges the character search space, making brute-force and dictionary attacks measurably harder. Without it, users can pick passwords drawn from a narrow alphabet that fall quickly to guessing attacks.",
+    "fr": "Un mot de passe complexe augmente le temps et les ressources nécessaires pour le compromettre. Le paramètre `lcredit` contrôle la contribution des minuscules à la robustesse du mot de passe : une valeur de `-1` signifie **qu'au moins une minuscule est obligatoire**. Exiger des minuscules élargit l'espace de recherche des caractères, rendant les attaques par force brute et par dictionnaire nettement plus difficiles. Sans cela, les utilisateurs peuvent choisir des mots de passe tirés d'un alphabet étroit qui cèdent vite aux attaques par devinette."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** `lcredit` value by scanning `/etc/security/pwquality.conf` **and** every drop-in under `/etc/security/pwquality.conf.d/`, keeping the **last** definition that actually wins at runtime. A file-based scanner that only inspects the main `pwquality.conf` would miss a value overridden (or set) by a drop-in, producing a false result. The control passes only when the resolved value is `<= -1`.",
+    "fr": "Pavois lit la valeur **effective** de `lcredit` en analysant `/etc/security/pwquality.conf` **et** chaque drop-in sous `/etc/security/pwquality.conf.d/`, en conservant la **dernière** définition qui l'emporte réellement à l'exécution. Un scanner basé sur les fichiers qui n'inspecte que le `pwquality.conf` principal manquerait une valeur redéfinie (ou posée) par un drop-in, produisant un faux résultat. Le contrôle passe uniquement quand la valeur résolue est `<= -1`."
+  },
+  "verify": {
+    "en": "Run `grep -rh '^[[:space:]]*lcredit' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. The effective line must read `lcredit = -1` (or any value `<= -1`).",
+    "fr": "Exécutez `grep -rh '^[[:space:]]*lcredit' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. La ligne effective doit indiquer `lcredit = -1` (ou toute valeur `<= -1`)."
+  },
+  "logs": {
+    "en": "Password-change attempts that fail complexity are logged via PAM in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL family); look for `pam_pwquality` messages such as **\"The password does not contain enough character classes\"**. Inspect the live config with `grep -r lcredit /etc/security/pwquality.conf.d/`.",
+    "fr": "Les tentatives de changement de mot de passe qui échouent à la complexité sont journalisées via PAM dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL) ; cherchez les messages `pam_pwquality` comme **\"The password does not contain enough character classes\"**. Inspectez la config active avec `grep -r lcredit /etc/security/pwquality.conf.d/`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` writes `lcredit = -1` to the drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` using the `keyval` resource (an idempotent key/value editor). The high `99-` prefix guarantees it overrides any earlier setting. No service restart is needed; the change applies to the next password change.",
+    "fr": "`pavois harden apply` écrit `lcredit = -1` dans le drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via la ressource `keyval` (un éditeur clé/valeur idempotent). Le préfixe élevé `99-` garantit qu'il surcharge tout réglage antérieur. Aucun redémarrage de service n'est requis ; le changement s'applique au prochain changement de mot de passe."
+  },
+  "impact": {
+    "en": "Existing passwords are **not** invalidated; the rule only constrains **new** passwords. Users who try to set a password with no lowercase letter will be rejected at change time. Risk of lockout is low, but before applying ensure your automated provisioning or password-rotation scripts generate compliant passwords (at least one lowercase letter), otherwise account creation could fail.",
+    "fr": "Les mots de passe existants ne sont **pas** invalidés ; la règle ne contraint que les **nouveaux** mots de passe. Les utilisateurs qui tentent de définir un mot de passe sans minuscule seront rejetés au moment du changement. Le risque de blocage est faible, mais avant d'appliquer, assurez-vous que vos scripts de provisionnement ou de rotation de mots de passe génèrent des mots de passe conformes (au moins une minuscule), sinon la création de comptes pourrait échouer."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

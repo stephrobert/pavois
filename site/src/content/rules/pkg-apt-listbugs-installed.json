@@ -1,0 +1,56 @@
+{
+  "id": "pkg-apt-listbugs-installed",
+  "supported_os": [
+    "debian12",
+    "debian13"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe package('apt-listbugs') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "apt-listbugs",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Install apt-listbugs (critical-bug warnings before APT)",
+    "fr": "Installer apt-listbugs (alerte sur les bogues critiques avant APT)"
+  },
+  "summary": {
+    "en": "`apt-listbugs` hooks into APT and queries the Debian bug tracker before every install or upgrade, listing the **release-critical bugs** (grave, serious, critical) that affect the packages about to be unpacked, and letting you abort or pin them. It protects the *integrity of the upgrade itself*, not the host's attack surface: no standard mandates it, and Pavois ships it as a Debian defence-in-depth practice.",
+    "fr": "`apt-listbugs` s'accroche à APT et interroge le suivi de bogues Debian avant chaque installation ou mise à jour : il liste les **bogues critiques pour la publication** (grave, serious, critical) affectant les paquets sur le point d'être dépaquetés, et permet d'interrompre l'opération ou de les épingler. Il protège l'*intégrité de la mise à jour elle-même*, pas la surface d'attaque de l'hôte : aucune norme ne l'impose, Pavois le propose comme bonne pratique Debian de défense en profondeur."
+  },
+  "check_note": {
+    "en": "Pavois asserts that `apt-listbugs` is present in the dpkg inventory. This is an **inventory-state** control: it proves the tool is installed, **not** that it is wired into APT or that anyone reads its output. The APT hook ships with the package (`/etc/apt/apt.conf.d/10apt-listbugs`), so installation is normally enough to activate it, but a hook disabled downstream, or an `APT_LISTBUGS_FRONTEND=none` in the environment, would still pass this check.",
+    "fr": "Pavois vérifie la présence de `apt-listbugs` dans l'inventaire dpkg. C'est un contrôle d'**état d'inventaire** : il prouve que l'outil est installé, **pas** qu'il est branché sur APT ni que quelqu'un lit sa sortie. Le hook APT est fourni par le paquet (`/etc/apt/apt.conf.d/10apt-listbugs`), donc l'installation suffit normalement à l'activer, mais un hook désactivé en aval, ou un `APT_LISTBUGS_FRONTEND=none` dans l'environnement, passerait quand même ce contrôle."
+  },
+  "verify": {
+    "en": "Run `dpkg -l apt-listbugs` and confirm the state column reads `ii`:\n\n```\nii  apt-listbugs   0.1.39  all  tool which lists critical bugs before each apt installation\n```\n\nTo see it actually work, run a dry upgrade (`apt-get -s upgrade` does not trigger the hook, so use a real `apt install <pkg>` in a scratch VM): apt-listbugs prints the RC bugs found and prompts before unpacking.",
+    "fr": "Exécutez `dpkg -l apt-listbugs` et vérifiez que la colonne d'état affiche `ii` :\n\n```\nii  apt-listbugs   0.1.39  all  tool which lists critical bugs before each apt installation\n```\n\nPour le voir réellement en action, lancez une vraie installation (`apt-get -s upgrade` ne déclenche pas le hook : utilisez un `apt install <paquet>` sur une VM jetable) : apt-listbugs affiche les bogues critiques trouvés et demande confirmation avant le dépaquetage."
+  },
+  "logs": {
+    "en": "apt-listbugs is not a daemon and writes **no log file**. Its output appears inline in the APT transaction, on the terminal. Its persistent state is the bug list cached under `/var/cache/apt-listbugs/` and, when you tell it to hold a buggy package, an APT pin written to `/etc/apt/preferences.d/`, which is the only durable trace of a decision it made.",
+    "fr": "apt-listbugs n'est pas un démon et n'écrit **aucun fichier de journal**. Sa sortie apparaît directement dans la transaction APT, sur le terminal. Son état persistant se résume au cache de bogues sous `/var/cache/apt-listbugs/` et, lorsque vous lui demandez de bloquer un paquet bogué, à un épinglage APT écrit dans `/etc/apt/preferences.d/` : c'est la seule trace durable d'une décision qu'il a prise."
+  },
+  "remediation_note": {
+    "en": "The Pavois harden plan installs the `apt-listbugs` package with the system package manager (`package` resource, action `install`). Nothing else is configured: the package's own APT hook makes it active on the next `apt` run.",
+    "fr": "Le plan de durcissement Pavois installe le paquet `apt-listbugs` avec le gestionnaire de paquets du système (ressource `package`, action `install`). Rien d'autre n'est configuré : le hook APT fourni par le paquet le rend actif dès la prochaine exécution d'`apt`."
+  },
+  "impact": {
+    "en": "Without it, you upgrade blind: a package with a known data-loss or boot-breaking RC bug is unpacked with no warning. The side effect is real and must be planned for: **apt-listbugs is interactive and stops the APT transaction** to ask what you want to do. On a host running `unattended-upgrades`, in CI, or in any non-TTY automation, that turns a silent security upgrade into a hung or aborted one, which *delays patching*. If the host patches itself unattended, either force the non-interactive frontend (`APT_LISTBUGS_FRONTEND=none`) for those runs, or accept that a human reviews the upgrades.",
+    "fr": "Sans lui, vous mettez à jour à l'aveugle : un paquet portant un bogue critique connu (perte de données, démarrage cassé) est dépaqueté sans avertissement. L'effet de bord est réel et doit être anticipé : **apt-listbugs est interactif et interrompt la transaction APT** pour vous demander quoi faire. Sur un hôte qui utilise `unattended-upgrades`, en CI, ou dans toute automatisation sans terminal, cela transforme une mise à jour de sécurité silencieuse en mise à jour bloquée ou avortée, donc *retarde le correctif*. Si l'hôte se met à jour sans surveillance, forcez le frontend non interactif (`APT_LISTBUGS_FRONTEND=none`) pour ces exécutions, ou assumez qu'un humain relit les mises à jour."
+  },
+  "datePublished": "2026-07-14",
+  "dateModified": "2026-07-14"
+}

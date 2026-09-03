@@ -1,0 +1,37 @@
+{
+  "id": "auditd-action-mail-acct",
+  "title": {
+    "en": "Configure auditd mail_acct Action on Low Disk Space",
+    "fr": "Configurer le compte de notification auditd (action_mail_acct) en cas d'espace disque faible"
+  },
+  "summary": {
+    "en": "Ensures `action_mail_acct = root` in `/etc/audit/auditd.conf` so auditd emails an administrator when audit disk space runs low.",
+    "fr": "Garantit que `action_mail_acct = root` dans `/etc/audit/auditd.conf` afin qu'auditd envoie un courriel à un administrateur lorsque l'espace disque d'audit devient faible."
+  },
+  "rationale": {
+    "en": "Email sent to the root account is typically aliased to the administrators of the system, who can take appropriate action.",
+    "fr": "Le courrier envoyé au compte root est généralement redirigé vers les administrateurs du système, qui peuvent alors prendre les mesures appropriées."
+  },
+  "check_note": {
+    "en": "Pavois greps `/etc/audit/auditd.conf` for `action_mail_acct = root` and expects `ok`. `auditd.conf` is the daemon's single configuration file (no drop-in fragmentation), so reading it reflects exactly what auditd will use after its next reload, the effective notification target.",
+    "fr": "Pavois recherche `action_mail_acct = root` dans `/etc/audit/auditd.conf` et attend `ok`. `auditd.conf` est l'unique fichier de configuration du démon (sans fragmentation en drop-ins) ; le lire reflète donc exactement ce qu'auditd utilisera après son prochain rechargement, la cible de notification effective."
+  },
+  "verify": {
+    "en": "Run `grep -i action_mail_acct /etc/audit/auditd.conf`. Expected: `action_mail_acct = root`. After reloading auditd, the setting is live.",
+    "fr": "Exécutez `grep -i action_mail_acct /etc/audit/auditd.conf`. Attendu : `action_mail_acct = root`. Après rechargement d'auditd, le réglage est actif."
+  },
+  "logs": {
+    "en": "- `/var/log/audit/audit.log` and the auditd journal (`journalctl -u auditd`) record disk-space events and the daemon's reactions.\n- A local mail transport must be present for the alert to reach `root` (check the mail spool / `mailq`).",
+    "fr": "- `/var/log/audit/audit.log` et le journal d'auditd (`journalctl -u auditd`) enregistrent les événements d'espace disque et les réactions du démon.\n- Un transport de courrier local doit être présent pour que l'alerte atteigne `root` (vérifiez le spool de courrier / `mailq`)."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is wired for this rule. **Apply manually**, set `action_mail_acct = root` in `/etc/audit/auditd.conf`, then reload with `augenrules --load` or `systemctl reload auditd`. Ensure a working MTA so root's mail is delivered to admins.",
+    "fr": "Aucune remédiation automatique n'est câblée pour cette règle. **À appliquer manuellement**, définissez `action_mail_acct = root` dans `/etc/audit/auditd.conf`, puis rechargez avec `augenrules --load` ou `systemctl reload auditd`. Assurez-vous qu'un MTA fonctionnel délivre le courrier de root aux administrateurs."
+  },
+  "impact": {
+    "en": "Without a notification account, admins learn of audit-storage exhaustion only after records are already being lost. Setting it is harmless; the real prerequisite is a functioning mail path (alias root → a monitored mailbox), otherwise the alert is generated but never read.",
+    "fr": "Sans compte de notification, les administrateurs n'apprennent l'épuisement du stockage d'audit qu'une fois des enregistrements déjà perdus. Le réglage est sans danger ; le vrai prérequis est un chemin de courrier fonctionnel (alias root → boîte surveillée), faute de quoi l'alerte est générée mais jamais lue."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,37 @@
+{
+  "id": "audit-time-clock-settime",
+  "title": {
+    "en": "Record Attempts to Alter Time Through clock_settime",
+    "fr": "Enregistrer les tentatives de modification de l'heure via clock_settime"
+  },
+  "summary": {
+    "en": "Enforces an **auditd** rule (key `time-change`) that records attempts to set the system clock via the `clock_settime` syscall.",
+    "fr": "Impose une règle **auditd** (clé `time-change`) qui enregistre les tentatives de réglage de l'horloge système via l'appel système `clock_settime`."
+  },
+  "rationale": {
+    "en": "**Arbitrary changes to the system clock can be used to obfuscate nefarious activity in log files** (by skewing timestamps) and to confuse services that depend on accurate time, such as `sshd`, Kerberos and TLS certificate validation. The `clock_settime` syscall is one way to set the time directly, so every such call should be audited. A reliable, accurate timeline is the backbone of incident investigation.",
+    "fr": "**Des modifications arbitraires de l'horloge système peuvent servir à masquer une activité malveillante dans les journaux** (en faussant les horodatages) et à perturber des services dépendant d'une heure exacte, comme `sshd`, Kerberos et la validation des certificats TLS. L'appel système `clock_settime` est un moyen de régler l'heure directement : chacun de ces appels doit donc être audité. Une chronologie fiable et exacte est l'épine dorsale de toute investigation d'incident."
+  },
+  "check_note": {
+    "en": "Pavois runs `auditctl -l` and checks a rule with the key `time-change` is loaded. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule on disk that was never loaded (no `augenrules --load`, syntax error, reload failure) would make a file scanner falsely **pass**. `auditctl -l` reflects what the kernel audits now.",
+    "fr": "Pavois exécute `auditctl -l` et vérifie qu'une règle de clé `time-change` est chargée. Lire le **jeu de règles réellement chargé dans le noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : une règle sur disque jamais chargée (pas de `augenrules --load`, erreur de syntaxe, échec de rechargement) ferait passer à tort un scanner de fichiers. `auditctl -l` reflète ce que le noyau audite à l'instant présent."
+  },
+  "verify": {
+    "en": "Run `auditctl -l | grep -E '(-k |key=)time-change'` (as root). Expected output includes the `clock_settime` syscall rules, for example:\n\n- `-a always,exit -F arch=b64 -S clock_settime -F a0=0x0 -k time-change`\n- `-a always,exit -F arch=b32 -S clock_settime -F a0=0x0 -k time-change`\n\nNo output means the rules are not loaded.",
+    "fr": "Exécutez `auditctl -l | grep -E '(-k |key=)time-change'` (en root). La sortie attendue inclut les règles d'appel système `clock_settime`, par exemple :\n\n- `-a always,exit -F arch=b64 -S clock_settime -F a0=0x0 -k time-change`\n- `-a always,exit -F arch=b32 -S clock_settime -F a0=0x0 -k time-change`\n\nAucune sortie signifie que les règles ne sont pas chargées."
+  },
+  "logs": {
+    "en": "Events go to `/var/log/audit/audit.log`. After a time change, find the record with `grep 'key=\"time-change\"' /var/log/audit/audit.log` (grep the raw log; `ausearch` can falsely report no matches). The record shows the `auid`, the syscall and the timestamp.",
+    "fr": "Les événements aboutissent dans `/var/log/audit/audit.log`. Après un changement d'heure, trouvez l'enregistrement avec `grep 'key=\"time-change\"' /var/log/audit/audit.log` (grep sur le journal brut ; `ausearch` peut signaler à tort l'absence de correspondance). L'enregistrement indique l'`auid`, l'appel système et l'horodatage."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `audit_ruleset` resource to add the missing `time-change` syscall rules to a Pavois-managed drop-in in `/etc/audit/rules.d/` and load them. Because the audit subsystem is locked once running, the change is fully effective only after a **reboot** (`reboot_required: true`).",
+    "fr": "`pavois harden apply` utilise la ressource `audit_ruleset` pour ajouter les règles d'appel système `time-change` manquantes dans un drop-in géré par Pavois sous `/etc/audit/rules.d/` et les charger. Le sous-système d'audit étant verrouillé une fois lancé, la modification n'est pleinement effective qu'après un **redémarrage** (`reboot_required: true`)."
+  },
+  "impact": {
+    "en": "This is a **passive syscall watch**, it never blocks time changes, so NTP/`chrony` and manual `date`/`timedatectl` keep working; it only adds records to `/var/log/audit/audit.log`. Precautions:\n\n- A correctly running NTP daemon disciplines the clock gradually (via `adjtimex`) rather than calling `clock_settime`, so steady-state audit volume from this rule is low.\n- If the ruleset is immutable (`-e 2`), the rule can only be added after a reboot.\n- Confirm the rule parsed with `augenrules --load` and re-check `auditctl -l`.",
+    "fr": "Il s'agit d'une **surveillance d'appel système passive**, elle ne bloque jamais les changements d'heure, donc NTP/`chrony` et les `date`/`timedatectl` manuels continuent de fonctionner ; elle ajoute seulement des enregistrements dans `/var/log/audit/audit.log`. Précautions :\n\n- Un démon NTP correctement configuré discipline l'horloge progressivement (via `adjtimex`) plutôt que d'appeler `clock_settime`, donc le volume d'audit en régime permanent issu de cette règle est faible.\n- Si le jeu de règles est immuable (`-e 2`), la règle ne peut être ajoutée qu'après un redémarrage.\n- Confirmez que la règle a été analysée avec `augenrules --load` puis revérifiez `auditctl -l`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

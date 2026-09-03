@@ -1,0 +1,66 @@
+{
+  "id": "misc-postfix-banner",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Hardening (misc)",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "no",
+  "norms": {},
+  "check": [
+    "describe command('if ! command -v /usr/sbin/postconf >/dev/null 2>&1; then echo ok; elif /usr/sbin/postconf -h smtpd_banner 2>/dev/null | grep -qi mail_name; then echo ko; else echo ok; fi') do",
+    "  its('stdout.strip') { should eq 'ok' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "mkdir -p /etc/postfix; touch /etc/postfix/main.cf; if command -v postconf >/dev/null 2>&1; then postconf -e 'smtpd_banner = $myhostname ESMTP'; else sed -ri '/^smtpd_banner/d' /etc/postfix/main.cf; echo 'smtpd_banner = $myhostname ESMTP' >> /etc/postfix/main.cf; fi; systemctl reload postfix 2>/dev/null || true",
+    "name": "postfix-banner",
+    "not_if": "grep -qs '^smtpd_banner' /etc/postfix/main.cf && ! grep '^smtpd_banner' /etc/postfix/main.cf | grep -qi mail_name",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Hide Postfix SMTP Banner Software Name",
+    "fr": "Masquer le nom du logiciel dans la bannière SMTP de Postfix"
+  },
+  "summary": {
+    "en": "Strip the software identity from the SMTP greeting by setting `smtpd_banner = $myhostname ESMTP`. The distribution default (`$myhostname ESMTP $mail_name (Ubuntu)`) announces the MTA product, and often the packaging, to every anonymous client that opens a connection to port 25: that is free reconnaissance, letting an attacker match your MTA against a list of known vulnerabilities before sending a single command.",
+    "fr": "Retire l'identité logicielle de la salutation SMTP en positionnant `smtpd_banner = $myhostname ESMTP`. Le défaut des distributions (`$myhostname ESMTP $mail_name (Ubuntu)`) annonce le produit MTA, et souvent le conditionnement, à tout client anonyme qui ouvre une connexion sur le port 25 : c'est de la reconnaissance offerte, qui permet à un attaquant de rapprocher votre MTA d'une liste de vulnérabilités connues avant même d'envoyer une commande."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** banner with `postconf -h smtpd_banner` and fails if it still contains `mail_name`. `postconf -h` prints the value Postfix resolved, after `main.cf` and the built-in defaults, with the `$mail_name` variable left unexpanded: its mere presence in the template is what leaks the product name at connection time. When `postconf` is absent (Postfix not installed) the control returns `ok`.",
+    "fr": "Pavois lit la bannière **effective** avec `postconf -h smtpd_banner` et échoue si elle contient encore `mail_name`. `postconf -h` affiche la valeur résolue par Postfix, après `main.cf` et les valeurs par défaut intégrées, la variable `$mail_name` restant non substituée : sa seule présence dans le gabarit est ce qui divulgue le nom du produit au moment de la connexion. Quand `postconf` est absent (Postfix non installé), le contrôle renvoie `ok`."
+  },
+  "verify": {
+    "en": "Read the resolved template, then the greeting a real client sees:\n\n```\npostconf -h smtpd_banner              # expected: $myhostname ESMTP\nprintf 'QUIT\\r\\n' | nc localhost 25\n```\n\nThe greeting must read `220 host.example.org ESMTP`, with no product name, version or distribution tag after `ESMTP`.",
+    "fr": "Lisez le gabarit résolu, puis la salutation que voit un vrai client :\n\n```\npostconf -h smtpd_banner              # attendu : $myhostname ESMTP\nprintf 'QUIT\\r\\n' | nc localhost 25\n```\n\nLa salutation doit afficher `220 hote.example.org ESMTP`, sans nom de produit, version ni étiquette de distribution après `ESMTP`."
+  },
+  "logs": {
+    "en": "`journalctl -u postfix` (or `/var/log/mail.log`, `/var/log/maillog` on RHEL) records the reload that applies the new banner, and every subsequent `connect from` line. Banner-grabbing scans show up there as a burst of connections that disconnect right after the greeting, without ever issuing `MAIL FROM`.",
+    "fr": "`journalctl -u postfix` (ou `/var/log/mail.log`, `/var/log/maillog` sur RHEL) enregistre le rechargement qui applique la nouvelle bannière, ainsi que chaque ligne `connect from` ultérieure. Les balayages de collecte de bannière s'y repèrent : une rafale de connexions qui se déconnectent aussitôt après la salutation, sans jamais émettre de `MAIL FROM`."
+  },
+  "remediation_note": {
+    "en": "Pavois runs the `postfix-banner` step: `postconf -e 'smtpd_banner = $myhostname ESMTP'`, with a de-duplicating `sed` plus append as the fallback when `postconf` is missing, followed by a Postfix reload. A `not_if` guard skips the step once `main.cf` declares a banner free of `mail_name`, keeping `confkit harden apply` idempotent. `$myhostname` is deliberately kept: RFC 5321 expects the greeting to carry the server's fully qualified name, and several anti-spam checks reject a greeting that does not.",
+    "fr": "Pavois exécute l'étape `postfix-banner` : `postconf -e 'smtpd_banner = $myhostname ESMTP'`, avec un `sed` de dédoublonnage suivi d'un ajout en repli quand `postconf` manque, puis un rechargement de Postfix. Une garde `not_if` saute l'étape dès lors que `main.cf` déclare une bannière exempte de `mail_name`, ce qui garde `confkit harden apply` idempotent. `$myhostname` est conservé à dessein : la RFC 5321 attend que la salutation porte le nom pleinement qualifié du serveur, et plusieurs contrôles antispam rejettent une salutation qui ne le fait pas."
+  },
+  "impact": {
+    "en": "Defence in depth, not a fix: hiding the banner patches nothing, it only raises the cost of targeting. Operational risk is minimal, but check anything that **parses** the greeting: some monitoring probes, mail-relay tests and legacy anti-spam rules match on the product name and will need updating. The banner keeps its hostname and the `ESMTP` keyword, so protocol conformance and reverse-DNS checks are unaffected.",
+    "fr": "Défense en profondeur, pas un correctif : masquer la bannière ne corrige rien, cela ne fait qu'augmenter le coût du ciblage. Le risque opérationnel est minime, mais vérifiez tout ce qui **analyse** la salutation : certaines sondes de supervision, tests de relais et règles antispam héritées s'appuient sur le nom du produit et devront être mises à jour. La bannière conserve son nom d'hôte et le mot-clé `ESMTP` : la conformité au protocole et les vérifications de DNS inverse ne sont pas affectées."
+  },
+  "datePublished": "2026-07-14",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,37 @@
+{
+  "id": "account-accounts-root-gid-zero",
+  "title": {
+    "en": "Verify Root Has A Primary GID 0",
+    "fr": "Vérifier que root a le GID principal 0"
+  },
+  "summary": {
+    "en": "Ensures the `root` account's primary group (4th field of its `/etc/passwd` line) is **GID 0**.",
+    "fr": "Garantit que le groupe principal du compte `root` (4e champ de sa ligne `/etc/passwd`) est le **GID 0**."
+  },
+  "rationale": {
+    "en": "The `root` account must have primary group **GID 0** (the `root` group). If root's primary GID points to a shared or user group instead, files that root creates inherit that group, exposing them to every member of it. Keeping root's primary GID at `0` guarantees that root-owned files stay under exclusive root-group control.",
+    "fr": "Le compte `root` doit avoir le groupe principal **GID 0** (le groupe `root`). Si le GID principal de root pointe vers un groupe partagé ou un groupe utilisateur, les fichiers créés par root héritent de ce groupe et deviennent accessibles à tous ses membres. Maintenir le GID principal de root à `0` garantit que les fichiers appartenant à root restent sous le contrôle exclusif du groupe root."
+  },
+  "check_note": {
+    "en": "Pavois uses `awk` to print root's `/etc/passwd` line only when its 4th field (primary GID) is not `0`. The check passes only when nothing is printed. Reading the resolved account database confirms the effective primary group rather than assuming a default.",
+    "fr": "Pavois utilise `awk` pour afficher la ligne `/etc/passwd` de root uniquement si son 4e champ (GID principal) n'est pas `0`. Le contrôle réussit seulement si rien n'est affiché. Lire la base de comptes résolue confirme le groupe principal effectif au lieu de supposer une valeur par défaut."
+  },
+  "verify": {
+    "en": "Run `awk -F: '($1==\"root\" && $4!=0){print}' /etc/passwd` (or `id -g root`, which should return `0`). **Expected: empty output / `0`**. Any printed line means root's primary GID is wrong.",
+    "fr": "Exécutez `awk -F: '($1==\"root\" && $4!=0){print}' /etc/passwd` (ou `id -g root`, qui doit renvoyer `0`). **Attendu : sortie vide / `0`**. Toute ligne affichée signifie que le GID principal de root est incorrect."
+  },
+  "logs": {
+    "en": "- Check root's primary group directly: `id root` or `getent passwd root`.\n- Audit files mis-grouped by a wrong root GID: `find / -user root ! -group root -ls` (subset, expect many legitimate hits).\n- Account/login events: `/var/log/auth.log` or `/var/log/secure`.",
+    "fr": "- Vérifier directement le groupe principal de root : `id root` ou `getent passwd root`.\n- Auditer les fichiers mal groupés à cause d'un GID root erroné : `find / -user root ! -group root -ls` (sous-ensemble, de nombreux résultats légitimes attendus).\n- Événements de compte/connexion : `/var/log/auth.log` ou `/var/log/secure`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped. Fix it manually with `usermod -g 0 root` to set root's primary group back to GID 0, then re-run the scan to confirm.",
+    "fr": "Aucune remédiation automatique n'est fournie. Corrigez manuellement avec `usermod -g 0 root` pour replacer le groupe principal de root sur le GID 0, puis relancez le scan pour confirmer."
+  },
+  "impact": {
+    "en": "A non-zero root primary GID causes root-created files to be group-owned by a non-root group, potentially exposing sensitive content to its members. The fix is low-risk; still, back up `/etc/passwd` first and be aware that existing files created earlier keep their old group and may need re-grouping.",
+    "fr": "Un GID principal non nul pour root entraîne l'appartenance des fichiers créés par root à un groupe non-root, exposant potentiellement du contenu sensible à ses membres. Le correctif est peu risqué ; sauvegardez tout de même `/etc/passwd` au préalable et notez que les fichiers déjà créés conservent leur ancien groupe et peuvent nécessiter un re-groupement."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

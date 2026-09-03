@@ -1,0 +1,37 @@
+{
+  "id": "repowner-sshd-config-d",
+  "title": {
+    "en": "Verify Owner on SSH Server Configuration Files",
+    "fr": "Vérifier le propriétaire des fichiers de configuration du serveur SSH"
+  },
+  "summary": {
+    "en": "Ensures the `/etc/ssh/sshd_config.d` directory is owned by **root** (uid 0).",
+    "fr": "Garantit que le répertoire `/etc/ssh/sshd_config.d` appartient à **root** (uid 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/ssh/sshd_config.d` directory holds drop-in files that override the SSH daemon's configuration. If its owner is not `root` (uid 0), a non-privileged user could drop in a file that re-enables `PermitRootLogin`, weakens authentication, or opens port forwarding, silently undermining the SSH hardening on the remote-access entry point of the host.",
+    "fr": "Le répertoire `/etc/ssh/sshd_config.d` contient des fichiers drop-in qui surchargent la configuration du démon SSH. Si son propriétaire n'est pas `root` (uid 0), un utilisateur non privilégié pourrait y déposer un fichier réactivant `PermitRootLogin`, affaiblissant l'authentification ou ouvrant le transfert de ports, sapant discrètement le durcissement SSH sur le point d'entrée d'accès distant de l'hôte."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** owner uid of `/etc/ssh/sshd_config.d` from the filesystem (`stat`). This is precisely the drop-in directory that `sshd` includes, exactly the kind of path a file-only scanner inspecting `sshd_config` alone would overlook. Pavois audits the directory whose contents are actually merged into the running `sshd -T` configuration.",
+    "fr": "Pavois lit l'uid propriétaire **effectif** de `/etc/ssh/sshd_config.d` depuis le système de fichiers (`stat`). C'est précisément le répertoire drop-in que `sshd` inclut, exactement le type de chemin qu'un scanner ne lisant que `sshd_config` ignorerait. Pavois audite le répertoire dont le contenu est réellement fusionné dans la configuration `sshd -T` en cours d'exécution."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U' /etc/ssh/sshd_config.d`. The expected output is `root`. Alternatively, `ls -ld /etc/ssh/sshd_config.d` should show `root` in the owner column.",
+    "fr": "Exécutez `stat -c '%U' /etc/ssh/sshd_config.d`. La sortie attendue est `root`. Sinon, `ls -ld /etc/ssh/sshd_config.d` doit afficher `root` dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default; inspect with `ls -ld /etc/ssh/sshd_config.d`. The effective merged config is shown by `sshd -T`. SSH service activity is in `journalctl -u sshd` and `/var/log/secure` (RHEL/Fedora). If auditd watches the directory, ownership changes appear in `/var/log/audit/audit.log`.",
+    "fr": "Les changements de propriété ne sont pas journalisés par défaut ; inspectez avec `ls -ld /etc/ssh/sshd_config.d`. La configuration fusionnée effective est affichée par `sshd -T`. L'activité du service SSH est dans `journalctl -u sshd` et `/var/log/secure` (RHEL/Fedora). Si auditd surveille le répertoire, les changements de propriété apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied manually: `chown root /etc/ssh/sshd_config.d`. Verify afterwards with `stat -c '%U' /etc/ssh/sshd_config.d`.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit donc être appliquée manuellement : `chown root /etc/ssh/sshd_config.d`. Vérifiez ensuite avec `stat -c '%U' /etc/ssh/sshd_config.d`."
+  },
+  "impact": {
+    "en": "Setting the owner to `root` is the expected state and has no impact on the SSH service: `sshd` reads its config as root. There is no lockout risk, and existing sessions are unaffected. The change touches only directory metadata; no `sshd` restart is required.",
+    "fr": "Définir le propriétaire sur `root` correspond à l'état attendu et n'a aucun impact sur le service SSH : `sshd` lit sa configuration en root. Aucun risque de verrouillage, et les sessions existantes ne sont pas affectées. Le changement ne touche que les métadonnées du répertoire ; aucun redémarrage de `sshd` n'est nécessaire."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

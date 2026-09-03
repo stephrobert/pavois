@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-net-ipv4-conf-default-secure_redirects",
+  "title": {
+    "en": "Configure Kernel Parameter for Accepting Secure Redirects By Default",
+    "fr": "Configurer le paramètre noyau d'acceptation des redirections sécurisées par défaut"
+  },
+  "summary": {
+    "en": "Forces the kernel to **reject** ICMP secure redirects on newly created IPv4 interfaces by setting `net.ipv4.conf.default.secure_redirects` to **0**.",
+    "fr": "Force le noyau à **rejeter** les redirections ICMP sécurisées sur les nouvelles interfaces IPv4 en positionnant `net.ipv4.conf.default.secure_redirects` à **0**."
+  },
+  "rationale": {
+    "en": "Accepting \"secure\" ICMP redirects (from those gateways listed as default gateways) has few legitimate uses. A redirect from a default gateway can still be used to alter a host's routing table and reroute traffic through an attacker-controlled path (man-in-the-middle). Unless the system genuinely relies on dynamic redirects, this should be disabled.",
+    "fr": "Accepter les redirections ICMP « sécurisées » (provenant des passerelles déclarées comme passerelles par défaut) n'a que peu d'usages légitimes. Une redirection issue d'une passerelle par défaut peut tout de même servir à modifier la table de routage de l'hôte et à dérouter le trafic vers un chemin contrôlé par un attaquant (homme du milieu). Sauf dépendance réelle aux redirections dynamiques, ce comportement doit être désactivé."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live** kernel value via `kernel_parameter('net.ipv4.conf.default.secure_redirects')`, which reflects the running setting after every `sysctl.conf`, drop-in under `/etc/sysctl.d/`, kernel command line and runtime override has been merged. A file-based scanner that only greps `/etc/sysctl.conf` misses values set in drop-ins or applied at runtime, producing false results.",
+    "fr": "Pavois lit la valeur **effective** du noyau via `kernel_parameter('net.ipv4.conf.default.secure_redirects')`, qui reflète le réglage en cours après fusion de `sysctl.conf`, des drop-ins de `/etc/sysctl.d/`, de la ligne de commande du noyau et des surcharges runtime. Un scanner de fichiers qui ne lit que `/etc/sysctl.conf` rate les valeurs définies dans les drop-ins ou appliquées à chaud, et produit des résultats erronés."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.conf.default.secure_redirects` and expect `net.ipv4.conf.default.secure_redirects = 0`.",
+    "fr": "Exécuter `sysctl net.ipv4.conf.default.secure_redirects` et attendre `net.ipv4.conf.default.secure_redirects = 0`."
+  },
+  "logs": {
+    "en": "Inspect the effective value with `sysctl net.ipv4.conf.default.secure_redirects` (and per-interface `sysctl -a | grep secure_redirects`). To watch redirects on the wire, capture ICMP type 5 with `tcpdump -ni any 'icmp[icmptype] == icmp-redirect'`.",
+    "fr": "Inspecter la valeur effective avec `sysctl net.ipv4.conf.default.secure_redirects` (et par interface via `sysctl -a | grep secure_redirects`). Pour observer les redirections sur le réseau, capturer les ICMP de type 5 avec `tcpdump -ni any 'icmp[icmptype] == icmp-redirect'`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan writes `net.ipv4.conf.default.secure_redirects = 0` through the **sysctl** resource: it persists the key in a Pavois-owned drop-in and applies it live so no reboot is needed. Run it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois écrit `net.ipv4.conf.default.secure_redirects = 0` via la ressource **sysctl** : la clé est persistée dans un drop-in géré par Pavois et appliquée à chaud, sans redémarrage. À exécuter avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "On a normal host this is safe and recommended. Precaution: if the machine **legitimately depends on a router sending ICMP redirects** to learn better routes (rare, mostly legacy networks), disabling this can cause suboptimal routing. Prefer static routes or a routing daemon instead. The `default` setting only affects **future** interfaces; existing interfaces also need `net.ipv4.conf.all.secure_redirects = 0` and a re-apply or interface bounce to take full effect.",
+    "fr": "Sur un hôte classique, ce réglage est sûr et recommandé. Précaution : si la machine **dépend réellement de redirections ICMP émises par un routeur** pour découvrir de meilleures routes (cas rare, surtout réseaux anciens), la désactivation peut entraîner un routage sous-optimal. Préférer alors des routes statiques ou un démon de routage. Le réglage `default` n'affecte que les interfaces **futures** ; les interfaces existantes nécessitent aussi `net.ipv4.conf.all.secure_redirects = 0` puis une réapplication ou un redémarrage d'interface pour être pleinement prises en compte."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

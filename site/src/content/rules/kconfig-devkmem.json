@@ -1,16 +1,17 @@
 {
   "id": "kconfig-devkmem",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_DEVKMEM=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_DEVKMEM='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_DEVKMEM=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should_not match(/^CONFIG_DEVKMEM=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Disable /dev/kmem virtual device support",
     "fr": "Désactiver la prise en charge du périphérique virtuel /dev/kmem"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The /dev/kmem device is rarely used, but can be used for certain kind of kernel debugging operations.",
-    "fr": "Le périphérique /dev/kmem est rarement utilisé, mais il peut servir à certaines opérations de débogage du noyau."
-  },
   "summary": {
     "en": "Requires the kernel to be built **without** `CONFIG_DEVKMEM`, removing the `/dev/kmem` interface that exposes kernel virtual memory.",
     "fr": "Exige que le noyau soit compilé **sans** `CONFIG_DEVKMEM`, supprimant l'interface `/dev/kmem` qui expose la mémoire virtuelle du noyau."
+  },
+  "rationale": {
+    "en": "The /dev/kmem device is rarely used, but can be used for certain kind of kernel debugging operations.",
+    "fr": "Le périphérique /dev/kmem est rarement utilisé, mais il peut servir à certaines opérations de débogage du noyau."
   },
   "check_note": {
     "en": "Pavois reads the **effective** build flag of the running kernel via `/boot/config-$(uname -r)` or `/proc/config.gz`, keyed on `$(uname -r)`. The control asserts the flag is *not* `=y`, reflecting the actually booted image rather than a stray `.config` a fixed-path file scan could match.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "`/dev/kmem` is a character device giving direct read/write access to the kernel's **virtual address space**. Any process able to open it (root, or via a privilege bug) can read secrets, patch kernel code, or install a rootkit with no module loading and no trace in the module list. It is legacy debugging machinery almost nothing legitimately uses. Compiling it out removes a powerful post-exploitation primitive. This is a **build-time** option (the inverse of the others: it must be *absent*), changeable only by booting a kernel compiled without it. Modern distribution kernels already disable it, so this rule usually passes. **Precautions:** the only software that ever needed `/dev/kmem` is ancient (some old debuggers, original `lrmi`); confirm nothing on the host depends on it before swapping kernels. No reboot risk beyond a normal kernel swap.",
     "fr": "`/dev/kmem` est un périphérique caractère offrant un accès direct en lecture/écriture à l'**espace d'adressage virtuel** du noyau. Tout processus capable de l'ouvrir (root, ou via un bogue de privilège) peut lire des secrets, modifier le code du noyau ou installer un rootkit sans charger de module ni laisser de trace dans la liste des modules. C'est un mécanisme de débogage hérité que presque rien n'utilise légitimement. Le retirer à la compilation élimine une primitive de post-exploitation puissante. C'est une option **à la compilation** (à l'inverse des autres : elle doit être *absente*), modifiable uniquement en démarrant un noyau compilé sans. Les noyaux de distribution modernes la désactivent déjà, donc cette règle passe généralement. **Précautions :** les seuls logiciels ayant jamais eu besoin de `/dev/kmem` sont anciens (quelques vieux débogueurs, le `lrmi` d'origine) ; vérifiez que rien sur l'hôte n'en dépend avant de changer de noyau. Aucun risque de redémarrage au-delà d'un échange de noyau classique."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

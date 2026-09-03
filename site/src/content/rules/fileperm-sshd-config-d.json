@@ -2,6 +2,7 @@
   "id": "fileperm-sshd-config-d",
   "supported_os": [
     "fedora",
+    "rhel10",
     "rhel9"
   ],
   "os_versions": {
@@ -37,14 +38,13 @@
     "en": "Verify Permissions on SSH Server Config File",
     "fr": "Vérifier les permissions du répertoire de configuration du serveur SSH"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The `/etc/ssh/sshd_config.d` directory holds **drop-in fragments** that are included by the main `sshd_config` and that can enable or disable security-critical SSH features (authentication methods, ciphers, root login). If the directory is writable by group or other, a non-privileged user could add a drop-in that **weakens or backdoors the SSH daemon** on the next reload; if readable beyond root, the configuration surface is disclosed. The directory must be owned by root with no read/write/execute for group or other so only the administrator controls the effective SSH configuration.",
-    "fr": "Le répertoire `/etc/ssh/sshd_config.d` héberge des **fragments drop-in** inclus par le `sshd_config` principal et pouvant activer ou désactiver des fonctionnalités SSH critiques (méthodes d'authentification, chiffrements, connexion root). Si le répertoire est modifiable par le groupe ou les autres, un utilisateur non privilégié pourrait ajouter un drop-in qui **affaiblit ou piège le démon SSH** au prochain rechargement ; s'il est lisible au-delà de root, la surface de configuration est divulguée. Le répertoire doit appartenir à root sans lecture/écriture/exécution pour le groupe ou les autres afin que seul l'administrateur contrôle la configuration SSH effective."
-  },
   "summary": {
     "en": "Ensures the `/etc/ssh/sshd_config.d` drop-in directory is owned by root with no access for group or other, so SSH config fragments cannot be added or read by unprivileged users.",
     "fr": "Garantit que le répertoire de drop-ins `/etc/ssh/sshd_config.d` appartient à root sans accès pour le groupe ou les autres, afin que les fragments de configuration SSH ne puissent être ajoutés ni lus par des utilisateurs non privilégiés."
+  },
+  "rationale": {
+    "en": "The `/etc/ssh/sshd_config.d` directory holds **drop-in fragments** that are included by the main `sshd_config` and that can enable or disable security-critical SSH features (authentication methods, ciphers, root login). If the directory is writable by group or other, a non-privileged user could add a drop-in that **weakens or backdoors the SSH daemon** on the next reload; if readable beyond root, the configuration surface is disclosed. The directory must be owned by root with no read/write/execute for group or other so only the administrator controls the effective SSH configuration.",
+    "fr": "Le répertoire `/etc/ssh/sshd_config.d` héberge des **fragments drop-in** inclus par le `sshd_config` principal et pouvant activer ou désactiver des fonctionnalités SSH critiques (méthodes d'authentification, chiffrements, connexion root). Si le répertoire est modifiable par le groupe ou les autres, un utilisateur non privilégié pourrait ajouter un drop-in qui **affaiblit ou piège le démon SSH** au prochain rechargement ; s'il est lisible au-delà de root, la surface de configuration est divulguée. Le répertoire doit appartenir à root sans lecture/écriture/exécution pour le groupe ou les autres afin que seul l'administrateur contrôle la configuration SSH effective."
   },
   "check_note": {
     "en": "Pavois reads the **effective directory mode** of `/etc/ssh/sshd_config.d` and asserts no read/write/execute for group or other and no `setuid`/`setgid`/`sticky` bits. Guarded by `only_if { file('/etc/ssh/sshd_config.d').exist? }`. Because `sshd` assembles its effective policy from every fragment in this directory, securing the directory is what actually prevents an attacker from injecting an `Include`d override, checking the live inode reflects that real attack surface.",
@@ -65,5 +65,7 @@
   "impact": {
     "en": "A group- or world-writable `sshd_config.d` lets an unprivileged user drop in an override (e.g. `PermitRootLogin yes`, weak ciphers, an authorized backdoor) that takes effect on the next `sshd` reload, a serious remote-access compromise. **Precautions:** changing only the directory permissions does not affect live SSH sessions, so it is safe; just keep the directory owned by root and `0700`, and validate with `sshd -t` (config test) before reloading to avoid an `sshd` that fails to restart.",
     "fr": "Un `sshd_config.d` modifiable par le groupe ou tous permet à un utilisateur non privilégié d'y déposer une surcharge (par ex. `PermitRootLogin yes`, des chiffrements faibles, une porte dérobée autorisée) prenant effet au prochain rechargement de `sshd`, une compromission sérieuse de l'accès distant. **Précautions :** modifier uniquement les permissions du répertoire n'affecte pas les sessions SSH actives, c'est donc sûr ; conservez simplement le répertoire propriété de root et en `0700`, et validez avec `sshd -t` (test de configuration) avant de recharger pour éviter un `sshd` qui ne redémarre pas."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

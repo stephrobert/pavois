@@ -1,6 +1,10 @@
 # Pre-commit hooks for pavois. Install: `pre-commit install` (the `pre-commit` tool
 # ships via mise). Go hooks run against the ./go module and use the toolchain on PATH
 # (provided by `mise install`). Run on all files: `pre-commit run --all-files`.
+#
+# The pre-push stage is NOT wired here on purpose: `.git/hooks/pre-push` also refuses a direct push
+# to main, and letting pre-commit install its own would overwrite that guard. tools/hooks/pre-push
+# owns the stage and runs both jobs; `mise run hooks:install` installs it alongside these hooks.
 repos:
   # General hygiene + a hard stop on accidentally committing secrets/keys (this repo
   # ships public — see the publish-hygiene rules).
@@ -65,5 +69,18 @@ repos:
         name: TruffleHog (secret scan)
         # --no-update: never auto-fetch a new binary at hook time (LOTP supply-chain hardening).
         entry: trufflehog git file://. --since-commit HEAD --results=verified --fail --no-update
+        language: system
+        pass_filenames: false
+      - id: trufflehog-lab
+        name: TruffleHog (lab-topology leak scan)
+        # The scan above only reports VERIFIED credentials (a live API confirms them), so it is blind
+        # to the leak that actually reached a tracked file: a private lab IP, an internal hostname, a
+        # plaintext lab password. These are custom regex detectors (.trufflehog-lab.yaml) run in
+        # isolation (--include-detectors=CustomRegex) so built-in unverified hits add no noise, and
+        # surfaced as unverified (--results includes unverified) since a regex match is never "verified".
+        # RFC 5737 example IPs and $VAR-parameterised passwords do not match, by construction.
+        # The detector config is self-clean by construction (its patterns never match their own text),
+        # so it needs no path exclusion, which pre-commit's hook context would ignore anyway.
+        entry: trufflehog git file://. --since-commit HEAD --config=.trufflehog-lab.yaml --include-detectors=CustomRegex --results=verified,unverified,unknown --no-verification --fail --no-update
         language: system
         pass_filenames: false

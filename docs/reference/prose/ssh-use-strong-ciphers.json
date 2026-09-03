@@ -1,0 +1,37 @@
+{
+  "id": "ssh-use-strong-ciphers",
+  "title": {
+    "en": "Use Only Strong Ciphers",
+    "fr": "N'utiliser que des algorithmes de chiffrement robustes"
+  },
+  "summary": {
+    "en": "Restrict the SSH server to strong symmetric `Ciphers` only, AES in **CTR** and **GCM** modes plus `chacha20-poly1305@openssh.com`, excluding CBC and other weak ciphers.",
+    "fr": "Restreint le serveur SSH aux seuls algorithmes de chiffrement symétrique robustes (`Ciphers`), AES en modes **CTR** et **GCM** ainsi que `chacha20-poly1305@openssh.com`, en excluant CBC et les autres algorithmes faibles."
+  },
+  "rationale": {
+    "en": "Research on the SSH Transport Protocol (RFC 4253) showed that the **Cipher Block Chaining (CBC)** mode has security weaknesses that allowed recovery of up to 32 bits of plaintext from a ciphertext block. The **Counter (CTR)** mode ciphers (RFC 4344) and modern **AEAD** ciphers (GCM, ChaCha20-Poly1305) are not vulnerable to these attacks and are recommended for standard use. Leaving CBC or arcfour ciphers enabled exposes the session to plaintext-recovery and downgrade attacks against the encrypted tunnel.",
+    "fr": "Les recherches sur le protocole de transport SSH (RFC 4253) ont montré que le mode **CBC (Cipher Block Chaining)** présente des faiblesses permettant de récupérer jusqu'à 32 bits de texte clair à partir d'un bloc de chiffré. Les algorithmes en mode **compteur (CTR)** (RFC 4344) et les chiffrements **AEAD** modernes (GCM, ChaCha20-Poly1305) ne sont pas vulnérables à ces attaques et sont recommandés pour un usage standard. Laisser CBC ou arcfour activés expose la session à des attaques de récupération de texte clair et de déclassement contre le tunnel chiffré."
+  },
+  "check_note": {
+    "en": "Pavois runs `sshd -T` and matches the **effective** `ciphers` line against the strong list. `sshd -T` reports the cipher set the daemon actually resolved, after every `Include`, `Match` block and drop-in in `/etc/ssh/sshd_config.d/`, so a CBC cipher re-enabled by a drop-in is detected. Parsing `/etc/ssh/sshd_config` alone would miss those includes and yield a **false negative**.",
+    "fr": "Pavois exécute `sshd -T` et compare la ligne `ciphers` **effective** à la liste robuste. `sshd -T` indique le jeu d'algorithmes réellement résolu par le démon, après tous les `Include`, blocs `Match` et drop-ins de `/etc/ssh/sshd_config.d/`, de sorte qu'un algorithme CBC réactivé par un drop-in est détecté. N'analyser que `/etc/ssh/sshd_config` manquerait ces inclusions et donnerait un **faux négatif**."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -i '^ciphers'`. Expected output:\n\n```\nciphers aes128-ctr,aes192-ctr,aes256-ctr,chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com\n```\n\nNo `-cbc` or `arcfour` cipher should be present.",
+    "fr": "Exécutez `sshd -T | grep -i '^ciphers'`. Sortie attendue :\n\n```\nciphers aes128-ctr,aes192-ctr,aes256-ctr,chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com\n```\n\nAucun algorithme `-cbc` ou `arcfour` ne doit être présent."
+  },
+  "logs": {
+    "en": "SSH connection and negotiation events are in `/var/log/auth.log` (or `journalctl -u ssh`). A client that only offers a weak cipher is refused with `no matching cipher found`, which surfaces legacy clients in those logs.",
+    "fr": "Les événements de connexion et de négociation SSH se trouvent dans `/var/log/auth.log` (ou `journalctl -u ssh`). Un client ne proposant qu'un algorithme faible est rejeté avec `no matching cipher found`, ce qui fait apparaître les clients hérités dans ces journaux."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan writes the `Ciphers` directive (`sshd_setting` resource) with the strong cipher list into the SSH drop-in configuration and reloads `sshd`. Apply it with `pavois harden apply`. The new list takes effect on the next connection; current sessions stay up.",
+    "fr": "Le plan de durcissement de Pavois écrit la directive `Ciphers` (ressource `sshd_setting`) avec la liste d'algorithmes robustes dans la configuration drop-in SSH puis recharge `sshd`. Appliquez-le avec `pavois harden apply`. La nouvelle liste prend effet à la prochaine connexion ; les sessions en cours restent actives."
+  },
+  "impact": {
+    "en": "Disabling CBC/arcfour ciphers can break legacy SSH clients, old network appliances or jump hosts that lack CTR/GCM support. **Before applying**, confirm your clients (any recent OpenSSH already negotiates these strong ciphers) and keep a **second session or console** open. After applying, open a fresh SSH connection in a new terminal to verify access before closing the original, this prevents a lockout.",
+    "fr": "Désactiver les algorithmes CBC/arcfour peut casser d'anciens clients SSH, de vieux équipements réseau ou des hôtes rebond sans support CTR/GCM. **Avant d'appliquer**, vérifiez vos clients (tout OpenSSH récent négocie déjà ces algorithmes robustes) et gardez **une seconde session ou console** ouverte. Après application, ouvrez une nouvelle connexion SSH dans un autre terminal pour confirmer l'accès avant de fermer la session d'origine, cela évite tout verrouillage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

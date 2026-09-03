@@ -1,0 +1,37 @@
+{
+  "id": "ssh-set-keepalive",
+  "title": {
+    "en": "Set SSH Client Alive Count Max",
+    "fr": "Définir le nombre maximal de sondes d'activité du client SSH"
+  },
+  "summary": {
+    "en": "Sets **`ClientAliveCountMax 0`** so a session is dropped as soon as the first `ClientAliveInterval` elapses with no response.",
+    "fr": "Définit **`ClientAliveCountMax 0`** pour qu'une session soit fermée dès l'expiration du premier `ClientAliveInterval` sans réponse."
+  },
+  "rationale": {
+    "en": "`ClientAliveCountMax` controls how many unanswered keepalive probes `sshd` tolerates before closing a session. Setting it to **`0`** means the session is terminated immediately when an idle period of `ClientAliveInterval` passes, guaranteeing the idle timeout is honored without grace and minimizing the window in which an unattended session can be hijacked. It is the companion of `ssh-set-idle-timeout`; together they enforce a strict server-side inactivity disconnect.",
+    "fr": "`ClientAliveCountMax` contrôle combien de sondes keepalive sans réponse `sshd` tolère avant de fermer une session. Le positionner à **`0`** signifie que la session est terminée immédiatement dès qu'une période d'inactivité de `ClientAliveInterval` s'écoule, garantissant que le délai d'inactivité est respecté sans tolérance et minimisant la fenêtre durant laquelle une session sans surveillance peut être détournée. C'est le pendant de `ssh-set-idle-timeout` ; ensemble, ils imposent une déconnexion stricte pour inactivité côté serveur."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** `clientalivecountmax` value from `sshd -T`, the daemon's resolved configuration. A scan of `/etc/ssh/sshd_config` could miss a value set in an `Include`d drop-in under `/etc/ssh/sshd_config.d/` or a `Match` block, `sshd -T` reflects exactly what the running daemon enforces.",
+    "fr": "Pavois lit la valeur **effective** de `clientalivecountmax` depuis `sshd -T`, la configuration résolue du démon. Un scan de `/etc/ssh/sshd_config` pourrait rater une valeur définie dans un drop-in `Include` sous `/etc/ssh/sshd_config.d/` ou dans un bloc `Match`, `sshd -T` reflète exactement ce que le démon en cours d'exécution applique."
+  },
+  "verify": {
+    "en": "Run `sudo sshd -T | grep -i clientalivecountmax`. The expected output is **`clientalivecountmax 0`**.",
+    "fr": "Exécutez `sudo sshd -T | grep -i clientalivecountmax`. La sortie attendue est **`clientalivecountmax 0`**."
+  },
+  "logs": {
+    "en": "Idle disconnections triggered by this setting are logged by `sshd` (e.g. `Timeout, client not responding` / `Connection closed`) in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL family); follow with `journalctl -u ssh -f` (or `-u sshd`).",
+    "fr": "Les déconnexions pour inactivité déclenchées par ce paramètre sont consignées par `sshd` (par exemple `Timeout, client not responding` / `Connection closed`) dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL) ; suivez avec `journalctl -u ssh -f` (ou `-u sshd`)."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` sets the `sshd_setting` directive **`clientalivecountmax`** to **`0`** in a managed drop-in, validates it with `sshd -t -f %{path}`, then notifies a **reload** of the `ssh` service so the strict timeout takes effect without dropping live sessions. It is only effective together with a non-zero `ClientAliveInterval` (see `ssh-set-idle-timeout`).",
+    "fr": "`pavois harden apply` définit la directive `sshd_setting` **`clientalivecountmax`** sur **`0`** dans un drop-in géré, la valide avec `sshd -t -f %{path}`, puis déclenche un **reload** du service `ssh` pour que le délai strict prenne effet sans couper les sessions actives. Il n'est efficace qu'associé à un `ClientAliveInterval` non nul (voir `ssh-set-idle-timeout`)."
+  },
+  "impact": {
+    "en": "Leaving `ClientAliveCountMax` at its default (3) gives idle sessions extra grace before disconnect; setting it to `0` makes the timeout strict. Precaution: with a strict timeout, sessions on **flaky or high-latency networks** may be dropped if a single keepalive probe is missed during a brief outage, for unstable links consider client-side `ServerAliveInterval` and run long jobs under `tmux`/`screen`. Ensure `ClientAliveInterval` is set to a reasonable value (e.g. 300) so `0` does not produce an unexpectedly aggressive disconnect. The reload preserves your current SSH session, so there is no lockout risk.",
+    "fr": "Laisser `ClientAliveCountMax` à sa valeur par défaut (3) accorde aux sessions inactives un délai de grâce supplémentaire avant déconnexion ; le mettre à `0` rend le délai strict. Précaution : avec un délai strict, les sessions sur des **réseaux instables ou à forte latence** peuvent être fermées si une seule sonde keepalive est manquée lors d'une brève coupure, pour les liens instables, envisagez `ServerAliveInterval` côté client et exécutez les tâches longues sous `tmux`/`screen`. Assurez-vous que `ClientAliveInterval` est réglé sur une valeur raisonnable (par exemple 300) afin que `0` ne produise pas une déconnexion étonnamment agressive. Le reload préserve votre session SSH en cours, il n'y a donc aucun risque de blocage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

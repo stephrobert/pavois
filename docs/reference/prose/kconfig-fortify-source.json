@@ -1,0 +1,37 @@
+{
+  "id": "kconfig-fortify-source",
+  "title": {
+    "en": "Harden common str/mem functions against buffer overflows",
+    "fr": "Durcir les fonctions str/mem courantes contre les débordements de tampon"
+  },
+  "summary": {
+    "en": "Requires the kernel to be built with `CONFIG_FORTIFY_SOURCE=y`, adding compile- and run-time bounds checks to common `str*`/`mem*` functions.",
+    "fr": "Exige que le noyau soit compilé avec `CONFIG_FORTIFY_SOURCE=y`, ajoutant des contrôles de bornes à la compilation et à l'exécution sur les fonctions `str*`/`mem*` courantes."
+  },
+  "rationale": {
+    "en": "This features helps reduce likelihood of memory corruption of kernel structures.",
+    "fr": "Cette fonctionnalité réduit la probabilité de corruption mémoire des structures du noyau."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** build flag of the running kernel via `/boot/config-$(uname -r)` or `/proc/config.gz`, keyed on `$(uname -r)`, so it reflects the booted image rather than a stray `.config` a fixed-path file scan might match.",
+    "fr": "Pavois lit le drapeau de compilation **effectif** du noyau en cours d'exécution via `/boot/config-$(uname -r)` ou `/proc/config.gz`, indexé sur `$(uname -r)` : il reflète l'image démarrée plutôt qu'un `.config` égaré qu'un scan à chemin fixe pourrait capter."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_FORTIFY_SOURCE=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep '^CONFIG_FORTIFY_SOURCE='`). Expected output: `CONFIG_FORTIFY_SOURCE=y`. Absent or `# CONFIG_FORTIFY_SOURCE is not set` is a failure.",
+    "fr": "Exécutez `grep '^CONFIG_FORTIFY_SOURCE=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep '^CONFIG_FORTIFY_SOURCE='`). Sortie attendue : `CONFIG_FORTIFY_SOURCE=y`. Absente ou `# CONFIG_FORTIFY_SOURCE is not set` est un échec."
+  },
+  "logs": {
+    "en": "When a fortified function detects an overflow, the kernel logs `detected buffer overflow in <func>` and panics: see `dmesg` or `journalctl -k | grep -i 'buffer overflow'`. The build flag itself is silent; confirm it with `zcat /proc/config.gz | grep FORTIFY_SOURCE`.",
+    "fr": "Lorsqu'une fonction durcie détecte un débordement, le noyau journalise `detected buffer overflow in <func>` puis panique : voir `dmesg` ou `journalctl -k | grep -i 'buffer overflow'`. Le drapeau de compilation lui-même est silencieux ; confirmez-le avec `zcat /proc/config.gz | grep FORTIFY_SOURCE`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped: a kernel build option cannot be set by editing a file. Apply it **manually** by installing and booting a kernel compiled with `CONFIG_FORTIFY_SOURCE=y`.",
+    "fr": "Aucune remédiation automatisée n'est fournie : une option de compilation du noyau ne se règle pas en éditant un fichier. Appliquez-la **manuellement** en installant et démarrant un noyau compilé avec `CONFIG_FORTIFY_SOURCE=y`."
+  },
+  "impact": {
+    "en": "`memcpy`, `strcpy`, `strcat` and friends are the classic source of **buffer overflows**: when the destination size is known at compile time, an oversized copy silently smashes adjacent kernel memory, which attackers leverage for privilege escalation. `CONFIG_FORTIFY_SOURCE` inserts size checks so an overflow is **caught and turned into a controlled kernel panic** instead of a corrupted, exploitable state. Without it, a whole class of kernel memory-corruption bugs stays silently exploitable. This is a **build-time** option, set only by booting a kernel compiled with it. **Precautions:** stock distribution kernels increasingly enable it by default; switching to a hardened kernel changes module ABI, so validate driver loading and watch `dmesg` for `detected buffer overflow` panics (which indicate a real bug being caught, not a false alarm) during a soak test off production. No reboot risk beyond a normal kernel swap.",
+    "fr": "`memcpy`, `strcpy`, `strcat` et consorts sont la source classique des **débordements de tampon** : lorsque la taille de destination est connue à la compilation, une copie surdimensionnée écrase silencieusement la mémoire noyau adjacente, ce que les attaquants exploitent pour l'élévation de privilèges. `CONFIG_FORTIFY_SOURCE` insère des contrôles de taille de sorte qu'un débordement soit **intercepté et transformé en panique noyau contrôlée** au lieu d'un état corrompu exploitable. Sans cela, toute une classe de bogues de corruption mémoire du noyau reste exploitable silencieusement. C'est une option **à la compilation**, posée uniquement en démarrant un noyau compilé avec. **Précautions :** les noyaux de distribution l'activent de plus en plus par défaut ; passer à un noyau durci change l'ABI des modules, donc vérifiez le chargement des pilotes et surveillez `dmesg` pour des paniques `detected buffer overflow` (qui indiquent un vrai bogue intercepté, pas une fausse alerte) durant un test d'endurance hors production. Aucun risque de redémarrage au-delà d'un échange de noyau classique."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

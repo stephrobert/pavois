@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-net-ipv4-conf-all-shared_media",
+  "title": {
+    "en": "Configure Sending and Accepting Shared Media Redirects for All IPv4 Interfaces",
+    "fr": "Configurer l'envoi et l'acceptation des redirections de média partagé pour toutes les interfaces IPv4"
+  },
+  "summary": {
+    "en": "Forces `net.ipv4.conf.all.shared_media` to **0** so the kernel does not treat subnets as sharing a medium and cannot implicitly re-enable secure ICMP redirects.",
+    "fr": "Force `net.ipv4.conf.all.shared_media` à **0** afin que le noyau ne considère pas les sous-réseaux comme partageant un support et ne puisse pas réactiver implicitement les redirections ICMP sécurisées."
+  },
+  "rationale": {
+    "en": "`shared_media` tells the kernel that different subnets share the same physical medium, which makes it send ICMP redirects between those subnets. Critically, enabling `shared_media` for an interface also forces `secure_redirects` on, overriding the hardening of that parameter. To keep ICMP-redirect handling locked down, `shared_media` must be **0** so it cannot silently re-enable redirect acceptance and expose the host to redirect-based man-in-the-middle attacks.",
+    "fr": "`shared_media` indique au noyau que différents sous-réseaux partagent le même support physique, ce qui le pousse à envoyer des redirections ICMP entre ces sous-réseaux. Surtout, activer `shared_media` pour une interface force aussi `secure_redirects` à l'état actif, annulant le durcissement de ce paramètre. Pour maintenir verrouillée la gestion des redirections ICMP, `shared_media` doit valoir **0** afin de ne pas réactiver silencieusement l'acceptation des redirections et exposer l'hôte à des attaques d'homme du milieu fondées sur les redirections."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.all.shared_media` from the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not a `/etc/sysctl.d/` file. Because this parameter can override `secure_redirects` at runtime, only the effective kernel value reveals the true redirect posture, a config file might say `0` while a later drop-in or `sysctl -w` flipped it. Reading a file would miss that interaction.",
+    "fr": "Pavois lit la **valeur d'exécution en direct** de `net.ipv4.conf.all.shared_media` depuis le noyau (ressource InSpec `kernel_parameter`, équivalente à `sysctl`), et non un fichier `/etc/sysctl.d/`. Comme ce paramètre peut surcharger `secure_redirects` à l'exécution, seule la valeur noyau effective révèle la vraie posture vis-à-vis des redirections, un fichier de configuration pourrait indiquer `0` alors qu'un drop-in ultérieur ou un `sysctl -w` l'a inversé. Lire un fichier raterait cette interaction."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.conf.all.shared_media`. Expected output:\n\n- `net.ipv4.conf.all.shared_media = 0`\n\nThen confirm `sysctl net.ipv4.conf.all.secure_redirects` still reads `0`.",
+    "fr": "Exécutez `sysctl net.ipv4.conf.all.shared_media`. Sortie attendue :\n\n- `net.ipv4.conf.all.shared_media = 0`\n\nVérifiez ensuite que `sysctl net.ipv4.conf.all.secure_redirects` indique toujours `0`."
+  },
+  "logs": {
+    "en": "No dedicated log exists. Inspect the state with `sysctl net.ipv4.conf.all.shared_media` and review the related redirect settings together with `sysctl -a | grep -E 'shared_media|redirects'`. With `log_martians` on, redirect anomalies show up via `journalctl -k`.",
+    "fr": "Aucun journal dédié n'existe. Inspectez l'état avec `sysctl net.ipv4.conf.all.shared_media` et passez en revue les réglages de redirection associés avec `sysctl -a | grep -E 'shared_media|redirects'`. Avec `log_martians` activé, les anomalies de redirection apparaissent via `journalctl -k`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv4.conf.all.shared_media` to **0**, applying it to the running kernel and persisting it in a Pavois-managed drop-in under `/etc/sysctl.d/` so it survives reboot. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour définir `net.ipv4.conf.all.shared_media` à **0**, en l'appliquant au noyau en cours d'exécution et en le persistant dans un drop-in géré par Pavois sous `/etc/sysctl.d/` afin qu'il survive au redémarrage. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Safe for standard topologies where each interface serves a single IP subnet. The rare exception is a network that genuinely runs multiple subnets on one shared physical medium and relies on the kernel issuing redirects between them; there, disabling `shared_media` can prevent hosts from learning optimal cross-subnet routes. For almost all servers this is not the case. Apply alongside the `secure_redirects` and `send_redirects` rules so the redirect posture stays consistent. No remote-access risk.",
+    "fr": "Sûr pour les topologies standard où chaque interface dessert un seul sous-réseau IP. L'exception rare est un réseau qui exécute réellement plusieurs sous-réseaux sur un même support physique partagé et qui dépend du noyau émettant des redirections entre eux ; là, désactiver `shared_media` peut empêcher les hôtes d'apprendre les routes inter-sous-réseaux optimales. Pour la quasi-totalité des serveurs ce n'est pas le cas. Appliquez-le conjointement aux règles `secure_redirects` et `send_redirects` pour garder une posture de redirection cohérente. Aucun risque pour l'accès distant."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,16 +1,17 @@
 {
   "id": "kconfig-unmap-kernel-at-el0",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R27"
   },
   "check": [
+    "only_if('arm64 only') { os.arch.to_s =~ /aarch64|arm/ }",
     "describe command(\"grep -h '^CONFIG_UNMAP_KERNEL_AT_EL0=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_UNMAP_KERNEL_AT_EL0='\") do",
     "  its('stdout') { should match(/^CONFIG_UNMAP_KERNEL_AT_EL0=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Unmap kernel when running in userspace (aka KAISER)",
     "fr": "Démapper le noyau lors de l'exécution en espace utilisateur (alias KAISER)"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_UNMAP_KERNEL_AT_EL0` enables the **KPTI/KAISER** mitigation on **arm64**: kernel page tables are unmapped while running at exception level 0 (userspace). Without it, an unprivileged process can mount the **Meltdown** (CVE-2017-5754) side-channel attack to read kernel memory, including credentials, keys and other processes' secrets, across the user/kernel boundary.",
-    "fr": "`CONFIG_UNMAP_KERNEL_AT_EL0` active la mitigation **KPTI/KAISER** sur **arm64** : les tables de pages du noyau sont démappées pendant l'exécution au niveau d'exception 0 (espace utilisateur). Sans elle, un processus non privilégié peut exploiter l'attaque par canal auxiliaire **Meltdown** (CVE-2017-5754) pour lire la mémoire noyau, identifiants, clés et secrets d'autres processus, en franchissant la frontière utilisateur/noyau."
-  },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_UNMAP_KERNEL_AT_EL0=y`, enabling the KPTI/KAISER page-table isolation that mitigates Meltdown on arm64.",
     "fr": "Exige que le noyau soit compilé avec `CONFIG_UNMAP_KERNEL_AT_EL0=y`, activant l'isolation des tables de pages KPTI/KAISER qui mitige Meltdown sur arm64."
+  },
+  "rationale": {
+    "en": "`CONFIG_UNMAP_KERNEL_AT_EL0` enables the **KPTI/KAISER** mitigation on **arm64**: kernel page tables are unmapped while running at exception level 0 (userspace). Without it, an unprivileged process can mount the **Meltdown** (CVE-2017-5754) side-channel attack to read kernel memory, including credentials, keys and other processes' secrets, across the user/kernel boundary.",
+    "fr": "`CONFIG_UNMAP_KERNEL_AT_EL0` active la mitigation **KPTI/KAISER** sur **arm64** : les tables de pages du noyau sont démappées pendant l'exécution au niveau d'exception 0 (espace utilisateur). Sans elle, un processus non privilégié peut exploiter l'attaque par canal auxiliaire **Meltdown** (CVE-2017-5754) pour lire la mémoire noyau, identifiants, clés et secrets d'autres processus, en franchissant la frontière utilisateur/noyau."
   },
   "check_note": {
     "en": "Pavois reads the **build-time kernel config** of the **running** kernel, `/boot/config-$(uname -r)` or `/proc/config.gz`, and requires `CONFIG_UNMAP_KERNEL_AT_EL0=y`. This reflects the kernel actually booted, not a config file that may describe a different or not-yet-installed kernel: a file-based scanner reading a stale `/boot/config-*` could pass while the live kernel lacks the mitigation.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "Failing the check means the **Meltdown mitigation is absent** on arm64: kernel memory is potentially readable by any local process. Precautions before changing kernel: KPTI/PTI adds a small **syscall/context-switch overhead** (typically a few percent), and switching kernels can affect **out-of-tree modules** (GPU, storage). Test the new kernel on a non-production host, keep the previous kernel entry in the bootloader for rollback, and verify hardware drivers load before committing.",
     "fr": "Échouer au contrôle signifie que la **mitigation Meltdown est absente** sur arm64 : la mémoire noyau est potentiellement lisible par tout processus local. Précautions avant de changer de noyau : KPTI/PTI ajoute un léger **surcoût aux appels système / changements de contexte** (généralement quelques pour cent), et changer de noyau peut affecter les **modules hors arbre** (GPU, stockage). Testez le nouveau noyau sur un hôte hors production, conservez l'entrée du noyau précédent dans le chargeur d'amorçage pour pouvoir revenir en arrière, et vérifiez le chargement des pilotes matériels avant de valider."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

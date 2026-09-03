@@ -1,0 +1,37 @@
+{
+  "id": "audit-kernel-module-loading",
+  "title": {
+    "en": "Ensure auditd Collects Information on Kernel Module Unloading - create_module",
+    "fr": "Garantir que auditd collecte les informations sur le déchargement de modules noyau - create_module"
+  },
+  "summary": {
+    "en": "Ensures `auditd` has an active rule tagged `modules` that records kernel-module syscalls (`init_module`, `finit_module`, `delete_module`, `create_module`) and use of `modprobe`/`insmod`/`rmmod`.",
+    "fr": "Garantit que `auditd` possède une règle active taguée `modules` qui enregistre les appels système de modules noyau (`init_module`, `finit_module`, `delete_module`, `create_module`) et l'usage de `modprobe`/`insmod`/`rmmod`."
+  },
+  "rationale": {
+    "en": "Loading or unloading kernel modules can alter kernel behavior and inject malicious code (rootkits) into kernel space. Keeping an audit trail of every module introduced into or removed from the kernel is essential to detect and investigate such tampering. Without it, a kernel-level compromise can occur with no record.",
+    "fr": "Charger ou décharger des modules noyau peut modifier le comportement du noyau et injecter du code malveillant (rootkits) dans l'espace noyau. Conserver une trace d'audit de chaque module introduit ou retiré du noyau est essentiel pour détecter et investiguer ce type d'altération. Sans elle, une compromission au niveau du noyau peut survenir sans aucune trace."
+  },
+  "check_note": {
+    "en": "Pavois runs `auditctl -l` and checks for a loaded rule carrying the `modules` key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule present in a file but not loaded gives false assurance. `auditctl -l` reflects only what the kernel enforces right now.",
+    "fr": "Pavois exécute `auditctl -l` et vérifie la présence d'une règle chargée portant la clé `modules`. Lire le **jeu de règles vivant du noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : une règle présente dans un fichier mais non chargée donne une fausse assurance. `auditctl -l` ne reflète que ce que le noyau applique."
+  },
+  "verify": {
+    "en": "Run `auditctl -l | grep modules`. You should see syscall rules such as `-a always,exit -F arch=b64 -S init_module,finit_module,delete_module,create_module -F auid>=1000 -F auid!=unset -k modules`. Empty output means the rule is not loaded.",
+    "fr": "Exécutez `auditctl -l | grep modules`. Vous devez voir des règles d'appels système telles que `-a always,exit -F arch=b64 -S init_module,finit_module,delete_module,create_module -F auid>=1000 -F auid!=unset -k modules`. Une sortie vide signifie que la règle n'est pas chargée."
+  },
+  "logs": {
+    "en": "Triggered events land in `/var/log/audit/audit.log`. Search with `grep 'key=\"modules\"' /var/log/audit/audit.log` (prefer grep over `ausearch -k modules`, which can wrongly report no matches).",
+    "fr": "Les événements déclenchés arrivent dans `/var/log/audit/audit.log`. Recherchez avec `grep 'key=\"modules\"' /var/log/audit/audit.log` (préférez grep à `ausearch -k modules`, qui peut signaler à tort aucune correspondance)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `audit_ruleset` resource to write the kernel-module syscall and command rules into `/etc/audit/rules.d/`, then reloads auditd. Because the audit config may be immutable, a **reboot is required** to fully apply. Run `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour écrire les règles d'appels système et de commandes de modules noyau dans `/etc/audit/rules.d/`, puis recharge auditd. Comme la configuration d'audit peut être immuable, un **redémarrage est nécessaire** pour une application complète. Exécutez `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Without this rule, rootkit-style module loading goes unrecorded. The rule is log-only and cannot block module operations, so it breaks nothing. Precautions: legitimate module activity (boot, hardware hotplug, container runtimes) generates events, size `audit.log` rotation and `space_left_action` so a full disk does not halt the host when `auditd` is set to `halt`.",
+    "fr": "Sans cette règle, le chargement de modules de type rootkit n'est pas enregistré. La règle ne fait que journaliser et ne peut bloquer les opérations de modules, elle ne casse donc rien. Précautions : l'activité légitime de modules (démarrage, branchement matériel à chaud, runtimes de conteneurs) génère des événements, dimensionnez la rotation de `audit.log` et `space_left_action` afin qu'un disque plein n'arrête pas l'hôte lorsque `auditd` est sur `halt`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

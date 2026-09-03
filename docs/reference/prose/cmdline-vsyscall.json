@@ -1,0 +1,37 @@
+{
+  "id": "cmdline-vsyscall",
+  "title": {
+    "en": "Disable vsyscalls",
+    "fr": "Désactiver les vsyscalls"
+  },
+  "summary": {
+    "en": "Enforces the kernel parameter `vsyscall=none` to remove the legacy fixed-address vsyscall page from process memory.",
+    "fr": "Impose le paramètre noyau `vsyscall=none` pour supprimer la page vsyscall héritée à adresse fixe de la mémoire des processus."
+  },
+  "rationale": {
+    "en": "The legacy vsyscall mechanism maps a small, fixed, executable region of kernel code at a predictable address in every process. Because its location is static, it provides a reliable target (ROP gadgets) for an attacker who already controls the return instruction pointer, weakening ASLR. Setting `vsyscall=none` removes this fixed mapping; modern glibc uses the vDSO instead and is unaffected.",
+    "fr": "L'ancien mécanisme vsyscall mappe une petite région fixe et exécutable de code noyau à une adresse prévisible dans chaque processus. Comme son emplacement est statique, il fournit une cible fiable (gadgets ROP) à un attaquant qui contrôle déjà le pointeur d'instruction de retour, affaiblissant l'ASLR. Définir `vsyscall=none` supprime ce mappage fixe ; la glibc moderne utilise le vDSO à la place et n'est pas affectée."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** boot command line from `/proc/cmdline`, the arguments the running kernel truly started with. This is more reliable than grepping `/etc/default/grub` or `grub.cfg`, which may be edited without regeneration, overridden by drop-ins under `/etc/default/grub.d/`, or out of sync with the active bootloader entry. Only `/proc/cmdline` proves `vsyscall=none` is in force on this boot.",
+    "fr": "Pavois lit la ligne de commande de démarrage **effective** depuis `/proc/cmdline`, les arguments avec lesquels le noyau a réellement démarré. C'est plus fiable qu'un grep dans `/etc/default/grub` ou `grub.cfg`, qui peuvent être modifiés sans régénération, surchargés par des drop-ins sous `/etc/default/grub.d/`, ou désynchronisés de l'entrée active du chargeur d'amorçage. Seul `/proc/cmdline` prouve que `vsyscall=none` est appliqué sur ce boot."
+  },
+  "verify": {
+    "en": "Run `cat /proc/cmdline` and confirm it contains `vsyscall=none`. On a hardened system, `cat /proc/self/maps | grep vsyscall` should no longer show an executable `[vsyscall]` mapping (or show it as `--xp` removed).",
+    "fr": "Exécutez `cat /proc/cmdline` et vérifiez la présence de `vsyscall=none`. Sur un système durci, `cat /proc/self/maps | grep vsyscall` ne devrait plus afficher de mappage exécutable `[vsyscall]` (ou l'afficher comme retiré)."
+  },
+  "logs": {
+    "en": "Inspect the kernel ring buffer with `dmesg | grep -i vsyscall` to see how the kernel reports the vsyscall mode at boot. You can also confirm the absence of the legacy page per process via `cat /proc/<pid>/maps | grep vsyscall`.",
+    "fr": "Examinez le tampon noyau avec `dmesg | grep -i vsyscall` pour voir comment le noyau signale le mode vsyscall au démarrage. Vous pouvez aussi confirmer l'absence de la page héritée par processus via `cat /proc/<pid>/maps | grep vsyscall`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule (`remediation` is empty), so it must be applied **manually**: add `vsyscall=none` to the kernel command line (e.g. via `GRUB_CMDLINE_LINUX` in `/etc/default/grub` then `grub2-mkconfig`, or `grubby --update-kernel=ALL --args=vsyscall=none` on RHEL) and reboot.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle (`remediation` est vide), elle doit donc être appliquée **manuellement** : ajoutez `vsyscall=none` à la ligne de commande noyau (par ex. via `GRUB_CMDLINE_LINUX` dans `/etc/default/grub` puis `grub2-mkconfig`, ou `grubby --update-kernel=ALL --args=vsyscall=none` sous RHEL) et redémarrez."
+  },
+  "impact": {
+    "en": "Leaving the vsyscall page mapped gives attackers a stable, executable target that undermines ASLR. Disabling it requires a **reboot** and can break very old statically linked binaries or legacy glibc (pre-2.14) that still call vsyscalls directly, modern userspace using the vDSO is unaffected. Precautions: test legacy applications, prefer `vsyscall=emulate` first if you must support old binaries, schedule the reboot, and keep console access in case of boot issues.",
+    "fr": "Laisser la page vsyscall mappée offre aux attaquants une cible stable et exécutable qui sape l'ASLR. La désactiver nécessite un **redémarrage** et peut casser de très anciens binaires liés statiquement ou une glibc héritée (antérieure à 2.14) appelant encore directement les vsyscalls, l'espace utilisateur moderne basé sur le vDSO n'est pas affecté. Précautions : testez les applications héritées, préférez d'abord `vsyscall=emulate` si vous devez supporter d'anciens binaires, planifiez le redémarrage et conservez un accès console en cas de problème de démarrage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

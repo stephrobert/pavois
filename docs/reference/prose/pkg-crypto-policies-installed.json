@@ -1,0 +1,37 @@
+{
+  "id": "pkg-crypto-policies-installed",
+  "title": {
+    "en": "Install crypto-policies package",
+    "fr": "Installer le paquet crypto-policies"
+  },
+  "summary": {
+    "en": "Ensures the **crypto-policies** package is installed so RHEL can enforce a system-wide cryptographic policy (e.g. `DEFAULT`, `FUTURE`, `FIPS`).",
+    "fr": "Garantit que le paquet **crypto-policies** est installé afin que RHEL puisse appliquer une politique cryptographique à l'échelle du système (par exemple `DEFAULT`, `FUTURE`, `FIPS`)."
+  },
+  "rationale": {
+    "en": "Centralized cryptographic policies simplify applying secure ciphers across an operating system and the applications that run on it. Use of weak or untested encryption algorithms undermines the very purpose of encryption to protect data.",
+    "fr": "Des politiques cryptographiques centralisées simplifient l'application de chiffrements sûrs à l'échelle du système d'exploitation et des applications qui s'y exécutent. L'utilisation d'algorithmes de chiffrement faibles ou non éprouvés va à l'encontre de l'objectif même du chiffrement, qui est de protéger les données."
+  },
+  "check_note": {
+    "en": "Pavois verifies that the `crypto-policies` package is present via `rpm`. This package backs the `update-crypto-policies` tool that drives the effective TLS/SSH/kernel crypto settings; without it, each application picks its own (often weaker) defaults instead of a coherent, auditable baseline.",
+    "fr": "Pavois vérifie que le paquet `crypto-policies` est présent via `rpm`. Ce paquet sous-tend l'outil `update-crypto-policies` qui pilote les paramètres cryptographiques effectifs (TLS/SSH/noyau) ; sans lui, chaque application choisit ses propres valeurs par défaut (souvent plus faibles) au lieu d'une base cohérente et auditable."
+  },
+  "verify": {
+    "en": "Run `rpm -q crypto-policies`, which should return an installed version. Confirm the active policy with `update-crypto-policies --show` (expected `DEFAULT`, `FUTURE` or `FIPS` per your baseline).",
+    "fr": "Exécutez `rpm -q crypto-policies`, qui doit renvoyer une version installée. Confirmez la politique active avec `update-crypto-policies --show` (attendu : `DEFAULT`, `FUTURE` ou `FIPS` selon votre référentiel)."
+  },
+  "logs": {
+    "en": "Verify the package with `rpm -q crypto-policies` and inspect the resolved policy under `/etc/crypto-policies/`; policy changes are reported by `update-crypto-policies --show`.",
+    "fr": "Vérifiez le paquet avec `rpm -q crypto-policies` et inspectez la politique résolue sous `/etc/crypto-policies/` ; les changements de politique sont rapportés par `update-crypto-policies --show`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan installs the `crypto-policies` package (resource `package`, action `install`) and is applied with `pavois harden apply`. After installing, set the desired policy with `update-crypto-policies --set`.",
+    "fr": "Le plan de durcissement de Pavois installe le paquet `crypto-policies` (ressource `package`, action `install`) et s'applique avec `pavois harden apply`. Après l'installation, définissez la politique souhaitée avec `update-crypto-policies --set`."
+  },
+  "impact": {
+    "en": "Without centralized crypto policies, services may negotiate weak ciphers, exposing data in transit. Installing the package is safe and non-disruptive; however, switching to a stricter policy like `FUTURE` or `FIPS` afterward can break legacy clients or services using deprecated algorithms, test connectivity (SSH, TLS endpoints) before tightening the policy.",
+    "fr": "Sans politiques cryptographiques centralisées, les services peuvent négocier des chiffrements faibles, exposant les données en transit. L'installation du paquet est sûre et sans interruption ; toutefois, passer ensuite à une politique plus stricte comme `FUTURE` ou `FIPS` peut casser les clients ou services hérités utilisant des algorithmes obsolètes, testez la connectivité (SSH, points de terminaison TLS) avant de renforcer la politique."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

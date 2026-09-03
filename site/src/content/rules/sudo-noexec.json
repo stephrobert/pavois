@@ -1,16 +1,17 @@
 {
   "id": "sudo-noexec",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -43,14 +44,13 @@
     "en": "Ensure Privileged Escalated Commands Cannot Execute Other Commands - sudo NOEXEC",
     "fr": "S'assurer que les commandes privilégiées ne peuvent pas en exécuter d'autres - sudo NOEXEC"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Many interactive programs (editors like `vi`, pagers like `less`, even `awk` or `find -exec`) can launch a sub-shell. When run via `sudo`, that sub-shell would inherit **root privileges**, giving the user a full root shell from a narrowly scoped privilege. `noexec` uses an `LD_PRELOAD` wrapper to neutralise the `exec*()` family, so privileged commands run but cannot **escalate into arbitrary command execution**, a classic sudo jailbreak.",
-    "fr": "De nombreux programmes interactifs (éditeurs comme `vi`, pagineurs comme `less`, voire `awk` ou `find -exec`) peuvent lancer un sous-shell. Exécuté via `sudo`, ce sous-shell hériterait des **privilèges root**, offrant à l'utilisateur un shell root complet à partir d'un privilège pourtant restreint. `noexec` s'appuie sur un préchargement `LD_PRELOAD` pour neutraliser la famille `exec*()` : les commandes privilégiées s'exécutent mais ne peuvent **pas dériver vers l'exécution de commandes arbitraires**, une évasion sudo classique."
-  },
   "summary": {
     "en": "Enable the `Defaults noexec` option so commands run under `sudo` cannot spawn further sub-commands (e.g. a shell escape) via the C library exec functions.",
     "fr": "Active l'option `Defaults noexec` afin que les commandes exécutées sous `sudo` ne puissent pas lancer d'autres sous-commandes (par ex. une évasion de shell) via les fonctions exec de la bibliothèque C."
+  },
+  "rationale": {
+    "en": "Many interactive programs (editors like `vi`, pagers like `less`, even `awk` or `find -exec`) can launch a sub-shell. When run via `sudo`, that sub-shell would inherit **root privileges**, giving the user a full root shell from a narrowly scoped privilege. `noexec` uses an `LD_PRELOAD` wrapper to neutralise the `exec*()` family, so privileged commands run but cannot **escalate into arbitrary command execution**, a classic sudo jailbreak.",
+    "fr": "De nombreux programmes interactifs (éditeurs comme `vi`, pagineurs comme `less`, voire `awk` ou `find -exec`) peuvent lancer un sous-shell. Exécuté via `sudo`, ce sous-shell hériterait des **privilèges root**, offrant à l'utilisateur un shell root complet à partir d'un privilège pourtant restreint. `noexec` s'appuie sur un préchargement `LD_PRELOAD` pour neutraliser la famille `exec*()` : les commandes privilégiées s'exécutent mais ne peuvent **pas dériver vers l'exécution de commandes arbitraires**, une évasion sudo classique."
   },
   "check_note": {
     "en": "Pavois greps the **active sudoers tree**, `/etc/sudoers` and every file under `/etc/sudoers.d/`, for an uncommented `Defaults ... noexec`. Because `sudo` assembles its policy from the main file plus all drop-ins, scanning the whole tree reflects the **effective** policy rather than a single file a later drop-in could override.",
@@ -71,5 +71,7 @@
   "impact": {
     "en": "A blanket `noexec` will break legitimate sudo commands that must launch sub-processes, package managers, build tools, `systemctl` chains or admin scripts that call other binaries. **Before applying**, identify such commands and exempt them with a per-command `NOEXEC:`/`EXEC:` override (e.g. `user ALL = EXEC: /usr/bin/apt`) instead of dropping the global default. The drop-in is validated by `visudo` before activation, so it cannot corrupt sudoers; test critical admin workflows right after applying.",
     "fr": "Un `noexec` global cassera les commandes sudo légitimes devant lancer des sous-processus, gestionnaires de paquets, outils de build, chaînes `systemctl` ou scripts d'admin appelant d'autres binaires. **Avant d'appliquer**, identifiez ces commandes et exemptez-les avec une dérogation par commande `NOEXEC:`/`EXEC:` (par ex. `user ALL = EXEC: /usr/bin/apt`) plutôt que de supprimer le défaut global. Le drop-in est validé par `visudo` avant activation : il ne peut donc pas corrompre sudoers ; testez les workflows d'admin critiques juste après l'application."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

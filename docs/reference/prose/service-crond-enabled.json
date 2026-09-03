@@ -1,0 +1,37 @@
+{
+  "id": "service-crond-enabled",
+  "title": {
+    "en": "Enable cron Service",
+    "fr": "Activer le service cron"
+  },
+  "summary": {
+    "en": "Enables and starts the **crond** service so scheduled maintenance and security tasks run reliably.",
+    "fr": "Active et démarre le service **crond** pour que les tâches planifiées de maintenance et de sécurité s'exécutent de façon fiable."
+  },
+  "rationale": {
+    "en": "`crond` is the scheduler that runs periodic maintenance and **security-supporting tasks**, log rotation, package-database updates, integrity checks, antivirus scans, certificate renewals, and other hardening jobs. If the daemon is not running, these scheduled tasks silently stop, leaving the system unmaintained and potentially out of compliance. Keeping `crond` enabled is therefore essential to sustained security posture, not a convenience.",
+    "fr": "`crond` est le planificateur qui exécute les tâches périodiques de maintenance et de **soutien à la sécurité**, rotation des journaux, mises à jour de la base de paquets, contrôles d'intégrité, analyses antivirus, renouvellements de certificats et autres travaux de durcissement. Si le démon ne tourne pas, ces tâches planifiées s'arrêtent silencieusement, laissant le système non maintenu et potentiellement non conforme. Garder `crond` activé est donc essentiel au maintien de la posture de sécurité, pas un simple confort."
+  },
+  "check_note": {
+    "en": "Pavois queries systemd for the **effective** state of `crond.service` (`systemctl is-enabled` / `is-active`), confirming the scheduler is both set to start at boot and currently alive. The presence of crontab files on disk says nothing about whether the daemon is actually running them, only the live service state confirms scheduled jobs will fire.",
+    "fr": "Pavois interroge systemd sur l'état **effectif** de `crond.service` (`systemctl is-enabled` / `is-active`), confirmant que le planificateur est réglé pour démarrer au boot et actuellement vivant. La présence de fichiers crontab sur disque ne dit rien sur le fait que le démon les exécute réellement, seul l'état vivant du service confirme que les tâches planifiées se déclencheront."
+  },
+  "verify": {
+    "en": "Confirm the unit is up:\n\n```sh\nsystemctl is-enabled crond.service\nsystemctl is-active crond.service\n```\n\nExpect `enabled` and `active`. You can confirm jobs actually run by checking the cron log after a scheduled task (see logs below).",
+    "fr": "Confirmez que l'unité est active :\n\n```sh\nsystemctl is-enabled crond.service\nsystemctl is-active crond.service\n```\n\nAttendez `enabled` et `active`. Vous pouvez confirmer que les tâches s'exécutent réellement en consultant le journal cron après une tâche planifiée (voir logs ci-dessous)."
+  },
+  "logs": {
+    "en": "Cron execution is logged to `/var/log/cron` on the RHEL family (or via `journalctl -u crond`). Inspect the daemon with `systemctl status crond.service`. Each job run produces a `CMD (...)` line in the cron log.",
+    "fr": "L'exécution de cron est journalisée dans `/var/log/cron` sur la famille RHEL (ou via `journalctl -u crond`). Inspectez le démon avec `systemctl status crond.service`. Chaque exécution de tâche produit une ligne `CMD (...)` dans le journal cron."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the `service` resource named `crond`: it runs **enable** (start at boot) then **start** (run now). Applied with `pavois harden apply`. After it runs, scheduled jobs resume firing on time.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource `service` nommée `crond` : il exécute **enable** (démarrage au boot) puis **start** (lancement immédiat). Appliqué avec `pavois harden apply`. Une fois exécuté, les tâches planifiées se déclenchent à nouveau à l'heure."
+  },
+  "impact": {
+    "en": "Misconfiguration risk: with `crond` stopped, maintenance and security jobs silently do not run, degrading the host over time. **Precautions:** enabling the scheduler will start executing whatever crontabs already exist, review `/etc/crontab`, `/etc/cron.d/`, and user crontabs first so no stale or unexpected job runs with surprising effect. Starting the service is otherwise non-disruptive and carries no lockout risk.",
+    "fr": "Risque de mauvaise configuration : avec `crond` arrêté, les tâches de maintenance et de sécurité ne s'exécutent pas silencieusement, dégradant l'hôte au fil du temps. **Précautions :** activer le planificateur lancera l'exécution des crontabs déjà présents, revoyez `/etc/crontab`, `/etc/cron.d/` et les crontabs utilisateurs au préalable pour qu'aucune tâche obsolète ou inattendue ne s'exécute avec un effet surprenant. Démarrer le service est par ailleurs non perturbant et sans risque de blocage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

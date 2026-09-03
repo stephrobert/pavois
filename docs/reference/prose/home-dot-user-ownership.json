@@ -1,0 +1,37 @@
+{
+  "id": "home-dot-user-ownership",
+  "title": {
+    "en": "User Initialization Files Must Be Owned By the Primary User",
+    "fr": "Les fichiers d'initialisation utilisateur doivent appartenir à l'utilisateur primaire"
+  },
+  "summary": {
+    "en": "Ensures the dotfiles (e.g. `.bashrc`, `.profile`) at the top level of each interactive user's home are **owned by that user**.",
+    "fr": "Garantit que les fichiers cachés (par ex. `.bashrc`, `.profile`) à la racine du home de chaque utilisateur interactif **appartiennent à cet utilisateur**."
+  },
+  "rationale": {
+    "en": "Local initialization files configure a user's shell environment at login. If a dotfile is owned by a **different user**, that user can rewrite it and have arbitrary code run inside the victim's session at next logon. Foreign ownership of init files is also a classic sign of system compromise.",
+    "fr": "Les fichiers d'initialisation locaux configurent l'environnement shell à la connexion. Si un fichier caché appartient à un **autre utilisateur**, celui-ci peut le réécrire et faire exécuter du code arbitraire dans la session de la victime au prochain logon. Une appartenance étrangère de ces fichiers est aussi un signe classique de compromission."
+  },
+  "check_note": {
+    "en": "Pavois derives each interactive user's UID and home from the **live** `/etc/passwd`, then runs `find -maxdepth 1 -type f -name '.[^.]*' ! -uid \"$u\"` on the existing home. By comparing against the **effective UID** of the account owner, it catches any dotfile owned by someone else, exactly what an attacker would plant, without trusting a packaging or skeleton assumption.",
+    "fr": "Pavois déduit l'UID et le home de chaque utilisateur interactif depuis le `/etc/passwd` **réel**, puis exécute `find -maxdepth 1 -type f -name '.[^.]*' ! -uid \"$u\"` sur le home existant. En comparant à l'**UID effectif** du propriétaire du compte, il détecte tout fichier caché appartenant à autrui, exactement ce qu'un attaquant déposerait, sans se fier à une hypothèse de paquet ou de squelette."
+  },
+  "verify": {
+    "en": "For a user, run `find ~user -maxdepth 1 -type f -name '.[^.]*' ! -uid $(id -u user) -printf '%p %u\\n'`. Expected: **no output** (every dotfile is owned by the user).",
+    "fr": "Pour un utilisateur, exécutez `find ~user -maxdepth 1 -type f -name '.[^.]*' ! -uid $(id -u user) -printf '%p %u\\n'`. Attendu : **aucune sortie** (chaque fichier caché appartient à l'utilisateur)."
+  },
+  "logs": {
+    "en": "Ownership is inspected directly, not logged. Audit with `ls -la ~user | grep '^\\.'` or `stat -c '%U %n' ~user/.*`. With file-integrity auditing enabled, `chown` operations on these paths appear in `/var/log/audit/audit.log` under the relevant watch key.",
+    "fr": "L'appartenance est inspectée directement, non journalisée. Auditez avec `ls -la ~user | grep '^\\.'` ou `stat -c '%U %n' ~user/.*`. Avec l'audit d'intégrité des fichiers activé, les opérations `chown` sur ces chemins apparaissent dans `/var/log/audit/audit.log` sous la clé de surveillance concernée."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped (`remediation` is empty): **apply manually**. For each flagged user, reclaim ownership of their top-level dotfiles, e.g. `find ~user -maxdepth 1 -type f -name '.[^.]*' ! -uid $(id -u user) -exec chown $(id -un user) {} +`. Investigate *why* a foreign UID owned them, it may indicate compromise rather than a benign mistake.",
+    "fr": "Aucune remédiation automatique n'est fournie (`remediation` est vide) : **appliquez manuellement**. Pour chaque utilisateur signalé, reprenez la propriété de ses fichiers cachés de premier niveau, par ex. `find ~user -maxdepth 1 -type f -name '.[^.]*' ! -uid $(id -u user) -exec chown $(id -un user) {} +`. Cherchez *pourquoi* un UID étranger les possédait, cela peut révéler une compromission plutôt qu'une simple erreur."
+  },
+  "impact": {
+    "en": "Foreign-owned init files allow session hijack at logon and may mask an intrusion. **Precautions before applying:** before running `chown`, capture the current owner (`stat -c '%U %n'`) for forensics, and confirm the home truly belongs to the listed account, a UID collision after a migration can make legitimate files appear foreign. Avoid recursing past the top level to limit blast radius.",
+    "fr": "Des fichiers d'initialisation appartenant à autrui permettent un détournement de session au logon et peuvent masquer une intrusion. **Précautions avant application :** avant d'exécuter `chown`, relevez le propriétaire actuel (`stat -c '%U %n'`) pour l'investigation, et confirmez que le home appartient bien au compte listé, une collision d'UID après migration peut faire passer des fichiers légitimes pour étrangers. Évitez de récurser au-delà du premier niveau pour limiter l'impact."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-net-ipv4-conf-all-accept_source_route",
+  "title": {
+    "en": "Disable Kernel Parameter for Accepting Source-Routed Packets on all IPv4 Interfaces",
+    "fr": "Désactiver l'acceptation des paquets à routage par la source sur toutes les interfaces IPv4"
+  },
+  "summary": {
+    "en": "Sets `net.ipv4.conf.all.accept_source_route=0` so the kernel drops packets whose sender tries to dictate their network path.",
+    "fr": "Définit `net.ipv4.conf.all.accept_source_route=0` pour que le noyau rejette les paquets dont l'émetteur tente d'imposer leur chemin réseau."
+  },
+  "rationale": {
+    "en": "Source-routed packets carry an option that lets the **sender dictate the path** the packet takes through the network, instead of letting routers decide. An attacker can use this to steer traffic around firewalls and access controls, reach hosts that should be unreachable, or make spoofed packets return to them. Source routing has essentially no legitimate use on modern networks, so `net.ipv4.conf.all.accept_source_route=0` should be set to drop such packets and prevent attackers from bypassing network security measures.",
+    "fr": "Les paquets à routage par la source portent une option qui permet à l'**émetteur de dicter le chemin** que le paquet emprunte dans le réseau, au lieu de laisser les routeurs décider. Un attaquant peut s'en servir pour contourner pare-feux et contrôles d'accès, atteindre des hôtes censés être inaccessibles, ou faire revenir vers lui des paquets usurpés. Le routage par la source n'a pratiquement aucun usage légitime sur les réseaux modernes ; il faut donc définir `net.ipv4.conf.all.accept_source_route=0` pour rejeter ces paquets et empêcher les attaquants de contourner les mesures de sécurité réseau."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** via `kernel_parameter('net.ipv4.conf.all.accept_source_route')` and asserts it equals `0`. The effective value is what governs whether source-routed packets are dropped at this moment; a `sysctl.d` entry that was never reloaded, or overridden by a later drop-in, leaves the host exposed despite a config file that reads `0`. Auditing the running value (not the file) is the only reliable proof.",
+    "fr": "Pavois lit la **valeur noyau effective** via `kernel_parameter('net.ipv4.conf.all.accept_source_route')` et vérifie qu'elle vaut `0`. La valeur effective détermine si les paquets à routage par la source sont rejetés à cet instant ; une entrée de `sysctl.d` jamais rechargée, ou écrasée par un drop-in ultérieur, laisse l'hôte exposé malgré un fichier de configuration affichant `0`. Auditer la valeur effective (et non le fichier) est la seule preuve fiable."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv4.conf.all.accept_source_route`. Expected output:\n\n```\nnet.ipv4.conf.all.accept_source_route = 0\n```",
+    "fr": "Exécutez `sysctl net.ipv4.conf.all.accept_source_route`. Sortie attendue :\n\n```\nnet.ipv4.conf.all.accept_source_route = 0\n```"
+  },
+  "logs": {
+    "en": "- `sysctl net.ipv4.conf.all.accept_source_route` shows the current value.\n- `cat /proc/sys/net/ipv4/conf/all/accept_source_route` is the raw kernel value.\n- Review both `all` and per-interface keys with `sysctl -a | grep accept_source_route`. Dropped source-routed packets are logged as `martian source` entries in `dmesg` / `journalctl -k` only when `log_martians` is enabled.",
+    "fr": "- `sysctl net.ipv4.conf.all.accept_source_route` affiche la valeur courante.\n- `cat /proc/sys/net/ipv4/conf/all/accept_source_route` est la valeur brute du noyau.\n- Examinez les clés `all` et par interface avec `sysctl -a | grep accept_source_route`. Les paquets à routage par la source rejetés sont journalisés comme entrées `martian source` dans `dmesg` / `journalctl -k` uniquement lorsque `log_martians` est activé."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv4.conf.all.accept_source_route` to `0`. It writes the key into a Pavois-managed drop-in and reloads it so source-routed packets are dropped **immediately** and **after reboot**. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour positionner `net.ipv4.conf.all.accept_source_route` à `0`. Il écrit la clé dans un drop-in géré par Pavois puis le recharge, de sorte que les paquets à routage par la source soient rejetés **immédiatement** et **après redémarrage**. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "There is **no practical downside** for normal systems: source routing is obsolete and disabled by default on most distributions. The only theoretical impact is for legacy network diagnostics or unusual routing labs that intentionally use source-routed packets. There is **no risk of remote-access lockout**, because ordinary connections never set the source-route option. Apply freely on servers, workstations and routers alike.",
+    "fr": "Il n'y a **aucun inconvénient pratique** pour les systèmes normaux : le routage par la source est obsolète et désactivé par défaut sur la plupart des distributions. Le seul impact théorique concerne d'anciens diagnostics réseau ou des laboratoires de routage inhabituels qui utilisent intentionnellement des paquets à routage par la source. Il n'y a **aucun risque de blocage d'accès distant**, car les connexions ordinaires ne positionnent jamais l'option de routage par la source. Appliquez sans crainte sur serveurs, postes de travail et routeurs."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

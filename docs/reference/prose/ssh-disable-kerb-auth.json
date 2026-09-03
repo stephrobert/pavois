@@ -1,0 +1,37 @@
+{
+  "id": "ssh-disable-kerb-auth",
+  "title": {
+    "en": "Disable Kerberos Authentication",
+    "fr": "Désactiver l'authentification Kerberos"
+  },
+  "summary": {
+    "en": "Forces **`KerberosAuthentication no`** so SSH does not offer direct Kerberos password validation as an auth method.",
+    "fr": "Force **`KerberosAuthentication no`** afin que SSH ne propose pas la validation directe de mot de passe Kerberos comme méthode d'authentification."
+  },
+  "rationale": {
+    "en": "Kerberos authentication for SSH (often implemented on top of GSSAPI) exposes the system's Kerberos implementation to remote clients. On a host that is not part of a Kerberos realm this is an unused authentication path that only enlarges the attack surface. Disabling it ensures the SSH daemon does not fall back to unused authentication methods, even if a misconfiguration elsewhere would otherwise enable them.",
+    "fr": "L'authentification Kerberos pour SSH (souvent implémentée au-dessus de GSSAPI) expose l'implémentation Kerberos du système aux clients distants. Sur un hôte ne faisant pas partie d'un domaine Kerberos, c'est un chemin d'authentification inutilisé qui ne fait qu'élargir la surface d'attaque. La désactiver garantit que le démon SSH ne se rabat pas sur des méthodes d'authentification inutilisées, même si une mauvaise configuration ailleurs les activerait."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** value from `sshd -T`, resolved after all `Include`s, `/etc/ssh/sshd_config.d/` drop-ins and `Match` blocks (including RHEL crypto-policy includes). A read of `/etc/ssh/sshd_config` would not reveal a `KerberosAuthentication yes` set in an included fragment.",
+    "fr": "Pavois lit la valeur **effective** via `sshd -T`, résolue après tous les `Include`, drop-ins de `/etc/ssh/sshd_config.d/` et blocs `Match` (y compris les includes de politique crypto RHEL). Une lecture de `/etc/ssh/sshd_config` ne révélerait pas un `KerberosAuthentication yes` posé dans un fragment inclus."
+  },
+  "verify": {
+    "en": "Run `sshd -T | grep -i '^kerberosauthentication'`. Expected output is `kerberosauthentication no`.",
+    "fr": "Exécutez `sshd -T | grep -i '^kerberosauthentication'`. La sortie attendue est `kerberosauthentication no`."
+  },
+  "logs": {
+    "en": "Authentication negotiation and failures are logged via `journalctl -u sshd` (RHEL family) or in `/var/log/secure`; use `LogLevel VERBOSE` for the method offered to each connection.",
+    "fr": "La négociation et les échecs d'authentification sont journalisés via `journalctl -u sshd` (famille RHEL) ou dans `/var/log/secure` ; utilisez `LogLevel VERBOSE` pour la méthode proposée à chaque connexion."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan writes the `sshd_setting` directive **`KerberosAuthentication no`** in a managed drop-in, validates with `sshd -t`, then **reloads** the `ssh` service. Apply it with `pavois harden apply`.",
+    "fr": "Le plan harden de Pavois écrit la directive `sshd_setting` **`KerberosAuthentication no`** dans un drop-in géré, valide avec `sshd -t`, puis **recharge** le service `ssh`. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "**Before applying**, confirm the host is not Kerberos/AD-joined and that no user authenticates via Kerberos-backed passwords over SSH. On a standalone host there is no impact. If Kerberos SSO is required, keep this enabled and rely on other hardening. The reload preserves active sessions.",
+    "fr": "**Avant d'appliquer**, vérifiez que l'hôte n'est pas joint à Kerberos/AD et qu'aucun utilisateur ne s'authentifie via des mots de passe adossés à Kerberos en SSH. Sur un hôte autonome, aucun impact. Si l'authentification unique Kerberos est requise, laissez cette option activée et appuyez-vous sur d'autres durcissements. Le rechargement préserve les sessions actives."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

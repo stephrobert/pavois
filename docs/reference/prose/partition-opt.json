@@ -1,0 +1,37 @@
+{
+  "id": "partition-opt",
+  "title": {
+    "en": "Ensure /opt Located On Separate Partition",
+    "fr": "S'assurer que /opt est sur une partition séparée"
+  },
+  "summary": {
+    "en": "Verifies that **`/opt`** is mounted on its own partition so restrictive options can be applied to third-party software.",
+    "fr": "Vérifie que **`/opt`** est monté sur sa propre partition afin d'appliquer des options restrictives aux logiciels tiers."
+  },
+  "rationale": {
+    "en": "`/opt` holds additional software, often installed outside the package manager. Putting it on a separate partition lets you apply restrictions such as **`nosuid`** and **`nodev`** to that third-party code, isolates it from the root filesystem, and prevents an over-grown `/opt` from filling `/`.",
+    "fr": "`/opt` héberge des logiciels supplémentaires, souvent installés en dehors du gestionnaire de paquets. Le placer sur une partition séparée permet d'appliquer des restrictions comme **`nosuid`** et **`nodev`** à ce code tiers, l'isole du système de fichiers racine et empêche un `/opt` trop volumineux de saturer `/`."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `mount('/opt')` resource, reading the **effective** mount table (`/proc/self/mountinfo`) rather than `/etc/fstab`. It reflects what the kernel has actually mounted, distinguishing a real separate mount from an fstab entry that never took effect.",
+    "fr": "Pavois utilise la ressource InSpec `mount('/opt')`, lisant la table de montage **effective** (`/proc/self/mountinfo`) plutôt que `/etc/fstab`. Elle reflète ce que le noyau a réellement monté, distinguant un vrai montage séparé d'une entrée fstab jamais appliquée."
+  },
+  "verify": {
+    "en": "Run:\n\n```bash\nfindmnt /opt\n```\n\nExpected: a row showing `/opt` on its own device/partition. No output means `/opt` is part of the root filesystem and the rule fails.",
+    "fr": "Exécutez :\n\n```bash\nfindmnt /opt\n```\n\nAttendu : une ligne montrant `/opt` sur son propre périphérique/partition. Aucune sortie signifie que `/opt` fait partie du système de fichiers racine et la règle échoue."
+  },
+  "logs": {
+    "en": "Check the live mount with `findmnt /opt` or `mount | grep ' /opt '`; the persistent entry is in `/etc/fstab`. Mount-unit events appear via `journalctl -u opt.mount` and kernel mount activity via `journalctl -k`.",
+    "fr": "Vérifiez le montage actif avec `findmnt /opt` ou `mount | grep ' /opt '` ; l'entrée persistante est dans `/etc/fstab`. Les événements d'unité de montage apparaissent via `journalctl -u opt.mount` et l'activité de montage du noyau via `journalctl -k`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule, relocating `/opt` to its own partition is a **manual** disk-layout change, best done at install time. On an existing host it requires a new filesystem, copying data with `rsync -aXS`, an `/etc/fstab` entry and a remount; Pavois will not perform this automatically.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle, déplacer `/opt` sur sa propre partition est une modification **manuelle** de l'agencement disque, idéale à l'installation. Sur un hôte existant, cela exige un nouveau système de fichiers, la copie des données avec `rsync -aXS`, une entrée `/etc/fstab` et un remontage ; Pavois ne l'effectue pas automatiquement."
+  },
+  "impact": {
+    "en": "Moving `/opt` on a live system can disrupt software installed there (paths, running services), and `nosuid`/`noexec` may break vendor apps that ship setuid helpers or run scripts from `/opt`. **Precautions:** back up `/opt`, stop affected services during the migration, verify the new mount before removing old data, and test the third-party software before tightening mount options. The control only requires the mount to exist.",
+    "fr": "Déplacer `/opt` sur un système en service peut perturber les logiciels qui y sont installés (chemins, services en cours), et `nosuid`/`noexec` peuvent casser des applications éditeur fournissant des binaires setuid ou exécutant des scripts depuis `/opt`. **Précautions :** sauvegardez `/opt`, arrêtez les services concernés pendant la migration, vérifiez le nouveau montage avant de supprimer les anciennes données, et testez les logiciels tiers avant de durcir les options de montage. Le contrôle exige seulement l'existence du montage."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

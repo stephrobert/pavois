@@ -6,20 +6,34 @@ import (
 )
 
 func TestRemediationClass(t *testing.T) {
-	tc := func(id, domain, evidence string) Control {
-		return Control{ID: id, Tags: map[string]any{"domain": domain, "evidence": evidence}}
+	// The class comes from the RULE (tag remediation_class), not from a list of ids in Go.
+	tagged := func(id, class string) Control {
+		return Control{ID: id, Tags: map[string]any{"remediation_class": class}}
+	}
+	// Fallbacks, for a corpus rendered before the tag existed.
+	legacy := func(id, domain, evidence, danger string) Control {
+		return Control{ID: id, Tags: map[string]any{
+			"domain": domain, "evidence": evidence, "danger": danger,
+		}}
 	}
 	cases := []struct {
 		c    Control
 		want string
 	}{
-		{tc("kconfig-debug-fs", "Kernel build", "filesystem-state"), "kernel-build"},
-		{tc("mount-home-nodev", "Mounts", "persistent-config"), "install-time"},
-		{tc("partition-var", "Filesystem", "inventory-state"), "install-time"},
-		{tc("kmod-loading-disabled", "Kernel modules", "effective-runtime"), "dangerous"},
-		{tc("cmdline-iommu-force", "Kernel command line", "effective-runtime"), "dangerous"},
-		{tc("ssh-disable-root-login", "SSH", "effective-runtime"), "auto"},
-		{tc("some-manual-control", "Hardening (misc)", "manual"), "manual"},
+		{tagged("kconfig-debug-fs", "kernel-build"), "kernel-build"},
+		{tagged("mount-home-nodev", "install-time"), "install-time"},
+		{tagged("kmod-loading-disabled", "dangerous"), "dangerous"},
+		{tagged("ssh-disable-root-login", "auto"), "auto"},
+		{tagged("some-manual-control", "manual"), "manual"},
+		// the rule WINS over any heuristic the id might suggest
+		{Control{ID: "partition-var", Tags: map[string]any{
+			"remediation_class": "auto", "domain": "Mounts",
+		}}, "auto"},
+		{legacy("kconfig-x", "Kernel build", "", ""), "kernel-build"},
+		{legacy("partition-var", "Filesystem", "inventory-state", ""), "install-time"},
+		{legacy("kmod-loading-disabled", "Kernel modules", "", "bricks the host"), "dangerous"},
+		{legacy("ssh-x", "SSH", "effective-runtime", ""), "auto"},
+		{legacy("manual-x", "Hardening (misc)", "manual", ""), "manual"},
 	}
 	for _, c := range cases {
 		if got := RemediationClass(c.c); got != c.want {
@@ -36,7 +50,7 @@ func TestBreakdown(t *testing.T) {
 		{"id":"ssh-x","impact":0.5,"tags":{"domain":"SSH","evidence":"effective-runtime"},"results":[{"status":"failed"}]},
 		{"id":"kconfig-x","impact":0.5,"tags":{"domain":"Kernel build"},"results":[{"status":"failed"}]},
 		{"id":"mount-x","impact":0.5,"tags":{"domain":"Mounts"},"results":[{"status":"failed"}]},
-		{"id":"kmod-loading-disabled","impact":0.5,"tags":{"domain":"Kernel modules"},"results":[{"status":"passed"}]},
+		{"id":"kmod-loading-disabled","impact":0.5,"tags":{"domain":"Kernel modules","remediation_class":"dangerous"},"results":[{"status":"passed"}]},
 		{"id":"pkg-y","impact":0.5,"tags":{"domain":"Packages"},"results":[{"status":"passed"}]}
 	]}]}`
 	var r Report

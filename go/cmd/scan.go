@@ -87,12 +87,7 @@ func profileForOS(name, release string) string {
 		return "ubuntu" + strings.ReplaceAll(release, ".", "")
 	case "fedora":
 		return "fedora"
-	case "almalinux":
-		if major == "9" {
-			return "almalinux9"
-		}
-		return "rhel" + major
-	case "rhel", "redhat", "centos", "rocky", "ol", "oracle":
+	case "almalinux", "rhel", "redhat", "centos", "rocky", "ol", "oracle":
 		return "rhel" + major
 	}
 	return ""
@@ -108,7 +103,7 @@ func familyOf(name string) string {
 	case "fedora":
 		return "fedora"
 	case "almalinux", "rhel", "redhat", "centos", "rocky", "ol", "oracle":
-		return "rhel" // RHEL clones fall back to rhel<major> (cf. almalinux9 handled separately)
+		return "rhel" // RHEL family + clones (AlmaLinux, Rocky, Oracle...) map to rhel<major>
 	}
 	return ""
 }
@@ -231,7 +226,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 	res := audit.Evaluate(rep, machine, scStandard, scLevel)
 
 	// Name the report so a directory listing is self-describing and chronologically sortable:
-	//   <YYYYMMDD-HHMM>_<os>_<target>_<grade>.{json,html}   e.g. 20260701-1405_debian12_master1_B
+	//   <YYYYMMDD-HHMM>_<os>_<target>_<grade>.{json,html}   e.g. 20260701-1405_debian12_web01_B
 	// Only when we produced the scan (not with --from, which points at the user's own file).
 	if scFrom == "" {
 		letter, _, _ := audit.GradeResult(res)
@@ -306,7 +301,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 			break
 		}
 		top := onlySeverities(res.Findings, "critical", "high", "medium")
-		screport.Terminal(out, opts, top, res.Summary)
+		_ = screport.Terminal(out, opts, top, res.Summary) // best-effort render to the terminal sink
 		_, _ = fmt.Fprintf(os.Stderr,
 			"  %d critical/high/medium deviation(s) shown · %d total · full report → %s\n",
 			len(top), len(res.Findings), htmlPath)
@@ -314,7 +309,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 		// without mappings (e.g. container-baseline) has no grade.
 		if nnorm > 0 {
 			letter, pts, _ := audit.GradeResult(res)
-			writeScorecard(out, letter, pts, res.Passed, res.Total, res.Qualified)
+			writeScorecard(out, letter, pts, res.Passed, res.Total, res.Qualified, res.Waived, res.NotApplicable)
 			writePosture(out, audit.Breakdown(rep, scStandard, scLevel))
 		} else {
 			_, _ = fmt.Fprintln(out, "  No standard mappings in this profile — grade applies to profiles/linux/* only.")

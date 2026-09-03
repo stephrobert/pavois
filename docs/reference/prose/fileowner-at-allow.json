@@ -1,0 +1,37 @@
+{
+  "id": "fileowner-at-allow",
+  "title": {
+    "en": "Verify User Who Owns /etc/at.allow file",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier /etc/at.allow"
+  },
+  "summary": {
+    "en": "Ensures `/etc/at.allow` is owned by **root** (uid 0).",
+    "fr": "Garantit que `/etc/at.allow` appartient à **root** (uid 0)."
+  },
+  "rationale": {
+    "en": "`/etc/at.allow` is the allow-list controlling who may schedule `at` jobs. If it is not owned by **root** (uid 0), an unauthorized user could edit it to grant themselves `at` access, a path to scheduled, privileged command execution, or read it to learn which accounts are trusted. Ownership by root is required to keep job-scheduling policy authoritative.",
+    "fr": "`/etc/at.allow` est la liste d'autorisation déterminant qui peut planifier des tâches `at`. S'il n'appartient pas à **root** (uid 0), un utilisateur non autorisé pourrait le modifier pour s'octroyer l'accès à `at`, une voie vers l'exécution planifiée de commandes privilégiées, ou le lire pour découvrir quels comptes sont approuvés. La propriété par root est nécessaire pour que la politique de planification reste autoritaire."
+  },
+  "check_note": {
+    "en": "Pavois reads the file's **effective owning uid** with the InSpec `file` resource and asserts it equals `0` (root), only when the file exists. Reading the actual filesystem owner reflects the policy currently enforced, catching any `chown` drift, rather than trusting a package default that may have been changed.",
+    "fr": "Pavois lit l'**uid propriétaire effectif** du fichier avec la ressource InSpec `file` et vérifie qu'il vaut `0` (root), uniquement si le fichier existe. Lire le propriétaire réel du système de fichiers reflète la politique réellement appliquée, détectant toute dérive de `chown`, plutôt que de faire confiance à une valeur par défaut de paquet qui a pu être modifiée."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U' /etc/at.allow`. Expected output: `root`. Alternatively `ls -l /etc/at.allow` should show `root` in the owner column.",
+    "fr": "Exécutez `stat -c '%U' /etc/at.allow`. Sortie attendue : `root`. Sinon, `ls -l /etc/at.allow` doit afficher `root` dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "Ownership is shown by `ls -l /etc/at.allow` and `stat /etc/at.allow`. `at` job activity is logged via `journalctl -u atd` (or `systemctl status atd`) and in `/var/log/syslog`/`/var/log/cron`. If auditd watches `/etc/at.allow`, `chown` and write events appear in `/var/log/audit/audit.log`.",
+    "fr": "Le propriétaire est affiché par `ls -l /etc/at.allow` et `stat /etc/at.allow`. L'activité des tâches `at` est journalisée via `journalctl -u atd` (ou `systemctl status atd`) et dans `/var/log/syslog`/`/var/log/cron`. Si auditd surveille `/etc/at.allow`, les événements `chown` et d'écriture apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is shipped for this rule, so it must be remediated **manually**: run `chown root /etc/at.allow` (commonly paired with `chgrp root` and `chmod 600`). The file may not exist by default, create it only if you intend to use an `at` allow-list.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni pour cette règle : elle doit être corrigée **manuellement** avec `chown root /etc/at.allow` (souvent accompagné de `chgrp root` et `chmod 600`). Le fichier peut ne pas exister par défaut, ne le créez que si vous comptez utiliser une liste d'autorisation `at`."
+  },
+  "impact": {
+    "en": "Non-root ownership lets an attacker edit the allow-list to gain `at` scheduling, enabling persistence or privilege escalation. Restoring root ownership has no operational downside, `atd` runs as root. **Precaution:** if the file is absent the check is skipped; do not create an empty `/etc/at.allow` casually, since an empty allow-list denies `at` to everyone except root and can disrupt legitimate scheduled jobs.",
+    "fr": "Une propriété autre que root permet à un attaquant de modifier la liste d'autorisation pour obtenir la planification `at`, ouvrant la voie à la persistance ou à l'élévation de privilèges. Rétablir la propriété root n'a aucun inconvénient opérationnel, `atd` tourne en root. **Précaution :** si le fichier est absent, le contrôle est ignoré ; ne créez pas un `/etc/at.allow` vide à la légère, car une liste vide refuse `at` à tous sauf root et peut perturber des tâches planifiées légitimes."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

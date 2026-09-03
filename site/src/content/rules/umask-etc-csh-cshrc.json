@@ -1,6 +1,8 @@
 {
   "id": "umask-etc-csh-cshrc",
   "supported_os": [
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9"
   ],
@@ -14,42 +16,48 @@
   "reboot_survivable": "yes",
   "norms": {},
   "check": [
-    "describe command('v=$(grep -hiE \\'^[[:space:]]*umask[[:space:]]+[0-7]+\\' /etc/csh.cshrc 2>/dev/null | grep -oE \\'[0-7]+\\' | tail -1); { [ -n \"$v\" ] && [ $((0$v & 0027)) -eq $((0027)) ] && echo ok; } || echo ko') do",
+    "describe command('v=$(grep -hiE \\'^[[:space:]]*umask[[:space:]]+[0-7]+\\' /etc/csh.cshrc 2>/dev/null | grep -oE \\'[0-7]+\\' | tail -1); { [ -n \"$v\" ] && [ $((0$v & 0077)) -eq $((0077)) ] && echo ok; } || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "grep -qE '^[[:space:]]*umask[[:space:]]+0?77' /etc/csh.cshrc || echo 'umask 077' >> /etc/csh.cshrc",
+    "name": "umask-csh",
+    "not_if": "grep -qE '^[[:space:]]*umask[[:space:]]+0?77' /etc/csh.cshrc",
+    "resource": "exec"
+  },
   "title": {
     "en": "Ensure the Default C Shell Umask is Set Correctly",
-    "fr": "S'assurer que l'umask C Shell par defaut est correctement configure"
-  },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The **umask** determines the permissions stripped from newly created files and directories. `/etc/csh.cshrc` sets the system-wide umask for **C shell / tcsh** sessions; if it is too permissive, files created in those shells are **group- or world-accessible** by default, exposing data to unauthorized accounts. Setting the C shell umask at least as strict as `0027` enforces least privilege so that the protection cannot be bypassed simply by logging in with `csh`/`tcsh` instead of Bash.",
-    "fr": "L'**umask** determine les permissions retirees aux fichiers et repertoires nouvellement crees. `/etc/csh.cshrc` definit l'umask global des sessions **C shell / tcsh** ; s'il est trop permissif, les fichiers crees dans ces shells sont par defaut **accessibles au groupe ou a tous**, exposant des donnees a des comptes non autorises. Fixer l'umask C shell au moins aussi strict que `0027` impose le moindre privilege, de sorte que la protection ne puisse etre contournee en se connectant simplement avec `csh`/`tcsh` au lieu de Bash."
+    "fr": "S'assurer que l'umask C Shell par défaut est correctement configuré"
   },
   "summary": {
     "en": "Ensures the system-wide C shell startup file `/etc/csh.cshrc` sets a **restrictive `umask`** at least as strict as `0027`.",
-    "fr": "S'assure que le fichier de demarrage C shell global `/etc/csh.cshrc` definit un **`umask` restrictif** au moins aussi strict que `0027`."
+    "fr": "S'assure que le fichier de démarrage C shell global `/etc/csh.cshrc` définit un **`umask` restrictif** au moins aussi strict que `0027`."
+  },
+  "rationale": {
+    "en": "The **umask** determines the permissions stripped from newly created files and directories. `/etc/csh.cshrc` sets the system-wide umask for **C shell / tcsh** sessions; if it is too permissive, files created in those shells are **group- or world-accessible** by default, exposing data to unauthorized accounts. Setting the C shell umask at least as strict as `0027` enforces least privilege so that the protection cannot be bypassed simply by logging in with `csh`/`tcsh` instead of Bash.",
+    "fr": "L'**umask** détermine les permissions retirées aux fichiers et répertoires nouvellement créés. `/etc/csh.cshrc` définit l'umask global des sessions **C shell / tcsh** ; s'il est trop permissif, les fichiers créés dans ces shells sont par défaut **accessibles au groupe ou à tous**, exposant des données à des comptes non autorisés. Fixer l'umask C shell au moins aussi strict que `0027` impose le moindre privilège, de sorte que la protection ne puisse être contournée en se connectant simplement avec `csh`/`tcsh` au lieu de Bash."
   },
   "check_note": {
     "en": "Pavois reads the **last effective** `umask` line in `/etc/csh.cshrc` and tests it against `0027` with a **bitmask comparison** (`(value & 0027) == 0027`), so `0077` also passes. Taking the **final** matching line (`tail -1`) matches how a real `csh`/`tcsh` session resolves repeated assignments - covering this shell family closes a gap that file-only Bash checks would leave open. (This rule ships only on RHEL 8/9, where csh/tcsh are commonly present.)",
-    "fr": "Pavois lit la **derniere** ligne `umask` effective de `/etc/csh.cshrc` et la compare a `0027` par **masque de bits** (`(valeur & 0027) == 0027`), si bien que `0077` passe aussi. Retenir la **derniere** ligne correspondante (`tail -1`) reflete la facon dont une session `csh`/`tcsh` reelle resout les affectations repetees - couvrir cette famille de shells comble une faille que des controles Bash bases sur les fichiers laisseraient ouverte. (Cette regle n'est livree que sur RHEL 8/9, ou csh/tcsh sont couramment presents.)"
+    "fr": "Pavois lit la **dernière** ligne `umask` effective de `/etc/csh.cshrc` et la compare à `0027` par **masque de bits** (`(valeur & 0027) == 0027`), si bien que `0077` passe aussi. Retenir la **dernière** ligne correspondante (`tail -1`) reflète la façon dont une session `csh`/`tcsh` réelle résout les affectations répétées : couvrir cette famille de shells comble une faille que des contrôles Bash basés sur les fichiers laisseraient ouverte. (Cette règle n'est livrée que sur RHEL 8/9, où csh/tcsh sont couramment présents.)"
   },
   "verify": {
     "en": "Inspect the configured value:\n\n```\ngrep -hiE '^[[:space:]]*umask[[:space:]]+[0-7]+' /etc/csh.cshrc | tail -1\n```\n\nExpected `umask 027` (or stricter). Confirm at runtime with `tcsh -c umask` (expected `027` or `077`).",
-    "fr": "Inspectez la valeur configuree :\n\n```\ngrep -hiE '^[[:space:]]*umask[[:space:]]+[0-7]+' /etc/csh.cshrc | tail -1\n```\n\nAttendu `umask 027` (ou plus strict). Confirmez a l'execution avec `tcsh -c umask` (attendu `027` ou `077`)."
+    "fr": "Inspectez la valeur configurée :\n\n```\ngrep -hiE '^[[:space:]]*umask[[:space:]]+[0-7]+' /etc/csh.cshrc | tail -1\n```\n\nAttendu `umask 027` (ou plus strict). Confirmez à l'exécution avec `tcsh -c umask` (attendu `027` ou `077`)."
   },
   "logs": {
     "en": "umask has no audit event; verify it from current state. Show the source line with `grep -i umask /etc/csh.cshrc` and the runtime value with `tcsh -c umask`. To see the resulting permissions of a new file, set the umask in a tcsh session then `touch /tmp/t && stat -c '%a' /tmp/t`.",
-    "fr": "L'umask ne genere aucun evenement d'audit ; verifiez-le depuis l'etat courant. Affichez la ligne source avec `grep -i umask /etc/csh.cshrc` et la valeur d'execution avec `tcsh -c umask`. Pour voir les droits resultants d'un nouveau fichier, fixez l'umask dans une session tcsh puis `touch /tmp/t && stat -c '%a' /tmp/t`."
+    "fr": "L'umask ne génère aucun événement d'audit ; vérifiez-le depuis l'état courant. Affichez la ligne source avec `grep -i umask /etc/csh.cshrc` et la valeur d'exécution avec `tcsh -c umask`. Pour voir les droits résultants d'un nouveau fichier, fixez l'umask dans une session tcsh puis `touch /tmp/t && stat -c '%a' /tmp/t`."
   },
   "remediation_note": {
     "en": "No automated harden plan is wired for this rule (`remediation` is empty), so it must be applied **manually**: add or correct a single `umask 027` line in `/etc/csh.cshrc`, placed after any looser assignment so it is the effective one. New csh/tcsh sessions inherit it immediately; existing ones must re-login or re-source the file.",
-    "fr": "Aucun plan de durcissement automatise n'est cable pour cette regle (`remediation` est vide) ; elle doit etre appliquee **manuellement** : ajoutez ou corrigez une unique ligne `umask 027` dans `/etc/csh.cshrc`, placee apres toute affectation plus laxiste afin d'etre celle qui s'applique. Les nouvelles sessions csh/tcsh en heritent immediatement ; les sessions existantes doivent se reconnecter ou re-sourcer le fichier."
+    "fr": "Aucun plan de durcissement automatisé n'est câblé pour cette règle (`remediation` est vide) ; elle doit être appliquée **manuellement** : ajoutez ou corrigez une unique ligne `umask 027` dans `/etc/csh.cshrc`, placée après toute affectation plus laxiste afin d'être celle qui s'applique. Les nouvelles sessions csh/tcsh en héritent immédiatement ; les sessions existantes doivent se reconnecter ou re-sourcer le fichier."
   },
   "impact": {
     "en": "Low risk, scoped to **C shell / tcsh** users only - most modern RHEL deployments default to Bash, so few interactive sessions are affected. As with any umask tightening, scripts or tooling that create **group-shared files** from a csh environment may lose group access under `0077`; audit such workflows and prefer setgid directories plus ACLs over loosening the global umask. The change affects only **new** files and is reversible by editing the line.",
-    "fr": "Risque faible, limite aux seuls utilisateurs **C shell / tcsh** - la plupart des deploiements RHEL modernes utilisent Bash par defaut, peu de sessions interactives sont donc concernees. Comme pour tout renforcement d'umask, des scripts ou outils creant des **fichiers partages en groupe** depuis un environnement csh peuvent perdre l'acces groupe sous `0077` ; auditez ces flux et preferez des repertoires setgid et des ACL a l'assouplissement de l'umask global. Le changement n'affecte que les **nouveaux** fichiers et se reverse en editant la ligne."
-  }
+    "fr": "Risque faible, limité aux seuls utilisateurs **C shell / tcsh** : la plupart des déploiements RHEL modernes utilisent Bash par défaut, peu de sessions interactives sont donc concernées. Comme pour tout renforcement d'umask, des scripts ou outils créant des **fichiers partagés en groupe** depuis un environnement csh peuvent perdre l'accès groupe sous `0077` ; auditez ces flux et préférez des répertoires setgid et des ACL à l'assouplissement de l'umask global. Le changement n'affecte que les **nouveaux** fichiers et se reverse en éditant la ligne."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

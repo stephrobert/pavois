@@ -1,0 +1,37 @@
+{
+  "id": "service-kdump-disabled",
+  "title": {
+    "en": "Disable KDump Kernel Crash Analyzer (kdump)",
+    "fr": "Désactiver l'analyseur de plantage du noyau KDump (kdump)"
+  },
+  "summary": {
+    "en": "Ensures the kernel crash-dump service (`kdump.service`) is **disabled** and **not running** unless the host is used for kernel debugging.",
+    "fr": "Garantit que le service de vidage de plantage du noyau (`kdump.service`) est **désactivé** et **arrêté**, sauf si l'hôte sert au débogage du noyau."
+  },
+  "rationale": {
+    "en": "Kernel core dumps may contain the **full contents of system memory** at the time of the crash, including secrets, keys and credentials, and they consume large amounts of disk space, risking denial of service by filling the target partition. Unless the system is used for kernel development or testing, kdump should be disabled.",
+    "fr": "Les vidages mémoire du noyau peuvent contenir l'**intégralité de la mémoire système** au moment du plantage, y compris des secrets, des clés et des identifiants, et consomment beaucoup d'espace disque, risquant un déni de service en saturant la partition cible. À moins que le système ne serve au développement ou aux tests du noyau, kdump doit être désactivé."
+  },
+  "check_note": {
+    "en": "Pavois queries the **resolved unit state** with `systemctl is-enabled` / `is-active` for `kdump.service`. The effective state catches a unit enabled via a drop-in or by the kernel `crashkernel=` boot argument that scanning `/etc/sysconfig/kdump` alone would not reveal.",
+    "fr": "Pavois interroge l'**état résolu de l'unité** avec `systemctl is-enabled` / `is-active` pour `kdump.service`. L'état effectif détecte une unité activée via un drop-in ou par l'argument de démarrage `crashkernel=` du noyau que la seule lecture de `/etc/sysconfig/kdump` ne révélerait pas."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled kdump.service` (expected `disabled` or `not-found`) and `systemctl is-active kdump.service` (expected `inactive`).",
+    "fr": "Exécutez `systemctl is-enabled kdump.service` (résultat attendu `disabled` ou `not-found`) et `systemctl is-active kdump.service` (résultat attendu `inactive`)."
+  },
+  "logs": {
+    "en": "Check `systemctl show kdump.service` (fields `UnitFileState`, `ActiveState`) and `journalctl -u kdump.service`; crash-dump captures land in `/var/crash/`.",
+    "fr": "Vérifiez `systemctl show kdump.service` (champs `UnitFileState`, `ActiveState`) et `journalctl -u kdump.service` ; les captures de vidage de plantage se trouvent dans `/var/crash/`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan applies a `service` resource for `kdump` with actions **disable** and **stop**, so the crash-dump service stays off across reboots and is stopped immediately. Apply it with `pavois harden apply`.",
+    "fr": "Le plan harden de Pavois applique une ressource `service` sur `kdump` avec les actions **disable** et **stop**, de sorte que le service de vidage reste éteint après les redémarrages et soit arrêté immédiatement. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Disabling `kdump.service` means **no kernel crash dumps** will be captured, which can hinder post-mortem debugging of kernel panics. **Precaution:** if your operations or support contract requires crash dumps for diagnosing kernel issues, keep kdump enabled and instead secure the dump storage (restricted permissions, dedicated partition). You may also free the memory reserved by `crashkernel=` once kdump is off.",
+    "fr": "Désactiver `kdump.service` signifie qu'**aucun vidage de plantage du noyau** ne sera capturé, ce qui peut gêner le débogage post-mortem des paniques noyau. **Précaution :** si vos opérations ou votre contrat de support exigent des vidages pour diagnostiquer les problèmes noyau, gardez kdump activé et sécurisez plutôt le stockage des vidages (permissions restreintes, partition dédiée). Vous pouvez aussi libérer la mémoire réservée par `crashkernel=` une fois kdump désactivé."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}
