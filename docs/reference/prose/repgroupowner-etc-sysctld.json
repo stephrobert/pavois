@@ -1,0 +1,37 @@
+{
+  "id": "repgroupowner-etc-sysctld",
+  "title": {
+    "en": "Verify Group Who Owns /etc/sysctl.d Directory",
+    "fr": "Vérifier le groupe propriétaire du répertoire /etc/sysctl.d"
+  },
+  "summary": {
+    "en": "Ensures the `/etc/sysctl.d` directory is group-owned by **root**.",
+    "fr": "Garantit que le répertoire `/etc/sysctl.d` a pour groupe propriétaire **root**."
+  },
+  "rationale": {
+    "en": "The `/etc/sysctl.d` directory holds drop-in files that set kernel parameters at boot (network hardening, ASLR, `kptr_restrict`, etc.). If its group owner is not `root`, members of that group could drop in a file that weakens these protections, for example re-enabling IP forwarding or disabling ASLR, undermining the system's kernel-level hardening.",
+    "fr": "Le répertoire `/etc/sysctl.d` contient des fichiers drop-in qui définissent les paramètres du noyau au démarrage (durcissement réseau, ASLR, `kptr_restrict`, etc.). Si son groupe propriétaire n'est pas `root`, les membres de ce groupe pourraient y déposer un fichier affaiblissant ces protections, par exemple réactiver le routage IP ou désactiver l'ASLR, compromettant le durcissement du noyau."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** group owner of `/etc/sysctl.d` from the filesystem (`stat`), so it reports the real on-disk state even after a package recreates the directory. The runtime kernel values themselves are audited by the dedicated `sysctl` rules; this rule protects the source of those values from tampering.",
+    "fr": "Pavois lit le groupe propriétaire **effectif** de `/etc/sysctl.d` depuis le système de fichiers (`stat`), il rapporte donc l'état réel sur le disque même après qu'un paquet recrée le répertoire. Les valeurs du noyau au runtime sont auditées par les règles `sysctl` dédiées ; cette règle protège la source de ces valeurs contre toute altération."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G' /etc/sysctl.d`. The expected output is `root`. Alternatively, `ls -ld /etc/sysctl.d` should show `root` in the group column.",
+    "fr": "Exécutez `stat -c '%G' /etc/sysctl.d`. La sortie attendue est `root`. Sinon, `ls -ld /etc/sysctl.d` doit afficher `root` dans la colonne du groupe."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default; inspect with `ls -ld /etc/sysctl.d`. The kernel parameters these files set are visible at runtime with `sysctl -a`. If auditd watches `/etc/sysctl.d`, ownership changes appear in `/var/log/audit/audit.log`.",
+    "fr": "Les changements de propriété ne sont pas journalisés par défaut ; inspectez avec `ls -ld /etc/sysctl.d`. Les paramètres du noyau définis par ces fichiers sont visibles au runtime avec `sysctl -a`. Si auditd surveille `/etc/sysctl.d`, les changements de propriété apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan sets the **group** of the `file` resource `/etc/sysctl.d` to `root` (equivalent to `chgrp root /etc/sysctl.d`). It is applied with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois définit le **groupe** de la ressource `file` `/etc/sysctl.d` sur `root` (équivalent à `chgrp root /etc/sysctl.d`). Il s'applique avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Setting the group to `root` is the expected state and has no functional impact; kernel parameters keep applying at boot via `systemd-sysctl`. There is no lockout or service-disruption risk. The change touches only directory metadata, not the parameter files' contents.",
+    "fr": "Définir le groupe sur `root` correspond à l'état attendu et n'a aucun impact fonctionnel ; les paramètres du noyau continuent de s'appliquer au démarrage via `systemd-sysctl`. Aucun risque de verrouillage ou d'interruption de service. Le changement ne touche que les métadonnées du répertoire, pas le contenu des fichiers de paramètres."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

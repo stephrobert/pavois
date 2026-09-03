@@ -1,16 +1,17 @@
 {
   "id": "misc-prefer-64bit-os",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -30,19 +31,22 @@
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "uname -m   # if not x86_64/aarch64, a reinstall is required (audit-only finding)\n",
+    "reason": "the OS architecture cannot be changed in place, reinstall as 64-bit if needed",
+    "resource": "manual"
+  },
   "title": {
     "en": "Prefer to use a 64-bit Operating System when supported",
     "fr": "Préférer un système d'exploitation 64 bits lorsqu'il est pris en charge"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "A 64-bit operating system materially improves the effectiveness of two key exploit mitigations. The much larger address space makes **Address Space Layout Randomization (ASLR)** far harder to brute-force, and 64-bit platforms guarantee the **No eXecute / Execute Disable (NX/XD)** bits that block code execution from data pages, defeating many memory-corruption attacks. A 32-bit OS weakens both, making exploitation more practical.",
-    "fr": "Un système d'exploitation 64 bits améliore concrètement l'efficacité de deux protections clés contre les exploits. L'espace d'adressage bien plus large rend la **randomisation de l'espace d'adressage (ASLR)** bien plus difficile à forcer par force brute, et les plateformes 64 bits garantissent les bits **No eXecute / Execute Disable (NX/XD)** qui empêchent l'exécution de code depuis les pages de données, déjouant de nombreuses attaques par corruption mémoire. Un OS 32 bits affaiblit les deux et rend l'exploitation plus facile."
-  },
   "summary": {
     "en": "Requires the system to run a **64-bit** kernel architecture (`x86_64`, `aarch64`, `amd64`, `s390x`) rather than a legacy 32-bit one.",
     "fr": "Exige que le système exécute une architecture noyau **64 bits** (`x86_64`, `aarch64`, `amd64`, `s390x`) plutôt qu'une ancienne architecture 32 bits."
+  },
+  "rationale": {
+    "en": "A 64-bit operating system materially improves the effectiveness of two key exploit mitigations. The much larger address space makes **Address Space Layout Randomization (ASLR)** far harder to brute-force, and 64-bit platforms guarantee the **No eXecute / Execute Disable (NX/XD)** bits that block code execution from data pages, defeating many memory-corruption attacks. A 32-bit OS weakens both, making exploitation more practical.",
+    "fr": "Un système d'exploitation 64 bits améliore concrètement l'efficacité de deux protections clés contre les exploits. L'espace d'adressage bien plus large rend la **randomisation de l'espace d'adressage (ASLR)** bien plus difficile à forcer par force brute, et les plateformes 64 bits garantissent les bits **No eXecute / Execute Disable (NX/XD)** qui empêchent l'exécution de code depuis les pages de données, déjouant de nombreuses attaques par corruption mémoire. Un OS 32 bits affaiblit les deux et rend l'exploitation plus facile."
   },
   "check_note": {
     "en": "Pavois reads the **running** kernel architecture with `uname -m`, the architecture the machine is actually booted on. This reflects the live state, which is what matters for exploit mitigations; inspecting package metadata or installer files could report a different or planned architecture, not the one in effect.",
@@ -63,5 +67,7 @@
   "impact": {
     "en": "This rule is informational on modern hardware, virtually all current servers and cloud images are already 64-bit. A non-compliant result almost always means a legacy or embedded host. Remediation is not a configuration change but a **full reinstall**, so plan it as a migration: back up data, validate that all required software has 64-bit packages, and rebuild rather than attempt an in-place conversion.",
     "fr": "Cette règle est informative sur le matériel moderne, la quasi-totalité des serveurs et images cloud actuels sont déjà en 64 bits. Un résultat non conforme signale presque toujours un hôte ancien ou embarqué. La remédiation n'est pas un changement de configuration mais une **réinstallation complète** : planifiez-la comme une migration : sauvegardez les données, vérifiez que tous les logiciels requis disposent de paquets 64 bits, et reconstruisez plutôt que de tenter une conversion sur place."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

@@ -1,17 +1,17 @@
 {
   "id": "posture-process-accounting",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -25,16 +25,20 @@
   "reboot_survivable": "no",
   "norms": {},
   "check": [
-    "describe command('systemctl is-active auditd acct psacct 2>/dev/null | grep -q \\'^active\\' && echo ok || echo ko') do",
+    "describe command('systemctl is-active acct psacct 2>/dev/null | grep -qx active && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "systemctl enable --now acct 2>/dev/null || systemctl enable --now psacct 2>/dev/null || true",
+    "name": "enable-process-accounting",
+    "not_if": "systemctl is-active acct psacct 2>/dev/null | grep -qx active",
+    "resource": "exec"
+  },
   "title": {
     "en": "Process accounting enabled",
     "fr": "Comptabilité des processus activée"
   },
-  "needs_translation": [],
   "summary": {
     "en": "Requires that **process accounting** is active, via `auditd`, or the `acct`/`psacct` service, so that command and process execution is recorded for audit and forensics.",
     "fr": "Exige que la **comptabilité des processus** soit active, via `auditd` ou le service `acct`/`psacct`, afin que l'exécution des commandes et des processus soit enregistrée pour l'audit et l'investigation."
@@ -62,5 +66,7 @@
   "impact": {
     "en": "Enabling process accounting is low risk. The trade-offs are operational: accounting/audit logs **grow continuously and can fill `/var`** on busy systems, so configure log rotation and size limits (`auditd`'s `max_log_file`, `space_left_action`). `auditd` with verbose rules adds slight overhead under heavy syscall load. No services are interrupted by enabling it.",
     "fr": "Activer la comptabilité des processus est peu risqué. Les compromis sont opérationnels : les journaux de comptabilité/audit **croissent en continu et peuvent saturer `/var`** sur les systèmes chargés, configurez donc la rotation et les limites de taille (`max_log_file`, `space_left_action` d'`auditd`). `auditd` avec des règles verbeuses ajoute un léger surcoût en cas de forte charge d'appels système. Aucun service n'est interrompu par son activation."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

@@ -1,16 +1,17 @@
 {
   "id": "kconfig-legacy-ptys",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R23"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_LEGACY_PTYS=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_LEGACY_PTYS='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_LEGACY_PTYS=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should_not match(/^CONFIG_LEGACY_PTYS=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Disable legacy (BSD) PTY support",
     "fr": "Désactiver la prise en charge des PTY hérités (BSD)"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_LEGACY_PTYS` enables the old BSD-style pseudo-terminal scheme (`/dev/ptyXX` and `/dev/ttyXX`), superseded by the Unix98 PTYs of `/dev/pts`. The legacy scheme allocates a **fixed, static pool** of PTY pairs with weaker isolation and a history of security problems, and adds unused terminal code to the kernel. Modern userspace uses only Unix98 PTYs, so building without `CONFIG_LEGACY_PTYS` removes dead, problematic code and shrinks attack surface.",
-    "fr": "`CONFIG_LEGACY_PTYS` active l'ancien schéma de pseudo-terminaux de type BSD (`/dev/ptyXX` et `/dev/ttyXX`), remplacé par les PTY Unix98 de `/dev/pts`. Le schéma hérité alloue un **pool fixe et statique** de paires de PTY, avec une isolation plus faible et un historique de problèmes de sécurité, et ajoute du code de terminal inutilisé au noyau. L'espace utilisateur moderne n'utilise que les PTY Unix98 ; compiler sans `CONFIG_LEGACY_PTYS` supprime donc du code mort et problématique et réduit la surface d'attaque."
-  },
   "summary": {
     "en": "Requires the kernel to be built **without** `CONFIG_LEGACY_PTYS=y`, leaving only the modern Unix98 PTYs under `/dev/pts`.",
     "fr": "Exige que le noyau soit compilé **sans** `CONFIG_LEGACY_PTYS=y`, ne laissant que les PTY Unix98 modernes sous `/dev/pts`."
+  },
+  "rationale": {
+    "en": "`CONFIG_LEGACY_PTYS` enables the old BSD-style pseudo-terminal scheme (`/dev/ptyXX` and `/dev/ttyXX`), superseded by the Unix98 PTYs of `/dev/pts`. The legacy scheme allocates a **fixed, static pool** of PTY pairs with weaker isolation and a history of security problems, and adds unused terminal code to the kernel. Modern userspace uses only Unix98 PTYs, so building without `CONFIG_LEGACY_PTYS` removes dead, problematic code and shrinks attack surface.",
+    "fr": "`CONFIG_LEGACY_PTYS` active l'ancien schéma de pseudo-terminaux de type BSD (`/dev/ptyXX` et `/dev/ttyXX`), remplacé par les PTY Unix98 de `/dev/pts`. Le schéma hérité alloue un **pool fixe et statique** de paires de PTY, avec une isolation plus faible et un historique de problèmes de sécurité, et ajoute du code de terminal inutilisé au noyau. L'espace utilisateur moderne n'utilise que les PTY Unix98 ; compiler sans `CONFIG_LEGACY_PTYS` supprime donc du code mort et problématique et réduit la surface d'attaque."
   },
   "check_note": {
     "en": "Pavois reads the build configuration of the **running** kernel, `/boot/config-$(uname -r)` and the in-memory `/proc/config.gz`, and confirms `CONFIG_LEGACY_PTYS` is not set to `y`. Inspecting the booted kernel's real config (not a stale `/boot/config-*`) reflects whether the legacy PTY layer is actually compiled in.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "Removing legacy PTYs affects only very old software that hard-codes `/dev/ptyXX` device names; all modern terminals, SSH sessions, `screen`/`tmux`, and containers use Unix98 PTYs and are unaffected. Audit for ancient terminal-handling tools before applying. Because the change requires a different kernel, keep the previous kernel entry in the bootloader as a fallback.",
     "fr": "Supprimer les PTY hérités n'affecte que des logiciels très anciens qui codent en dur les noms de périphériques `/dev/ptyXX` ; tous les terminaux modernes, sessions SSH, `screen`/`tmux` et conteneurs utilisent les PTY Unix98 et ne sont pas concernés. Auditez les outils de gestion de terminal anciens avant d'appliquer. Comme le changement requiert un autre noyau, conservez l'entrée du noyau précédent dans le chargeur d'amorçage comme solution de repli."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

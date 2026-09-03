@@ -22,8 +22,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-OS = sys.argv[1]
-AL_REPO = {
+AL_REPO_BY_OS = {
     "debian12": "DEBIAN12-CIS",
     "debian13": "DEBIAN13-CIS",
     "ubuntu2204": "UBUNTU22-CIS",
@@ -31,8 +30,20 @@ AL_REPO = {
     "ubuntu2604": "UBUNTU26-CIS",
     "rhel8": "RHEL8-CIS",
     "rhel9": "RHEL9-CIS",
-    "almalinux9": "RHEL9-CIS",
-}.get(OS)
+}
+
+if len(sys.argv) != 2 or sys.argv[1] in ("-h", "--help"):
+    known = ", ".join(sorted(AL_REPO_BY_OS))
+    print(__doc__.strip())
+    print(f"\nUsage: tools/cross_validate.py <os>\n  <os> is one of: {known}")
+    # No argument is a usage request (exit 0); an unknown OS is an error (exit 2).
+    sys.exit(0 if len(sys.argv) != 2 or sys.argv[1] in ("-h", "--help") else 2)
+
+OS = sys.argv[1]
+AL_REPO = AL_REPO_BY_OS.get(OS)
+if AL_REPO is None and OS not in ("fedora", "rhel10"):
+    print(f"unknown OS {OS!r}; known: {', '.join(sorted(AL_REPO_BY_OS))}", file=sys.stderr)
+    sys.exit(2)
 
 
 def ssg_cis():

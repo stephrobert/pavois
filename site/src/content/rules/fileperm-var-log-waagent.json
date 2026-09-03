@@ -2,11 +2,14 @@
   "id": "fileperm-var-log-waagent",
   "supported_os": [
     "debian12",
+    "debian13",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -21,35 +24,35 @@
     ]
   },
   "check": [
-    "only_if { file('/var/log/waagent').exist? }",
-    "describe file('/var/log/waagent') do",
-    "  it { should_not be_executable.by('owner') }",
-    "  it { should_not be_setuid }",
-    "  it { should_not be_executable.by('group') }",
-    "  it { should_not be_writable.by('group') }",
-    "  it { should_not be_setgid }",
-    "  it { should_not be_executable.by('other') }",
-    "  it { should_not be_writable.by('other') }",
-    "  it { should_not be_sticky }",
+    "['/var/log/waagent.log'].each do |f|",
+    "  next unless file(f).exist?",
+    "  describe file(f) do",
+    "    it { should_not be_writable.by('group') }",
+    "    it { should_not be_readable.by('other') }",
+    "    it { should_not be_writable.by('other') }",
+    "    it { should_not be_executable.by('other') }",
+    "    it { should_not be_setuid }",
+    "    it { should_not be_setgid }",
+    "  end",
     "end"
   ],
   "remediation": {
-    "mode": "0644",
-    "path": "/var/log/waagent",
-    "resource": "file"
+    "command": "for f in /var/log/waagent.log; do [ -e \"$f\" ] && chmod g-wx,o-rwx \"$f\"; done; true",
+    "name": "fileperm-var-log-waagent-tighten",
+    "not_if": "! find /var/log/waagent.log -maxdepth 0 \\( -perm /g=wx -o -perm /o=rwx \\) 2>/dev/null | grep -q .",
+    "resource": "exec"
   },
   "title": {
     "en": "Verify Permissions on /var/log/waagent.log(.*) Files",
     "fr": "Vérifier les permissions des fichiers /var/log/waagent.log(.*)"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/var/log/waagent.log` records events from the **Azure Linux Guest Agent**, used for provisioning and troubleshooting cloud instances. It can expose **cloud metadata, extension activity and VM identity details**. If the file is group/other-writable an attacker can **inject misleading entries or erase evidence** of tampering with the agent. Restricting it keeps cloud-platform diagnostics trustworthy.",
-    "fr": "`/var/log/waagent.log` enregistre les événements de l'**agent invité Azure Linux**, utilisé pour le provisionnement et le diagnostic des instances cloud. Il peut exposer des **métadonnées cloud, l'activité des extensions et des détails d'identité de la VM**. Si le fichier est inscriptible par le groupe ou les autres, un attaquant peut **injecter des entrées trompeuses ou effacer les traces** d'une altération de l'agent. Le restreindre garde fiables les diagnostics de la plateforme cloud."
-  },
   "summary": {
     "en": "Ensure the Azure Linux Guest Agent log `/var/log/waagent` carries no execute, `setuid`, `setgid` or sticky bit and is not group/other-writable, so its records cannot be altered.",
     "fr": "Garantit que le journal de l'agent invité Azure Linux `/var/log/waagent` ne porte aucun bit d'exécution, `setuid`, `setgid` ou sticky et n'est pas inscriptible par le groupe ou les autres, afin que ses enregistrements ne puissent être altérés."
+  },
+  "rationale": {
+    "en": "`/var/log/waagent.log` records events from the **Azure Linux Guest Agent**, used for provisioning and troubleshooting cloud instances. It can expose **cloud metadata, extension activity and VM identity details**. If the file is group/other-writable an attacker can **inject misleading entries or erase evidence** of tampering with the agent. Restricting it keeps cloud-platform diagnostics trustworthy.",
+    "fr": "`/var/log/waagent.log` enregistre les événements de l'**agent invité Azure Linux**, utilisé pour le provisionnement et le diagnostic des instances cloud. Il peut exposer des **métadonnées cloud, l'activité des extensions et des détails d'identité de la VM**. Si le fichier est inscriptible par le groupe ou les autres, un attaquant peut **injecter des entrées trompeuses ou effacer les traces** d'une altération de l'agent. Le restreindre garde fiables les diagnostics de la plateforme cloud."
   },
   "check_note": {
     "en": "Pavois reads the **live inode** of `/var/log/waagent` and asserts no execute, `setuid`, `setgid` or sticky bit and no group/other write. Reading the real filesystem object catches drift that a packaging or config check would miss, the **effective** mode is what governs access at runtime.",
@@ -70,5 +73,7 @@
   "impact": {
     "en": "A writable agent log can be poisoned or truncated, hampering cloud incident analysis. **Precautions:** this file only exists on Azure VMs running `walinuxagent`; the agent runs as `root` and recreates the file, so after re-permissioning confirm the agent still writes (`systemctl restart walinuxagent` then `tail /var/log/waagent.log`). The agent's own rotation may reset the mode, so verify periodically. Keep `root:adm` readable rather than `0600` if your monitoring reads it as the `adm` group.",
     "fr": "Un journal d'agent inscriptible peut être empoisonné ou tronqué, gênant l'analyse d'incident cloud. **Précautions :** ce fichier n'existe que sur les VM Azure exécutant `walinuxagent` ; l'agent tourne en `root` et recrée le fichier, donc après re-permissionnement vérifiez qu'il écrit toujours (`systemctl restart walinuxagent` puis `tail /var/log/waagent.log`). La rotation propre à l'agent peut réinitialiser le mode, vérifiez donc périodiquement. Conservez `root:adm` lisible plutôt que `0600` si votre supervision le lit sous le groupe `adm`."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

@@ -1,16 +1,17 @@
 {
   "id": "kconfig-x86-vsyscall-emulation",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_X86_VSYSCALL_EMULATION=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_X86_VSYSCALL_EMULATION='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_X86_VSYSCALL_EMULATION=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should_not match(/^CONFIG_X86_VSYSCALL_EMULATION=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Disable x86 vsyscall emulation",
     "fr": "Désactiver l'émulation vsyscall x86"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The legacy **vsyscall** page sits at a fixed address in every process and is obsolete (replaced by the randomized **vDSO**). Leaving `CONFIG_X86_VSYSCALL_EMULATION=y` keeps an executable region at a predictable location that supplies reliable **ROP/JOP gadgets**, undermining ASLR and easing exploitation. Disabling it removes that fixed attack primitive.",
-    "fr": "L'ancienne page **vsyscall** se trouve à une adresse fixe dans chaque processus et est obsolète (remplacée par le **vDSO** randomisé). Laisser `CONFIG_X86_VSYSCALL_EMULATION=y` maintient une région exécutable à un emplacement prévisible fournissant des **gadgets ROP/JOP** fiables, ce qui affaiblit l'ASLR et facilite l'exploitation. La désactiver supprime cette primitive d'attaque à adresse fixe."
-  },
   "summary": {
     "en": "Requires the kernel to be built **without** `CONFIG_X86_VSYSCALL_EMULATION=y`, removing the fixed-address legacy vsyscall page that offers ROP gadgets.",
     "fr": "Exige que le noyau soit compilé **sans** `CONFIG_X86_VSYSCALL_EMULATION=y`, supprimant la page vsyscall héritée à adresse fixe offrant des gadgets ROP."
+  },
+  "rationale": {
+    "en": "The legacy **vsyscall** page sits at a fixed address in every process and is obsolete (replaced by the randomized **vDSO**). Leaving `CONFIG_X86_VSYSCALL_EMULATION=y` keeps an executable region at a predictable location that supplies reliable **ROP/JOP gadgets**, undermining ASLR and easing exploitation. Disabling it removes that fixed attack primitive.",
+    "fr": "L'ancienne page **vsyscall** se trouve à une adresse fixe dans chaque processus et est obsolète (remplacée par le **vDSO** randomisé). Laisser `CONFIG_X86_VSYSCALL_EMULATION=y` maintient une région exécutable à un emplacement prévisible fournissant des **gadgets ROP/JOP** fiables, ce qui affaiblit l'ASLR et facilite l'exploitation. La désactiver supprime cette primitive d'attaque à adresse fixe."
   },
   "check_note": {
     "en": "Pavois reads the **running kernel's build config** (`/boot/config-$(uname -r)` or `/proc/config.gz`) and asserts the option is **not** set to `y`. Inspecting the live kernel rather than a possibly-stale config file ensures the result matches the kernel that is actually executing.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "Failing keeps a **predictable executable page** that aids ROP-based exploits. Precautions: very old static binaries (glibc < 2.14, ~2011) issue raw vsyscalls and may **crash with SIGSEGV** if vsyscall is fully disabled. On a system that might run such legacy software, prefer `vsyscall=emulate` only if necessary, otherwise validate that no application breaks before setting `vsyscall=none` or removing the option; keep a rollback boot entry.",
     "fr": "Un échec maintient une **page exécutable prévisible** facilitant les exploits ROP. Précautions : de très anciens binaires statiques (glibc < 2.14, vers 2011) émettent des vsyscalls bruts et peuvent **planter avec SIGSEGV** si vsyscall est totalement désactivé. Sur un système susceptible d'exécuter de tels logiciels hérités, n'utilisez `vsyscall=emulate` qu'en cas de besoin ; sinon, vérifiez qu'aucune application ne casse avant de définir `vsyscall=none` ou de retirer l'option, et conservez une entrée d'amorçage de secours."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

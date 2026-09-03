@@ -1,0 +1,37 @@
+{
+  "id": "filegroupowner-etc-issue-net",
+  "title": {
+    "en": "Verify Group Ownership of System Login Banner for Remote Connections",
+    "fr": "Vérifier le groupe propriétaire de la bannière de connexion distante"
+  },
+  "summary": {
+    "en": "Ensures `/etc/issue.net` (remote login banner) is group-owned by **GID 0** (root).",
+    "fr": "Garantit que `/etc/issue.net` (bannière de connexion distante) appartient au groupe **GID 0** (root)."
+  },
+  "rationale": {
+    "en": "`/etc/issue.net` is the pre-login banner shown for remote (network) logins, such as the text SSH/telnet display before authentication. If it is group-owned by a non-root group (**GID ≠ 0**), unprivileged users could alter or remove the mandated legal use-notification shown to remote users. Root group ownership ensures only root can change it.",
+    "fr": "`/etc/issue.net` est la bannière affichée avant connexion pour les ouvertures de session distantes (réseau), comme le texte montré par SSH/telnet avant l'authentification. S'il appartient à un groupe non-root (**GID ≠ 0**), des utilisateurs non privilégiés pourraient modifier ou supprimer l'avis légal d'usage obligatoire présenté aux utilisateurs distants. Une propriété de groupe par root garantit que seul root peut la modifier."
+  },
+  "check_note": {
+    "en": "Pavois asks the `file` resource for the resolved numeric `gid` of `/etc/issue.net` and requires it to be `0`. The check is skipped if the file is absent. Reading the file's effective group ownership directly (the kernel-resolved gid) is exact and distro-independent.",
+    "fr": "Pavois demande à la ressource `file` le `gid` numérique résolu de `/etc/issue.net` et exige qu'il vaille `0`. Le contrôle est ignoré si le fichier est absent. Lire directement l'appartenance de groupe effective du fichier (le gid résolu par le noyau) est exact et indépendant de la distribution."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /etc/issue.net`. **Expected:** group `root` and gid `0`. `ls -l /etc/issue.net` shows the group in the owner column.",
+    "fr": "Exécutez `stat -c '%G %g' /etc/issue.net`. **Attendu :** groupe `root` et gid `0`. `ls -l /etc/issue.net` affiche le groupe dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "- Inspect ownership: `stat -c '%U %G %a' /etc/issue.net` or `ls -l /etc/issue.net`.\n- View the banner content: `cat /etc/issue.net`.\n- If auditd watches the file, changes appear in `/var/log/audit/audit.log`.",
+    "fr": "- Inspecter la propriété : `stat -c '%U %G %a' /etc/issue.net` ou `ls -l /etc/issue.net`.\n- Voir le contenu de la bannière : `cat /etc/issue.net`.\n- Si auditd surveille le fichier, les modifications apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped for this rule. Fix it manually with `chgrp 0 /etc/issue.net` (or `chgrp root /etc/issue.net`) to restore root group ownership, then re-run the scan.",
+    "fr": "Aucune remédiation automatique n'est fournie pour cette règle. Corrigez manuellement avec `chgrp 0 /etc/issue.net` (ou `chgrp root /etc/issue.net`) pour rétablir la propriété du groupe root, puis relancez le scan."
+  },
+  "impact": {
+    "en": "Wrong group ownership lets unprivileged users tamper with the remote login banner, a compliance/legal-notice gap rather than a direct breach. The `chgrp` fix is trivial and safe; it changes only who may edit the file, not the banner text or how SSH displays it.",
+    "fr": "Une mauvaise appartenance de groupe permet à des utilisateurs non privilégiés d'altérer la bannière de connexion distante, un manquement de conformité/d'avis légal plutôt qu'une brèche directe. Le correctif `chgrp` est trivial et sûr ; il ne change que qui peut éditer le fichier, ni le texte de la bannière ni la façon dont SSH l'affiche."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

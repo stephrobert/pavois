@@ -1,0 +1,37 @@
+{
+  "id": "fileowner-backup-etc-shadow",
+  "title": {
+    "en": "Verify Group Who Owns Backup shadow File",
+    "fr": "Vérifier le propriétaire du fichier de sauvegarde shadow"
+  },
+  "summary": {
+    "en": "Ensures the backup shadow file `/etc/shadow-` is owned by the **root** user (UID 0).",
+    "fr": "Garantit que le fichier de sauvegarde shadow `/etc/shadow-` appartient à l'utilisateur **root** (UID 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/shadow-` file is the backup of `/etc/shadow` and holds **password hashes** for every local account. If it is not owned by **root**, an unprivileged user could read these hashes and run **offline password cracking**, or tamper with them to weaken authentication. Because backup files are easy to forget, weak ownership here is a common path to credential compromise.",
+    "fr": "Le fichier `/etc/shadow-` est la sauvegarde de `/etc/shadow` et contient les **empreintes de mots de passe** de tous les comptes locaux. S'il n'appartient pas à **root**, un utilisateur non privilégié pourrait lire ces empreintes pour mener un **cassage de mots de passe hors ligne**, ou les altérer pour affaiblir l'authentification. Comme les fichiers de sauvegarde sont faciles à oublier, une propriété incorrecte est une voie courante vers la compromission d'identifiants."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** owner of `/etc/shadow-` via the InSpec `file` resource and asserts `uid == 0`, only when the file exists (`only_if`). Reading the live inode ownership shows the true state on disk, including drift introduced after a manual edit or a misbehaving backup script, rather than an assumed default.",
+    "fr": "Pavois lit le propriétaire **effectif** de `/etc/shadow-` via la ressource `file` d'InSpec et vérifie `uid == 0`, uniquement si le fichier existe (`only_if`). Lire la propriété réelle de l'inode révèle l'état exact sur le disque, y compris une dérive introduite après une édition manuelle ou un script de sauvegarde défaillant, plutôt qu'une valeur par défaut supposée."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /etc/shadow-`. Expected output: **`root 0`**. Alternatively `ls -l /etc/shadow-` should show `root` in the owner column.",
+    "fr": "Exécutez `stat -c '%U %u' /etc/shadow-`. Résultat attendu : **`root 0`**. Sinon, `ls -l /etc/shadow-` doit afficher `root` dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "Ownership has no service log. Confirm the state with `stat -c '%U %u' /etc/shadow-`. To trace changes, an auditd watch such as `auditctl -w /etc/shadow- -p wa -k shadow-backup` records writes/attribute changes in `/var/log/audit/audit.log`.",
+    "fr": "La propriété ne génère aucun journal de service. Vérifiez l'état avec `stat -c '%U %u' /etc/shadow-`. Pour tracer les changements, une surveillance auditd telle que `auditctl -w /etc/shadow- -p wa -k shadow-backup` enregistre les écritures/changements d'attributs dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied **manually**: run `chown root /etc/shadow-` as root to set the owner to **root**.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être appliquée **manuellement** : exécutez `chown root /etc/shadow-` en root pour fixer le propriétaire à **root**."
+  },
+  "impact": {
+    "en": "**If misconfigured**, password hashes in the backup are exposed to offline cracking or tampering by non-root users, a direct credential-theft risk.\n\n**Precautions before applying:** `chown root /etc/shadow-` is safe and reversible. Confirm you target the backup (trailing `-`), not `/etc/shadow`. No service restart and no lockout risk; ownership of the active `/etc/shadow` is unaffected.",
+    "fr": "**En cas de mauvaise configuration**, les empreintes de mots de passe de la sauvegarde sont exposées au cassage hors ligne ou à l'altération par des utilisateurs non root, un risque direct de vol d'identifiants.\n\n**Précautions avant application :** `chown root /etc/shadow-` est sûr et réversible. Vérifiez que vous ciblez la sauvegarde (suffixe `-`), pas `/etc/shadow`. Aucun redémarrage de service ni risque de blocage ; la propriété du `/etc/shadow` actif n'est pas modifiée."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,10 +1,21 @@
 {
   "id": "firewall-default-deny",
   "supported_os": [
-    "debian12"
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "debian12": "1.1.0"
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
   },
   "severity": "medium",
   "domain": "Firewall",
@@ -30,7 +41,7 @@
     "end"
   ],
   "remediation": {
-    "default": "ufw",
+    "default": "nftables",
     "options": {
       "firewalld": {
         "package": "firewalld",
@@ -38,17 +49,49 @@
       },
       "nftables": {
         "package": "nftables",
-        "service": "nftables"
+        "ruleset": "#!/usr/sbin/nft -f\nflush ruleset\ntable inet filter {\n  chain input {\n    type filter hook input priority 0; policy drop;\n    iif \"lo\" accept\n    ct state established,related accept\n    ct state invalid drop\n    ip protocol icmp accept\n    ip6 nexthdr ipv6-icmp accept\n    %SSH_RULE%\n  }\n  chain forward { type filter hook forward priority 0; policy drop; }\n  chain output { type filter hook output priority 0; policy accept; }\n}\n",
+        "service": "nftables",
+        "ssh_rule": "tcp dport 22 accept",
+        "ssh_rule_from": "ip saddr { %CIDRS% } tcp dport 22 accept"
       },
       "ufw": {
+        "enable_cmd": "%SSH_ALLOW%; /usr/sbin/ufw --force enable; systemctl enable --now ufw",
         "package": "ufw",
-        "service": "ufw"
+        "service": "ufw",
+        "ssh_allow": "/usr/sbin/ufw allow OpenSSH 2>/dev/null; /usr/sbin/ufw allow 22/tcp 2>/dev/null",
+        "ssh_allow_from": "/usr/sbin/ufw allow from %SRC% to any port 22 proto tcp 2>/dev/null"
       }
     },
     "resource": "choose"
   },
   "title": {
     "en": "Ensure the Host Firewall Defaults to Deny (any backend)",
-    "fr": "Vérifier que le pare-feu de l'hôte refuse par défaut (quel que soit le backend)"
-  }
+    "fr": "Garantir que le pare-feu de l'hôte refuse par défaut (quel que soit le backend)"
+  },
+  "summary": {
+    "en": "The host firewall must apply a **default-deny** policy on inbound traffic: whatever is not explicitly allowed is dropped. Pavois accepts any backend, and checks the loaded ruleset for an nftables `input` chain with `policy drop`, or an iptables `-P INPUT DROP` / `REJECT` default target.",
+    "fr": "Le pare-feu de l'hôte doit appliquer une politique de **refus par défaut** sur le trafic entrant : tout ce qui n'est pas explicitement autorisé est rejeté. Pavois accepte n'importe quel backend et vérifie dans le jeu de règles chargé la présence d'une chaîne `input` nftables en `policy drop`, ou d'une cible par défaut iptables `-P INPUT DROP` / `REJECT`."
+  },
+  "check_note": {
+    "en": "Pavois inspects the **loaded** ruleset (`nft list ruleset`, falling back to `iptables -S INPUT`), which is what the kernel actually enforces on each packet. Reading `/etc/nftables.conf` or `/etc/ufw/` would only prove that a policy exists **on disk**: a ruleset that was never loaded, a firewall service that failed to start, or a ruleset flushed by another tool would all be reported compliant while the host sits wide open. Note `reboot_survivable: no` for this reason: a live `policy drop` is only durable if the firewall service is enabled at boot, which is exactly what the Pavois remediation does.",
+    "fr": "Pavois inspecte le jeu de règles **chargé** (`nft list ruleset`, avec repli sur `iptables -S INPUT`), c'est-à-dire ce que le noyau applique réellement à chaque paquet. Lire `/etc/nftables.conf` ou `/etc/ufw/` prouverait seulement qu'une politique existe **sur le disque** : un jeu de règles jamais chargé, un service de pare-feu qui a échoué au démarrage, ou un jeu de règles vidé par un autre outil seraient tous déclarés conformes alors que l'hôte est grand ouvert. C'est aussi la raison du `reboot_survivable: no` : un `policy drop` actif n'est durable que si le service de pare-feu est activé au démarrage, ce que fait précisément la remédiation Pavois."
+  },
+  "verify": {
+    "en": "On an nftables host, confirm the input hook drops by default and that SSH is still explicitly allowed:\n\n```\nnft list ruleset | grep -E 'hook input|dport 22'\n#   type filter hook input priority 0; policy drop;\n#   ip saddr { 203.0.113.0/24 } tcp dport 22 accept\n```\n\nOn an iptables/ufw host, `iptables -S INPUT | head -1` must print `-P INPUT DROP`. Also confirm the ruleset comes back after a reboot: `systemctl is-enabled nftables` (or `ufw` / `firewalld`) returns `enabled`.",
+    "fr": "Sur un hôte nftables, vérifiez que le hook d'entrée rejette par défaut et que SSH reste explicitement autorisé :\n\n```\nnft list ruleset | grep -E 'hook input|dport 22'\n#   type filter hook input priority 0; policy drop;\n#   ip saddr { 203.0.113.0/24 } tcp dport 22 accept\n```\n\nSur un hôte iptables/ufw, `iptables -S INPUT | head -1` doit afficher `-P INPUT DROP`. Vérifiez aussi que le jeu de règles revient après un redémarrage : `systemctl is-enabled nftables` (ou `ufw` / `firewalld`) renvoie `enabled`."
+  },
+  "logs": {
+    "en": "A `policy drop` is **silent**: nftables does not log dropped packets unless you add an explicit `log prefix` rule before the policy. Use `nft list ruleset -a` counters, or `ufw logging on` (which writes to `/var/log/ufw.log` and the kernel log), to see what the default policy is actually rejecting. The firewall service's own lifecycle (a failed ruleset load, a syntax error) is in `journalctl -u nftables` / `-u firewalld` / `-u ufw`, and that is where a silently unprotected host shows up.",
+    "fr": "Un `policy drop` est **silencieux** : nftables ne journalise pas les paquets rejetés tant qu'une règle `log prefix` explicite n'est pas ajoutée avant la politique. Utilisez les compteurs de `nft list ruleset -a`, ou `ufw logging on` (qui écrit dans `/var/log/ufw.log` et le journal du noyau), pour voir ce que la politique par défaut rejette réellement. Le cycle de vie du service de pare-feu (échec de chargement du jeu de règles, erreur de syntaxe) se trouve dans `journalctl -u nftables` / `-u firewalld` / `-u ufw` : c'est là qu'apparaît un hôte silencieusement sans protection."
+  },
+  "remediation_note": {
+    "en": "The Pavois plan exposes this rule as a **choice of backend** (`choose:`): `nftables` (default), `firewalld` or `ufw`. With nftables, Pavois installs the package and writes a complete ruleset: `policy drop` on `input` and `forward`, `accept` on `output`, plus loopback, `ct state established,related`, a drop of `ct state invalid`, ICMP/ICMPv6, and an **SSH allow rule that Pavois injects itself**. Set `ssh_allow_from: [203.0.113.0/24]` on the rule in the plan and the rule becomes `ip saddr { 203.0.113.0/24 } tcp dport 22 accept` (with the `ufw` backend: `ufw allow from 203.0.113.0/24 to any port 22 proto tcp`, run **before** `ufw --force enable`). If you leave `ssh_allow_from` empty, SSH is opened to everyone: that is the deliberate safe default, so a plan that forgets it never locks the administrator out. The firewall is brought up before the rest of the converge, and Pavois enables the service so the ruleset is reloaded at boot.\n\nThis rule belongs to an **exclusive group**: only one firewall daemon is kept, and the ones nobody picked are disabled once, after every control of the group has spoken.",
+    "fr": "Le plan Pavois expose cette règle comme un **choix de backend** (`choose:`) : `nftables` (par défaut), `firewalld` ou `ufw`. Avec nftables, Pavois installe le paquet et écrit un jeu de règles complet : `policy drop` sur `input` et `forward`, `accept` sur `output`, plus la boucle locale, `ct state established,related`, le rejet de `ct state invalid`, ICMP/ICMPv6, et une **règle d'autorisation SSH que Pavois injecte lui-même**. Renseignez `ssh_allow_from: [203.0.113.0/24]` sur la règle dans le plan et cette règle devient `ip saddr { 203.0.113.0/24 } tcp dport 22 accept` (avec le backend `ufw` : `ufw allow from 203.0.113.0/24 to any port 22 proto tcp`, exécuté **avant** `ufw --force enable`). Si vous laissez `ssh_allow_from` vide, SSH est ouvert à tous : c'est la valeur de repli sûre et volontaire, pour qu'un plan qui l'oublie n'enferme jamais l'administrateur dehors. Le pare-feu est levé avant le reste de la convergence, et Pavois active le service afin que le jeu de règles soit rechargé au démarrage.\n\nCette règle appartient à un **groupe exclusif** : un seul démon de pare-feu est conservé, et ceux que personne n'a choisis sont désactivés une seule fois, après que tous les contrôles du groupe se sont exprimés."
+  },
+  "impact": {
+    "en": "**This rule can cut you off from the machine.** A default-deny input policy applied without an SSH accept rule ends every remote session and refuses the next one, permanently: on a headless host or a cloud instance with no console, the machine is lost. Before applying:\n\n- **Set `ssh_allow_from`** in the plan to the CIDR of your administration network (or leave it empty to keep port 22 open to all): Pavois injects the accept rule into the ruleset it writes, and it is your only guarantee of getting back in.\n- **Keep a second session or a console open**, then open a *new* SSH session to confirm access before closing the original.\n- **Do not run two firewalls.** nftables and firewalld/ufw enabled together end up cancelling each other out (measured on a real host: both installed, both dead, zero protection). Pavois resolves the exclusive group once, but a firewall configured by hand outside Pavois can reintroduce the conflict.\n- **Beware of interactions with `kmod-loading-disabled`.** The `ct state` rules need `nf_conntrack`; if module loading has already been locked (`kernel.modules_disabled=1`) and the module is not loaded, the ruleset fails to load and the host ends up with no firewall, or no SSH.\n- Any service you publish (HTTP, database replication, monitoring agent) needs its own accept rule: inventory your listening ports (`ss -tulpn`) before switching the policy.",
+    "fr": "**Cette règle peut vous couper de la machine.** Une politique d'entrée en refus par défaut appliquée sans règle d'autorisation SSH met fin à toute session distante et refuse la suivante, définitivement : sur un hôte sans écran ou une instance cloud sans console, la machine est perdue. Avant d'appliquer :\n\n- **Renseignez `ssh_allow_from`** dans le plan avec le CIDR de votre réseau d'administration (ou laissez-le vide pour garder le port 22 ouvert à tous) : Pavois injecte la règle d'autorisation dans le jeu de règles qu'il écrit, et c'est votre seule garantie de pouvoir revenir.\n- **Gardez une seconde session ou une console ouverte**, puis ouvrez une *nouvelle* session SSH pour confirmer l'accès avant de fermer la première.\n- **N'activez jamais deux pare-feux.** nftables et firewalld/ufw actifs ensemble finissent par s'annuler (mesuré sur une machine réelle : les deux installés, les deux morts, aucune protection). Pavois résout le groupe exclusif une seule fois, mais un pare-feu configuré à la main en dehors de Pavois peut réintroduire le conflit.\n- **Attention à l'interaction avec `kmod-loading-disabled`.** Les règles `ct state` ont besoin de `nf_conntrack` ; si le chargement de modules est déjà verrouillé (`kernel.modules_disabled=1`) et que le module n'est pas chargé, le jeu de règles ne se charge pas et l'hôte se retrouve sans pare-feu, ou sans SSH.\n- Chaque service que vous publiez (HTTP, réplication de base de données, agent de supervision) réclame sa propre règle d'autorisation : inventoriez vos ports en écoute (`ss -tulpn`) avant de basculer la politique."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

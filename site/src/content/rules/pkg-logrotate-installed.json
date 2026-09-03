@@ -1,16 +1,17 @@
 {
   "id": "pkg-logrotate-installed",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -24,12 +25,9 @@
   "reboot_survivable": "yes",
   "norms": {
     "bp28": "R71",
+    "cis": "10.5.1",
     "nist": "CM-6(a)",
-    "pci-dss": [
-      "10.5.1",
-      "Req-10.7"
-    ],
-    "cis": "10.5.1"
+    "pci-dss": "10.5.1"
   },
   "check": [
     "describe package('logrotate') do",
@@ -43,35 +41,36 @@
   },
   "title": {
     "en": "Ensure logrotate is Installed",
-    "fr": "S'assurer que logrotate est installe"
-  },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The **logrotate** package rotates, compresses and prunes log files on a schedule. Without it, logs in `/var/log` grow without bound and can **fill the filesystem**, leading to service outages, lost audit trails (logging stops when the disk is full) and difficult forensic analysis. Controlled rotation keeps logs available for the required retention window while preventing disk exhaustion.",
-    "fr": "Le paquet **logrotate** effectue la rotation, la compression et la purge des journaux selon une planification. Sans lui, les journaux de `/var/log` grossissent sans limite et peuvent **saturer le systeme de fichiers**, provoquant des interruptions de service, la perte de pistes d'audit (la journalisation s'arrete lorsque le disque est plein) et une analyse forensique difficile. Une rotation maitrisee conserve les journaux pour la duree de retention requise tout en evitant l'epuisement du disque."
+    "fr": "S'assurer que logrotate est installé"
   },
   "summary": {
     "en": "Ensures the **logrotate** package is installed so log files are rotated, compressed and pruned on a schedule.",
-    "fr": "Garantit que le paquet **logrotate** est installe afin que les journaux soient tournes, compresses et purges selon une planification."
+    "fr": "Garantit que le paquet **logrotate** est installé afin que les journaux soient tournés, compressés et purgés selon une planification."
+  },
+  "rationale": {
+    "en": "The **logrotate** package rotates, compresses and prunes log files on a schedule. Without it, logs in `/var/log` grow without bound and can **fill the filesystem**, leading to service outages, lost audit trails (logging stops when the disk is full) and difficult forensic analysis. Controlled rotation keeps logs available for the required retention window while preventing disk exhaustion.",
+    "fr": "Le paquet **logrotate** effectue la rotation, la compression et la purge des journaux selon une planification. Sans lui, les journaux de `/var/log` grossissent sans limite et peuvent **saturer le système de fichiers**, provoquant des interruptions de service, la perte de pistes d'audit (la journalisation s'arrête lorsque le disque est plein) et une analyse forensique difficile. Une rotation maîtrisée conserve les journaux pour la durée de rétention requise tout en évitant l'épuisement du disque."
   },
   "check_note": {
     "en": "Pavois checks the package database via the InSpec `package('logrotate')` resource and asserts `should be_installed`, resolving through `dpkg` on Debian/Ubuntu and `rpm` on RHEL-family. This reflects the **effective** package state rather than assuming rotation works because `/etc/logrotate.conf` exists, the config files can remain after the binary is removed, in which case no rotation ever runs.",
-    "fr": "Pavois verifie la base de paquets via la ressource InSpec `package('logrotate')` et controle `should be_installed`, en s'appuyant sur `dpkg` sur Debian/Ubuntu et `rpm` sur la famille RHEL. Cela reflete l'etat **effectif** du paquet plutot que de supposer la rotation operationnelle parce que `/etc/logrotate.conf` existe : les fichiers de configuration peuvent subsister apres la suppression du binaire, auquel cas aucune rotation ne s'execute."
+    "fr": "Pavois vérifie la base de paquets via la ressource InSpec `package('logrotate')` et contrôle `should be_installed`, en s'appuyant sur `dpkg` sur Debian/Ubuntu et `rpm` sur la famille RHEL. Cela reflète l'état **effectif** du paquet plutôt que de supposer la rotation opérationnelle parce que `/etc/logrotate.conf` existe : les fichiers de configuration peuvent subsister après la suppression du binaire, auquel cas aucune rotation ne s'exécute."
   },
   "verify": {
     "en": "Debian/Ubuntu: `dpkg -s logrotate | grep Status` should print `Status: install ok installed`. RHEL: `rpm -q logrotate` returns the version. Confirm scheduling is active with `systemctl status logrotate.timer` (or the cron job in `/etc/cron.daily/logrotate`).",
-    "fr": "Debian/Ubuntu : `dpkg -s logrotate | grep Status` doit afficher `Status: install ok installed`. RHEL : `rpm -q logrotate` renvoie la version. Verifiez l'activation de la planification avec `systemctl status logrotate.timer` (ou la tache cron `/etc/cron.daily/logrotate`)."
+    "fr": "Debian/Ubuntu : `dpkg -s logrotate | grep Status` doit afficher `Status: install ok installed`. RHEL : `rpm -q logrotate` renvoie la version. Vérifiez l'activation de la planification avec `systemctl status logrotate.timer` (ou la tâche cron `/etc/cron.daily/logrotate`)."
   },
   "logs": {
     "en": "Rotation runs are logged via the systemd timer/service: `journalctl -u logrotate.service`. The package install itself is in `dpkg.log` (`/var/log/dpkg.log`) or `dnf history`. A `logrotate --debug /etc/logrotate.conf` dry-run shows exactly what would be rotated.",
-    "fr": "Les executions de rotation sont journalisees via le timer/service systemd : `journalctl -u logrotate.service`. L'installation du paquet figure dans `dpkg.log` (`/var/log/dpkg.log`) ou `dnf history`. Un test a vide `logrotate --debug /etc/logrotate.conf` montre exactement ce qui serait tourne."
+    "fr": "Les exécutions de rotation sont journalisées via le timer/service systemd : `journalctl -u logrotate.service`. L'installation du paquet figure dans `dpkg.log` (`/var/log/dpkg.log`) ou `dnf history`. Un test à vide `logrotate --debug /etc/logrotate.conf` montre exactement ce qui serait tourné."
   },
   "remediation_note": {
     "en": "Pavois's harden plan declares a `package` resource for **logrotate** with action `install`; `pavois harden apply` installs it through the native package manager (`apt`/`dnf`). The package ships default rotation rules and the systemd timer, so basic scheduled rotation works immediately. Tune `/etc/logrotate.conf` and `/etc/logrotate.d/*` to match your retention policy.",
-    "fr": "Le plan de durcissement de Pavois declare une ressource `package` pour **logrotate** avec l'action `install` ; `pavois harden apply` l'installe via le gestionnaire de paquets natif (`apt`/`dnf`). Le paquet fournit des regles de rotation par defaut et le timer systemd, donc la rotation planifiee de base fonctionne immediatement. Ajustez `/etc/logrotate.conf` et `/etc/logrotate.d/*` selon votre politique de retention."
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` pour **logrotate** avec l'action `install` ; `pavois harden apply` l'installe via le gestionnaire de paquets natif (`apt`/`dnf`). Le paquet fournit des règles de rotation par défaut et le timer systemd, donc la rotation planifiée de base fonctionne immédiatement. Ajustez `/etc/logrotate.conf` et `/etc/logrotate.d/*` selon votre politique de rétention."
   },
   "impact": {
     "en": "Without logrotate, log files can grow until `/var/log` fills the disk, stopping logging and potentially crashing services; conversely, overly aggressive rules can delete logs still needed for audits. **Precautions:** installing the package is non-disruptive. Before relying on it, verify retention settings meet your compliance window (PCI-DSS/CIS typically require keeping logs for a defined period) and ensure `/var/log` has adequate free space and a working timer.",
-    "fr": "Sans logrotate, les journaux peuvent grossir jusqu'a saturer `/var/log` et le disque, arretant la journalisation et pouvant faire planter des services ; a l'inverse, des regles trop agressives peuvent supprimer des journaux encore necessaires aux audits. **Precautions :** installer le paquet est non perturbant. Avant de vous y fier, verifiez que les reglages de retention respectent votre fenetre de conformite (PCI-DSS/CIS exigent generalement une duree definie) et que `/var/log` dispose d'assez d'espace et d'un timer operationnel."
-  }
+    "fr": "Sans logrotate, les journaux peuvent grossir jusqu'à saturer `/var/log` et le disque, arrêtant la journalisation et pouvant faire planter des services ; à l'inverse, des règles trop agressives peuvent supprimer des journaux encore nécessaires aux audits. **Précautions :** installer le paquet est non perturbant. Avant de vous y fier, vérifiez que les réglages de rétention respectent votre fenêtre de conformité (PCI-DSS/CIS exigent généralement une durée définie) et que `/var/log` dispose d'assez d'espace et d'un timer opérationnel."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

@@ -1,0 +1,37 @@
+{
+  "id": "banner-issue",
+  "title": {
+    "en": "Ensure Local Login Warning Banner Is Configured Properly",
+    "fr": "S'assurer que la bannière d'avertissement de connexion locale est correctement configurée"
+  },
+  "summary": {
+    "en": "Sets `/etc/issue` (the pre-login banner shown on local TTYs) to a legal warning that contains **no OS/version escape sequences** (`\\s`, `\\m`, `\\r`, `\\v`, `\\l`).",
+    "fr": "Définit `/etc/issue` (la bannière pré-connexion affichée sur les TTY locaux) sur un avertissement légal ne contenant **aucune séquence d'échappement** révélant l'OS ou la version (`\\s`, `\\m`, `\\r`, `\\v`, `\\l`)."
+  },
+  "rationale": {
+    "en": "The login banner must state the **legal status** of access, name the owning organisation, and reference monitoring policy, wording often required to prosecute unauthorised access. Equally important, escape sequences like `\\s` (OS name), `\\r` (kernel release) and `\\m` (architecture) leak **detailed system fingerprints** to anyone at the prompt, helping an attacker pick targeted exploits. Authorized users get that detail with `uname -a` after login, so there is no benefit to exposing it pre-auth.",
+    "fr": "La bannière de connexion doit énoncer le **statut légal** de l'accès, nommer l'organisation propriétaire et mentionner la politique de surveillance, formulation souvent nécessaire pour poursuivre un accès non autorisé. Tout aussi important, les séquences d'échappement comme `\\s` (nom de l'OS), `\\r` (version du noyau) et `\\m` (architecture) divulguent des **empreintes système détaillées** à quiconque se trouve devant l'invite, aidant un attaquant à choisir des exploits ciblés. Les utilisateurs autorisés obtiennent ces détails via `uname -a` après connexion, il n'y a donc aucun intérêt à les exposer avant authentification."
+  },
+  "check_note": {
+    "en": "Pavois reads `/etc/issue` and asserts it is **non-empty** and **free of `\\[smrvlSMRVL]` escapes**. This is a static file consumed by getty at the local prompt, so reading the file is the effective configuration here, there is no resolved-state command between the file and what the TTY displays.",
+    "fr": "Pavois lit `/etc/issue` et vérifie qu'il est **non vide** et **exempt des échappements `\\[smrvlSMRVL]`**. Il s'agit d'un fichier statique consommé par getty à l'invite locale ; lire le fichier représente donc bien la configuration effective ici, car aucune commande d'état résolu ne s'intercale entre le fichier et ce qu'affiche le TTY."
+  },
+  "verify": {
+    "en": "Run `cat /etc/issue`. Expect a clear authorized-use notice and **no backslash escapes** such as `\\s`/`\\r`/`\\m`. From a console login you should see exactly that text above the `login:` prompt.",
+    "fr": "Exécutez `cat /etc/issue`. Attendez-vous à un avis d'utilisation autorisée clair et **aucun échappement antislash** comme `\\s`/`\\r`/`\\m`. Lors d'une connexion console, vous devez voir exactement ce texte au-dessus de l'invite `login:`."
+  },
+  "logs": {
+    "en": "No runtime log; the banner is a display artifact. To audit changes to the file: `journalctl _COMM=login` shows local logins, and `ls -l /etc/issue` / `stat /etc/issue` confirms ownership `root:root` and mode `0644`.",
+    "fr": "Aucun journal d'exécution ; la bannière est un élément d'affichage. Pour auditer les changements du fichier : `journalctl _COMM=login` montre les connexions locales, et `ls -l /etc/issue` / `stat /etc/issue` confirme la propriété `root:root` et le mode `0644`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` writes `/etc/issue` with a neutral authorized-access notice, owner `root:root` and mode `0644`. The banner deliberately contains **no dynamic escapes**, so no system details leak. No reboot or service restart is needed, getty reads the file on the next login.",
+    "fr": "`pavois harden apply` écrit `/etc/issue` avec un avis d'accès autorisé neutre, propriétaire `root:root` et mode `0644`. La bannière ne contient délibérément **aucun échappement dynamique**, donc aucun détail système ne fuite. Aucun redémarrage ni redémarrage de service n'est nécessaire : getty lit le fichier à la connexion suivante."
+  },
+  "impact": {
+    "en": "Cosmetic and safe, it only changes what is displayed before the local login prompt; no service interruption. **Precautions:** if you customise the wording, keep it generic and avoid re-adding `\\` escapes (they reintroduce the OS-fingerprint leak). Some provisioning tools regenerate `/etc/issue` on boot, which can revert this, make sure no cloud-init/MOTD template overwrites it.",
+    "fr": "Cosmétique et sans risque, cela ne change que ce qui s'affiche avant l'invite de connexion locale ; aucune interruption de service. **Précautions :** si vous personnalisez le texte, gardez-le générique et évitez de réintroduire des échappements `\\` (ils réintroduisent la fuite d'empreinte de l'OS). Certains outils de provisionnement régénèrent `/etc/issue` au démarrage, ce qui peut annuler ce réglage : assurez-vous qu'aucun modèle cloud-init/MOTD ne l'écrase."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

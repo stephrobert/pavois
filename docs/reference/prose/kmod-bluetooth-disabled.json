@@ -1,0 +1,37 @@
+{
+  "id": "kmod-bluetooth-disabled",
+  "title": {
+    "en": "Disable Bluetooth Kernel Module",
+    "fr": "Désactiver le module noyau Bluetooth"
+  },
+  "summary": {
+    "en": "Ensures the `bluetooth` kernel module is not loaded and is blacklisted so the wireless Bluetooth stack cannot be activated.",
+    "fr": "Garantit que le module noyau `bluetooth` n'est pas chargé et est mis en liste noire afin que la pile sans fil Bluetooth ne puisse être activée."
+  },
+  "rationale": {
+    "en": "**Bluetooth** is a short-range wireless stack rarely needed on servers. Its kernel module exposes a wireless attack surface reachable by anyone in radio range, and Bluetooth has a long history of remote vulnerabilities (e.g. **BlueBorne**). On a system where Bluetooth is not required, blacklisting the module provides an additional safeguard against accidental or malicious activation.",
+    "fr": "**Bluetooth** est une pile sans fil à courte portée rarement utile sur les serveurs. Son module noyau expose une surface d'attaque sans fil accessible à toute personne à portée radio, et Bluetooth a un long historique de vulnérabilités distantes (par ex. **BlueBorne**). Sur un système où Bluetooth n'est pas requis, la mise en liste noire du module offre une protection supplémentaire contre une activation accidentelle ou malveillante."
+  },
+  "check_note": {
+    "en": "Pavois uses `kernel_module('bluetooth')` to assert the module is **not loaded** and is **disabled** in the effective modprobe policy. Reading the live kernel and resolved modprobe config (not a lone `.conf`) catches the case where Bluetooth is blacklisted in one file yet still loaded, or re-enabled by a drop-in override.",
+    "fr": "Pavois utilise `kernel_module('bluetooth')` pour vérifier que le module n'est **pas chargé** et qu'il est **désactivé** dans la politique modprobe effective. Lire le noyau vivant et la config modprobe résolue (et non un seul `.conf`) détecte le cas où Bluetooth est en liste noire dans un fichier mais encore chargé, ou réactivé par un override."
+  },
+  "verify": {
+    "en": "Run `lsmod | grep bluetooth` (no output = not loaded) and `modprobe -n -v bluetooth` (expect `install /bin/true` or `/bin/false`). Confirm the service is also off with `systemctl is-enabled bluetooth` (expect `disabled`/`masked`).",
+    "fr": "Exécutez `lsmod | grep bluetooth` (aucune sortie = non chargé) et `modprobe -n -v bluetooth` (attendu : `install /bin/true` ou `/bin/false`). Confirmez aussi l'arrêt du service avec `systemctl is-enabled bluetooth` (attendu : `disabled`/`masked`)."
+  },
+  "logs": {
+    "en": "Blocked load attempts and the Bluetooth subsystem log to the kernel ring buffer: `journalctl -k | grep -i bluetooth` or `dmesg | grep -i bluetooth`. `lsmod` shows whether the module is resident; `modprobe --showconfig` shows the policy.",
+    "fr": "Les tentatives de chargement bloquées et le sous-système Bluetooth se journalisent dans le tampon noyau : `journalctl -k | grep -i bluetooth` ou `dmesg | grep -i bluetooth`. `lsmod` indique si le module est résident ; `modprobe --showconfig` montre la politique."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `kernel_module` resource to **blacklist** `bluetooth`: it writes a modprobe rule (`install bluetooth /bin/false` plus a blacklist entry) preventing auto-load, and unloads it if resident. `reboot_required` is true to ensure the dependent module stack is fully removed.",
+    "fr": "`pavois harden apply` utilise la ressource `kernel_module` pour mettre `bluetooth` en **liste noire** : il écrit une règle modprobe (`install bluetooth /bin/false` plus une entrée blacklist) empêchant le chargement automatique, et le décharge s'il est résident. `reboot_required` est vrai pour garantir le retrait complet de la pile de modules dépendants."
+  },
+  "impact": {
+    "en": "Failing means a usable **wireless attack surface** remains. Precaution: on **workstations or laptops** that rely on Bluetooth (keyboard, mouse, headset, audio), blacklisting will disable those peripherals, apply only to servers or hosts with no Bluetooth need. Verify with `lsusb`/`hciconfig` that no Bluetooth peripheral is in use; a reboot is required to unload an active stack.",
+    "fr": "Un échec signifie qu'une **surface d'attaque sans fil** utilisable subsiste. Précaution : sur les **postes de travail ou portables** dépendant du Bluetooth (clavier, souris, casque, audio), la mise en liste noire désactivera ces périphériques, à appliquer uniquement aux serveurs ou hôtes sans besoin Bluetooth. Vérifiez avec `lsusb`/`hciconfig` qu'aucun périphérique Bluetooth n'est utilisé ; un redémarrage est requis pour décharger une pile active."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

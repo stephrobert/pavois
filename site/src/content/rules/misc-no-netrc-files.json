@@ -1,17 +1,17 @@
 {
   "id": "misc-no-netrc-files",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -25,8 +25,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "7.2.9",
-      "7.2.10"
+      "7.2.10",
+      "7.2.9"
     ],
     "nist": [
       "CM-6(a)",
@@ -40,19 +40,22 @@
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "find /home /root -maxdepth 2 -name .netrc 2>/dev/null\n# rm -f <path> per file (or chmod 600) after review\n",
+    "reason": "a .netrc holds credentials, review each before deleting",
+    "resource": "manual"
+  },
   "title": {
     "en": "Verify No netrc Files Exist",
     "fr": "Vérifier qu'aucun fichier .netrc n'existe"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "A `~/.netrc` file stores credentials (login and **plaintext password**) for remote FTP/HTTP servers so tools like `ftp`, `curl` and `git` can authenticate non-interactively. Because the passwords are unencrypted, anyone who reads the file, through a permissions slip, a backup, or compromise of the account, instantly harvests reusable credentials for other systems. Hardened hosts should carry no `.netrc` files; use a credential helper or a secrets store instead.",
-    "fr": "Un fichier `~/.netrc` stocke des identifiants (login et **mot de passe en clair**) pour des serveurs FTP/HTTP distants afin que des outils comme `ftp`, `curl` et `git` s'authentifient sans interaction. Comme les mots de passe ne sont pas chiffrés, quiconque lit le fichier, via une erreur de permissions, une sauvegarde ou la compromission du compte, récolte instantanément des identifiants réutilisables sur d'autres systèmes. Un hôte durci ne doit contenir aucun fichier `.netrc` ; utilisez plutôt un assistant d'identifiants ou un coffre de secrets."
-  },
   "summary": {
     "en": "Ensures **no `.netrc` file** exists under `/root` or `/home`, eliminating plaintext stored remote credentials.",
     "fr": "Garantit qu'**aucun fichier `.netrc`** n'existe sous `/root` ou `/home`, éliminant les identifiants distants stockés en clair."
+  },
+  "rationale": {
+    "en": "A `~/.netrc` file stores credentials (login and **plaintext password**) for remote FTP/HTTP servers so tools like `ftp`, `curl` and `git` can authenticate non-interactively. Because the passwords are unencrypted, anyone who reads the file, through a permissions slip, a backup, or compromise of the account, instantly harvests reusable credentials for other systems. Hardened hosts should carry no `.netrc` files; use a credential helper or a secrets store instead.",
+    "fr": "Un fichier `~/.netrc` stocke des identifiants (login et **mot de passe en clair**) pour des serveurs FTP/HTTP distants afin que des outils comme `ftp`, `curl` et `git` s'authentifient sans interaction. Comme les mots de passe ne sont pas chiffrés, quiconque lit le fichier, via une erreur de permissions, une sauvegarde ou la compromission du compte, récolte instantanément des identifiants réutilisables sur d'autres systèmes. Un hôte durci ne doit contenir aucun fichier `.netrc` ; utilisez plutôt un assistant d'identifiants ou un coffre de secrets."
   },
   "check_note": {
     "en": "Pavois runs a live `find` over `/root` and `/home` (single filesystem via `-xdev`) for any file named `.netrc`. Enumerating files actually present on disk catches credential files in every home, including newly created or non-standard accounts, instead of relying on a fixed user list.",
@@ -73,5 +76,7 @@
   "impact": {
     "en": "**Risk if not applied:** plaintext credentials for remote services sit on disk, ready to be harvested and reused for lateral movement.\n\n**Precautions before applying:** automated jobs (backups, CI runners, FTP scripts) may depend on a `.netrc`. Identify those consumers and migrate them to a secrets store or a per-call credential helper *before* deleting, or the job will fail. Treat any password found as already exposed and rotate it regardless.",
     "fr": "**Risque si non appliqué :** des identifiants en clair pour des services distants restent sur le disque, prêts à être récoltés et réutilisés pour des déplacements latéraux.\n\n**Précautions avant application :** des tâches automatisées (sauvegardes, runners CI, scripts FTP) peuvent dépendre d'un `.netrc`. Identifiez ces consommateurs et migrez-les vers un coffre de secrets ou un assistant d'identifiants par appel *avant* de supprimer, sinon la tâche échouera. Considérez tout mot de passe trouvé comme déjà exposé et faites-le tourner dans tous les cas."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

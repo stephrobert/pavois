@@ -1,0 +1,37 @@
+{
+  "id": "filegroupowner-cron-weekly",
+  "title": {
+    "en": "Verify Group Who Owns cron.weekly",
+    "fr": "Vérifier le groupe propriétaire de cron.weekly"
+  },
+  "summary": {
+    "en": "Ensures the `/etc/cron.weekly` directory is group-owned by **`root` (gid 0)**.",
+    "fr": "Garantit que le répertoire `/etc/cron.weekly` est détenu par le groupe **`root` (gid 0)**."
+  },
+  "rationale": {
+    "en": "The `/etc/cron.weekly` directory holds scripts that the cron daemon **runs as root once a week**. If it is group-owned by a non-privileged group, a member of that group could drop in or modify a script and gain **arbitrary command execution as root**. Restricting group ownership to **`root` (gid 0)** ensures only highly-privileged accounts can change what runs weekly.",
+    "fr": "Le répertoire `/etc/cron.weekly` contient des scripts que le démon cron **exécute en tant que root une fois par semaine**. S'il est détenu par un groupe non privilégié, un membre de ce groupe pourrait y déposer ou y modifier un script et obtenir l'**exécution de commandes arbitraires en root**. Restreindre la propriété de groupe à **`root` (gid 0)** garantit que seuls les comptes hautement privilégiés peuvent modifier ce qui s'exécute chaque semaine."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** group owner of `/etc/cron.weekly` on the live system via the InSpec `file` resource and asserts `gid == 0`. It inspects the actual inode metadata as the kernel sees it, not a packaging default, so a directory whose ownership drifted after install is caught.",
+    "fr": "Pavois lit le groupe propriétaire **effectif** de `/etc/cron.weekly` sur le système en cours d'exécution via la ressource InSpec `file` et vérifie `gid == 0`. Il inspecte les métadonnées réelles de l'inode telles que le noyau les voit, et non une valeur par défaut de paquet : un répertoire dont la propriété a dérivé après l'installation est donc détecté."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /etc/cron.weekly`. Expected output: **`root 0`**. Any other group name or non-zero gid means the rule is not applied.",
+    "fr": "Exécutez `stat -c '%G %g' /etc/cron.weekly`. Sortie attendue : **`root 0`**. Tout autre nom de groupe ou gid non nul signifie que la règle n'est pas appliquée."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default. Watch the directory with auditd: `auditctl -w /etc/cron.weekly -p wa -k cron-perms`, then inspect `grep 'key=\"cron-perms\"' /var/log/audit/audit.log`. Weekly job runs appear in `journalctl -u cron` (Debian/Ubuntu) or `journalctl -u crond` (RHEL family).",
+    "fr": "Les changements de propriété ne sont pas journalisés par défaut. Surveillez le répertoire avec auditd : `auditctl -w /etc/cron.weekly -p wa -k cron-perms`, puis examinez `grep 'key=\"cron-perms\"' /var/log/audit/audit.log`. Les exécutions hebdomadaires apparaissent dans `journalctl -u cron` (Debian/Ubuntu) ou `journalctl -u crond` (famille RHEL)."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is defined for this rule, so it must be applied **manually**. Restore the correct group ownership with `chgrp root /etc/cron.weekly`.",
+    "fr": "Aucune remédiation automatique n'est définie pour cette règle ; elle doit donc être appliquée **manuellement**. Rétablissez le bon groupe propriétaire avec `chgrp root /etc/cron.weekly`."
+  },
+  "impact": {
+    "en": "A non-`root` group owner on `/etc/cron.weekly` lets group members plant root-run scripts, a direct privilege-escalation path. The fix is low-risk: `chgrp root` only changes group ownership, not permissions or content, and cron keeps working. **Precaution:** confirm no legitimate tooling relies on a custom group on this directory before changing it.",
+    "fr": "Un groupe propriétaire autre que `root` sur `/etc/cron.weekly` permet aux membres du groupe d'y déposer des scripts exécutés en root, une voie directe d'élévation de privilèges. Le correctif présente peu de risques : `chgrp root` ne change que la propriété de groupe, ni les permissions ni le contenu, et cron continue de fonctionner. **Précaution :** vérifiez qu'aucun outil légitime ne dépend d'un groupe personnalisé sur ce répertoire avant de le modifier."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -20,10 +20,12 @@ groups:
     members: '^(fw-|pkg-(ufw|nftables|iptables)|service-(ufw|nftables|firewalld|iptables)|(file|rep)(perm|owner|groupowner)-etc-(iptables|nftables)|posture-firewall)'
     # basic: at least one firewall service is active
     check: 'for s in ufw nftables firewalld; do systemctl is-active --quiet "$s" && { echo ok; exit 0; }; done; echo ko'
-    default: {apt: ufw, rhel: firewalld}
+    default:
+      apt: nftables
+      rhel: nftables
     options:
-      ufw:       {package: ufw, service: ufw}
-      nftables:  {package: nftables, service: nftables}
+      ufw: {package: ufw, service: ufw}
+      nftables: {package: nftables, service: nftables}
       firewalld: {package: firewalld, service: firewalld}
 
   time-sync:
@@ -34,7 +36,7 @@ groups:
     check: 'for s in chrony chronyd systemd-timesyncd ntp ntpsec; do systemctl is-active --quiet "$s" && { echo ok; exit 0; }; done; echo ko'
     default: {apt: chrony, rhel: chrony}
     options:
-      chrony:    {package: chrony, service: chrony}
+      chrony: {package: chrony, service: chrony}
       timesyncd: {package: systemd-timesyncd, service: systemd-timesyncd}
 
   logging:
@@ -45,5 +47,5 @@ groups:
     check: 'for s in rsyslog syslog-ng; do systemctl is-active --quiet "$s" && { echo ok; exit 0; }; done; echo ko'
     default: {apt: rsyslog, rhel: rsyslog}
     options:
-      rsyslog:   {package: rsyslog, service: rsyslog}
+      rsyslog: {package: rsyslog, service: rsyslog}
       syslog-ng: {package: syslog-ng, service: syslog-ng}

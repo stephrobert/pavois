@@ -1,10 +1,13 @@
 {
   "id": "dconf-gnome-disable-ctrlaltdel-reboot",
   "supported_os": [
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "rhel8": "4.0.0",
@@ -29,25 +32,27 @@
     ]
   },
   "check": [
+    "only_if { command('dconf').exist? }",
     "describe command('{ grep -rqE \\'^[[:space:]]*logout[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null && grep -rqxF \\'/org/gnome/settings-daemon/plugins/media-keys/logout\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
   "remediation": {
-    "resource": "dconf"
+    "key": "org/gnome/settings-daemon/plugins/media-keys/logout",
+    "resource": "dconf",
+    "value": "''"
   },
   "title": {
     "en": "Disable Ctrl-Alt-Del Reboot Key Sequence in GNOME3",
     "fr": "Désactiver la séquence de redémarrage Ctrl-Alt-Suppr dans GNOME3"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "A user logged in at the GNOME console who presses Ctrl-Alt-Del can trigger the `logout` media-key action and reboot or end the session. If pressed accidentally, common in mixed-OS environments where the sequence means something else, this causes a short-term loss of availability. Defining the `logout` key binding and locking it removes the reboot/logout shortcut so it cannot be triggered by mistake.",
-    "fr": "Un utilisateur connecté à la console GNOME qui presse Ctrl-Alt-Suppr peut déclencher l'action de touche multimédia `logout` et redémarrer ou terminer la session. Si la séquence est pressée par accident, fréquent dans les environnements multi-OS où elle a une autre signification, cela provoque une perte de disponibilité à court terme. Définir la liaison de touche `logout` et la verrouiller supprime le raccourci de redémarrage/déconnexion afin qu'il ne puisse être déclenché par erreur."
-  },
   "summary": {
     "en": "Neutralizes the GNOME Ctrl-Alt-Del `logout` media-key binding and locks it so users cannot reboot or end the session via the shortcut.",
     "fr": "Neutralise la liaison de touche multimédia `logout` (Ctrl-Alt-Suppr) de GNOME et la verrouille pour empêcher les utilisateurs de redémarrer ou de terminer la session via ce raccourci."
+  },
+  "rationale": {
+    "en": "A user logged in at the GNOME console who presses Ctrl-Alt-Del can trigger the `logout` media-key action and reboot or end the session. If pressed accidentally, common in mixed-OS environments where the sequence means something else, this causes a short-term loss of availability. Defining the `logout` key binding and locking it removes the reboot/logout shortcut so it cannot be triggered by mistake.",
+    "fr": "Un utilisateur connecté à la console GNOME qui presse Ctrl-Alt-Suppr peut déclencher l'action de touche multimédia `logout` et redémarrer ou terminer la session. Si la séquence est pressée par accident, fréquent dans les environnements multi-OS où elle a une autre signification, cela provoque une perte de disponibilité à court terme. Définir la liaison de touche `logout` et la verrouiller supprime le raccourci de redémarrage/déconnexion afin qu'il ne puisse être déclenché par erreur."
   },
   "check_note": {
     "en": "Pavois checks the **effective** dconf state: the `logout` key must be defined under `/etc/dconf/db/*.d/*` (set to an empty binding to disable the shortcut) **and** `/org/gnome/settings-daemon/plugins/media-keys/logout` must appear in a dconf **lock** file. Evaluating the compiled profile plus the lock, not a single editable file, matches how dconf resolves key bindings, so an unlocked or overridden binding is correctly flagged.",
@@ -68,5 +73,7 @@
   "impact": {
     "en": "Applies only to GNOME desktops; irrelevant on headless servers. After applying, the Ctrl-Alt-Del logout shortcut no longer works for desktop users, a deliberate availability protection. This does not affect the systemd `ctrl-alt-del.target` at the text console (that is a separate control); it only neutralizes the GNOME media-key binding. Precaution: ensure operators have a documented, intentional reboot procedure (menu, `systemctl reboot`) before relying on the shortcut being gone. No reboot needed; `dconf update` is sufficient.",
     "fr": "Ne s'applique qu'aux bureaux GNOME ; sans objet sur les serveurs sans interface graphique. Après application, le raccourci de déconnexion Ctrl-Alt-Suppr ne fonctionne plus pour les utilisateurs de bureau, une protection délibérée de la disponibilité. Cela n'affecte pas la cible systemd `ctrl-alt-del.target` en console texte (contrôle distinct) ; cela neutralise uniquement la liaison de touche multimédia GNOME. Précaution : assurez-vous que les opérateurs disposent d'une procédure de redémarrage documentée et intentionnelle (menu, `systemctl reboot`) avant de compter sur la disparition du raccourci. Aucun redémarrage nécessaire ; `dconf update` suffit."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

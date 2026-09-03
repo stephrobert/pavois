@@ -1,17 +1,17 @@
 {
   "id": "mount-home-nodev",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -29,21 +29,28 @@
   "check": [
     "describe mount('/home') do",
     "  its('options') { should include 'nodev' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /home 2>/dev/null; grep -hsE '[[:space:]]/home[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /home 2>/dev/null) 2>/dev/null; } | grep -ow 'nodev'\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "awk -v m=/home -v o=nodev '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,\",\");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4\",\"o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /home && mount -o remount,nodev /home || true",
+    "name": "mount-home-nodev",
+    "not_if": "awk -v m=/home '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\\n' | grep -qx nodev",
+    "resource": "exec"
+  },
   "title": {
     "en": "Add nodev Option to /home",
     "fr": "Ajouter l'option nodev à /home"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/home` holds user-owned, writable data. The **only** legitimate location for device files is `/dev` on the root partition (the sole exception being chroot jails). Mounting `/home` with `nodev` makes the kernel ignore any character or block **device nodes** created there, so a user cannot plant a device file (e.g. a copy of a disk or memory device) in their home directory to bypass access controls.",
-    "fr": "`/home` contient les données inscriptibles appartenant aux utilisateurs. Le **seul** emplacement légitime pour les fichiers de périphérique est `/dev` sur la partition racine (la seule exception étant les chroot). Monter `/home` avec `nodev` force le noyau à ignorer tout **nœud de périphérique** caractère ou bloc créé à cet endroit, de sorte qu'un utilisateur ne puisse pas déposer un fichier de périphérique (par ex. une copie d'un disque ou de la mémoire) dans son répertoire personnel pour contourner les contrôles d'accès."
-  },
   "summary": {
     "en": "Mounts the `/home` partition with the `nodev` option so device files in user directories are not interpreted.",
     "fr": "Monte la partition `/home` avec l'option `nodev` afin que les fichiers de périphérique dans les répertoires des utilisateurs ne soient pas interprétés."
+  },
+  "rationale": {
+    "en": "`/home` holds user-owned, writable data. The **only** legitimate location for device files is `/dev` on the root partition (the sole exception being chroot jails). Mounting `/home` with `nodev` makes the kernel ignore any character or block **device nodes** created there, so a user cannot plant a device file (e.g. a copy of a disk or memory device) in their home directory to bypass access controls.",
+    "fr": "`/home` contient les données inscriptibles appartenant aux utilisateurs. Le **seul** emplacement légitime pour les fichiers de périphérique est `/dev` sur la partition racine (la seule exception étant les chroot). Monter `/home` avec `nodev` force le noyau à ignorer tout **nœud de périphérique** caractère ou bloc créé à cet endroit, de sorte qu'un utilisateur ne puisse pas déposer un fichier de périphérique (par ex. une copie d'un disque ou de la mémoire) dans son répertoire personnel pour contourner les contrôles d'accès."
   },
   "check_note": {
     "en": "Pavois reads the **effective** mount via `mount('/home')` and asserts the resolved options include `nodev`. The live mount table reflects options applied by `systemd` mount units or a later remount, which a static read of `/etc/fstab` would miss. If `/home` is not a separate mount point, there is no dedicated partition to harden.",
@@ -64,5 +71,7 @@
   "impact": {
     "en": "Without `nodev`, a user could create device nodes under their home directory to access raw devices and bypass file permissions. Applying `nodev` is **low risk**: legitimate user data never contains device files. **Precautions:** the `remount` is non-disruptive but requires no process to hold a file open in a way that blocks it; if `/home` is **not a separate partition**, do not apply `nodev` to `/` (the root filesystem needs `/dev` device nodes).",
     "fr": "Sans `nodev`, un utilisateur pourrait créer des nœuds de périphérique dans son répertoire personnel pour accéder aux périphériques bruts et contourner les permissions de fichiers. Appliquer `nodev` présente un **risque faible** : les données utilisateur légitimes ne contiennent jamais de fichiers de périphérique. **Précautions :** le `remount` est sans interruption ; si `/home` **n'est pas une partition distincte**, n'appliquez pas `nodev` à `/` (la racine a besoin des nœuds de périphérique de `/dev`)."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

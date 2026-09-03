@@ -1,10 +1,21 @@
 {
   "id": "account-no-future-pw-change",
   "supported_os": [
-    "debian12"
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "debian12": "1.1.0"
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
   },
   "severity": "medium",
   "domain": "Accounts",
@@ -28,11 +39,34 @@
     "en": "Ensure all users last password change date is in the past",
     "fr": "Vérifier que la date du dernier changement de mot de passe est dans le passé pour tous les utilisateurs"
   },
-  "needs_translation": [
-    "rationale.fr"
-  ],
+  "summary": {
+    "en": "No account may carry a **last password change date set in the future**. A future date in the third field of `/etc/shadow` makes the system believe the password was just changed, which neutralises `PASS_MAX_DAYS` expiry for that account.",
+    "fr": "Aucun compte ne doit porter une **date de dernier changement de mot de passe située dans le futur**. Une date future dans le troisième champ de `/etc/shadow` fait croire au système que le mot de passe vient d'être changé, ce qui neutralise l'expiration `PASS_MAX_DAYS` pour ce compte."
+  },
   "rationale": {
     "en": "If a user recorded password change date is in the future then they could bypass any set password expiration.",
-    "fr": "If a user recorded password change date is in the future then they could bypass any set password expiration."
-  }
+    "fr": "Si la date de changement de mot de passe enregistrée pour un utilisateur est située dans le futur, celui-ci peut contourner toute politique d'expiration des mots de passe."
+  },
+  "check_note": {
+    "en": "Pavois computes today's epoch-day count (`d=$(( $(date +%s) / 86400 ))`) and compares it against the third field (`lastchg`) of **every line of `/etc/shadow`** with awk. Any account whose `lastchg` is strictly greater than today makes the control fail. This audits the **shadow database as the system actually reads it**, account by account, not a policy file: a single tampered or clock-skewed entry is enough to fail.",
+    "fr": "Pavois calcule le numéro de jour epoch du jour courant (`d=$(( $(date +%s) / 86400 ))`) et le compare, avec awk, au troisième champ (`lastchg`) de **chaque ligne de `/etc/shadow`**. Tout compte dont le `lastchg` est strictement supérieur à la date du jour fait échouer le contrôle. On audite ici la **base shadow telle que le système la lit réellement**, compte par compte, et non un fichier de politique : une seule entrée falsifiée ou décalée par l'horloge suffit à faire échouer."
+  },
+  "verify": {
+    "en": "List the offending accounts directly:\n\n```\nawk -F: -v d=$(( $(date +%s) / 86400 )) '($3 ~ /^[0-9]+$/ && $3+0 > d){print $1, $3}' /etc/shadow\n```\n\nExpected output: **nothing**. For a single user, `chage -l <user>` must show a `Last password change` date that is today or earlier.",
+    "fr": "Listez directement les comptes fautifs :\n\n```\nawk -F: -v d=$(( $(date +%s) / 86400 )) '($3 ~ /^[0-9]+$/ && $3+0 > d){print $1, $3}' /etc/shadow\n```\n\nSortie attendue : **rien**. Pour un utilisateur donné, `chage -l <utilisateur>` doit afficher une date `Dernier changement de mot de passe` égale à aujourd'hui ou antérieure."
+  },
+  "logs": {
+    "en": "A future `lastchg` value generates **no log of its own**: it is a silent state in `/etc/shadow`. The write that produced it is visible if the identity file watch is active, in the audit log:\n\n```\ngrep 'key=\"usergroup_modification\"' /var/log/audit/audit.log\n```\n\n(Grep the raw log rather than trusting `ausearch`, which reports false \"no matches\".) A legitimate change through `chage` or `passwd` also leaves a line in `/var/log/auth.log`, for example `chage[2345]: changed password expiry for alice`.",
+    "fr": "Une valeur `lastchg` future ne génère **aucun log propre** : c'est un état silencieux de `/etc/shadow`. L'écriture qui l'a produite est visible si la surveillance des fichiers d'identité est active, dans le journal d'audit :\n\n```\ngrep 'key=\"usergroup_modification\"' /var/log/audit/audit.log\n```\n\n(Grepez le journal brut plutôt que de faire confiance à `ausearch`, qui renvoie de faux « aucun résultat ».) Un changement légitime via `chage` ou `passwd` laisse également une ligne dans `/var/log/auth.log`, par exemple `chage[2345]: changed password expiry for alice`."
+  },
+  "remediation_note": {
+    "en": "Pavois classifies this as a **manual** remediation: a future date is a per-account anomaly and rewriting it blindly could reset a legitimate expiry window. The delivered script only **lists** the affected accounts with the same awk test, then leaves you to apply, after review, `chage -d $(date +%F) <user>` on each one, which stamps the last change date to today.",
+    "fr": "Pavois classe cette remédiation en **manuelle** : une date future est une anomalie propre à chaque compte, et la réécrire aveuglément pourrait réinitialiser une fenêtre d'expiration légitime. Le script livré se contente de **lister** les comptes concernés avec le même test awk, puis vous laisse appliquer, après analyse, `chage -d $(date +%F) <utilisateur>` sur chacun, ce qui fixe la date du dernier changement à aujourd'hui."
+  },
+  "impact": {
+    "en": "An account with a future `lastchg` never expires: a stolen password stays valid past every rotation window, and the anomaly is often the fingerprint of a tampered shadow file or of a host whose clock jumped. **Before running `chage -d`**, investigate the cause (check `timedatectl`: a wrong system clock will simply recreate the finding). Be careful with the opposite mistake: setting `lastchg` to `0` forces a password change at next login, and doing that on a service or automation account **locks it out immediately** because it cannot answer the interactive prompt. Use today's date, not `0`, and keep a root session open while you fix administrative accounts.",
+    "fr": "Un compte dont le `lastchg` est dans le futur n'expire jamais : un mot de passe volé reste valide au-delà de toute fenêtre de rotation, et l'anomalie est souvent la signature d'un fichier shadow falsifié ou d'un hôte dont l'horloge a sauté. **Avant de lancer `chage -d`**, cherchez la cause (vérifiez `timedatectl` : une horloge système erronée recréera simplement le constat). Attention à l'erreur inverse : mettre `lastchg` à `0` force un changement de mot de passe à la prochaine connexion, et le faire sur un compte de service ou d'automatisation **le verrouille immédiatement**, car il ne peut pas répondre à l'invite interactive. Utilisez la date du jour, jamais `0`, et gardez une session root ouverte pendant la correction des comptes d'administration."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

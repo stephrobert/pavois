@@ -1,16 +1,17 @@
 {
   "id": "home-files-permissions",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -27,22 +28,26 @@
   },
   "check": [
     "describe command('awk -F: \\'($3>=1000 && $3!=65534 && $6!=\"/\"){print $3\":\"$4\":\"$6}\\' /etc/passwd | while IFS=: read u g h; do [ -d \"$h\" ] && timeout 60 find -P \"$h\" -perm /7027 ! -type l -print 2>/dev/null; done | head -1') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "awk -F: '($3>=1000 && $3!=65534 && $6!=\"/\"){print $6}' /etc/passwd | while read h; do [ -d \"$h\" ] && find \"$h\" -perm /7027 ! -type l -exec chmod u-s,g-w-s,o=- {} + 2>/dev/null; done; true",
+    "name": "fix-home-perms",
+    "resource": "exec"
+  },
   "title": {
     "en": "All User Files and Directories In The Home Directory Must Have Mode 0750 Or Less Permissive",
     "fr": "Tous les fichiers et répertoires du home doivent avoir le mode 0750 ou plus restrictif"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Excessive permissions on home files let unintended users read private data or modify files the owner relies on. World-readable or group-writable home content exposes credentials, keys and shell init files; stray setuid/setgid bits can become a privilege-escalation foothold.",
-    "fr": "Des permissions excessives sur les fichiers du home permettent à des utilisateurs non prévus de lire des données privées ou de modifier des fichiers dont le propriétaire dépend. Un contenu lisible par tous ou inscriptible par le groupe expose identifiants, clés et fichiers d'initialisation ; des bits setuid/setgid égarés peuvent servir d'appui à une élévation de privilèges."
-  },
   "summary": {
     "en": "Ensures **every** file and directory in each interactive user's home is mode **0750 or stricter**, no group-write, no world access, and no unexpected setuid/setgid/sticky bits.",
     "fr": "Garantit que **tous** les fichiers et répertoires du home de chaque utilisateur interactif sont en mode **0750 ou plus restrictif**, pas d'écriture pour le groupe, aucun accès pour les autres, ni bits setuid/setgid/sticky inattendus."
+  },
+  "rationale": {
+    "en": "Excessive permissions on home files let unintended users read private data or modify files the owner relies on. World-readable or group-writable home content exposes credentials, keys and shell init files; stray setuid/setgid bits can become a privilege-escalation foothold.",
+    "fr": "Des permissions excessives sur les fichiers du home permettent à des utilisateurs non prévus de lire des données privées ou de modifier des fichiers dont le propriétaire dépend. Un contenu lisible par tous ou inscriptible par le groupe expose identifiants, clés et fichiers d'initialisation ; des bits setuid/setgid égarés peuvent servir d'appui à une élévation de privilèges."
   },
   "check_note": {
     "en": "Pavois reads the **live** `/etc/passwd` for interactive users and homes, then runs `find -P \"$h\" -perm /7027 ! -type l`. The `/7027` mask flags any path carrying **setuid/setgid/sticky** (`7000`), **group-write** (`020`) or **any world bit** (`007`), i.e. anything looser than `0750`. Inspecting the **effective on-disk mode** catches files created loose by tools or umask, beyond what a skeleton template would suggest.",
@@ -63,5 +68,7 @@
   "impact": {
     "en": "Over-permissive home files expose secrets and allow tampering. **Precautions before applying:** a blunt `chmod` can break apps that legitimately need group access (shared dev directories, `~/.gnupg` already at 0700, sockets), review the matched paths first. Stripping `o-rwx` is safe for private homes, but removing setuid/setgid blindly may break intentionally-privileged helpers, so handle `7000`-mask hits case by case.",
     "fr": "Des fichiers de home trop permissifs exposent des secrets et permettent leur altération. **Précautions avant application :** un `chmod` brutal peut casser des applications nécessitant légitimement un accès groupe (répertoires de dev partagés, `~/.gnupg` déjà en 0700, sockets), examinez d'abord les chemins concernés. Retirer `o-rwx` est sûr pour des homes privés, mais supprimer setuid/setgid à l'aveugle peut casser des utilitaires volontairement privilégiés ; traitez les correspondances du masque `7000` au cas par cas."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

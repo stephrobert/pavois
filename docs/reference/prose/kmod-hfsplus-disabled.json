@@ -1,0 +1,37 @@
+{
+  "id": "kmod-hfsplus-disabled",
+  "title": {
+    "en": "Disable Mounting of hfsplus",
+    "fr": "Désactiver le montage de hfsplus"
+  },
+  "summary": {
+    "en": "Ensures the `hfsplus` filesystem kernel module cannot be loaded, so the Apple HFS+ driver is unavailable.",
+    "fr": "Garantit que le module noyau du système de fichiers `hfsplus` ne peut pas être chargé, rendant indisponible le pilote Apple HFS+."
+  },
+  "rationale": {
+    "en": "The `hfsplus` filesystem is Apple's HFS+ (Mac OS Extended), needed only to read Mac-formatted media. Every loadable filesystem driver adds attack surface: parsing untrusted disk structures has repeatedly produced memory-corruption vulnerabilities. An attacker who can attach a USB drive or have a malicious image mounted could exploit flaws in this rarely-needed driver to crash the kernel or execute code. Disabling it removes that exposure on hosts that never read HFS+ media.",
+    "fr": "Le système de fichiers `hfsplus` est le HFS+ d'Apple (Mac OS étendu), nécessaire uniquement pour lire des supports formatés sur Mac. Chaque pilote de système de fichiers chargeable ajoute de la surface d'attaque : l'analyse de structures disque non fiables a produit à plusieurs reprises des vulnérabilités de corruption mémoire. Un attaquant capable de brancher une clé USB ou de faire monter une image malveillante pourrait exploiter des failles de ce pilote rarement nécessaire pour faire planter le noyau ou exécuter du code. Le désactiver supprime cette exposition sur les hôtes qui ne lisent jamais de supports HFS+."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `kernel_module('hfsplus')` resource to confirm the module is **not loaded** and is **disabled** (blacklist plus an `install ... /bin/true` override). This reflects the **effective** kernel state via `lsmod` and `modprobe --showconfig`, not a static read of `/etc/modprobe.d/`. A drop-in that re-enables loading is caught even when a config file looks fine.",
+    "fr": "Pavois utilise la ressource InSpec `kernel_module('hfsplus')` pour confirmer que le module n'est **pas chargé** et qu'il est **désactivé** (blacklist plus une redirection `install ... /bin/true`). Cela reflète l'état **effectif** du noyau via `lsmod` et `modprobe --showconfig`, et non une lecture statique de `/etc/modprobe.d/`. Un drop-in réactivant le chargement est détecté même quand un fichier de configuration semble correct."
+  },
+  "verify": {
+    "en": "Run `modprobe -n -v hfsplus`, it should print `install /bin/true`. Confirm it is not loaded with `lsmod | grep hfsplus` (no output expected). `modprobe --showconfig | grep hfsplus` should show a `blacklist hfsplus` and an `install hfsplus /bin/true` line.",
+    "fr": "Exécutez `modprobe -n -v hfsplus`, la sortie doit afficher `install /bin/true`. Vérifiez qu'il n'est pas chargé avec `lsmod | grep hfsplus` (aucune sortie attendue). `modprobe --showconfig | grep hfsplus` doit afficher une ligne `blacklist hfsplus` et une ligne `install hfsplus /bin/true`."
+  },
+  "logs": {
+    "en": "Load attempts surface in the kernel ring buffer: `dmesg | grep hfsplus` or `journalctl -k | grep hfsplus`. The effective modprobe policy is shown by `modprobe --showconfig | grep hfsplus`.",
+    "fr": "Les tentatives de chargement apparaissent dans le tampon noyau : `dmesg | grep hfsplus` ou `journalctl -k | grep hfsplus`. La politique modprobe effective est affichée par `modprobe --showconfig | grep hfsplus`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `kernel_module` resource to **blacklist** `hfsplus`: it writes a drop-in under `/etc/modprobe.d/` with `blacklist hfsplus` and `install hfsplus /bin/true`, and unloads the module if loaded. Because the driver may be resident in the running kernel or initramfs, **`reboot_required` is true** to guarantee it is not active.",
+    "fr": "`pavois harden apply` utilise la ressource `kernel_module` pour mettre `hfsplus` en **blacklist** : il écrit un drop-in sous `/etc/modprobe.d/` avec `blacklist hfsplus` et `install hfsplus /bin/true`, et décharge le module s'il est chargé. Comme le pilote peut être présent dans le noyau en cours d'exécution ou dans l'initramfs, **`reboot_required` est vrai** pour garantir qu'il n'est pas actif."
+  },
+  "impact": {
+    "en": "Risk if not applied: a loadable legacy filesystem driver remains exploitable via mounting Apple HFS+ media or a crafted image.\n\n- **Before applying**, confirm the host does not need to read HFS+-formatted Apple media (very rare on servers).\n- Non-disruptive on standard deployments; only affects workflows mounting HFS+ volumes.\n- A **reboot** is required for full effect, schedule it in a maintenance window.",
+    "fr": "Risque en l'absence d'application : un pilote de système de fichiers hérité chargeable reste exploitable via le montage de supports Apple HFS+ ou d'une image forgée.\n\n- **Avant d'appliquer**, vérifiez que l'hôte n'a pas besoin de lire des supports Apple au format HFS+ (très rare sur serveur).\n- Non perturbateur sur les déploiements standard ; n'affecte que les flux montant des volumes HFS+.\n- Un **redémarrage** est requis pour un effet complet, planifiez-le dans une fenêtre de maintenance."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,20 +1,15 @@
 {
   "id": "logindefs-pass_min_len",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
-    "rhel8",
-    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel8": "4.0.0",
-    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -33,22 +28,27 @@
   },
   "check": [
     "describe login_defs do",
-    "  its('PASS_MIN_LEN') { should cmp >= 15 }",
+    "  its('PASS_MIN_LEN') { should cmp >= {'bp28'=>15,'nist'=>12}.fetch(input('pavois_standard', value: '_default'), 15) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "file": "/etc/login.defs",
+    "key": "PASS_MIN_LEN",
+    "resource": "conf_line",
+    "sep": "space",
+    "value": "15"
+  },
   "title": {
     "en": "Set Password Minimum Length in login.defs",
     "fr": "Définir la longueur minimale des mots de passe dans login.defs"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Requiring a minimum password length makes password-cracking (brute-force and dictionary) attacks far harder by enlarging the search space an attacker must explore. Short passwords are trivially guessed offline once a hash leaks. Any benefit from an onerous length requirement must still be weighed against usability and support costs, but a 15-character floor is a widely accepted baseline.",
-    "fr": "Exiger une longueur minimale de mot de passe rend les attaques par cassage (force brute et dictionnaire) bien plus difficiles en agrandissant l'espace de recherche que l'attaquant doit explorer. Les mots de passe courts sont devinés trivialement hors ligne dès qu'un hachage fuit. Le bénéfice d'une exigence de longueur contraignante doit être pondéré par le coût en ergonomie et en support, mais un plancher de 15 caractères est une base largement admise."
-  },
   "summary": {
     "en": "Enforces a minimum password length of **15 characters** via the `PASS_MIN_LEN` directive in `/etc/login.defs`.",
     "fr": "Impose une longueur minimale de mot de passe de **15 caractères** via la directive `PASS_MIN_LEN` dans `/etc/login.defs`."
+  },
+  "rationale": {
+    "en": "Requiring a minimum password length makes password-cracking (brute-force and dictionary) attacks far harder by enlarging the search space an attacker must explore. Short passwords are trivially guessed offline once a hash leaks. Any benefit from an onerous length requirement must still be weighed against usability and support costs, but a 15-character floor is a widely accepted baseline.",
+    "fr": "Exiger une longueur minimale de mot de passe rend les attaques par cassage (force brute et dictionnaire) bien plus difficiles en agrandissant l'espace de recherche que l'attaquant doit explorer. Les mots de passe courts sont devinés trivialement hors ligne dès qu'un hachage fuit. Le bénéfice d'une exigence de longueur contraignante doit être pondéré par le coût en ergonomie et en support, mais un plancher de 15 caractères est une base largement admise."
   },
   "check_note": {
     "en": "Pavois reads the resolved `PASS_MIN_LEN` value from `/etc/login.defs` through the InSpec `login_defs` resource and asserts it is **>= 15**. This is the value `useradd`/`passwd` actually consult, so Pavois reports the effective policy rather than guessing from a comment or a stale documentation file.",
@@ -69,5 +69,7 @@
   "impact": {
     "en": "A weak floor (e.g. the historical default of 5) lets users keep trivially crackable passwords, undermining every other authentication control. Before raising the value, communicate the new requirement to users and confirm `pam_pwquality minlen` matches, otherwise users may be confused when `passwd` rejects passwords accepted elsewhere. The change is non-disruptive: existing passwords keep working until next change, so there is no lockout risk.",
     "fr": "Un plancher faible (par ex. l'historique par défaut de 5) laisse les utilisateurs conserver des mots de passe trivialement cassables, sapant tous les autres contrôles d'authentification. Avant de relever la valeur, communiquez la nouvelle exigence aux utilisateurs et vérifiez que `pam_pwquality minlen` concorde, sinon les utilisateurs seront déroutés quand `passwd` refusera des mots de passe acceptés ailleurs. Le changement est non perturbateur : les mots de passe existants restent valides jusqu'au prochain changement, sans risque de verrouillage."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

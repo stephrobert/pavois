@@ -1,0 +1,37 @@
+{
+  "id": "filegroupowner-efi-user-cfg",
+  "title": {
+    "en": "Verify /boot/efi/EFI/redhat/user.cfg Group Ownership",
+    "fr": "Vérifier le groupe propriétaire de /boot/efi/EFI/redhat/user.cfg"
+  },
+  "summary": {
+    "en": "Ensures the UEFI GRUB password file `/boot/efi/EFI/redhat/user.cfg` is group-owned by **`root` (gid 0)**.",
+    "fr": "Garantit que le fichier de mot de passe GRUB UEFI `/boot/efi/EFI/redhat/user.cfg` est détenu par le groupe **`root` (gid 0)**."
+  },
+  "rationale": {
+    "en": "The UEFI `user.cfg` file (`/boot/efi/EFI/redhat/user.cfg`) typically stores the **GRUB boot-loader password hash** that gates editing of boot entries and the kernel command line. The `root` group is highly privileged, and the group-owner of this file should have no access privileges anyway. If a non-`root` group owns it, members of that group could read the boot parameters and the password hash to identify weaknesses and exploit them at boot time, **before any OS-level security control is active**.",
+    "fr": "Le fichier UEFI `user.cfg` (`/boot/efi/EFI/redhat/user.cfg`) stocke généralement le **hachage du mot de passe du chargeur GRUB** qui protège l'édition des entrées de démarrage et de la ligne de commande du noyau. Le groupe `root` est hautement privilégié et le groupe propriétaire de ce fichier ne devrait de toute façon disposer d'aucun privilège d'accès. Si un groupe autre que `root` le détient, ses membres pourraient lire les paramètres de démarrage et le hachage du mot de passe pour identifier des faiblesses et les exploiter au démarrage, **avant que tout contrôle de sécurité au niveau de l'OS ne soit actif**."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** group owner of `/boot/efi/EFI/redhat/user.cfg` on the live system via the InSpec `file` resource and asserts `gid == 0`. It inspects the actual inode metadata as the kernel sees it on the mounted EFI System Partition, not a packaging default, so post-install drift is caught. The check is skipped (`only_if`) where the file is absent (e.g. no GRUB password set, or BIOS boot).",
+    "fr": "Pavois lit le groupe propriétaire **effectif** de `/boot/efi/EFI/redhat/user.cfg` sur le système en cours d'exécution via la ressource InSpec `file` et vérifie `gid == 0`. Il inspecte les métadonnées réelles de l'inode telles que le noyau les voit sur la partition système EFI montée, et non une valeur par défaut de paquet : une dérive après installation est donc détectée. Le contrôle est ignoré (`only_if`) lorsque le fichier est absent (par exemple aucun mot de passe GRUB défini, ou amorçage BIOS)."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /boot/efi/EFI/redhat/user.cfg`. Expected output: **`root 0`**. Any other group name or non-zero gid means the rule is not applied.",
+    "fr": "Exécutez `stat -c '%G %g' /boot/efi/EFI/redhat/user.cfg`. Sortie attendue : **`root 0`**. Tout autre nom de groupe ou gid non nul signifie que la règle n'est pas appliquée."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default. Watch the file with auditd: `auditctl -w /boot/efi/EFI/redhat/user.cfg -p wa -k grub-perms`, then inspect `grep 'key=\"grub-perms\"' /var/log/audit/audit.log`. Boot-loader activity is visible in the kernel ring buffer (`dmesg`) and `journalctl -b` after a reboot.",
+    "fr": "Les changements de propriété ne sont pas journalisés par défaut. Surveillez le fichier avec auditd : `auditctl -w /boot/efi/EFI/redhat/user.cfg -p wa -k grub-perms`, puis examinez `grep 'key=\"grub-perms\"' /var/log/audit/audit.log`. L'activité du chargeur d'amorçage est visible dans le tampon noyau (`dmesg`) et `journalctl -b` après un redémarrage."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is defined for this rule, so it must be applied **manually**. Restore the correct group ownership with `chgrp root /boot/efi/EFI/redhat/user.cfg`.",
+    "fr": "Aucune remédiation automatique n'est définie pour cette règle ; elle doit donc être appliquée **manuellement**. Rétablissez le bon groupe propriétaire avec `chgrp root /boot/efi/EFI/redhat/user.cfg`."
+  },
+  "impact": {
+    "en": "A non-`root` group owner on `user.cfg` exposes the GRUB password hash and boot parameters, useful to an attacker preparing a boot-time compromise. The fix is low-risk: `chgrp root` only changes group ownership, not content, and does not affect booting or the stored password. **Precaution:** the EFI System Partition is usually VFAT and does not store Unix ownership; `chgrp` then takes effect via mount options (`gid=`/`umask=` in `/etc/fstab`). Pair this with restrictive permissions (`0600`/`0700`) so the hash is not world-readable, and do not delete or rewrite the file, only its ownership.",
+    "fr": "Un groupe propriétaire autre que `root` sur `user.cfg` expose le hachage du mot de passe GRUB et les paramètres de démarrage, utile à un attaquant préparant une compromission au démarrage. Le correctif présente peu de risques : `chgrp root` ne change que la propriété de groupe, pas le contenu, et n'affecte ni le démarrage ni le mot de passe enregistré. **Précaution :** la partition système EFI est généralement en VFAT et ne stocke pas la propriété Unix ; `chgrp` prend alors effet via les options de montage (`gid=`/`umask=` dans `/etc/fstab`). Associez-le à des permissions restrictives (`0600`/`0700`) pour que le hachage ne soit pas lisible par tous, et ne supprimez ni ne réécrivez le fichier, uniquement sa propriété."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

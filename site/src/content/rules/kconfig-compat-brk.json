@@ -1,16 +1,17 @@
 {
   "id": "kconfig-compat-brk",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R17"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_COMPAT_BRK=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_COMPAT_BRK='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_COMPAT_BRK=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should_not match(/^CONFIG_COMPAT_BRK=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Disable compatibility with brk()",
     "fr": "Désactiver la compatibilité avec brk()"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_COMPAT_BRK=y` keeps a legacy compatibility behavior for ancient binaries that places the program's heap (`brk`) at a fixed, predictable location, which **disables heap randomization, a core part of ASLR**. Predictable heap addresses make heap-overflow and use-after-free exploits dramatically easier, since the attacker no longer has to defeat randomization. Leaving it unset (the secure value) preserves full ASLR for the heap.",
-    "fr": "`CONFIG_COMPAT_BRK=y` conserve un comportement de compatibilité hérité pour d'anciens binaires qui place le tas du programme (`brk`) à un emplacement fixe et prévisible, ce qui **désactive la randomisation du tas, élément central de l'ASLR**. Des adresses de tas prévisibles facilitent considérablement les exploits de débordement de tas et d'use-after-free, l'attaquant n'ayant plus à déjouer la randomisation. Le laisser non défini (la valeur sûre) préserve l'ASLR complet pour le tas."
-  },
   "summary": {
     "en": "Ensures the running kernel is built **without** `CONFIG_COMPAT_BRK`, so heap (`brk`) randomization stays active as part of ASLR.",
     "fr": "Garantit que le noyau en cours d'exécution est compilé **sans** `CONFIG_COMPAT_BRK`, afin que la randomisation du tas (`brk`) reste active dans le cadre de l'ASLR."
+  },
+  "rationale": {
+    "en": "`CONFIG_COMPAT_BRK=y` keeps a legacy compatibility behavior for ancient binaries that places the program's heap (`brk`) at a fixed, predictable location, which **disables heap randomization, a core part of ASLR**. Predictable heap addresses make heap-overflow and use-after-free exploits dramatically easier, since the attacker no longer has to defeat randomization. Leaving it unset (the secure value) preserves full ASLR for the heap.",
+    "fr": "`CONFIG_COMPAT_BRK=y` conserve un comportement de compatibilité hérité pour d'anciens binaires qui place le tas du programme (`brk`) à un emplacement fixe et prévisible, ce qui **désactive la randomisation du tas, élément central de l'ASLR**. Des adresses de tas prévisibles facilitent considérablement les exploits de débordement de tas et d'use-after-free, l'attaquant n'ayant plus à déjouer la randomisation. Le laisser non défini (la valeur sûre) préserve l'ASLR complet pour le tas."
   },
   "check_note": {
     "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)` (fallback `/proc/config.gz`) and asserts the line is **not** `CONFIG_COMPAT_BRK=y`. Keying on `uname -r` matches the exact booted image, more reliable than reading a random `/boot/config-*`. Note this is independent of the runtime `kernel.randomize_va_space` sysctl, which controls the broader ASLR policy.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "**Risk if enabled:** heap randomization is disabled, making heap-corruption exploits far easier by giving the attacker predictable addresses.\n\n**Precautions before changing it:** disabling `COMPAT_BRK` only affects extremely old, statically-linked binaries that assumed a fixed heap layout (libc5-era), virtually none exist on modern systems, so functional impact is essentially nil. Changing kernels requires a reboot; keep the previous kernel in GRUB as a fallback and validate boot on a console.",
     "fr": "**Risque si activé :** la randomisation du tas est désactivée, rendant les exploits de corruption de tas bien plus faciles via des adresses prévisibles.\n\n**Précautions avant de modifier :** désactiver `COMPAT_BRK` n'affecte que des binaires extrêmement anciens, liés statiquement, qui supposaient une disposition de tas fixe (ère libc5), il n'en existe pratiquement plus sur les systèmes modernes, donc l'impact fonctionnel est quasi nul. Changer de noyau nécessite un redémarrage ; conservez le noyau précédent dans GRUB en repli et validez le démarrage sur une console."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

@@ -1,0 +1,37 @@
+{
+  "id": "fileowner-sshd-drop-in-config",
+  "title": {
+    "en": "Verify Owner on SSH Server Configuration Files",
+    "fr": "Vérifier le propriétaire des fichiers de configuration du serveur SSH"
+  },
+  "summary": {
+    "en": "Ensures the SSH drop-in directory `/etc/ssh/sshd_config.d` is owned by **root** (uid 0).",
+    "fr": "Garantit que le répertoire drop-in SSH `/etc/ssh/sshd_config.d` appartient à **root** (uid 0)."
+  },
+  "rationale": {
+    "en": "On modern Ubuntu, `/etc/ssh/sshd_config` ends with `Include /etc/ssh/sshd_config.d/*.conf`, so drop-in files in that directory override the main policy. This is exactly the surface a file-based scanner misses. If a non-root user owns `/etc/ssh/sshd_config.d`, they can drop in a `.conf` that re-enables root login or weakens authentication, silently overriding a hardened main config. Restricting ownership to **root** (uid 0) ensures only the superuser can introduce SSH policy overrides.",
+    "fr": "Sur Ubuntu moderne, `/etc/ssh/sshd_config` se termine par `Include /etc/ssh/sshd_config.d/*.conf`, de sorte que les fichiers drop-in de ce répertoire surchargent la politique principale. C'est précisément la surface qu'un scanner basé sur les fichiers manque. Si un utilisateur non-root possède `/etc/ssh/sshd_config.d`, il peut y déposer un `.conf` qui réactive la connexion root ou affaiblit l'authentification, surchargeant silencieusement une configuration principale durcie. Restreindre la propriété à **root** (uid 0) garantit que seul le superutilisateur peut introduire des surcharges de politique SSH."
+  },
+  "check_note": {
+    "en": "Pavois asserts that the live directory `/etc/ssh/sshd_config.d` has owner uid `0`, skipped via `only_if` if it does not exist. This rule embodies Pavois's edge: file-based scanners check only `sshd_config` and miss the `Include`d drop-ins that can silently override it. Pavois reads the **effective** owner of the override directory from the filesystem, catching drift that OVAL/oscap would not even look at.",
+    "fr": "Pavois vérifie que le répertoire réel `/etc/ssh/sshd_config.d` a l'uid de propriétaire `0`, ignoré via `only_if` s'il n'existe pas. Cette règle incarne l'avantage de Pavois : les scanners basés sur les fichiers ne vérifient que `sshd_config` et manquent les drop-ins inclus via `Include` qui peuvent le surcharger silencieusement. Pavois lit le propriétaire **effectif** du répertoire de surcharge depuis le système de fichiers, détectant une dérive que OVAL/oscap ne regarderaient même pas."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /etc/ssh/sshd_config.d`. Expected output: `root 0`. To cover the drop-ins too, run `find /etc/ssh/sshd_config.d -not -user root`, it should print nothing.",
+    "fr": "Exécutez `stat -c '%U %u' /etc/ssh/sshd_config.d`. Sortie attendue : `root 0`. Pour couvrir aussi les drop-ins, exécutez `find /etc/ssh/sshd_config.d -not -user root`, il ne doit rien afficher."
+  },
+  "logs": {
+    "en": "Ownership has no continuous log; query it with `stat /etc/ssh/sshd_config.d`. The *effect* of a rogue drop-in is visible by comparing the running policy with `sshd -T` against your expected baseline. SSH service and config-load errors appear in `/var/log/auth.log` or via `journalctl -u ssh`.",
+    "fr": "La propriété ne génère pas de journal continu ; interrogez-la avec `stat /etc/ssh/sshd_config.d`. L'*effet* d'un drop-in malveillant est visible en comparant la politique en vigueur via `sshd -T` à votre référentiel attendu. Les erreurs du service SSH et de chargement de configuration apparaissent dans `/var/log/auth.log` ou via `journalctl -u ssh`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined, so apply it manually: `chown root:root /etc/ssh/sshd_config.d` and, for the override files, `chown root:root /etc/ssh/sshd_config.d/*.conf`.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini, appliquez-la donc manuellement : `chown root:root /etc/ssh/sshd_config.d` et, pour les fichiers de surcharge, `chown root:root /etc/ssh/sshd_config.d/*.conf`."
+  },
+  "impact": {
+    "en": "A non-root owner of this directory can silently override your hardened SSH policy via a drop-in, potentially re-enabling remote root login. Restoring root ownership is safe and does not affect current sessions. **Precaution:** after fixing ownership, run `sshd -t` and confirm the running policy with `sshd -T`; keep file modes restrictive and keep a backup session open before reloading sshd.",
+    "fr": "Un propriétaire non-root de ce répertoire peut surcharger silencieusement votre politique SSH durcie via un drop-in, réactivant potentiellement la connexion root distante. Restaurer la propriété root est sans danger et n'affecte pas les sessions en cours. **Précaution :** après avoir corrigé la propriété, exécutez `sshd -t` et confirmez la politique en vigueur avec `sshd -T` ; conservez des modes de fichiers restrictifs et gardez une session de secours ouverte avant de recharger sshd."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

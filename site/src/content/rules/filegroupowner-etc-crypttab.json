@@ -1,16 +1,17 @@
 {
   "id": "filegroupowner-etc-crypttab",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -40,14 +41,13 @@
     "en": "Verify Group Who Owns /etc/crypttab File",
     "fr": "Vérifier le groupe propriétaire du fichier /etc/crypttab"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The `/etc/crypttab` file declares the system's **encrypted block devices**, the mapping names, backing devices, and key sources used to unlock them at boot. Group-owning this file by `root` keeps exclusive control of the encryption configuration: a non-`root` group owner could let an attacker read where keys live or tamper with the mappings, undermining full-disk encryption. Assigning the group to **`root`** ensures only highly-privileged accounts can influence how encrypted volumes are unlocked.",
-    "fr": "Le fichier `/etc/crypttab` déclare les **périphériques de bloc chiffrés** du système, les noms de mappage, les périphériques sous-jacents et les sources de clés utilisées pour les déverrouiller au démarrage. Attribuer la propriété de groupe de ce fichier à `root` garantit un contrôle exclusif de la configuration de chiffrement : un groupe propriétaire autre que `root` pourrait permettre à un attaquant de lire l'emplacement des clés ou d'altérer les mappages, compromettant le chiffrement intégral du disque. Attribuer le groupe à **`root`** garantit que seuls les comptes hautement privilégiés peuvent influencer la façon dont les volumes chiffrés sont déverrouillés."
-  },
   "summary": {
     "en": "Ensures the `/etc/crypttab` file is group-owned by **`root`**.",
     "fr": "Garantit que le fichier `/etc/crypttab` est détenu par le groupe **`root`**."
+  },
+  "rationale": {
+    "en": "The `/etc/crypttab` file declares the system's **encrypted block devices**, the mapping names, backing devices, and key sources used to unlock them at boot. Group-owning this file by `root` keeps exclusive control of the encryption configuration: a non-`root` group owner could let an attacker read where keys live or tamper with the mappings, undermining full-disk encryption. Assigning the group to **`root`** ensures only highly-privileged accounts can influence how encrypted volumes are unlocked.",
+    "fr": "Le fichier `/etc/crypttab` déclare les **périphériques de bloc chiffrés** du système, les noms de mappage, les périphériques sous-jacents et les sources de clés utilisées pour les déverrouiller au démarrage. Attribuer la propriété de groupe de ce fichier à `root` garantit un contrôle exclusif de la configuration de chiffrement : un groupe propriétaire autre que `root` pourrait permettre à un attaquant de lire l'emplacement des clés ou d'altérer les mappages, compromettant le chiffrement intégral du disque. Attribuer le groupe à **`root`** garantit que seuls les comptes hautement privilégiés peuvent influencer la façon dont les volumes chiffrés sont déverrouillés."
   },
   "check_note": {
     "en": "Pavois reads the **effective** group owner of `/etc/crypttab` on the live system via the InSpec `file` resource and asserts `group == 'root'`. It inspects the actual inode metadata as the kernel sees it, not a packaging default, so a file whose ownership drifted after install is caught.",
@@ -68,5 +68,7 @@
   "impact": {
     "en": "A non-`root` group owner on `/etc/crypttab` weakens the trust boundary around disk encryption; restoring `root` ownership has no functional impact on booting or mounting. The fix only changes group ownership, not content or device mappings, so encrypted volumes still unlock normally. **Precaution:** do not edit the mapping lines or key-file paths while applying ownership, an incorrect crypttab entry can leave an encrypted volume unmountable at boot and hang or drop the system to an emergency shell.",
     "fr": "Un groupe propriétaire autre que `root` sur `/etc/crypttab` affaiblit la frontière de confiance autour du chiffrement du disque ; rétablir la propriété `root` n'a aucun impact fonctionnel sur le démarrage ou le montage. Le correctif ne change que la propriété de groupe, ni le contenu ni les mappages de périphériques : les volumes chiffrés se déverrouillent toujours normalement. **Précaution :** ne modifiez pas les lignes de mappage ni les chemins de fichiers de clés en appliquant la propriété, une entrée crypttab incorrecte peut rendre un volume chiffré non montable au démarrage et bloquer le système ou le basculer en shell de secours."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

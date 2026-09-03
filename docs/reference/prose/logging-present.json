@@ -1,0 +1,37 @@
+{
+  "id": "logging-present",
+  "title": {
+    "en": "A system logging daemon is active",
+    "fr": "Un démon de journalisation système est actif"
+  },
+  "summary": {
+    "en": "Ensures a system logging daemon, **`rsyslog`** or **`syslog-ng`**, is installed and **actively running**.",
+    "fr": "Garantit qu'un démon de journalisation système, **`rsyslog`** ou **`syslog-ng`**, est installé et **en cours d'exécution**."
+  },
+  "rationale": {
+    "en": "A running syslog daemon (`rsyslog` or `syslog-ng`) is required to capture, persist and forward system and security events. Without an active logging daemon, evidence of intrusions, service failures and policy violations is lost, defeating incident response, forensics and compliance auditing. Centralized logging also enables off-host retention so an attacker cannot simply erase local traces.",
+    "fr": "Un démon syslog actif (`rsyslog` ou `syslog-ng`) est nécessaire pour capturer, conserver et transférer les événements système et de sécurité. Sans démon de journalisation actif, les preuves d'intrusions, de pannes de service et de violations de politique sont perdues, ce qui compromet la réponse aux incidents, l'investigation et l'audit de conformité. La journalisation centralisée permet aussi une rétention hors-hôte, empêchant un attaquant d'effacer simplement les traces locales."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective service state**: it iterates over `rsyslog` and `syslog-ng` and accepts the rule as soon as `systemctl is-active` reports one of them running. Querying systemd reflects whether the daemon is truly up right now, a package being installed or a unit file present says nothing about a service that failed to start or was masked.",
+    "fr": "Pavois vérifie l'**état effectif du service** : il parcourt `rsyslog` et `syslog-ng` et valide la règle dès que `systemctl is-active` signale l'un d'eux comme actif. Interroger systemd reflète si le démon est réellement opérationnel à l'instant présent, un paquet installé ou un fichier d'unité présent ne dit rien d'un service qui a échoué au démarrage ou qui est masqué."
+  },
+  "verify": {
+    "en": "- `systemctl is-active rsyslog` (or `syslog-ng`) should return `active`.\n- `systemctl status rsyslog` should show `running`.\n- `logger -t test 'Pavois check'; tail -n1 /var/log/syslog` (Debian/Ubuntu) or `/var/log/messages` (RHEL) should show the test line.",
+    "fr": "- `systemctl is-active rsyslog` (ou `syslog-ng`) doit renvoyer `active`.\n- `systemctl status rsyslog` doit afficher `running`.\n- `logger -t test 'Pavois check'; tail -n1 /var/log/syslog` (Debian/Ubuntu) ou `/var/log/messages` (RHEL) doit afficher la ligne de test."
+  },
+  "logs": {
+    "en": "- `systemctl status rsyslog` / `systemctl status syslog-ng` for daemon health.\n- `journalctl -u rsyslog` for the daemon's own start/stop and error events.\n- `/var/log/syslog` or `/var/log/messages` are the files the daemon itself produces.",
+    "fr": "- `systemctl status rsyslog` / `systemctl status syslog-ng` pour la santé du démon.\n- `journalctl -u rsyslog` pour les démarrages/arrêts et erreurs du démon lui-même.\n- `/var/log/syslog` ou `/var/log/messages` sont les fichiers que le démon produit."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses a `choose` resource: it installs and enables a logging daemon, defaulting to **`rsyslog`** (package `rsyslog`, service `rsyslog`), with **`syslog-ng`** as an alternative. It installs the package, then enables and starts the service so logging is active immediately and on boot. Apply with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise une ressource `choose` : il installe et active un démon de journalisation, avec **`rsyslog`** par défaut (paquet `rsyslog`, service `rsyslog`) et **`syslog-ng`** en alternative. Il installe le paquet, puis active et démarre le service afin que la journalisation soit immédiate et au démarrage. Appliquez avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Low risk, adding a syslog daemon is non-disruptive. **Caution:** do not run both `rsyslog` and `syslog-ng` simultaneously, as they compete for the same sockets and inputs; pick one. On minimal/container images that rely solely on the systemd journal, installing rsyslog increases disk usage from `/var/log`, ensure log rotation is configured.",
+    "fr": "Risque faible, ajouter un démon syslog n'est pas perturbateur. **Attention :** ne pas exécuter `rsyslog` et `syslog-ng` simultanément, car ils se disputent les mêmes sockets et entrées ; choisissez-en un. Sur les images minimales/conteneurs qui s'appuient uniquement sur le journal systemd, installer rsyslog augmente l'usage disque de `/var/log`, assurez-vous que la rotation des journaux est configurée."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

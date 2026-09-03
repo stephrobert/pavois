@@ -1,17 +1,17 @@
 {
   "id": "filegroupowner-backup-etc-shadow",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -25,19 +25,19 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "7.1.6",
-      "2.2.6"
+      "2.2.6",
+      "7.1.6"
     ],
     "pci-dss": "2.2.6"
   },
   "check": [
     "only_if { file('/etc/shadow-').exist? }",
     "describe file('/etc/shadow-') do",
-    "  its('gid') { should eq 0 }",
+    "  its('gid') { should eq 42 }",
     "end"
   ],
   "remediation": {
-    "group": "root",
+    "group": "shadow",
     "path": "/etc/shadow-",
     "resource": "file"
   },
@@ -45,14 +45,13 @@
     "en": "Verify User Who Owns Backup shadow File",
     "fr": "Vérifier le groupe propriétaire du fichier de sauvegarde shadow"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/shadow-` is the **backup of** `/etc/shadow` and contains the **password hashes** of every local account. If its group owner is not the expected privileged group (gid `0`), an unprivileged group could read those hashes for offline cracking, or tamper with the backup so a later restore weakens authentication on the live file. This is among the most sensitive files on the system.",
-    "fr": "`/etc/shadow-` est la **sauvegarde de** `/etc/shadow` et contient les **empreintes des mots de passe** de chaque compte local. Si son groupe propriétaire n'est pas le groupe privilégié attendu (gid `0`), un groupe non privilégié pourrait lire ces empreintes pour un cassage hors ligne, ou altérer la sauvegarde afin qu'une restauration ultérieure affaiblisse l'authentification du fichier actif. C'est l'un des fichiers les plus sensibles du système."
-  },
   "summary": {
     "en": "Ensures `/etc/shadow-`, the backup copy of `/etc/shadow` (account password hashes), is group-owned by gid `0`.",
     "fr": "Garantit que `/etc/shadow-`, la copie de sauvegarde de `/etc/shadow` (empreintes des mots de passe), a le gid `0` pour groupe propriétaire."
+  },
+  "rationale": {
+    "en": "`/etc/shadow-` is the **backup of** `/etc/shadow` and contains the **password hashes** of every local account. If its group owner is not the expected privileged group (gid `0`), an unprivileged group could read those hashes for offline cracking, or tamper with the backup so a later restore weakens authentication on the live file. This is among the most sensitive files on the system.",
+    "fr": "`/etc/shadow-` est la **sauvegarde de** `/etc/shadow` et contient les **empreintes des mots de passe** de chaque compte local. Si son groupe propriétaire n'est pas le groupe privilégié attendu (gid `0`), un groupe non privilégié pourrait lire ces empreintes pour un cassage hors ligne, ou altérer la sauvegarde afin qu'une restauration ultérieure affaiblisse l'authentification du fichier actif. C'est l'un des fichiers les plus sensibles du système."
   },
   "check_note": {
     "en": "Pavois reads the **effective ownership** of `/etc/shadow-` from the inode (via `stat`) and asserts `gid == 0`. Checking the live inode catches drift from manual restores or backup tooling rather than trusting a template. The `only_if` guard skips the check when the backup is absent.",
@@ -73,5 +72,7 @@
   "impact": {
     "en": "A wrong group owner on `/etc/shadow-` can expose password hashes to unprivileged users, enabling offline cracking. **Precautions:** setting gid `0` is safe, the backup is not used by running services, and does not affect login. On Debian-family systems note the live `/etc/shadow` is conventionally group `shadow`; this rule enforces `root` (gid `0`) on the backup, so verify your policy expects that and that no backup tool reverts it.",
     "fr": "Un mauvais groupe propriétaire sur `/etc/shadow-` peut exposer les empreintes de mots de passe à des utilisateurs non privilégiés, permettant un cassage hors ligne. **Précautions :** définir le gid `0` est sûr, la sauvegarde n'est pas utilisée par les services en cours, et n'affecte pas la connexion. Sur les systèmes de la famille Debian, notez que le `/etc/shadow` actif a conventionnellement le groupe `shadow` ; cette règle impose `root` (gid `0`) sur la sauvegarde, vérifiez donc que votre politique l'attend et qu'aucun outil de sauvegarde ne l'annule."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

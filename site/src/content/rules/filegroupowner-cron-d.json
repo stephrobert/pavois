@@ -1,17 +1,17 @@
 {
   "id": "filegroupowner-cron-d",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -25,8 +25,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "2.4.1.7",
       "2.2.6",
+      "2.4.1.7",
       "2.4.1.8"
     ],
     "nist": [
@@ -50,14 +50,13 @@
     "en": "Verify Group Who Owns cron.d",
     "fr": "Vérifier le groupe propriétaire de cron.d"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The `/etc/cron.d` directory holds drop-in crontab files that **run as root** on a fixed schedule. If the directory is group-owned by a non-privileged group, a member of that group could add, replace, or alter a cron job and obtain **arbitrary command execution as root** (privilege escalation). Restricting group ownership to **`root` (gid 0)** ensures only highly-privileged accounts can change what the system runs on a schedule.",
-    "fr": "Le répertoire `/etc/cron.d` contient des fichiers crontab additionnels qui **s'exécutent en tant que root** selon une planification fixe. Si le répertoire est détenu par un groupe non privilégié, un membre de ce groupe pourrait ajouter, remplacer ou modifier une tâche cron et obtenir l'**exécution de commandes arbitraires en root** (élévation de privilèges). Restreindre la propriété de groupe à **`root` (gid 0)** garantit que seuls les comptes hautement privilégiés peuvent modifier ce que le système exécute de façon planifiée."
-  },
   "summary": {
     "en": "Ensures the `/etc/cron.d` directory is group-owned by **`root` (gid 0)**.",
     "fr": "Garantit que le répertoire `/etc/cron.d` est détenu par le groupe **`root` (gid 0)**."
+  },
+  "rationale": {
+    "en": "The `/etc/cron.d` directory holds drop-in crontab files that **run as root** on a fixed schedule. If the directory is group-owned by a non-privileged group, a member of that group could add, replace, or alter a cron job and obtain **arbitrary command execution as root** (privilege escalation). Restricting group ownership to **`root` (gid 0)** ensures only highly-privileged accounts can change what the system runs on a schedule.",
+    "fr": "Le répertoire `/etc/cron.d` contient des fichiers crontab additionnels qui **s'exécutent en tant que root** selon une planification fixe. Si le répertoire est détenu par un groupe non privilégié, un membre de ce groupe pourrait ajouter, remplacer ou modifier une tâche cron et obtenir l'**exécution de commandes arbitraires en root** (élévation de privilèges). Restreindre la propriété de groupe à **`root` (gid 0)** garantit que seuls les comptes hautement privilégiés peuvent modifier ce que le système exécute de façon planifiée."
   },
   "check_note": {
     "en": "Pavois reads the **effective** group owner of `/etc/cron.d` on the live system via the InSpec `file` resource and asserts `gid == 0`. It inspects the actual inode metadata as the kernel sees it (resolving symlinks and bind mounts), not a packaging manifest or a documented default, so a directory whose ownership was changed after install is caught.",
@@ -78,5 +77,7 @@
   "impact": {
     "en": "A non-`root` group owner on `/etc/cron.d` is a privilege-escalation path: group members can plant root-run jobs. Applying the fix is low-risk, `chgrp root` only changes group ownership, not permissions or content, and cron keeps working. **Precaution:** confirm no legitimate tooling depends on a custom group on this directory before changing it, and apply ownership before tightening any group-write permissions to avoid locking out an administrative workflow.",
     "fr": "Un groupe propriétaire autre que `root` sur `/etc/cron.d` constitue une voie d'élévation de privilèges : les membres du groupe peuvent y déposer des tâches exécutées en root. Appliquer le correctif présente peu de risques, `chgrp root` ne change que la propriété de groupe, ni les permissions ni le contenu, et cron continue de fonctionner. **Précaution :** vérifiez qu'aucun outil légitime ne dépend d'un groupe personnalisé sur ce répertoire avant de le modifier, et appliquez la propriété avant de restreindre d'éventuelles permissions d'écriture de groupe pour ne pas bloquer un flux d'administration."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

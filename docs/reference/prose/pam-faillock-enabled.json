@@ -1,0 +1,37 @@
+{
+  "id": "pam-faillock-enabled",
+  "title": {
+    "en": "Ensure pam_faillock module is enabled",
+    "fr": "S'assurer que le module pam_faillock est activé"
+  },
+  "summary": {
+    "en": "Ensures `pam_faillock.so` is present in the PAM auth stack so failed login attempts are counted and accounts are locked after too many failures.",
+    "fr": "Garantit que `pam_faillock.so` est présent dans la pile auth de PAM afin que les échecs de connexion soient comptés et que les comptes soient verrouillés après trop d'échecs."
+  },
+  "rationale": {
+    "en": "Locking out user IDs after a number of unsuccessful consecutive login attempts mitigates brute-force password attacks against the system. Without `pam_faillock`, an attacker can try passwords indefinitely at machine speed; the module is the enforcement point that turns a lockout policy into an actual control.",
+    "fr": "Verrouiller les identifiants après un certain nombre d'échecs de connexion consécutifs atténue les attaques par force brute contre le système. Sans `pam_faillock`, un attaquant peut essayer des mots de passe indéfiniment à la vitesse de la machine ; le module est le point d'application qui transforme une politique de verrouillage en contrôle réel."
+  },
+  "check_note": {
+    "en": "Pavois greps the **effective** PAM stack under `/etc/pam.d/` for an active (non-commented) `pam_faillock.so` line. Because PAM assembles its stack from `common-auth` and `@include` chains, checking the resolved set of files catches the case where the module is declared in one place but stripped by a drop-in, something a single-file scan would not see.",
+    "fr": "Pavois recherche dans la pile PAM **effective** sous `/etc/pam.d/` une ligne `pam_faillock.so` active (non commentée). Comme PAM assemble sa pile à partir de `common-auth` et de chaînes `@include`, vérifier l'ensemble résolu des fichiers détecte le cas où le module est déclaré quelque part mais retiré par un drop-in, ce qu'une analyse mono-fichier ne verrait pas."
+  },
+  "verify": {
+    "en": "Run `grep -rE '^[^#]*pam_faillock\\.so' /etc/pam.d/`; at least one active `auth` line should reference the module (typically two: a `preauth` and an `authfail` entry). `faillock` should also run without error and report per-user counters.",
+    "fr": "Exécutez `grep -rE '^[^#]*pam_faillock\\.so' /etc/pam.d/` ; au moins une ligne `auth` active doit référencer le module (généralement deux : une entrée `preauth` et une `authfail`). `faillock` devrait aussi s'exécuter sans erreur et afficher les compteurs par utilisateur."
+  },
+  "logs": {
+    "en": "Tracked failures and lockouts appear in `/var/log/auth.log` (Debian/Ubuntu). Per-user state is shown by `faillock --user <name>` and cleared with `faillock --user <name> --reset`.",
+    "fr": "Les échecs suivis et les verrouillages apparaissent dans `/var/log/auth.log` (Debian/Ubuntu). L'état par utilisateur s'affiche avec `faillock --user <nom>` et se réinitialise avec `faillock --user <nom> --reset`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `pam_faillock` resource to enable the module: it inserts the required `preauth`/`authfail` lines into the auth stack through the distro's PAM tooling (`pam-auth-update` on Debian/Ubuntu) so the configuration is correct and persistent across PAM updates.",
+    "fr": "`pavois harden apply` utilise la ressource `pam_faillock` pour activer le module : elle insère les lignes `preauth`/`authfail` requises dans la pile auth via l'outillage PAM de la distribution (`pam-auth-update` sur Debian/Ubuntu) afin que la configuration soit correcte et persistante au fil des mises à jour de PAM."
+  },
+  "impact": {
+    "en": "A misplaced or duplicated `pam_faillock.so` line can lock out legitimate users, or even all of them, and an overly tight threshold enables trivial denial-of-service by spoofing failures against known usernames. **Precautions:** keep a root/console session open while editing PAM, validate login from a second terminal before disconnecting, set a reasonable `deny`/`unlock_time`, and keep `faillock --reset` handy to recover a locked account.",
+    "fr": "Une ligne `pam_faillock.so` mal placée ou dupliquée peut verrouiller des utilisateurs légitimes, voire tous, et un seuil trop strict permet un déni de service trivial en simulant des échecs sur des noms d'utilisateur connus. **Précautions :** gardez une session root/console ouverte pendant l'édition de PAM, validez la connexion depuis un second terminal avant de vous déconnecter, fixez un `deny`/`unlock_time` raisonnable, et gardez `faillock --reset` à portée pour récupérer un compte verrouillé."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

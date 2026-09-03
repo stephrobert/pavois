@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-vm-mmap_min_addr",
+  "title": {
+    "en": "Prevent applications from mapping low portion of virtual memory",
+    "fr": "Empêcher les applications de mapper la portion basse de la mémoire virtuelle"
+  },
+  "summary": {
+    "en": "Reserves the low **64 KiB** of virtual memory so processes cannot `mmap` near address **0**, by setting `vm.mmap_min_addr=65536`.",
+    "fr": "Réserve les 64 **Kio** bas de la mémoire virtuelle pour empêcher les processus de `mmap`er près de l'adresse **0**, via `vm.mmap_min_addr=65536`."
+  },
+  "rationale": {
+    "en": "The `vm.mmap_min_addr` parameter specifies the **minimum virtual address** a process is allowed to `mmap`. Leaving the low end of virtual memory mappable lets an attacker place controlled data at address **0**, turning otherwise harmless **kernel NULL-pointer dereference** bugs into reliable, exploitable privilege escalations. Reserving the first 64 KiB (`65536`) removes that mapping window and neutralizes a whole class of NULL-deref exploits.",
+    "fr": "Le paramètre `vm.mmap_min_addr` définit l'**adresse virtuelle minimale** qu'un processus peut `mmap`er. Laisser le bas de la mémoire virtuelle mappable permet à un attaquant de placer des données contrôlées à l'adresse **0**, transformant des bugs anodins de **déréférence de pointeur NULL dans le noyau** en escalades de privilèges exploitables de manière fiable. Réserver les 64 premiers Kio (`65536`) supprime cette fenêtre de mapping et neutralise toute une classe d'exploits NULL-deref."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** through `kernel_parameter('vm.mmap_min_addr')` (equivalent to `sysctl vm.mmap_min_addr`), not a `.conf` file. This is decisive: the runtime value is the merge of `/etc/sysctl.conf`, every `/etc/sysctl.d/*.conf` and `/run/sysctl.d/*.conf` drop-in, **plus** any in-flight override applied by `sysctl -w`. A file-based scanner can be fooled by a later drop-in or a manual override; reading the effective parameter cannot.",
+    "fr": "Pavois lit la **valeur noyau en vigueur** via `kernel_parameter('vm.mmap_min_addr')` (équivalent à `sysctl vm.mmap_min_addr`), pas un fichier `.conf`. C'est décisif : la valeur d'exécution est la fusion de `/etc/sysctl.conf`, de chaque drop-in `/etc/sysctl.d/*.conf` et `/run/sysctl.d/*.conf`, **plus** tout override appliqué à chaud par `sysctl -w`. Un scanner basé sur les fichiers peut être trompé par un drop-in postérieur ou une modification manuelle ; lire le paramètre effectif, non."
+  },
+  "verify": {
+    "en": "Run `sysctl vm.mmap_min_addr`. Expected output:\n\n```\nvm.mmap_min_addr = 65536\n```",
+    "fr": "Exécutez `sysctl vm.mmap_min_addr`. Sortie attendue :\n\n```\nvm.mmap_min_addr = 65536\n```"
+  },
+  "logs": {
+    "en": "There is no event log for a tunable; inspect its **current state** directly with `sysctl vm.mmap_min_addr`. To trace where the value comes from, use `sysctl --system 2>&1` (it prints each drop-in as it is applied) or grep the sources with `grep -r mmap_min_addr /etc/sysctl.conf /etc/sysctl.d/ /run/sysctl.d/`.",
+    "fr": "Un paramètre noyau n'a pas de journal d'événements ; inspectez son **état courant** directement avec `sysctl vm.mmap_min_addr`. Pour tracer son origine, utilisez `sysctl --system 2>&1` (chaque drop-in est affiché au moment de son application) ou recherchez les sources avec `grep -r mmap_min_addr /etc/sysctl.conf /etc/sysctl.d/ /run/sysctl.d/`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the **`sysctl`** resource to set `vm.mmap_min_addr` to `65536`. Running `pavois harden apply` writes the key to a Pavois-managed drop-in **and** applies it live (no reboot needed), so the effective value matches immediately.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource **`sysctl`** pour fixer `vm.mmap_min_addr` à `65536`. `pavois harden apply` écrit la clé dans un drop-in géré par Pavois **et** l'applique à chaud (aucun redémarrage requis), si bien que la valeur effective correspond immédiatement."
+  },
+  "impact": {
+    "en": "Very low risk on general-purpose servers: `65536` is the modern distribution default and reserving the low address space is transparent to normal applications. The rare exceptions are programs that legitimately map page **0** - notably **16-bit DOSEMU/dosbox**, **Wine** in some modes, or **QEMU/KVM** with certain guest setups - which need a lower value. Before applying broadly, confirm none of these workloads run on the host; if they do, grant the specific capability or relax the value only on that host rather than disabling the rule fleet-wide.",
+    "fr": "Risque très faible sur des serveurs généralistes : `65536` est la valeur par défaut des distributions modernes et réserver l'espace d'adressage bas est transparent pour les applications normales. Les rares exceptions sont les programmes qui mappent légitimement la page **0** : notamment **DOSEMU/dosbox 16 bits**, **Wine** dans certains modes, ou **QEMU/KVM** avec certaines configurations invitées, qui exigent une valeur plus basse. Avant un déploiement large, vérifiez qu'aucune de ces charges ne tourne sur l'hôte ; le cas échéant, accordez la capability spécifique ou abaissez la valeur uniquement sur cet hôte plutôt que de désactiver la règle sur tout le parc."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,11 +1,11 @@
 {
   "id": "ssh-use-directory-configuration",
   "supported_os": [
-    "almalinux9",
+    "fedora",
+    "rhel10",
     "rhel9"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "rhel9": "2.0.0"
   },
   "severity": "medium",
@@ -14,23 +14,30 @@
   "reboot_survivable": "yes",
   "norms": {},
   "check": [
-    "describe command('sshd -T') do",
-    "  its('stdout') { should match(/^remediation\\s+probably\\ already\\ happened,\\ '\\/etc\\/ssh\\/sshd_config\\.d\\/sshd_config_original\\.conf'\\ already\\ exists,\\ not\\ doing\\ anything\\.$/i) }",
+    "describe command('grep -iE \"^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\\\\.d/\\\\*\\\\.conf\" /etc/ssh/sshd_config') do",
+    "  its('stdout') { should match(/\\S/) }",
+    "end",
+    "describe directory('/etc/ssh/sshd_config.d') do",
+    "  it { should exist }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "mkdir -p /etc/ssh/sshd_config.d; grep -qiE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\\.d/\\*\\.conf' /etc/ssh/sshd_config || sed -i '1i Include /etc/ssh/sshd_config.d/*.conf' /etc/ssh/sshd_config; sshd -t",
+    "name": "sshd-include-dropin-dir",
+    "not_if": "grep -qiE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\\.d/\\*\\.conf' /etc/ssh/sshd_config",
+    "resource": "exec"
+  },
   "title": {
     "en": "Distribute the SSH Server configuration to multiple files in a config directory.",
     "fr": "Répartir la configuration du serveur SSH dans plusieurs fichiers d'un répertoire de configuration."
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Hardened `sshd` settings should live in **drop-in files** under `/etc/ssh/sshd_config.d/`, with the main `sshd_config` reduced to an `Include /etc/ssh/sshd_config.d/*.conf`. All other SSH hardening rules **assume drop-in directives are effective**, so this distributed layout has to be in place for them to work. Splitting configuration by purpose also makes hardening changes easier to **partition, review and merge** when benchmarks are updated, instead of repeatedly editing one monolithic file.",
-    "fr": "Les réglages `sshd` durcis doivent résider dans des **fichiers drop-in** sous `/etc/ssh/sshd_config.d/`, le `sshd_config` principal étant réduit à un `Include /etc/ssh/sshd_config.d/*.conf`. Toutes les autres règles de durcissement SSH **supposent que les directives drop-in sont effectives**, cette organisation distribuée doit donc être en place pour qu'elles fonctionnent. Découper la configuration par finalité facilite aussi le **partitionnement, la revue et la fusion** des changements de durcissement lors des mises à jour de référentiels, au lieu de modifier sans cesse un fichier monolithique."
-  },
   "summary": {
     "en": "Ensure `sshd` configuration is split into drop-in files under `/etc/ssh/sshd_config.d/`, pulled in by an `Include` in `sshd_config`.",
     "fr": "Garantir que la configuration `sshd` est répartie en fichiers drop-in sous `/etc/ssh/sshd_config.d/`, intégrés via un `Include` dans `sshd_config`."
+  },
+  "rationale": {
+    "en": "Hardened `sshd` settings should live in **drop-in files** under `/etc/ssh/sshd_config.d/`, with the main `sshd_config` reduced to an `Include /etc/ssh/sshd_config.d/*.conf`. All other SSH hardening rules **assume drop-in directives are effective**, so this distributed layout has to be in place for them to work. Splitting configuration by purpose also makes hardening changes easier to **partition, review and merge** when benchmarks are updated, instead of repeatedly editing one monolithic file.",
+    "fr": "Les réglages `sshd` durcis doivent résider dans des **fichiers drop-in** sous `/etc/ssh/sshd_config.d/`, le `sshd_config` principal étant réduit à un `Include /etc/ssh/sshd_config.d/*.conf`. Toutes les autres règles de durcissement SSH **supposent que les directives drop-in sont effectives**, cette organisation distribuée doit donc être en place pour qu'elles fonctionnent. Découper la configuration par finalité facilite aussi le **partitionnement, la revue et la fusion** des changements de durcissement lors des mises à jour de référentiels, au lieu de modifier sans cesse un fichier monolithique."
   },
   "check_note": {
     "en": "Pavois reads the **effective** `sshd -T` output rather than the file layout. This matters precisely because the directory model relies on `Include`: only the live daemon shows whether the drop-ins are actually being parsed and merged, which is exactly what file-based scanners (OVAL/oscap) miss. Note the pinned check string is an artifact inherited from the source benchmark's remediation message and is OS-specific to RHEL 9 / AlmaLinux 9; the substantive goal is a working `Include`-based drop-in directory.",
@@ -51,5 +58,7 @@
   "impact": {
     "en": "Reorganizing `sshd_config` is delicate: if the `Include` is missing, misplaced (it should appear early so drop-ins can override defaults), or a drop-in has a syntax error, the daemon may ignore your hardening or fail to reload, risking lockout. Always **back up** the original config, **validate with `sshd -t`** before reloading, prefer `reload` over `restart`, and keep a second root session open until you have confirmed access still works.",
     "fr": "Réorganiser `sshd_config` est délicat : si l'`Include` manque, est mal placé (il doit apparaître tôt pour que les drop-ins surchargent les valeurs par défaut) ou qu'un drop-in comporte une erreur de syntaxe, le démon peut ignorer votre durcissement ou échouer au rechargement, au risque d'un verrouillage. **Sauvegardez** toujours la configuration d'origine, **validez avec `sshd -t`** avant de recharger, préférez `reload` à `restart`, et gardez une seconde session root ouverte jusqu'à confirmation que l'accès fonctionne toujours."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

@@ -1,17 +1,17 @@
 {
   "id": "misc-no-forward-files",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -25,8 +25,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "7.2.9",
-      "7.2.10"
+      "7.2.10",
+      "7.2.9"
     ]
   },
   "check": [
@@ -34,19 +34,22 @@
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "find /home /root -maxdepth 2 -name .forward 2>/dev/null\n# rm -f <path> per file after confirming the forwarding is not required\n",
+    "reason": "deleting user .forward files can drop mail forwarding, review each before removing",
+    "resource": "manual"
+  },
   "title": {
     "en": "Verify No .forward Files Exist",
     "fr": "Vérifier qu'aucun fichier .forward n'existe"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "A user's `~/.forward` file tells the local MTA (sendmail/Postfix) to redirect that user's mail elsewhere, to an external address, or to a **pipe** that runs an arbitrary command. This is a security risk twofold: it can silently exfiltrate sensitive mail outside the organization, and the pipe form lets a user (or an attacker who plants the file) execute commands on mail delivery. On hardened systems no `.forward` files should exist under `/root` or `/home`.",
-    "fr": "Le fichier `~/.forward` d'un utilisateur indique au MTA local (sendmail/Postfix) de rediriger le courrier de cet utilisateur ailleurs, vers une adresse externe, ou vers un **pipe** qui exécute une commande arbitraire. Le risque est double : exfiltration silencieuse de courrier sensible hors de l'organisation, et la forme pipe permet à un utilisateur (ou à un attaquant ayant déposé le fichier) d'exécuter des commandes lors de la livraison du courrier. Sur un système durci, aucun fichier `.forward` ne doit exister sous `/root` ni `/home`."
-  },
   "summary": {
     "en": "Ensures **no `.forward` file** exists under `/root` or `/home`, blocking unauthorized mail redirection and command-on-delivery.",
     "fr": "Garantit qu'**aucun fichier `.forward`** n'existe sous `/root` ou `/home`, bloquant la redirection de courrier non autorisée et l'exécution de commande à la livraison."
+  },
+  "rationale": {
+    "en": "A user's `~/.forward` file tells the local MTA (sendmail/Postfix) to redirect that user's mail elsewhere, to an external address, or to a **pipe** that runs an arbitrary command. This is a security risk twofold: it can silently exfiltrate sensitive mail outside the organization, and the pipe form lets a user (or an attacker who plants the file) execute commands on mail delivery. On hardened systems no `.forward` files should exist under `/root` or `/home`.",
+    "fr": "Le fichier `~/.forward` d'un utilisateur indique au MTA local (sendmail/Postfix) de rediriger le courrier de cet utilisateur ailleurs, vers une adresse externe, ou vers un **pipe** qui exécute une commande arbitraire. Le risque est double : exfiltration silencieuse de courrier sensible hors de l'organisation, et la forme pipe permet à un utilisateur (ou à un attaquant ayant déposé le fichier) d'exécuter des commandes lors de la livraison du courrier. Sur un système durci, aucun fichier `.forward` ne doit exister sous `/root` ni `/home`."
   },
   "check_note": {
     "en": "Pavois runs a live `find` over `/root` and `/home` (staying on one filesystem via `-xdev`) for any file named `.forward`. Enumerating the actual files present on disk, rather than guessing from a fixed list of users, is what catches forward files in *any* home directory, including recently created accounts.",
@@ -67,5 +70,7 @@
   "impact": {
     "en": "**Risk if not applied:** mail can be silently exfiltrated and, via pipe forwards, arbitrary commands can run on delivery.\n\n**Precautions before applying:** some legitimate users intentionally forward mail (e.g. to a team alias). Confirm with the owner before deleting, and prefer a centrally managed alias in `/etc/aliases` over per-user `.forward`. Deleting a file in use only stops further redirection; it does not break the user's login or shell.",
     "fr": "**Risque si non appliqué :** le courrier peut être exfiltré silencieusement et, via les forwards par pipe, des commandes arbitraires peuvent s'exécuter à la livraison.\n\n**Précautions avant application :** certains utilisateurs légitimes redirigent volontairement leur courrier (par ex. vers un alias d'équipe). Confirmez avec le propriétaire avant de supprimer, et préférez un alias géré centralement dans `/etc/aliases` plutôt qu'un `.forward` par utilisateur. Supprimer un fichier en usage arrête seulement la redirection ultérieure ; cela ne casse pas la connexion ni le shell de l'utilisateur."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

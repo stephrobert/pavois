@@ -71,8 +71,8 @@ Once the first release is published, each release will ship a static binary per 
 there is nothing to generate: download, verify, scan.
 
 ```bash
-gh release download v0.1.0 --repo stephrobert/pavois \
-  --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
+gh release download --repo stephrobert/pavois \
+  --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'   # no tag: the latest release
 sha256sum --ignore-missing --check checksums.txt
 gh attestation verify pavois-linux-amd64 --repo stephrobert/pavois   # SLSA build provenance
 chmod +x pavois-linux-amd64
@@ -216,7 +216,7 @@ any OSCAL-aware GRC tool. Each control carries its evidence type and the qualifi
 
 ## 🗺️ Coverage
 
-Pavois audits the effective configuration of a running Linux host across 8 OS targets, and is
+Pavois audits the effective configuration of a running Linux host across 9 OS targets, and is
 explicit about its edges: some domains (firewall ruleset, log forwarding, MAC policy depth) are
 shallow today. The honest [coverage matrix](https://pavois.dev/en/handbook/coverage/) names what is
 deep and what is not.

@@ -1,0 +1,35 @@
+#!/bin/sh
+# pavois pre-push hook. Install with `mise run hooks:install`.
+#
+# It exists in the repository rather than only in .git/hooks because a control that lives on one
+# machine is a control that does not exist: it vanishes on the next clone, and no contributor ever
+# had it. Both halves below were previously local-only or unwired.
+#
+#   1. Refuse a direct push to `main`. Server-side branch protection needs the repo public (or
+#      GitHub Pro), so until #211 flips that, this is the interim block. It is deliberately first:
+#      a wrong-branch push is refused before spending any time on gates.
+#   2. Run `mise run prepush`: the offline gate set (build, tests, linters, gen:verify, lint:rules,
+#      validate:mappings, validate:i18n, then testplan --check). ~13s, deterministic, no target.
+#
+# Why not pre-commit's pre-push stage: installing it here would overwrite (1), and a hook that
+# silently drops a branch-protection guard to add a linter is a bad trade. One hook, both jobs.
+#
+# Skipping: `git push --no-verify` bypasses BOTH. If you need that routinely, the gate is too slow
+# and it should be made faster, not skipped — see the note in mise.toml [tasks.prepush].
+
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main)
+      echo "pre-push: direct push to 'main' is blocked. Open a PR from a feature branch." >&2
+      exit 1 ;;
+  esac
+done
+
+command -v mise >/dev/null 2>&1 || {
+  echo "pre-push: mise not on PATH — cannot run the gate. Install mise, or push with --no-verify" >&2
+  echo "          and be ready for CI to fail on what it would have caught." >&2
+  exit 1
+}
+
+echo "pre-push: running the offline gate (mise run prepush)…" >&2
+exec mise run prepush

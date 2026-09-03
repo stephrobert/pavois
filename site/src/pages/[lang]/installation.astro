@@ -1,5 +1,7 @@
 ---
+import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
+import { osLabel } from '../../lib/os';
 import Toc from '../../components/Toc.astro';
 import { languages, type Lang } from '../../i18n/ui';
 import { highlight } from '../../lib/markdown';
@@ -8,6 +10,11 @@ export function getStaticPaths() {
   return Object.keys(languages).map((lang) => ({ params: { lang } }));
 }
 const { lang } = Astro.params as { lang: Lang };
+// The OS list was hand-maintained here and had rotted: it still listed AlmaLinux 9 (a profile that
+// was consolidated into rhel9 and removed) and knew nothing of RHEL 10 or Ubuntu 26.04, which every
+// rule fiche has been advertising. A target appears here by EXISTING in the rule base.
+const rules = await getCollection('rules');
+const targets = [...new Set(rules.flatMap((r) => r.data.supported_os))].sort();
 const fr = lang === 'fr';
 
 const sections = [
@@ -24,8 +31,8 @@ const toc = sections.map((s) => ({ depth: 2, slug: s.slug, text: fr ? s.fr : s.e
 
 const title = fr ? 'Installation · Pavois' : 'Installation · Pavois';
 const desc = fr
-  ? 'Installer Pavois : télécharger un binaire signé (checksum + provenance SLSA) ou construire depuis les sources avec mise, le moteur CINC Auditor (natif ou Docker), les prérequis sudo/SSH, les OS supportés et les erreurs courantes.'
-  : 'Install Pavois: download a signed binary (checksum + SLSA provenance) or build from source with mise, the CINC Auditor engine (native or Docker), the sudo/SSH prerequisites, supported systems and common errors.';
+  ? 'Installer Pavois : construire depuis les sources avec mise (la seule voie aujourd’hui ; le binaire signé arrive avec la première release), le moteur CINC Auditor (natif ou Docker), les prérequis sudo/SSH, les OS supportés et les erreurs courantes.'
+  : 'Install Pavois: build from source with mise (the only path today; the signed binary ships with the first release), the CINC Auditor engine (native or Docker), the sudo/SSH prerequisites, supported systems and common errors.';
 const crumbs = [
   { name: 'Pavois', path: `/${lang}/` },
   { name: 'Installation', path: `/${lang}/installation/` },
@@ -38,7 +45,7 @@ const crumbs = [
     <p class="lede">{desc}</p>
   </div>
   <div class="wrap layout-doc">
-   <main>
+   <div class="doc-col">
     <div class="prose">
     <p class="muted">{fr
       ? 'Cette page couvre l’installation complète (binaire vérifié ou depuis les sources). Déjà installé ? Va directement au premier scan : '
@@ -59,10 +66,13 @@ const crumbs = [
         : ': for a remote target, Pavois uses your ~/.ssh/config and key, like oscap or lynis.'}</li>
     </ul>
 
-    <h2 id="binary">{fr ? 'Télécharger un binaire vérifié (recommandé)' : 'Download a verified binary (recommended)'}</h2>
+    <h2 id="binary">{fr ? 'Télécharger un binaire vérifié (pas encore disponible)' : 'Download a verified binary (not available yet)'}</h2>
+    <p class="warn-note">{fr
+      ? 'À ce jour, aucune release n’est publiée : les commandes ci-dessous ÉCHOUERONT. Elles documentent ce que la première release fournira. Aujourd’hui, la seule voie est la construction depuis les sources, ci-dessus.'
+      : 'No release is published today: the commands below WILL FAIL. They document what the first release will ship. The only path today is building from source, above.'}</p>
     <p>{fr
-      ? 'Une fois la première release publiée, chaque release fournit un binaire statique par plateforme et un checksums.txt. Le binaire est autoporté (le corpus de règles est embarqué) : télécharge, vérifie l’intégrité et la provenance, puis scanne.'
-      : 'Once the first release is published, each release ships a static binary per platform plus a checksums.txt. The binary is self-contained (the rule corpus is embedded): download, verify integrity and provenance, then scan.'}</p>
+      ? 'Chaque release fournira un binaire statique par plateforme et un checksums.txt. Le binaire sera autoporté (corpus de règles embarqué) : télécharger, vérifier l’intégrité et la provenance, puis scanner.'
+      : 'Each release will ship a static binary per platform plus a checksums.txt. The binary will be self-contained (rule corpus embedded): download, verify integrity and provenance, then scan.'}</p>
     <Fragment set:html={highlight(`gh release download v0.1.0 --repo stephrobert/pavois \\
   --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
 sha256sum --ignore-missing --check checksums.txt                     # ${fr ? 'intégrité' : 'integrity'}
@@ -104,18 +114,17 @@ mise run regen               # ${fr ? 'corpus .rb + OSCAL depuis docs/reference/
 
     <h2 id="os">{fr ? 'Systèmes supportés' : 'Supported systems'}</h2>
     <p>{fr
-      ? 'Le contrôle (poste de scan) tourne sous Linux ou macOS. Les cibles auditées couvrent 8 cibles/profils, un profil par OS :'
-      : 'The control host runs on Linux or macOS. Audited targets cover 8 OS targets/profiles, one profile per OS:'}</p>
+      ? `Le poste de scan tourne sous Linux ou macOS. Les cibles auditées couvrent ${targets.length} profils, un par OS :`
+      : `The control host runs on Linux or macOS. Audited targets cover ${targets.length} profiles, one per OS:`}</p>
     <ul class="oslist">
-      <li>Debian 12, Debian 13</li>
-      <li>Ubuntu 22.04, Ubuntu 24.04</li>
-      <li>RHEL 8, RHEL 9</li>
-      <li>AlmaLinux 9</li>
-      <li>Fedora</li>
+      {targets.map((os) => <li>{osLabel(os)}</li>)}
     </ul>
     <p class="muted">{fr
-      ? 'Choisis le profil de la cible, ex. '
-      : 'Pick the target profile, e.g. '}<code>--profile profiles/linux/debian12</code>.</p>
+      ? 'Le profil est auto-détecté depuis la cible : '
+      : 'The profile is auto-detected from the target: '}<code>--profile</code>
+      {fr
+        ? ' ne sert que pour un profil personnalisé. AlmaLinux et Rocky sont détectés comme RHEL de la même version.'
+        : ' is only needed for a custom profile. AlmaLinux and Rocky are detected as RHEL of the same version.'}</p>
 
     <h2 id="errors">{fr ? 'Erreurs courantes' : 'Common errors'}</h2>
     <p>{fr
@@ -142,7 +151,7 @@ mise run regen               # ${fr ? 'corpus .rb + OSCAL depuis docs/reference/
       <li><a href={`/${lang}/docs/`}>{fr ? 'Référence des commandes' : 'Command reference'}</a></li>
     </ul>
     </div>
-   </main>
+   </div>
    <Toc headings={toc} lang={lang} />
   </div>
 </Base>

@@ -1,0 +1,37 @@
+{
+  "id": "mount-dev-shm-nosuid",
+  "title": {
+    "en": "Add nosuid Option to /dev/shm",
+    "fr": "Ajouter l'option nosuid à /dev/shm"
+  },
+  "summary": {
+    "en": "Mounts the `/dev/shm` shared-memory tmpfs with the `nosuid` option so setuid/setgid bits on its files are ignored.",
+    "fr": "Monte le tmpfs de mémoire partagée `/dev/shm` avec l'option `nosuid` afin que les bits setuid/setgid de ses fichiers soient ignorés."
+  },
+  "rationale": {
+    "en": "The presence of **SUID** and **SGID** executables must be tightly controlled. `/dev/shm` is a world-writable temporary (shared-memory) filesystem where users should never be able to run setuid/setgid programs. Mounting it with `nosuid` makes the kernel ignore those bits, so a SUID-root binary copied there cannot be used to escalate privileges.",
+    "fr": "La présence d'exécutables **SUID** et **SGID** doit être strictement contrôlée. `/dev/shm` est un système de fichiers temporaire (mémoire partagée) accessible en écriture à tous, où les utilisateurs ne devraient jamais pouvoir exécuter de programmes setuid/setgid. Le monter avec `nosuid` force le noyau à ignorer ces bits, de sorte qu'un binaire SUID-root copié à cet endroit ne puisse servir à élever les privilèges."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** mount via `mount('/dev/shm')` and asserts the resolved options include `nosuid`. Since `/dev/shm` is mounted by `systemd` (`dev-shm.mount`) and may be absent from `/etc/fstab`, only the **live** mount table shows its true options, file-based scanning can pass falsely or miss the mount.",
+    "fr": "Pavois lit le montage **effectif** via `mount('/dev/shm')` et vérifie que les options résolues incluent `nosuid`. Comme `/dev/shm` est monté par `systemd` (`dev-shm.mount`) et peut être absent d'`/etc/fstab`, seule la table de montage **réelle** montre ses options effectives, l'analyse basée sur les fichiers peut réussir à tort ou manquer le montage."
+  },
+  "verify": {
+    "en": "Run `findmnt /dev/shm` (or `findmnt -no OPTIONS /dev/shm`) and confirm `nosuid` is present, e.g. `rw,nosuid,nodev,noexec,relatime`.",
+    "fr": "Exécutez `findmnt /dev/shm` (ou `findmnt -no OPTIONS /dev/shm`) et vérifiez la présence de `nosuid`, par exemple `rw,nosuid,nodev,noexec,relatime`."
+  },
+  "logs": {
+    "en": "Use `findmnt /dev/shm` for active options and `systemctl show dev-shm.mount -p Options` for the systemd value. A SUID binary executed from a `nosuid` mount simply runs without elevated privileges; auditd `EXECVE`/`SYSCALL` records in `/var/log/audit/audit.log` can corroborate the attempt.",
+    "fr": "Utilisez `findmnt /dev/shm` pour les options actives et `systemctl show dev-shm.mount -p Options` pour la valeur systemd. Un binaire SUID exécuté depuis un montage `nosuid` s'exécute simplement sans privilèges élevés ; les enregistrements auditd `EXECVE`/`SYSCALL` dans `/var/log/audit/audit.log` peuvent corroborer la tentative."
+  },
+  "remediation_note": {
+    "en": "This rule has **no automated harden plan**: apply it **manually**. Add an explicit `/dev/shm` entry to `/etc/fstab` such as `tmpfs /dev/shm tmpfs defaults,nodev,nosuid,noexec 0 0`, then `mount -o remount /dev/shm` (or `systemctl restart dev-shm.mount`) and verify with `findmnt /dev/shm`.",
+    "fr": "Cette règle **n'a pas de plan de durcissement automatisé** : appliquez-la **manuellement**. Ajoutez une entrée `/dev/shm` explicite dans `/etc/fstab`, par ex. `tmpfs /dev/shm tmpfs defaults,nodev,nosuid,noexec 0 0`, puis `mount -o remount /dev/shm` (ou `systemctl restart dev-shm.mount`) et vérifiez avec `findmnt /dev/shm`."
+  },
+  "impact": {
+    "en": "Without `nosuid`, a SUID-root binary planted in `/dev/shm` could be used for privilege escalation. Applying `nosuid` is **low risk**: legitimate shared-memory use does not rely on setuid files. **Precaution:** the `remount` is non-disruptive; combine it with `nodev` and `noexec` for full hardening of this tmpfs and confirm with `findmnt` afterwards.",
+    "fr": "Sans `nosuid`, un binaire SUID-root déposé dans `/dev/shm` pourrait servir à une élévation de privilèges. Appliquer `nosuid` présente un **risque faible** : l'usage légitime de la mémoire partagée ne repose pas sur des fichiers setuid. **Précaution :** le `remount` est sans interruption ; combinez-le avec `nodev` et `noexec` pour un durcissement complet de ce tmpfs et confirmez ensuite avec `findmnt`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

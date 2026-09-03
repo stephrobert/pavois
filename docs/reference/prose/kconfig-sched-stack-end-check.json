@@ -1,0 +1,37 @@
+{
+  "id": "kconfig-sched-stack-end-check",
+  "title": {
+    "en": "Detect stack corruption on calls to schedule()",
+    "fr": "Détecter la corruption de pile lors des appels à schedule()"
+  },
+  "summary": {
+    "en": "Requires the kernel to be built with **`CONFIG_SCHED_STACK_END_CHECK=y`** so the end-of-stack canary is verified on every call to `schedule()`.",
+    "fr": "Exige que le noyau soit compilé avec **`CONFIG_SCHED_STACK_END_CHECK=y`** afin que le canari de fin de pile soit vérifié à chaque appel de `schedule()`."
+  },
+  "rationale": {
+    "en": "This ensures no erroneous behaviour occurs which could result in data corruption or a sporadic crash at a later stage once the region is examined. `CONFIG_SCHED_STACK_END_CHECK` makes the kernel verify the **stack canary at the end of the kernel stack** every time `schedule()` is called; a deep recursion or a stack-overflowing exploit is caught immediately with a panic, turning a silent **kernel-stack overflow** (a corruption primitive attackers leverage) into a clean, contained failure.",
+    "fr": "Ceci garantit qu'aucun comportement erroné ne survient, qui pourrait entraîner une corruption de données ou un plantage sporadique ultérieur une fois la région examinée. `CONFIG_SCHED_STACK_END_CHECK` fait vérifier au noyau le **canari en fin de pile noyau** à chaque appel de `schedule()` ; une récursion profonde ou un exploit débordant la pile est détecté immédiatement par une panic, transformant un **débordement de pile noyau** silencieux (primitive de corruption exploitée par les attaquants) en une défaillance propre et contenue."
+  },
+  "check_note": {
+    "en": "Pavois reads the build options of the **running** kernel, `grep '^CONFIG_SCHED_STACK_END_CHECK=' /boot/config-$(uname -r)` or `zcat /proc/config.gz`, and requires `y`. Reading the live kernel's own config (keyed on `uname -r`) reflects exactly the booted kernel, which a package-name guess or generic file cannot.",
+    "fr": "Pavois lit les options de compilation du noyau **en cours d'exécution**, `grep '^CONFIG_SCHED_STACK_END_CHECK=' /boot/config-$(uname -r)` ou `zcat /proc/config.gz`, et exige `y`. Lire la configuration du noyau réellement démarré (indexée sur `uname -r`) reflète exactement le noyau démarré, ce qu'une supposition de nom de paquet ou un fichier générique ne peut faire."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_SCHED_STACK_END_CHECK=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep CONFIG_SCHED_STACK_END_CHECK`). Expected output:\n\n```\nCONFIG_SCHED_STACK_END_CHECK=y\n```",
+    "fr": "Exécutez `grep '^CONFIG_SCHED_STACK_END_CHECK=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep CONFIG_SCHED_STACK_END_CHECK`). Sortie attendue :\n\n```\nCONFIG_SCHED_STACK_END_CHECK=y\n```"
+  },
+  "logs": {
+    "en": "No routine log entry. When the check fires, the kernel logs `Thread overran stack, or stack corrupted` and panics, visible in `dmesg` / `journalctl -k` and any crash dump. Confirm the build flag with `grep CONFIG_SCHED_STACK_END_CHECK /boot/config-$(uname -r)`.",
+    "fr": "Aucune entrée de journal courante. Quand le contrôle se déclenche, le noyau journalise `Thread overran stack, or stack corrupted` puis panique, visible dans `dmesg` / `journalctl -k` et tout vidage de plantage. Confirmez l'option de compilation avec `grep CONFIG_SCHED_STACK_END_CHECK /boot/config-$(uname -r)`."
+  },
+  "remediation_note": {
+    "en": "This is a **kernel build-time option**, so Pavois ships no automated harden step for it. It is satisfied by booting a distribution kernel compiled with `CONFIG_SCHED_STACK_END_CHECK=y` (the case for current Debian/Ubuntu/RHEL hardened kernels); a custom kernel must be rebuilt.",
+    "fr": "Il s'agit d'une **option de compilation du noyau**, Pavois ne fournit donc aucune étape de durcissement automatique. Elle est satisfaite en démarrant un noyau de distribution compilé avec `CONFIG_SCHED_STACK_END_CHECK=y` (le cas des noyaux durcis Debian/Ubuntu/RHEL actuels) ; un noyau personnalisé doit être recompilé."
+  },
+  "impact": {
+    "en": "If absent, a kernel-stack overflow can corrupt adjacent memory silently and may be weaponized for exploitation instead of failing safe. **Precautions:** the per-`schedule()` check is extremely cheap and has no functional impact, so enabling it via a compliant kernel is low-risk. The only visible effect is that genuine stack overruns now produce an immediate panic rather than undefined behaviour, which is the desired outcome. No special lockout concern beyond the normal kernel switch.",
+    "fr": "En son absence, un débordement de pile noyau peut corrompre silencieusement la mémoire adjacente et être instrumentalisé pour une exploitation au lieu d'échouer proprement. **Précautions :** la vérification à chaque `schedule()` est extrêmement peu coûteuse et sans impact fonctionnel ; l'activer via un noyau conforme présente un faible risque. Le seul effet visible est que les vrais débordements de pile produisent désormais une panic immédiate plutôt qu'un comportement indéfini, résultat recherché. Aucune préoccupation de blocage particulière au-delà du changement de noyau habituel."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -5,6 +5,24 @@ All notable changes to the **published baseline** (the standard `pavois oscal` e
 pavois tool. Format follows [Keep a Changelog](https://keepachangelog.com); versioning is semantic
 (MAJOR = controls removed / ids renamed, MINOR = controls or mappings added, PATCH = fixes).
 
+## [0.2.0] — 2026-07-15
+
+### Added
+- **Two new OS targets**: RHEL 10 (`rhel10`) and Ubuntu 26.04 (`ubuntu2604`), bringing the corpus
+  to **789 OS-neutral controls across 9 Linux targets**. Their CIS numbers are inherited from a
+  sibling benchmark (RHEL 9 and Ubuntu 24.04 respectively) until a dedicated benchmark ships; the
+  inheritance is declared in `docs/reference/norms.yml` and shown, marked as inherited, on the CIS
+  standard page. This is a MINOR bump: controls and OS profiles were added, no control id was
+  removed or renamed.
+
+### Changed
+- **AlmaLinux 9 is no longer a separate rendered profile**: AlmaLinux and Rocky 9 now auto-detect
+  to `rhel9` (the control set is identical, and el9 kconfig uses `CONFIG_MITIGATION_*`). No neutral
+  control **id** was removed, so this stays MINOR: the `almalinux9` profile was a rendering of the
+  same ids, not a distinct set of controls.
+- OSCAL catalog + profiles regenerated from the reference (`pavois oscal`), now 789 controls and 9
+  per-OS profiles, stamped `pavois-baseline 0.2.0`.
+
 ## [0.1.0] — 2026-06-26
 
 Initial public baseline.

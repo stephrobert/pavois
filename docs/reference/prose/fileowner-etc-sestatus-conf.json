@@ -1,0 +1,37 @@
+{
+  "id": "fileowner-etc-sestatus-conf",
+  "title": {
+    "en": "Verify User Who Owns /etc/sestatus.conf File",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier /etc/sestatus.conf"
+  },
+  "summary": {
+    "en": "Ensures the SELinux status-reporting config `/etc/sestatus.conf` is owned by `root` (UID 0).",
+    "fr": "Garantit que la configuration de rapport d'état SELinux `/etc/sestatus.conf` appartient à `root` (UID 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/sestatus.conf` file controls which files and processes the `sestatus -v` command reports on when verifying SELinux state. If a non-root account owns it, that user could alter the output an administrator relies on to confirm SELinux is enforcing, masking a weakened security context. Setting **`root` (UID 0)** as the owner ensures exclusive privileged control over this SELinux-related configuration.",
+    "fr": "Le fichier `/etc/sestatus.conf` contrôle quels fichiers et processus la commande `sestatus -v` rapporte lors de la vérification de l'état SELinux. Si un compte non-root le possède, cet utilisateur pourrait altérer la sortie sur laquelle un administrateur se fie pour confirmer que SELinux est en mode enforcing, masquant un contexte de sécurité affaibli. Définir **`root` (UID 0)** comme propriétaire garantit un contrôle privilégié exclusif de cette configuration liée à SELinux."
+  },
+  "check_note": {
+    "en": "Pavois inspects the **live filesystem** with the InSpec `file('/etc/sestatus.conf')` resource and asserts `uid == 0`, guarded by `only_if`. Reading the real inode owner reflects the **effective** on-disk state, catching a `chown` that could let a user manipulate SELinux status reporting.",
+    "fr": "Pavois inspecte le **système de fichiers réel** via la ressource InSpec `file('/etc/sestatus.conf')` et vérifie `uid == 0`, protégé par `only_if`. Lire le propriétaire réel de l'inode reflète l'état **effectif** sur le disque et détecte un `chown` qui permettrait à un utilisateur de manipuler le rapport d'état SELinux."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u %n' /etc/sestatus.conf`. Expected output: `root 0 /etc/sestatus.conf`. The numeric `0` confirms root ownership.",
+    "fr": "Exécutez `stat -c '%U %u %n' /etc/sestatus.conf`. Sortie attendue : `root 0 /etc/sestatus.conf`. Le `0` numérique confirme la propriété par root."
+  },
+  "logs": {
+    "en": "Watch the file with `auditctl -w /etc/sestatus.conf -p wa -k selinux-conf` and inspect `/var/log/audit/audit.log` (`grep 'key=\"selinux-conf\"'`). The effective SELinux mode itself is shown by `sestatus` and `getenforce`; AVC denials appear in the audit log (`grep AVC`).",
+    "fr": "Surveillez le fichier avec `auditctl -w /etc/sestatus.conf -p wa -k selinux-conf` et inspectez `/var/log/audit/audit.log` (`grep 'key=\"selinux-conf\"'`). Le mode SELinux effectif est affiché par `sestatus` et `getenforce` ; les refus AVC apparaissent dans le journal d'audit (`grep AVC`)."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped for this rule. Apply it manually with `chown root /etc/sestatus.conf` (run as root or via `sudo`); the file should remain group `root` and mode `0644`.",
+    "fr": "Aucune remédiation automatisée n'est fournie pour cette règle. Appliquez-la manuellement avec `chown root /etc/sestatus.conf` (en root ou via `sudo`) ; le fichier doit rester en groupe `root` et mode `0644`."
+  },
+  "impact": {
+    "en": "A non-root owner could manipulate what the SELinux status check reports, hiding a degraded posture. **Risk of applying:** none, `/etc/sestatus.conf` only influences `sestatus -v` output; `chown root` does not change SELinux enforcement or break any service.",
+    "fr": "Un propriétaire non-root pourrait manipuler ce que le contrôle d'état SELinux rapporte, masquant une posture dégradée. **Risque à l'application :** nul, `/etc/sestatus.conf` n'influence que la sortie de `sestatus -v` ; `chown root` ne change pas l'application de SELinux ni ne casse de service."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

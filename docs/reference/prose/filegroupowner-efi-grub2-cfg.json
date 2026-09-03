@@ -1,0 +1,37 @@
+{
+  "id": "filegroupowner-efi-grub2-cfg",
+  "title": {
+    "en": "Verify the UEFI Boot Loader grub.cfg Group Ownership",
+    "fr": "Vérifier le groupe propriétaire du grub.cfg du chargeur d'amorçage UEFI"
+  },
+  "summary": {
+    "en": "Ensures the UEFI GRUB 2 config `/boot/efi/EFI/redhat/grub.cfg` is group-owned by **`root` (gid 0)**.",
+    "fr": "Garantit que la configuration GRUB 2 UEFI `/boot/efi/EFI/redhat/grub.cfg` est détenue par le groupe **`root` (gid 0)**."
+  },
+  "rationale": {
+    "en": "The UEFI GRUB 2 configuration file `/boot/efi/EFI/redhat/grub.cfg` controls how the system boots, including kernel command-line parameters and the boot-loader password. The `root` group is highly privileged, and the group-owner of this file should have no access privileges anyway. If a non-`root` group owns it, members of that group could read boot parameters to spot security weaknesses, or, combined with loose permissions, alter the boot configuration and **compromise the system before any OS-level control loads**.",
+    "fr": "Le fichier de configuration GRUB 2 UEFI `/boot/efi/EFI/redhat/grub.cfg` détermine la façon dont le système démarre, y compris les paramètres de ligne de commande du noyau et le mot de passe du chargeur d'amorçage. Le groupe `root` est hautement privilégié et le groupe propriétaire de ce fichier ne devrait de toute façon disposer d'aucun privilège d'accès. Si un groupe autre que `root` le détient, ses membres pourraient lire les paramètres de démarrage pour repérer des faiblesses de sécurité ou, combiné à des permissions trop ouvertes, modifier la configuration d'amorçage et **compromettre le système avant le chargement de tout contrôle au niveau de l'OS**."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** group owner of `/boot/efi/EFI/redhat/grub.cfg` on the live system via the InSpec `file` resource and asserts `gid == 0`. It inspects the actual inode metadata as the kernel sees it on the mounted EFI System Partition, not a packaging default, so post-install drift is caught. The check is skipped (`only_if`) on systems where the file is absent (e.g. BIOS boot).",
+    "fr": "Pavois lit le groupe propriétaire **effectif** de `/boot/efi/EFI/redhat/grub.cfg` sur le système en cours d'exécution via la ressource InSpec `file` et vérifie `gid == 0`. Il inspecte les métadonnées réelles de l'inode telles que le noyau les voit sur la partition système EFI montée, et non une valeur par défaut de paquet : une dérive après installation est donc détectée. Le contrôle est ignoré (`only_if`) sur les systèmes où le fichier est absent (par exemple en amorçage BIOS)."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /boot/efi/EFI/redhat/grub.cfg`. Expected output: **`root 0`**. Any other group name or non-zero gid means the rule is not applied.",
+    "fr": "Exécutez `stat -c '%G %g' /boot/efi/EFI/redhat/grub.cfg`. Sortie attendue : **`root 0`**. Tout autre nom de groupe ou gid non nul signifie que la règle n'est pas appliquée."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default. Watch the file with auditd: `auditctl -w /boot/efi/EFI/redhat/grub.cfg -p wa -k grub-perms`, then inspect `grep 'key=\"grub-perms\"' /var/log/audit/audit.log`. Boot-loader activity is visible in the kernel ring buffer (`dmesg`) and `journalctl -b` after a reboot.",
+    "fr": "Les changements de propriété ne sont pas journalisés par défaut. Surveillez le fichier avec auditd : `auditctl -w /boot/efi/EFI/redhat/grub.cfg -p wa -k grub-perms`, puis examinez `grep 'key=\"grub-perms\"' /var/log/audit/audit.log`. L'activité du chargeur d'amorçage est visible dans le tampon noyau (`dmesg`) et `journalctl -b` après un redémarrage."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is defined for this rule, so it must be applied **manually**. Restore the correct group ownership with `chgrp root /boot/efi/EFI/redhat/grub.cfg`.",
+    "fr": "Aucune remédiation automatique n'est définie pour cette règle ; elle doit donc être appliquée **manuellement**. Rétablissez le bon groupe propriétaire avec `chgrp root /boot/efi/EFI/redhat/grub.cfg`."
+  },
+  "impact": {
+    "en": "A non-`root` group owner on the UEFI `grub.cfg` exposes boot parameters and, with loose permissions, the boot configuration itself, a pre-OS attack surface. The fix is low-risk: `chgrp root` only changes group ownership, not content, and does not affect booting. **Precaution:** the EFI System Partition is usually VFAT, which does not store Unix ownership; `chgrp` then takes effect via mount options (`gid=`/`umask=` in `/etc/fstab`). Re-running `grub2-mkconfig` regenerates the file and may reset ownership, so re-apply afterward. Do not alter the file's content here, only ownership.",
+    "fr": "Un groupe propriétaire autre que `root` sur le `grub.cfg` UEFI expose les paramètres de démarrage et, avec des permissions trop ouvertes, la configuration d'amorçage elle-même, une surface d'attaque antérieure à l'OS. Le correctif présente peu de risques : `chgrp root` ne change que la propriété de groupe, pas le contenu, et n'affecte pas le démarrage. **Précaution :** la partition système EFI est généralement en VFAT, qui ne stocke pas la propriété Unix ; `chgrp` prend alors effet via les options de montage (`gid=`/`umask=` dans `/etc/fstab`). Réexécuter `grub2-mkconfig` régénère le fichier et peut réinitialiser la propriété : réappliquez ensuite. Ne modifiez pas le contenu du fichier ici, uniquement la propriété."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

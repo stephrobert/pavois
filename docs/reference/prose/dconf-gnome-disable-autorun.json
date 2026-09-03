@@ -1,0 +1,37 @@
+{
+  "id": "dconf-gnome-disable-autorun",
+  "title": {
+    "en": "Disable GNOME3 Automount running",
+    "fr": "Désactiver l'exécution automatique (autorun) GNOME3"
+  },
+  "summary": {
+    "en": "Disables GNOME autorun of software on inserted removable media by setting `autorun-never=true` and locking the key.",
+    "fr": "Désactive l'exécution automatique par GNOME des logiciels présents sur les supports amovibles insérés en définissant `autorun-never=true` et en verrouillant la clé."
+  },
+  "rationale": {
+    "en": "GNOME's autorun feature can execute software shipped on removable media when it is inserted, allowing an attacker to run code on the system simply by getting a user to plug in a crafted device. Setting `autorun-never=true` and locking it disables this automatic execution. Legitimate auto-run convenience is lost, which is an acceptable trade-off for the reduced risk.",
+    "fr": "La fonction autorun de GNOME peut exécuter des logiciels présents sur un support amovible lors de son insertion, permettant à un attaquant d'exécuter du code sur le système simplement en incitant un utilisateur à brancher un périphérique piégé. Définir `autorun-never=true` et le verrouiller désactive cette exécution automatique. On perd le confort de l'exécution automatique légitime, compromis acceptable face à la réduction du risque."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective** dconf state: the last definition of `autorun-never` across `/etc/dconf/db/*.d/*` must resolve to `true`, **and** the key `/org/gnome/desktop/media-handling/autorun-never` must appear in a dconf **lock** file. Evaluating resolved precedence (last drop-in wins) plus the lock matches how dconf actually computes the value, catching a later drop-in that re-enables autorun or unlocks the key.",
+    "fr": "Pavois vérifie l'état dconf **effectif** : la dernière définition de `autorun-never` parmi `/etc/dconf/db/*.d/*` doit valoir `true`, **et** la clé `/org/gnome/desktop/media-handling/autorun-never` doit figurer dans un fichier de **verrou** dconf. Évaluer la précédence résolue (le dernier drop-in l'emporte) plus le verrou correspond à la façon dont dconf calcule réellement la valeur, détectant un drop-in ultérieur réactivant l'autorun ou déverrouillant la clé."
+  },
+  "verify": {
+    "en": "After `dconf update`, run `gsettings get org.gnome.desktop.media-handling autorun-never` (should print `true`) and confirm the key is locked by checking `/etc/dconf/db/*/locks/*` for `/org/gnome/desktop/media-handling/autorun-never`.",
+    "fr": "Après `dconf update`, exécutez `gsettings get org.gnome.desktop.media-handling autorun-never` (doit afficher `true`) et confirmez que la clé est verrouillée en cherchant `/org/gnome/desktop/media-handling/autorun-never` dans `/etc/dconf/db/*/locks/*`."
+  },
+  "logs": {
+    "en": "dconf has no runtime log; verify with `gsettings get org.gnome.desktop.media-handling autorun-never` and inspect `/etc/dconf/db/*.d/*` and `/etc/dconf/db/*/locks/*`. Media events can be watched with `journalctl -u udisks2` or `journalctl -f` while inserting a device.",
+    "fr": "dconf n'a pas de journal à l'exécution ; vérifiez avec `gsettings get org.gnome.desktop.media-handling autorun-never` et inspectez `/etc/dconf/db/*.d/*` et `/etc/dconf/db/*/locks/*`. Les événements de support s'observent avec `journalctl -u udisks2` ou `journalctl -f` lors de l'insertion d'un périphérique."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `dconf` resource to write `autorun-never=true` into a system dconf profile drop-in, add `/org/gnome/desktop/media-handling/autorun-never` to a `locks` file, and run `dconf update`. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `dconf` pour écrire `autorun-never=true` dans un drop-in de profil dconf système, ajouter `/org/gnome/desktop/media-handling/autorun-never` à un fichier `locks`, et exécuter `dconf update`. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Applies only to GNOME desktops; irrelevant on headless servers. Low-risk and low-severity: it stops media-resident apps from auto-launching but does not block users from manually running them. Best applied together with `automount=false` and `automount-open=false` for defense in depth. No reboot is required; `dconf update` is sufficient.",
+    "fr": "Ne s'applique qu'aux bureaux GNOME ; sans objet sur les serveurs sans interface graphique. Peu risqué et de faible sévérité : empêche le lancement automatique des applications présentes sur le support sans bloquer leur exécution manuelle par l'utilisateur. À appliquer idéalement avec `automount=false` et `automount-open=false` pour une défense en profondeur. Aucun redémarrage n'est requis ; `dconf update` suffit."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

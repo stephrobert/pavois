@@ -1,17 +1,17 @@
 {
   "id": "mount-dev-shm-nodev",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -37,21 +37,29 @@
   "check": [
     "describe mount('/dev/shm') do",
     "  its('options') { should include 'nodev' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /dev/shm 2>/dev/null; grep -hsE '[[:space:]]/dev/shm[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /dev/shm 2>/dev/null) 2>/dev/null; } | grep -ow 'nodev'\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "device": "tmpfs",
+    "fstype": "tmpfs",
+    "mount_point": "/dev/shm",
+    "option": "nodev",
+    "resource": "mount"
+  },
   "title": {
     "en": "Add nodev Option to /dev/shm",
     "fr": "Ajouter l'option nodev à /dev/shm"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/dev/shm` is a world-writable `tmpfs` used for shared memory. The **only** legitimate place for device files is `/dev` on the root partition (the sole exception being chroot jails). Mounting `/dev/shm` with `nodev` makes the kernel ignore any character or block **device nodes** created there, preventing an attacker from planting a device file (e.g. a copy of `/dev/mem` or a disk device) to bypass access controls.",
-    "fr": "`/dev/shm` est un `tmpfs` accessible en écriture à tous, utilisé pour la mémoire partagée. Le **seul** emplacement légitime pour les fichiers de périphérique est `/dev` sur la partition racine (la seule exception étant les chroot). Monter `/dev/shm` avec `nodev` force le noyau à ignorer tout **nœud de périphérique** caractère ou bloc créé à cet endroit, empêchant un attaquant de déposer un fichier de périphérique (par ex. une copie de `/dev/mem` ou d'un disque) pour contourner les contrôles d'accès."
-  },
   "summary": {
     "en": "Mounts the `/dev/shm` shared-memory tmpfs with the `nodev` option so device files there are not interpreted.",
     "fr": "Monte le tmpfs de mémoire partagée `/dev/shm` avec l'option `nodev` afin que les fichiers de périphérique qui s'y trouvent ne soient pas interprétés."
+  },
+  "rationale": {
+    "en": "`/dev/shm` is a world-writable `tmpfs` used for shared memory. The **only** legitimate place for device files is `/dev` on the root partition (the sole exception being chroot jails). Mounting `/dev/shm` with `nodev` makes the kernel ignore any character or block **device nodes** created there, preventing an attacker from planting a device file (e.g. a copy of `/dev/mem` or a disk device) to bypass access controls.",
+    "fr": "`/dev/shm` est un `tmpfs` accessible en écriture à tous, utilisé pour la mémoire partagée. Le **seul** emplacement légitime pour les fichiers de périphérique est `/dev` sur la partition racine (la seule exception étant les chroot). Monter `/dev/shm` avec `nodev` force le noyau à ignorer tout **nœud de périphérique** caractère ou bloc créé à cet endroit, empêchant un attaquant de déposer un fichier de périphérique (par ex. une copie de `/dev/mem` ou d'un disque) pour contourner les contrôles d'accès."
   },
   "check_note": {
     "en": "Pavois reads the **effective** mount via `mount('/dev/shm')` and asserts the resolved options include `nodev`. Because `/dev/shm` is mounted by `systemd` (`dev-shm.mount`) and not always present in `/etc/fstab`, only the **live** mount table reliably shows its real options, a file-based scanner reading `fstab` could report a false pass or miss the mount entirely.",
@@ -72,5 +80,7 @@
   "impact": {
     "en": "Without `nodev`, an attacker with write access to `/dev/shm` could create device nodes to read or write raw memory/disk and bypass file permissions. Applying `nodev` is **low risk**: no normal application creates device files in shared memory. **Precaution:** a `remount` of `/dev/shm` is non-disruptive, but note that processes already holding shared-memory segments are unaffected; verify with `findmnt` after the change.",
     "fr": "Sans `nodev`, un attaquant ayant accès en écriture à `/dev/shm` pourrait créer des nœuds de périphérique pour lire ou écrire la mémoire/le disque brut et contourner les permissions de fichiers. Appliquer `nodev` présente un **risque faible** : aucune application normale ne crée de fichiers de périphérique en mémoire partagée. **Précaution :** un `remount` de `/dev/shm` est sans interruption, mais notez que les processus détenant déjà des segments de mémoire partagée ne sont pas affectés ; vérifiez avec `findmnt` après le changement."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

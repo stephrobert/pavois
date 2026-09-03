@@ -1,0 +1,33 @@
+{
+  "id": "logindefs-sha-crypt-rounds",
+  "title": {
+    "en": "Set SHA_CRYPT minimum rounds in login.defs",
+    "fr": "Définir le nombre minimal de tours SHA_CRYPT dans login.defs"
+  },
+  "summary": {
+    "en": "Raise `SHA_CRYPT_MIN_ROUNDS` in `/etc/login.defs` to at least 10000 (Pavois writes 65536), so that SHA-256/SHA-512 password hashes are computed with far more iterations than the glibc default of 5000. Each additional round multiplies the cost of an offline brute-force attack on a stolen `/etc/shadow`.",
+    "fr": "Porte `SHA_CRYPT_MIN_ROUNDS` dans `/etc/login.defs` à au moins 10000 (Pavois écrit 65536), afin que les empreintes de mot de passe SHA-256/SHA-512 soient calculées avec bien plus d'itérations que le défaut glibc de 5000. Chaque tour supplémentaire multiplie le coût d'une attaque par force brute hors ligne sur un `/etc/shadow` volé."
+  },
+  "check_note": {
+    "en": "Pavois uses the InSpec `login_defs` resource and asserts `SHA_CRYPT_MIN_ROUNDS >= 10000`. The resource parses the directives as the shadow suite reads them (last non-commented assignment wins), so a value left commented out counts as absent and fails. The **effective** proof of the setting is not in the file but in the resulting hash: a password set after the change is stored in `/etc/shadow` as `$6$rounds=65536$...`, whereas the default produces a `$6$` hash with no `rounds=` prefix.",
+    "fr": "Pavois s'appuie sur la ressource InSpec `login_defs` et exige `SHA_CRYPT_MIN_ROUNDS >= 10000`. La ressource interprète les directives comme le fait la suite shadow (la dernière affectation non commentée l'emporte) : une valeur laissée en commentaire est donc considérée comme absente et échoue. La preuve **effective** du réglage ne se trouve pas dans le fichier mais dans l'empreinte produite : un mot de passe défini après la modification est stocké dans `/etc/shadow` sous la forme `$6$rounds=65536$...`, alors que le défaut produit une empreinte `$6$` sans préfixe `rounds=`."
+  },
+  "verify": {
+    "en": "Check the directive, then the hash it actually produces:\n\n```\ngrep -i '^SHA_CRYPT_MIN_ROUNDS' /etc/login.defs\nSHA_CRYPT_MIN_ROUNDS 65536\n```\n\nChange a test user's password, then confirm the stored hash carries the round count:\n\n```\nsudo getent shadow testuser | cut -d: -f2 | cut -c1-16\n$6$rounds=65536$\n```",
+    "fr": "Contrôlez la directive, puis l'empreinte qu'elle produit réellement :\n\n```\ngrep -i '^SHA_CRYPT_MIN_ROUNDS' /etc/login.defs\nSHA_CRYPT_MIN_ROUNDS 65536\n```\n\nChangez le mot de passe d'un utilisateur de test, puis vérifiez que l'empreinte stockée porte bien le nombre de tours :\n\n```\nsudo getent shadow testuser | cut -d: -f2 | cut -c1-16\n$6$rounds=65536$\n```"
+  },
+  "logs": {
+    "en": "The setting itself is **not logged**, and neither is the number of rounds used for a given hash. A password change is logged by PAM in `/var/log/auth.log` (Debian/Ubuntu) or `journalctl` (RHEL family), without any hashing detail:\n\n```\npasswd[3210]: pam_unix(passwd:chauthtok): password changed for alice\n```\n\nThe only reliable evidence of the applied cost factor remains the `$6$rounds=` prefix in the shadow entry.",
+    "fr": "Le réglage lui-même **n'est pas journalisé**, pas plus que le nombre de tours utilisé pour une empreinte donnée. Un changement de mot de passe est enregistré par PAM dans `/var/log/auth.log` (Debian/Ubuntu) ou via `journalctl` (famille RHEL), sans aucun détail de hachage :\n\n```\npasswd[3210]: pam_unix(passwd:chauthtok): password changed for alice\n```\n\nLa seule preuve fiable du facteur de coût appliqué reste le préfixe `$6$rounds=` dans l'entrée shadow."
+  },
+  "remediation_note": {
+    "en": "The Pavois harden plan uses a `conf_line` remediation on `/etc/login.defs` with the key `SHA_CRYPT_MIN_ROUNDS`, the value `65536` and a **space separator** (`sep: space`), because `login.defs` uses the `KEY VALUE` syntax and not `key = value`. The generated step rewrites an existing line in place with `sed` and appends it if absent; a `not_if` guard on the already-correct line makes the apply idempotent.",
+    "fr": "Le plan de durcissement Pavois applique une remédiation `conf_line` sur `/etc/login.defs` avec la clé `SHA_CRYPT_MIN_ROUNDS`, la valeur `65536` et un **séparateur espace** (`sep: space`), car `login.defs` utilise la syntaxe `CLÉ VALEUR` et non `clé = valeur`. L'étape générée réécrit la ligne existante sur place avec `sed` et l'ajoute si elle est absente ; une garde `not_if` sur la ligne déjà correcte rend l'application idempotente."
+  },
+  "impact": {
+    "en": "With the glibc default of 5000 rounds, a leaked `/etc/shadow` is cracked an order of magnitude faster. Two caveats before applying. First, `SHA_CRYPT_MIN_ROUNDS` **only applies when `ENCRYPT_METHOD` is `SHA512` or `SHA256`**: on Debian 12+ and Ubuntu 24.04, whose default is `YESCRYPT`, the directive is inert until the method is switched back to SHA-512, and the control is then purely a defence-in-depth setting. Second, it applies **only to passwords hashed after the change**; existing hashes keep their original cost until each user renews their password. A very high round count also lengthens every authentication (a few tens of milliseconds at 65536), which is negligible for interactive logins but measurable on a host doing thousands of PAM authentications per second. There is **no lockout risk**: existing passwords remain valid.",
+    "fr": "Avec le défaut glibc de 5000 tours, un `/etc/shadow` divulgué est cassé un ordre de grandeur plus vite. Deux réserves avant d'appliquer. D'abord, `SHA_CRYPT_MIN_ROUNDS` **ne s'applique que si `ENCRYPT_METHOD` vaut `SHA512` ou `SHA256`** : sur Debian 12+ et Ubuntu 24.04, dont le défaut est `YESCRYPT`, la directive reste inerte tant que la méthode n'est pas repassée en SHA-512, et le contrôle relève alors de la défense en profondeur. Ensuite, elle ne concerne **que les mots de passe hachés après la modification** ; les empreintes existantes conservent leur coût d'origine jusqu'au prochain renouvellement de chaque utilisateur. Un nombre de tours très élevé allonge par ailleurs chaque authentification (quelques dizaines de millisecondes à 65536), ce qui est négligeable pour des connexions interactives mais mesurable sur un hôte réalisant des milliers d'authentifications PAM par seconde. Il n'y a **aucun risque de verrouillage** : les mots de passe existants restent valides."
+  },
+  "datePublished": "2026-07-14",
+  "dateModified": "2026-07-14"
+}

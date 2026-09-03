@@ -1,17 +1,17 @@
 {
   "id": "faillock-unlock_time",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -46,7 +46,7 @@
     "end"
   ],
   "remediation": {
-    "file": "/etc/security/faillock.conf.d/99-pavois.conf",
+    "file": "/etc/security/faillock.conf",
     "key": "unlock_time",
     "resource": "keyval",
     "value": "900"
@@ -55,14 +55,13 @@
     "en": "Set Lockout Time for Failed Password Attempts",
     "fr": "Définir la durée de verrouillage après des échecs de saisie du mot de passe"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "A lockout threshold only slows an attacker if the lock lasts long enough to make repeated guessing futile. Holding the account locked for at least 15 minutes after the limit is reached drastically cuts the number of passwords that can be tried per hour, defeating online brute-force and password-spraying while letting a legitimate user retry after a short wait.",
-    "fr": "Un seuil de verrouillage ne ralentit un attaquant que si le verrou dure assez longtemps pour rendre les tentatives répétées inutiles. Maintenir le compte verrouillé au moins 15 minutes après l'atteinte de la limite réduit drastiquement le nombre de mots de passe pouvant être essayés par heure, déjouant la force brute en ligne et la pulvérisation de mots de passe tout en permettant à un utilisateur légitime de réessayer après une courte attente."
-  },
   "summary": {
     "en": "Configures `pam_faillock` so a locked account stays locked for at least **900 seconds** (15 minutes) before it can be used again (`unlock_time` ≥ 900).",
     "fr": "Configure `pam_faillock` pour qu'un compte verrouillé le reste pendant au moins **900 secondes** (15 minutes) avant de pouvoir être réutilisé (`unlock_time` ≥ 900)."
+  },
+  "rationale": {
+    "en": "A lockout threshold only slows an attacker if the lock lasts long enough to make repeated guessing futile. Holding the account locked for at least 15 minutes after the limit is reached drastically cuts the number of passwords that can be tried per hour, defeating online brute-force and password-spraying while letting a legitimate user retry after a short wait.",
+    "fr": "Un seuil de verrouillage ne ralentit un attaquant que si le verrou dure assez longtemps pour rendre les tentatives répétées inutiles. Maintenir le compte verrouillé au moins 15 minutes après l'atteinte de la limite réduit drastiquement le nombre de mots de passe pouvant être essayés par heure, déjouant la force brute en ligne et la pulvérisation de mots de passe tout en permettant à un utilisateur légitime de réessayer après une courte attente."
   },
   "check_note": {
     "en": "Pavois reads the **effective** faillock setting by merging `/etc/security/faillock.conf` with every drop-in under `/etc/security/faillock.conf.d/` and taking the **last** `unlock_time` value (the one PAM actually applies), then requires it to be ≥ 900. Honoring drop-in precedence matters: a short `unlock_time` in a `.d` file would override a longer value in the main config, and only reading the effective merged result catches it.",
@@ -83,5 +82,7 @@
   "impact": {
     "en": "A locked-out user must wait 15 minutes (or have an admin run `faillock --user <name> --reset`) before retrying. Combined with a strict `deny` threshold, this can lock real accounts after a few typos, so ensure you keep an out-of-band console or a second privileged account to avoid an admin lockout. Setting `unlock_time = 0` would keep accounts locked until manually reset, usable but operationally heavier.",
     "fr": "Un utilisateur verrouillé doit attendre 15 minutes (ou demander à un administrateur d'exécuter `faillock --user <nom> --reset`) avant de réessayer. Combiné à un seuil `deny` strict, cela peut verrouiller des comptes réels après quelques fautes de frappe ; conservez donc une console hors bande ou un second compte privilégié pour éviter un verrouillage de l'administrateur. Définir `unlock_time = 0` maintiendrait les comptes verrouillés jusqu'à réinitialisation manuelle, possible mais plus lourd à exploiter."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

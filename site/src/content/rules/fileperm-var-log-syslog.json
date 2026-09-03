@@ -2,11 +2,14 @@
   "id": "fileperm-var-log-syslog",
   "supported_os": [
     "debian12",
+    "debian13",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -47,14 +50,13 @@
     "en": "Verify Permissions on /var/log/syslog File",
     "fr": "Vérifier les permissions du fichier /var/log/syslog"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/var/log/syslog` is the primary catch-all system log on Debian-family systems and often contains **sensitive operational detail** (hostnames, service errors, occasionally secrets echoed by misbehaving daemons). If it is other-readable, unprivileged users get a **reconnaissance feed**; if group/other-writable, they can forge or delete entries to **hide an attack**. Restricting it to `root:adm` keeps the log confidential and tamper-resistant.",
-    "fr": "`/var/log/syslog` est le journal système fourre-tout principal des systèmes de la famille Debian et contient souvent des **détails opérationnels sensibles** (noms d'hôtes, erreurs de service, parfois des secrets reproduits par des démons défaillants). S'il est lisible par les autres, des utilisateurs non privilégiés obtiennent une **source de reconnaissance** ; s'il est inscriptible par le groupe ou les autres, ils peuvent forger ou supprimer des entrées pour **masquer une attaque**. Le restreindre à `root:adm` garde le journal confidentiel et résistant à l'altération."
-  },
   "summary": {
     "en": "Ensure `/var/log/syslog` is not other-readable, not group/other-writable, and carries no execute, `setuid`, `setgid` or sticky bit, protecting the main Debian/Ubuntu system log.",
     "fr": "Garantit que `/var/log/syslog` n'est pas lisible par les autres, ni inscriptible par le groupe ou les autres, et ne porte aucun bit d'exécution, `setuid`, `setgid` ou sticky, protégeant le journal système principal de Debian/Ubuntu."
+  },
+  "rationale": {
+    "en": "`/var/log/syslog` is the primary catch-all system log on Debian-family systems and often contains **sensitive operational detail** (hostnames, service errors, occasionally secrets echoed by misbehaving daemons). If it is other-readable, unprivileged users get a **reconnaissance feed**; if group/other-writable, they can forge or delete entries to **hide an attack**. Restricting it to `root:adm` keeps the log confidential and tamper-resistant.",
+    "fr": "`/var/log/syslog` est le journal système fourre-tout principal des systèmes de la famille Debian et contient souvent des **détails opérationnels sensibles** (noms d'hôtes, erreurs de service, parfois des secrets reproduits par des démons défaillants). S'il est lisible par les autres, des utilisateurs non privilégiés obtiennent une **source de reconnaissance** ; s'il est inscriptible par le groupe ou les autres, ils peuvent forger ou supprimer des entrées pour **masquer une attaque**. Le restreindre à `root:adm` garde le journal confidentiel et résistant à l'altération."
   },
   "check_note": {
     "en": "Pavois reads the **live inode** of `/var/log/syslog` and asserts no other-read, no group/other-write, and no execute/`setuid`/`setgid`/sticky bit. Inspecting the real filesystem object (not `/etc/rsyslog.conf`) catches a file that drifted to `0644` after a manual edit or a botched rotation, the **effective** mode is what truly exposes the data.",
@@ -75,5 +77,7 @@
   "impact": {
     "en": "Loose permissions leak system internals to local users and let logs be rewritten. **Precautions:** align `rsyslog`'s `$FileCreateMode 0640` and the `logrotate` `create 0640 root adm` directive (in `/etc/logrotate.d/rsyslog`), or the next rotation reintroduces the loose mode. Keep group `adm` readable, log-reading tools and admins in the `adm` group depend on it; do **not** tighten to `0600`, as that would break that workflow without improving security against root-level threats.",
     "fr": "Des permissions laxistes divulguent les internes du système aux utilisateurs locaux et permettent la réécriture des journaux. **Précautions :** alignez `$FileCreateMode 0640` de `rsyslog` et la directive `logrotate` `create 0640 root adm` (dans `/etc/logrotate.d/rsyslog`), sinon la prochaine rotation réintroduit le mode permissif. Conservez la lecture pour le groupe `adm`, les outils de lecture de journaux et les administrateurs du groupe `adm` en dépendent ; ne durcissez **pas** jusqu'à `0600`, cela casserait ce flux sans renforcer la sécurité face aux menaces de niveau root."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

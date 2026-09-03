@@ -1,0 +1,37 @@
+{
+  "id": "filegroupowner-etc-motd",
+  "title": {
+    "en": "Verify Group Ownership of Message of the Day Banner",
+    "fr": "Vérifier le groupe propriétaire de la bannière Message du jour (MOTD)"
+  },
+  "summary": {
+    "en": "Ensures `/etc/motd` (message-of-the-day banner) is group-owned by **GID 0** (root).",
+    "fr": "Garantit que `/etc/motd` (bannière Message du jour) appartient au groupe **GID 0** (root)."
+  },
+  "rationale": {
+    "en": "`/etc/motd` is the message-of-the-day shown after a successful login; it often carries approved use-notification or policy text. If it is group-owned by a non-root group (**GID ≠ 0**), unprivileged users could rewrite the banner, removing mandated notices or inserting misleading content. Root group ownership ensures only root can change it.",
+    "fr": "`/etc/motd` est le message du jour affiché après une connexion réussie ; il porte souvent un texte d'avis d'usage approuvé ou de politique. S'il appartient à un groupe non-root (**GID ≠ 0**), des utilisateurs non privilégiés pourraient réécrire la bannière, supprimant les avis obligatoires ou insérant un contenu trompeur. Une propriété de groupe par root garantit que seul root peut la modifier."
+  },
+  "check_note": {
+    "en": "Pavois asks the `file` resource for the resolved numeric `gid` of `/etc/motd` and requires it to be `0`. The check is skipped if the file is absent. Reading the file's effective group ownership directly (the kernel-resolved gid) is exact and avoids name-resolution ambiguity.",
+    "fr": "Pavois demande à la ressource `file` le `gid` numérique résolu de `/etc/motd` et exige qu'il vaille `0`. Le contrôle est ignoré si le fichier est absent. Lire directement l'appartenance de groupe effective du fichier (le gid résolu par le noyau) est exact et évite toute ambiguïté de résolution de nom."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /etc/motd`. **Expected:** group `root` and gid `0`. `ls -l /etc/motd` shows the group in the owner column.",
+    "fr": "Exécutez `stat -c '%G %g' /etc/motd`. **Attendu :** groupe `root` et gid `0`. `ls -l /etc/motd` affiche le groupe dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "- Inspect ownership: `stat -c '%U %G %a' /etc/motd` or `ls -l /etc/motd`.\n- View the banner content: `cat /etc/motd`.\n- If auditd watches the file, changes appear in `/var/log/audit/audit.log`.",
+    "fr": "- Inspecter la propriété : `stat -c '%U %G %a' /etc/motd` ou `ls -l /etc/motd`.\n- Voir le contenu de la bannière : `cat /etc/motd`.\n- Si auditd surveille le fichier, les modifications apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped for this rule. Fix it manually with `chgrp 0 /etc/motd` (or `chgrp root /etc/motd`) to restore root group ownership, then re-run the scan.",
+    "fr": "Aucune remédiation automatique n'est fournie pour cette règle. Corrigez manuellement avec `chgrp 0 /etc/motd` (ou `chgrp root /etc/motd`) pour rétablir la propriété du groupe root, puis relancez le scan."
+  },
+  "impact": {
+    "en": "Wrong group ownership lets unprivileged users rewrite the post-login banner, a compliance/integrity gap rather than a direct breach. The `chgrp` fix is trivial and safe; note that on some systems `/etc/motd` is regenerated dynamically (pam_motd / update-motd), so verify your ownership change is not overwritten by a generator.",
+    "fr": "Une mauvaise appartenance de groupe permet à des utilisateurs non privilégiés de réécrire la bannière post-connexion, un manquement de conformité/d'intégrité plutôt qu'une brèche directe. Le correctif `chgrp` est trivial et sûr ; notez que sur certains systèmes `/etc/motd` est régénéré dynamiquement (pam_motd / update-motd), vérifiez donc que votre changement de propriété n'est pas écrasé par un générateur."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,16 +1,17 @@
 {
   "id": "home-files-groupownership",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -27,22 +28,26 @@
   },
   "check": [
     "describe command('awk -F: \\'($3>=1000 && $3!=65534 && $6!=\"/\"){print $3\":\"$4\":\"$6}\\' /etc/passwd | while IFS=: read u g h; do [ -d \"$h\" ] && timeout 60 find -P \"$h\" ! -gid \"$g\" ! -type l -print 2>/dev/null; done | head -1') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "awk -F: '($3>=1000){print $1\" \"$6}' /etc/passwd\n# chgrp -R <group> <home> per user after review\n",
+    "reason": "re-grouping a user's whole home is per-user, verify before acting",
+    "resource": "manual"
+  },
   "title": {
     "en": "All User Files and Directories In The Home Directory Must Be Group-Owned By The Primary Group",
     "fr": "Tous les fichiers et répertoires du home doivent appartenir au groupe primaire de l'utilisateur"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "If a user's files are group-owned by a group the user is **not** in control of, members of that group may read or modify private data they should not access. Consistent primary-group ownership keeps a user's data isolated to that user and their intended group.",
-    "fr": "Si les fichiers d'un utilisateur appartiennent à un groupe qu'il **ne** maîtrise pas, les membres de ce groupe peuvent lire ou modifier des données privées auxquelles ils ne devraient pas accéder. Une appartenance cohérente au groupe primaire confine les données de l'utilisateur à lui-même et à son groupe prévu."
-  },
   "summary": {
     "en": "Ensures **every** file and directory (recursively) inside each interactive user's home is group-owned by that user's **primary group**.",
     "fr": "Garantit que **tous** les fichiers et répertoires (récursivement) du home de chaque utilisateur interactif appartiennent au **groupe primaire** de cet utilisateur."
+  },
+  "rationale": {
+    "en": "If a user's files are group-owned by a group the user is **not** in control of, members of that group may read or modify private data they should not access. Consistent primary-group ownership keeps a user's data isolated to that user and their intended group.",
+    "fr": "Si les fichiers d'un utilisateur appartiennent à un groupe qu'il **ne** maîtrise pas, les membres de ce groupe peuvent lire ou modifier des données privées auxquelles ils ne devraient pas accéder. Une appartenance cohérente au groupe primaire confine les données de l'utilisateur à lui-même et à son groupe prévu."
   },
   "check_note": {
     "en": "Pavois reads the **live** `/etc/passwd` for each interactive user's primary GID and home, then runs a **recursive** `find -P \"$h\" ! -gid \"$g\" ! -type l` (symlinks excluded, no symlink traversal). It compares against the **effective primary GID**, catching deep files left behind by archives, restores or other users, not just the top-level dotfiles.",
@@ -63,5 +68,7 @@
   "impact": {
     "en": "Wrong group ownership can leak or expose private files to a shared group. **Precautions before applying:** some legitimate workflows place shared-project files under a collaboration group inside `$HOME`, a blanket `chgrp` to the primary group would revoke that sharing. Inspect the offending paths, exclude deliberate shared subtrees, and beware of recursing into mounted filesystems under the home.",
     "fr": "Une mauvaise appartenance de groupe peut exposer des fichiers privés à un groupe partagé. **Précautions avant application :** certains flux légitimes placent des fichiers de projet partagé sous un groupe de collaboration dans `$HOME`, un `chgrp` global vers le groupe primaire supprimerait ce partage. Inspectez les chemins fautifs, excluez les sous-arbres partagés volontaires, et méfiez-vous de la récursion dans des systèmes de fichiers montés sous le home."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

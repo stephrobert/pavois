@@ -1,10 +1,14 @@
 {
   "id": "fileowner-efi-user-cfg",
   "supported_os": [
-    "rhel8"
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9"
   ],
   "os_versions": {
-    "rhel8": "4.0.0"
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
   },
   "severity": "medium",
   "domain": "File ownership",
@@ -30,14 +34,13 @@
     "en": "Verify /boot/efi/EFI/redhat/user.cfg User Ownership",
     "fr": "Vérifier le propriétaire de /boot/efi/EFI/redhat/user.cfg"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/boot/efi/EFI/redhat/user.cfg` stores the **GRUB bootloader password hash** (`GRUB2_PASSWORD`). Only `root` should be able to modify these boot parameters. If a non-root user owns the file they could remove or replace the password and bypass boot protection; even read access lets an attacker harvest the hash for offline cracking, or spot security weaknesses to exploit at boot.",
-    "fr": "`/boot/efi/EFI/redhat/user.cfg` stocke le **hash du mot de passe du chargeur GRUB** (`GRUB2_PASSWORD`). Seul `root` doit pouvoir modifier ces paramètres d'amorçage. Si un utilisateur non root possède ce fichier, il pourrait supprimer ou remplacer le mot de passe et contourner la protection au démarrage ; même un accès en lecture permet à un attaquant de récupérer le hash pour un cassage hors ligne, ou de repérer des faiblesses de sécurité à exploiter au démarrage."
-  },
   "summary": {
     "en": "Ensures the GRUB password file `/boot/efi/EFI/redhat/user.cfg` is owned by the `root` user (UID 0).",
     "fr": "Garantit que le fichier de mot de passe GRUB `/boot/efi/EFI/redhat/user.cfg` appartient à l'utilisateur `root` (UID 0)."
+  },
+  "rationale": {
+    "en": "`/boot/efi/EFI/redhat/user.cfg` stores the **GRUB bootloader password hash** (`GRUB2_PASSWORD`). Only `root` should be able to modify these boot parameters. If a non-root user owns the file they could remove or replace the password and bypass boot protection; even read access lets an attacker harvest the hash for offline cracking, or spot security weaknesses to exploit at boot.",
+    "fr": "`/boot/efi/EFI/redhat/user.cfg` stocke le **hash du mot de passe du chargeur GRUB** (`GRUB2_PASSWORD`). Seul `root` doit pouvoir modifier ces paramètres d'amorçage. Si un utilisateur non root possède ce fichier, il pourrait supprimer ou remplacer le mot de passe et contourner la protection au démarrage ; même un accès en lecture permet à un attaquant de récupérer le hash pour un cassage hors ligne, ou de repérer des faiblesses de sécurité à exploiter au démarrage."
   },
   "check_note": {
     "en": "Pavois stats the live inode of `/boot/efi/EFI/redhat/user.cfg` and asserts its **owner is UID 0**. The check is skipped when the file is absent (no GRUB password configured). Reading the actual filesystem metadata reflects the **effective** ownership in force, not a templated default.",
@@ -58,5 +61,7 @@
   "impact": {
     "en": "A non-root owner of `user.cfg` can strip or replace the GRUB password, defeating the **boot-time access control**, and can read the password hash for offline attack. Fixing it is low-risk: `chown root` does not alter the password hash, so existing boot protection keeps working. Pair this with restrictive permissions (`chmod 600`) so the hash is not world-readable.",
     "fr": "Un propriétaire non root de `user.cfg` peut supprimer ou remplacer le mot de passe GRUB, mettant en échec le **contrôle d'accès au démarrage**, et peut lire le hash du mot de passe pour une attaque hors ligne. La correction présente peu de risque : `chown root` n'altère pas le hash, la protection d'amorçage existante continue de fonctionner. Combinez-la avec des permissions restrictives (`chmod 600`) afin que le hash ne soit pas lisible par tous."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

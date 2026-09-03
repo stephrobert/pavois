@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-kernel-perf_event_paranoid",
+  "title": {
+    "en": "Disallow kernel profiling by unprivileged users",
+    "fr": "Interdire le profilage du noyau aux utilisateurs non privilégiés"
+  },
+  "summary": {
+    "en": "Sets `kernel.perf_event_paranoid = 2` so unprivileged users cannot profile the kernel or raw CPU events.",
+    "fr": "Fixe `kernel.perf_event_paranoid = 2` afin que les utilisateurs non privilégiés ne puissent pas profiler le noyau ni les événements CPU bruts."
+  },
+  "rationale": {
+    "en": "The Perf subsystem can expose detailed CPU, memory and instruction-level behaviour. If unprivileged users can profile the kernel, that telemetry can reveal sensitive information about kernel internals and side channels usable in exploitation. `kernel.perf_event_paranoid = 2` disallows raw tracepoint, kernel and CPU-event access for unprivileged users, restricting profiling to privileged contexts.",
+    "fr": "Le sous-système Perf peut exposer le comportement détaillé du CPU, de la mémoire et au niveau des instructions. Si des utilisateurs non privilégiés peuvent profiler le noyau, cette télémétrie peut révéler des informations sensibles sur les internes du noyau et des canaux auxiliaires exploitables. `kernel.perf_event_paranoid = 2` interdit l'accès brut aux tracepoints, au noyau et aux événements CPU pour les utilisateurs non privilégiés, restreignant le profilage aux contextes privilégiés."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel value** with `kernel_parameter('kernel.perf_event_paranoid')` (equivalent to `sysctl kernel.perf_event_paranoid`), not a `/etc/sysctl.d/*.conf` line. A file declaring `2` is irrelevant if a later drop-in, a boot parameter, or a runtime `sysctl -w` left the kernel at a more permissive `1`, `0` or `-1`. Only the effective parameter proves what unprivileged users are actually allowed to do.",
+    "fr": "Pavois lit la **valeur noyau en vigueur** via `kernel_parameter('kernel.perf_event_paranoid')` (équivalent à `sysctl kernel.perf_event_paranoid`), et non une ligne de `/etc/sysctl.d/*.conf`. Un fichier déclarant `2` est sans effet si un drop-in ultérieur, un paramètre de démarrage ou un `sysctl -w` à chaud a laissé le noyau à une valeur plus permissive (`1`, `0` ou `-1`). Seul le paramètre effectif prouve ce que les utilisateurs non privilégiés peuvent réellement faire."
+  },
+  "verify": {
+    "en": "Run `sysctl kernel.perf_event_paranoid`. Expected output:\n\n```\nkernel.perf_event_paranoid = 2\n```",
+    "fr": "Exécutez `sysctl kernel.perf_event_paranoid`. Sortie attendue :\n\n```\nkernel.perf_event_paranoid = 2\n```"
+  },
+  "logs": {
+    "en": "No dedicated log line. Confirm with `sysctl kernel.perf_event_paranoid`. The effect is observable: as an unprivileged user, `perf top` or `perf record -a` will fail with a permission error referencing `perf_event_paranoid` once the value is `2`.",
+    "fr": "Aucune ligne de journal dédiée. Vérifiez via `sysctl kernel.perf_event_paranoid`. L'effet est observable : en tant qu'utilisateur non privilégié, `perf top` ou `perf record -a` échoue avec une erreur de permission mentionnant `perf_event_paranoid` une fois la valeur à `2`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `kernel.perf_event_paranoid = 2`, persists it in a Pavois-managed drop-in under `/etc/sysctl.d/`, and applies it live (no reboot). Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour fixer `kernel.perf_event_paranoid = 2`, le persiste dans un drop-in géré par Pavois sous `/etc/sysctl.d/`, et l'applique à chaud (sans redémarrage). Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "**Risk if not applied:** unprivileged users can profile the kernel, leaking internals and side-channel data useful for exploitation.\n\n**Precautions before applying:**\n- This **breaks unprivileged profiling**. Developers, CI runners, or observability agents that run `perf` as a non-root user will lose access. Grant the `CAP_PERFMON`/`CAP_SYS_ADMIN` capability or run those tools privileged where genuinely needed.\n- No application or boot lockout risk; the change is fully reversible at runtime.",
+    "fr": "**Risque si non appliqué :** des utilisateurs non privilégiés peuvent profiler le noyau, divulguant des internes et des données de canaux auxiliaires utiles à l'exploitation.\n\n**Précautions avant application :**\n- Cela **casse le profilage non privilégié**. Les développeurs, exécuteurs CI ou agents d'observabilité lançant `perf` sans root perdront l'accès. Accordez la capacité `CAP_PERFMON`/`CAP_SYS_ADMIN` ou exécutez ces outils en mode privilégié là où c'est réellement nécessaire.\n- Aucun risque de blocage applicatif ou au démarrage ; le changement est entièrement réversible à chaud."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

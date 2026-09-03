@@ -1,17 +1,17 @@
 {
   "id": "misc-accounts-tmout",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -47,19 +47,25 @@
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "content": "TMOUT=900\nreadonly TMOUT\nexport TMOUT\n",
+    "group": "root",
+    "mode": "0644",
+    "owner": "root",
+    "path": "/etc/profile.d/99-pavois-tmout.sh",
+    "resource": "file"
+  },
   "title": {
     "en": "Set Interactive Session Timeout",
     "fr": "Définir un délai d'expiration des sessions interactives"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Automatically terminating an idle session reduces the window in which an unattended console or SSH session left logged in can be hijacked by unauthorized personnel. Without `TMOUT`, a forgotten root shell on a screen-locked-but-not-logged-out terminal is a standing risk.",
-    "fr": "Terminer automatiquement une session inactive réduit la fenêtre durant laquelle une console ou une session SSH laissée connectée sans surveillance peut être détournée par une personne non autorisée. Sans `TMOUT`, un shell root oublié sur un terminal verrouillé mais non déconnecté constitue un risque permanent."
-  },
   "summary": {
     "en": "Defines a shell `TMOUT` value in `/etc/profile`, `/etc/profile.d/` or `/etc/bashrc` so idle interactive shells are automatically logged out.",
     "fr": "Définit une valeur `TMOUT` du shell dans `/etc/profile`, `/etc/profile.d/` ou `/etc/bashrc` afin que les shells interactifs inactifs soient automatiquement déconnectés."
+  },
+  "rationale": {
+    "en": "Automatically terminating an idle session reduces the window in which an unattended console or SSH session left logged in can be hijacked by unauthorized personnel. Without `TMOUT`, a forgotten root shell on a screen-locked-but-not-logged-out terminal is a standing risk.",
+    "fr": "Terminer automatiquement une session inactive réduit la fenêtre durant laquelle une console ou une session SSH laissée connectée sans surveillance peut être détournée par une personne non autorisée. Sans `TMOUT`, un shell root oublié sur un terminal verrouillé mais non déconnecté constitue un risque permanent."
   },
   "check_note": {
     "en": "Pavois greps the shell init files (`/etc/profile`, `/etc/profile.d/*`, `/etc/bashrc`) for an uncommented `TMOUT=` assignment. Because `TMOUT` is a shell builtin set at login through these scripts (there is no service to query), the effective source of truth is the init files themselves, Pavois checks the very files the shell sources, including drop-ins under `/etc/profile.d/`.",
@@ -80,5 +86,7 @@
   "impact": {
     "en": "Setting `TMOUT` too low frustrates legitimate work, long-running interactive commands at the prompt, a paused editor, or a watched log can disconnect mid-use, and a `readonly` value cannot be overridden per session. Choose a value (commonly 600–900 s) that balances security and usability, and remember it applies to all interactive shells including administrators'. It does not affect non-interactive jobs, cron, or established background processes, so there is no service-outage risk.",
     "fr": "Définir `TMOUT` trop bas gêne le travail légitime, des commandes interactives longues à l'invite, un éditeur en pause ou un suivi de log peuvent se déconnecter en pleine utilisation, et une valeur `readonly` ne peut être contournée par session. Choisissez une valeur (souvent 600–900 s) équilibrant sécurité et ergonomie, et rappelez-vous qu'elle s'applique à tous les shells interactifs, y compris ceux des administrateurs. Elle n'affecte pas les tâches non interactives, cron ou les processus d'arrière-plan établis, donc aucun risque d'interruption de service."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

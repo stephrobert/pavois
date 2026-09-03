@@ -34,7 +34,6 @@ AL_REPO = {
     "ubuntu2404": "UBUNTU24-CIS",
     "rhel8": "RHEL8-CIS",
     "rhel9": "RHEL9-CIS",
-    "almalinux9": "RHEL9-CIS",
 }
 
 _REF_CACHE: dict = {}  # os -> parsed reference rules (read once, not per rule)

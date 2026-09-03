@@ -8,10 +8,21 @@ export function getStaticPaths() {
 }
 const { lang } = Astro.params as { lang: Lang };
 const t = ui[lang];
-const md = (s: string): string => renderMarkdown(s).html;
+const INTERNAL = 'docs|handbook|rules|standards|glossary|blog|start|installation|audit|downloads';
+// without { lang }, a root-relative link written in the prose (/docs/cli/) stays unprefixed
+// and 404s: the site has no page outside /en/ and /fr/.
+const md = (s: string): string => renderMarkdown(s, { lang, internal: INTERNAL }).html;
 
 type Sec = { id: string; t: { en: string; fr: string }; b: { en: string; fr: string } };
 const sections: Sec[] = [
+  {
+    id: 'what-for',
+    t: { en: 'What Pavois is for', fr: 'À quoi sert Pavois' },
+    b: {
+      en: "**Pavois builds a compliant image. It does not rescue a legacy host that was misconfigured for ten years.**\n\nThat is not a limitation to apologise for, it is the shape of the problem. A separate `/var/log` filesystem is decided when the disk is partitioned; a kernel without the KSPP options cannot grow them at runtime. Those controls carry the classes `install-time` and `kernel-build` precisely because **no apply can close them on a running production box**: you do not repartition a machine that is serving traffic.\n\nSo the workflow that works is:\n\n1. **Build**, a fresh cloud image + the partition recipe + the kernel recipe + a converged `harden apply`. That is your golden image, and its grade is the grade your fleet starts from.\n2. **Ship**, bake it (Packer, an image pipeline, a template).\n3. **Watch**, scan the running fleet to detect **drift** from the image you shipped, and apply the drift back.\n\nRun it against a legacy host and it will still tell you the truth, in detail, with a grade. It will simply also tell you that about one gap in five needs a rebuild, not a command, and the **remediable grade** is exactly the score of what it can reach without one. [Operating Pavois](/handbook/operating-pavois/) covers privileges, air-gap, timing and exceptions.",
+      fr: "**Pavois construit une image conforme. Il ne rattrape pas un système legacy mal configuré depuis dix ans.**\n\nCe n'est pas une limite dont il faut s'excuser, c'est la forme du problème. Un système de fichiers `/var/log` séparé se décide au partitionnement du disque ; un noyau sans les options KSPP ne peut pas les acquérir en marche. Ces contrôles portent les classes `install-time` et `kernel-build` précisément parce qu'**aucun apply ne peut les fermer sur une machine de production en service** : on ne repartitionne pas un serveur qui répond au trafic.\n\nLe parcours qui fonctionne est donc :\n\n1. **Construire**, une image cloud neuve + la recette de partitionnement + la recette de noyau + un `harden apply` convergé. C'est votre image de référence, et sa note est celle dont votre flotte part.\n2. **Livrer**, la figer (Packer, une chaîne d'images, un template).\n3. **Surveiller**, scanner la flotte en service pour détecter la **dérive** par rapport à l'image livrée, et la ramener.\n\nLancez-le sur un hôte legacy et il vous dira quand même la vérité, en détail, avec une note. Il vous dira simplement aussi qu'environ un écart sur cinq exige une reconstruction, pas une commande, et la **note remédiable** est exactement le score de ce qu'il peut atteindre sans elle. [Exploiter Pavois](/handbook/operating-pavois/) couvre les privilèges, l'air-gap, la durée et les dérogations.",
+    },
+  },
   {
     id: 'overview',
     t: { en: 'Overview', fr: "Vue d'ensemble" },
@@ -64,8 +75,8 @@ const sections: Sec[] = [
     id: 'output',
     t: { en: 'Output formats & CI', fr: 'Formats de sortie & CI' },
     b: {
-      en: "`--format` controls the output: `table` (terminal), `html` (the chaptered report), `json`, **`sarif`** (GitHub code scanning), **`junit`** (CI test report), `csv`.\n\nThe **exit code** is CI-friendly: `0` pass · `100` failures found · `101` error. Combine with `--fail-under`:\n\n```yaml\n# GitHub Actions\n- run: pavois scan local --sudo --standard cis --format sarif --out report\n- uses: github/codeql-action/upload-sarif@v3\n  with: { sarif_file: report }\n```\n\n`pavois serve --port 8098` serves the HTML reports over HTTP.\n\nThe A–E grade behind `--fail-under` is a published, frozen formula, weights, per-severity caps and the critical-failure rule are spelled out in [How the A–E grade is computed](/en/handbook/scoring-methodology/).",
-      fr: "`--format` pilote la sortie : `table` (terminal), `html` (le rapport chapitré), `json`, **`sarif`** (GitHub code scanning), **`junit`** (rapport de test CI), `csv`.\n\nLe **code de sortie** est exploitable en CI : `0` succès · `100` échecs trouvés · `101` erreur. À combiner avec `--fail-under` :\n\n```yaml\n# GitHub Actions\n- run: pavois scan local --sudo --standard cis --format sarif --out report\n- uses: github/codeql-action/upload-sarif@v3\n  with: { sarif_file: report }\n```\n\n`pavois serve --port 8098` sert les rapports HTML en HTTP.\n\nLa note A–E derrière `--fail-under` suit une formule publiée et figée, poids, plafonds par sévérité et règle d’échec critique sont détaillés dans [Comment la note A–E est calculée](/fr/handbook/scoring-methodology/).",
+      en: "`--format` controls the output: `table` (terminal), `html` (the chaptered report), `json`, **`sarif`** (GitHub code scanning), **`junit`** (CI test report), `csv`.\n\nThe **exit code** is the CI gate: `0` compliant · `1` below `--fail-under` · `2` technical error (CINC's own 100/101 never reach your shell). [Full reference](/docs/cli/#exit-codes). Combine with `--fail-under`:\n\n```yaml\n# GitHub Actions\n- run: pavois scan local --sudo --standard cis --format sarif --out report\n- uses: github/codeql-action/upload-sarif@v3\n  with: { sarif_file: report }\n```\n\n`pavois serve --port 8098` serves the HTML reports over HTTP.\n\nThe A–E grade behind `--fail-under` is a published, frozen formula, weights, per-severity caps and the critical-failure rule are spelled out in [How the A–E grade is computed](/en/handbook/scoring-methodology/).",
+      fr: "`--format` pilote la sortie : `table` (terminal), `html` (le rapport chapitré), `json`, **`sarif`** (GitHub code scanning), **`junit`** (rapport de test CI), `csv`.\n\nLe **code de sortie** est le verrou CI : `0` conforme · `1` sous le seuil `--fail-under` · `2` erreur technique (les codes 100/101 de CINC n'atteignent jamais votre shell). [Référence complète](/docs/cli/#exit-codes). À combiner avec `--fail-under` :\n\n```yaml\n# GitHub Actions\n- run: pavois scan local --sudo --standard cis --format sarif --out report\n- uses: github/codeql-action/upload-sarif@v3\n  with: { sarif_file: report }\n```\n\n`pavois serve --port 8098` sert les rapports HTML en HTTP.\n\nLa note A–E derrière `--fail-under` suit une formule publiée et figée, poids, plafonds par sévérité et règle d’échec critique sont détaillés dans [Comment la note A–E est calculée](/fr/handbook/scoring-methodology/).",
     },
   },
   {
@@ -80,8 +91,8 @@ const sections: Sec[] = [
     id: 'api',
     t: { en: 'JSON API', fr: 'API JSON' },
     b: {
-      en: "Pavois exposes its reference as JSON, the consumable contract:\n\n```sh\npavois norms --pretty                 # the standard catalogue (versions, authorities, coverage)\npavois rules --os debian12 --standard cis   # the rule base, filtered\n```\n\nFlags: `--os`, `--standard`, `--domain`, `--pretty`.",
-      fr: "Pavois expose sa référence en JSON, le contrat consommable :\n\n```sh\npavois norms --pretty                 # le catalogue de normes (versions, autorités, couverture)\npavois rules --os debian12 --standard cis   # la base de règles, filtrée\n```\n\nFlags : `--os`, `--standard`, `--domain`, `--pretty`.",
+      en: "Pavois exposes its reference as JSON, the consumable contract:\n\n```sh\npavois norms --pretty                 # the standard catalogue (versions, authorities, coverage)\npavois rules --os debian12 --standard cis   # the rule base, filtered\n```\n\n`pavois rules` takes `--os`, `--standard`, `--domain`, `--pretty`; `pavois norms` takes `--pretty` only. The full reference is [generated from the binary](/docs/cli/).",
+      fr: "Pavois expose sa référence en JSON, le contrat consommable :\n\n```sh\npavois norms --pretty                 # le catalogue de normes (versions, autorités, couverture)\npavois rules --os debian12 --standard cis   # la base de règles, filtrée\n```\n\n`pavois rules` accepte `--os`, `--standard`, `--domain`, `--pretty` ; `pavois norms` n'accepte que `--pretty`. La référence complète est [générée depuis le binaire](/docs/cli/).",
     },
   },
 ];

@@ -1,0 +1,37 @@
+{
+  "id": "fileowner-etc-issue-net",
+  "title": {
+    "en": "Verify ownership of System Login Banner for Remote Connections",
+    "fr": "Vérifier le propriétaire de la bannière de connexion système pour les connexions distantes"
+  },
+  "summary": {
+    "en": "Ensures `/etc/issue.net` (the remote pre-login banner) is owned by `root` (UID 0).",
+    "fr": "Garantit que `/etc/issue.net` (la bannière de pré-connexion distante) appartient à `root` (UID 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/issue.net` file holds the pre-login banner shown to **remote** users (notably by `sshd` via the `Banner` directive). If a non-root account owns it, that user can alter or remove the legal/usage notice, weakening the enforceability of acceptable-use policy and potentially injecting misleading text. Setting **`root` (UID 0)** as the owner ensures only privileged users can change the banner, keeping the notification consistent with applicable laws, policies and standards.",
+    "fr": "Le fichier `/etc/issue.net` contient la bannière de pré-connexion affichée aux utilisateurs **distants** (notamment par `sshd` via la directive `Banner`). Si un compte non-root le possède, cet utilisateur peut modifier ou supprimer l'avis légal/d'usage, ce qui affaiblit l'opposabilité de la politique d'utilisation et permet d'injecter du texte trompeur. Définir **`root` (UID 0)** comme propriétaire garantit que seuls les utilisateurs privilégiés peuvent changer la bannière, conformément aux lois, politiques et normes applicables."
+  },
+  "check_note": {
+    "en": "Pavois inspects the **live filesystem** with the InSpec `file('/etc/issue.net')` resource and asserts `uid == 0`, guarded by `only_if` so the test is skipped when the file is absent. Reading the actual inode owner (rather than trusting a config-management manifest or a copied template) reflects the **effective** state on disk, including any post-deployment `chown` an operator or compromised process may have performed.",
+    "fr": "Pavois inspecte le **système de fichiers réel** via la ressource InSpec `file('/etc/issue.net')` et vérifie `uid == 0`, protégé par `only_if` afin d'ignorer le test si le fichier est absent. Lire le propriétaire réel de l'inode (plutôt que de se fier à un manifeste de gestion de configuration ou à un modèle copié) reflète l'état **effectif** sur le disque, y compris tout `chown` post-déploiement effectué par un opérateur ou un processus compromis."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u %n' /etc/issue.net`. Expected output: `root 0 /etc/issue.net`. The numeric `0` confirms the rule even if the name service maps UID 0 to an unusual label.",
+    "fr": "Exécutez `stat -c '%U %u %n' /etc/issue.net`. Sortie attendue : `root 0 /etc/issue.net`. Le `0` numérique confirme la règle même si le service de noms associe l'UID 0 à un libellé inhabituel."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default. With the audit framework, add a watch (`auditctl -w /etc/issue.net -p wa -k banner`) then inspect `/var/log/audit/audit.log` (filter on `grep 'key=\"banner\"'`). The banner itself is emitted by SSH at connect time, visible in `journalctl -u ssh` / `/var/log/auth.log`.",
+    "fr": "Les changements de propriétaire ne sont pas journalisés par défaut. Avec le framework d'audit, ajoutez une surveillance (`auditctl -w /etc/issue.net -p wa -k banner`) puis consultez `/var/log/audit/audit.log` (filtrez avec `grep 'key=\"banner\"'`). La bannière elle-même est émise par SSH à la connexion, visible dans `journalctl -u ssh` / `/var/log/auth.log`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped for this rule. Apply it manually with `chown root /etc/issue.net` (run as root or via `sudo`); the file should remain group `root` and mode `0644`.",
+    "fr": "Aucune remédiation automatisée n'est fournie pour cette règle. Appliquez-la manuellement avec `chown root /etc/issue.net` (en root ou via `sudo`) ; le fichier doit rester en groupe `root` et mode `0644`."
+  },
+  "impact": {
+    "en": "A wrong owner lets a non-privileged user rewrite the legal notice users see before authenticating. **Risk of applying:** essentially none, `/etc/issue.net` is a static text file with no service dependency, so `chown root` does not interrupt logins or SSH. As a precaution, confirm the file is still readable (`0644`) afterward so the banner keeps displaying.",
+    "fr": "Un mauvais propriétaire permet à un utilisateur non privilégié de réécrire l'avis légal vu avant authentification. **Risque à l'application :** quasi nul, `/etc/issue.net` est un fichier texte statique sans dépendance de service, donc `chown root` n'interrompt ni les connexions ni SSH. Par précaution, vérifiez ensuite que le fichier reste lisible (`0644`) pour que la bannière continue de s'afficher."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

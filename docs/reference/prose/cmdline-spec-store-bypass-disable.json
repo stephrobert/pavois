@@ -1,0 +1,37 @@
+{
+  "id": "cmdline-spec-store-bypass-disable",
+  "title": {
+    "en": "Configure Speculative Store Bypass Mitigation",
+    "fr": "Configurer la mitigation Speculative Store Bypass"
+  },
+  "summary": {
+    "en": "Enforces the kernel parameter `spec_store_bypass_disable=on` to enable the Speculative Store Bypass (SSB) CPU mitigation system-wide.",
+    "fr": "Impose le paramètre noyau `spec_store_bypass_disable=on` pour activer la mitigation processeur Speculative Store Bypass (SSB) sur l'ensemble du système."
+  },
+  "rationale": {
+    "en": "On vulnerable processors, a speculatively forwarded store can be exploited through a cache side-channel attack. This allows an attacker to read memory they should not be able to reach directly, for example, leaking secrets from inside sandboxed or JIT-compiled code (Spectre variant 4 / CVE-2018-3639). Forcing `spec_store_bypass_disable=on` enables the kernel mitigation system-wide instead of leaving it to per-process opt-in.",
+    "fr": "Sur les processeurs vulnérables, un store transmis de manière spéculative peut être exploité via une attaque par canal auxiliaire sur le cache. Cela permet à un attaquant de lire de la mémoire qu'il ne devrait pas pouvoir atteindre directement, par exemple en exfiltrant des secrets depuis du code sandboxé ou compilé en JIT (Spectre variante 4 / CVE-2018-3639). Forcer `spec_store_bypass_disable=on` active la mitigation du noyau pour tout le système au lieu de la laisser au choix de chaque processus."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** boot command line from `/proc/cmdline`, which reflects the kernel arguments the running system was actually started with. This beats grepping `/etc/default/grub` or `grub.cfg`: those may be edited but not regenerated, may be overridden by drop-ins under `/etc/default/grub.d/`, or may differ from what the bootloader truly passed. Only `/proc/cmdline` proves the mitigation is live on the current boot.",
+    "fr": "Pavois lit la ligne de commande de démarrage **effective** depuis `/proc/cmdline`, qui reflète les arguments noyau réellement utilisés au boot. C'est supérieur à un grep dans `/etc/default/grub` ou `grub.cfg` : ces fichiers peuvent être modifiés sans régénération, surchargés par des drop-ins sous `/etc/default/grub.d/`, ou différer de ce que le chargeur d'amorçage a transmis. Seul `/proc/cmdline` prouve que la mitigation est active sur le boot courant."
+  },
+  "verify": {
+    "en": "Run `cat /proc/cmdline` and confirm it contains `spec_store_bypass_disable=on`. You can also check the resolved CPU state with `cat /sys/devices/system/cpu/vulnerabilities/spec_store_bypass`, which should report mitigation as active rather than `Vulnerable`.",
+    "fr": "Exécutez `cat /proc/cmdline` et vérifiez la présence de `spec_store_bypass_disable=on`. Vous pouvez aussi contrôler l'état résolu du CPU avec `cat /sys/devices/system/cpu/vulnerabilities/spec_store_bypass`, qui doit indiquer une mitigation active plutôt que `Vulnerable`."
+  },
+  "logs": {
+    "en": "Inspect the kernel ring buffer with `dmesg | grep -i 'speculative store bypass'` or `journalctl -k | grep -i ssb` to see how the kernel reports the mitigation at boot. The live status is exposed via the sysfs entry `/sys/devices/system/cpu/vulnerabilities/spec_store_bypass`.",
+    "fr": "Examinez le tampon noyau avec `dmesg | grep -i 'speculative store bypass'` ou `journalctl -k | grep -i ssb` pour voir comment le noyau signale la mitigation au démarrage. L'état en direct est exposé via l'entrée sysfs `/sys/devices/system/cpu/vulnerabilities/spec_store_bypass`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `kernel_cmdline` resource to add `spec_store_bypass_disable=on` to the bootloader configuration and regenerate it. Because it is a boot-time parameter, `reboot_required` is true, the change only takes effect after the next reboot. Apply it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `kernel_cmdline` pour ajouter `spec_store_bypass_disable=on` à la configuration du chargeur d'amorçage et la régénérer. S'agissant d'un paramètre de démarrage, `reboot_required` est vrai, le changement ne prend effet qu'au prochain redémarrage. Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Without this mitigation the host stays exposed to Speculative Store Bypass attacks that can leak in-process secrets. Enabling it has a measurable but usually modest performance cost on memory-bound workloads, and it requires a **reboot** to take effect. Precautions: schedule the reboot during a maintenance window, verify the bootloader regenerated correctly before rebooting (`grep spec_store_bypass /boot/grub*/grub.cfg` or `grubby --info=ALL` on RHEL), and keep console/IPMI access in case the new command line prevents a clean boot.",
+    "fr": "Sans cette mitigation, l'hôte reste exposé aux attaques Speculative Store Bypass capables d'exfiltrer des secrets en mémoire. Son activation a un coût de performance mesurable mais généralement modéré sur les charges sensibles à la mémoire, et nécessite un **redémarrage** pour prendre effet. Précautions : planifiez le redémarrage dans une fenêtre de maintenance, vérifiez que le chargeur d'amorçage a bien été régénéré avant de redémarrer (`grep spec_store_bypass /boot/grub*/grub.cfg` ou `grubby --info=ALL` sous RHEL), et conservez un accès console/IPMI au cas où la nouvelle ligne de commande empêcherait un démarrage propre."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,17 +1,17 @@
 {
   "id": "ssh-disable-gssapi-auth",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -25,8 +25,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "5.1.11",
-      "5.1.9"
+      "5.1.9",
+      "5.1.11"
     ],
     "nist": [
       "3.1.12",
@@ -45,7 +45,7 @@
     "directive": "gssapiauthentication",
     "notify": {
       "action": "reload",
-      "service": "ssh"
+      "service": "ssh.service"
     },
     "resource": "sshd_setting",
     "value": "no",
@@ -55,14 +55,13 @@
     "en": "Disable GSSAPI Authentication",
     "fr": "Désactiver l'authentification GSSAPI"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "GSSAPI provides pluggable authentication (most often Kerberos) to applications. Exposing it through SSH widens the attack surface: it reaches the system's GSSAPI/Kerberos stack from the network and historically has been a source of pre-authentication vulnerabilities. On hosts that do not participate in a Kerberos realm, this mechanism is pure dead weight and should be disabled to keep the set of enabled auth methods minimal.",
-    "fr": "GSSAPI fournit une authentification enfichable (le plus souvent Kerberos) aux applications. L'exposer via SSH élargit la surface d'attaque : il atteint la pile GSSAPI/Kerberos du système depuis le réseau et a historiquement été source de vulnérabilités pré-authentification. Sur les hôtes ne participant pas à un domaine Kerberos, ce mécanisme est un poids mort et doit être désactivé pour garder un ensemble minimal de méthodes d'authentification activées."
-  },
   "summary": {
     "en": "Forces **`GSSAPIAuthentication no`** so SSH does not offer the GSSAPI (typically Kerberos) authentication mechanism.",
     "fr": "Force **`GSSAPIAuthentication no`** afin que SSH ne propose pas le mécanisme d'authentification GSSAPI (généralement Kerberos)."
+  },
+  "rationale": {
+    "en": "GSSAPI provides pluggable authentication (most often Kerberos) to applications. Exposing it through SSH widens the attack surface: it reaches the system's GSSAPI/Kerberos stack from the network and historically has been a source of pre-authentication vulnerabilities. On hosts that do not participate in a Kerberos realm, this mechanism is pure dead weight and should be disabled to keep the set of enabled auth methods minimal.",
+    "fr": "GSSAPI fournit une authentification enfichable (le plus souvent Kerberos) aux applications. L'exposer via SSH élargit la surface d'attaque : il atteint la pile GSSAPI/Kerberos du système depuis le réseau et a historiquement été source de vulnérabilités pré-authentification. Sur les hôtes ne participant pas à un domaine Kerberos, ce mécanisme est un poids mort et doit être désactivé pour garder un ensemble minimal de méthodes d'authentification activées."
   },
   "check_note": {
     "en": "Pavois reads the **effective** value from `sshd -T`, after all `Include`s, drop-ins in `/etc/ssh/sshd_config.d/` and `Match` blocks. On RHEL-family systems system-wide crypto policies inject SSH settings via includes, only the resolved `sshd -T` output reveals whether GSSAPI is truly off, which a read of `/etc/ssh/sshd_config` cannot.",
@@ -83,5 +82,7 @@
   "impact": {
     "en": "**Before applying**, confirm the host does not rely on Kerberos single sign-on over SSH (common in Active Directory / FreeIPA / SSSD-joined environments). If users log in with Kerberos tickets (`ssh -K`), disabling GSSAPI will force them onto keys or passwords. On standalone hosts there is no impact. The reload preserves active sessions.",
     "fr": "**Avant d'appliquer**, vérifiez que l'hôte ne repose pas sur l'authentification unique Kerberos via SSH (fréquent dans les environnements Active Directory / FreeIPA / joints par SSSD). Si les utilisateurs se connectent avec des tickets Kerberos (`ssh -K`), désactiver GSSAPI les forcera vers les clés ou mots de passe. Sur les hôtes autonomes, aucun impact. Le rechargement préserve les sessions actives."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

@@ -1,17 +1,17 @@
 {
   "id": "audit-login-events",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,10 +26,10 @@
   "norms": {
     "bp28": "R73",
     "cis": [
-      "6.3.3.12",
       "10.2.1.3",
       "6.2.3.12",
-      "6.3.3.21"
+      "6.3.3.21",
+      "6.3.3.12"
     ],
     "nist": [
       "3.1.7",
@@ -49,6 +49,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)logins\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'logins' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -57,35 +60,36 @@
   },
   "title": {
     "en": "Record Attempts to Alter Logon and Logout Events - faillock",
-    "fr": "Enregistrer les tentatives d'alteration des evenements de connexion et deconnexion - faillock"
-  },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The files that track login/logout activity and failed-login counters (`faillock`) are prime targets for attackers covering their tracks. Manual editing of these files may indicate nefarious activity, such as an intruder removing evidence of an intrusion or resetting lockout counters. Auditing writes to them preserves the forensic record.",
-    "fr": "Les fichiers qui suivent l'activite de connexion/deconnexion et les compteurs d'echecs (`faillock`) sont des cibles de choix pour les attaquants effacant leurs traces. L'edition manuelle de ces fichiers peut indiquer une activite malveillante, comme un intrus supprimant la preuve d'une intrusion ou reinitialisant les compteurs de verrouillage. Auditer les ecritures sur ces fichiers preserve la trace forensique."
+    "fr": "Enregistrer les tentatives d'altération des événements de connexion et déconnexion - faillock"
   },
   "summary": {
     "en": "Ensures `auditd` has an active rule tagged `logins` that watches the login records (`/var/log/lastlog`, `/var/run/faillock`) so any tampering with logon/logout history is recorded.",
-    "fr": "Garantit que `auditd` possede une regle active taguee `logins` qui surveille les enregistrements de connexion (`/var/log/lastlog`, `/var/run/faillock`) afin que toute alteration de l'historique de connexion/deconnexion soit enregistree."
+    "fr": "Garantit que `auditd` possède une règle active taguée `logins` qui surveille les enregistrements de connexion (`/var/log/lastlog`, `/var/run/faillock`) afin que toute altération de l'historique de connexion/déconnexion soit enregistrée."
+  },
+  "rationale": {
+    "en": "The files that track login/logout activity and failed-login counters (`faillock`) are prime targets for attackers covering their tracks. Manual editing of these files may indicate nefarious activity, such as an intruder removing evidence of an intrusion or resetting lockout counters. Auditing writes to them preserves the forensic record.",
+    "fr": "Les fichiers qui suivent l'activité de connexion/déconnexion et les compteurs d'échecs (`faillock`) sont des cibles de choix pour les attaquants effaçant leurs traces. L'édition manuelle de ces fichiers peut indiquer une activité malveillante, comme un intrus supprimant la preuve d'une intrusion ou réinitialisant les compteurs de verrouillage. Auditer les écritures sur ces fichiers préserve la trace forensique."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks for a loaded rule carrying the `logins` key. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule present in a file but not loaded gives false assurance. `auditctl -l` reflects only what the kernel enforces now.",
-    "fr": "Pavois execute `auditctl -l` et verifie la presence d'une regle chargee portant la cle `logins`. Lire le **jeu de regles vivant du noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : une regle presente dans un fichier mais non chargee donne une fausse assurance. `auditctl -l` ne reflete que ce que le noyau applique."
+    "fr": "Pavois exécute `auditctl -l` et vérifie la présence d'une règle chargée portant la clé `logins`. Lire le **jeu de règles vivant du noyau** vaut mieux qu'analyser `/etc/audit/rules.d/*.rules` : une règle présente dans un fichier mais non chargée donne une fausse assurance. `auditctl -l` ne reflète que ce que le noyau applique."
   },
   "verify": {
     "en": "Run `auditctl -l | grep logins`. You should see watch rules such as `-w /var/log/lastlog -p wa -k logins` and `-w /var/run/faillock -p wa -k logins`. Empty output means the rule is not loaded.",
-    "fr": "Executez `auditctl -l | grep logins`. Vous devez voir des regles de surveillance telles que `-w /var/log/lastlog -p wa -k logins` et `-w /var/run/faillock -p wa -k logins`. Une sortie vide signifie que la regle n'est pas chargee."
+    "fr": "Exécutez `auditctl -l | grep logins`. Vous devez voir des règles de surveillance telles que `-w /var/log/lastlog -p wa -k logins` et `-w /var/run/faillock -p wa -k logins`. Une sortie vide signifie que la règle n'est pas chargée."
   },
   "logs": {
     "en": "Triggered events land in `/var/log/audit/audit.log`. Search with `grep 'key=\"logins\"' /var/log/audit/audit.log`. Actual login activity is also visible via `last`, `lastb` and `journalctl -u systemd-logind` (prefer grep over `ausearch -k logins`, which can wrongly report no matches).",
-    "fr": "Les evenements declenches arrivent dans `/var/log/audit/audit.log`. Recherchez avec `grep 'key=\"logins\"' /var/log/audit/audit.log`. L'activite de connexion reelle est aussi visible via `last`, `lastb` et `journalctl -u systemd-logind` (preferez grep a `ausearch -k logins`, qui peut signaler a tort aucune correspondance)."
+    "fr": "Les événements déclenchés arrivent dans `/var/log/audit/audit.log`. Recherchez avec `grep 'key=\"logins\"' /var/log/audit/audit.log`. L'activité de connexion réelle est aussi visible via `last`, `lastb` et `journalctl -u systemd-logind` (préférez grep à `ausearch -k logins`, qui peut signaler à tort aucune correspondance)."
   },
   "remediation_note": {
     "en": "Pavois's harden plan uses the `audit_ruleset` resource to write the login-record watch rules into `/etc/audit/rules.d/`, then reloads auditd. Because the audit config may be immutable, a **reboot is required** to fully apply. Run `pavois harden apply`.",
-    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour ecrire les regles de surveillance des enregistrements de connexion dans `/etc/audit/rules.d/`, puis recharge auditd. Comme la configuration d'audit peut etre immuable, un **redemarrage est necessaire** pour une application complete. Executez `pavois harden apply`."
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `audit_ruleset` pour écrire les règles de surveillance des enregistrements de connexion dans `/etc/audit/rules.d/`, puis recharge auditd. Comme la configuration d'audit peut être immuable, un **redémarrage est nécessaire** pour une application complète. Exécutez `pavois harden apply`."
   },
   "impact": {
     "en": "Without this rule, tampering with login history and lockout counters goes undetected. The rule is log-only and cannot block logins, so it breaks nothing. Precautions: every login/logout and every failed-auth touches these files, generating steady volume, size `audit.log` rotation and `space_left_action` so a full disk does not halt the host when `auditd` is set to `halt`.",
-    "fr": "Sans cette regle, l'alteration de l'historique de connexion et des compteurs de verrouillage passe inapercue. La regle ne fait que journaliser et ne peut bloquer les connexions, elle ne casse donc rien. Precautions : chaque connexion/deconnexion et chaque echec d'authentification touche ces fichiers, generant un volume regulier, dimensionnez la rotation de `audit.log` et `space_left_action` afin qu'un disque plein n'arrete pas l'hote lorsque `auditd` est sur `halt`."
-  }
+    "fr": "Sans cette règle, l'altération de l'historique de connexion et des compteurs de verrouillage passe inaperçue. La règle ne fait que journaliser et ne peut bloquer les connexions, elle ne casse donc rien. Précautions : chaque connexion/déconnexion et chaque échec d'authentification touche ces fichiers, générant un volume régulier, dimensionnez la rotation de `audit.log` et `space_left_action` afin qu'un disque plein n'arrête pas l'hôte lorsque `auditd` est sur `halt`."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

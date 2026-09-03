@@ -1,17 +1,17 @@
 {
   "id": "sysctl-net-ipv6-conf-default-accept_ra",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -38,6 +38,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.default.accept_ra') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.default.accept_ra[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -49,14 +52,13 @@
     "en": "Disable Accepting Router Advertisements on all IPv6 Interfaces by Default",
     "fr": "Désactiver l'acceptation des annonces de routeur (RA) sur toutes les interfaces IPv6 par défaut"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "When `net.ipv6.conf.default.accept_ra` is enabled, the host blindly trusts IPv6 Router Advertisements to learn its default gateway, prefixes and routes. A malicious host on the same link can forge RA messages, advertise itself as the default router and silently become a **man-in-the-middle** for all IPv6 traffic, enabling interception, redirection or denial of service. Unless the system is an autoconfigured IPv6 client that genuinely needs SLAAC, accepting RAs by default needlessly widens the attack surface.",
-    "fr": "Lorsque `net.ipv6.conf.default.accept_ra` est activé, l'hôte fait aveuglément confiance aux annonces de routeur (RA) IPv6 pour apprendre sa passerelle par défaut, ses préfixes et ses routes. Un hôte malveillant présent sur le même lien peut forger des messages RA, s'annoncer comme routeur par défaut et devenir silencieusement un **homme du milieu** pour tout le trafic IPv6, permettant interception, redirection ou déni de service. À moins que le système ne soit un client IPv6 autoconfiguré ayant réellement besoin de SLAAC, accepter les RA par défaut élargit inutilement la surface d'attaque."
-  },
   "summary": {
     "en": "Forces the kernel default for new IPv6 interfaces to **reject Router Advertisements** by setting `net.ipv6.conf.default.accept_ra` to `0`.",
     "fr": "Force la valeur par défaut du noyau pour les nouvelles interfaces IPv6 à **rejeter les annonces de routeur** en réglant `net.ipv6.conf.default.accept_ra` sur `0`."
+  },
+  "rationale": {
+    "en": "When `net.ipv6.conf.default.accept_ra` is enabled, the host blindly trusts IPv6 Router Advertisements to learn its default gateway, prefixes and routes. A malicious host on the same link can forge RA messages, advertise itself as the default router and silently become a **man-in-the-middle** for all IPv6 traffic, enabling interception, redirection or denial of service. Unless the system is an autoconfigured IPv6 client that genuinely needs SLAAC, accepting RAs by default needlessly widens the attack surface.",
+    "fr": "Lorsque `net.ipv6.conf.default.accept_ra` est activé, l'hôte fait aveuglément confiance aux annonces de routeur (RA) IPv6 pour apprendre sa passerelle par défaut, ses préfixes et ses routes. Un hôte malveillant présent sur le même lien peut forger des messages RA, s'annoncer comme routeur par défaut et devenir silencieusement un **homme du milieu** pour tout le trafic IPv6, permettant interception, redirection ou déni de service. À moins que le système ne soit un client IPv6 autoconfiguré ayant réellement besoin de SLAAC, accepter les RA par défaut élargit inutilement la surface d'attaque."
   },
   "check_note": {
     "en": "Pavois reads the **effective** runtime value of `net.ipv6.conf.default.accept_ra` via the kernel, not a `*.conf` file. This matters because the live value is the merge of `/etc/sysctl.conf`, every drop-in under `/etc/sysctl.d/`, `/run/sysctl.d/`, kernel boot parameters and anything a tool (NetworkManager, systemd-networkd, a runtime `sysctl -w`) applied after boot. A file-based scanner can pass on a clean config file while the running kernel still accepts RAs, Pavois catches that drift.",
@@ -77,5 +79,7 @@
   "impact": {
     "en": "On a host that is a normal **IPv6 SLAAC client** (relies on Router Advertisements for its address, gateway and routes), setting this to `0` will stop it from autoconfiguring IPv6: it can lose its default route and IPv6 connectivity. Before applying, confirm the host uses **static IPv6 or DHCPv6** addressing, or is IPv4-only. On routers and statically-addressed servers the change is safe. Apply per-interface exceptions if a specific NIC legitimately needs RAs.",
     "fr": "Sur un hôte qui est un **client IPv6 SLAAC** classique (il dépend des annonces de routeur pour son adresse, sa passerelle et ses routes), régler ce paramètre à `0` l'empêchera d'autoconfigurer l'IPv6 : il peut perdre sa route par défaut et sa connectivité IPv6. Avant d'appliquer, vérifiez que l'hôte utilise un adressage **IPv6 statique ou DHCPv6**, ou qu'il est uniquement IPv4. Sur les routeurs et les serveurs à adressage statique, le changement est sans risque. Appliquez des exceptions par interface si une carte réseau précise a réellement besoin des RA."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

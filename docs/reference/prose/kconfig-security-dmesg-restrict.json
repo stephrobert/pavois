@@ -1,0 +1,37 @@
+{
+  "id": "kconfig-security-dmesg-restrict",
+  "title": {
+    "en": "Restrict unprivileged access to the kernel syslog",
+    "fr": "Restreindre l'accès non privilégié au journal du noyau"
+  },
+  "summary": {
+    "en": "Requires the kernel to be built with **`CONFIG_SECURITY_DMESG_RESTRICT=y`** so `kernel.dmesg_restrict` defaults to `1` and only privileged processes can read the kernel log.",
+    "fr": "Exige que le noyau soit compilé avec **`CONFIG_SECURITY_DMESG_RESTRICT=y`** afin que `kernel.dmesg_restrict` vaille `1` par défaut et que seuls les processus privilégiés puissent lire le journal du noyau."
+  },
+  "rationale": {
+    "en": "Prevents unprivileged users from retrieving kernel addresses with `dmesg`. `CONFIG_SECURITY_DMESG_RESTRICT` sets the default of `kernel.dmesg_restrict` to `1`, so only `CAP_SYSLOG` processes can read the kernel ring buffer. Kernel log lines routinely leak **pointers, stack contents and addresses** that defeat KASLR; restricting them denies a local attacker an easy information-disclosure stepping stone toward reliable exploitation.",
+    "fr": "Empêche les utilisateurs non privilégiés de récupérer des adresses du noyau via `dmesg`. `CONFIG_SECURITY_DMESG_RESTRICT` fixe la valeur par défaut de `kernel.dmesg_restrict` à `1`, de sorte que seuls les processus disposant de `CAP_SYSLOG` peuvent lire le tampon circulaire du noyau. Les lignes de journal du noyau divulguent régulièrement des **pointeurs, contenus de pile et adresses** qui contournent KASLR ; les restreindre prive un attaquant local d'un tremplin facile de divulgation d'informations vers une exploitation fiable."
+  },
+  "check_note": {
+    "en": "Pavois reads the build options of the **running** kernel, `grep '^CONFIG_SECURITY_DMESG_RESTRICT=' /boot/config-$(uname -r)` or `zcat /proc/config.gz`, and requires `y`. Reading the live kernel's own config (keyed on `uname -r`) reflects exactly the booted kernel; note the build flag only sets the *default*, which `kernel.dmesg_restrict` can still override at runtime.",
+    "fr": "Pavois lit les options de compilation du noyau **en cours d'exécution**, `grep '^CONFIG_SECURITY_DMESG_RESTRICT=' /boot/config-$(uname -r)` ou `zcat /proc/config.gz`, et exige `y`. Lire la configuration du noyau réellement démarré (indexée sur `uname -r`) reflète exactement le noyau démarré ; notez que l'option de compilation ne fixe que la *valeur par défaut*, que `kernel.dmesg_restrict` peut encore surcharger à l'exécution."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_SECURITY_DMESG_RESTRICT=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep CONFIG_SECURITY_DMESG_RESTRICT`). Expected output:\n\n```\nCONFIG_SECURITY_DMESG_RESTRICT=y\n```\n\nConfirm the effective runtime value with `sysctl kernel.dmesg_restrict`, it should return `kernel.dmesg_restrict = 1`.",
+    "fr": "Exécutez `grep '^CONFIG_SECURITY_DMESG_RESTRICT=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep CONFIG_SECURITY_DMESG_RESTRICT`). Sortie attendue :\n\n```\nCONFIG_SECURITY_DMESG_RESTRICT=y\n```\n\nConfirmez la valeur effective à l'exécution avec `sysctl kernel.dmesg_restrict`, elle doit renvoyer `kernel.dmesg_restrict = 1`."
+  },
+  "logs": {
+    "en": "No routine log entry. Check the live value with `sysctl kernel.dmesg_restrict`; an unprivileged `dmesg` attempt when restricted fails with `Operation not permitted`. Confirm the build flag with `grep CONFIG_SECURITY_DMESG_RESTRICT /boot/config-$(uname -r)`.",
+    "fr": "Aucune entrée de journal courante. Vérifiez la valeur en direct avec `sysctl kernel.dmesg_restrict` ; une tentative `dmesg` non privilégiée en mode restreint échoue avec `Operation not permitted`. Confirmez l'option de compilation avec `grep CONFIG_SECURITY_DMESG_RESTRICT /boot/config-$(uname -r)`."
+  },
+  "remediation_note": {
+    "en": "This is a **kernel build-time option** (it sets the default), so Pavois ships no automated harden step for the `CONFIG_` symbol itself. It is satisfied by booting a distribution kernel compiled with `CONFIG_SECURITY_DMESG_RESTRICT=y`; a custom kernel must be rebuilt. The equivalent runtime control is the separate sysctl rule that sets `kernel.dmesg_restrict = 1`.",
+    "fr": "Il s'agit d'une **option de compilation du noyau** (elle fixe la valeur par défaut), Pavois ne fournit donc aucune étape de durcissement automatique pour le symbole `CONFIG_` lui-même. Elle est satisfaite en démarrant un noyau de distribution compilé avec `CONFIG_SECURITY_DMESG_RESTRICT=y` ; un noyau personnalisé doit être recompilé. Le contrôle équivalent à l'exécution est la règle sysctl distincte fixant `kernel.dmesg_restrict = 1`."
+  },
+  "impact": {
+    "en": "If absent (and the sysctl left at `0`), any local user can read the kernel ring buffer and harvest addresses that undermine KASLR. **Precautions:** restricting `dmesg` can surprise monitoring agents, log shippers or diagnostic scripts that run unprivileged and parse `dmesg`; grant them `CAP_SYSLOG` or run them as root before enforcing, and verify your alerting still collects kernel messages so you do not lose visibility.",
+    "fr": "En son absence (et avec le sysctl laissé à `0`), tout utilisateur local peut lire le tampon circulaire du noyau et récolter des adresses qui affaiblissent KASLR. **Précautions :** restreindre `dmesg` peut surprendre des agents de supervision, collecteurs de logs ou scripts de diagnostic non privilégiés qui analysent `dmesg` ; accordez-leur `CAP_SYSLOG` ou exécutez-les en root avant d'appliquer, et vérifiez que votre alerting collecte toujours les messages noyau pour ne pas perdre en visibilité."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

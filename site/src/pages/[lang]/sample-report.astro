@@ -1,12 +1,27 @@
 ---
 import Base from '../../layouts/Base.astro';
 import { languages, type Lang } from '../../i18n/ui';
+// The campaign figures were PROSE, and they described a campaign two weeks older than the artifact
+// the page embeds: the text said "E to D, 56 still failing, 1 regression" while the report itself
+// showed E to B. Read the numbers from the artifact the binary produced (`pavois diff --json`).
+import campaign from '../../../public/sample-campaign.json';
 
 export function getStaticPaths() {
   return Object.keys(languages).map((lang) => ({ params: { lang } }));
 }
 const { lang } = Astro.params as { lang: Lang };
 const fr = lang === 'fr';
+
+const c = campaign as {
+  before: { grade: string; passed: number; total: number };
+  after: { grade: string; passed: number; total: number };
+  transitions: Record<string, number>;
+};
+const tr = c.transitions ?? {};
+const fixed = tr['fail>pass'] ?? 0;
+const newlyOk = tr['na>pass'] ?? 0;
+const stillFailing = tr['fail>fail'] ?? 0;
+const regressions = tr['pass>fail'] ?? 0;
 
 const title = fr ? 'Rapport d’exemple' : 'Sample report';
 const lede = fr
@@ -35,14 +50,13 @@ const lede = fr
           <tr><th></th><th>{fr ? 'Avant' : 'Before'}</th><th>{fr ? 'Après (post-reboot)' : 'After (post-reboot)'}</th></tr>
         </thead>
         <tbody>
-          <tr><td>{fr ? 'Note' : 'Grade'}</td><td>E</td><td>D</td></tr>
-          <tr><td>{fr ? 'Conformes' : 'Passing'}</td><td>262 / 550</td><td>521 / 578</td></tr>
-          <tr><td>{fr ? 'Critiques' : 'Critical'}</td><td>1</td><td>0</td></tr>
+          <tr><td>{fr ? 'Note' : 'Grade'}</td><td>{c.before.grade}</td><td>{c.after.grade}</td></tr>
+          <tr><td>{fr ? 'Conformes' : 'Passing'}</td><td>{c.before.passed} / {c.before.total}</td><td>{c.after.passed} / {c.after.total}</td></tr>
         </tbody>
       </table>
       <p set:html={fr
-        ? 'Campagne : 231 corrigés, 29 devenus applicables et conformes, 56 encore en échec, 1 régression. Re-scan après un vrai reboot (boot_id changé avant/après) : les PASS y sont reboot-proven. Le tout est empaquetable et vérifiable via <code>pavois bundle verify</code> (SHA-256 du manifeste + checksums).'
-        : 'Campaign: 231 fixed, 29 newly applicable and passing, 56 still failing, 1 regression. Re-scanned after a real reboot (boot_id changed before/after), so the passes are reboot-proven. The whole thing is packaged and verifiable with <code>pavois bundle verify</code> (manifest SHA-256 + checksums).'} />
+        ? `Campagne : ${fixed} corrigés, ${newlyOk} devenus applicables et conformes, ${stillFailing} encore en échec, ${regressions} régression${regressions > 1 ? 's' : ''}. Le durcissement a CONVERGÉ (re-scan, re-plan, ré-application jusqu’au point fixe) : un seul apply n’y suffit pas, il crée lui-même des écarts qu’il ne peut pas voir. Re-scan après un vrai reboot (boot_id changé avant/après) : les PASS y sont reboot-proven. Le tout est empaquetable et vérifiable via <code>pavois bundle verify</code> (SHA-256 du manifeste + checksums).`
+        : `Campaign: ${fixed} fixed, ${newlyOk} newly applicable and passing, ${stillFailing} still failing, ${regressions} regression${regressions > 1 ? 's' : ''}. The hardening CONVERGED (re-scan, re-plan, re-apply to a fixpoint): a single apply is not enough, it creates gaps it cannot itself see. Re-scanned after a real reboot (boot_id changed before/after), so the passes are reboot-proven. The whole thing is packaged and verifiable with <code>pavois bundle verify</code> (manifest SHA-256 + checksums).`} />
 
     </div>
   </div>
@@ -65,40 +79,10 @@ const lede = fr
     </div>
     <p class="sample-intro">
       {fr
-        ? 'Le rapport de campagne compare deux scans, avant et après un durcissement. Il affiche le delta de note (ici E vers D) et la matrice de transition : l’état de chaque contrôle avant puis après (corrigé, régression, devenu applicable, toujours en échec). On raisonne ainsi en transitions, pas en taux de réussite brut, car le périmètre applicable s’élargit quand la baseline installe des composants (auditd, AIDE...). Les régressions sont mises en avant : ce sont elles qu’un auditeur regarde en premier.'
-        : 'The campaign report compares two scans, before and after a hardening round. It shows the grade delta (here E to D) and the transition matrix: every control’s state before and after (fixed, regressed, newly applicable, still failing). You reason in transitions, not a raw pass rate, because the applicable set grows when the baseline installs components (auditd, AIDE...). Regressions are surfaced first: that is what an auditor checks before anything else.'}
+        ? 'Le rapport de campagne compare deux scans, avant et après un durcissement. Il affiche le delta de note  et la matrice de transition : l’état de chaque contrôle avant puis après (corrigé, régression, devenu applicable, toujours en échec). On raisonne ainsi en transitions, pas en taux de réussite brut, car le périmètre applicable s’élargit quand la baseline installe des composants (auditd, AIDE...). Les régressions sont mises en avant : ce sont elles qu’un auditeur regarde en premier.'
+        : 'The campaign report compares two scans, before and after a hardening round. It shows the grade delta and the transition matrix: every control’s state before and after (fixed, regressed, newly applicable, still failing). You reason in transitions, not a raw pass rate, because the applicable set grows when the baseline installs components (auditd, AIDE...). Regressions are surfaced first: that is what an auditor checks before anything else.'}
     </p>
     <iframe class="sample-frame" src="/sample-campaign.html" loading="lazy"
       title={fr ? 'Rapport de campagne Pavois' : 'Pavois campaign report'}></iframe>
   </div>
 </Base>
-
-<style>
-  .sample-wrap {
-    margin-bottom: 4rem;
-  }
-  .sample-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin: 2rem 0 0.75rem;
-  }
-  .sample-head h2 {
-    margin: 0;
-  }
-  .sample-intro {
-    max-width: 75ch;
-    margin: 0 0 1rem;
-    color: var(--tx-2, #4b5563);
-  }
-  .sample-frame {
-    width: 100%;
-    height: 85vh;
-    min-height: 520px;
-    border: 1px solid var(--line, #e5e7eb);
-    border-radius: 12px;
-    background: #fff;
-  }
-</style>

@@ -1,16 +1,17 @@
 {
   "id": "kconfig-debug-list",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R16"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_DEBUG_LIST=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_DEBUG_LIST='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_DEBUG_LIST=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_DEBUG_LIST=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Enable checks on linked list manipulation",
     "fr": "Activer les vérifications sur la manipulation des listes chaînées"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_DEBUG_LIST=y` adds integrity checks to the kernel's intrusive linked-list operations (`list_add`, `list_del`, …), validating the `prev`/`next` pointers before each manipulation. Linked-list corruption, often via race conditions or use-after-free, is a classic exploitation primitive: a crafted overwrite of list pointers can give an attacker an arbitrary write. These checks detect the inconsistency and abort the operation (e.g. preventing exploits like the list-corruption race CVE-2017-1661), turning a potential write primitive into a safe failure.",
-    "fr": "`CONFIG_DEBUG_LIST=y` ajoute des vérifications d'intégrité aux opérations sur les listes chaînées intrusives du noyau (`list_add`, `list_del`, …), validant les pointeurs `prev`/`next` avant chaque manipulation. La corruption de liste chaînée, souvent via des conditions de course ou des use-after-free, est une primitive d'exploitation classique : un écrasement façonné des pointeurs de liste peut donner à un attaquant une écriture arbitraire. Ces vérifications détectent l'incohérence et abandonnent l'opération (empêchant par ex. des exploits comme la course de corruption de liste CVE-2017-1661), transformant une primitive d'écriture potentielle en un échec sûr."
-  },
   "summary": {
     "en": "Ensures the running kernel is built with `CONFIG_DEBUG_LIST=y`, adding sanity checks to linked-list manipulation that catch corruption before it can be exploited.",
     "fr": "Garantit que le noyau en cours d'exécution est compilé avec `CONFIG_DEBUG_LIST=y`, ajoutant des vérifications à la manipulation des listes chaînées qui détectent la corruption avant qu'elle ne soit exploitable."
+  },
+  "rationale": {
+    "en": "`CONFIG_DEBUG_LIST=y` adds integrity checks to the kernel's intrusive linked-list operations (`list_add`, `list_del`, …), validating the `prev`/`next` pointers before each manipulation. Linked-list corruption, often via race conditions or use-after-free, is a classic exploitation primitive: a crafted overwrite of list pointers can give an attacker an arbitrary write. These checks detect the inconsistency and abort the operation (e.g. preventing exploits like the list-corruption race CVE-2017-1661), turning a potential write primitive into a safe failure.",
+    "fr": "`CONFIG_DEBUG_LIST=y` ajoute des vérifications d'intégrité aux opérations sur les listes chaînées intrusives du noyau (`list_add`, `list_del`, …), validant les pointeurs `prev`/`next` avant chaque manipulation. La corruption de liste chaînée, souvent via des conditions de course ou des use-after-free, est une primitive d'exploitation classique : un écrasement façonné des pointeurs de liste peut donner à un attaquant une écriture arbitraire. Ces vérifications détectent l'incohérence et abandonnent l'opération (empêchant par ex. des exploits comme la course de corruption de liste CVE-2017-1661), transformant une primitive d'écriture potentielle en un échec sûr."
   },
   "check_note": {
     "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)` (fallback `/proc/config.gz`) and asserts `CONFIG_DEBUG_LIST=y`. Keying on `uname -r` matches the exact booted image, more reliable than reading a random `/boot/config-*`. This option underpins `CONFIG_BUG_ON_DATA_CORRUPTION`, which escalates a detected list corruption to a hard `BUG()`.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "**Risk if disabled:** linked-list corruption, a common path to an arbitrary kernel write, goes undetected and can be exploited for privilege escalation.\n\n**Precautions before changing it:** the checks add a small per-operation overhead but no functional risk, and most distribution kernels already enable them. Changing kernels requires a reboot; keep the previous kernel in GRUB as a fallback and validate boot on a console.",
     "fr": "**Risque si désactivé :** la corruption de liste chaînée, voie courante vers une écriture noyau arbitraire, passe inaperçue et peut être exploitée pour une élévation de privilèges.\n\n**Précautions avant de modifier :** les vérifications ajoutent un léger surcoût par opération mais aucun risque fonctionnel, et la plupart des noyaux de distribution les activent déjà. Changer de noyau nécessite un redémarrage ; conservez le noyau précédent dans GRUB en repli et validez le démarrage sur une console."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

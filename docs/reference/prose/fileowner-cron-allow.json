@@ -1,0 +1,37 @@
+{
+  "id": "fileowner-cron-allow",
+  "title": {
+    "en": "Verify User Who Owns /etc/cron.allow file",
+    "fr": "Vérifier l'utilisateur propriétaire du fichier /etc/cron.allow"
+  },
+  "summary": {
+    "en": "Ensures the cron allow-list `/etc/cron.allow` is owned by the **root** user (UID 0).",
+    "fr": "Garantit que la liste d'autorisation cron `/etc/cron.allow` appartient à l'utilisateur **root** (UID 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/cron.allow` file defines **which users are permitted to schedule cron jobs**. If it is not owned by **root**, an unauthorized user could add their own name to gain cron access, and thus a foothold for **scheduled persistence or privilege escalation**, or read it to learn which accounts have cron rights. Controlling ownership keeps the allow-list authoritative.",
+    "fr": "Le fichier `/etc/cron.allow` définit **quels utilisateurs sont autorisés à planifier des tâches cron**. S'il n'appartient pas à **root**, un utilisateur non autorisé pourrait y ajouter son propre nom pour obtenir un accès cron, et donc un point d'ancrage pour une **persistance planifiée ou une élévation de privilèges**, ou le lire pour découvrir quels comptes disposent de droits cron. Maîtriser la propriété garantit l'autorité de la liste d'autorisation."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** owner of `/etc/cron.allow` via the InSpec `file` resource and asserts `uid == 0`, only when the file exists (`only_if`). Reading the live inode ownership reflects the actual on-disk state, catching drift from manual edits or administrative scripts rather than relying on an assumed default.",
+    "fr": "Pavois lit le propriétaire **effectif** de `/etc/cron.allow` via la ressource `file` d'InSpec et vérifie `uid == 0`, uniquement si le fichier existe (`only_if`). Lire la propriété réelle de l'inode reflète l'état exact sur le disque, détectant une dérive due à des éditions manuelles ou des scripts d'administration plutôt que de se fier à une valeur par défaut supposée."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %u' /etc/cron.allow`. Expected output: **`root 0`**. Alternatively `ls -l /etc/cron.allow` should show `root` in the owner column.",
+    "fr": "Exécutez `stat -c '%U %u' /etc/cron.allow`. Résultat attendu : **`root 0`**. Sinon, `ls -l /etc/cron.allow` doit afficher `root` dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "Ownership has no service log. Confirm the state with `stat -c '%U %u' /etc/cron.allow`. To trace changes, an auditd watch such as `auditctl -w /etc/cron.allow -p wa -k cron-access` records writes/attribute changes in `/var/log/audit/audit.log`.",
+    "fr": "La propriété ne génère aucun journal de service. Vérifiez l'état avec `stat -c '%U %u' /etc/cron.allow`. Pour tracer les changements, une surveillance auditd telle que `auditctl -w /etc/cron.allow -p wa -k cron-access` enregistre les écritures/changements d'attributs dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied **manually**: run `chown root /etc/cron.allow` as root to set the owner to **root**.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être appliquée **manuellement** : exécutez `chown root /etc/cron.allow` en root pour fixer le propriétaire à **root**."
+  },
+  "impact": {
+    "en": "**If misconfigured**, an unauthorized user could add themselves to the cron allow-list and run scheduled jobs, enabling persistence or escalation.\n\n**Precautions before applying:** `chown root /etc/cron.allow` is safe and reversible with no service restart. Note that the mere presence of `cron.allow` overrides `cron.deny`; do not create the file as a side effect of remediation, only change ownership if it already exists, or you may unintentionally restrict cron to listed users.",
+    "fr": "**En cas de mauvaise configuration**, un utilisateur non autorisé pourrait s'ajouter à la liste d'autorisation cron et exécuter des tâches planifiées, permettant persistance ou élévation.\n\n**Précautions avant application :** `chown root /etc/cron.allow` est sûr et réversible, sans redémarrage de service. Notez que la simple présence de `cron.allow` prévaut sur `cron.deny` ; ne créez pas le fichier comme effet de bord de la remédiation, ne changez la propriété que s'il existe déjà, sinon vous pourriez restreindre cron aux seuls utilisateurs listés."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

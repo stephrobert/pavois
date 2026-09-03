@@ -1,19 +1,21 @@
 {
   "id": "dconf-gnome-screensaver-user-locks",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
-    "rhel9"
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
-    "rhel9": "2.0.0"
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
   },
   "severity": "medium",
   "domain": "GNOME desktop (dconf)",
@@ -27,25 +29,27 @@
     "nist": "3.1.10"
   },
   "check": [
+    "only_if { command('dconf').exist? }",
     "describe command('{ grep -rqE \\'^[[:space:]]*lock-delay[[:space:]]*=\\' /etc/dconf/db/*.d/* 2>/dev/null && grep -rqxF \\'/org/gnome/desktop/screensaver/lock-delay\\' /etc/dconf/db/*/locks/* 2>/dev/null && echo ok; } || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
   "remediation": {
-    "resource": "dconf"
+    "key": "org/gnome/desktop/screensaver/lock-delay",
+    "resource": "dconf",
+    "value": "uint32 5"
   },
   "title": {
     "en": "Ensure Users Cannot Change GNOME3 Screensaver Settings",
     "fr": "Empêcher les utilisateurs de modifier les paramètres de l'économiseur d'écran GNOME3"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "A session time-out lock is a temporary action taken when a user stops work and moves away from the immediate physical vicinity of the information system but does not logout because of the temporary nature of the absence. Rather than relying on the user to manually lock their operating system session prior to vacating the vicinity, GNOME desktops can be configured to identify when a user's session has idled and take action to initiate the session lock. As such, users should not be allowed to change session settings.",
-    "fr": "Le verrouillage de session sur inactivité est une action temporaire déclenchée lorsqu'un utilisateur cesse de travailler et s'éloigne physiquement du système d'information sans se déconnecter, en raison du caractère temporaire de son absence. Plutôt que de compter sur l'utilisateur pour verrouiller manuellement sa session avant de s'éloigner, les bureaux GNOME peuvent être configurés pour détecter l'inactivité d'une session et déclencher son verrouillage. Les utilisateurs ne doivent donc pas être autorisés à modifier ces paramètres de session."
-  },
   "summary": {
     "en": "**Locks** the GNOME screensaver `lock-delay` key so users cannot weaken or disable the automatic session lock that follows screen blanking.",
     "fr": "**Verrouille** la clé `lock-delay` de l'économiseur d'écran GNOME afin que les utilisateurs ne puissent ni affaiblir ni désactiver le verrouillage automatique de session qui suit l'extinction de l'écran."
+  },
+  "rationale": {
+    "en": "A session time-out lock is a temporary action taken when a user stops work and moves away from the immediate physical vicinity of the information system but does not logout because of the temporary nature of the absence. Rather than relying on the user to manually lock their operating system session prior to vacating the vicinity, GNOME desktops can be configured to identify when a user's session has idled and take action to initiate the session lock. As such, users should not be allowed to change session settings.",
+    "fr": "Le verrouillage de session sur inactivité est une action temporaire déclenchée lorsqu'un utilisateur cesse de travailler et s'éloigne physiquement du système d'information sans se déconnecter, en raison du caractère temporaire de son absence. Plutôt que de compter sur l'utilisateur pour verrouiller manuellement sa session avant de s'éloigner, les bureaux GNOME peuvent être configurés pour détecter l'inactivité d'une session et déclencher son verrouillage. Les utilisateurs ne doivent donc pas être autorisés à modifier ces paramètres de session."
   },
   "check_note": {
     "en": "Pavois confirms, against the **effective** system dconf database under `/etc/dconf/db/*.d/`, that `lock-delay` is set AND that `/org/gnome/desktop/screensaver/lock-delay` appears in a `locks/` file. The lock entry is the key control here, it proves users cannot override the value. A file-only scan of a user profile could not tell whether the system policy is enforced and locked.",
@@ -66,5 +70,7 @@
   "impact": {
     "en": "Low risk: tightens an existing screensaver/lock policy without affecting login or services. Ensure a sensible `lock-delay`/`idle-delay` value is set first, otherwise locking the key cements whatever default is present. Users must re-login (or `dconf update` must run) to load the mandatory policy. GNOME desktop only; not applicable to headless servers.",
     "fr": "Risque faible : durcit une politique d'économiseur/verrouillage existante sans affecter la connexion ni les services. Assurez-vous d'abord qu'une valeur `lock-delay`/`idle-delay` raisonnable est définie, sinon verrouiller la clé fige la valeur par défaut présente. Les utilisateurs doivent se reconnecter (ou `dconf update` doit s'exécuter) pour charger la politique obligatoire. Bureau GNOME uniquement ; sans objet sur un serveur sans interface graphique."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

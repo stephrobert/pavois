@@ -1,0 +1,37 @@
+{
+  "id": "kconfig-bug-on-data-corruption",
+  "title": {
+    "en": "Trigger a kernel BUG when data corruption is detected",
+    "fr": "Déclencher un BUG noyau lorsqu'une corruption de données est détectée"
+  },
+  "summary": {
+    "en": "Ensures the running kernel is built with `CONFIG_BUG_ON_DATA_CORRUPTION=y`, so detected data-structure corruption triggers a `BUG()` and stops instead of continuing.",
+    "fr": "Garantit que le noyau en cours d'exécution est compilé avec `CONFIG_BUG_ON_DATA_CORRUPTION=y`, afin qu'une corruption de structure détectée déclenche un `BUG()` et s'arrête au lieu de continuer."
+  },
+  "rationale": {
+    "en": "`CONFIG_BUG_ON_DATA_CORRUPTION=y` upgrades the kernel's internal consistency checks (e.g. linked-list and memory sanity validations) from a mere warning to a hard `BUG()` that halts the offending path the moment corruption is observed. Many kernel exploits work by corrupting in-memory structures; stopping immediately denies the attacker the window to leverage the corrupted state, and prevents a silently damaged kernel from continuing to operate. Without it, detected corruption only logs a warning and execution proceeds, which can let an exploit succeed.",
+    "fr": "`CONFIG_BUG_ON_DATA_CORRUPTION=y` fait passer les vérifications de cohérence internes du noyau (par ex. validations des listes chaînées et de la mémoire) d'un simple avertissement à un `BUG()` ferme qui stoppe le chemin fautif dès qu'une corruption est observée. Beaucoup d'exploits noyau fonctionnent en corrompant des structures en mémoire ; s'arrêter immédiatement prive l'attaquant de la fenêtre pour exploiter l'état corrompu, et empêche un noyau silencieusement endommagé de continuer à fonctionner. Sans cela, une corruption détectée ne fait que journaliser un avertissement et l'exécution se poursuit, ce qui peut laisser un exploit réussir."
+  },
+  "check_note": {
+    "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)` (fallback `/proc/config.gz`) and asserts `CONFIG_BUG_ON_DATA_CORRUPTION=y`. Keying on `uname -r` matches the exact booted image, more reliable than reading a random `/boot/config-*`. This option depends on `CONFIG_DEBUG_LIST` and related consistency checks being enabled.",
+    "fr": "Pavois lit la config de compilation du noyau **en cours d'exécution** via `/boot/config-$(uname -r)` (repli `/proc/config.gz`) et vérifie `CONFIG_BUG_ON_DATA_CORRUPTION=y`. S'indexer sur `uname -r` correspond à l'image exacte démarrée, plus fiable que lire un `/boot/config-*` quelconque. Cette option dépend de l'activation de `CONFIG_DEBUG_LIST` et des vérifications de cohérence associées."
+  },
+  "verify": {
+    "en": "Run `grep -h '^CONFIG_BUG_ON_DATA_CORRUPTION=' /boot/config-$(uname -r)` (or `zcat /proc/config.gz | grep BUG_ON_DATA_CORRUPTION`). Expected: `CONFIG_BUG_ON_DATA_CORRUPTION=y`.",
+    "fr": "Exécutez `grep -h '^CONFIG_BUG_ON_DATA_CORRUPTION=' /boot/config-$(uname -r)` (ou `zcat /proc/config.gz | grep BUG_ON_DATA_CORRUPTION`). Attendu : `CONFIG_BUG_ON_DATA_CORRUPTION=y`."
+  },
+  "logs": {
+    "en": "Static kernel build option, no dedicated log. Inspect with `zcat /proc/config.gz | grep BUG_ON_DATA_CORRUPTION` or `grep BUG_ON_DATA_CORRUPTION /boot/config-$(uname -r)`. If corruption is detected at runtime, the resulting `BUG()`/oops and backtrace appear in `dmesg` and `journalctl -k`.",
+    "fr": "Option de compilation statique du noyau, sans journal dédié. Inspectez avec `zcat /proc/config.gz | grep BUG_ON_DATA_CORRUPTION` ou `grep BUG_ON_DATA_CORRUPTION /boot/config-$(uname -r)`. Si une corruption est détectée à l'exécution, le `BUG()`/oops et la trace résultants apparaissent dans `dmesg` et `journalctl -k`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is shipped: this is a **kernel compile-time** option. Apply it by booting a kernel built with `CONFIG_BUG_ON_DATA_CORRUPTION=y` (a hardened or security-oriented kernel), or rebuild the kernel. `pavois harden apply` cannot change it.",
+    "fr": "Aucune remédiation automatisée n'est fournie : c'est une option de **compilation du noyau**. Appliquez-la en démarrant un noyau compilé avec `CONFIG_BUG_ON_DATA_CORRUPTION=y` (un noyau durci ou orienté sécurité), ou recompilez le noyau. `pavois harden apply` ne peut pas la modifier."
+  },
+  "impact": {
+    "en": "**Risk if disabled:** detected corruption is only warned about and the kernel keeps running, giving an attacker time to exploit the corrupted state.\n\n**Precautions before changing it:** with this enabled, a genuine corruption now causes a hard stop/panic rather than a warning, which favors integrity over availability, acceptable on security-sensitive hosts but consider it for high-availability nodes. Changing kernels requires a reboot; keep the prior kernel in GRUB as a fallback and validate boot on a console.",
+    "fr": "**Risque si désactivé :** une corruption détectée n'est que signalée par un avertissement et le noyau continue, laissant à l'attaquant le temps d'exploiter l'état corrompu.\n\n**Précautions avant de modifier :** activée, une corruption réelle provoque désormais un arrêt/panic ferme plutôt qu'un avertissement, ce qui privilégie l'intégrité sur la disponibilité, acceptable sur des hôtes sensibles mais à évaluer pour des nœuds à haute disponibilité. Changer de noyau nécessite un redémarrage ; conservez le noyau précédent dans GRUB en repli et validez le démarrage sur une console."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

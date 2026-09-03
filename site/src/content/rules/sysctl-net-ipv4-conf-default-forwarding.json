@@ -2,10 +2,13 @@
   "id": "sysctl-net-ipv4-conf-default-forwarding",
   "supported_os": [
     "fedora",
-    "rhel8"
+    "rhel10",
+    "rhel8",
+    "rhel9"
   ],
   "os_versions": {
-    "rhel8": "4.0.0"
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
   },
   "severity": "medium",
   "domain": "Kernel & network (sysctl)",
@@ -17,6 +20,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.conf.default.forwarding') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.default.forwarding[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -26,35 +32,36 @@
   },
   "title": {
     "en": "Disable Kernel Parameter for IPv4 Forwarding By Default",
-    "fr": "Desactiver le parametre noyau de transfert IPv4 par defaut"
-  },
-  "needs_translation": [],
-  "rationale": {
-    "en": "IP forwarding lets the kernel pass packets from one interface to another, turning the host into a router. Only systems intended to route traffic should do this. On an ordinary host, forwarding can let an attacker bounce traffic across network boundaries, bypass segmentation, and use the machine as a pivot. The `default` template should be **0** so newly created interfaces do not forward packets unless the host is explicitly configured as a router.",
-    "fr": "Le transfert IP permet au noyau de faire passer des paquets d'une interface a une autre, transformant l'hote en routeur. Seuls les systemes destines a router du trafic devraient le faire. Sur un hote ordinaire, le transfert peut permettre a un attaquant de faire rebondir du trafic au travers des frontieres reseau, de contourner la segmentation et d'utiliser la machine comme point de pivot. Le modele `default` doit valoir **0** afin que les interfaces nouvellement creees ne transferent pas de paquets, sauf si l'hote est explicitement configure comme routeur."
+    "fr": "Désactiver le paramètre noyau de transfert IPv4 par défaut"
   },
   "summary": {
     "en": "Forces `net.ipv4.conf.default.forwarding` to **0** so newly created IPv4 interfaces do not forward packets between networks by default.",
-    "fr": "Force `net.ipv4.conf.default.forwarding` a **0** afin que les interfaces IPv4 nouvellement creees ne transferent pas de paquets entre reseaux par defaut."
+    "fr": "Force `net.ipv4.conf.default.forwarding` à **0** afin que les interfaces IPv4 nouvellement créées ne transfèrent pas de paquets entre réseaux par défaut."
+  },
+  "rationale": {
+    "en": "IP forwarding lets the kernel pass packets from one interface to another, turning the host into a router. Only systems intended to route traffic should do this. On an ordinary host, forwarding can let an attacker bounce traffic across network boundaries, bypass segmentation, and use the machine as a pivot. The `default` template should be **0** so newly created interfaces do not forward packets unless the host is explicitly configured as a router.",
+    "fr": "Le transfert IP permet au noyau de faire passer des paquets d'une interface à une autre, transformant l'hôte en routeur. Seuls les systèmes destinés à router du trafic devraient le faire. Sur un hôte ordinaire, le transfert peut permettre à un attaquant de faire rebondir du trafic au travers des frontières réseau, de contourner la segmentation et d'utiliser la machine comme point de pivot. Le modèle `default` doit valoir **0** afin que les interfaces nouvellement créées ne transfèrent pas de paquets, sauf si l'hôte est explicitement configuré comme routeur."
   },
   "check_note": {
     "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.default.forwarding` from the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not a `/etc/sysctl.d/` file. Forwarding is frequently toggled at runtime by container runtimes, libvirt, or VPN software, so a config file can disagree with reality. Only the effective parameter reveals whether the kernel will actually route traffic.",
-    "fr": "Pavois lit la **valeur d'execution en direct** de `net.ipv4.conf.default.forwarding` depuis le noyau (ressource InSpec `kernel_parameter`, equivalente a `sysctl`), et non un fichier `/etc/sysctl.d/`. Le transfert est frequemment bascule a l'execution par les moteurs de conteneurs, libvirt ou des logiciels VPN, donc un fichier de configuration peut diverger de la realite. Seul le parametre effectif revele si le noyau routera reellement le trafic."
+    "fr": "Pavois lit la **valeur d'exécution en direct** de `net.ipv4.conf.default.forwarding` depuis le noyau (ressource InSpec `kernel_parameter`, équivalente à `sysctl`), et non un fichier `/etc/sysctl.d/`. Le transfert est fréquemment basculé à l'exécution par les moteurs de conteneurs, libvirt ou des logiciels VPN, donc un fichier de configuration peut diverger de la réalité. Seul le paramètre effectif révèle si le noyau routera réellement le trafic."
   },
   "verify": {
     "en": "Run `sysctl net.ipv4.conf.default.forwarding`. Expected output:\n\n- `net.ipv4.conf.default.forwarding = 0`",
-    "fr": "Executez `sysctl net.ipv4.conf.default.forwarding`. Sortie attendue :\n\n- `net.ipv4.conf.default.forwarding = 0`"
+    "fr": "Exécutez `sysctl net.ipv4.conf.default.forwarding`. Sortie attendue :\n\n- `net.ipv4.conf.default.forwarding = 0`"
   },
   "logs": {
     "en": "No dedicated log exists. Inspect the state with `sysctl net.ipv4.conf.default.forwarding` and check the global toggle with `sysctl net.ipv4.ip_forward`; review all forwarding values with `sysctl -a | grep forwarding`.",
-    "fr": "Aucun journal dedie n'existe. Inspectez l'etat avec `sysctl net.ipv4.conf.default.forwarding` et verifiez le bascule global avec `sysctl net.ipv4.ip_forward` ; passez en revue toutes les valeurs de transfert avec `sysctl -a | grep forwarding`."
+    "fr": "Aucun journal dédié n'existe. Inspectez l'état avec `sysctl net.ipv4.conf.default.forwarding` et vérifiez le bascule global avec `sysctl net.ipv4.ip_forward` ; passez en revue toutes les valeurs de transfert avec `sysctl -a | grep forwarding`."
   },
   "remediation_note": {
     "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv4.conf.default.forwarding` to **0**, applying it to the running kernel and persisting it in a Pavois-managed drop-in under `/etc/sysctl.d/` so it survives reboot. Apply it with `pavois harden apply`.",
-    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour definir `net.ipv4.conf.default.forwarding` a **0**, en l'appliquant au noyau en cours d'execution et en le persistant dans un drop-in gere par Pavois sous `/etc/sysctl.d/` afin qu'il survive au redemarrage. Appliquez-le avec `pavois harden apply`."
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour définir `net.ipv4.conf.default.forwarding` à **0**, en l'appliquant au noyau en cours d'exécution et en le persistant dans un drop-in géré par Pavois sous `/etc/sysctl.d/` afin qu'il survive au redémarrage. Appliquez-le avec `pavois harden apply`."
   },
   "impact": {
     "en": "**Apply with care on hosts that route traffic.** Disabling forwarding will break any machine that acts as a router, NAT gateway, VPN concentrator, or container/VM host that relies on packet forwarding (Docker, Kubernetes, libvirt, WireGuard). On such systems, leave forwarding enabled or scope the exception. Before applying, confirm the host is not a router (`sysctl net.ipv4.ip_forward` and your network role). On a plain server with a single network role, setting this to **0** is safe and does not affect inbound remote access.",
-    "fr": "**A appliquer avec precaution sur les hotes qui routent du trafic.** Desactiver le transfert cassera toute machine agissant comme routeur, passerelle NAT, concentrateur VPN ou hote de conteneurs/VM s'appuyant sur le transfert de paquets (Docker, Kubernetes, libvirt, WireGuard). Sur ces systemes, laissez le transfert active ou delimitez l'exception. Avant d'appliquer, confirmez que l'hote n'est pas un routeur (`sysctl net.ipv4.ip_forward` et votre role reseau). Sur un simple serveur a role reseau unique, definir cette valeur a **0** est sur et n'affecte pas l'acces distant entrant."
-  }
+    "fr": "**À appliquer avec précaution sur les hôtes qui routent du trafic.** Désactiver le transfert cassera toute machine agissant comme routeur, passerelle NAT, concentrateur VPN ou hôte de conteneurs/VM s'appuyant sur le transfert de paquets (Docker, Kubernetes, libvirt, WireGuard). Sur ces systèmes, laissez le transfert activé ou délimitez l'exception. Avant d'appliquer, confirmez que l'hôte n'est pas un routeur (`sysctl net.ipv4.ip_forward` et votre rôle réseau). Sur un simple serveur à rôle réseau unique, définir cette valeur à **0** est sûr et n'affecte pas l'accès distant entrant."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

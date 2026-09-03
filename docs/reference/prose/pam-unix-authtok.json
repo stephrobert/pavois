@@ -1,0 +1,37 @@
+{
+  "id": "pam-unix-authtok",
+  "title": {
+    "en": "Require use_authtok for pam_unix.so",
+    "fr": "Exiger use_authtok pour pam_unix.so"
+  },
+  "summary": {
+    "en": "Forces `pam_unix.so` to reuse the password token already validated by the complexity modules, via the **`use_authtok`** option in the PAM password stack.",
+    "fr": "Force `pam_unix.so` à réutiliser le jeton de mot de passe déjà validé par les modules de complexité, via l'option **`use_authtok`** dans la pile PAM `password`."
+  },
+  "rationale": {
+    "en": "Without **`use_authtok`**, the `pam_unix.so` module prompts for a brand-new password instead of reusing the token already validated by the earlier complexity modules (`pam_pwquality` / `pam_cracklib`). The result is a password that bypasses the configured strength, history and dictionary checks, silently defeating the whole password policy stack.",
+    "fr": "Sans **`use_authtok`**, le module `pam_unix.so` redemande un nouveau mot de passe au lieu de réutiliser le jeton déjà validé par les modules de complexité précédents (`pam_pwquality` / `pam_cracklib`). On obtient un mot de passe qui contourne les contrôles de robustesse, d'historique et de dictionnaire configurés, annulant silencieusement toute la politique de mot de passe."
+  },
+  "check_note": {
+    "en": "Pavois greps the **effective** PAM password stack under `/etc/pam.d/` for a non-commented `pam_unix.so` line carrying `use_authtok`. Reading the live PAM tree (including `common-password` and any service files that `@include` it) catches the option wherever it is actually wired, which a check pinned to a single hard-coded file would miss.",
+    "fr": "Pavois recherche dans la pile PAM `password` **effective** sous `/etc/pam.d/` une ligne `pam_unix.so` non commentée portant `use_authtok`. Lire l'arborescence PAM réelle (y compris `common-password` et tout fichier de service qui l'inclut via `@include`) capte l'option là où elle est vraiment câblée, ce qu'un contrôle figé sur un seul fichier raterait."
+  },
+  "verify": {
+    "en": "Run:\n\n```bash\ngrep -rE '^[^#]*\\bpam_unix\\.so\\b[^#]*\\buse_authtok' /etc/pam.d/\n```\n\nExpected: at least one `password` line (typically in `common-password` or `password-auth`) shows `pam_unix.so` followed by `use_authtok`. No match means the option is absent.",
+    "fr": "Exécutez :\n\n```bash\ngrep -rE '^[^#]*\\bpam_unix\\.so\\b[^#]*\\buse_authtok' /etc/pam.d/\n```\n\nAttendu : au moins une ligne `password` (typiquement dans `common-password` ou `password-auth`) montre `pam_unix.so` suivi de `use_authtok`. Aucune correspondance signifie que l'option est absente."
+  },
+  "logs": {
+    "en": "PAM authentication and password-change events are logged to **`/var/log/auth.log`** (Debian/Ubuntu) or **`/var/log/secure`** (RHEL/Fedora). Follow them live with `journalctl -t passwd -f` or `journalctl _COMM=passwd` while changing a password; a token rejected by the complexity modules will surface here.",
+    "fr": "Les événements d'authentification et de changement de mot de passe PAM sont journalisés dans **`/var/log/auth.log`** (Debian/Ubuntu) ou **`/var/log/secure`** (RHEL/Fedora). Suivez-les en direct avec `journalctl -t passwd -f` ou `journalctl _COMM=passwd` lors d'un changement de mot de passe ; un jeton rejeté par les modules de complexité y apparaît."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule yet, so it must be applied **manually**: edit the `password` stack (`/etc/pam.d/common-password` on Debian/Ubuntu, `/etc/pam.d/password-auth` and `system-auth` on RHEL/Fedora, ideally via `authselect`/`pam-auth-update`) and append `use_authtok` to the `pam_unix.so` line, after the `pam_pwquality` module.",
+    "fr": "Aucun plan de durcissement automatisé n'est encore fourni pour cette règle : elle doit être appliquée **manuellement**. Éditez la pile `password` (`/etc/pam.d/common-password` sous Debian/Ubuntu, `/etc/pam.d/password-auth` et `system-auth` sous RHEL/Fedora, idéalement via `authselect`/`pam-auth-update`) et ajoutez `use_authtok` à la ligne `pam_unix.so`, après le module `pam_pwquality`."
+  },
+  "impact": {
+    "en": "If left unset, users can set weak passwords that escape the policy, but the misconfiguration itself is low-risk to fix. **Precautions:** never hand-edit a PAM stack over your only SSH session without an open root shell as a fallback, an ordering mistake on `pam_unix.so` can lock everyone out of password authentication. Use `pam-auth-update`/`authselect` where possible, and verify the change in a second session before closing the first.",
+    "fr": "Si l'option n'est pas posée, des utilisateurs peuvent définir des mots de passe faibles qui échappent à la politique ; la correction en elle-même est peu risquée. **Précautions :** ne modifiez jamais à la main une pile PAM via votre unique session SSH sans garder un shell root ouvert en secours, une erreur d'ordonnancement sur `pam_unix.so` peut bloquer toute authentification par mot de passe. Privilégiez `pam-auth-update`/`authselect`, et vérifiez le changement dans une seconde session avant de fermer la première."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

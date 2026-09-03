@@ -13,6 +13,7 @@ interface Props {
   lang: Lang;
   ogType?: 'website' | 'article';
   schema?: 'TechArticle' | 'Article' | 'CollectionPage';
+  collectionSize?: number; // an index page: how many things it lists (ItemList, for answer engines)
   datePublished?: string;
   dateModified?: string;
   image?: string;
@@ -26,6 +27,7 @@ const {
   lang,
   ogType = 'website',
   schema = 'TechArticle',
+  collectionSize,
   datePublished,
   dateModified,
   image = '/og.png',
@@ -90,6 +92,20 @@ const pub = isoDateTime(datePublished);
 const mod = isoDateTime(dateModified);
 
 const graph: Record<string, unknown>[] = [org, website];
+// `schema="CollectionPage"` was a dead prop: the node was only ever pushed when ogType was
+// 'article', which an index page never is. So the pages an answer engine is most likely to cite,
+// the rule explorer and the glossary, described themselves as nothing at all.
+if (schema === 'CollectionPage') {
+  graph.push({
+    '@type': 'CollectionPage',
+    name: title,
+    description,
+    inLanguage,
+    url: canonical,
+    isPartOf: { '@id': `${origin}/#website` },
+    ...(collectionSize ? { mainEntity: { '@type': 'ItemList', numberOfItems: collectionSize } } : {}),
+  });
+}
 if (ogType === 'article') {
   graph.push({
     '@type': schema,
@@ -196,6 +212,7 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
               <a href={`/${lang}/start/`}>{lang === 'fr' ? 'Démarrer' : 'Get started'}</a>
               <a href={`/${lang}/installation/`}>Installation</a>
               <a href={`/${lang}/docs/`}>{lang === 'fr' ? 'Comment ça marche' : 'How it works'}</a>
+              <a href={`/${lang}/docs/cli/`}>{lang === 'fr' ? 'Référence des commandes' : 'Command reference'}</a>
               <a href={`/${lang}/docs/tools/`}>{lang === 'fr' ? 'Comparaison d’outils' : 'Tool comparison'}</a>
               <a href={`/${lang}/sample-report/`}>{lang === 'fr' ? 'Rapport d’exemple' : 'Sample report'}</a>
               <a href={`/${lang}/audit/`}>{lang === 'fr' ? 'Parcours auditeur' : 'Audit journey'}</a>
@@ -417,6 +434,7 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
             span.className = 'gloss-hl';
             span.textContent = m[0];
             span.dataset.short = entry.short;
+            span.dataset.slug = entry.slug; // the index has carried it all along, unused
             const frag = document.createDocumentFragment();
             const before = text.slice(0, m.index);
             const after = text.slice(m.index + m[0].length);
@@ -433,18 +451,41 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
             tip.hidden = true;
             document.body.appendChild(tip);
           }
-          tip.innerHTML = el.dataset.short;
+          // the definition, then the way to the full entry: /glossary/#<slug> lands on the term
+          // itself, which is what the anchors on the glossary page are for.
+          const lang = document.documentElement.lang || 'en';
+          const slug = el.dataset.slug;
+          const more = lang === 'fr' ? 'voir la définition' : 'see the full entry';
+          tip.innerHTML =
+            el.dataset.short +
+            (slug ? ' <a class="gloss-more" href="/' + lang + '/glossary/#' + slug + '">' + more + '</a>' : '');
           const r = el.getBoundingClientRect();
           tip.style.left = Math.max(8, Math.min(window.innerWidth - 320, r.left)) + 'px';
           tip.style.top = window.scrollY + r.bottom + 8 + 'px';
           tip.hidden = false;
         };
+        // The tooltip now holds a link, so it must survive the pointer LEAVING the term: hide it
+        // only once the pointer is neither on the term nor on the tooltip itself, and give it a
+        // short grace period to cross the gap between the two.
+        let hideT;
+        const cancelHide = () => clearTimeout(hideT);
+        const scheduleHide = () => {
+          cancelHide();
+          hideT = setTimeout(() => {
+            if (tip) tip.hidden = true;
+          }, 220);
+        };
         document.addEventListener('mouseover', (e) => {
           const t = e.target.closest && e.target.closest('.gloss-hl');
-          if (t) showTip(t);
+          if (t) {
+            cancelHide();
+            showTip(t);
+          } else if (tip && e.target.closest && e.target.closest('#gloss-tip')) {
+            cancelHide();
+          }
         });
         document.addEventListener('mouseout', (e) => {
-          if (tip && e.target.closest && e.target.closest('.gloss-hl')) tip.hidden = true;
+          if (e.target.closest && e.target.closest('.gloss-hl, #gloss-tip')) scheduleHide();
         });
         const setGloss = (on) => {
           html.dataset.glossaryTooltips = on ? 'enabled' : 'disabled';

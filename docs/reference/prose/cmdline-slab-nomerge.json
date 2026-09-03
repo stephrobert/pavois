@@ -1,0 +1,37 @@
+{
+  "id": "cmdline-slab-nomerge",
+  "title": {
+    "en": "Disable merging of slabs with similar size",
+    "fr": "Désactiver la fusion des slabs de taille similaire"
+  },
+  "summary": {
+    "en": "Requires the **`slab_nomerge`** kernel boot parameter so slab caches of similar size are kept isolated instead of merged, containing kernel heap overflows.",
+    "fr": "Exige le paramètre de démarrage noyau **`slab_nomerge`** afin que les caches slab de taille similaire restent isolés au lieu d'être fusionnés, confinant les débordements du tas noyau."
+  },
+  "rationale": {
+    "en": "To save memory, the kernel by default **merges slab caches of similar object size** into a shared cache. This means a seemingly harmless but **vulnerable** cache can end up sharing memory with a valuable one, so a heap overflow in one object type can overwrite objects from another merged cache. `slab_nomerge` keeps every cache **isolated**: a heap overflow then only affects objects in the same cache, shrinking the kernel heap attack surface and making exploitation harder.",
+    "fr": "Pour économiser de la mémoire, le noyau **fusionne par défaut les caches slab de taille d'objet similaire** dans un cache partagé. Un cache apparemment anodin mais **vulnérable** peut ainsi finir par partager la mémoire avec un cache précieux, si bien qu'un débordement de tas dans un type d'objet peut écraser des objets d'un autre cache fusionné. `slab_nomerge` garde chaque cache **isolé** : un débordement de tas n'affecte alors que les objets du même cache, réduisant la surface d'attaque du tas noyau et compliquant l'exploitation."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live kernel command line** from `/proc/cmdline` and checks for the `slab_nomerge` token. This is the boot line the running kernel parsed, not `/etc/default/grub`, a GRUB edit that was never regenerated would falsely pass a file scan while caches are still merged at runtime.",
+    "fr": "Pavois lit la **ligne de commande noyau active** depuis `/proc/cmdline` et vérifie la présence du jeton `slab_nomerge`. C'est la ligne de boot analysée par le noyau, et non `/etc/default/grub`, une modification GRUB jamais régénérée passerait à tort un scan fichier alors que les caches restent fusionnés à l'exécution."
+  },
+  "verify": {
+    "en": "Run `cat /proc/cmdline` and confirm it contains a standalone `slab_nomerge` token. You can observe the effect in the slab listing, `cat /proc/slabinfo` shows distinct, unmerged cache names rather than shared `kmalloc-*`-style aliases.",
+    "fr": "Lancez `cat /proc/cmdline` et confirmez la présence du jeton autonome `slab_nomerge`. Vous pouvez observer l'effet dans la liste des slabs, `cat /proc/slabinfo` montre des noms de caches distincts et non fusionnés plutôt que des alias partagés de type `kmalloc-*`."
+  },
+  "logs": {
+    "en": "There is no dedicated log; the active state is reflected by the boot line in `/proc/cmdline` and by the cache layout in `/proc/slabinfo`. Slab corruption, when detected, is reported in the kernel ring buffer, `dmesg | grep -i slab`.",
+    "fr": "Il n'y a pas de journal dédié ; l'état actif est reflété par la ligne de boot dans `/proc/cmdline` et par l'agencement des caches dans `/proc/slabinfo`. Une corruption de slab, lorsqu'elle est détectée, est rapportée dans le ring buffer noyau, `dmesg | grep -i slab`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the **`kernel_cmdline`** resource to add `slab_nomerge` to the bootloader configuration and regenerate it, so the option is present on next boot. A **reboot is required** to take effect.",
+    "fr": "`pavois harden apply` utilise la ressource **`kernel_cmdline`** pour ajouter `slab_nomerge` à la configuration du bootloader et la régénérer, afin que l'option soit présente au prochain démarrage. Un **redémarrage est requis** pour qu'il prenne effet."
+  },
+  "impact": {
+    "en": "Disabling slab merging **increases kernel memory usage** modestly because caches can no longer share backing memory. Precautions:\n\n- On **very memory-constrained** hosts, account for the slightly higher slab footprint.\n- No functional or application compatibility impact; it is a pure hardening trade-off (security vs. a little RAM).\n- Applies **after reboot** only, schedule a maintenance window.",
+    "fr": "Désactiver la fusion des slabs **augmente modestement l'usage mémoire noyau** car les caches ne peuvent plus partager leur mémoire de support. Précautions :\n\n- Sur les hôtes **très contraints en mémoire**, tenez compte de l'empreinte slab légèrement supérieure.\n- Aucun impact fonctionnel ni de compatibilité applicative ; c'est un pur compromis de durcissement (sécurité contre un peu de RAM).\n- S'applique uniquement **après redémarrage**, planifiez une fenêtre de maintenance."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

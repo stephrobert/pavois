@@ -1,17 +1,17 @@
 {
   "id": "sysctl-net-ipv4-conf-default-log_martians",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -38,6 +38,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.conf.default.log_martians') do",
     "  its('value') { should cmp 1 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.default.log_martians[[:space:]]*=[[:space:]]*1([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -47,35 +50,36 @@
   },
   "title": {
     "en": "Enable Kernel Parameter to Log Martian Packets on all IPv4 Interfaces by Default",
-    "fr": "Activer le parametre noyau de journalisation des paquets martiens sur toutes les interfaces IPv4 par defaut"
-  },
-  "needs_translation": [],
-  "rationale": {
-    "en": "A \"martian\" packet has a source address that cannot legitimately appear on the interface where it arrived, impossible, spoofed, or source-routed addresses. Logging them (`log_martians=1`) creates a forensic trail of spoofing attempts, misconfigured neighbours, and reconnaissance, turning silent drops (e.g. from `rp_filter`) into actionable events. The `default` template should be **1** so every new interface inherits this visibility.",
-    "fr": "Un paquet « martien » possede une adresse source qui ne peut legitimement apparaitre sur l'interface ou il est arrive, adresses impossibles, usurpees ou a routage par la source. Les journaliser (`log_martians=1`) cree une trace forensique des tentatives d'usurpation, des voisins mal configures et de la reconnaissance, transformant des rejets silencieux (par ex. issus de `rp_filter`) en evenements exploitables. Le modele `default` doit valoir **1** afin que chaque nouvelle interface herite de cette visibilite."
+    "fr": "Activer le paramètre noyau de journalisation des paquets martiens sur toutes les interfaces IPv4 par défaut"
   },
   "summary": {
     "en": "Forces `net.ipv4.conf.default.log_martians` to **1** so newly created IPv4 interfaces log packets with impossible or spoofed source addresses by default.",
-    "fr": "Force `net.ipv4.conf.default.log_martians` a **1** afin que les interfaces IPv4 nouvellement creees journalisent par defaut les paquets a adresse source impossible ou usurpee."
+    "fr": "Force `net.ipv4.conf.default.log_martians` à **1** afin que les interfaces IPv4 nouvellement créées journalisent par défaut les paquets à adresse source impossible ou usurpée."
+  },
+  "rationale": {
+    "en": "A \"martian\" packet has a source address that cannot legitimately appear on the interface where it arrived, impossible, spoofed, or source-routed addresses. Logging them (`log_martians=1`) creates a forensic trail of spoofing attempts, misconfigured neighbours, and reconnaissance, turning silent drops (e.g. from `rp_filter`) into actionable events. The `default` template should be **1** so every new interface inherits this visibility.",
+    "fr": "Un paquet « martien » possède une adresse source qui ne peut légitimement apparaître sur l'interface où il est arrivé, adresses impossibles, usurpées ou à routage par la source. Les journaliser (`log_martians=1`) crée une trace forensique des tentatives d'usurpation, des voisins mal configurés et de la reconnaissance, transformant des rejets silencieux (par ex. issus de `rp_filter`) en événements exploitables. Le modèle `default` doit valoir **1** afin que chaque nouvelle interface hérite de cette visibilité."
   },
   "check_note": {
     "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.default.log_martians` from the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not a `/etc/sysctl.d/` file. The `default` key only affects interfaces created after it is set, so the running value is what determines whether future interfaces log martians. A config file might say `1` while a later override left it at `0`; only the effective parameter is reliable.",
-    "fr": "Pavois lit la **valeur d'execution en direct** de `net.ipv4.conf.default.log_martians` depuis le noyau (ressource InSpec `kernel_parameter`, equivalente a `sysctl`), et non un fichier `/etc/sysctl.d/`. La cle `default` n'affecte que les interfaces creees apres sa definition, donc la valeur en cours determine si les futures interfaces journaliseront les martiens. Un fichier de configuration pourrait indiquer `1` alors qu'une surcharge ulterieure l'a laisse a `0` ; seul le parametre effectif est fiable."
+    "fr": "Pavois lit la **valeur d'exécution en direct** de `net.ipv4.conf.default.log_martians` depuis le noyau (ressource InSpec `kernel_parameter`, équivalente à `sysctl`), et non un fichier `/etc/sysctl.d/`. La clé `default` n'affecte que les interfaces créées après sa définition, donc la valeur en cours détermine si les futures interfaces journaliseront les martiens. Un fichier de configuration pourrait indiquer `1` alors qu'une surcharge ultérieure l'a laissé à `0` ; seul le paramètre effectif est fiable."
   },
   "verify": {
     "en": "Run `sysctl net.ipv4.conf.default.log_martians`. Expected output:\n\n- `net.ipv4.conf.default.log_martians = 1`",
-    "fr": "Executez `sysctl net.ipv4.conf.default.log_martians`. Sortie attendue :\n\n- `net.ipv4.conf.default.log_martians = 1`"
+    "fr": "Exécutez `sysctl net.ipv4.conf.default.log_martians`. Sortie attendue :\n\n- `net.ipv4.conf.default.log_martians = 1`"
   },
   "logs": {
     "en": "Once enabled, martian-packet entries appear in the kernel log: `dmesg | grep -i martian` and `journalctl -k | grep -i martian`. Lines look like `IPv4: martian source <ip> from <ip>, on dev <iface>`. Inspect the tunable state with `sysctl net.ipv4.conf.default.log_martians`.",
-    "fr": "Une fois active, les entrees de paquets martiens apparaissent dans le journal noyau : `dmesg | grep -i martian` et `journalctl -k | grep -i martian`. Les lignes ressemblent a `IPv4: martian source <ip> from <ip>, on dev <iface>`. Inspectez l'etat du parametre avec `sysctl net.ipv4.conf.default.log_martians`."
+    "fr": "Une fois activé, les entrées de paquets martiens apparaissent dans le journal noyau : `dmesg | grep -i martian` et `journalctl -k | grep -i martian`. Les lignes ressemblent à `IPv4: martian source <ip> from <ip>, on dev <iface>`. Inspectez l'état du paramètre avec `sysctl net.ipv4.conf.default.log_martians`."
   },
   "remediation_note": {
     "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv4.conf.default.log_martians` to **1**, applying it to the running kernel and persisting it in a Pavois-managed drop-in under `/etc/sysctl.d/` so it survives reboot. Apply it with `pavois harden apply`.",
-    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour definir `net.ipv4.conf.default.log_martians` a **1**, en l'appliquant au noyau en cours d'execution et en le persistant dans un drop-in gere par Pavois sous `/etc/sysctl.d/` afin qu'il survive au redemarrage. Appliquez-le avec `pavois harden apply`."
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour définir `net.ipv4.conf.default.log_martians` à **1**, en l'appliquant au noyau en cours d'exécution et en le persistant dans un drop-in géré par Pavois sous `/etc/sysctl.d/` afin qu'il survive au redémarrage. Appliquez-le avec `pavois harden apply`."
   },
   "impact": {
     "en": "Safe to enable; it only adds logging and changes no packet-handling behaviour, so it cannot break connectivity or remote access. The only consideration is log volume: on a noisy or hostile network martian logging can be chatty and may flood `dmesg`/the journal, so ensure log rotation and rate limiting are sane. Pair with the `all.log_martians` and `rp_filter` rules so dropped spoofed traffic is actually recorded.",
-    "fr": "Sur a activer ; cela ajoute seulement de la journalisation et ne modifie aucun comportement de traitement des paquets, donc cela ne peut pas casser la connectivite ni l'acces distant. La seule consideration est le volume de journaux : sur un reseau bruyant ou hostile, la journalisation des martiens peut etre bavarde et risque d'inonder `dmesg`/le journal ; veillez a une rotation et une limitation de debit correctes. Associez-le aux regles `all.log_martians` et `rp_filter` afin que le trafic usurpe rejete soit effectivement enregistre."
-  }
+    "fr": "Sûr à activer ; cela ajoute seulement de la journalisation et ne modifie aucun comportement de traitement des paquets, donc cela ne peut pas casser la connectivité ni l'accès distant. La seule considération est le volume de journaux : sur un réseau bruyant ou hostile, la journalisation des martiens peut être bavarde et risque d'inonder `dmesg`/le journal ; veillez à une rotation et une limitation de débit correctes. Associez-le aux règles `all.log_martians` et `rp_filter` afin que le trafic usurpé rejeté soit effectivement enregistré."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

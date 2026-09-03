@@ -1,10 +1,14 @@
 {
   "id": "fileperm-etc-sysconfig-sshd",
   "supported_os": [
-    "rhel8"
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9"
   ],
   "os_versions": {
-    "rhel8": "4.0.0"
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0"
   },
   "severity": "medium",
   "domain": "File permissions",
@@ -36,14 +40,13 @@
     "en": "Verify Permissions on /etc/sysconfig/sshd File",
     "fr": "Vérifier les permissions du fichier /etc/sysconfig/sshd"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "On RHEL-family systems the `/etc/sysconfig/sshd` file holds environment options for the SSH daemon (for example crypto-policy overrides) that are sourced when `sshd` starts. If a non-privileged user can write to it, they could inject options that weaken the daemon's security or alter its behaviour; if it is world-readable, sensitive tuning is disclosed. The file should be **mode 0640 or more restrictive**, owned by root, with no write/execute for group or other and no read for other.",
-    "fr": "Sur les systèmes de la famille RHEL, le fichier `/etc/sysconfig/sshd` contient des options d'environnement du démon SSH (par exemple des surcharges de crypto-policy) chargées au démarrage de `sshd`. Si un utilisateur non privilégié peut y écrire, il pourrait injecter des options affaiblissant la sécurité du démon ou en altérant le comportement ; s'il est lisible par tous, des réglages sensibles sont divulgués. Le fichier doit être en **mode 0640 ou plus restrictif**, appartenir à root, sans écriture/exécution pour le groupe ou les autres et sans lecture pour les autres."
-  },
   "summary": {
     "en": "Ensures the RHEL `/etc/sysconfig/sshd` environment file is not writable or executable by group/other and not readable by other, protecting the SSH daemon's startup options.",
     "fr": "Garantit que le fichier d'environnement RHEL `/etc/sysconfig/sshd` n'est ni modifiable ni exécutable par le groupe/les autres et non lisible par les autres, protégeant les options de démarrage du démon SSH."
+  },
+  "rationale": {
+    "en": "On RHEL-family systems the `/etc/sysconfig/sshd` file holds environment options for the SSH daemon (for example crypto-policy overrides) that are sourced when `sshd` starts. If a non-privileged user can write to it, they could inject options that weaken the daemon's security or alter its behaviour; if it is world-readable, sensitive tuning is disclosed. The file should be **mode 0640 or more restrictive**, owned by root, with no write/execute for group or other and no read for other.",
+    "fr": "Sur les systèmes de la famille RHEL, le fichier `/etc/sysconfig/sshd` contient des options d'environnement du démon SSH (par exemple des surcharges de crypto-policy) chargées au démarrage de `sshd`. Si un utilisateur non privilégié peut y écrire, il pourrait injecter des options affaiblissant la sécurité du démon ou en altérant le comportement ; s'il est lisible par tous, des réglages sensibles sont divulgués. Le fichier doit être en **mode 0640 ou plus restrictif**, appartenir à root, sans écriture/exécution pour le groupe ou les autres et sans lecture pour les autres."
   },
   "check_note": {
     "en": "Pavois reads the **effective inode metadata** of `/etc/sysconfig/sshd` and asserts no `setuid`/`setgid`/`sticky` bits, no write/execute for group, and no write/execute/read for other. Guarded by `only_if { file('/etc/sysconfig/sshd').exist? }`. Checking the live mode (rather than assuming the package default) catches any post-install drift that would actually change how `sshd` is launched.",
@@ -64,5 +67,7 @@
   "impact": {
     "en": "If the file is writable by a non-root user, that user can manipulate the SSH daemon's startup environment (e.g. relaxing crypto policy), undermining remote-access security. **Precautions:** tightening permissions on this file does not change SSH connectivity, so it is low-risk; just keep ownership as `root` and avoid `0600` only if a non-root monitoring tool legitimately needs to read it (rare).",
     "fr": "Si le fichier est modifiable par un non-root, cet utilisateur peut manipuler l'environnement de démarrage du démon SSH (par ex. assouplir la crypto-policy), compromettant la sécurité de l'accès distant. **Précautions :** resserrer les permissions de ce fichier ne change pas la connectivité SSH, le risque est donc faible ; conservez simplement le propriétaire `root` et n'imposez `0600` que si aucun outil de supervision non-root n'a besoin de le lire (cas rare)."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

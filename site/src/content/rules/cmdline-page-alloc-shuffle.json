@@ -1,17 +1,20 @@
 {
   "id": "cmdline-page-alloc-shuffle",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
+    "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
@@ -26,6 +29,9 @@
   "check": [
     "describe command('cat /proc/cmdline') do",
     "  its('stdout') { should match(/(^| )page_alloc\\.shuffle=1( |$)/) }",
+    "end",
+    "describe command(\"grep -hwsF 'page_alloc\\.shuffle=1' /etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -37,14 +43,13 @@
     "en": "Enable randomization of the page allocator",
     "fr": "Activer la randomisation de l'allocateur de pages"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The kernel's free-page lists are otherwise handed out in a **predictable order**. If an attacker can crash the system (or trigger a fresh boot) and knows the deterministic allocation order, they can **predict where sensitive data will land** in physical memory and shape a heap-grooming or memory-disclosure attack. `page_alloc.shuffle=1` randomizes the order in which free pages are served (a feature originally added to improve direct-mapped cache utilization), so allocations become **unpredictable across boots** regardless of the cache architecture.",
-    "fr": "Les listes de pages libres du noyau sont sinon distribuées dans un **ordre prévisible**. Si un attaquant peut faire planter le système (ou provoquer un redémarrage) et connaît l'ordre d'allocation déterministe, il peut **prédire où atterriront les données sensibles** en mémoire physique et façonner une attaque de heap-grooming ou de divulgation mémoire. `page_alloc.shuffle=1` randomise l'ordre de distribution des pages libres (fonctionnalité initialement ajoutée pour améliorer l'utilisation du cache direct-mapped), rendant les allocations **imprévisibles d'un démarrage à l'autre**, quelle que soit l'architecture de cache."
-  },
   "summary": {
     "en": "Requires the **`page_alloc.shuffle=1`** kernel boot parameter to randomize the order in which the page allocator hands out free memory.",
     "fr": "Exige le paramètre de démarrage noyau **`page_alloc.shuffle=1`** pour randomiser l'ordre de distribution de la mémoire libre par l'allocateur de pages."
+  },
+  "rationale": {
+    "en": "The kernel's free-page lists are otherwise handed out in a **predictable order**. If an attacker can crash the system (or trigger a fresh boot) and knows the deterministic allocation order, they can **predict where sensitive data will land** in physical memory and shape a heap-grooming or memory-disclosure attack. `page_alloc.shuffle=1` randomizes the order in which free pages are served (a feature originally added to improve direct-mapped cache utilization), so allocations become **unpredictable across boots** regardless of the cache architecture.",
+    "fr": "Les listes de pages libres du noyau sont sinon distribuées dans un **ordre prévisible**. Si un attaquant peut faire planter le système (ou provoquer un redémarrage) et connaît l'ordre d'allocation déterministe, il peut **prédire où atterriront les données sensibles** en mémoire physique et façonner une attaque de heap-grooming ou de divulgation mémoire. `page_alloc.shuffle=1` randomise l'ordre de distribution des pages libres (fonctionnalité initialement ajoutée pour améliorer l'utilisation du cache direct-mapped), rendant les allocations **imprévisibles d'un démarrage à l'autre**, quelle que soit l'architecture de cache."
   },
   "check_note": {
     "en": "Pavois reads the **live kernel command line** from `/proc/cmdline` and checks for `page_alloc.shuffle=1`. This is the boot line the running kernel parsed, not a GRUB file that might be edited but not regenerated. You can confirm the feature is actually active at runtime via `/sys/module/page_alloc/parameters/shuffle`.",
@@ -65,5 +70,7 @@
   "impact": {
     "en": "This parameter is **low-risk**: page-allocator shuffling has negligible performance impact and on many platforms even slightly improves cache utilization. The only practical caveat:\n\n- It applies **after a reboot**, so schedule the change with a maintenance window.\n- No application compatibility concerns; it is a pure memory-layout randomization with no functional behavior change.",
     "fr": "Ce paramètre est **à faible risque** : le shuffling de l'allocateur de pages a un impact négligeable sur les performances et améliore même légèrement l'utilisation du cache sur de nombreuses plateformes. Seule réserve pratique :\n\n- Il s'applique **après un redémarrage** ; planifiez le changement avec une fenêtre de maintenance.\n- Aucun souci de compatibilité applicative ; c'est une pure randomisation d'agencement mémoire sans changement de comportement fonctionnel."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

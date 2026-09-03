@@ -1,0 +1,37 @@
+{
+  "id": "fileperm-etc-gshadow",
+  "title": {
+    "en": "Verify Permissions on gshadow File",
+    "fr": "Vérifier les permissions du fichier gshadow"
+  },
+  "summary": {
+    "en": "Ensures `/etc/gshadow` is unreadable and unwritable by everyone (owner included) and free of any execute/setuid/setgid/sticky bit (expected mode **0000 root:root**).",
+    "fr": "Garantit que `/etc/gshadow` est illisible et non modifiable par tous (propriétaire compris) et exempt de tout bit exécutable/setuid/setgid/sticky (mode attendu **0000 root:root**)."
+  },
+  "rationale": {
+    "en": "`/etc/gshadow` stores **group password hashes and group administrator lists**. If any account other than root can read it, those hashes become a target for **offline cracking**; if it is writable, an attacker can grant themselves group administration or membership. It should be **0000 root:root** (no read or write for anyone, even the owner), the kernel still lets root access it. This keeps group secrets confidential and the file tamper-proof.",
+    "fr": "`/etc/gshadow` stocke les **hachages de mots de passe de groupe et les listes d'administrateurs de groupe**. Si un compte autre que root peut le lire, ces hachages deviennent une cible pour le **cassage hors-ligne** ; s'il est modifiable, un attaquant peut s'octroyer l'administration ou l'appartenance d'un groupe. Il doit être en **0000 root:root** (aucune lecture ni écriture pour personne, même le propriétaire), le noyau autorise toujours l'accès à root. Cela garde les secrets de groupe confidentiels et le fichier inaltérable."
+  },
+  "check_note": {
+    "en": "Pavois reads the real inode permissions of `/etc/gshadow` with the InSpec `file` resource (a `stat`), under `only_if`. Unlike most files, it forbids **even owner read/write**: the secure mode is `0000 root:root`, root accessing it through superuser privilege. Any read or write bit for owner, group or other, or a special bit, fails. Verifying the live permissions catches drift a packaged-default check would miss.",
+    "fr": "Pavois lit les permissions réelles de l'inode `/etc/gshadow` avec la ressource InSpec `file` (un `stat`), sous `only_if`. Contrairement à la plupart des fichiers, elle interdit **même la lecture/écriture du propriétaire** : le mode sécurisé est `0000 root:root`, root y accédant via son privilège de superutilisateur. Tout bit de lecture ou d'écriture pour le propriétaire, le groupe ou les autres, ou un bit spécial, fait échouer la règle. Vérifier les permissions réelles détecte une dérive qu'un contrôle de défaut de paquet manquerait."
+  },
+  "verify": {
+    "en": "Run `stat -c '%a %U %G' /etc/gshadow`. Expected output is mode **0** owned by `root root`, i.e. `0 root root` (some distros use `000`). Any read or write bit fails the rule.",
+    "fr": "Exécutez `stat -c '%a %U %G' /etc/gshadow`. La sortie attendue est le mode **0** appartenant à `root root`, soit `0 root root` (certaines distributions affichent `000`). Tout bit de lecture ou d'écriture fait échouer la règle."
+  },
+  "logs": {
+    "en": "Group password operations go through `gpasswd`, which logs to `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL). Confirm permissions with `stat /etc/gshadow`. If auditd watches `/etc/gshadow`, access and edits appear in `/var/log/audit/audit.log`.",
+    "fr": "Les opérations sur les mots de passe de groupe passent par `gpasswd`, qui consigne dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL). Confirmez les permissions avec `stat /etc/gshadow`. Si auditd surveille `/etc/gshadow`, les accès et modifications apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is defined, so apply it **manually**: `chmod 0000 /etc/gshadow && chown root:root /etc/gshadow`. No service restart is needed; `gpasswd` and friends still operate as root regardless of the 0000 mode.",
+    "fr": "Aucune remédiation automatique n'est définie ; appliquez-la **manuellement** : `chmod 0000 /etc/gshadow && chown root:root /etc/gshadow`. Aucun redémarrage de service n'est nécessaire ; `gpasswd` et consorts fonctionnent toujours en root malgré le mode 0000."
+  },
+  "impact": {
+    "en": "Setting 0000 root:root is **safe**: the tools that read `/etc/gshadow` (`gpasswd`, `newgrp`) are setuid-root or run as root and bypass the empty mode. There is no lockout risk. Precaution: keep the owner `root`, a wrong owner combined with 0000 would make even legitimate tools fail. Leaving the file readable exposes group password hashes to offline cracking.",
+    "fr": "Le mode 0000 root:root est **sûr** : les outils qui lisent `/etc/gshadow` (`gpasswd`, `newgrp`) sont setuid-root ou s'exécutent en root et contournent le mode vide. Aucun risque de blocage. Précaution : conservez le propriétaire `root`, un mauvais propriétaire combiné à 0000 ferait échouer même les outils légitimes. Laisser le fichier lisible expose les hachages de mots de passe de groupe au cassage hors-ligne."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}
