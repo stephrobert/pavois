@@ -192,10 +192,42 @@ When you test remediations on an Incus VM:
 
 ## Quality gates (run before opening a PR)
 
-CI enforces all of these; run them locally first.
+### One command before pushing
 
 ```bash
-# Go binary (go/)
+mise run prepush     # 13s, offline, deterministic — installed as a pre-push hook
+```
+
+`pre-commit install` wires it automatically (the config declares `pre-commit` and `pre-push` hook
+types). It runs the build, the Go tests and linters, `gen:verify`, `lint:rules`,
+`validate:mappings` and `validate:i18n` — everything a pull request fails on that costs seconds and
+needs no target.
+
+**What it deliberately does not do**, and why it must stay that way: a gate you cannot clear is the
+gate everybody learns to skip with `--no-verify`, which switches off every other hook at the same
+time. So `site:verify` stays out (31s, and it *regenerates* content — a hook must not rewrite the
+tree it is checking), the SSG cross-validation stays out (network, minutes), and **a real scan can
+never be a hook** (it needs a live VM).
+
+### What this diff earns you
+
+```bash
+mise run testplan            # the runs your changes earn, cheapest first
+mise run testplan -- --check # what prepush calls: fails on a path no rule sorts
+```
+
+The heavy runs are the point. A `docs/reference/rules.yml` change earns a **real scan on debian12
+plus `mise run regression`**, and that is not advice: per `CLAUDE.md` it is the condition for
+merging. `testplan` says so on every push, prints what each run leaves unproven, and refuses a
+changed path that no rule classifies — a path nobody classified is a path nobody knows how to test.
+Adding a rule to `tools/testplan.py` is part of adding a new kind of file to the repo.
+
+### The individual gates
+
+CI enforces all of these; `prepush` runs the offline ones for you.
+
+```bash
+# Go binary (go/) — `mise run lint` + `mise run test` cover the first line
 cd go && gofmt -l . && go vet ./... && go build ./... && go test -race ./... && golangci-lint run ./...
 govulncheck ./...
 
@@ -211,6 +243,26 @@ mise run build && ./go/pavois scan local --profile linux/ubuntu2404
 
 Go follows the **go-production-engineer** standard: simple, idiomatic, explicit error handling (wrap
 with `%w`), no needless abstraction, tests for meaningful behavior, documented public symbols.
+
+### Falsification: proving a guard still bites
+
+A green test says nothing is broken. It does not say anything is **guarded** — a test can stop
+biting without anyone touching it, when a refactor moves an assertion or a case becomes
+unreachable, and nothing goes red the day it happens.
+
+```bash
+mise run falsify              # replay every declaration: mutate a COPY, demand the test goes red
+mise run falsify -- <name>    # one of them
+mise run falsify:selftest     # prove the harness: unmutated, every declared test must stay green
+```
+
+`tools/falsify.yml` declares, per guard, the mutation that must make its test fail. The harness
+refuses a verdict it cannot trust: **a mutant that no longer compiles is reported VOID, never as a
+pass**, because every test failing looks exactly like the guard being proven and is worth nothing.
+
+Add a declaration whenever you add a guard whose failure would be silent, expensive or
+destructive — the three shipped cover what a rollback deletes, whether an aggregated drop-in keeps
+its compliant siblings, and whether one critical finding still caps the grade in band E.
 
 ### Fuzzing
 
