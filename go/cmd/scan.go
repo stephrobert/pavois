@@ -301,7 +301,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 			break
 		}
 		top := onlySeverities(res.Findings, "critical", "high", "medium")
-		screport.Terminal(out, opts, top, res.Summary)
+		_ = screport.Terminal(out, opts, top, res.Summary) // best-effort render to the terminal sink
 		_, _ = fmt.Fprintf(os.Stderr,
 			"  %d critical/high/medium deviation(s) shown · %d total · full report → %s\n",
 			len(top), len(res.Findings), htmlPath)
