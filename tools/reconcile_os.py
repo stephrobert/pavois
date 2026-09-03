@@ -21,19 +21,24 @@ Usage:
       --auto-family               # every control on BOTH family anchors but not target
   reconcile_os.py ... --exclude x,y   --dry-run
 """
+
 import argparse
 import copy
-import sys
+
 from ruamel.yaml import YAML
 
 RULES = "docs/reference/rules.yml"
 # family anchors used by --auto-family: a control on both anchors of the target's
 # family but not on the target is a strong curation-gap signal.
 FAMILY = {
-    "debian12": ("debian12", "debian13"), "debian13": ("debian12", "debian13"),
-    "ubuntu2204": ("debian12", "debian13"), "ubuntu2404": ("debian12", "debian13"),
-    "rhel8": ("rhel8", "rhel9"), "rhel9": ("rhel8", "rhel9"),
-    "rhel10": ("rhel8", "rhel9"), "fedora": ("rhel8", "rhel9"),
+    "debian12": ("debian12", "debian13"),
+    "debian13": ("debian12", "debian13"),
+    "ubuntu2204": ("debian12", "debian13"),
+    "ubuntu2404": ("debian12", "debian13"),
+    "rhel8": ("rhel8", "rhel9"),
+    "rhel9": ("rhel8", "rhel9"),
+    "rhel10": ("rhel8", "rhel9"),
+    "fedora": ("rhel8", "rhel9"),
 }
 
 
@@ -60,8 +65,11 @@ def main():
     ap.add_argument("--ref", required=True)
     ap.add_argument("--controls", default="")
     ap.add_argument("--auto-family", action="store_true")
-    ap.add_argument("--mirror", action="store_true",
-                    help="onboard a sibling: add target to EVERY control the ref applies to")
+    ap.add_argument(
+        "--mirror",
+        action="store_true",
+        help="onboard a sibling: add target to EVERY control the ref applies to",
+    )
     ap.add_argument("--exclude", default="")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
@@ -84,15 +92,20 @@ def main():
         # mirroring the ref's @os values. Used to seed a new release from its closest sibling
         # (e.g. ubuntu2604 from ubuntu2404) — 26.04 hardens like 24.04.
         want = [
-            c for c, v in d.items()
-            if isinstance(v, dict) and isinstance(v.get("applicable_os"), list)
-            and a.ref in v["applicable_os"] and a.target not in v["applicable_os"]
+            c
+            for c, v in d.items()
+            if isinstance(v, dict)
+            and isinstance(v.get("applicable_os"), list)
+            and a.ref in v["applicable_os"]
+            and a.target not in v["applicable_os"]
         ]
     elif a.auto_family:
         anchors = FAMILY[a.target]
         want = [
-            c for c, v in d.items()
-            if isinstance(v, dict) and isinstance(v.get("applicable_os"), list)
+            c
+            for c, v in d.items()
+            if isinstance(v, dict)
+            and isinstance(v.get("applicable_os"), list)
             and all(x in v["applicable_os"] for x in anchors)
             and a.target not in v["applicable_os"]
         ]
@@ -104,11 +117,14 @@ def main():
     for c in want:
         v = d.get(c)
         if not isinstance(v, dict) or not isinstance(v.get("applicable_os"), list):
-            skipped.append((c, "no applicable_os")); continue
+            skipped.append((c, "no applicable_os"))
+            continue
         if a.target in v["applicable_os"]:
-            skipped.append((c, "already present")); continue
+            skipped.append((c, "already present"))
+            continue
         if a.ref not in v["applicable_os"]:
-            skipped.append((c, f"ref {a.ref} not applicable")); continue
+            skipped.append((c, f"ref {a.ref} not applicable"))
+            continue
         # insert target right after ref to keep the list readable
         lst = v["applicable_os"]
         lst.insert(lst.index(a.ref) + 1, a.target)
