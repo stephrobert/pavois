@@ -1,0 +1,75 @@
+name: Workflow security
+
+# The gate that guards the pipeline itself.
+#
+# Plumber already enforces the policy half (SHA pinning, declared permissions, no dangerous
+# triggers, no user input interpolated into `run:`). What nothing checked until now is the other
+# half: whether a workflow file is even well-formed, whether the shell inside every `run:` block
+# is sound, and whether the jobs chain into a CI/CD exploitation path.
+#
+#   actionlint  syntax, expression types, invalid permission scopes, and shellcheck over every
+#               `run:` block — the one that catches a workflow that parses but cannot run
+#   zizmor      workflow vulnerabilities (template injection, credential persistence, artifact
+#               poisoning), the audits Plumber's control list does not cover
+#   poutine     CI/CD exploitation chains across jobs (config in .poutine.yml, which existed in
+#               this repo with nothing running it)
+#
+# Measured on 2026-09-03, before this workflow existed: actionlint 0 findings, poutine 0 findings,
+# zizmor 1 informational. So this is not a cleanup, it is a ratchet: nothing stops the NEXT
+# workflow from introducing what these three catch, and a supply-chain posture that is only true
+# on the day it was checked is a claim, not a control.
+#
+# No third-party action: every tool is installed at a pinned version from its own source, the same
+# way python.yml pins ruff and bandit. Adding an action here would mean adding an unverified
+# creator to .poutine.yml's acquittal list to satisfy the very scan this job runs.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  workflow-security:
+    name: actionlint + zizmor + poutine
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # poutine reads the git history to reason about the repository, not just the tree.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: '1.26'
+          cache: false
+      - name: Setup Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.12'
+
+      - name: Install linters (pinned)
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          go install github.com/boostsecurityio/poutine@v1.1.6
+          pip install --no-cache-dir zizmor==1.30.0
+
+      - name: actionlint
+        run: actionlint -color
+
+      - name: zizmor
+        run: zizmor --no-progress .github/workflows/
+
+      - name: poutine
+        run: poutine analyze_local . --format pretty

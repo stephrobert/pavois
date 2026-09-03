@@ -2,7 +2,7 @@
 # machines and CI). Activate: `mise install` then `mise trust`. Run a task: `mise run <task>`
 # (alias `mise r <task>`). List: `mise tasks`. This replaces the ad-hoc bin/pavois + scripts.
 [tools]
-go = "1.26.4"        # the pavois binary (go/)
+go = "1.26.6"        # the pavois binary (go/)
 node = "22.22.0"     # the bilingual Astro hardening site (site/)
 python = "3.12.11"   # offline tooling: validation, reference render, norm-studio
 gh = "2.92.0"        # benchmark sources (ansible-lockdown, SSG releases)
@@ -10,6 +10,9 @@ gh = "2.92.0"        # benchmark sources (ansible-lockdown, SSG releases)
 golangci-lint = "2.12.2"  # Go linters (errcheck, gosec, staticcheck, errorlint, …)
 ruff = "0.14.9"           # Python lint + format
 trufflehog = "3.95.6"     # secret scanning (pre-commit + CI)
+actionlint = "1.7.12"
+zizmor = "1.30.0"
+"ubi:boostsecurityio/poutine" = "1.1.6"
 
 [env]
 CHEF_LICENSE = "accept-silent"   # CINC/InSpec runs non-interactively
@@ -218,3 +221,59 @@ run = "rm -rf {{config_root}}/go/internal/corpus/profiles/linux && cp -r {{confi
 [tasks."regression"]
 description = "PILOT: per-OS scan-result baseline + regression detector. Keeps the best result per OS; a re-scan that flips baseline-passing controls to FAIL (or drops lynis) exits non-zero. Args: <scan.json> --os <os> [--lynis N] [--update]"
 run = "uv run --with pyyaml python3 tools/regression.py"
+
+# ---- Gates: what must be true before pushing --------------------------------------------------
+[tasks.test]
+description = "Go tests (race detector on)"
+dir = "{{config_root}}/go"
+run = "go test -race ./..."
+
+[tasks.lint]
+description = "gofmt + go vet + golangci-lint over the Go module"
+dir = "{{config_root}}/go"
+run = """
+test -z "$(gofmt -l .)" || { echo 'gofmt needed:'; gofmt -l .; exit 1; }
+go vet ./...
+golangci-lint run ./...
+"""
+
+[tasks.testplan]
+description = "What this diff earns you, cheapest first, and what each run does NOT prove. `--check` fails on a path no rule sorts."
+run = "python3 {{config_root}}/tools/testplan.py"
+
+[tasks.prepush]
+description = "Everything a pull request will fail on that costs seconds and needs no target"
+# Deterministic, offline, 13s wall-clock measured on this repo (mise runs the dependencies in
+# parallel, so the total is the slowest gate, not the sum). That budget is
+# the selection rule, not an accident: a gate people cannot clear is the gate everybody learns to
+# skip with `--no-verify`, and a hook that is skipped protects nothing.
+#
+# What is deliberately OUT, and why:
+#   site:verify   31s, and it REGENERATES site/src/content/rules/ — a hook must not rewrite the
+#                 tree it is checking. Earned by a site/ or rules.yml diff instead (testplan).
+#   validate      needs the SSG datastreams: network, minutes.
+#   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
+#                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
+#                 so on every push, since nothing else will.
+depends = ["build", "test", "lint", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+run = "python3 {{config_root}}/tools/testplan.py --check"
+
+[tasks."lint:ci"]
+description = "Guard the pipeline itself: actionlint (+shellcheck on run: blocks), zizmor (workflow vulns), poutine (CI/CD exploitation chains)"
+# Same three tools, same versions as .github/workflows/workflow-security.yml. Pinned in [tools],
+# so `mise install` gives a contributor the exact CI gate rather than "whatever is on PATH".
+run = """
+actionlint
+zizmor --no-progress .github/workflows/
+poutine analyze_local . --format pretty
+"""
+
+[tasks.falsify]
+description = "Replay the declared falsifications: prove each guarded test still BITES (mutate a copy, demand red)"
+# Minutes, and it copies + rebuilds the module per mutation, so it is deliberately OUT of prepush
+# (see the note there). `falsify:selftest` is the cheap half and belongs in CI.
+run = "uv run --with pyyaml python3 {{config_root}}/tools/falsify.py"
+
+[tasks."falsify:selftest"]
+description = "Prove the falsification harness itself: with nothing mutated, every declared test must stay GREEN"
+run = "uv run --with pyyaml python3 {{config_root}}/tools/falsify.py --selftest"
