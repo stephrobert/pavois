@@ -277,3 +277,14 @@ run = "uv run --with pyyaml python3 {{config_root}}/tools/falsify.py"
 [tasks."falsify:selftest"]
 description = "Prove the falsification harness itself: with nothing mutated, every declared test must stay GREEN"
 run = "uv run --with pyyaml python3 {{config_root}}/tools/falsify.py --selftest"
+
+[tasks."hooks:install"]
+description = "Install the git hooks: pre-commit (quality + secrets) and tools/hooks/pre-push (no push to main + the offline gate)"
+# The pre-push hook is versioned rather than left in .git/hooks: a control that lives on one
+# machine is a control that does not exist. It is copied, not symlinked, because git refuses to
+# run a hook it cannot stat through a broken link (a worktree, a moved checkout).
+run = """
+pre-commit install
+install -m 0755 {{config_root}}/tools/hooks/pre-push {{config_root}}/.git/hooks/pre-push
+echo "hooks installed: pre-commit (commit) + pre-push (no-main guard + mise run prepush)"
+"""
