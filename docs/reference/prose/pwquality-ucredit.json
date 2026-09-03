@@ -1,0 +1,37 @@
+{
+  "id": "pwquality-ucredit",
+  "title": {
+    "en": "Ensure PAM Enforces Password Requirements - Minimum Uppercase Characters",
+    "fr": "Garantir que PAM impose des exigences de mot de passe - Minimum de caractères majuscules"
+  },
+  "summary": {
+    "en": "Forces `pam_pwquality` to require at least one uppercase letter in every new password by setting `ucredit = -1`.",
+    "fr": "Force `pam_pwquality` à exiger au moins une lettre majuscule dans chaque nouveau mot de passe en posant `ucredit = -1`."
+  },
+  "rationale": {
+    "en": "A complex password increases the time and resources needed to compromise it. The `ucredit` parameter governs how uppercase letters count toward password strength: a value of `-1` makes **at least one uppercase character mandatory**. Mixing case enlarges the character search space, slowing brute-force and dictionary attacks. Without this requirement, users can pick single-case passwords drawn from a much smaller alphabet that are far quicker to crack.",
+    "fr": "Un mot de passe complexe augmente le temps et les ressources nécessaires pour le compromettre. Le paramètre `ucredit` régit la contribution des majuscules à la robustesse : une valeur de `-1` rend **au moins une majuscule obligatoire**. Mélanger la casse élargit l'espace de recherche des caractères, ralentissant les attaques par force brute et par dictionnaire. Sans cette exigence, les utilisateurs peuvent choisir des mots de passe d'une seule casse tirés d'un alphabet bien plus restreint, bien plus rapides à casser."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** `ucredit` value by scanning `/etc/security/pwquality.conf` **and** every drop-in under `/etc/security/pwquality.conf.d/`, keeping the **last** definition that wins at runtime. A file-based scanner reading only the main config would miss a value set or overridden by a drop-in. The control passes only when the resolved value is `<= -1`.",
+    "fr": "Pavois lit la valeur **effective** de `ucredit` en analysant `/etc/security/pwquality.conf` **et** chaque drop-in sous `/etc/security/pwquality.conf.d/`, en conservant la **dernière** définition qui l'emporte à l'exécution. Un scanner basé sur les fichiers lisant uniquement la config principale manquerait une valeur posée ou redéfinie par un drop-in. Le contrôle passe uniquement quand la valeur résolue est `<= -1`."
+  },
+  "verify": {
+    "en": "Run `grep -rh '^[[:space:]]*ucredit' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. The effective line must read `ucredit = -1` (or any value `<= -1`).",
+    "fr": "Exécutez `grep -rh '^[[:space:]]*ucredit' /etc/security/pwquality.conf /etc/security/pwquality.conf.d/ | tail -1`. La ligne effective doit indiquer `ucredit = -1` (ou toute valeur `<= -1`)."
+  },
+  "logs": {
+    "en": "Rejected password changes are logged via PAM in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL family) with `pam_pwquality` messages about insufficient character classes. Inspect the live setting with `grep -r ucredit /etc/security/pwquality.conf.d/`.",
+    "fr": "Les changements de mot de passe rejetés sont journalisés via PAM dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (famille RHEL) avec des messages `pam_pwquality` sur l'insuffisance de classes de caractères. Inspectez le réglage actif avec `grep -r ucredit /etc/security/pwquality.conf.d/`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` writes `ucredit = -1` to the drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via the idempotent `keyval` resource. The `99-` prefix ensures it overrides any earlier value. No service restart is needed; it applies at the next password change.",
+    "fr": "`pavois harden apply` écrit `ucredit = -1` dans le drop-in `/etc/security/pwquality.conf.d/99-Pavois.conf` via la ressource idempotente `keyval`. Le préfixe `99-` garantit qu'il surcharge toute valeur antérieure. Aucun redémarrage n'est requis ; cela s'applique au prochain changement de mot de passe."
+  },
+  "impact": {
+    "en": "Existing passwords stay valid; only **new** passwords must contain an uppercase letter. Users setting all-lowercase passwords will be rejected at change time. Lockout risk is low, but verify that automated provisioning and password-rotation tooling generate passwords with at least one uppercase letter before applying, to avoid failed account setups.",
+    "fr": "Les mots de passe existants restent valides ; seuls les **nouveaux** mots de passe doivent contenir une majuscule. Les utilisateurs définissant des mots de passe tout en minuscules seront rejetés au moment du changement. Le risque de blocage est faible, mais vérifiez que vos outils de provisionnement et de rotation génèrent des mots de passe avec au moins une majuscule avant d'appliquer, pour éviter les échecs de création de comptes."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,37 @@
+{
+  "id": "pkg-apparmor-installed",
+  "title": {
+    "en": "Ensure AppArmor is installed",
+    "fr": "Garantir l'installation d'AppArmor"
+  },
+  "summary": {
+    "en": "Ensures the **apparmor** package is installed so the kernel's Mandatory Access Control (MAC) framework is available to confine programs.",
+    "fr": "Garantit que le paquet **apparmor** est installé afin que le cadre de contrôle d'accès obligatoire (MAC) du noyau soit disponible pour confiner les programmes."
+  },
+  "rationale": {
+    "en": "Without a Mandatory Access Control system installed, the host relies solely on **Discretionary Access Control** (Unix ownership and permissions), where any compromised process runs with the full rights of its user. **AppArmor** adds per-program confinement profiles that cap what a service may read, write or execute, so a breached daemon cannot reach beyond its declared resources. It is required by CIS 1.3.1.x and ANSSI BP-028 R45.",
+    "fr": "Sans système de contrôle d'accès obligatoire installé, l'hôte ne repose que sur le **contrôle d'accès discrétionnaire** (propriétaire et permissions Unix), où tout processus compromis s'exécute avec l'ensemble des droits de son utilisateur. **AppArmor** ajoute des profils de confinement par programme qui limitent ce qu'un service peut lire, écrire ou exécuter, de sorte qu'un démon compromis ne puisse dépasser ses ressources déclarées. Exigé par CIS 1.3.1.x et ANSSI BP-028 R45."
+  },
+  "check_note": {
+    "en": "Pavois asks the package database (via `dpkg`) whether `apparmor` is installed using the InSpec `package` resource. Querying the **effective package state** is reliable across Debian and Ubuntu where AppArmor ships by default but can be removed or held back.",
+    "fr": "Pavois interroge la base de paquets (via `dpkg`) pour savoir si `apparmor` est installé via la ressource InSpec `package`. Interroger l'**état effectif des paquets** est fiable sur Debian et Ubuntu, où AppArmor est livré par défaut mais peut être supprimé ou bloqué."
+  },
+  "verify": {
+    "en": "Run `dpkg -s apparmor`, expected `Status: install ok installed`. Confirm the framework is actually active with `aa-status` (lists enforced/complain profiles) or `systemctl is-active apparmor`.",
+    "fr": "Exécutez `dpkg -s apparmor`, attendu `Status: install ok installed`. Vérifiez que le cadre est réellement actif avec `aa-status` (liste les profils en mode enforce/complain) ou `systemctl is-active apparmor`."
+  },
+  "logs": {
+    "en": "- `dpkg -l apparmor` confirms installation; `aa-status` shows loaded profiles.\n- AppArmor denials are logged by the kernel: `journalctl -k | grep apparmor` or `dmesg | grep -i apparmor`, and on audit-enabled hosts in `/var/log/audit/audit.log` (`type=AVC apparmor=\"DENIED\"`).",
+    "fr": "- `dpkg -l apparmor` confirme l'installation ; `aa-status` montre les profils chargés.\n- Les refus AppArmor sont journalisés par le noyau : `journalctl -k | grep apparmor` ou `dmesg | grep -i apparmor`, et sur les hôtes avec audit dans `/var/log/audit/audit.log` (`type=AVC apparmor=\"DENIED\"`)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan installs the `apparmor` package (`package` resource, `install` action) with `pavois harden apply`. Installing the package makes the framework available; profiles still need to be loaded and set to enforce mode for confinement to take effect.",
+    "fr": "Le plan de durcissement de Pavois installe le paquet `apparmor` (ressource `package`, action `install`) avec `pavois harden apply`. L'installation rend le cadre disponible ; les profils doivent encore être chargés et placés en mode enforce pour que le confinement prenne effet."
+  },
+  "impact": {
+    "en": "Installing the package is non-disruptive. Risk appears when profiles move to **enforce** mode: an over-tight or buggy profile can block legitimate file access and break a service. Before enforcing, run profiles in **complain** mode (`aa-complain`), review `audit.log` denials, then enforce once clean. Keep a console/recovery path in case a profile confines `sshd` or a management agent.",
+    "fr": "Installer le paquet est non perturbateur. Le risque apparaît lorsque les profils passent en mode **enforce** : un profil trop strict ou bogué peut bloquer un accès légitime et casser un service. Avant d'enforcer, exécutez les profils en mode **complain** (`aa-complain`), analysez les refus dans `audit.log`, puis passez en enforce une fois propre. Conservez un accès console/récupération au cas où un profil confinerait `sshd` ou un agent d'administration."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

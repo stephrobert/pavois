@@ -1,17 +1,17 @@
 {
   "id": "mount-var-tmp-nodev",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -29,21 +29,28 @@
   "check": [
     "describe mount('/var/tmp') do",
     "  its('options') { should include 'nodev' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /var/tmp 2>/dev/null; grep -hsE '[[:space:]]/var/tmp[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /var/tmp 2>/dev/null) 2>/dev/null; } | grep -ow 'nodev'\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "awk -v m=/var/tmp -v o=nodev '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,\",\");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4\",\"o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /var/tmp && mount -o remount,nodev /var/tmp || true",
+    "name": "mount-var-tmp-nodev",
+    "not_if": "awk -v m=/var/tmp '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\\n' | grep -qx nodev",
+    "resource": "exec"
+  },
   "title": {
     "en": "Add nodev Option to /var/tmp",
     "fr": "Ajouter l'option nodev à /var/tmp"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The only legitimate location for device files is `/dev` on the root partition (chroot jails are the rare exception). Mounting `/var/tmp` with **`nodev`** makes the kernel ignore any character or block device nodes placed there, blocking an attacker from smuggling a device file (e.g. raw disk access) into a world-writable temporary directory.",
-    "fr": "Le seul emplacement légitime pour les fichiers de périphérique est `/dev` sur la partition racine (les chroots étant la rare exception). Monter `/var/tmp` avec **`nodev`** force le noyau à ignorer tout nœud de périphérique caractère ou bloc qui s'y trouve, empêchant un attaquant d'introduire un fichier de périphérique (par ex. accès disque brut) dans un répertoire temporaire inscriptible par tous."
-  },
   "summary": {
     "en": "Mount `/var/tmp` with the **`nodev`** option so device nodes placed there are ignored by the kernel.",
     "fr": "Monter `/var/tmp` avec l'option **`nodev`** afin que les nœuds de périphérique qui s'y trouvent soient ignorés par le noyau."
+  },
+  "rationale": {
+    "en": "The only legitimate location for device files is `/dev` on the root partition (chroot jails are the rare exception). Mounting `/var/tmp` with **`nodev`** makes the kernel ignore any character or block device nodes placed there, blocking an attacker from smuggling a device file (e.g. raw disk access) into a world-writable temporary directory.",
+    "fr": "Le seul emplacement légitime pour les fichiers de périphérique est `/dev` sur la partition racine (les chroots étant la rare exception). Monter `/var/tmp` avec **`nodev`** force le noyau à ignorer tout nœud de périphérique caractère ou bloc qui s'y trouve, empêchant un attaquant d'introduire un fichier de périphérique (par ex. accès disque brut) dans un répertoire temporaire inscriptible par tous."
   },
   "check_note": {
     "en": "Pavois reads the **effective** mount options via `mount('/var/tmp')`. Because `/var/tmp` is often a bind mount or a systemd-managed tmpfs, the live kernel view is the only reliable source, parsing `/etc/fstab` alone would miss bind mounts and runtime remounts.",
@@ -64,5 +71,7 @@
   "impact": {
     "en": "**What can break:** essentially nothing in normal operation, legitimate workloads never need device nodes under `/var/tmp`. **Precautions:** if `/var/tmp` is not already a separate mount, the main effort is making it one (often a bind mount of `/tmp` or a dedicated filesystem). Test the remount in staging and reboot to confirm the option survives.",
     "fr": "**Ce qui peut casser :** quasiment rien en fonctionnement normal, aucune charge légitime n'a besoin de nœuds de périphérique sous `/var/tmp`. **Précautions :** si `/var/tmp` n'est pas déjà un montage séparé, l'essentiel du travail consiste à le rendre tel (souvent un montage lié de `/tmp` ou un système de fichiers dédié). Testez le remontage en pré-production et redémarrez pour confirmer que l'option persiste."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

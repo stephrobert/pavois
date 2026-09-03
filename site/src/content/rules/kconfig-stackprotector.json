@@ -1,16 +1,17 @@
 {
   "id": "kconfig-stackprotector",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_STACKPROTECTOR=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_STACKPROTECTOR='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_STACKPROTECTOR=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_STACKPROTECTOR=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Stack Protector buffer overflow detection",
     "fr": "Détection des débordements de tampon par Stack Protector"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_STACKPROTECTOR=y` makes the compiler insert a stack canary, a guard value placed before the return address of vulnerable functions. If a buffer overflow overwrites the saved return address, it must first clobber the canary; the kernel detects the mismatch on function return and panics instead of jumping to attacker-controlled code. This turns a silent kernel code-execution bug into a controlled crash, neutralizing classic stack-smashing exploits.",
-    "fr": "`CONFIG_STACKPROTECTOR=y` fait insérer par le compilateur un canari de pile, une valeur de garde placée avant l'adresse de retour des fonctions vulnérables. Si un débordement de tampon écrase l'adresse de retour sauvegardée, il doit d'abord écraser le canari ; le noyau détecte l'incohérence au retour de fonction et déclenche un panic au lieu de sauter vers du code contrôlé par l'attaquant. Cela transforme un bug d'exécution de code silencieux en un arrêt contrôlé, neutralisant les exploits classiques de stack smashing."
-  },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_STACKPROTECTOR=y`, inserting stack canaries to detect buffer overflows.",
     "fr": "Exige un noyau compilé avec `CONFIG_STACKPROTECTOR=y`, insérant des canaris de pile pour détecter les débordements de tampon."
+  },
+  "rationale": {
+    "en": "`CONFIG_STACKPROTECTOR=y` makes the compiler insert a stack canary, a guard value placed before the return address of vulnerable functions. If a buffer overflow overwrites the saved return address, it must first clobber the canary; the kernel detects the mismatch on function return and panics instead of jumping to attacker-controlled code. This turns a silent kernel code-execution bug into a controlled crash, neutralizing classic stack-smashing exploits.",
+    "fr": "`CONFIG_STACKPROTECTOR=y` fait insérer par le compilateur un canari de pile, une valeur de garde placée avant l'adresse de retour des fonctions vulnérables. Si un débordement de tampon écrase l'adresse de retour sauvegardée, il doit d'abord écraser le canari ; le noyau détecte l'incohérence au retour de fonction et déclenche un panic au lieu de sauter vers du code contrôlé par l'attaquant. Cela transforme un bug d'exécution de code silencieux en un arrêt contrôlé, neutralisant les exploits classiques de stack smashing."
   },
   "check_note": {
     "en": "Pavois reads the build configuration of the **running** kernel via `/boot/config-$(uname -r)` or `/proc/config.gz` and confirms `CONFIG_STACKPROTECTOR=y`. Reading the effective config of the booted kernel proves the canary protection is compiled into the kernel in use, not merely present in some installed default.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "Without stack-protector, a stack buffer overflow in kernel code can directly overwrite the return address and lead to arbitrary code execution rather than a contained crash. **Precautions:** the only remedy is a kernel change requiring a reboot, schedule a maintenance window and keep the prior kernel in GRUB as a fallback. Runtime overhead is negligible (canary check on a subset of functions), so there is no practical performance reason to leave it off.",
     "fr": "Sans stack-protector, un débordement de tampon de pile dans le code noyau peut écraser directement l'adresse de retour et conduire à l'exécution de code arbitraire plutôt qu'à un arrêt maîtrisé. **Précautions :** le seul remède est un changement de noyau imposant un redémarrage, planifiez une fenêtre de maintenance et gardez le noyau précédent dans GRUB en repli. Le surcoût à l'exécution est négligeable (vérification du canari sur un sous-ensemble de fonctions), il n'y a donc aucune raison pratique de performance pour le laisser désactivé."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

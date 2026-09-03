@@ -1,0 +1,59 @@
+{
+  "id": "pkg-audit-rules-installed",
+  "supported_os": [
+    "fedora",
+    "rhel10"
+  ],
+  "os_versions": {},
+  "severity": "medium",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "cis": "6.3.1.1"
+  },
+  "check": [
+    "describe package('audit-rules') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "audit-rules",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Install the audit-rules package (auditctl/augenrules)",
+    "fr": "Installer le paquet audit-rules (auditctl/augenrules)"
+  },
+  "summary": {
+    "en": "On el10 (RHEL 10, AlmaLinux 10, Rocky 10) and recent Fedora, the audit userspace was split: the `audit` package ships the `auditd` daemon, while `auditctl`, `augenrules` and the rule loader moved to a separate `audit-rules` package. Install `auditd` alone and the daemon runs with **no ruleset at all**: every `audit-*` rule Pavois writes to `/etc/audit/rules.d/` is never loaded.",
+    "fr": "Sur el10 (RHEL 10, AlmaLinux 10, Rocky 10) et les Fedora récentes, l'espace utilisateur d'audit a été scindé : le paquet `audit` fournit le démon `auditd`, tandis que `auditctl`, `augenrules` et le chargeur de règles sont passés dans un paquet `audit-rules` distinct. Installer `auditd` seul, c'est faire tourner le démon **sans aucun jeu de règles** : toutes les règles `audit-*` que Pavois écrit dans `/etc/audit/rules.d/` ne sont jamais chargées."
+  },
+  "rationale": {
+    "en": "The Pavois audit rules are loaded by `augenrules` at boot, through `augenrules.service`. On el10 that binary lives in `audit-rules`, which installing `auditd` does not pull in: the file-system audit trail (identity changes, privileged commands, MAC and DAC modifications) is then simply absent, and with it the evidence every audit control depends on.",
+    "fr": "Les règles d'audit de Pavois sont chargées par `augenrules` au démarrage, via `augenrules.service`. Sur el10, ce binaire réside dans `audit-rules`, que l'installation d'`auditd` ne tire pas : la piste d'audit du système de fichiers (changements d'identité, commandes privilégiées, modifications MAC et DAC) est alors purement absente, et avec elle les preuves dont dépend chaque contrôle d'audit."
+  },
+  "check_note": {
+    "en": "Pavois asserts that `audit-rules` is present in the RPM inventory. This is an **inventory-state** control: it proves the rule-loading tooling is installed, **not** that a ruleset is loaded. A host can hold the package and still run `auditctl -l` returning `No rules`. Read this rule as a *prerequisite* check, the one that explains why every other audit rule fails on an el10 box, and check the loaded ruleset separately (`auditctl -l`, `auditctl -s`).",
+    "fr": "Pavois vérifie la présence d'`audit-rules` dans l'inventaire RPM. C'est un contrôle d'**état d'inventaire** : il prouve que l'outillage de chargement des règles est installé, **pas** qu'un jeu de règles est chargé. Un hôte peut posséder le paquet et voir malgré tout `auditctl -l` répondre `No rules`. Lisez cette règle comme un contrôle de *prérequis*, celui qui explique pourquoi toutes les autres règles d'audit échouent sur une machine el10, et vérifiez le jeu de règles chargé séparément (`auditctl -l`, `auditctl -s`)."
+  },
+  "verify": {
+    "en": "Run `rpm -q audit-rules` and confirm a version is printed rather than `package audit-rules is not installed`:\n\n```\n$ rpm -q audit-rules\naudit-rules-4.0.3-1.el10.x86_64\n```\n\nThen confirm the tooling does its job: `augenrules --check` reports whether `/etc/audit/rules.d/` differs from the loaded set, and `auditctl -l` must list the rules (an empty `No rules` on a hardened host means they were never loaded).",
+    "fr": "Exécutez `rpm -q audit-rules` et vérifiez qu'une version s'affiche, et non `package audit-rules is not installed` :\n\n```\n$ rpm -q audit-rules\naudit-rules-4.0.3-1.el10.x86_64\n```\n\nConfirmez ensuite que l'outillage fait son travail : `augenrules --check` indique si `/etc/audit/rules.d/` diffère du jeu chargé, et `auditctl -l` doit lister les règles (un `No rules` sur un hôte durci signifie qu'elles n'ont jamais été chargées)."
+  },
+  "logs": {
+    "en": "The package itself logs nothing: it is a set of binaries and unit files. What it *enables* is the entire audit trail, `/var/log/audit/audit.log`, where every rule fires with its `key=` tag. Rule loading is traced in the journal (`journalctl -u augenrules`), and a loader failure appears there as a non-zero exit on that unit, which is exactly what you see when the binaries are missing. Note that `ausearch` is an unreliable way to confirm an event landed: grep the raw log for `key=\"<name>\"` instead.",
+    "fr": "Le paquet lui-même ne journalise rien : ce sont des binaires et des fichiers d'unité. Ce qu'il *rend possible*, c'est toute la piste d'audit, `/var/log/audit/audit.log`, où chaque règle se déclenche avec son étiquette `key=`. Le chargement des règles est tracé dans le journal systemd (`journalctl -u augenrules`), et un échec du chargeur y apparaît comme un code de sortie non nul sur cette unité : c'est précisément ce que l'on observe quand les binaires manquent. À noter : `ausearch` est peu fiable pour confirmer qu'un événement a bien été enregistré ; recherchez plutôt `key=\"<nom>\"` directement dans le journal brut."
+  },
+  "remediation_note": {
+    "en": "The Pavois harden plan installs the `audit-rules` package with the system package manager (`package` resource, action `install`, so `dnf install audit-rules` on el10 and Fedora). Pavois writes the ruleset itself in its own audit controls; this rule only guarantees the loader is there to read it.",
+    "fr": "Le plan de durcissement Pavois installe le paquet `audit-rules` avec le gestionnaire de paquets du système (ressource `package`, action `install`, donc `dnf install audit-rules` sur el10 et Fedora). Pavois écrit le jeu de règles lui-même dans ses contrôles d'audit ; cette règle garantit seulement que le chargeur est présent pour le lire."
+  },
+  "impact": {
+    "en": "Without `audit-rules` on el10, the host has an audit daemon and no audit: the rule files exist on disk, nothing loads them, and the machine silently loses the traceability that CIS 6.3.x and every forensic investigation rely on. Installing it is safe (no daemon, no configuration change), but be aware of what follows once the rules *do* load: the audit trail starts writing for real, so `/var/log/audit/` grows and must be sized and rotated, and if the ruleset ends with `-e 2` (immutable), changing a rule afterwards requires a **reboot**. Size the audit partition before you turn the trail on, not after.",
+    "fr": "Sans `audit-rules` sur el10, l'hôte possède un démon d'audit et aucun audit : les fichiers de règles existent sur le disque, rien ne les charge, et la machine perd silencieusement la traçabilité sur laquelle reposent CIS 6.3.x et toute investigation post-incident. L'installation est sans risque (pas de démon, pas de changement de configuration), mais mesurez ce qui suit une fois les règles réellement chargées : la piste d'audit se met à écrire pour de bon, donc `/var/log/audit/` grossit et doit être dimensionné et purgé ; et si le jeu de règles se termine par `-e 2` (immuable), modifier une règle ensuite exige un **redémarrage**. Dimensionnez la partition d'audit avant d'activer la piste, pas après."
+  },
+  "datePublished": "2026-07-07",
+  "dateModified": "2026-07-14"
+}

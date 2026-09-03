@@ -2,11 +2,20 @@
   "id": "pam-faillock-enabled",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -18,25 +27,25 @@
     "cis": "5.3.2.2"
   },
   "check": [
-    "describe command('grep -rqE \\'^[^#]*\\bpam_faillock\\\\.so\\b\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
+    "describe command('grep -RqE \\'^[^#]*\\bpam_faillock\\\\.so\\b\\' /etc/pam.d/ 2>/dev/null && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
   "remediation": {
+    "params": "audit silent even_deny_root",
     "resource": "pam_faillock"
   },
   "title": {
     "en": "Ensure pam_faillock module is enabled",
     "fr": "S'assurer que le module pam_faillock est activé"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Locking out user IDs after a number of unsuccessful consecutive login attempts mitigates brute-force password attacks against the system. Without `pam_faillock`, an attacker can try passwords indefinitely at machine speed; the module is the enforcement point that turns a lockout policy into an actual control.",
-    "fr": "Verrouiller les identifiants après un certain nombre d'échecs de connexion consécutifs atténue les attaques par force brute contre le système. Sans `pam_faillock`, un attaquant peut essayer des mots de passe indéfiniment à la vitesse de la machine ; le module est le point d'application qui transforme une politique de verrouillage en contrôle réel."
-  },
   "summary": {
     "en": "Ensures `pam_faillock.so` is present in the PAM auth stack so failed login attempts are counted and accounts are locked after too many failures.",
     "fr": "Garantit que `pam_faillock.so` est présent dans la pile auth de PAM afin que les échecs de connexion soient comptés et que les comptes soient verrouillés après trop d'échecs."
+  },
+  "rationale": {
+    "en": "Locking out user IDs after a number of unsuccessful consecutive login attempts mitigates brute-force password attacks against the system. Without `pam_faillock`, an attacker can try passwords indefinitely at machine speed; the module is the enforcement point that turns a lockout policy into an actual control.",
+    "fr": "Verrouiller les identifiants après un certain nombre d'échecs de connexion consécutifs atténue les attaques par force brute contre le système. Sans `pam_faillock`, un attaquant peut essayer des mots de passe indéfiniment à la vitesse de la machine ; le module est le point d'application qui transforme une politique de verrouillage en contrôle réel."
   },
   "check_note": {
     "en": "Pavois greps the **effective** PAM stack under `/etc/pam.d/` for an active (non-commented) `pam_faillock.so` line. Because PAM assembles its stack from `common-auth` and `@include` chains, checking the resolved set of files catches the case where the module is declared in one place but stripped by a drop-in, something a single-file scan would not see.",
@@ -57,5 +66,7 @@
   "impact": {
     "en": "A misplaced or duplicated `pam_faillock.so` line can lock out legitimate users, or even all of them, and an overly tight threshold enables trivial denial-of-service by spoofing failures against known usernames. **Precautions:** keep a root/console session open while editing PAM, validate login from a second terminal before disconnecting, set a reasonable `deny`/`unlock_time`, and keep `faillock --reset` handy to recover a locked account.",
     "fr": "Une ligne `pam_faillock.so` mal placée ou dupliquée peut verrouiller des utilisateurs légitimes, voire tous, et un seuil trop strict permet un déni de service trivial en simulant des échecs sur des noms d'utilisateur connus. **Précautions :** gardez une session root/console ouverte pendant l'édition de PAM, validez la connexion depuis un second terminal avant de vous déconnecter, fixez un `deny`/`unlock_time` raisonnable, et gardez `faillock --reset` à portée pour récupérer un compte verrouillé."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

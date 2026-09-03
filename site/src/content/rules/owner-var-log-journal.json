@@ -2,11 +2,20 @@
   "id": "owner-var-log-journal",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -29,21 +38,20 @@
   "remediation": {
     "command": "find /var/log/journal -exec chown root:systemd-journal {} + 2>/dev/null || true",
     "name": "chown-journal",
-    "not_if": "test -z \"$(find /var/log/journal ! -group systemd-journal 2>/dev/null)\"",
+    "not_if": "test -z \"$(find /var/log/journal ! -user root 2>/dev/null | head -1)\"",
     "resource": "exec"
   },
   "title": {
     "en": "Verify User Who Owns /var/log/*.journal(~) Files",
     "fr": "Vérifier l'utilisateur propriétaire des fichiers /var/log/*.journal(~)"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The `/var/log/*.journal(~)` files are the binary system logs managed by `systemd-journald`. They must be owned by **root** (with group `systemd-journal`) so that no unprivileged user can read or rewrite the journal, tampered or readable journals would let an attacker erase their tracks or harvest sensitive log data.",
-    "fr": "Les fichiers `/var/log/*.journal(~)` sont les journaux système binaires gérés par `systemd-journald`. Ils doivent appartenir à **root** (groupe `systemd-journal`) afin qu'aucun utilisateur non privilégié ne puisse lire ou réécrire le journal, des journaux altérés ou lisibles permettraient à un attaquant d'effacer ses traces ou de récolter des données sensibles."
-  },
   "summary": {
     "en": "Ensure all persistent journal files under `/var/log/journal` are **owned by root** (group `systemd-journal`).",
     "fr": "S'assurer que tous les fichiers de journal persistants sous `/var/log/journal` **appartiennent à root** (groupe `systemd-journal`)."
+  },
+  "rationale": {
+    "en": "The `/var/log/*.journal(~)` files are the binary system logs managed by `systemd-journald`. They must be owned by **root** (with group `systemd-journal`) so that no unprivileged user can read or rewrite the journal, tampered or readable journals would let an attacker erase their tracks or harvest sensitive log data.",
+    "fr": "Les fichiers `/var/log/*.journal(~)` sont les journaux système binaires gérés par `systemd-journald`. Ils doivent appartenir à **root** (groupe `systemd-journal`) afin qu'aucun utilisateur non privilégié ne puisse lire ou réécrire le journal, des journaux altérés ou lisibles permettraient à un attaquant d'effacer ses traces ou de récolter des données sensibles."
   },
   "check_note": {
     "en": "Pavois runs `find -P /var/log/journal -type f ! -user root` (only if persistent journaling is enabled) and expects **no output**. It checks the real ownership of the live journal files on disk, catching drift introduced after install, not just packaging defaults.",
@@ -64,5 +72,7 @@
   "impact": {
     "en": "**What can break:** essentially nothing, `root:systemd-journal` is exactly the ownership `systemd-journald` expects, so it keeps writing normally. Members of the `systemd-journal` group retain read access to the logs. **Precautions:** none significant; the change is idempotent and guarded. On systems with only volatile journaling (`/run/log/journal`), `/var/log/journal` is absent and the rule is skipped (`only_if`).",
     "fr": "**Ce qui peut casser :** quasiment rien, `root:systemd-journal` est exactement l'appartenance attendue par `systemd-journald`, qui continue d'écrire normalement. Les membres du groupe `systemd-journal` conservent l'accès en lecture aux journaux. **Précautions :** aucune notable ; la modification est idempotente et gardée. Sur les systèmes à journalisation uniquement volatile (`/run/log/journal`), `/var/log/journal` est absent et la règle est ignorée (`only_if`)."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

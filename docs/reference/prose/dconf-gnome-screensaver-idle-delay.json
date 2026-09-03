@@ -1,0 +1,37 @@
+{
+  "id": "dconf-gnome-screensaver-idle-delay",
+  "title": {
+    "en": "Set GNOME3 Screensaver Inactivity Timeout",
+    "fr": "Définir le délai d'inactivité du screensaver GNOME3"
+  },
+  "summary": {
+    "en": "Sets the session inactivity timeout that triggers the screensaver via `idle-delay` in the system `dconf` database, locked against user override.",
+    "fr": "Définit le délai d'inactivité de session qui déclenche le screensaver via `idle-delay` dans la base `dconf` du système, verrouillé contre toute modification par l'utilisateur."
+  },
+  "rationale": {
+    "en": "The idle delay (`idle-delay`) is how long a session may sit untouched before GNOME marks it idle and starts the screensaver/lock chain. A session time-out lock protects a workstation when a user steps away without logging out. If `idle-delay` is unset or too long, **an unattended desktop stays open well past the policy window** (commonly 15 minutes / 900 s), exposing the live session to anyone nearby.",
+    "fr": "Le délai d'inactivité (`idle-delay`) est la durée pendant laquelle une session peut rester inactive avant que GNOME ne la marque comme inactive et déclenche la chaîne screensaver/verrouillage. Un verrouillage par temporisation protège un poste lorsqu'un utilisateur s'éloigne sans se déconnecter. Si `idle-delay` n'est pas défini ou trop long, **un bureau laissé sans surveillance reste ouvert bien au-delà de la fenêtre de politique** (souvent 15 minutes / 900 s), exposant la session active à toute personne à proximité."
+  },
+  "check_note": {
+    "en": "Pavois verifies in the **effective** `dconf` configuration that a drop-in under `/etc/dconf/db/*.d/` sets `idle-delay`, and that `/org/gnome/desktop/session/idle-delay` is in a `locks/` file so users cannot lengthen or clear it. Reading the resolved dconf database catches the value wherever a keyfile defines it.",
+    "fr": "Pavois vérifie dans la configuration `dconf` **effective** qu'un drop-in sous `/etc/dconf/db/*.d/` définit `idle-delay`, et que `/org/gnome/desktop/session/idle-delay` figure dans un fichier `locks/` afin que les utilisateurs ne puissent ni l'allonger ni l'effacer. Lire la base dconf résolue capte la valeur quel que soit le fichier de clés qui la définit."
+  },
+  "verify": {
+    "en": "Run `dconf read /org/gnome/desktop/session/idle-delay` (or `gsettings get org.gnome.desktop.session idle-delay`); the expected output is a `uint32` at or below your policy limit, e.g. `uint32 900` (15 minutes). Confirm the lock with `grep -r idle-delay /etc/dconf/db/*/locks/`.",
+    "fr": "Exécutez `dconf read /org/gnome/desktop/session/idle-delay` (ou `gsettings get org.gnome.desktop.session idle-delay`) ; la sortie attendue est un `uint32` égal ou inférieur à votre limite de politique, p. ex. `uint32 900` (15 minutes). Confirmez le verrou avec `grep -r idle-delay /etc/dconf/db/*/locks/`."
+  },
+  "logs": {
+    "en": "Idle transitions and screensaver activation are logged in the user session journal: `journalctl --user -u gnome-session` and via `journalctl _COMM=gnome-shell`. Live idle state is exposed by the session manager over D-Bus (`org.gnome.SessionManager`).",
+    "fr": "Les transitions d'inactivité et l'activation du screensaver sont journalisées dans le journal de la session utilisateur : `journalctl --user -u gnome-session` et via `journalctl _COMM=gnome-shell`. L'état d'inactivité en direct est exposé par le gestionnaire de session via D-Bus (`org.gnome.SessionManager`)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `dconf` resource to write the keyfile setting `idle-delay` to your policy value (e.g. 900 s) and a matching `locks/` entry, then runs `dconf update`. Apply with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `dconf` pour écrire le fichier de clés définissant `idle-delay` à votre valeur de politique (p. ex. 900 s) et l'entrée `locks/` correspondante, puis exécute `dconf update`. Appliquez avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Low impact, but user-visible: screens will dim and lock after the configured idle time. **Precaution:** choose a delay that meets policy (often 900 s) without disrupting presentations, long-running tasks, or kiosks, exempt kiosk/dashboard hosts. A value of `0` disables the timeout entirely and would fail the intent, so always set a positive, policy-compliant value.",
+    "fr": "Impact faible mais visible : les écrans s'assombrissent et se verrouillent après la durée d'inactivité configurée. **Précaution :** choisissez un délai conforme à la politique (souvent 900 s) sans gêner les présentations, les tâches longues ou les bornes, exemptez les hôtes borne/tableau de bord. Une valeur de `0` désactive entièrement la temporisation et trahirait l'intention ; définissez toujours une valeur positive conforme à la politique."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

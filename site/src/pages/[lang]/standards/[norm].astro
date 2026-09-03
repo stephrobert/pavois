@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import Base from '../../../layouts/Base.astro';
 import { ui, languages, type Lang } from '../../../i18n/ui';
 import standards from '../../../data/standards.json';
+import benchmarks from '../../../data/benchmarks.json';
 import socleRefs from '../../../data/socle-refs.json';
 import { domainLabel } from '../../../data/domain-labels';
 
@@ -101,6 +102,53 @@ const rowsData = rules.map((r: any) => ({
       >
     </div>
     </div>
+
+    {
+      norm === 'cis' && (
+        <div class="bmtable">
+          <h2>{lang === 'fr' ? 'La version de benchmark visée, par OS' : 'The benchmark version targeted, per OS'}</h2>
+          <p>
+            {lang === 'fr'
+              ? 'Un numéro CIS ne veut rien dire sans sa version : le benchmark renumérote d’une version à l’autre. Voici la version que chaque profil Pavois vise, et sa source. Trois OS n’ont AUCUN benchmark CIS publié : leurs numéros sont hérités d’un OS frère, et cette page le dit plutôt que de le taire.'
+              : 'A CIS number means nothing without its version: the benchmark renumbers between releases. Here is the version each Pavois profile targets, and its source. Three OSes have NO published CIS benchmark: their numbers are inherited from a sibling OS, and this page says so rather than hiding it.'}
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>OS</th>
+                <th>{lang === 'fr' ? 'Version CIS visée' : 'CIS version targeted'}</th>
+                <th>{lang === 'fr' ? 'Source' : 'Source'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {benchmarks.cis.map((b: any) => (
+                <tr>
+                  <td><code>{b.label}</code></td>
+                  <td>
+                    {b.version ? (
+                      b.version
+                    ) : (
+                      <span class="inh">
+                        {lang === 'fr' ? `hérité de ${b.inherited_label}` : `inherited from ${b.inherited_label}`}
+                      </span>
+                    )}
+                  </td>
+                  <td class="src">{b.source}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p class="muted">
+            {lang === 'fr'
+              ? 'CIS Debian 12 v2.0.0 est parue en juin 2026 (ajouts, retraits et renumérotations massifs). Le ré-ancrage est en cours ; les mappings publiés ici visent toujours la 1.1.0, et le diront tant que ce sera vrai. '
+              : 'CIS Debian 12 v2.0.0 landed in June 2026 (large additions, removals and renumberings). The re-anchoring is in progress; the mappings published here still target 1.1.0, and will say so for as long as that is true. '}
+            <a href={`/${lang}/handbook/project-governance/`}>
+              {lang === 'fr' ? 'Comment un mapping est validé →' : 'How a mapping is validated →'}
+            </a>
+          </p>
+        </div>
+      )
+    }
 
     {
       meta.notation && (

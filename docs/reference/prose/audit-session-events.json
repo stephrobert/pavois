@@ -1,0 +1,37 @@
+{
+  "id": "audit-session-events",
+  "title": {
+    "en": "Record Attempts to Alter Process and Session Initiation Information",
+    "fr": "Journaliser les modifications des informations de processus et de session"
+  },
+  "summary": {
+    "en": "Ensures auditd has a live rule (keyed **`session`**) recording changes to `utmp`/`wtmp`/`btmp` session records.",
+    "fr": "Garantit qu'auditd possède une règle active (clé **`session`**) journalisant les modifications des enregistrements de session `utmp`/`wtmp`/`btmp`."
+  },
+  "rationale": {
+    "en": "The files that track login sessions and process initiation, `/var/run/utmp`, `/var/log/wtmp` and `/var/log/btmp`, are prime targets for an attacker who wants to erase evidence of a login. Auditing writes to them (under the **`session`** key) records any manual tampering, preserving the session history needed to reconstruct who was on the system and to spot attempts to remove intrusion traces.",
+    "fr": "Les fichiers qui suivent les sessions de connexion et le démarrage des processus, `/var/run/utmp`, `/var/log/wtmp` et `/var/log/btmp`, sont des cibles de choix pour un attaquant voulant effacer la preuve d'une connexion. Auditer les écritures sur ces fichiers (sous la clé **`session`**) enregistre toute falsification manuelle, préservant l'historique de session nécessaire pour reconstituer qui était sur le système et repérer les tentatives d'effacement de traces d'intrusion."
+  },
+  "check_note": {
+    "en": "Pavois runs `auditctl -l` and checks the loaded ruleset for a rule keyed `session`. It reads the effective kernel ruleset rather than the rule files, so a watch present in `/etc/audit/rules.d/` but not loaded (parse error, missing reload, pending reboot) correctly fails here where a file scanner would be fooled.",
+    "fr": "Pavois exécute `auditctl -l` et cherche dans l'ensemble chargé une règle marquée `session`. Il lit l'ensemble effectif du noyau plutôt que les fichiers de règles : une surveillance présente dans `/etc/audit/rules.d/` mais non chargée (erreur d'analyse, rechargement manquant, redémarrage en attente) échoue correctement ici, là où un scanner de fichiers serait trompé."
+  },
+  "verify": {
+    "en": "Run `auditctl -l | grep session`. **Expected:** watch rules on `/var/run/utmp`, `/var/log/wtmp` and `/var/log/btmp` ending in `-k session` (or `key=session`). No output means the rule is not active.",
+    "fr": "Exécutez `auditctl -l | grep session`. **Attendu :** des règles de surveillance sur `/var/run/utmp`, `/var/log/wtmp` et `/var/log/btmp` se terminant par `-k session` (ou `key=session`). Aucune sortie signifie que la règle n'est pas active."
+  },
+  "logs": {
+    "en": "- Confirm the loaded rule: `auditctl -l | grep session`.\n- See recorded events: `grep 'key=\"session\"' /var/log/audit/audit.log` (prefer raw grep; ausearch is unreliable).\n- Service state: `systemctl status auditd`.",
+    "fr": "- Confirmer la règle chargée : `auditctl -l | grep session`.\n- Voir les événements enregistrés : `grep 'key=\"session\"' /var/log/audit/audit.log` (préférez un grep brut ; ausearch est peu fiable).\n- État du service : `systemctl status auditd`."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `audit_ruleset` resource to write the session-tracking watches (keyed `session`) on `utmp`/`wtmp`/`btmp` into auditd's rules directory and reload the ruleset. The rule is `reboot_required`, so a reboot guarantees the rules load from boot and any immutable mode takes effect.",
+    "fr": "`pavois harden apply` utilise la ressource `audit_ruleset` pour écrire les surveillances de suivi de session (clé `session`) sur `utmp`/`wtmp`/`btmp` dans le répertoire de règles d'auditd et recharger l'ensemble. La règle est `reboot_required` : un redémarrage garantit que les règles se chargent dès le démarrage et que tout mode immuable prend effet."
+  },
+  "impact": {
+    "en": "Without this rule, an attacker can edit session records to hide their presence with no audit trail, defeating forensic timelines and failing PCI/STIG requirements. Applying it adds audit watches and may require a reboot; impact is low, though every login updates these files so expect a steady (small) volume of session events.",
+    "fr": "Sans cette règle, un attaquant peut éditer les enregistrements de session pour masquer sa présence sans laisser de trace d'audit, faussant la chronologie forensique et échouant aux exigences PCI/STIG. L'appliquer ajoute des surveillances d'audit et peut nécessiter un redémarrage ; l'impact est faible, mais chaque connexion met à jour ces fichiers, attendez-vous donc à un volume régulier (modeste) d'événements de session."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

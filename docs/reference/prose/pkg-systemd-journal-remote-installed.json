@@ -1,0 +1,37 @@
+{
+  "id": "pkg-systemd-journal-remote-installed",
+  "title": {
+    "en": "Install systemd-journal-remote Package",
+    "fr": "Installer le paquet systemd-journal-remote"
+  },
+  "summary": {
+    "en": "Ensures the **`systemd-journal-remote`** package is **installed**, enabling journald logs to be forwarded to or collected by a remote log host.",
+    "fr": "Garantit que le paquet **`systemd-journal-remote`** est **installé**, permettant de transférer les journaux de journald vers un hôte distant ou de les y collecter."
+  },
+  "rationale": {
+    "en": "`systemd-journal-remote` provides `systemd-journal-upload`/`systemd-journal-remote`, which **ship journald logs to a remote collector**. Storing log data on a remote host protects **log integrity from local attacks**: if an attacker gains root on the local system, they can tamper with or delete locally-stored logs to cover their tracks, but a copy already forwarded off-box remains as forensic evidence. Centralized, off-host logging is a baseline requirement for credible incident response.",
+    "fr": "`systemd-journal-remote` fournit `systemd-journal-upload`/`systemd-journal-remote`, qui **transfèrent les journaux de journald vers un collecteur distant**. Stocker les journaux sur un hôte distant protège leur **intégrité contre les attaques locales** : si un attaquant obtient le root sur le système local, il peut altérer ou supprimer les journaux stockés localement pour effacer ses traces, mais une copie déjà transférée hors machine subsiste comme preuve forensique. La journalisation centralisée hors hôte est une exigence de base pour une réponse à incident crédible."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** install state from the package database via CINC/InSpec's `package` resource and asserts `systemd-journal-remote` is present. The package must be installed before `systemd-journal-upload.service` can be enabled and configured to forward logs, the package check is the prerequisite for the remote-logging configuration rules.",
+    "fr": "Pavois lit l'état d'installation **effectif** dans la base de données des paquets via la ressource `package` de CINC/InSpec et vérifie que `systemd-journal-remote` est présent. Le paquet doit être installé avant que `systemd-journal-upload.service` puisse être activé et configuré pour transférer les journaux, ce contrôle de paquet est le prérequis des règles de configuration de la journalisation distante."
+  },
+  "verify": {
+    "en": "Run `dpkg -s systemd-journal-remote` (Debian/Ubuntu) or `rpm -q systemd-journal-remote` (RHEL/Alma/Fedora); a compliant host returns the installed version. When forwarding is configured, `systemctl is-active systemd-journal-upload` returns **`active`**.",
+    "fr": "Exécutez `dpkg -s systemd-journal-remote` (Debian/Ubuntu) ou `rpm -q systemd-journal-remote` (RHEL/Alma/Fedora) ; un hôte conforme renvoie la version installée. Une fois le transfert configuré, `systemctl is-active systemd-journal-upload` renvoie **`active`**."
+  },
+  "logs": {
+    "en": "- Installation is logged in `/var/log/dpkg.log` or `/var/log/dnf.log`.\n- Upload activity and connection state are visible via `journalctl -u systemd-journal-upload`.",
+    "fr": "- L'installation est journalisée dans `/var/log/dpkg.log` ou `/var/log/dnf.log`.\n- L'activité d'envoi et l'état de connexion sont visibles via `journalctl -u systemd-journal-upload`."
+  },
+  "remediation_note": {
+    "en": "The harden plan declares a **`package`** resource for `systemd-journal-remote` with action **`install`**; `pavois harden apply` installs it via the native package manager. Installing it alone does **not** start forwarding, you still configure `/etc/systemd/journal-upload.conf` with a target URL and enable `systemd-journal-upload.service`.",
+    "fr": "Le plan de durcissement déclare une ressource **`package`** pour `systemd-journal-remote` avec l'action **`install`** ; `pavois harden apply` l'installe via le gestionnaire de paquets natif. Son installation seule ne **démarre pas** le transfert, vous configurez ensuite `/etc/systemd/journal-upload.conf` avec une URL cible et activez `systemd-journal-upload.service`."
+  },
+  "impact": {
+    "en": "Installing the package is safe and adds no listener by default (the **upload** side only connects outbound; the **remote** receiver side, if enabled, would open a port, enable only on the dedicated collector). Precaution: configure the upload target and TLS before relying on it, and ensure the remote collector is reachable so logs are not silently queued. No reboot is required.",
+    "fr": "Installer le paquet est sûr et n'ajoute aucun écouteur par défaut (le côté **upload** ne fait que des connexions sortantes ; le côté **récepteur** distant, s'il est activé, ouvrirait un port, à n'activer que sur le collecteur dédié). Précaution : configurez la cible d'envoi et le TLS avant de vous y fier, et assurez-vous que le collecteur distant est joignable afin que les journaux ne soient pas mis en file d'attente silencieusement. Aucun redémarrage n'est nécessaire."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

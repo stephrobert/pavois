@@ -1,17 +1,17 @@
 {
   "id": "findloop-file-permissions-ungroupowned",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,8 +26,8 @@
   "norms": {
     "bp28": "R53",
     "cis": [
-      "7.1.12",
-      "2.2.6"
+      "2.2.6",
+      "7.1.12"
     ],
     "nist": [
       "AC-6(1)",
@@ -36,23 +36,27 @@
     "pci-dss": "2.2.6"
   },
   "check": [
-    "describe command('timeout 90 find / -xdev -nogroup 2>/dev/null') do",
+    "describe command(\"timeout 90 find / -xdev -nogroup -not -path '/var/lib/private/*' -not -path '/var/cache/private/*' 2>/dev/null\") do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "find / -xdev -nogroup 2>/dev/null\n# chgrp <group> <path> per item after review\n",
+    "reason": "an ungroup-owned file signals a deleted group, assign a group deliberately",
+    "resource": "manual"
+  },
   "title": {
     "en": "Ensure all files are owned by a group",
     "fr": "Vérifier que tous les fichiers appartiennent à un groupe"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "A file with no valid group owner (its GID does not map to any entry in `/etc/group`) is not a direct vulnerability, but it is a strong signal that something is wrong: leftover files from a deleted account, a botched software install or removal, or an intruder's artifacts. Worse, if a new group is later created and reuses that GID, it silently inherits access to the orphaned files. Files should be repaired and the root cause investigated.",
-    "fr": "Un fichier sans groupe propriétaire valide (son GID ne correspond à aucune entrée de `/etc/group`) n'est pas une vulnérabilité directe, mais c'est un signal fort d'anomalie : restes d'un compte supprimé, installation ou désinstallation logicielle bâclée, ou artefacts d'un intrus. Pire, si un nouveau groupe est créé plus tard en réutilisant ce GID, il hérite silencieusement de l'accès aux fichiers orphelins. Les fichiers doivent être réparés et la cause racine investiguée."
-  },
   "summary": {
     "en": "Ensures no file on a local filesystem has an unassigned group owner (a GID not present in `/etc/group`).",
     "fr": "Garantit qu'aucun fichier d'un système de fichiers local n'a un groupe propriétaire non attribué (un GID absent de `/etc/group`)."
+  },
+  "rationale": {
+    "en": "A file with no valid group owner (its GID does not map to any entry in `/etc/group`) is not a direct vulnerability, but it is a strong signal that something is wrong: leftover files from a deleted account, a botched software install or removal, or an intruder's artifacts. Worse, if a new group is later created and reuses that GID, it silently inherits access to the orphaned files. Files should be repaired and the root cause investigated.",
+    "fr": "Un fichier sans groupe propriétaire valide (son GID ne correspond à aucune entrée de `/etc/group`) n'est pas une vulnérabilité directe, mais c'est un signal fort d'anomalie : restes d'un compte supprimé, installation ou désinstallation logicielle bâclée, ou artefacts d'un intrus. Pire, si un nouveau groupe est créé plus tard en réutilisant ce GID, il hérite silencieusement de l'accès aux fichiers orphelins. Les fichiers doivent être réparés et la cause racine investiguée."
   },
   "check_note": {
     "en": "Pavois runs `find / -xdev -nogroup` and expects **empty output**, any returned path is a file whose group GID maps to no group. The `-xdev` flag keeps the scan on the local filesystem. Resolving GIDs against the live `/etc/group` (rather than a static report) catches orphans left by recently deleted accounts and files extracted from foreign archives, which no config-file audit would surface.",
@@ -73,5 +77,7 @@
   "impact": {
     "en": "Risk if left as-is: a future group created with the same GID silently gains access to these files, and the orphans may mask intrusion artifacts. Before fixing: a group-orphaned file can be evidence, preserve it for investigation before changing it. Avoid a blanket `chgrp` to a single group, which could grant unintended access; assign the correct owning group case by case and delete only confirmed debris.",
     "fr": "Risque en l'état : un futur groupe créé avec le même GID obtient silencieusement l'accès à ces fichiers, et les orphelins peuvent masquer des artefacts d'intrusion. Avant de corriger : un fichier orphelin de groupe peut être une preuve, conservez-le pour investigation avant de le modifier. Évitez un `chgrp` global vers un seul groupe, qui pourrait accorder un accès non voulu ; attribuez le bon groupe propriétaire au cas par cas et ne supprimez que les débris confirmés."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

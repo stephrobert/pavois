@@ -1,12 +1,21 @@
 {
   "id": "ssh-print-last-log",
   "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
-    "rhel9"
+    "rhel9",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "rhel8": "4.0.0",
-    "rhel9": "2.0.0"
+    "rhel9": "2.0.0",
+    "ubuntu2404": "1.0.0"
   },
   "severity": "medium",
   "domain": "SSH",
@@ -22,7 +31,7 @@
     "directive": "printlastlog",
     "notify": {
       "action": "reload",
-      "service": "ssh"
+      "service": "ssh.service"
     },
     "resource": "sshd_setting",
     "value": "yes",
@@ -32,14 +41,13 @@
     "en": "Enable SSH Print Last Log",
     "fr": "Activer l'affichage de la dernière connexion SSH"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Showing the previous login's time and source IP at each SSH login gives users immediate feedback to spot accesses they did not perform. This human-in-the-loop signal helps detect and report compromised credentials or unauthorized account use far sooner than relying on log review alone.",
-    "fr": "Afficher l'heure et l'IP source de la connexion précédente à chaque connexion SSH donne aux utilisateurs un retour immédiat pour repérer des accès qu'ils n'ont pas effectués. Ce signal impliquant l'humain aide à détecter et signaler des identifiants compromis ou un usage non autorisé du compte bien plus tôt qu'en s'appuyant uniquement sur l'analyse des journaux."
-  },
   "summary": {
     "en": "Makes `sshd` display the date, time and origin of the user's previous login at each SSH login by setting **`PrintLastLog yes`**.",
     "fr": "Fait afficher par `sshd` la date, l'heure et l'origine de la précédente connexion de l'utilisateur à chaque connexion SSH en positionnant **`PrintLastLog yes`**."
+  },
+  "rationale": {
+    "en": "Showing the previous login's time and source IP at each SSH login gives users immediate feedback to spot accesses they did not perform. This human-in-the-loop signal helps detect and report compromised credentials or unauthorized account use far sooner than relying on log review alone.",
+    "fr": "Afficher l'heure et l'IP source de la connexion précédente à chaque connexion SSH donne aux utilisateurs un retour immédiat pour repérer des accès qu'ils n'ont pas effectués. Ce signal impliquant l'humain aide à détecter et signaler des identifiants compromis ou un usage non autorisé du compte bien plus tôt qu'en s'appuyant uniquement sur l'analyse des journaux."
   },
   "check_note": {
     "en": "Pavois reads the **effective** `printlastlog` value from `sshd -T`, the daemon's resolved configuration. A scan of `/etc/ssh/sshd_config` could miss a value set in an `Include`d drop-in under `/etc/ssh/sshd_config.d/`, `sshd -T` reflects exactly what the running daemon enforces.",
@@ -60,5 +68,7 @@
   "impact": {
     "en": "With `PrintLastLog no`, users lose a simple early-warning cue and may not notice that their account was used by someone else. Enabling it is cosmetic-to-helpful and carries essentially no operational risk. Precaution: if `PAM` already prints the last-login line (some distributions do via `pam_lastlog`), you may see it twice, harmless, but you can disable one source if desired. The reload preserves your current SSH session, so there is no lockout risk.",
     "fr": "Avec `PrintLastLog no`, les utilisateurs perdent un indice d'alerte précoce simple et peuvent ne pas remarquer que leur compte a été utilisé par quelqu'un d'autre. L'activer va de cosmétique à utile et ne présente quasiment aucun risque opérationnel. Précaution : si `PAM` affiche déjà la ligne de dernière connexion (certaines distributions le font via `pam_lastlog`), vous pourriez la voir en double, sans gravité, mais vous pouvez désactiver une des sources si vous le souhaitez. Le reload préserve votre session SSH en cours, il n'y a donc aucun risque de blocage."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

@@ -1,0 +1,37 @@
+{
+  "id": "filegroupowner-crontab",
+  "title": {
+    "en": "Verify Group Who Owns Crontab",
+    "fr": "Vérifier le groupe propriétaire de crontab"
+  },
+  "summary": {
+    "en": "Ensures the `/etc/crontab` file is group-owned by **`root` (gid 0)**.",
+    "fr": "Garantit que le fichier `/etc/crontab` est détenu par le groupe **`root` (gid 0)**."
+  },
+  "rationale": {
+    "en": "The `/etc/crontab` file is the system-wide cron table: every job listed there **runs as root** (or as the user named in the line) on a schedule. If the file is group-owned by a non-privileged group, a member of that group could edit a job and gain **arbitrary command execution as root**. Restricting group ownership to **`root` (gid 0)** ensures only highly-privileged accounts can change scheduled commands.",
+    "fr": "Le fichier `/etc/crontab` est la table cron à l'échelle du système : chaque tâche qui y figure **s'exécute en tant que root** (ou sous l'utilisateur indiqué) selon une planification. Si le fichier est détenu par un groupe non privilégié, un membre de ce groupe pourrait modifier une tâche et obtenir l'**exécution de commandes arbitraires en root**. Restreindre la propriété de groupe à **`root` (gid 0)** garantit que seuls les comptes hautement privilégiés peuvent modifier les commandes planifiées."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** group owner of `/etc/crontab` on the live system via the InSpec `file` resource and asserts `gid == 0`. It inspects the actual inode metadata as the kernel sees it, not a packaging default, so a file whose ownership drifted after install is caught.",
+    "fr": "Pavois lit le groupe propriétaire **effectif** de `/etc/crontab` sur le système en cours d'exécution via la ressource InSpec `file` et vérifie `gid == 0`. Il inspecte les métadonnées réelles de l'inode telles que le noyau les voit, et non une valeur par défaut de paquet : un fichier dont la propriété a dérivé après l'installation est donc détecté."
+  },
+  "verify": {
+    "en": "Run `stat -c '%G %g' /etc/crontab`. Expected output: **`root 0`**. Any other group name or non-zero gid means the rule is not applied.",
+    "fr": "Exécutez `stat -c '%G %g' /etc/crontab`. Sortie attendue : **`root 0`**. Tout autre nom de groupe ou gid non nul signifie que la règle n'est pas appliquée."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default. Watch the file with auditd: `auditctl -w /etc/crontab -p wa -k cron-perms`, then inspect `grep 'key=\"cron-perms\"' /var/log/audit/audit.log`. Cron execution appears in `journalctl -u cron` (Debian/Ubuntu) or `journalctl -u crond` (RHEL family).",
+    "fr": "Les changements de propriété ne sont pas journalisés par défaut. Surveillez le fichier avec auditd : `auditctl -w /etc/crontab -p wa -k cron-perms`, puis examinez `grep 'key=\"cron-perms\"' /var/log/audit/audit.log`. L'exécution de cron apparaît dans `journalctl -u cron` (Debian/Ubuntu) ou `journalctl -u crond` (famille RHEL)."
+  },
+  "remediation_note": {
+    "en": "No automated remediation is defined for this rule, so it must be applied **manually**. Restore the correct group ownership with `chgrp root /etc/crontab`.",
+    "fr": "Aucune remédiation automatique n'est définie pour cette règle ; elle doit donc être appliquée **manuellement**. Rétablissez le bon groupe propriétaire avec `chgrp root /etc/crontab`."
+  },
+  "impact": {
+    "en": "A non-`root` group owner on `/etc/crontab` lets group members edit root-run jobs, a direct privilege-escalation path. The fix is low-risk: `chgrp root` only changes group ownership, not permissions or content, and cron keeps reading the file normally. **Precaution:** confirm no legitimate tooling relies on a custom group before changing it.",
+    "fr": "Un groupe propriétaire autre que `root` sur `/etc/crontab` permet aux membres du groupe de modifier des tâches exécutées en root, une voie directe d'élévation de privilèges. Le correctif présente peu de risques : `chgrp root` ne change que la propriété de groupe, ni les permissions ni le contenu, et cron continue de lire le fichier normalement. **Précaution :** vérifiez qu'aucun outil légitime ne dépend d'un groupe personnalisé avant de le modifier."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

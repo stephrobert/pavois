@@ -1,0 +1,37 @@
+{
+  "id": "misc-aide-periodic-checking-systemd-timer",
+  "title": {
+    "en": "Configure Systemd Timer Execution of AIDE",
+    "fr": "Configurer l'exécution périodique d'AIDE par un timer systemd"
+  },
+  "summary": {
+    "en": "Ensures AIDE runs on a schedule via an **enabled systemd timer** (`aidecheck.timer` or `dailyaidecheck.timer`).",
+    "fr": "Garantit qu'AIDE s'exécute selon un planning via un **timer systemd activé** (`aidecheck.timer` ou `dailyaidecheck.timer`)."
+  },
+  "rationale": {
+    "en": "AIDE only detects tampering when it actually runs and compares against its baseline; it does not schedule itself. A systemd service to perform the check plus a timer to fire it regularly turns AIDE from a one-off snapshot into continuous integrity monitoring. Without periodic execution, an unauthorized change could persist undetected indefinitely.",
+    "fr": "AIDE ne détecte une altération que lorsqu'il s'exécute réellement et compare à sa référence ; il ne se planifie pas lui-même. Un service systemd qui effectue la vérification, plus un timer qui le déclenche régulièrement, transforme AIDE d'un instantané ponctuel en une surveillance d'intégrité continue. Sans exécution périodique, une modification non autorisée pourrait persister indétectée indéfiniment."
+  },
+  "check_note": {
+    "en": "Pavois queries `systemctl is-enabled` for `aidecheck.timer`/`dailyaidecheck.timer` and requires at least one to be **enabled**. Querying systemd reflects the effective scheduling state resolved from unit files and drop-ins, which a file-based scan of `/etc/cron*` would miss entirely since the schedule lives in systemd here, not in cron.",
+    "fr": "Pavois interroge `systemctl is-enabled` pour `aidecheck.timer`/`dailyaidecheck.timer` et exige qu'au moins un soit **enabled**. Interroger systemd reflète l'état de planification effectif résolu depuis les fichiers d'unité et les drop-ins, qu'un scan fichier de `/etc/cron*` manquerait entièrement puisque la planification réside ici dans systemd, pas dans cron."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled aidecheck.timer dailyaidecheck.timer`. Expected output includes `enabled`. Use `systemctl list-timers '*aide*'` to confirm the next scheduled run, and `systemctl status aidecheck.service` for the last result.",
+    "fr": "Exécutez `systemctl is-enabled aidecheck.timer dailyaidecheck.timer`. La sortie attendue contient `enabled`. Utilisez `systemctl list-timers '*aide*'` pour confirmer la prochaine exécution planifiée, et `systemctl status aidecheck.service` pour le dernier résultat."
+  },
+  "logs": {
+    "en": "Timer triggers and service runs are in the journal: `journalctl -u aidecheck.service -u aidecheck.timer`. AIDE's own diff output goes to `/var/log/aide/aide.log` and is typically mailed to root. `systemctl list-timers '*aide*'` shows the schedule.",
+    "fr": "Les déclenchements du timer et les exécutions du service sont dans le journal : `journalctl -u aidecheck.service -u aidecheck.timer`. La sortie de comparaison d'AIDE va dans `/var/log/aide/aide.log` et est généralement envoyée par mail à root. `systemctl list-timers '*aide*'` montre le planning."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan ships for this rule; apply it **manually**. Create `aidecheck.service` (running e.g. `/usr/bin/aide.wrapper --config /etc/aide/aide.conf --check`) and `aidecheck.timer` (with an `OnCalendar=` daily schedule) under `/etc/systemd/system/`, then `systemctl daemon-reload && systemctl enable --now aidecheck.timer`.",
+    "fr": "Aucun plan de durcissement automatisé n'est fourni ; appliquez-la **manuellement**. Créez `aidecheck.service` (exécutant par ex. `/usr/bin/aide.wrapper --config /etc/aide/aide.conf --check`) et `aidecheck.timer` (avec un planning `OnCalendar=` quotidien) sous `/etc/systemd/system/`, puis `systemctl daemon-reload && systemctl enable --now aidecheck.timer`."
+  },
+  "impact": {
+    "en": "This adds a scheduled integrity scan; the main considerations are resource use and timing. The check reads large parts of the filesystem and can briefly raise I/O, so schedule it off-peak (e.g. nightly) and stagger it across a fleet. It must run as root to read all files. Ensure the AIDE database (see `misc-aide-build-database`) exists first, or each run will fail. There is no lockout or service-availability risk.",
+    "fr": "Cela ajoute un scan d'intégrité planifié ; les principales considérations sont l'usage des ressources et l'horaire. La vérification lit de grandes parties du système de fichiers et peut brièvement augmenter les E/S, planifiez-la donc en heures creuses (par ex. la nuit) et décalez-la sur un parc. Elle doit s'exécuter en root pour lire tous les fichiers. Assurez-vous que la base AIDE (voir `misc-aide-build-database`) existe d'abord, sinon chaque exécution échouera. Aucun risque de verrouillage ou de disponibilité de service."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

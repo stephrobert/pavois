@@ -1,0 +1,37 @@
+{
+  "id": "fileperm-var-log-apt",
+  "title": {
+    "en": "Verify Permissions on files in the /var/log/apt/.* directory",
+    "fr": "Vérifier les permissions des fichiers du répertoire /var/log/apt/.*"
+  },
+  "summary": {
+    "en": "Ensures the `/var/log/apt` directory is not writable by group or other (owned `root:root`, mode `0755`).",
+    "fr": "Garantit que le répertoire `/var/log/apt` n'est pas modifiable par le groupe ou les autres (propriétaire `root:root`, mode `0755`)."
+  },
+  "rationale": {
+    "en": "The `/var/log/apt` directory records which packages were installed, upgraded or removed and when. If group or other can write to it, an attacker could tamper with or forge package-history evidence to hide a malicious install, undermining incident response and integrity assurance. It should be owned by `root` and writable only by `root`.",
+    "fr": "Le répertoire `/var/log/apt` enregistre quels paquets ont été installés, mis à jour ou supprimés, et quand. Si le groupe ou les autres peuvent y écrire, un attaquant pourrait altérer ou falsifier les preuves d'historique de paquets pour masquer une installation malveillante, compromettant la réponse à incident et la garantie d'intégrité. Il doit appartenir à `root` et n'être modifiable que par `root`."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective inode mode** of `/var/log/apt` and asserts no write bit for group or other. Reading the live directory mode (not a packaging manifest) catches drift from manual `chmod`, log-rotation hooks, or restores that silently loosened the permissions.",
+    "fr": "Pavois lit le **mode effectif de l'inode** de `/var/log/apt` et vérifie l'absence de bit d'écriture pour le groupe ou les autres. Lire le mode réel du répertoire (et non un manifeste de paquet) détecte les dérives dues à un `chmod` manuel, aux hooks de rotation des journaux ou à des restaurations ayant silencieusement relâché les permissions."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U %G %a' /var/log/apt`. Expected: owner/group `root` with mode `755` (or `0755`), no write bit for group or other.",
+    "fr": "Exécutez `stat -c '%U %G %a' /var/log/apt`. Attendu : propriétaire/groupe `root` avec le mode `755` (ou `0755`), aucun bit d'écriture pour le groupe ou les autres."
+  },
+  "logs": {
+    "en": "The directory itself holds APT's history: `/var/log/apt/history.log` and `/var/log/apt/term.log` show package transactions (`apt`/`dpkg` activity). Permission drift on packaged files can be reviewed with `dpkg --verify`.",
+    "fr": "Le répertoire lui-même contient l'historique d'APT : `/var/log/apt/history.log` et `/var/log/apt/term.log` montrent les transactions de paquets (activité `apt`/`dpkg`). La dérive de permissions sur les fichiers de paquets peut être examinée avec `dpkg --verify`."
+  },
+  "remediation_note": {
+    "en": "Run `pavois harden apply`. Pavois's harden plan manages the `/var/log/apt` **directory** resource, setting owner `root`, group `root` and mode `0755`, which removes any group/other write bit while keeping APT able to write its logs.",
+    "fr": "Exécutez `pavois harden apply`. Le plan de durcissement de Pavois gère la ressource **répertoire** `/var/log/apt`, en fixant le propriétaire `root`, le groupe `root` et le mode `0755`, ce qui retire tout bit d'écriture groupe/autres tout en laissant APT écrire ses journaux."
+  },
+  "impact": {
+    "en": "Group/other-writable APT logs let an attacker falsify package history; the fix (`0755 root:root`) is the distro default and safe to apply. APT runs as root, so tightening the directory does not break package operations. **Precaution:** the mode only adjusts the directory, if individual log files inside were also loosened, re-check them after rotation, since `logrotate` recreates files using its own configured mode.",
+    "fr": "Des journaux APT modifiables par le groupe/les autres permettent à un attaquant de falsifier l'historique des paquets ; la correction (`0755 root:root`) est la valeur par défaut de la distribution et sans danger à appliquer. APT s'exécute en root, donc restreindre le répertoire ne casse pas les opérations de paquets. **Précaution :** le mode n'ajuste que le répertoire, si des fichiers de journaux individuels à l'intérieur ont aussi été relâchés, revérifiez-les après rotation, car `logrotate` recrée les fichiers avec son propre mode configuré."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

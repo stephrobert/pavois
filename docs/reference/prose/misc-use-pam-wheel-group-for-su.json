@@ -1,0 +1,37 @@
+{
+  "id": "misc-use-pam-wheel-group-for-su",
+  "title": {
+    "en": "Enforce Usage of pam_wheel with Group Parameter for su Authentication",
+    "fr": "Imposer l'usage de pam_wheel avec le paramètre de groupe pour l'authentification su"
+  },
+  "summary": {
+    "en": "Enables `pam_wheel.so use_uid` in `/etc/pam.d/su` so only members of a trusted admin group (e.g. `wheel`/`sudo`) may use `su` to become another user, typically root.",
+    "fr": "Active `pam_wheel.so use_uid` dans `/etc/pam.d/su` afin que seuls les membres d'un groupe d'administration de confiance (par ex. `wheel`/`sudo`) puissent utiliser `su` pour devenir un autre utilisateur, généralement root."
+  },
+  "rationale": {
+    "en": "`su` lets a user switch to another identity, usually root, given the target password. Without `pam_wheel`, **any** local user who learns or brute-forces the root password gains a root shell. Restricting `su` to a defined administrative group with `pam_wheel.so use_uid` adds a membership gate on top of the password, enforcing least privilege and ensuring privilege escalation is limited to an auditable, intentional set of accounts.",
+    "fr": "`su` permet à un utilisateur de basculer vers une autre identité, généralement root, en fournissant le mot de passe cible. Sans `pam_wheel`, **n'importe quel** utilisateur local qui découvre ou force le mot de passe root obtient un shell root. Restreindre `su` à un groupe d'administration défini avec `pam_wheel.so use_uid` ajoute un contrôle d'appartenance par-dessus le mot de passe, appliquant le moindre privilège et garantissant que l'élévation de privilèges se limite à un ensemble de comptes intentionnel et auditable."
+  },
+  "check_note": {
+    "en": "Pavois greps the active PAM service file `/etc/pam.d/su` for an uncommented `pam_wheel.so ... use_uid` line. This is the file PAM actually loads when `su` runs, so reading it reflects the policy in force; `use_uid` is required so the check is based on the **real** UID of the caller, not an assumed identity.",
+    "fr": "Pavois recherche dans le fichier de service PAM actif `/etc/pam.d/su` une ligne `pam_wheel.so ... use_uid` non commentée. C'est le fichier que PAM charge réellement lors de l'exécution de `su`, donc le lire reflète la politique en vigueur ; `use_uid` est requis pour que le contrôle se base sur l'UID **réel** de l'appelant, et non sur une identité supposée."
+  },
+  "verify": {
+    "en": "Run `grep -E '^[^#]*pam_wheel.so.*use_uid' /etc/pam.d/su`. The expected output is an active line such as `auth required pam_wheel.so use_uid`. Test by attempting `su -` as a user **not** in the admin group, it should be denied.",
+    "fr": "Exécutez `grep -E '^[^#]*pam_wheel.so.*use_uid' /etc/pam.d/su`. La sortie attendue est une ligne active telle que `auth required pam_wheel.so use_uid`. Testez en tentant `su -` en tant qu'utilisateur **non** membre du groupe d'administration, cela doit être refusé."
+  },
+  "logs": {
+    "en": "`su` attempts and PAM decisions are logged in `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL), and via `journalctl`. A denied attempt appears as `pam_wheel(su:auth): ... not in the trusted group`.",
+    "fr": "Les tentatives `su` et les décisions PAM sont journalisées dans `/var/log/auth.log` (Debian/Ubuntu) ou `/var/log/secure` (RHEL), et via `journalctl`. Une tentative refusée apparaît sous la forme `pam_wheel(su:auth): ... not in the trusted group`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined, so this must be applied **manually**: in `/etc/pam.d/su` uncomment or add `auth required pam_wheel.so use_uid` (optionally `group=wheel`/`group=sudo`), and make sure your administrators are members of that group. Changes take effect immediately for new `su` invocations.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini ; cela doit donc être appliqué **manuellement** : dans `/etc/pam.d/su`, décommentez ou ajoutez `auth required pam_wheel.so use_uid` (éventuellement `group=wheel`/`group=sudo`), et assurez-vous que vos administrateurs sont membres de ce groupe. Les changements prennent effet immédiatement pour les nouveaux appels à `su`."
+  },
+  "impact": {
+    "en": "If you enable `pam_wheel` before adding your admin accounts to the trusted group, those users **lose the ability to `su` to root**, which can hamper recovery on systems without working `sudo`. Before applying, populate the group (`usermod -aG wheel <admin>` or `sudo` on Debian/Ubuntu), keep an existing root or sudo session open, and verify a member can still `su -` before relying on it.",
+    "fr": "Si vous activez `pam_wheel` avant d'ajouter vos comptes administrateurs au groupe de confiance, ces utilisateurs **perdent la possibilité de faire `su` vers root**, ce qui peut compliquer la récupération sur les systèmes sans `sudo` fonctionnel. Avant d'appliquer, peuplez le groupe (`usermod -aG wheel <admin>` ou `sudo` sur Debian/Ubuntu), gardez une session root ou sudo ouverte, et vérifiez qu'un membre peut toujours faire `su -` avant de vous y fier."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

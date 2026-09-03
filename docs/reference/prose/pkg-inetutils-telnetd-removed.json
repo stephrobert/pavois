@@ -1,0 +1,37 @@
+{
+  "id": "pkg-inetutils-telnetd-removed",
+  "title": {
+    "en": "Uninstall the inet-based telnet server",
+    "fr": "Désinstaller le serveur telnet basé sur inet"
+  },
+  "summary": {
+    "en": "Removes the clear-text `inetutils-telnetd` telnet server so no unencrypted remote-login daemon listens on the host.",
+    "fr": "Supprime le serveur telnet `inetutils-telnetd` en clair afin qu'aucun démon de connexion distante non chiffrée n'écoute sur l'hôte."
+  },
+  "rationale": {
+    "en": "`inetutils-telnetd` is a **telnet server** that accepts remote logins over **clear-text, unencrypted** sessions. All traffic, including usernames and passwords, is transmitted in plain text with no integrity protection, so anyone on the network path can capture credentials or inject data. A listening telnet daemon is one of the highest-risk legacy services on a host; **SSH** must be used instead, which is why removing it is high severity.",
+    "fr": "`inetutils-telnetd` est un **serveur telnet** qui accepte les connexions distantes via des sessions **en clair, non chiffrées**. Tout le trafic, y compris noms d'utilisateurs et mots de passe, est transmis en clair sans protection d'intégrité, de sorte que quiconque sur le chemin réseau peut capturer des identifiants ou injecter des données. Un démon telnet en écoute est l'un des services hérités les plus à risque d'un hôte ; il faut utiliser **SSH** à la place, d'où la sévérité élevée de sa suppression."
+  },
+  "check_note": {
+    "en": "Pavois queries `package('inetutils-telnetd')` against the **package database** to report the **effective** install state. This is more reliable than checking whether a telnet socket is currently open: with inetd/socket activation the daemon may not be listening at scan time yet starts on the first connection, so the package's presence is the true exposure.",
+    "fr": "Pavois interroge `package('inetutils-telnetd')` dans la **base de paquets** pour rapporter l'état d'installation **effectif**. C'est plus fiable que de vérifier si un socket telnet est ouvert à l'instant : avec l'activation par inetd/socket, le démon peut ne pas écouter au moment du scan tout en démarrant à la première connexion, donc la présence du paquet est la vraie exposition."
+  },
+  "verify": {
+    "en": "Run `dpkg -s inetutils-telnetd`. The rule passes when it reports `package 'inetutils-telnetd' is not installed`. You can also confirm nothing listens on telnet with `ss -lntp | grep ':23'` (expect no output).",
+    "fr": "Exécutez `dpkg -s inetutils-telnetd`. La règle passe lorsqu'il indique `package 'inetutils-telnetd' is not installed`. Vous pouvez aussi confirmer qu'aucun service n'écoute sur telnet avec `ss -lntp | grep ':23'` (aucune sortie attendue)."
+  },
+  "logs": {
+    "en": "Confirm removal with `dpkg -s inetutils-telnetd`. Telnet login attempts (when present) appear in `/var/log/auth.log` and via `journalctl`; package removal is recorded in `/var/log/dpkg.log`.",
+    "fr": "Confirmez la suppression avec `dpkg -s inetutils-telnetd`. Les tentatives de connexion telnet (lorsqu'il est présent) apparaissent dans `/var/log/auth.log` et via `journalctl` ; la suppression du paquet est enregistrée dans `/var/log/dpkg.log`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan removes the `inetutils-telnetd` package (resource `package`, action `remove`) when you run `pavois harden apply`. Removing the package stops and uninstalls the telnet server.",
+    "fr": "Le plan de durcissement de Pavois supprime le paquet `inetutils-telnetd` (ressource `package`, action `remove`) lorsque vous lancez `pavois harden apply`. La suppression du paquet arrête et désinstalle le serveur telnet."
+  },
+  "impact": {
+    "en": "**Precaution before removing:** ensure **SSH access is working** so you do not lose remote management, if telnet is currently the only way in, set up and test SSH first. Removing the telnet server has no downside on a properly managed host and closes a critical clear-text exposure; any legitimate telnet use should be migrated to SSH.",
+    "fr": "**Précaution avant suppression :** assurez-vous que l'**accès SSH fonctionne** afin de ne pas perdre l'administration distante, si telnet est actuellement le seul accès, configurez et testez SSH au préalable. Supprimer le serveur telnet n'a aucun inconvénient sur un hôte correctement géré et ferme une exposition critique en clair ; tout usage légitime de telnet doit être migré vers SSH."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

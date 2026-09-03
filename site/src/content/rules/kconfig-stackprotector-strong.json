@@ -1,16 +1,17 @@
 {
   "id": "kconfig-stackprotector-strong",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_STACKPROTECTOR_STRONG=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_STACKPROTECTOR_STRONG='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_STACKPROTECTOR_STRONG=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_STACKPROTECTOR_STRONG=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Strong Stack Protector",
     "fr": "Stack Protector renforcé"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_STACKPROTECTOR_STRONG=y` extends the basic stack-protector by emitting a canary for a much broader set of functions, any function with local array variables, references to local frame addresses, or certain register-spilling patterns, not just those with large char buffers. This closes the gap where the basic protector left many overflow-prone functions unguarded, while keeping a sensible balance between coverage and performance.",
-    "fr": "`CONFIG_STACKPROTECTOR_STRONG=y` étend le stack-protector de base en émettant un canari pour un ensemble bien plus large de fonctions, toute fonction comportant des tableaux locaux, des références à des adresses de la frame locale ou certains schémas de débordement de registres, et pas seulement celles avec de grands tampons de caractères. Cela comble la lacune où le protecteur de base laissait sans garde de nombreuses fonctions sujettes aux débordements, tout en gardant un équilibre raisonnable entre couverture et performance."
-  },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_STACKPROTECTOR_STRONG=y`, extending canary coverage to many more functions.",
     "fr": "Exige un noyau compilé avec `CONFIG_STACKPROTECTOR_STRONG=y`, étendant la couverture des canaris à bien plus de fonctions."
+  },
+  "rationale": {
+    "en": "`CONFIG_STACKPROTECTOR_STRONG=y` extends the basic stack-protector by emitting a canary for a much broader set of functions, any function with local array variables, references to local frame addresses, or certain register-spilling patterns, not just those with large char buffers. This closes the gap where the basic protector left many overflow-prone functions unguarded, while keeping a sensible balance between coverage and performance.",
+    "fr": "`CONFIG_STACKPROTECTOR_STRONG=y` étend le stack-protector de base en émettant un canari pour un ensemble bien plus large de fonctions, toute fonction comportant des tableaux locaux, des références à des adresses de la frame locale ou certains schémas de débordement de registres, et pas seulement celles avec de grands tampons de caractères. Cela comble la lacune où le protecteur de base laissait sans garde de nombreuses fonctions sujettes aux débordements, tout en gardant un équilibre raisonnable entre couverture et performance."
   },
   "check_note": {
     "en": "Pavois reads the build configuration of the **running** kernel via `/boot/config-$(uname -r)` or `/proc/config.gz` and confirms `CONFIG_STACKPROTECTOR_STRONG=y`. Reading the effective config of the booted kernel proves the stronger canary coverage is compiled into the kernel actually in use.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "With only the basic protector (or none), many overflow-prone kernel functions ship without a canary, leaving stack-smashing paths exploitable. **Precautions:** remediation means a kernel change and a reboot, schedule a maintenance window and keep the prior kernel in GRUB as a fallback. The added coverage costs a small, well-characterized overhead (typically low single-digit percent) that is acceptable for virtually all systems.",
     "fr": "Avec seulement le protecteur de base (ou aucun), de nombreuses fonctions noyau sujettes aux débordements sont livrées sans canari, laissant exploitables des chemins de stack smashing. **Précautions :** la remédiation implique un changement de noyau et un redémarrage, planifiez une fenêtre de maintenance et gardez le noyau précédent dans GRUB en repli. La couverture supplémentaire a un surcoût faible et bien caractérisé (typiquement quelques pour cent), acceptable pour la quasi-totalité des systèmes."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

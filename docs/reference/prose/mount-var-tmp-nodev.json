@@ -1,0 +1,37 @@
+{
+  "id": "mount-var-tmp-nodev",
+  "title": {
+    "en": "Add nodev Option to /var/tmp",
+    "fr": "Ajouter l'option nodev à /var/tmp"
+  },
+  "summary": {
+    "en": "Mount `/var/tmp` with the **`nodev`** option so device nodes placed there are ignored by the kernel.",
+    "fr": "Monter `/var/tmp` avec l'option **`nodev`** afin que les nœuds de périphérique qui s'y trouvent soient ignorés par le noyau."
+  },
+  "rationale": {
+    "en": "The only legitimate location for device files is `/dev` on the root partition (chroot jails are the rare exception). Mounting `/var/tmp` with **`nodev`** makes the kernel ignore any character or block device nodes placed there, blocking an attacker from smuggling a device file (e.g. raw disk access) into a world-writable temporary directory.",
+    "fr": "Le seul emplacement légitime pour les fichiers de périphérique est `/dev` sur la partition racine (les chroots étant la rare exception). Monter `/var/tmp` avec **`nodev`** force le noyau à ignorer tout nœud de périphérique caractère ou bloc qui s'y trouve, empêchant un attaquant d'introduire un fichier de périphérique (par ex. accès disque brut) dans un répertoire temporaire inscriptible par tous."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** mount options via `mount('/var/tmp')`. Because `/var/tmp` is often a bind mount or a systemd-managed tmpfs, the live kernel view is the only reliable source, parsing `/etc/fstab` alone would miss bind mounts and runtime remounts.",
+    "fr": "Pavois lit les options de montage **effectives** via `mount('/var/tmp')`. Comme `/var/tmp` est souvent un montage lié (bind) ou un tmpfs géré par systemd, la vue réelle du noyau est la seule source fiable, analyser uniquement `/etc/fstab` manquerait les montages liés et les remontages à l'exécution."
+  },
+  "verify": {
+    "en": "Run `findmnt -no OPTIONS /var/tmp` and confirm **`nodev`** is present. Example output: `rw,nosuid,nodev,noexec,relatime`.",
+    "fr": "Exécutez `findmnt -no OPTIONS /var/tmp` et vérifiez la présence de **`nodev`**. Exemple de sortie : `rw,nosuid,nodev,noexec,relatime`."
+  },
+  "logs": {
+    "en": "Inspect mount state with `findmnt /var/tmp` and `mount | grep ' /var/tmp '`. Kernel mount events appear in `journalctl -k` / `dmesg`. To spot existing device nodes, run `find /var/tmp -type c -o -type b`.",
+    "fr": "Inspectez l'état de montage avec `findmnt /var/tmp` et `mount | grep ' /var/tmp '`. Les événements de montage du noyau apparaissent dans `journalctl -k` / `dmesg`. Pour repérer des nœuds de périphérique existants : `find /var/tmp -type c -o -type b`."
+  },
+  "remediation_note": {
+    "en": "There is **no automated harden plan** for this rule, because `/var/tmp` must be a **separate filesystem or bind mount** to carry its own options. Apply it manually: configure `/var/tmp` as its own mount, add `nodev` to its `/etc/fstab` entry (or systemd mount unit), then `mount -o remount /var/tmp` and reboot to confirm persistence.",
+    "fr": "Il n'existe **aucun plan de durcissement automatisé** pour cette règle, car `/var/tmp` doit être un **système de fichiers ou montage lié séparé** pour porter ses propres options. Appliquez-la manuellement : configurez `/var/tmp` comme un montage distinct, ajoutez `nodev` à son entrée `/etc/fstab` (ou à l'unité de montage systemd), puis `mount -o remount /var/tmp` et redémarrez pour confirmer la persistance."
+  },
+  "impact": {
+    "en": "**What can break:** essentially nothing in normal operation, legitimate workloads never need device nodes under `/var/tmp`. **Precautions:** if `/var/tmp` is not already a separate mount, the main effort is making it one (often a bind mount of `/tmp` or a dedicated filesystem). Test the remount in staging and reboot to confirm the option survives.",
+    "fr": "**Ce qui peut casser :** quasiment rien en fonctionnement normal, aucune charge légitime n'a besoin de nœuds de périphérique sous `/var/tmp`. **Précautions :** si `/var/tmp` n'est pas déjà un montage séparé, l'essentiel du travail consiste à le rendre tel (souvent un montage lié de `/tmp` ou un système de fichiers dédié). Testez le remontage en pré-production et redémarrez pour confirmer que l'option persiste."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

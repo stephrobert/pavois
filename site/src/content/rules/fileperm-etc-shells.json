@@ -1,17 +1,17 @@
 {
   "id": "fileperm-etc-shells",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -53,14 +53,13 @@
     "en": "Verify Permissions on /etc/shells File",
     "fr": "Vérifier les permissions du fichier /etc/shells"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/shells` lists the full pathnames of the login shells the system considers valid. It is consulted by `chsh`, FTP daemons and other programs to decide whether an account may log in interactively. If the file is **writable** by group or other, an unprivileged user could add an arbitrary program as a 'valid shell', for example to bypass restrictions on accounts limited to `/usr/sbin/nologin`, or remove a shell to lock out services. `setuid/setgid/executable` bits have no purpose on this text file. Only **root** must be able to modify it.",
-    "fr": "`/etc/shells` liste les chemins complets des shells de connexion que le système considère comme valides. Il est consulté par `chsh`, les démons FTP et d'autres programmes pour décider si un compte peut se connecter de manière interactive. Si le fichier est **modifiable** par le groupe ou les autres, un utilisateur non privilégié pourrait ajouter un programme arbitraire comme « shell valide », par exemple pour contourner les restrictions sur des comptes limités à `/usr/sbin/nologin`, ou supprimer un shell pour bloquer des services. Les bits `setuid/setgid/exécutable` n'ont aucune utilité sur ce fichier texte. Seul **root** doit pouvoir le modifier."
-  },
   "summary": {
     "en": "Ensures `/etc/shells` is not writable, executable, setuid/setgid or sticky for group or other, so only **root** can edit the list of valid login shells.",
     "fr": "Garantit que `/etc/shells` n'est ni modifiable, ni exécutable, ni setuid/setgid ni sticky pour le groupe ou les autres, afin que seul **root** puisse modifier la liste des shells de connexion valides."
+  },
+  "rationale": {
+    "en": "`/etc/shells` lists the full pathnames of the login shells the system considers valid. It is consulted by `chsh`, FTP daemons and other programs to decide whether an account may log in interactively. If the file is **writable** by group or other, an unprivileged user could add an arbitrary program as a 'valid shell', for example to bypass restrictions on accounts limited to `/usr/sbin/nologin`, or remove a shell to lock out services. `setuid/setgid/executable` bits have no purpose on this text file. Only **root** must be able to modify it.",
+    "fr": "`/etc/shells` liste les chemins complets des shells de connexion que le système considère comme valides. Il est consulté par `chsh`, les démons FTP et d'autres programmes pour décider si un compte peut se connecter de manière interactive. Si le fichier est **modifiable** par le groupe ou les autres, un utilisateur non privilégié pourrait ajouter un programme arbitraire comme « shell valide », par exemple pour contourner les restrictions sur des comptes limités à `/usr/sbin/nologin`, ou supprimer un shell pour bloquer des services. Les bits `setuid/setgid/exécutable` n'ont aucune utilité sur ce fichier texte. Seul **root** doit pouvoir le modifier."
   },
   "check_note": {
     "en": "Pavois reads the **live mode bits** of `/etc/shells` on the target (executable/setuid/setgid/sticky/writable by group and other), the effective permissions in the inode, not a documented baseline. Permissions cannot be hidden behind an include or drop-in. The `only_if` guard skips the control when the file is absent.",
@@ -81,5 +80,7 @@
   "impact": {
     "en": "Risk if left mis-set: a writable `/etc/shells` lets a non-root user whitelist an unintended shell and potentially escalate the interactive capabilities of a restricted account, or break FTP/`chsh` policy. Applying the fix is safe: `0644 root:root` is the standard mode. Precaution: keep the read bit for `other`, `chsh`, FTP daemons and login tooling must read the list; removing world-read can break shell-change and FTP login checks.",
     "fr": "Risque si mal réglé : un `/etc/shells` modifiable permet à un utilisateur non-root d'autoriser un shell non prévu et potentiellement d'élargir les capacités interactives d'un compte restreint, ou de casser la politique FTP/`chsh`. Appliquer le correctif est sûr : `0644 root:root` est le mode standard. Précaution : conservez le bit de lecture pour `other`, `chsh`, les démons FTP et l'outillage de connexion doivent lire la liste ; supprimer la lecture par tous peut casser le changement de shell et les vérifications de connexion FTP."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

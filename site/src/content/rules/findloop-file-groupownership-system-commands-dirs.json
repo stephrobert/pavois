@@ -1,19 +1,18 @@
 {
   "id": "findloop-file-groupownership-system-commands-dirs",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
-    "rhel8",
+    "fedora",
+    "rhel10",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
-    "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
@@ -35,22 +34,27 @@
   },
   "check": [
     "describe command('timeout 90 find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f ! -group root 2>/dev/null') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \\( ! -user root -o ! -group root \\) -exec chown root:root {} + 2>/dev/null; true",
+    "name": "fix-bindir-ownership",
+    "not_if": "test -z \"$(find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f \\( ! -user root -o ! -group root \\) 2>/dev/null | head -1)\"",
+    "resource": "exec"
+  },
   "title": {
     "en": "Verify that system commands files are group owned by root or a system account",
     "fr": "Vérifier que les fichiers de commandes système ont root comme groupe propriétaire"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The binaries under `/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin` and `/usr/local/sbin` are run by privileged users and system services. If one of these files is group-owned by a non-system group, any member of that group could replace or modify the binary and have their code executed with the privileges of whoever runs it, a direct path to privilege escalation or persistence. Keeping them group-owned by **root** ensures only the most trusted account can alter system commands.",
-    "fr": "Les binaires de `/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin` et `/usr/local/sbin` sont exécutés par des utilisateurs privilégiés et des services système. Si l'un de ces fichiers appartient à un groupe non système, tout membre de ce groupe pourrait remplacer ou modifier le binaire et faire exécuter son code avec les privilèges de celui qui le lance, une voie directe vers l'élévation de privilèges ou la persistance. Les conserver avec **root** comme groupe garantit que seul le compte le plus fiable peut altérer les commandes système."
-  },
   "summary": {
     "en": "Ensures every executable in the system command directories (`/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin`, `/usr/local/sbin`) is group-owned by **root**.",
     "fr": "Garantit que chaque exécutable des répertoires de commandes système (`/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin`, `/usr/local/sbin`) a **root** comme groupe propriétaire."
+  },
+  "rationale": {
+    "en": "The binaries under `/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin` and `/usr/local/sbin` are run by privileged users and system services. If one of these files is group-owned by a non-system group, any member of that group could replace or modify the binary and have their code executed with the privileges of whoever runs it, a direct path to privilege escalation or persistence. Keeping them group-owned by **root** ensures only the most trusted account can alter system commands.",
+    "fr": "Les binaires de `/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin` et `/usr/local/sbin` sont exécutés par des utilisateurs privilégiés et des services système. Si l'un de ces fichiers appartient à un groupe non système, tout membre de ce groupe pourrait remplacer ou modifier le binaire et faire exécuter son code avec les privilèges de celui qui le lance, une voie directe vers l'élévation de privilèges ou la persistance. Les conserver avec **root** comme groupe garantit que seul le compte le plus fiable peut altérer les commandes système."
   },
   "check_note": {
     "en": "Pavois runs `find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f ! -group root` and expects **empty output**, any path returned is a binary with a non-root group. Scanning the actual on-disk files (not the package database) catches manually installed tools, scripts dropped into `/usr/local/bin` and binaries whose group was changed after installation, exactly the cases a package-manifest audit misses.",
@@ -71,5 +75,7 @@
   "impact": {
     "en": "Risk if left as-is: a writable system binary lets a non-root group member hijack any privileged process that runs it. Before fixing: confirm the file is meant to be root-group-owned, a handful of third-party packages legitimately ship setgid helpers owned by a dedicated group, and blindly running `chgrp root` on them can break the tool or its `setgid` behaviour. Change ownership file by file, not with a recursive sweep, and verify the binary's integrity (`rpm -Vf` / known-good checksum) first.",
     "fr": "Risque en l'état : un binaire système modifiable permet à un membre d'un groupe non root de détourner tout processus privilégié qui l'exécute. Avant de corriger : confirmez que le fichier doit bien avoir root comme groupe, quelques paquets tiers livrent légitimement des utilitaires setgid appartenant à un groupe dédié, et leur appliquer `chgrp root` aveuglément peut casser l'outil ou son comportement `setgid`. Changez le propriétaire fichier par fichier, jamais par balayage récursif, et vérifiez d'abord l'intégrité du binaire (`rpm -Vf` / somme de contrôle connue)."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

@@ -2,7 +2,8 @@
   "id": "filegroupowner-journalctl",
   "supported_os": [
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "ubuntu2204": "3.0.0",
@@ -33,14 +34,13 @@
     "en": "Verify Groupowner on the journalctl command",
     "fr": "Vérifier le groupe propriétaire de la commande journalctl"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`journalctl` reads the systemd journal, which holds error messages, service output and potentially personally identifiable information (PII). Only authorized personnel should see those details, since error messages reveal the operational state and can fingerprint the OS or platform. If the `journalctl` binary is group-owned by a non-privileged group, a member could replace it with a trojaned version that exfiltrates or hides log data. Group ownership by **root** (gid `0`) keeps the audit-viewing tool trustworthy.",
-    "fr": "`journalctl` lit le journal systemd, qui contient des messages d'erreur, la sortie des services et potentiellement des données à caractère personnel (PII). Seul le personnel autorisé devrait voir ces détails, car les messages d'erreur révèlent l'état opérationnel et peuvent identifier l'OS ou la plateforme. Si le binaire `journalctl` est détenu par un groupe non privilégié, un de ses membres pourrait le remplacer par une version piégée qui exfiltre ou masque les journaux. La propriété par le groupe **root** (gid `0`) garde fiable l'outil de consultation des journaux."
-  },
   "summary": {
     "en": "Ensures the `/usr/bin/journalctl` log-viewer binary is owned by group **root** (gid `0`).",
     "fr": "Garantit que le binaire de consultation des journaux `/usr/bin/journalctl` appartient au groupe **root** (gid `0`)."
+  },
+  "rationale": {
+    "en": "`journalctl` reads the systemd journal, which holds error messages, service output and potentially personally identifiable information (PII). Only authorized personnel should see those details, since error messages reveal the operational state and can fingerprint the OS or platform. If the `journalctl` binary is group-owned by a non-privileged group, a member could replace it with a trojaned version that exfiltrates or hides log data. Group ownership by **root** (gid `0`) keeps the audit-viewing tool trustworthy.",
+    "fr": "`journalctl` lit le journal systemd, qui contient des messages d'erreur, la sortie des services et potentiellement des données à caractère personnel (PII). Seul le personnel autorisé devrait voir ces détails, car les messages d'erreur révèlent l'état opérationnel et peuvent identifier l'OS ou la plateforme. Si le binaire `journalctl` est détenu par un groupe non privilégié, un de ses membres pourrait le remplacer par une version piégée qui exfiltre ou masque les journaux. La propriété par le groupe **root** (gid `0`) garde fiable l'outil de consultation des journaux."
   },
   "check_note": {
     "en": "Pavois reads the real group id of `/usr/bin/journalctl` via InSpec's `file` resource and asserts `gid == 0`. It verifies the **effective** ownership of the binary actually installed on disk, so a tampered or repackaged binary with a loosened group is detected, unlike a check that trusts the package database.",
@@ -61,5 +61,7 @@
   "impact": {
     "en": "A loosely-owned `journalctl` could be swapped for a trojaned binary that tampers with or hides logs. Resetting the group to **root** is safe, any user may still run `journalctl`, but only privileged accounts (or members of the `systemd-journal` group) see the full journal. No functional change for ordinary use. Precaution: keep the mode at `0755`; do not change the unrelated `systemd-journal` group membership, which governs read access, not file ownership.",
     "fr": "Un `journalctl` au groupe trop permissif pourrait être remplacé par un binaire piégé qui altère ou masque les journaux. Remettre le groupe à **root** est sans danger, tout utilisateur peut toujours lancer `journalctl`, mais seuls les comptes privilégiés (ou les membres du groupe `systemd-journal`) voient l'intégralité du journal. Aucun changement fonctionnel pour l'usage courant. Précaution : conservez le mode `0755` ; ne modifiez pas l'appartenance au groupe `systemd-journal`, qui régit l'accès en lecture et non la propriété du fichier."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

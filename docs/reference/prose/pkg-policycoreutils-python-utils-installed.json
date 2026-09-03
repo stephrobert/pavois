@@ -1,0 +1,37 @@
+{
+  "id": "pkg-policycoreutils-python-utils-installed",
+  "title": {
+    "en": "Install policycoreutils-python-utils package",
+    "fr": "Installer le paquet policycoreutils-python-utils"
+  },
+  "summary": {
+    "en": "Ensures the `policycoreutils-python-utils` package is installed so **SELinux** management tools like `semanage` and `audit2allow` are available.",
+    "fr": "Garantit que le paquet `policycoreutils-python-utils` est installé pour disposer des outils de gestion **SELinux** comme `semanage` et `audit2allow`."
+  },
+  "rationale": {
+    "en": "This package is required to operate and manage an **SELinux** environment and its policies. It provides the higher-level management utilities `semanage` (manage policy elements like ports, file contexts and booleans), `audit2allow`/`audit2why` (turn denials into policy modules and explain them), `chcat` and `sandbox`. Without these tools, administrators cannot adjust SELinux policy to fit local services, leading either to broken applications or to the temptation to weaken SELinux to **permissive**.",
+    "fr": "Ce paquet est nécessaire pour exploiter et gérer un environnement **SELinux** et ses politiques. Il fournit les utilitaires de gestion de plus haut niveau `semanage` (gestion des éléments de politique : ports, contextes de fichiers, booléens), `audit2allow`/`audit2why` (transformer les refus en modules de politique et les expliquer), `chcat` et `sandbox`. Sans ces outils, les administrateurs ne peuvent pas ajuster la politique SELinux aux services locaux, ce qui conduit soit à des applications cassées, soit à la tentation d'affaiblir SELinux en mode **permissive**."
+  },
+  "check_note": {
+    "en": "Pavois checks the **effective** package state with `package('policycoreutils-python-utils')` (resolved through `rpm`). The base `policycoreutils` can be present while these management utilities are not; Pavois confirms this specific package exists rather than assuming SELinux being active implies the full management toolchain.",
+    "fr": "Pavois vérifie l'état **effectif** du paquet avec `package('policycoreutils-python-utils')` (résolu via `rpm`). Le paquet de base `policycoreutils` peut être présent sans ces utilitaires de gestion ; Pavois confirme l'existence de ce paquet précis plutôt que de supposer qu'un SELinux actif implique toute la chaîne d'outils de gestion."
+  },
+  "verify": {
+    "en": "Run `rpm -q policycoreutils-python-utils`. Expected output is a versioned package name. You can confirm a key tool is callable with `semanage boolean -l | head`.",
+    "fr": "Exécutez `rpm -q policycoreutils-python-utils`. La sortie attendue est un nom de paquet versionné. Vous pouvez vérifier qu'un outil clé est utilisable avec `semanage boolean -l | head`."
+  },
+  "logs": {
+    "en": "Installation history is visible with `dnf history` and in `/var/log/dnf.log`. SELinux denials that you would analyze with `audit2why`/`audit2allow` are in `/var/log/audit/audit.log` (look for `type=AVC`).",
+    "fr": "L'historique d'installation est visible avec `dnf history` et dans `/var/log/dnf.log`. Les refus SELinux que vous analyseriez avec `audit2why`/`audit2allow` se trouvent dans `/var/log/audit/audit.log` (recherchez `type=AVC`)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan installs the `policycoreutils-python-utils` package via the **package** resource (`action: install`). It is applied with `pavois harden apply`. This only adds the management tooling; it does not itself create or load any new SELinux policy.",
+    "fr": "Le plan de durcissement de Pavois installe le paquet `policycoreutils-python-utils` via la ressource **package** (`action: install`). Il s'applique avec `pavois harden apply`. Cela ajoute uniquement l'outillage de gestion ; cela ne crée ni ne charge en soi aucune nouvelle politique SELinux."
+  },
+  "impact": {
+    "en": "Installing this package is low-risk and changes no running policy. Risk arises only from later use of the tools: a broad `audit2allow` module can grant unnecessary permissions and silently widen the attack surface, and a wrong `semanage fcontext` plus `restorecon` can mislabel files. - Review generated policy modules before loading them rather than blindly allowing every denial. - Test `semanage` changes on a staging host where possible.",
+    "fr": "Installer ce paquet présente un risque faible et ne modifie aucune politique en cours. Le risque ne vient que de l'usage ultérieur des outils : un module `audit2allow` trop large peut accorder des permissions inutiles et élargir silencieusement la surface d'attaque, et un `semanage fcontext` erroné suivi de `restorecon` peut mal étiqueter des fichiers. - Examinez les modules de politique générés avant de les charger plutôt que d'autoriser aveuglément chaque refus. - Testez les changements `semanage` sur un hôte de préproduction lorsque c'est possible."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

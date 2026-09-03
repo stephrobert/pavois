@@ -1,0 +1,37 @@
+{
+  "id": "repowner-etc-ipsecd",
+  "title": {
+    "en": "Verify User Who Owns /etc/ipsec.d Directory",
+    "fr": "Vérifier l'utilisateur propriétaire du répertoire /etc/ipsec.d"
+  },
+  "summary": {
+    "en": "Ensures the `/etc/ipsec.d` directory is owned by **root** (uid 0).",
+    "fr": "Garantit que le répertoire `/etc/ipsec.d` appartient à **root** (uid 0)."
+  },
+  "rationale": {
+    "en": "The `/etc/ipsec.d` directory holds the Libreswan IPsec configuration, including connection definitions and the private keys/certificates used to establish VPN tunnels. If its owner is not `root` (uid 0), a non-privileged user could alter tunnel parameters or read secret material, enabling traffic interception or unauthorized VPN access. Root ownership keeps exclusive control over the IPsec trust material.",
+    "fr": "Le répertoire `/etc/ipsec.d` contient la configuration IPsec de Libreswan, y compris les définitions de connexions et les clés privées/certificats utilisés pour établir les tunnels VPN. Si son propriétaire n'est pas `root` (uid 0), un utilisateur non privilégié pourrait modifier les paramètres des tunnels ou lire le matériel secret, permettant l'interception du trafic ou un accès VPN non autorisé. La propriété par root garde un contrôle exclusif sur le matériel de confiance IPsec."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** owner uid of `/etc/ipsec.d` from the filesystem (`stat`), reporting the real on-disk state rather than a value assumed from documentation. This is the directory Libreswan actually loads its connections and secrets from, so its ownership is what determines real exposure.",
+    "fr": "Pavois lit l'uid propriétaire **effectif** de `/etc/ipsec.d` depuis le système de fichiers (`stat`), rapportant l'état réel sur le disque plutôt qu'une valeur supposée. C'est le répertoire depuis lequel Libreswan charge réellement ses connexions et ses secrets, donc sa propriété détermine l'exposition réelle."
+  },
+  "verify": {
+    "en": "Run `stat -c '%U' /etc/ipsec.d`. The expected output is `root`. Alternatively, `ls -ld /etc/ipsec.d` should show `root` in the owner column.",
+    "fr": "Exécutez `stat -c '%U' /etc/ipsec.d`. La sortie attendue est `root`. Sinon, `ls -ld /etc/ipsec.d` doit afficher `root` dans la colonne du propriétaire."
+  },
+  "logs": {
+    "en": "Ownership changes are not logged by default; inspect with `ls -ld /etc/ipsec.d`. IPsec/Libreswan service activity is in `journalctl -u ipsec` and the pluto logs. If auditd watches `/etc/ipsec.d`, ownership changes appear in `/var/log/audit/audit.log`.",
+    "fr": "Les changements de propriété ne sont pas journalisés par défaut ; inspectez avec `ls -ld /etc/ipsec.d`. L'activité du service IPsec/Libreswan est dans `journalctl -u ipsec` et les logs de pluto. Si auditd surveille `/etc/ipsec.d`, les changements de propriété apparaissent dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied manually: `chown root /etc/ipsec.d`. Verify afterwards with `stat -c '%U' /etc/ipsec.d`.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit donc être appliquée manuellement : `chown root /etc/ipsec.d`. Vérifiez ensuite avec `stat -c '%U' /etc/ipsec.d`."
+  },
+  "impact": {
+    "en": "Setting the owner to `root` is the expected state and has no functional impact: the IPsec daemon runs as root. There is no lockout risk. Before applying, ensure no non-root management tool legitimately owns this path (uncommon); the change touches only directory metadata, not tunnel definitions.",
+    "fr": "Définir le propriétaire sur `root` correspond à l'état attendu et n'a aucun impact fonctionnel : le démon IPsec s'exécute en root. Aucun risque de verrouillage. Avant d'appliquer, assurez-vous qu'aucun outil de gestion non-root ne possède légitimement ce chemin (rare) ; le changement ne touche que les métadonnées du répertoire, pas les définitions de tunnels."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

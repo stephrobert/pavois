@@ -1,0 +1,37 @@
+{
+  "id": "filegroupowner-sshd-drop-in-config",
+  "title": {
+    "en": "Verify Group Who Owns SSH Server Configuration Files",
+    "fr": "Vérifier le groupe propriétaire des fichiers de configuration du serveur SSH"
+  },
+  "summary": {
+    "en": "Ensures the `/etc/ssh/sshd_config.d` drop-in directory is group-owned by `root` (GID 0) so only the root group can add SSH configuration snippets.",
+    "fr": "Garantit que le répertoire de fragments `/etc/ssh/sshd_config.d` appartient au groupe `root` (GID 0) afin que seul le groupe root puisse ajouter des fragments de configuration SSH."
+  },
+  "rationale": {
+    "en": "The `/etc/ssh/sshd_config.d` directory holds drop-in snippets that are merged into the effective SSH daemon configuration via `Include`. A drop-in can override any directive from the main file, so a non-root group owning this directory could add a snippet that re-enables root or password login. Setting the group to `root` (GID 0) ensures only the root group can introduce drop-ins.",
+    "fr": "Le répertoire `/etc/ssh/sshd_config.d` contient les fragments de configuration fusionnés dans la configuration effective du démon SSH via `Include`. Un fragment peut redéfinir n'importe quelle directive du fichier principal, donc un groupe non root propriétaire de ce répertoire pourrait ajouter un fragment réactivant la connexion root ou par mot de passe. Définir le groupe sur `root` (GID 0) garantit que seul le groupe root peut introduire des fragments."
+  },
+  "check_note": {
+    "en": "Pavois reads the **resolved** numeric GID of `/etc/ssh/sshd_config.d` via the InSpec `file` resource and asserts it equals `0`. Because the effective SSH config is the merge of the main file plus these drop-ins, securing the directory's ownership is essential, a file-only scan of `sshd_config` alone would miss the drop-in path entirely.",
+    "fr": "Pavois lit le GID numérique **résolu** de `/etc/ssh/sshd_config.d` via la ressource InSpec `file` et vérifie qu'il vaut `0`. Comme la configuration SSH effective est la fusion du fichier principal et de ces fragments, sécuriser la propriété du répertoire est essentiel, une analyse limitée à `sshd_config` manquerait complètement le chemin des fragments."
+  },
+  "verify": {
+    "en": "Run `stat -c '%g %G' /etc/ssh/sshd_config.d`. The expected output is:\n\n- `0 root`\n\nList it with `ls -ld /etc/ssh/sshd_config.d` and confirm the merged result with `sshd -T | head`.",
+    "fr": "Exécutez `stat -c '%g %G' /etc/ssh/sshd_config.d`. La sortie attendue est :\n\n- `0 root`\n\nAffichez-le avec `ls -ld /etc/ssh/sshd_config.d` et confirmez le résultat fusionné avec `sshd -T | head`."
+  },
+  "logs": {
+    "en": "Changes to drop-ins take effect at daemon restart: check `journalctl -u ssh` and `/var/log/auth.log`. To trace ownership or content edits, add an auditd watch (`auditctl -w /etc/ssh/sshd_config.d -p wa -k sshd_conf`) and grep `/var/log/audit/audit.log` for `key=\"sshd_conf\"`.",
+    "fr": "Les changements de fragments prennent effet au redémarrage du démon : consultez `journalctl -u ssh` et `/var/log/auth.log`. Pour tracer les modifications de propriétaire ou de contenu, ajoutez une surveillance auditd (`auditctl -w /etc/ssh/sshd_config.d -p wa -k sshd_conf`) et recherchez `key=\"sshd_conf\"` dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "This rule has no automated harden plan in Pavois. Apply it manually by setting the directory group to `root`: `chgrp root /etc/ssh/sshd_config.d` (add `-R` to include existing snippets).",
+    "fr": "Cette règle n'a pas de plan de durcissement automatisé dans Pavois. Appliquez-la manuellement en définissant le groupe du répertoire sur `root` : `chgrp root /etc/ssh/sshd_config.d` (ajoutez `-R` pour inclure les fragments existants)."
+  },
+  "impact": {
+    "en": "If a non-root group owns the drop-in directory, its members could plant a snippet that overrides the hardened main config and reopens remote access, exactly the kind of bypass file-based scanners miss. Correcting group ownership is non-disruptive. **Precaution:** after changing ownership, run `sshd -t` to validate the merged config before restarting `ssh`, so a stray drop-in does not lock you out.",
+    "fr": "Si un groupe non root possède le répertoire de fragments, ses membres pourraient y déposer un fragment qui redéfinit la configuration principale durcie et rouvre l'accès distant, exactement le type de contournement que les analyses par fichier manquent. Corriger le groupe propriétaire est sans impact. **Précaution :** après avoir changé la propriété, exécutez `sshd -t` pour valider la configuration fusionnée avant de redémarrer `ssh`, afin qu'un fragment errant ne vous verrouille pas."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,16 +1,17 @@
 {
   "id": "sysctl-net-ipv4-conf-all-route_localnet",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -28,6 +29,9 @@
   "check": [
     "describe kernel_parameter('net.ipv4.conf.all.route_localnet') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv4.conf.all.route_localnet[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -37,35 +41,36 @@
   },
   "title": {
     "en": "Prevent Routing External Traffic to Local Loopback on All IPv4 Interfaces",
-    "fr": "Empecher le routage du trafic externe vers la boucle locale sur toutes les interfaces IPv4"
-  },
-  "needs_translation": [],
-  "rationale": {
-    "en": "By default the kernel treats the `127.0.0.0/8` loopback range as non-routable (martian). Setting `net.ipv4.conf.all.route_localnet=1` lifts that protection and lets the kernel route packets to and from `127.0.0.0/8` on real interfaces. An attacker on the local segment could then reach services bound to `127.0.0.1`, databases, admin sockets, metrics endpoints, that the operator deliberately exposed only to localhost. Keeping it at **0** preserves the loopback boundary as a trust boundary.",
-    "fr": "Par defaut, le noyau traite la plage de boucle locale `127.0.0.0/8` comme non routable (martian). Definir `net.ipv4.conf.all.route_localnet=1` leve cette protection et autorise le noyau a router des paquets vers et depuis `127.0.0.0/8` sur de vraies interfaces. Un attaquant present sur le segment local pourrait alors atteindre des services lies a `127.0.0.1`, bases de donnees, sockets d'administration, endpoints de metriques, que l'operateur n'exposait volontairement qu'a localhost. Maintenir la valeur a **0** preserve la boucle locale comme frontiere de confiance."
+    "fr": "Empêcher le routage du trafic externe vers la boucle locale sur toutes les interfaces IPv4"
   },
   "summary": {
     "en": "Forces `net.ipv4.conf.all.route_localnet` to **0** so the kernel refuses to route external traffic to or from the `127.0.0.0/8` loopback range on every IPv4 interface.",
-    "fr": "Force `net.ipv4.conf.all.route_localnet` a **0** afin que le noyau refuse de router du trafic externe vers ou depuis la plage de boucle locale `127.0.0.0/8` sur chaque interface IPv4."
+    "fr": "Force `net.ipv4.conf.all.route_localnet` à **0** afin que le noyau refuse de router du trafic externe vers ou depuis la plage de boucle locale `127.0.0.0/8` sur chaque interface IPv4."
+  },
+  "rationale": {
+    "en": "By default the kernel treats the `127.0.0.0/8` loopback range as non-routable (martian). Setting `net.ipv4.conf.all.route_localnet=1` lifts that protection and lets the kernel route packets to and from `127.0.0.0/8` on real interfaces. An attacker on the local segment could then reach services bound to `127.0.0.1`, databases, admin sockets, metrics endpoints, that the operator deliberately exposed only to localhost. Keeping it at **0** preserves the loopback boundary as a trust boundary.",
+    "fr": "Par défaut, le noyau traite la plage de boucle locale `127.0.0.0/8` comme non routable (martian). Définir `net.ipv4.conf.all.route_localnet=1` lève cette protection et autorise le noyau à router des paquets vers et depuis `127.0.0.0/8` sur de vraies interfaces. Un attaquant présent sur le segment local pourrait alors atteindre des services liés à `127.0.0.1`, bases de données, sockets d'administration, endpoints de métriques, que l'opérateur n'exposait volontairement qu'à localhost. Maintenir la valeur à **0** préserve la boucle locale comme frontière de confiance."
   },
   "check_note": {
     "en": "Pavois reads the **live runtime value** of `net.ipv4.conf.all.route_localnet` via the kernel (InSpec `kernel_parameter`, equivalent to `sysctl`), not the text of `/etc/sysctl.conf` or any drop-in. A file under `/etc/sysctl.d/` can declare `0` while the running kernel still holds `1` because a later drop-in, a boot-time service, or a manual `sysctl -w` overrode it. Auditing the effective parameter catches that drift; reading a file would not.",
-    "fr": "Pavois lit la **valeur d'execution en direct** de `net.ipv4.conf.all.route_localnet` via le noyau (ressource InSpec `kernel_parameter`, equivalente a `sysctl`), et non le texte de `/etc/sysctl.conf` ou d'un drop-in. Un fichier sous `/etc/sysctl.d/` peut declarer `0` alors que le noyau en cours d'execution conserve `1`, car un drop-in ulterieur, un service au demarrage ou un `sysctl -w` manuel l'a ecrase. Auditer le parametre effectif detecte cette derive ; lire un fichier ne le ferait pas."
+    "fr": "Pavois lit la **valeur d'exécution en direct** de `net.ipv4.conf.all.route_localnet` via le noyau (ressource InSpec `kernel_parameter`, équivalente à `sysctl`), et non le texte de `/etc/sysctl.conf` ou d'un drop-in. Un fichier sous `/etc/sysctl.d/` peut déclarer `0` alors que le noyau en cours d'exécution conserve `1`, car un drop-in ultérieur, un service au démarrage ou un `sysctl -w` manuel l'a écrasé. Auditer le paramètre effectif détecte cette dérive ; lire un fichier ne le ferait pas."
   },
   "verify": {
     "en": "Run `sysctl net.ipv4.conf.all.route_localnet`. Expected output:\n\n- `net.ipv4.conf.all.route_localnet = 0`",
-    "fr": "Executez `sysctl net.ipv4.conf.all.route_localnet`. Sortie attendue :\n\n- `net.ipv4.conf.all.route_localnet = 0`"
+    "fr": "Exécutez `sysctl net.ipv4.conf.all.route_localnet`. Sortie attendue :\n\n- `net.ipv4.conf.all.route_localnet = 0`"
   },
   "logs": {
     "en": "This is a kernel tunable, so there is no dedicated event log. Inspect its state with `sysctl net.ipv4.conf.all.route_localnet`, list the per-interface values with `sysctl -a | grep route_localnet`, and confirm the persisted source with `sysctl --system 2>&1 | grep route_localnet` to see which drop-in last set it.",
-    "fr": "Il s'agit d'un parametre noyau ajustable, sans journal d'evenements dedie. Inspectez son etat avec `sysctl net.ipv4.conf.all.route_localnet`, listez les valeurs par interface avec `sysctl -a | grep route_localnet`, et confirmez la source persistee avec `sysctl --system 2>&1 | grep route_localnet` pour voir quel drop-in l'a defini en dernier."
+    "fr": "Il s'agit d'un paramètre noyau ajustable, sans journal d'événements dédié. Inspectez son état avec `sysctl net.ipv4.conf.all.route_localnet`, listez les valeurs par interface avec `sysctl -a | grep route_localnet`, et confirmez la source persistée avec `sysctl --system 2>&1 | grep route_localnet` pour voir quel drop-in l'a défini en dernier."
   },
   "remediation_note": {
     "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv4.conf.all.route_localnet` to **0**, applying it to the running kernel and persisting it in a Pavois-managed drop-in under `/etc/sysctl.d/` so it survives reboot. Apply it with `pavois harden apply`.",
-    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour definir `net.ipv4.conf.all.route_localnet` a **0**, en l'appliquant au noyau en cours d'execution et en le persistant dans un drop-in gere par Pavois sous `/etc/sysctl.d/` afin qu'il survive au redemarrage. Appliquez-le avec `pavois harden apply`."
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour définir `net.ipv4.conf.all.route_localnet` à **0**, en l'appliquant au noyau en cours d'exécution et en le persistant dans un drop-in géré par Pavois sous `/etc/sysctl.d/` afin qu'il survive au redémarrage. Appliquez-le avec `pavois harden apply`."
   },
   "impact": {
     "en": "Setting this to **0** is the kernel default and is safe for virtually all hosts. The only systems that legitimately need `route_localnet=1` are those running NAT/redirect rules that forward traffic to a service on `127.0.0.1` (some load-balancer or transparent-proxy setups, certain `iptables`/`nftables` DNAT-to-loopback designs). Before applying, confirm no firewall rule depends on loopback routing (`iptables-save | grep 127.0.0`); if one does, that service would stop receiving traffic. There is no risk of losing remote access from this change.",
-    "fr": "Definir cette valeur a **0** correspond au defaut du noyau et est sur pour la quasi-totalite des hotes. Les seuls systemes qui ont legitimement besoin de `route_localnet=1` sont ceux executant des regles NAT/redirection qui acheminent le trafic vers un service sur `127.0.0.1` (certaines configurations de repartiteur de charge ou de proxy transparent, certains montages `iptables`/`nftables` DNAT vers la boucle locale). Avant d'appliquer, verifiez qu'aucune regle de pare-feu ne depend du routage de boucle locale (`iptables-save | grep 127.0.0`) ; si c'est le cas, ce service cesserait de recevoir du trafic. Ce changement ne presente aucun risque de perte d'acces distant."
-  }
+    "fr": "Définir cette valeur à **0** correspond au défaut du noyau et est sûr pour la quasi-totalité des hôtes. Les seuls systèmes qui ont légitimement besoin de `route_localnet=1` sont ceux exécutant des règles NAT/redirection qui acheminent le trafic vers un service sur `127.0.0.1` (certaines configurations de répartiteur de charge ou de proxy transparent, certains montages `iptables`/`nftables` DNAT vers la boucle locale). Avant d'appliquer, vérifiez qu'aucune règle de pare-feu ne dépend du routage de boucle locale (`iptables-save | grep 127.0.0`) ; si c'est le cas, ce service cesserait de recevoir du trafic. Ce changement ne présente aucun risque de perte d'accès distant."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

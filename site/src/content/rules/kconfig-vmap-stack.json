@@ -1,16 +1,17 @@
 {
   "id": "kconfig-vmap-stack",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_VMAP_STACK=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_VMAP_STACK='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_VMAP_STACK=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_VMAP_STACK=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "User a virtually-mapped stack",
     "fr": "Utiliser une pile à mappage virtuel"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_VMAP_STACK=y` allocates kernel thread stacks in **vmalloc** space, each fenced by an unmapped **guard page**. A stack overflow then faults immediately instead of silently corrupting adjacent kernel memory. Without it, kernel stack overflows produce **hard-to-diagnose memory corruption** that attackers can leverage for privilege escalation, and that masks the root cause of crashes.",
-    "fr": "`CONFIG_VMAP_STACK=y` alloue les piles des threads noyau dans l'espace **vmalloc**, chacune protégée par une **page de garde** non mappée. Un débordement de pile provoque alors une faute immédiate au lieu de corrompre silencieusement la mémoire noyau adjacente. Sans cette option, les débordements de pile noyau produisent une **corruption mémoire difficile à diagnostiquer**, exploitable pour une élévation de privilèges et masquant la cause racine des plantages."
-  },
   "summary": {
     "en": "Requires the kernel to be built with `CONFIG_VMAP_STACK=y` so kernel stacks have guard pages that catch overflows immediately.",
     "fr": "Exige que le noyau soit compilé avec `CONFIG_VMAP_STACK=y` afin que les piles noyau disposent de pages de garde détectant immédiatement les débordements."
+  },
+  "rationale": {
+    "en": "`CONFIG_VMAP_STACK=y` allocates kernel thread stacks in **vmalloc** space, each fenced by an unmapped **guard page**. A stack overflow then faults immediately instead of silently corrupting adjacent kernel memory. Without it, kernel stack overflows produce **hard-to-diagnose memory corruption** that attackers can leverage for privilege escalation, and that masks the root cause of crashes.",
+    "fr": "`CONFIG_VMAP_STACK=y` alloue les piles des threads noyau dans l'espace **vmalloc**, chacune protégée par une **page de garde** non mappée. Un débordement de pile provoque alors une faute immédiate au lieu de corrompre silencieusement la mémoire noyau adjacente. Sans cette option, les débordements de pile noyau produisent une **corruption mémoire difficile à diagnostiquer**, exploitable pour une élévation de privilèges et masquant la cause racine des plantages."
   },
   "check_note": {
     "en": "Pavois reads the **build-time config of the running kernel** (`/boot/config-$(uname -r)` or `/proc/config.gz`) and requires `CONFIG_VMAP_STACK=y`. Querying the live kernel, not a static config file that may belong to another kernel package, guarantees the assertion describes the kernel actually executing.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "Failing means kernel stack overflows can **silently corrupt memory** rather than faulting cleanly, weakening exploit resistance and crash diagnosability. Precautions: changing kernels is the only remedy, keep the prior kernel bootable for rollback and validate that out-of-tree modules still load. The guard-page mechanism itself has negligible runtime cost.",
     "fr": "Un échec signifie que les débordements de pile noyau peuvent **corrompre silencieusement la mémoire** au lieu de provoquer une faute propre, affaiblissant la résistance aux exploits et la capacité de diagnostic des plantages. Précautions : changer de noyau est le seul remède, gardez le noyau précédent amorçable pour revenir en arrière et vérifiez que les modules hors arbre se chargent toujours. Le mécanisme de page de garde a lui-même un coût d'exécution négligeable."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

@@ -6,8 +6,12 @@ import { languages } from '../i18n/ui';
 // content collections + static routes for both languages. `lastmod` is emitted ONLY from a real,
 // hand-maintained data date (never the build date), omitted otherwise, per the SEO ruleset.
 const LANGS = Object.keys(languages);
+// Hand-maintained, so it drifted: `installation/`, `audit/`, `sample-report/` and `docs/benchmark/`
+// are real pages, linked from the main navigation, and were missing here — 8 URLs a crawler never
+// saw, including the benchmark, which is the product's whole differentiating argument.
 const STATIC = [
-  '', 'start/', 'docs/', 'docs/tools/', 'handbook/', 'rules/', 'blog/', 'glossary/', 'about/', 'downloads/', 'attribution/',
+  '', 'start/', 'installation/', 'audit/', 'docs/', 'docs/cli/', 'docs/tools/', 'docs/benchmark/',
+  'handbook/', 'rules/', 'blog/', 'glossary/', 'about/', 'downloads/', 'sample-report/', 'attribution/',
   'standards/cis/', 'standards/bp28/', 'standards/nist/', 'standards/pci-dss/', 'standards/stig/',
 ];
 

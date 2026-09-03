@@ -1,0 +1,37 @@
+{
+  "id": "pkg-opensc-installed",
+  "title": {
+    "en": "Install the opensc Package For Multifactor Authentication",
+    "fr": "Installer le paquet opensc pour l'authentification multifacteur"
+  },
+  "summary": {
+    "en": "Ensures the **`opensc`** package (smart-card / PKCS#11 drivers for multifactor authentication) is **installed**.",
+    "fr": "Garantit que le paquet **`opensc`** (pilotes carte à puce / PKCS#11 pour l'authentification multifacteur) est **installé**."
+  },
+  "rationale": {
+    "en": "**`opensc`** provides the PKCS#11 drivers needed to use smart cards and hardware tokens (such as a **CAC** or PIV card) for **multifactor authentication**. Using an authentication device separate from the information system ensures that, even if the system is compromised, the credentials stored on the device are not. Hardware tokens that provide time-based or challenge-response authenticators dramatically raise the bar against credential theft and replay.",
+    "fr": "**`opensc`** fournit les pilotes PKCS#11 nécessaires pour utiliser des cartes à puce et des jetons matériels (comme une carte **CAC** ou PIV) pour l'**authentification multifacteur**. Utiliser un dispositif d'authentification distinct du système d'information garantit que, même si le système est compromis, les identifiants stockés sur le dispositif ne le sont pas. Les jetons matériels fournissant des authentifiants temporels ou par défi-réponse élèvent fortement la barrière contre le vol et le rejeu d'identifiants."
+  },
+  "check_note": {
+    "en": "Pavois asks the package manager whether **`opensc`** is installed via the InSpec `package` resource (`rpm -q opensc` on RHEL, `dpkg-query -W opensc` on Ubuntu). Querying installed-package state directly confirms the PKCS#11 middleware is present, rather than inferring smart-card readiness from PAM or pcscd config files.",
+    "fr": "Pavois interroge le gestionnaire de paquets pour savoir si **`opensc`** est installé via la ressource InSpec `package` (`rpm -q opensc` sur RHEL, `dpkg-query -W opensc` sur Ubuntu). Interroger directement l'état des paquets installés confirme la présence du middleware PKCS#11, plutôt que de déduire la disponibilité des cartes à puce des fichiers de configuration PAM ou pcscd."
+  },
+  "verify": {
+    "en": "Run `rpm -q opensc` (RHEL) or `dpkg-query -W -f='${Status}\\n' opensc` (Ubuntu). The expected output is a versioned package name / `install ok installed`. The driver can be confirmed with `opensc-tool --list-readers`.",
+    "fr": "Exécutez `rpm -q opensc` (RHEL) ou `dpkg-query -W -f='${Status}\\n' opensc` (Ubuntu). La sortie attendue est un nom de paquet versionné / `install ok installed`. Le pilote peut être confirmé avec `opensc-tool --list-readers`."
+  },
+  "logs": {
+    "en": "- `rpm -q opensc` / `dpkg-query -W opensc`, confirms the package is installed.\n- `opensc-tool --list-readers`, lists connected smart-card readers.\n- `journalctl -u pcscd`, shows the smart-card daemon activity when a card is used.",
+    "fr": "- `rpm -q opensc` / `dpkg-query -W opensc`, confirme que le paquet est installé.\n- `opensc-tool --list-readers`, liste les lecteurs de cartes à puce connectés.\n- `journalctl -u pcscd`, montre l'activité du démon carte à puce lors de l'utilisation d'une carte."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan declares a `package` resource for **`opensc`** with action **install** and applies it with `pavois harden apply`, which runs `dnf install opensc` (or `apt-get install opensc`) under the hood. Enabling smart-card login (PAM, `pcscd`) remains a separate configuration step.",
+    "fr": "Le plan de durcissement de Pavois déclare une ressource `package` pour **`opensc`** avec l'action **install** et l'applique avec `pavois harden apply`, ce qui exécute `dnf install opensc` (ou `apt-get install opensc`) en arrière-plan. L'activation de la connexion par carte à puce (PAM, `pcscd`) reste une étape de configuration distincte."
+  },
+  "impact": {
+    "en": "Installing the package alone is non-disruptive, it adds drivers without changing authentication behavior. The risk appears only when you later **enforce** smart-card login in PAM/SSSD: a misconfiguration or a card-reader failure can lock out users. **Precaution:** keep a fallback local admin account, test card-based login interactively before making it mandatory, and ensure `pcscd` is running.",
+    "fr": "Installer le paquet seul est non perturbateur, cela ajoute des pilotes sans changer le comportement d'authentification. Le risque n'apparaît que lorsque vous **imposez** ensuite la connexion par carte à puce dans PAM/SSSD : une mauvaise configuration ou une panne de lecteur peut bloquer les utilisateurs. **Précaution :** conservez un compte administrateur local de secours, testez la connexion par carte de manière interactive avant de la rendre obligatoire, et assurez-vous que `pcscd` fonctionne."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

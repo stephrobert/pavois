@@ -1,0 +1,37 @@
+{
+  "id": "kconfig-hibernation",
+  "title": {
+    "en": "Disable hibernation",
+    "fr": "Désactiver l'hibernation"
+  },
+  "summary": {
+    "en": "Requires the kernel to be built **without** `CONFIG_HIBERNATION=y`, removing suspend-to-disk support.",
+    "fr": "Exige que le noyau soit compilé **sans** `CONFIG_HIBERNATION=y`, supprimant la prise en charge de la mise en veille sur disque."
+  },
+  "rationale": {
+    "en": "Hibernation (suspend-to-disk) writes the **entire contents of RAM**, including encryption keys and other secrets, to a swap area on disk, then restores it at resume. An attacker with disk access can read that image, and the resume path can be abused to **replace the running kernel** with an attacker-controlled image, bypassing Secure Boot and module-signing protections. Building the kernel without `CONFIG_HIBERNATION` removes both the disk-resident memory image and the kernel-replacement vector.",
+    "fr": "L'hibernation (mise en veille sur disque) écrit le **contenu intégral de la RAM**, y compris les clés de chiffrement et autres secrets, dans une zone de swap sur le disque, puis le restaure à la reprise. Un attaquant ayant accès au disque peut lire cette image, et le chemin de reprise peut être détourné pour **remplacer le noyau en cours d'exécution** par une image contrôlée par l'attaquant, contournant Secure Boot et la signature des modules. Compiler le noyau sans `CONFIG_HIBERNATION` supprime à la fois l'image mémoire sur disque et le vecteur de remplacement du noyau."
+  },
+  "check_note": {
+    "en": "Pavois reads the build configuration of the **running** kernel, `/boot/config-$(uname -r)` and the in-memory `/proc/config.gz`, and confirms `CONFIG_HIBERNATION` is not set to `y`. Checking the booted kernel's actual config (rather than a stale `/boot/config-*` or a masked systemd target) reflects whether suspend-to-disk is truly compiled in.",
+    "fr": "Pavois lit la configuration de compilation du noyau **en cours d'exécution**, `/boot/config-$(uname -r)` et `/proc/config.gz` en mémoire, et confirme que `CONFIG_HIBERNATION` n'est pas à `y`. Vérifier la config réelle du noyau démarré (plutôt qu'un `/boot/config-*` obsolète ou une cible systemd masquée) reflète si la mise en veille sur disque est réellement compilée."
+  },
+  "verify": {
+    "en": "Run `grep '^CONFIG_HIBERNATION=' /boot/config-$(uname -r)`. Expected: no match, or `# CONFIG_HIBERNATION is not set`, the line `CONFIG_HIBERNATION=y` must be absent.",
+    "fr": "Exécutez `grep '^CONFIG_HIBERNATION=' /boot/config-$(uname -r)`. Attendu : aucune correspondance, ou `# CONFIG_HIBERNATION is not set`, la ligne `CONFIG_HIBERNATION=y` doit être absente."
+  },
+  "logs": {
+    "en": "Hibernation activity appears in the kernel log: `dmesg | grep -i -e hibernat -e 'PM: '` or `journalctl -k | grep -i hibernat`. On systems where the kernel still supports it, the systemd targets are visible via `systemctl status hibernate.target hybrid-sleep.target`.",
+    "fr": "L'activité d'hibernation apparaît dans le journal noyau : `dmesg | grep -i -e hibernat -e 'PM: '` ou `journalctl -k | grep -i hibernat`. Sur les systèmes où le noyau le prend encore en charge, les cibles systemd sont visibles via `systemctl status hibernate.target hybrid-sleep.target`."
+  },
+  "remediation_note": {
+    "en": "No automated remediation: this is a **kernel build-time option**, not a runtime tunable. Pavois's harden plan is empty. To fully remove the capability you must boot a kernel compiled without `CONFIG_HIBERNATION`. As an interim runtime mitigation you can disable userspace triggers (`systemctl mask hibernate.target hybrid-sleep.target` and set `HibernateDelaySec`/`AllowHibernation=no` in `logind`), but that does not remove the in-kernel resume path this rule targets.",
+    "fr": "Aucune remédiation automatisée : il s'agit d'une **option de compilation du noyau**, pas d'un paramètre modifiable à chaud. Le plan de durcissement Pavois est vide. Pour supprimer entièrement la fonctionnalité, démarrez un noyau compilé sans `CONFIG_HIBERNATION`. En atténuation provisoire à l'exécution, vous pouvez désactiver les déclencheurs côté utilisateur (`systemctl mask hibernate.target hybrid-sleep.target` et `AllowHibernation=no` dans `logind`), mais cela ne supprime pas le chemin de reprise dans le noyau visé par cette règle."
+  },
+  "impact": {
+    "en": "Disabling hibernation means the machine can no longer suspend-to-disk; on **laptops** this removes a power-saving and battery-protection feature (suspend-to-RAM still works). On servers and VMs there is no functional loss. Before swapping kernels, confirm the replacement boots and that no workload depends on resuming from hibernation; keep the previous kernel entry in the bootloader as a fallback.",
+    "fr": "Désactiver l'hibernation signifie que la machine ne peut plus se mettre en veille sur disque ; sur les **ordinateurs portables**, cela retire une fonction d'économie d'énergie et de protection de la batterie (la mise en veille en RAM reste possible). Sur les serveurs et VM, aucune perte fonctionnelle. Avant de remplacer le noyau, vérifiez que le noyau de remplacement démarre et qu'aucune charge ne dépend de la reprise après hibernation ; conservez l'entrée du noyau précédent dans le chargeur d'amorçage comme solution de repli."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,37 @@
+{
+  "id": "mount-dev-shm-noexec",
+  "title": {
+    "en": "Add noexec Option to /dev/shm",
+    "fr": "Ajouter l'option noexec à /dev/shm"
+  },
+  "summary": {
+    "en": "Mounts the `/dev/shm` shared-memory tmpfs with the `noexec` option so no binary can be executed from it.",
+    "fr": "Monte le tmpfs de mémoire partagée `/dev/shm` avec l'option `noexec` afin qu'aucun binaire ne puisse y être exécuté."
+  },
+  "rationale": {
+    "en": "`/dev/shm` is a **world-writable** shared-memory `tmpfs`. Allowing execution from such a directory is a classic foothold: malware and exploit payloads frequently drop a binary into a writable, executable location and run it from there. Mounting `/dev/shm` with `noexec` blocks execution of any program stored in it, closing that staging path.",
+    "fr": "`/dev/shm` est un `tmpfs` de mémoire partagée **accessible en écriture à tous**. Autoriser l'exécution depuis un tel répertoire est un point d'entrée classique : les logiciels malveillants et les charges d'exploitation déposent souvent un binaire dans un emplacement accessible en écriture et exécutable, puis l'exécutent. Monter `/dev/shm` avec `noexec` bloque l'exécution de tout programme qui s'y trouve, fermant ce chemin de mise en place."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** mount via `mount('/dev/shm')` and asserts the resolved options include `noexec`. `/dev/shm` is mounted by `systemd` (`dev-shm.mount`) and frequently absent from `/etc/fstab`, so only the **live** mount table reveals its real options, a file-based check could pass falsely or overlook the mount.",
+    "fr": "Pavois lit le montage **effectif** via `mount('/dev/shm')` et vérifie que les options résolues incluent `noexec`. `/dev/shm` est monté par `systemd` (`dev-shm.mount`) et souvent absent d'`/etc/fstab` ; seule la table de montage **réelle** révèle ses options effectives, un contrôle basé sur les fichiers pourrait réussir à tort ou ignorer le montage."
+  },
+  "verify": {
+    "en": "Run `findmnt /dev/shm` (or `findmnt -no OPTIONS /dev/shm`) and confirm `noexec` is present, e.g. `rw,nosuid,nodev,noexec,relatime`.",
+    "fr": "Exécutez `findmnt /dev/shm` (ou `findmnt -no OPTIONS /dev/shm`) et vérifiez la présence de `noexec`, par exemple `rw,nosuid,nodev,noexec,relatime`."
+  },
+  "logs": {
+    "en": "Use `findmnt /dev/shm` to see active options and `systemctl show dev-shm.mount -p Options` for the systemd value. Execution of a file from a `noexec` mount fails with **Permission denied**; auditd `EXECVE` denials in `/var/log/audit/audit.log` can highlight blocked attempts, a useful malware indicator.",
+    "fr": "Utilisez `findmnt /dev/shm` pour voir les options actives et `systemctl show dev-shm.mount -p Options` pour la valeur systemd. L'exécution d'un fichier depuis un montage `noexec` échoue avec **Permission denied** ; les refus auditd `EXECVE` dans `/var/log/audit/audit.log` peuvent mettre en évidence des tentatives bloquées, un indicateur utile de logiciel malveillant."
+  },
+  "remediation_note": {
+    "en": "This rule has **no automated harden plan**: apply it **manually**. Add an explicit `/dev/shm` entry to `/etc/fstab` such as `tmpfs /dev/shm tmpfs defaults,nodev,nosuid,noexec 0 0`, then `mount -o remount /dev/shm` (or `systemctl restart dev-shm.mount`) and verify with `findmnt /dev/shm`.",
+    "fr": "Cette règle **n'a pas de plan de durcissement automatisé** : appliquez-la **manuellement**. Ajoutez une entrée `/dev/shm` explicite dans `/etc/fstab`, par ex. `tmpfs /dev/shm tmpfs defaults,nodev,nosuid,noexec 0 0`, puis `mount -o remount /dev/shm` (ou `systemctl restart dev-shm.mount`) et vérifiez avec `findmnt /dev/shm`."
+  },
+  "impact": {
+    "en": "Without `noexec`, `/dev/shm` is an easy launch pad for fileless-style attacks and dropped payloads. **Precaution:** a few applications execute code from shared memory, notably some sandboxed browsers (Chromium/Electron) and a handful of installers or JIT runtimes. Test such workloads after applying; if one breaks, it usually has a config flag to use a different temp/exec directory. The `remount` itself is non-disruptive.",
+    "fr": "Sans `noexec`, `/dev/shm` est une rampe de lancement facile pour les attaques de type « fileless » et les charges déposées. **Précaution :** quelques applications exécutent du code depuis la mémoire partagée, notamment certains navigateurs en bac à sable (Chromium/Electron) et quelques installateurs ou moteurs JIT. Testez ces charges de travail après application ; si l'une casse, elle dispose généralement d'une option pour utiliser un autre répertoire temporaire/exécutable. Le `remount` lui-même est sans interruption."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

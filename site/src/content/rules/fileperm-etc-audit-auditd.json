@@ -2,13 +2,18 @@
   "id": "fileperm-etc-audit-auditd",
   "supported_os": [
     "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
@@ -52,14 +57,13 @@
     "en": "Verify Permissions on /etc/audit/auditd.conf",
     "fr": "Vérifier les permissions de /etc/audit/auditd.conf"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/audit/auditd.conf` drives the **auditd** daemon: where logs are written, their rotation, the disk-full action and how flushing happens. If it is **writable by non-root** or **readable by other**, an attacker can disable logging, redirect the audit trail or simply learn its layout, defeating the forensic record that detects and attributes an incident. Restricting it to **root** preserves the integrity and confidentiality of the audit configuration.",
-    "fr": "`/etc/audit/auditd.conf` pilote le démon **auditd** : emplacement des journaux, rotation, action en cas de disque plein et mode de vidage. S'il est **modifiable par un non-root** ou **lisible par les autres**, un attaquant peut désactiver la journalisation, rediriger la piste d'audit ou simplement en découvrir l'agencement, neutralisant la preuve forensique qui détecte et impute un incident. Le restreindre à **root** préserve l'intégrité et la confidentialité de la configuration d'audit."
-  },
   "summary": {
     "en": "Ensures `/etc/audit/auditd.conf` is not writable by group/other, not readable by other, and carries no executable, setuid, setgid or sticky bits.",
     "fr": "Garantit que `/etc/audit/auditd.conf` n'est ni modifiable par le groupe ou les autres, ni lisible par les autres, et ne porte aucun bit exécutable, setuid, setgid ou sticky."
+  },
+  "rationale": {
+    "en": "`/etc/audit/auditd.conf` drives the **auditd** daemon: where logs are written, their rotation, the disk-full action and how flushing happens. If it is **writable by non-root** or **readable by other**, an attacker can disable logging, redirect the audit trail or simply learn its layout, defeating the forensic record that detects and attributes an incident. Restricting it to **root** preserves the integrity and confidentiality of the audit configuration.",
+    "fr": "`/etc/audit/auditd.conf` pilote le démon **auditd** : emplacement des journaux, rotation, action en cas de disque plein et mode de vidage. S'il est **modifiable par un non-root** ou **lisible par les autres**, un attaquant peut désactiver la journalisation, rediriger la piste d'audit ou simplement en découvrir l'agencement, neutralisant la preuve forensique qui détecte et impute un incident. Le restreindre à **root** préserve l'intégrité et la confidentialité de la configuration d'audit."
   },
   "check_note": {
     "en": "Pavois inspects the **live mode** of `/etc/audit/auditd.conf` via the InSpec `file` resource (equivalent to `stat`), guarded by `only_if` so it is skipped when auditd is not installed. It asserts the file is not group/other-writable, not other-readable, and free of `setuid`/`setgid`/sticky/executable bits, i.e. an effective mode no looser than **0640 root:root**. Checking the real inode permissions, not a packaged default, catches drift introduced by a careless `chmod` or a bad deployment.",
@@ -80,5 +84,7 @@
   "impact": {
     "en": "Tightening these permissions is **low-risk**: auditd already runs as root and does not need group/other access. Precautions: keep the owner `root` and avoid `chmod 600` only if a non-root monitoring tool must read the config (rare, prefer 640 with a dedicated group). A wrong owner or removing read for root would prevent auditd from starting, verify with `auditctl -s` and `systemctl status auditd` afterwards. Leaving it world-readable or group-writable lets unprivileged users discover or tamper with the audit setup.",
     "fr": "Durcir ces permissions est **peu risqué** : auditd s'exécute déjà en root et n'a pas besoin d'un accès groupe/autres. Précautions : conservez le propriétaire `root` et n'utilisez `chmod 600` que si aucun outil de supervision non-root ne doit lire la configuration (rare, préférez 640 avec un groupe dédié). Un mauvais propriétaire ou la suppression de la lecture pour root empêcherait auditd de démarrer, vérifiez ensuite avec `auditctl -s` et `systemctl status auditd`. Laisser le fichier lisible par tous ou modifiable par le groupe permet à des utilisateurs non privilégiés de découvrir ou d'altérer la configuration d'audit."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

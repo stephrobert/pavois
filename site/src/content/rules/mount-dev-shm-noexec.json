@@ -1,17 +1,17 @@
 {
   "id": "mount-dev-shm-noexec",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -37,21 +37,29 @@
   "check": [
     "describe mount('/dev/shm') do",
     "  its('options') { should include 'noexec' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /dev/shm 2>/dev/null; grep -hsE '[[:space:]]/dev/shm[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /dev/shm 2>/dev/null) 2>/dev/null; } | grep -ow 'noexec'\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "device": "tmpfs",
+    "fstype": "tmpfs",
+    "mount_point": "/dev/shm",
+    "option": "noexec",
+    "resource": "mount"
+  },
   "title": {
     "en": "Add noexec Option to /dev/shm",
     "fr": "Ajouter l'option noexec à /dev/shm"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/dev/shm` is a **world-writable** shared-memory `tmpfs`. Allowing execution from such a directory is a classic foothold: malware and exploit payloads frequently drop a binary into a writable, executable location and run it from there. Mounting `/dev/shm` with `noexec` blocks execution of any program stored in it, closing that staging path.",
-    "fr": "`/dev/shm` est un `tmpfs` de mémoire partagée **accessible en écriture à tous**. Autoriser l'exécution depuis un tel répertoire est un point d'entrée classique : les logiciels malveillants et les charges d'exploitation déposent souvent un binaire dans un emplacement accessible en écriture et exécutable, puis l'exécutent. Monter `/dev/shm` avec `noexec` bloque l'exécution de tout programme qui s'y trouve, fermant ce chemin de mise en place."
-  },
   "summary": {
     "en": "Mounts the `/dev/shm` shared-memory tmpfs with the `noexec` option so no binary can be executed from it.",
     "fr": "Monte le tmpfs de mémoire partagée `/dev/shm` avec l'option `noexec` afin qu'aucun binaire ne puisse y être exécuté."
+  },
+  "rationale": {
+    "en": "`/dev/shm` is a **world-writable** shared-memory `tmpfs`. Allowing execution from such a directory is a classic foothold: malware and exploit payloads frequently drop a binary into a writable, executable location and run it from there. Mounting `/dev/shm` with `noexec` blocks execution of any program stored in it, closing that staging path.",
+    "fr": "`/dev/shm` est un `tmpfs` de mémoire partagée **accessible en écriture à tous**. Autoriser l'exécution depuis un tel répertoire est un point d'entrée classique : les logiciels malveillants et les charges d'exploitation déposent souvent un binaire dans un emplacement accessible en écriture et exécutable, puis l'exécutent. Monter `/dev/shm` avec `noexec` bloque l'exécution de tout programme qui s'y trouve, fermant ce chemin de mise en place."
   },
   "check_note": {
     "en": "Pavois reads the **effective** mount via `mount('/dev/shm')` and asserts the resolved options include `noexec`. `/dev/shm` is mounted by `systemd` (`dev-shm.mount`) and frequently absent from `/etc/fstab`, so only the **live** mount table reveals its real options, a file-based check could pass falsely or overlook the mount.",
@@ -72,5 +80,7 @@
   "impact": {
     "en": "Without `noexec`, `/dev/shm` is an easy launch pad for fileless-style attacks and dropped payloads. **Precaution:** a few applications execute code from shared memory, notably some sandboxed browsers (Chromium/Electron) and a handful of installers or JIT runtimes. Test such workloads after applying; if one breaks, it usually has a config flag to use a different temp/exec directory. The `remount` itself is non-disruptive.",
     "fr": "Sans `noexec`, `/dev/shm` est une rampe de lancement facile pour les attaques de type « fileless » et les charges déposées. **Précaution :** quelques applications exécutent du code depuis la mémoire partagée, notamment certains navigateurs en bac à sable (Chromium/Electron) et quelques installateurs ou moteurs JIT. Testez ces charges de travail après application ; si l'une casse, elle dispose généralement d'une option pour utiliser un autre répertoire temporaire/exécutable. Le `remount` lui-même est sans interruption."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

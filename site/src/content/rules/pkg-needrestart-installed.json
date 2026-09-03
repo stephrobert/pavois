@@ -1,0 +1,59 @@
+{
+  "id": "pkg-needrestart-installed",
+  "supported_os": [
+    "debian12",
+    "debian13",
+    "ubuntu2404",
+    "ubuntu2604"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "ubuntu2404": "1.0.0"
+  },
+  "severity": "low",
+  "domain": "Packages",
+  "evidence_type": "inventory-state",
+  "reboot_survivable": "yes",
+  "norms": {},
+  "check": [
+    "describe package('needrestart') do",
+    "  it { should be_installed }",
+    "end"
+  ],
+  "remediation": {
+    "action": "install",
+    "name": "needrestart",
+    "resource": "package"
+  },
+  "title": {
+    "en": "Install needrestart (detect stale libraries after upgrades)",
+    "fr": "Installer needrestart (détecter les bibliothèques obsolètes après une mise à jour)"
+  },
+  "summary": {
+    "en": "`needrestart` scans running processes for shared libraries that were deleted or replaced on disk but are still mapped in memory, then restarts the affected services and tells you when the kernel or microcode requires a reboot. It closes the window every upgrade opens: a patched `libssl` on disk while every daemon keeps executing the vulnerable copy it loaded at boot. No standard mandates it: Pavois carries it as a Debian defence-in-depth practice, and it is the one that most directly converts *patch installed* into *patch effective*.",
+    "fr": "`needrestart` recherche, parmi les processus en cours, les bibliothèques partagées supprimées ou remplacées sur le disque mais toujours mappées en mémoire, puis redémarre les services concernés et signale les cas où le noyau ou le microcode exigent un redémarrage. Il ferme la fenêtre qu'ouvre chaque mise à jour : une `libssl` corrigée sur le disque, pendant que tous les démons continuent d'exécuter la copie vulnérable chargée au démarrage. Aucune norme ne l'impose : Pavois le porte comme bonne pratique Debian de défense en profondeur, et c'est celle qui transforme le plus directement *correctif installé* en *correctif effectif*."
+  },
+  "check_note": {
+    "en": "Pavois asserts that `needrestart` is present in the dpkg inventory. This is an **inventory-state** control: it proves the tool is installed, **not** that its APT hook (`/etc/apt/apt.conf.d/99needrestart`) still fires, and above all not that anything gets restarted. The behaviour depends on `$nrconf{restart}` in `/etc/needrestart/needrestart.conf`: in the default interactive mode (`'i'`) it merely *asks*, so a host that answers \"no\" every time keeps running stale libraries and still passes this rule.",
+    "fr": "Pavois vérifie la présence de `needrestart` dans l'inventaire dpkg. C'est un contrôle d'**état d'inventaire** : il prouve que l'outil est installé, **pas** que son hook APT (`/etc/apt/apt.conf.d/99needrestart`) se déclenche encore, et surtout pas que quoi que ce soit est redémarré. Le comportement dépend de `$nrconf{restart}` dans `/etc/needrestart/needrestart.conf` : dans le mode interactif par défaut (`'i'`), il se contente de *demander*, si bien qu'un hôte qui répond « non » à chaque fois continue d'exécuter des bibliothèques obsolètes tout en passant cette règle."
+  },
+  "verify": {
+    "en": "Run `dpkg -l needrestart` and confirm the state column reads `ii`:\n\n```\nii  needrestart  3.6-4  all  check which daemons need to be restarted after library upgrades\n```\n\nThen ask it what is stale: `needrestart -b` prints machine-readable output. A clean host lists no service and reports a kernel version equal to the running one:\n\n```\nNEEDRESTART-VER: 3.6\nNEEDRESTART-KCUR: 6.1.0-23-amd64\nNEEDRESTART-KEXP: 6.1.0-23-amd64\nNEEDRESTART-KSTA: 1\n```\n\nA `NEEDRESTART-SVC: <unit>` line means that unit still maps a replaced library; `NEEDRESTART-KSTA: 3` means the running kernel is obsolete and a reboot is required.",
+    "fr": "Exécutez `dpkg -l needrestart` et vérifiez que la colonne d'état affiche `ii` :\n\n```\nii  needrestart  3.6-4  all  check which daemons need to be restarted after library upgrades\n```\n\nPuis demandez-lui ce qui est obsolète : `needrestart -b` produit une sortie exploitable par un script. Un hôte propre ne liste aucun service et annonce un noyau attendu identique au noyau courant :\n\n```\nNEEDRESTART-VER: 3.6\nNEEDRESTART-KCUR: 6.1.0-23-amd64\nNEEDRESTART-KEXP: 6.1.0-23-amd64\nNEEDRESTART-KSTA: 1\n```\n\nUne ligne `NEEDRESTART-SVC: <unite>` signale une unité qui mappe encore une bibliothèque remplacée ; `NEEDRESTART-KSTA: 3` signifie que le noyau en cours d'exécution est obsolète et qu'un redémarrage est requis."
+  },
+  "logs": {
+    "en": "needrestart has **no log file of its own**. When triggered by the APT hook it writes its report inline in the `apt` output (the familiar \"Restarting services...\" / \"Pending kernel upgrade\" block), which persists only in `/var/log/apt/term.log`. The restarts it performs *are* traceable, but in the systemd journal, as ordinary unit restarts (`journalctl -u <unit>`). If you want continuous evidence that no host is running stale code, schedule `needrestart -b` and feed its `NEEDRESTART-SVC` / `NEEDRESTART-KSTA` lines to your monitoring: that is the only durable trace.",
+    "fr": "needrestart n'a **aucun fichier de journal propre**. Déclenché par le hook APT, il écrit son rapport directement dans la sortie d'`apt` (le bloc bien connu « Restarting services... » / « Pending kernel upgrade »), qui ne subsiste que dans `/var/log/apt/term.log`. Les redémarrages qu'il effectue sont, eux, traçables, mais dans le journal systemd, comme de simples redémarrages d'unités (`journalctl -u <unite>`). Pour disposer d'une preuve continue qu'aucun hôte n'exécute de code obsolète, planifiez `needrestart -b` et envoyez ses lignes `NEEDRESTART-SVC` et `NEEDRESTART-KSTA` vers la supervision : c'est la seule trace durable."
+  },
+  "remediation_note": {
+    "en": "The Pavois harden plan installs the `needrestart` package with the system package manager (`package` resource, action `install`). It does not touch `needrestart.conf`, so the distribution default applies (interactive on Debian, list-only on Ubuntu's non-interactive runs). Choosing `$nrconf{restart} = 'a'` to restart services automatically is a service-availability decision, and Pavois deliberately leaves it to you.",
+    "fr": "Le plan de durcissement Pavois installe le paquet `needrestart` avec le gestionnaire de paquets du système (ressource `package`, action `install`). Il ne touche pas à `needrestart.conf` : le réglage par défaut de la distribution s'applique (interactif sur Debian, simple liste lors des exécutions non interactives d'Ubuntu). Passer `$nrconf{restart}` à `'a'` pour redémarrer les services automatiquement est une décision de disponibilité de service, que Pavois vous laisse délibérément."
+  },
+  "impact": {
+    "en": "Without needrestart, a host can run **patched-on-disk but vulnerable-in-memory** libraries for months, until someone happens to reboot: your patch report says fixed, the process memory says exploitable. The side effects are the price. **It restarts services during an upgrade**: that is a brief interruption, dropped connections, and on a database, a hypervisor or a queue broker it is not free, so schedule upgrades accordingly. **In interactive mode it prompts**, which can hang an automated `apt` run in CI or under `unattended-upgrades` (set `$nrconf{restart}` to `'a'` or `'l'`, or drive apt with `NEEDRESTART_MODE=a`). And needrestart is itself code that runs as root at upgrade time: the local privilege-escalation flaws found in 2024 (CVE-2024-48990 and siblings, fixed in 3.8) are the reminder that it must be kept patched like anything else.",
+    "fr": "Sans needrestart, un hôte peut exécuter pendant des mois des bibliothèques **corrigées sur le disque mais vulnérables en mémoire**, jusqu'à ce que quelqu'un redémarre par hasard : le rapport de correctifs dit « corrigé », la mémoire des processus dit « exploitable ». Les effets de bord sont le prix à payer. **Il redémarre des services pendant la mise à jour** : c'est une brève interruption, des connexions coupées, et sur une base de données, un hyperviseur ou un courtier de messages, cela n'est pas gratuit : planifiez les mises à jour en conséquence. **En mode interactif, il pose une question**, ce qui peut bloquer une exécution automatisée d'`apt` en CI ou sous `unattended-upgrades` (réglez `$nrconf{restart}` sur `'a'` ou `'l'`, ou pilotez apt avec `NEEDRESTART_MODE=a`). Enfin, needrestart est lui-même du code exécuté en root au moment de la mise à jour : les failles d'élévation de privilèges locales découvertes en 2024 (CVE-2024-48990 et apparentées, corrigées en 3.8) rappellent qu'il doit être tenu à jour comme le reste."
+  },
+  "datePublished": "2026-07-14",
+  "dateModified": "2026-07-14"
+}

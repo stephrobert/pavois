@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-net-ipv6-conf-all-accept_ra_pinfo",
+  "title": {
+    "en": "Configure Accepting Prefix Information in Router Advertisements on All IPv6 Interfaces",
+    "fr": "Configurer l'acceptation des informations de préfixe dans les annonces de routeur sur toutes les interfaces IPv6"
+  },
+  "summary": {
+    "en": "Sets `net.ipv6.conf.all.accept_ra_pinfo` to `0` so the host ignores Prefix Information Options carried in IPv6 Router Advertisements on all interfaces.",
+    "fr": "Fixe `net.ipv6.conf.all.accept_ra_pinfo` à `0` afin que l'hôte ignore les options d'information de préfixe transportées dans les annonces de routeur IPv6 sur toutes les interfaces."
+  },
+  "rationale": {
+    "en": "The Prefix Information Option in a Router Advertisement tells the host which IPv6 prefixes are on-link and usable for SLAAC autoconfiguration. Because RAs are **unauthenticated**, a rogue node can advertise forged prefixes to make the host self-assign attacker-controlled addresses or treat hostile prefixes as on-link, enabling **man-in-the-middle** and traffic redirection. A host with static addressing has no need to learn prefixes from the network.",
+    "fr": "L'option d'information de préfixe d'une annonce de routeur indique à l'hôte quels préfixes IPv6 sont on-link et exploitables pour l'autoconfiguration SLAAC. Comme les RA ne sont **pas authentifiées**, un nœud malveillant peut annoncer de faux préfixes pour amener l'hôte à s'auto-attribuer des adresses contrôlées par l'attaquant ou à considérer des préfixes hostiles comme on-link, ouvrant la voie à des attaques de **l'homme du milieu** et à la redirection de trafic. Un hôte à adressage statique n'a pas besoin d'apprendre des préfixes depuis le réseau."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.all.accept_ra_pinfo`) and asserts it is `0`. The live kernel value is authoritative: a value in `/etc/sysctl.d/*` may be **shadowed** by a later drop-in or never applied, so reading the running parameter avoids the false pass that file inspection (OVAL/oscap) can give.",
+    "fr": "Pavois lit la valeur **effective** au runtime via la ressource `kernel_parameter` (équivalent à `sysctl net.ipv6.conf.all.accept_ra_pinfo`) et vérifie qu'elle vaut `0`. La valeur active du noyau fait foi : une valeur dans `/etc/sysctl.d/*` peut être **masquée** par un drop-in ultérieur ou jamais appliquée ; lire le paramètre en cours d'exécution évite le faux succès que peut donner l'inspection de fichiers (OVAL/oscap)."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv6.conf.all.accept_ra_pinfo` (or `cat /proc/sys/net/ipv6/conf/all/accept_ra_pinfo`). Expected output:\n\n- `net.ipv6.conf.all.accept_ra_pinfo = 0`",
+    "fr": "Exécutez `sysctl net.ipv6.conf.all.accept_ra_pinfo` (ou `cat /proc/sys/net/ipv6/conf/all/accept_ra_pinfo`). Sortie attendue :\n\n- `net.ipv6.conf.all.accept_ra_pinfo = 0`"
+  },
+  "logs": {
+    "en": "No dedicated log exists. Check the live value with `sysctl net.ipv6.conf.all.accept_ra_pinfo`, audit where it was set with `sysctl --system`, and observe any prefixes the host configured via `ip -6 addr show`.",
+    "fr": "Aucun journal dédié. Vérifiez la valeur active avec `sysctl net.ipv6.conf.all.accept_ra_pinfo`, auditez son origine avec `sysctl --system`, et observez les préfixes configurés par l'hôte avec `ip -6 addr show`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `sysctl` resource to set `net.ipv6.conf.all.accept_ra_pinfo` to `0`, persisting it in a Pavois-owned `/etc/sysctl.d/` drop-in and applying it live (no reboot). Run it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `sysctl` pour fixer `net.ipv6.conf.all.accept_ra_pinfo` à `0`, le rend persistant via un drop-in `/etc/sysctl.d/` géré par Pavois et l'applique à chaud (sans redémarrage). Appliquez-le avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "On hosts using **SLAAC** to obtain their IPv6 addresses, refusing prefix information stops automatic address configuration, which can break IPv6 connectivity. Apply only where the host uses **static IPv6** or DHCPv6 with manual prefixes, the standard server case. Do not enforce on routers/gateways that must process RA prefix data. No effect on IPv4-only systems.",
+    "fr": "Sur les hôtes utilisant **SLAAC** pour obtenir leurs adresses IPv6, refuser les informations de préfixe stoppe la configuration automatique des adresses, ce qui peut couper la connectivité IPv6. À appliquer uniquement quand l'hôte utilise une **IPv6 statique** ou DHCPv6 avec préfixes manuels, le cas serveur standard. Ne pas appliquer aux routeurs/passerelles devant traiter les préfixes des RA. Sans effet sur les systèmes IPv4 uniquement."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

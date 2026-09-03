@@ -1,17 +1,17 @@
 {
   "id": "sysctl-net-ipv6-conf-all-forwarding",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -39,6 +39,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.all.forwarding') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.all.forwarding[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -50,14 +53,13 @@
     "en": "Disable Kernel Parameter for IPv6 Forwarding",
     "fr": "Désactiver le paramètre noyau de transfert IPv6"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "IPv6 forwarding lets the kernel route packets from one interface to another, turning the host into a **router**. This is only appropriate for systems explicitly acting as gateways. On an end host or server, leaving forwarding enabled can allow traffic to **transit the machine**, bridging network segments that should remain isolated and bypassing perimeter controls.",
-    "fr": "Le transfert IPv6 permet au noyau de router les paquets d'une interface vers une autre, transformant l'hôte en **routeur**. Ceci n'est approprié que pour des systèmes agissant explicitement comme passerelles. Sur un hôte terminal ou un serveur, laisser le transfert activé peut autoriser du trafic à **transiter par la machine**, reliant des segments réseau censés rester isolés et contournant les contrôles de périmètre."
-  },
   "summary": {
     "en": "Sets `net.ipv6.conf.all.forwarding` to `0` so the kernel does not forward IPv6 packets between interfaces (the host is not a router).",
     "fr": "Fixe `net.ipv6.conf.all.forwarding` à `0` afin que le noyau ne transfère pas les paquets IPv6 entre interfaces (l'hôte n'est pas un routeur)."
+  },
+  "rationale": {
+    "en": "IPv6 forwarding lets the kernel route packets from one interface to another, turning the host into a **router**. This is only appropriate for systems explicitly acting as gateways. On an end host or server, leaving forwarding enabled can allow traffic to **transit the machine**, bridging network segments that should remain isolated and bypassing perimeter controls.",
+    "fr": "Le transfert IPv6 permet au noyau de router les paquets d'une interface vers une autre, transformant l'hôte en **routeur**. Ceci n'est approprié que pour des systèmes agissant explicitement comme passerelles. Sur un hôte terminal ou un serveur, laisser le transfert activé peut autoriser du trafic à **transiter par la machine**, reliant des segments réseau censés rester isolés et contournant les contrôles de périmètre."
   },
   "check_note": {
     "en": "Pavois reads the **effective** runtime value via the `kernel_parameter` resource (equivalent to `sysctl net.ipv6.conf.all.forwarding`) and asserts it is `0`. The live value is authoritative: forwarding is frequently toggled at runtime by containers, VPNs or `NetworkManager`, so a value declared in `/etc/sysctl.d/*` may be **overridden** in the running kernel, only reading the live parameter catches that.",
@@ -78,5 +80,7 @@
   "impact": {
     "en": "Disabling forwarding **breaks any role that routes IPv6 traffic**: routers, gateways, NAT boxes, VPN concentrators, and container/Kubernetes hosts that route pod traffic over IPv6. Before applying, confirm the system is a plain end host or server. Enforcing this on a forwarding node will cut off downstream IPv6 connectivity, exclude such hosts from the rule. No risk on non-routing systems.",
     "fr": "Désactiver le transfert **casse tout rôle qui route du trafic IPv6** : routeurs, passerelles, boîtiers NAT, concentrateurs VPN et hôtes conteneurs/Kubernetes qui routent le trafic des pods en IPv6. Avant d'appliquer, confirmez que le système est un simple hôte terminal ou serveur. Appliquer cette règle sur un nœud de transfert coupera la connectivité IPv6 en aval, excluez ces hôtes de la règle. Aucun risque sur les systèmes non routeurs."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

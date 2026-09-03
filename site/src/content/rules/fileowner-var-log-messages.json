@@ -1,6 +1,8 @@
 {
   "id": "fileowner-var-log-messages",
   "supported_os": [
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9"
   ],
@@ -15,27 +17,28 @@
   "norms": {},
   "check": [
     "only_if { file('/var/log/messages').exist? }",
-    "describe file('/var/log/messages') do",
-    "  its('uid') { should eq 0 }",
+    "describe command(\"stat -c %U /var/log/messages 2>/dev/null\") do",
+    "  its('stdout.strip') { should be_in ['root', 'root'] }",
     "end"
   ],
   "remediation": {
-    "owner": "root",
+    "command": "chown root /var/log/messages 2>/dev/null; true",
+    "name": "log-owner-var-log-messages",
+    "not_if": "stat -c %U /var/log/messages 2>/dev/null | grep -qxE 'root|root'",
     "path": "/var/log/messages",
-    "resource": "file"
+    "resource": "exec"
   },
   "title": {
     "en": "Verify User Who Owns /var/log/messages File",
     "fr": "Vérifier l'utilisateur propriétaire du fichier /var/log/messages"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/var/log/messages` is the **primary general system log on RHEL-family systems**, recording kernel messages, service events and errors. If it is not owned by **root (UID 0)**, an unprivileged or compromised process could read sensitive operational details or alter/delete entries, hiding signs of a fault or an intrusion and undermining incident analysis.",
-    "fr": "`/var/log/messages` est le **journal système général principal sur les systèmes de la famille RHEL**, enregistrant les messages du noyau, les événements de service et les erreurs. S'il n'appartient pas à **root (UID 0)**, un processus non privilégié ou compromis pourrait lire des détails opérationnels sensibles ou modifier/supprimer des entrées, masquant les signes d'une panne ou d'une intrusion et compromettant l'analyse d'incident."
-  },
   "summary": {
     "en": "Ensures the general system log `/var/log/messages` is **owned by `root` (UID 0)**.",
     "fr": "Garantit que le journal système général `/var/log/messages` est **détenu par `root` (UID 0)**."
+  },
+  "rationale": {
+    "en": "`/var/log/messages` is the **primary general system log on RHEL-family systems**, recording kernel messages, service events and errors. If it is not owned by **root (UID 0)**, an unprivileged or compromised process could read sensitive operational details or alter/delete entries, hiding signs of a fault or an intrusion and undermining incident analysis.",
+    "fr": "`/var/log/messages` est le **journal système général principal sur les systèmes de la famille RHEL**, enregistrant les messages du noyau, les événements de service et les erreurs. S'il n'appartient pas à **root (UID 0)**, un processus non privilégié ou compromis pourrait lire des détails opérationnels sensibles ou modifier/supprimer des entrées, masquant les signes d'une panne ou d'une intrusion et compromettant l'analyse d'incident."
   },
   "check_note": {
     "en": "Pavois checks that the **owner UID of `/var/log/messages` is `0` (root)** when the file exists (`only_if`), since this log is RHEL-specific. It reads the **live filesystem owner** (`stat`) on the target rather than a packaging default, so a `chown` from log rotation or a deployment tool is reported as the **effective on-disk state**.",
@@ -56,5 +59,7 @@
   "impact": {
     "en": "**Consequences if misconfigured:** a non-root owner can read operational data or tamper with the main system log, hiding faults or intrusions on RHEL-family hosts.\n\n**Precautions before applying:** re-owning to root is safe, on RHEL, rsyslog writes `/var/log/messages` as root by default, so the fix matches the expected runtime owner and does not interrupt logging. The `only_if` guard skips hosts where the file is absent.",
     "fr": "**Conséquences en cas de mauvaise configuration :** un propriétaire non-root peut lire des données opérationnelles ou altérer le journal système principal, masquant pannes ou intrusions sur les hôtes de la famille RHEL.\n\n**Précautions avant application :** réattribuer à root est sûr, sur RHEL, rsyslog écrit `/var/log/messages` en root par défaut, donc le correctif correspond au propriétaire attendu à l'exécution et n'interrompt pas la journalisation. La garde `only_if` ignore les hôtes où le fichier est absent."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

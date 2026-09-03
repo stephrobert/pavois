@@ -1,0 +1,37 @@
+{
+  "id": "umask-etc-profile",
+  "title": {
+    "en": "Ensure the Default Umask is Set Correctly in /etc/profile",
+    "fr": "S'assurer que l'umask par défaut est correctement configuré dans /etc/profile"
+  },
+  "summary": {
+    "en": "Ensures `/etc/profile` (and any `/etc/profile.d/*.sh` drop-in) sets a **restrictive `umask`** at least as strict as `0027`/`0077` per norm.",
+    "fr": "S'assure que `/etc/profile` (et tout drop-in `/etc/profile.d/*.sh`) définit un **`umask` restrictif** au moins aussi strict que `0027`/`0077` selon la norme."
+  },
+  "rationale": {
+    "en": "The **umask** determines the permissions stripped from newly created files and directories. `/etc/profile` and its `/etc/profile.d/*.sh` drop-ins set the system-wide umask for **login shells** (and POSIX `sh` sessions). A permissive value here means files created by users default to **group- or world-readable/writable**, exposing data to unauthorized accounts. Enforcing at least `0027` (CIS) / `0077` (ANSSI BP-028 R36) applies least privilege to file creation for the login-shell path.",
+    "fr": "L'**umask** détermine les permissions retirées aux fichiers et répertoires nouvellement créés. `/etc/profile` et ses drop-ins `/etc/profile.d/*.sh` définissent l'umask global des **shells de connexion** (et des sessions `sh` POSIX). Une valeur permissive ici signifie que les fichiers créés par les utilisateurs sont par défaut **lisibles/inscriptibles par le groupe ou tous**, exposant des données à des comptes non autorisés. Imposer au moins `0027` (CIS) / `0077` (ANSSI BP-028 R36) applique le moindre privilège à la création de fichiers pour le chemin shell de connexion."
+  },
+  "check_note": {
+    "en": "pavois scans **both** `/etc/profile` **and every `/etc/profile.d/*.sh` drop-in**, takes the **last effective** `umask` line (`tail -1`), and tests it against the norm target with a **bitmask comparison** (`(value & mask) == mask`), so `0077` satisfies `0027`. Including the `profile.d` drop-ins is what a file-by-file check misses: many distributions ship the real umask in a drop-in (e.g. `/etc/profile.d/umask.sh`), and a later drop-in can override `/etc/profile` - reading the **merged, last-wins** result reflects what a login shell actually applies.",
+    "fr": "Pavois examine **à la fois** `/etc/profile` **et chaque drop-in `/etc/profile.d/*.sh`**, retient la **dernière** ligne `umask` effective (`tail -1`) et la compare à la cible de la norme par **masque de bits** (`(valeur & masque) == masque`), si bien que `0077` satisfait `0027`. Inclure les drop-ins `profile.d` est ce qu'un contrôle fichier par fichier rate : de nombreuses distributions livrent l'umask réel dans un drop-in (par ex. `/etc/profile.d/umask.sh`), et un drop-in postérieur peut surcharger `/etc/profile` : lire le résultat **fusionné, dernier l'emporte** reflète ce qu'un shell de connexion applique réellement."
+  },
+  "verify": {
+    "en": "Inspect the effective configured value across all sources:\n\n```\ngrep -hiE '^[[:space:]]*umask[[:space:]]+[0-7]+' /etc/profile /etc/profile.d/*.sh | tail -1\n```\n\nExpected `umask 027` (or stricter). Confirm the runtime value in a login shell with `bash -lc umask` (expected `0027` or `0077`).",
+    "fr": "Inspectez la valeur configurée effective sur toutes les sources :\n\n```\ngrep -hiE '^[[:space:]]*umask[[:space:]]+[0-7]+' /etc/profile /etc/profile.d/*.sh | tail -1\n```\n\nAttendu `umask 027` (ou plus strict). Confirmez la valeur d'exécution dans un shell de connexion avec `bash -lc umask` (attendu `0027` ou `0077`)."
+  },
+  "logs": {
+    "en": "umask has no audit event; verify it from current state. List the source lines with `grep -i umask /etc/profile /etc/profile.d/*.sh`, and the value a login shell inherits with `bash -lc umask`. To check resulting file permissions, set the umask then `touch /tmp/t && stat -c '%a' /tmp/t`.",
+    "fr": "L'umask ne génère aucun événement d'audit ; vérifiez-le depuis l'état courant. Listez les lignes source avec `grep -i umask /etc/profile /etc/profile.d/*.sh`, et la valeur héritée par un shell de connexion avec `bash -lc umask`. Pour contrôler les droits résultants, fixez l'umask puis `touch /tmp/t && stat -c '%a' /tmp/t`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is wired for this rule (`remediation` is empty), so it must be applied **manually**: set `umask 027` (or `umask 077` for ANSSI) in `/etc/profile` or a dedicated `/etc/profile.d/umask.sh`, ensuring no later-sorted drop-in re-loosens it (drop-ins are sourced in lexical order). New login shells inherit it immediately; existing sessions must re-login.",
+    "fr": "Aucun plan de durcissement automatisé n'est câblé pour cette règle (`remediation` est vide) ; elle doit être appliquée **manuellement** : définissez `umask 027` (ou `umask 077` pour l'ANSSI) dans `/etc/profile` ou un `/etc/profile.d/umask.sh` dédié, en veillant à ce qu'aucun drop-in trié plus tard ne le réassouplisse (les drop-ins sont sourcés dans l'ordre lexical). Les nouveaux shells de connexion en héritent immédiatement ; les sessions existantes doivent se reconnecter."
+  },
+  "impact": {
+    "en": "Low risk, scoped to **login-shell** sessions. As with the other umask sources, tightening to `0077` strips group access from newly created files, which can break workflows that rely on **group-shared files** (collaborative directories, web stacks expecting `0664`/`0775`). Audit such cases before enforcing; where group sharing is needed, prefer **setgid directories + ACLs** over loosening the global umask. Beware drop-in ordering: a stricter `/etc/profile` value can still be overridden by a later `profile.d` file. The change affects only **new** files and is reversible by editing the line.",
+    "fr": "Risque faible, limité aux sessions de **shell de connexion**. Comme pour les autres sources d'umask, un renforcement à `0077` retire l'accès groupe aux fichiers nouvellement créés, ce qui peut casser des flux reposant sur des **fichiers partagés en groupe** (répertoires collaboratifs, piles web attendant `0664`/`0775`). Auditez ces cas avant d'imposer la règle ; lorsque le partage en groupe est requis, préférez des **répertoires setgid + ACL** à l'assouplissement de l'umask global. Attention à l'ordre des drop-ins : une valeur plus stricte dans `/etc/profile` peut tout de même être surchargée par un fichier `profile.d` ultérieur. Le changement n'affecte que les **nouveaux** fichiers et se reverse en éditant la ligne."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

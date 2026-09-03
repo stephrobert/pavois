@@ -3,10 +3,13 @@
   "supported_os": [
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
@@ -29,6 +32,9 @@
   "check": [
     "describe command('auditctl -l') do",
     "  its('stdout') { should match(/(-k +|key=)user_emulation\\b/) }",
+    "end",
+    "describe command(\"grep -rhwsE 'user_emulation' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -39,14 +45,13 @@
     "en": "Record Events When Executables Are Run As Another User",
     "fr": "Enregistrer les événements lorsqu'un exécutable est lancé sous l'identité d'un autre utilisateur"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "An **audit log of users running commands with temporary elevated privileges** (via `sudo`/`su`, where the real uid differs from the audit uid `auid`) is essential to reporting and accountability. Administrators correlate these audit records with `sudo`'s own logfile to confirm no unauthorized commands were run. Misuse of privileged functions, by careless authorized users or by an attacker on a compromised account, is a serious, ongoing concern, and auditing privilege emulation is a primary way to **detect such misuse and insider/advanced-persistent-threat activity**.",
-    "fr": "Un **journal d'audit des utilisateurs exécutant des commandes avec des privilèges temporairement élevés** (via `sudo`/`su`, où l'uid réel diffère de l'uid d'audit `auid`) est essentiel au reporting et à la responsabilité. Les administrateurs corrèlent ces enregistrements avec le journal propre de `sudo` pour confirmer qu'aucune commande non autorisée n'a été exécutée. Le détournement des fonctions privilégiées, par des utilisateurs autorisés négligents ou par un attaquant sur un compte compromis, est une préoccupation sérieuse et permanente, et auditer l'émulation de privilèges est un moyen primordial de **détecter cet abus et l'activité d'une menace interne ou persistante avancée**."
-  },
   "summary": {
     "en": "Enforces an **auditd** rule (key `user_emulation`) that records when a process runs under a different user identity than the logged-in `auid`.",
     "fr": "Impose une règle **auditd** (clé `user_emulation`) qui enregistre l'exécution d'un processus sous une identité utilisateur différente de l'`auid` connecté."
+  },
+  "rationale": {
+    "en": "An **audit log of users running commands with temporary elevated privileges** (via `sudo`/`su`, where the real uid differs from the audit uid `auid`) is essential to reporting and accountability. Administrators correlate these audit records with `sudo`'s own logfile to confirm no unauthorized commands were run. Misuse of privileged functions, by careless authorized users or by an attacker on a compromised account, is a serious, ongoing concern, and auditing privilege emulation is a primary way to **detect such misuse and insider/advanced-persistent-threat activity**.",
+    "fr": "Un **journal d'audit des utilisateurs exécutant des commandes avec des privilèges temporairement élevés** (via `sudo`/`su`, où l'uid réel diffère de l'uid d'audit `auid`) est essentiel au reporting et à la responsabilité. Les administrateurs corrèlent ces enregistrements avec le journal propre de `sudo` pour confirmer qu'aucune commande non autorisée n'a été exécutée. Le détournement des fonctions privilégiées, par des utilisateurs autorisés négligents ou par un attaquant sur un compte compromis, est une préoccupation sérieuse et permanente, et auditer l'émulation de privilèges est un moyen primordial de **détecter cet abus et l'activité d'une menace interne ou persistante avancée**."
   },
   "check_note": {
     "en": "Pavois runs `auditctl -l` and checks a rule with the key `user_emulation` is loaded. Reading the **live kernel ruleset** beats parsing `/etc/audit/rules.d/*.rules`: a rule on disk that was never loaded (no `augenrules --load`, syntax error, reload failure) would make a file scanner falsely **pass**. `auditctl -l` reflects what the kernel audits now.",
@@ -67,5 +72,7 @@
   "impact": {
     "en": "These are **passive syscall watches**, they never block privilege emulation, so `sudo`/`su` keep working; they only add records to `/var/log/audit/audit.log`. Precautions:\n\n- Because the rule fires on every `execve` where `euid != uid`, hosts with heavy `sudo` usage (automation, CI runners) can generate substantial audit volume, ensure `/var/log/audit` has space and rotation, and consider `auditd`'s backlog limits.\n- If the ruleset is immutable (`-e 2`), the rule can only be added after a reboot.\n- Confirm the rule parsed with `augenrules --load` and re-check `auditctl -l`.",
     "fr": "Ce sont des **surveillances d'appels système passives**, elles ne bloquent jamais l'émulation de privilèges, donc `sudo`/`su` continuent de fonctionner ; elles ajoutent seulement des enregistrements dans `/var/log/audit/audit.log`. Précautions :\n\n- Comme la règle se déclenche à chaque `execve` où `euid != uid`, les hôtes à fort usage de `sudo` (automatisation, runners CI) peuvent générer un volume d'audit important, assurez-vous que `/var/log/audit` dispose d'espace et de rotation, et surveillez les limites de backlog d'`auditd`.\n- Si le jeu de règles est immuable (`-e 2`), la règle ne peut être ajoutée qu'après un redémarrage.\n- Confirmez que la règle a été analysée avec `augenrules --load` puis revérifiez `auditctl -l`."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

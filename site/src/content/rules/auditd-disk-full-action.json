@@ -1,17 +1,17 @@
 {
   "id": "auditd-disk-full-action",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -25,8 +25,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "6.3.2.3",
-      "6.2.2.3"
+      "6.2.2.3",
+      "6.3.2.3"
     ],
     "nist": [
       "AU-5(1)",
@@ -38,7 +38,7 @@
     "stig": "UBTU-22-653030"
   },
   "check": [
-    "describe command('grep -qiE \\'^[[:space:]]*disk_full_action[[:space:]]*=[[:space:]]*(halt|single)\\b\\' /etc/audit/auditd.conf 2>/dev/null && echo ok || echo ko') do",
+    "describe command('grep -qiE \\'^[[:space:]]*disk_full_action[[:space:]]*=[[:space:]]*(syslog|email|exec|single|halt)\\b\\' /etc/audit/auditd.conf 2>/dev/null && echo ok || echo ko') do",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
@@ -47,20 +47,19 @@
     "key": "disk_full_action",
     "resource": "conf_line",
     "service": "auditd",
-    "value": "single"
+    "value": "syslog"
   },
   "title": {
     "en": "Configure auditd Disk Full Action when Disk Space Is Full",
     "fr": "Configurer l'action d'auditd lorsque le disque d'audit est plein"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "When the disk holding audit logs is **completely full**, auditd can no longer record events. If no defensive action is taken, the system keeps running **blind**, privilege escalations, file tampering and intrusions go unrecorded, destroying accountability and forensic evidence. Switching to single-user mode (`single`) or halting (`halt`) forces an administrator to intervene before any further unaudited activity can occur.",
-    "fr": "Lorsque le disque contenant les journaux d'audit est **totalement plein**, auditd ne peut plus enregistrer d'événements. Sans action défensive, le système continue de fonctionner **à l'aveugle** : élévations de privilèges, altérations de fichiers et intrusions ne sont plus tracées, ce qui détruit la traçabilité et les preuves forensiques. Le passage en mode mono-utilisateur (`single`) ou l'arrêt (`halt`) force un administrateur à intervenir avant toute activité non auditée."
-  },
   "summary": {
     "en": "Sets `disk_full_action` in `/etc/audit/auditd.conf` to `single` (or `halt`) so the system reacts decisively when the audit partition is full.",
     "fr": "Définit `disk_full_action` dans `/etc/audit/auditd.conf` sur `single` (ou `halt`) afin que le système réagisse de manière décisive lorsque la partition d'audit est pleine."
+  },
+  "rationale": {
+    "en": "When the disk holding audit logs is **completely full**, auditd can no longer record events. If no defensive action is taken, the system keeps running **blind**, privilege escalations, file tampering and intrusions go unrecorded, destroying accountability and forensic evidence. Switching to single-user mode (`single`) or halting (`halt`) forces an administrator to intervene before any further unaudited activity can occur.",
+    "fr": "Lorsque le disque contenant les journaux d'audit est **totalement plein**, auditd ne peut plus enregistrer d'événements. Sans action défensive, le système continue de fonctionner **à l'aveugle** : élévations de privilèges, altérations de fichiers et intrusions ne sont plus tracées, ce qui détruit la traçabilité et les preuves forensiques. Le passage en mode mono-utilisateur (`single`) ou l'arrêt (`halt`) force un administrateur à intervenir avant toute activité non auditée."
   },
   "check_note": {
     "en": "Pavois reads the effective `disk_full_action` directive from `/etc/audit/auditd.conf` and requires it to be `halt` or `single`. The value governs the running daemon's behaviour, so confirming the configured directive is the reliable indicator of what auditd will do on a full disk.",
@@ -81,5 +80,7 @@
   "impact": {
     "en": "With `single` or `halt`, a full audit disk will **take the host offline** (single-user mode) or **stop it**, intentional, but disruptive on production. **Precaution:** ensure audit logs sit on a dedicated partition with adequate size and a working rotation policy (`max_log_file`, `num_logs`, `space_left_action`) so the disk-full condition is rare. On remote/headless hosts, `halt` requires physical or console access to recover; prefer `single` and pair it with monitoring/alerting so you act before the disk fills.",
     "fr": "Avec `single` ou `halt`, un disque d'audit plein va **mettre l'hôte hors ligne** (mode mono-utilisateur) ou **l'arrêter**, intentionnel mais perturbant en production. **Précaution :** placez les journaux d'audit sur une partition dédiée correctement dimensionnée avec une rotation fonctionnelle (`max_log_file`, `num_logs`, `space_left_action`) pour que la saturation reste rare. Sur les hôtes distants/sans écran, `halt` exige un accès physique ou console pour redémarrer ; préférez `single` et associez-le à une supervision/alerte afin d'agir avant la saturation."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

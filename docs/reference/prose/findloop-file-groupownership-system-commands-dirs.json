@@ -1,0 +1,37 @@
+{
+  "id": "findloop-file-groupownership-system-commands-dirs",
+  "title": {
+    "en": "Verify that system commands files are group owned by root or a system account",
+    "fr": "Vérifier que les fichiers de commandes système ont root comme groupe propriétaire"
+  },
+  "summary": {
+    "en": "Ensures every executable in the system command directories (`/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin`, `/usr/local/sbin`) is group-owned by **root**.",
+    "fr": "Garantit que chaque exécutable des répertoires de commandes système (`/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin`, `/usr/local/sbin`) a **root** comme groupe propriétaire."
+  },
+  "rationale": {
+    "en": "The binaries under `/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin` and `/usr/local/sbin` are run by privileged users and system services. If one of these files is group-owned by a non-system group, any member of that group could replace or modify the binary and have their code executed with the privileges of whoever runs it, a direct path to privilege escalation or persistence. Keeping them group-owned by **root** ensures only the most trusted account can alter system commands.",
+    "fr": "Les binaires de `/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`, `/usr/local/bin` et `/usr/local/sbin` sont exécutés par des utilisateurs privilégiés et des services système. Si l'un de ces fichiers appartient à un groupe non système, tout membre de ce groupe pourrait remplacer ou modifier le binaire et faire exécuter son code avec les privilèges de celui qui le lance, une voie directe vers l'élévation de privilèges ou la persistance. Les conserver avec **root** comme groupe garantit que seul le compte le plus fiable peut altérer les commandes système."
+  },
+  "check_note": {
+    "en": "Pavois runs `find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f ! -group root` and expects **empty output**, any path returned is a binary with a non-root group. Scanning the actual on-disk files (not the package database) catches manually installed tools, scripts dropped into `/usr/local/bin` and binaries whose group was changed after installation, exactly the cases a package-manifest audit misses.",
+    "fr": "Pavois lance `find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f ! -group root` et attend une **sortie vide** : tout chemin renvoyé est un binaire dont le groupe n'est pas root. Analyser les fichiers réellement sur le disque (et non la base de données de paquets) détecte les outils installés manuellement, les scripts déposés dans `/usr/local/bin` et les binaires dont le groupe a été modifié après installation, précisément les cas qu'un audit de manifeste de paquet manque."
+  },
+  "verify": {
+    "en": "Run the scan manually:\n\n```\nfind /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f ! -group root\n```\n\n**Expected output: nothing** (empty). Any printed path is a binary whose group is not `root`; inspect it with `ls -l <file>`.",
+    "fr": "Lancez l'analyse manuellement :\n\n```\nfind /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f ! -group root\n```\n\n**Sortie attendue : rien** (vide). Tout chemin affiché est un binaire dont le groupe n'est pas `root` ; inspectez-le avec `ls -l <fichier>`."
+  },
+  "logs": {
+    "en": "List the offenders and their group with `find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f ! -group root -printf '%g %p\\n'`. On RPM systems, compare against the shipped metadata with `rpm -Vf <file>` (look for the `G` flag); on Debian, packaged binaries should be `root` by design, so a mismatch points to a local change.",
+    "fr": "Listez les fautifs et leur groupe avec `find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -type f ! -group root -printf '%g %p\\n'`. Sur les systèmes RPM, comparez aux métadonnées d'origine avec `rpm -Vf <fichier>` (drapeau `G`) ; sur Debian, les binaires empaquetés sont `root` par conception, donc un écart révèle une modification locale."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined for this rule, so it must be applied **manually**. After identifying the offending files, set their group with `chgrp root <file>` (only for binaries that should genuinely belong to root). Investigate why the group was non-root before changing it, an unexpected owner can indicate a compromised or misinstalled binary.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini pour cette règle ; elle doit être appliquée **manuellement**. Après avoir identifié les fichiers fautifs, fixez leur groupe avec `chgrp root <fichier>` (uniquement pour les binaires qui doivent réellement appartenir à root). Cherchez pourquoi le groupe n'était pas root avant de le changer, un propriétaire inattendu peut signaler un binaire compromis ou mal installé."
+  },
+  "impact": {
+    "en": "Risk if left as-is: a writable system binary lets a non-root group member hijack any privileged process that runs it. Before fixing: confirm the file is meant to be root-group-owned, a handful of third-party packages legitimately ship setgid helpers owned by a dedicated group, and blindly running `chgrp root` on them can break the tool or its `setgid` behaviour. Change ownership file by file, not with a recursive sweep, and verify the binary's integrity (`rpm -Vf` / known-good checksum) first.",
+    "fr": "Risque en l'état : un binaire système modifiable permet à un membre d'un groupe non root de détourner tout processus privilégié qui l'exécute. Avant de corriger : confirmez que le fichier doit bien avoir root comme groupe, quelques paquets tiers livrent légitimement des utilitaires setgid appartenant à un groupe dédié, et leur appliquer `chgrp root` aveuglément peut casser l'outil ou son comportement `setgid`. Changez le propriétaire fichier par fichier, jamais par balayage récursif, et vérifiez d'abord l'intégrité du binaire (`rpm -Vf` / somme de contrôle connue)."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

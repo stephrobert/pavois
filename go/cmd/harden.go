@@ -60,6 +60,8 @@ var (
 	haStandard string
 
 	haSudoPrompt        bool
+	haRestorePoint      string
+	haNoRestorePoint    bool
 	haIUnderstandDanger bool
 )
 
@@ -89,6 +91,8 @@ func init() {
 	hardenApplyCmd.Flags().BoolVar(&haReboot, "reboot", false, "when changes need it, reboot the target via a Chef `reboot` resource at the end of the run")
 	hardenApplyCmd.Flags().StringVar(&haStandard, "standard", "", "apply each rule's value for THIS standard (bp28|cis|nist|…); default = the most-secure value")
 	hardenApplyCmd.Flags().BoolVar(&haSudoPrompt, "sudo-prompt", false, "prompt for the sudo password (no echo; also reads PAVOIS_SUDO_PASSWORD) — for a least-privilege target account without NOPASSWD")
+	hardenApplyCmd.Flags().StringVar(&haRestorePoint, "restore-point", "", "where to write the restore point (default: restore-points/<target>-<timestamp>)")
+	hardenApplyCmd.Flags().BoolVar(&haNoRestorePoint, "no-restore-point", false, "do NOT photograph the prior state before converging (you lose `harden rollback`)")
 	hardenApplyCmd.Flags().BoolVar(&haIUnderstandDanger, "i-understand-danger", false, "acknowledge ALL `danger:` items at once (brick/lockout risk); otherwise set `acknowledged: true` per item in the plan")
 	hardenCmd.AddCommand(hardenApplyCmd)
 
@@ -116,6 +120,7 @@ type refControl struct {
 	Remediation     map[string]any `yaml:"remediation"`
 	RequiresPackage string         `yaml:"requires_package"`
 	Danger          string         `yaml:"danger"`
+	Class           string         `yaml:"remediation_class"`
 }
 type refDoc struct {
 	Rules map[string]refControl `yaml:"rules"`
@@ -127,6 +132,7 @@ type planRule struct {
 	Severity        string         `yaml:"severity"`
 	Status          string         `yaml:"status"`
 	Danger          string         `yaml:"danger,omitempty"`       // brick/lockout risk, shown before apply
+	Class           string         `yaml:"class,omitempty"`        // non-auto: a recipe/rebuild the apply cannot run (install-time, kernel-build, manual)
 	Acknowledged    *bool          `yaml:"acknowledged,omitempty"` // must be flipped true (or --i-understand-danger) to apply a danger item
 	Apply           *bool          `yaml:"apply,omitempty"`
 	Choose          *string        `yaml:"choose,omitempty"`
@@ -240,6 +246,12 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 			}
 			pr.RequiresPackage = e.RequiresPackage // dependency: install this prereq when applied
 			pr.Danger = e.Danger                   // brick/lockout risk surfaced before the operator opts in
+			if e.Class != "" && e.Class != "auto" {
+				// install-time / kernel-build / manual: no apply can close this gap — it takes a
+				// recipe or a rebuild. Saying so keeps a convergence loop from re-enabling it
+				// every pass and never reaching a fixpoint.
+				pr.Class = e.Class
+			}
 			switch st {
 			case "gap", "compliant":
 				// Carry the remediation for BOTH: gaps need fixing, and a control that's
@@ -415,9 +427,15 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 
 	inst := map[string]bool{}
 	rm := map[string]bool{}
-	sysctl := map[string]string{}             // key -> value
-	sshd := map[string]string{}               // directive -> value
-	svc := map[string]string{}                // service -> "action[…]"
+	sysctl := map[string]string{} // key -> value
+	sshd := map[string]string{}   // directive -> value
+	sshdEnabled := false          // an sshd_setting (or AllowUsers) is ACTIVELY enabled — not just compliant siblings
+	allowUsersSet := false        // the plan explicitly set ssh_allow_users/groups (else preserve the live value)
+	svc := map[string]string{}    // service -> "action[…]"
+	// Exclusive groups (firewall, syslog, time-sync) are resolved ACROSS the whole plan:
+	// candidates = every technology the group offers, chosen = the ones a control picked.
+	exclCandidates := map[string]bool{}
+	exclChosen := map[string]bool{}
 	files := map[string]map[string]string{}   // path -> attr -> value
 	dirs := map[string]map[string]string{}    // directory path -> attr -> value (mode/owner/group)
 	keyvals := map[string]map[string]string{} // config file -> key -> value (drop-in, whole-file)
@@ -426,11 +444,14 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 	pamLines := []pamLine{}                   // PAM stack lines inserted before an anchor (idempotent)
 	execs := []execRem{}                      // arbitrary guarded command (e.g. chmod on a glob)
 	kmods := map[string]bool{}
-	cmdline := map[string]bool{}        // kernel cmdline params -> one grub drop-in
-	mounts := map[string]*mountAgg{}    // mount point -> aggregated tmpfs options (all-or-nothing)
-	fwEnableCmd := ""                   // firewall: open SSH then enable (no lockout), emitted once
-	fwNftConfig := ""                   // native nftables ruleset (hardened-kernel friendly), emitted once
-	grubPwWanted := false               // a grub_password remediation was enabled
+	cmdline := map[string]bool{}     // kernel cmdline params -> one grub drop-in
+	mounts := map[string]*mountAgg{} // mount point -> aggregated tmpfs options (all-or-nothing)
+	fwEnableCmd := ""                // firewall: open SSH then enable (no lockout), emitted once
+	fwNftConfig := ""                // native nftables ruleset (hardened-kernel friendly), emitted once
+	grubPwWanted := false            // a grub_password remediation was enabled
+	// WHAT to do to grub is policy and lives in the RULE (command_apt / command_rhel); the engine
+	// only generates the secret, vaults it, and executes. harden.go is the engine (#157).
+	grubCmdApt, grubCmdRhel := "", ""
 	dconfEntries := map[string]string{} // dconf key -> value, aggregated from the rule data
 	faillockWanted := false             // a pam_faillock remediation was enabled
 	faillockParams := ""                // pam_faillock module args (from the rule data)
@@ -479,6 +500,24 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 				}
 			}
 		}
+		// misc-sshd-limit-user-access is manual by default (which users/groups may SSH is
+		// site-specific, Pavois cannot guess it). If the operator listed them in the plan,
+		// enforce AllowUsers/AllowGroups as an sshd drop-in instead of a manual script. This runs
+		// BEFORE the nil-remediation skip below: the control carries a remediation only for some
+		// OSes, but the operator's override must apply on EVERY OS (else SSH access-limiting is
+		// silently dropped where no @os remediation exists — e.g. debian13, ubuntu, RHEL).
+		// NB: the list MUST include the account Pavois connects as, or SSH locks out.
+		if enabled && cid == "misc-sshd-limit-user-access" && (len(r.SSHAllowUsers) > 0 || len(r.SSHAllowGroups) > 0) {
+			sshdEnabled = true
+			allowUsersSet = true
+			if len(r.SSHAllowUsers) > 0 {
+				setKV(sshd, "allowusers", strings.Join(r.SSHAllowUsers, " "), "sshd")
+			}
+			if len(r.SSHAllowGroups) > 0 {
+				setKV(sshd, "allowgroups", strings.Join(r.SSHAllowGroups, " "), "sshd")
+			}
+			continue
+		}
 		if r.Remediation == nil {
 			if enabled {
 				pendingEnabled++ // enabled but no remediation yet — don't skip silently
@@ -494,25 +533,29 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 				reboot = true
 			}
 		}
-		// misc-sshd-limit-user-access is manual by default (which users/groups may SSH is
-		// site-specific, Pavois cannot guess it). If the operator listed them in the plan,
-		// enforce AllowUsers/AllowGroups as an sshd drop-in instead of a manual script.
-		// NB: the list MUST include the account Pavois connects as, or SSH locks out.
-		if enabled && cid == "misc-sshd-limit-user-access" && (len(r.SSHAllowUsers) > 0 || len(r.SSHAllowGroups) > 0) {
-			if len(r.SSHAllowUsers) > 0 {
-				setKV(sshd, "allowusers", strings.Join(r.SSHAllowUsers, " "), "sshd")
-			}
-			if len(r.SSHAllowGroups) > 0 {
-				setKV(sshd, "allowgroups", strings.Join(r.SSHAllowGroups, " "), "sshd")
-			}
-			continue
-		}
 		switch res {
 		case "choose":
 			// "<group>-present" gap: the admin picked a technology to set up
 			opts, _ := m["options"].(map[string]any)
 			if o, ok := opts[r.Choose].(map[string]any); ok {
 				inst[s(o["package"])] = true
+				// An exclusive group means ONE technology, and the plan may contain SEVERAL controls
+				// of the same group (firewall-present picks the daemon, firewall-default-deny picks
+				// the policy). Never decide "what to disable" from one control alone: two controls
+				// whose defaults differ would each disable the other's pick, and a hardened host
+				// would come out with NO firewall at all (measured on a clean-room debian12: ufw and
+				// nftables both installed, both dead). Record the candidates and the picks here, and
+				// resolve the whole group ONCE, after every control has spoken.
+				for name, v := range opts {
+					vo, _ := v.(map[string]any)
+					if vo == nil || s(vo["service"]) == "" {
+						continue
+					}
+					exclCandidates[s(vo["service"])] = true
+					if name == r.Choose {
+						exclChosen[s(vo["service"])] = true
+					}
+				}
 				// Firewall policy (the nftables ruleset, the ufw command sequence) lives in the
 				// rule as DATA — see the `ruleset`/`enable_cmd` fields on the option. Here we only
 				// substitute the dynamic SSH allow-list: `ssh_allow_from` in the plan restricts SSH
@@ -551,6 +594,9 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 			}
 		case "sshd_setting":
 			setKV(sshd, s(m["directive"]), s(m["value"]), "sshd")
+			if enabled {
+				sshdEnabled = true
+			}
 		case "package":
 			if s(m["action"]) == "remove" {
 				rm[s(m["name"])] = true
@@ -629,6 +675,7 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 			ma.opts[s(m["option"])] = true // options aggregated per mount point (below)
 		case "grub_password":
 			grubPwWanted = true // Pavois generates the secret + vaults it (below)
+			grubCmdApt, grubCmdRhel = s(m["command_apt"]), s(m["command_rhel"])
 		case "file":
 			path := s(m["path"])
 			if files[path] == nil {
@@ -640,8 +687,15 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 			}
 			for _, k := range []string{"owner", "group", "mode", "content", "verify"} {
 				if v, ok := m[k]; ok {
-					setKV(files[path], path+"#"+k, s(v), "file "+k)
-					files[path][k] = s(v)
+					val := s(v)
+					// A config file must end with a newline: the stricter visudo in Ubuntu 26.04
+					// rejects a sudoers drop-in with no trailing line terminator ("missing line
+					// terminator at end of file"), which aborts the whole converge. Harmless elsewhere.
+					if k == "content" && val != "" && !strings.HasSuffix(val, "\n") {
+						val += "\n"
+					}
+					setKV(files[path], path+"#"+k, val, "file "+k)
+					files[path][k] = val
 				}
 			}
 		case "directory":
@@ -722,11 +776,39 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		_, _ = fmt.Fprintf(&b, "execute 'pavois-firewall-enable' do\n  command %q\n  ignore_failure true\n  not_if '/usr/sbin/ufw status 2>/dev/null | grep -q \"Status: active\"'\nend\n\n", fwEnableCmd)
 		n++
 	}
+	// One firewall, one syslog, one time-sync: disable the candidates NOBODY picked. Doing this per
+	// control would make two controls of the same group cancel each other out (that is exactly how a
+	// hardened host ended up with ufw and nftables both installed and both dead).
+	var unpicked []string
+	for s2 := range exclCandidates {
+		if !exclChosen[s2] {
+			unpicked = append(unpicked, s2)
+		}
+	}
+	if len(unpicked) > 0 {
+		sort.Strings(unpicked)
+		execs = append(execs, execRem{
+			name: "pavois-exclusive-groups",
+			command: "for s in " + strings.Join(unpicked, " ") +
+				"; do systemctl list-unit-files ${s}.service --no-legend 2>/dev/null | grep -q . && " +
+				"systemctl disable --now $s 2>/dev/null; done; true",
+		})
+		n++
+	}
+
 	if fwNftConfig != "" { // native nftables: write the ruleset, load it, enable the unit
 		// ignore_failure on the load+service: a bad ruleset or missing package leaves the firewall
 		// control failing (visible in the re-scan), never aborts the run.
 		_, _ = fmt.Fprintf(&b, "file '/etc/nftables.conf' do\n  content %q\n  mode '0600'\nend\n\n", fwNftConfig)
 		_, _ = fmt.Fprintf(&b, "execute 'pavois-nft-load' do\n  command 'nft -f /etc/nftables.conf'\n  ignore_failure true\n  subscribes :run, 'file[/etc/nftables.conf]', :immediately\nend\n\n")
+		// RHEL's nftables.service does NOT read /etc/nftables.conf: it loads what
+		// /etc/sysconfig/nftables.conf includes. Without this, the ruleset is live until the next
+		// reboot and the box comes back with an EMPTY firewall (seen on rhel10: nftables active,
+		// zero rules, and the default-deny control failing while the host was in fact wide open).
+		bootInc := "if [ -f /etc/sysconfig/nftables.conf ] && ! grep -q '/etc/nftables.conf' " +
+			"/etc/sysconfig/nftables.conf; then printf 'include \"/etc/nftables.conf\"\\n' >> " +
+			"/etc/sysconfig/nftables.conf; fi; true"
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-nft-boot-include' do\n  command %q\n  ignore_failure true\nend\n\n", bootInc)
 		_, _ = fmt.Fprintf(&b, "service 'nftables' do\n  action [:enable, :start]\n  ignore_failure true\nend\n\n")
 		n++
 	}
@@ -791,15 +873,27 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		// static), erroring inside load_current_resource where even ignore_failure can't catch it.
 		// only_if the unit exists; each verb is tolerant (|| true) so a refused stop/enable-of-static
 		// never aborts the run. systemctl enable/start/disable/stop == the Chef actions on Debian.
+		// The rule may name the unit with or without the suffix: normalise, or the guard below
+		// looked for `rsync.service.service`, never matched, and the whole execute was SKIPPED —
+		// which is how an ENABLED rsync daemon survived every apply on the debian golden.
+		unit := k
+		if !strings.Contains(unit, ".") {
+			unit += ".service"
+		}
+		base := strings.TrimSuffix(unit, ".service")
 		var svcCmds []string
 		for _, a := range strings.Split(svc[k], ",") {
 			verb := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(a), ":"))
 			if verb != "" {
-				svcCmds = append(svcCmds, "systemctl "+verb+" "+k+" 2>/dev/null || true")
+				svcCmds = append(svcCmds, "systemctl "+verb+" "+unit+" 2>/dev/null || true")
 			}
 		}
-		_, _ = fmt.Fprintf(&b, "execute 'pavois-service-%s' do\n  command %q\n  only_if \"systemctl cat %s.service >/dev/null 2>&1\"\n  ignore_failure true\nend\n\n",
-			k, strings.Join(svcCmds, "; "), k)
+		// A SysV service (Debian rsync) has NO unit file at all: `systemctl cat` and
+		// `list-unit-files` both fail on it, while systemctl still enables/disables it through
+		// systemd-sysv-install. So the init script counts as the unit existing.
+		guard := fmt.Sprintf("systemctl cat %s >/dev/null 2>&1 || test -e /etc/init.d/%s", unit, base)
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-service-%s' do\n  command %q\n  only_if %q\n  ignore_failure true\nend\n\n",
+			base, strings.Join(svcCmds, "; "), guard)
 		n++
 	}
 	for _, mod := range sortedKeys(kmods) {
@@ -857,6 +951,11 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		}
 		if v, ok := fa["verify"]; ok { // e.g. visudo -cf %{path} — never ship an invalid file
 			_, _ = fmt.Fprintf(&b, "  verify '%s'\n", v)
+			// The verify still PROTECTS (invalid content is never written), but one rejected file
+			// must not abort the WHOLE converge — e.g. Ubuntu 26.04 ships sudo-rs, which rejects
+			// `Defaults logfile=…` ("unknown setting"), and without this that single control tanked
+			// every other one. Failure is logged; that control just stays a gap for its own scan.
+			b.WriteString("  ignore_failure true\n")
 		}
 		if !hasContent { // pure owner/perm fix: the `file` resource fails on a DIRECTORY or a
 			// missing path (cross-OS noise like /var/log/apt). Guard so it SKIPS instead of
@@ -1015,20 +1114,42 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 	}
 
 	// All sshd settings -> ONE drop-in, validated (sshd -t) before it goes live
-	// (no lockout) and reloaded (not restarted, keeps existing sessions).
-	if len(sshd) > 0 {
+	// (no lockout) and reloaded (not restarted, keeps existing sessions). Only rewrite it when an
+	// sshd_setting is ACTIVELY enabled: `sshd` also collects COMPLIANT siblings (keepCompliant) so
+	// the regenerated drop-in stays complete, but if nothing sshd is being changed we must NOT
+	// touch the file — else an unrelated apply (packages, sysctl, audit) would regenerate it and
+	// silently drop AllowUsers/AllowGroups (which come from a `manual` control, not re-emitted).
+	if len(sshd) > 0 && sshdEnabled {
 		var content strings.Builder
 		for _, k := range sortedKeysS(sshd) {
 			content.WriteString(k + " " + sshd[k] + "\\n")
 		}
 		// The drop-in dir is absent on RHEL 8 (only RHEL 9 / Debian ship it) and RHEL 8's
 		// sshd_config has no Include line — so create the dir, then prepend
-		// `Include /etc/ssh/sshd_config.d/*.conf` at the TOP of sshd_config (sshd takes the FIRST
-		// value per keyword, so the drop-in must be read first to win). Both idempotent: no-op
-		// where the dir/Include already exist (Debian, RHEL 9).
-		b.WriteString("directory '/etc/ssh/sshd_config.d' do\n  recursive true\n  mode '0755'\nend\n\n")
+		// `Include /etc/ssh/sshd_config.d/*.conf` at the TOP of sshd_config. sshd takes the FIRST
+		// value per keyword and reads drop-ins in lexical order, so the Pavois drop-in must sort
+		// BEFORE the vendor ones to win: el9 ships 50-redhat.conf (X11Forwarding yes,
+		// GSSAPIAuthentication yes) and Ubuntu ships 50-cloud-init.conf — a 99- name loses to them.
+		// Hence 00-pavois.conf (loads first, Pavois wins). Delete a stale 99-pavois.conf from an
+		// older apply so the two do not coexist. All idempotent.
+		b.WriteString("directory '/etc/ssh/sshd_config.d' do\n  recursive true\n  mode '0700'\nend\n\n")
+		b.WriteString("file '/etc/ssh/sshd_config.d/99-pavois.conf' do\n  action :delete\nend\n\n")
+		// AllowUsers/AllowGroups is set by a `manual` control (site-specific): it is NOT in the
+		// regenerated content unless the operator passed ssh_allow_users/groups in THIS plan. So
+		// when they did not, PRESERVE whatever is effective now — capture before the overwrite,
+		// re-append after — so rewriting the drop-in for some other sshd setting never widens SSH
+		// back to "all users" (the recurring AllowUsers-drop regression).
+		if !allowUsersSet {
+			b.WriteString("execute 'pavois-sshd-capture-allow' do\n" +
+				"  command %q{sshd -T 2>/dev/null | grep -iE '^(allowusers|allowgroups) ' > /run/pavois-sshd-allow || true}\nend\n\n")
+		}
 		_, _ = fmt.Fprintf(&b, "file %q do\n  content \"%s\"\n  verify 'sshd -t -f %%{path}'\n  notifies :run, 'execute[pavois-sshd-reload]', :delayed\nend\n\n",
-			"/etc/ssh/sshd_config.d/99-pavois.conf", content.String())
+			"/etc/ssh/sshd_config.d/00-pavois.conf", content.String())
+		if !allowUsersSet {
+			b.WriteString("execute 'pavois-sshd-restore-allow' do\n" +
+				"  command %q{[ -s /run/pavois-sshd-allow ] && ! grep -qiE '^(allowusers|allowgroups) ' /etc/ssh/sshd_config.d/00-pavois.conf && cat /run/pavois-sshd-allow >> /etc/ssh/sshd_config.d/00-pavois.conf; rm -f /run/pavois-sshd-allow; true}\n" +
+				"  notifies :run, 'execute[pavois-sshd-reload]', :delayed\nend\n\n")
+		}
 		b.WriteString("execute 'pavois-sshd-include' do\n" +
 			"  command %q{sed -i '1i Include /etc/ssh/sshd_config.d/*.conf' /etc/ssh/sshd_config}\n" +
 			"  not_if %q{grep -qE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config.d' /etc/ssh/sshd_config}\n" +
@@ -1165,11 +1286,27 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		//  - RHEL/clones: write GRUB2_PASSWORD to /boot/grub2/user.cfg (grub sources it, superuser
 		//    root is implicit, and booting the default entry stays password-free — no brick).
 		// ignore_failure: a grub-password hiccup must never abort the converge (it is a danger item).
-		deb := `H=$(printf "%s\n%s\n" "$(cat /tmp/pavois-grub-pw)" "$(cat /tmp/pavois-grub-pw)" | grub-mkpasswd-pbkdf2 2>/dev/null | grep -oE "grub\.pbkdf2\.[^ ]+"); [ -n "$H" ] && { printf "%s\n" "$H" > /etc/grub.d/.pavois-grub-hash; chmod 0600 /etc/grub.d/.pavois-grub-hash; grep -q -- "--unrestricted" /etc/grub.d/10_linux || sed -ri "/^CLASS=/ s/\"\$/ --unrestricted\"/" /etc/grub.d/10_linux; /usr/sbin/update-grub; }`
-		rhel := `H=$(printf "%s\n%s\n" "$(cat /tmp/pavois-grub-pw)" "$(cat /tmp/pavois-grub-pw)" | grub2-mkpasswd-pbkdf2 2>/dev/null | grep -oE "grub\.pbkdf2\.[^ ]+"); [ -n "$H" ] && { echo "GRUB2_PASSWORD=$H" > /boot/grub2/user.cfg; chmod 0600 /boot/grub2/user.cfg; }`
-		b.WriteString("execute 'pavois-grub-password' do\n  command 'if command -v update-grub >/dev/null 2>&1; then " + deb +
+		// The engine's job here is the SECRET (generate it, vault it, hand it to the target) and the
+		// execution. WHAT to do to grub is policy, and policy lives in the rule (docs/reference/
+		// rules.yml, grub-password: `command_apt` / `command_rhel`), like audit.rules and the kernel
+		// recipe. harden.go is the engine, the rules are the content (#157).
+		pwfile := "/tmp/pavois-grub-pw" //nolint:gosec // a path, not a credential
+		deb, rhel := grubCmdApt, grubCmdRhel
+		if deb == "" || rhel == "" {
+			conflicts = append(conflicts,
+				"grub-password: the rule must carry command_apt and command_rhel (the policy is data)")
+		}
+		deb = strings.ReplaceAll(deb, "%{pwfile}", pwfile)
+		rhel = strings.ReplaceAll(rhel, "%{pwfile}", pwfile)
+		if deb == "" || rhel == "" {
+			deb, rhel = "true", "true" // the conflict above already refuses the run
+		}
+		cmd := "if command -v update-grub >/dev/null 2>&1; then " + deb +
 			"; elif command -v grub2-mkpasswd-pbkdf2 >/dev/null 2>&1; then " + rhel +
-			"; fi; rm -f /tmp/pavois-grub-pw'\n  not_if 'test -s /etc/grub.d/.pavois-grub-hash || test -s /boot/grub2/user.cfg'\n  ignore_failure true\nend\n\n")
+			"; fi; rm -f " + pwfile
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-grub-password' do\n  command %q\n"+
+			"  not_if 'test -s /etc/grub.d/.pavois-grub-hash || test -s /boot/grub2/user.cfg'\n"+
+			"  ignore_failure true\nend\n\n", cmd)
 		reboot = true
 		n++
 	}
@@ -1338,7 +1475,13 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("parse plan: %w", err)
 	}
 	auditRules, _ := os.ReadFile(filepath.Join(findRoot(), "docs", "reference", "audit.rules"))
-	kernelRecipe, _ := os.ReadFile(filepath.Join(findRoot(), "docs", "reference", "kernel-build.sh"))
+	// The kernel-build recipe is DATA, one script per OS/version under docs/reference/kernel-build/
+	// (each tailored to its distro + kernel: apt bindeb-pkg vs dnf rpmbuild, version quirks). Pick
+	// the target's; fall back to the legacy single kernel-build.sh if a per-OS file is absent.
+	kernelRecipe, _ := os.ReadFile(filepath.Join(findRoot(), "docs", "reference", "kernel-build", p.OS+".sh"))
+	if len(kernelRecipe) == 0 {
+		kernelRecipe, _ = os.ReadFile(filepath.Join(findRoot(), "docs", "reference", "kernel-build.sh"))
+	}
 	out := cmd.OutOrStdout()
 
 	// Danger gate: an enabled remediation flagged `danger:` can brick or lock out the
@@ -1475,8 +1618,16 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		}
 		return "sudo " + rest
 	}
+	// cinc-apply needs a controlling terminal (-tt) to actually CONVERGE — without one it runs but
+	// applies nothing (silent no-op). But `ssh -tt` + a naked piped password races the pty line
+	// discipline and `sudo -S` times out on rhel9. So: force -tt for the tty, but READ the password
+	// from ssh-stdin into a shell var first (draining the pty) and feed it to `sudo -S` via a bash
+	// here-string — no race, and the password never reaches argv. Empty sudoPass (NOPASSWD) just
+	// leaves __P empty, which sudo ignores.
 	runSudoTTY := func(remote string) error {
-		c := exec.Command("ssh", sshTTY(target, remote)...) //nolint:gosec // fixed args, operator target
+		wrapped := "IFS= read -r __P; " + remote + " <<<\"$__P\""
+		args := append(append([]string{"-tt"}, sshOpts()...), target, wrapped)
+		c := exec.Command("ssh", args...) //nolint:gosec // fixed args, operator target
 		c.Stdout, c.Stderr = os.Stderr, os.Stderr
 		if sudoPass != "" {
 			c.Stdin = strings.NewReader(sudoPass + "\n")
@@ -1491,10 +1642,41 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		return strings.TrimSpace(string(o))
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "pavois: ensuring cinc-client on %s…\n", target)
-	ensure := "command -v cinc-apply >/dev/null || curl -L https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc"
-	if err := run("ssh", sshTTY(target, ensure)...); err != nil {
-		return fmt.Errorf("install cinc-client: %w", err)
+	// FIRST check presence with NO sudo — a hardened target (use_pty) blocks a naked non-tty sudo,
+	// so we must never need sudo just to CHECK (that breaks the post-harden re-apply). Only if
+	// cinc-apply is genuinely absent do we sudo-install it: as root (sudo first), download the
+	// installer to a FILE then run it (a `curl | bash` pipe / nested sudo wedges), over ssh WITHOUT
+	// -tt and piping the password (an -tt pty races `sudo -S` on rhel9). Password never hits argv.
+	if err := exec.Command("ssh", append(append(sshOpts(), target), "command -v cinc-apply >/dev/null 2>&1")...).Run(); err != nil { //nolint:gosec // fixed args, operator target
+		ensure := sudoCmd("bash -c 'curl -fsSL https://omnitruck.cinc.sh/install.sh -o /tmp/pavois-cinc-install.sh && sh /tmp/pavois-cinc-install.sh -P cinc'")
+		ec := exec.Command("ssh", append(append(sshOpts(), target), ensure)...) //nolint:gosec // fixed args, operator target
+		ec.Stdout, ec.Stderr = os.Stderr, os.Stderr
+		if sudoPass != "" {
+			ec.Stdin = strings.NewReader(sudoPass + "\n")
+		}
+		if err := ec.Run(); err != nil {
+			return fmt.Errorf("install cinc-client: %w", err)
+		}
 	}
+	// PHOTOGRAPH THE PRIOR STATE, before a single resource converges. The plan is declarative, so
+	// what the run will touch is knowable in advance: every file it writes, every package it
+	// installs, every service it enables. That is exactly what `harden rollback` needs, and no other
+	// hardening tool captures it (oscap hands you a bash script; Lynis only advises).
+	if !haNoRestorePoint {
+		dir := haRestorePoint
+		if dir == "" {
+			dir = filepath.Join(findRoot(), "restore-points",
+				fmt.Sprintf("%s-%s", strings.NewReplacer("@", "_", ".", "-", ":", "-").Replace(target),
+					time.Now().UTC().Format("20060102-1504")))
+		}
+		_, _ = fmt.Fprintln(os.Stderr, "pavois: photographing the prior state (restore point)…")
+		if got, err := writeRestorePoint(p, recipe, target, args[0], dir, sshOpts(), sudoPass); err != nil {
+			return fmt.Errorf("restore point: %w (re-run with --no-restore-point to skip, but you lose the rollback)", err)
+		} else {
+			_, _ = fmt.Fprintf(out, "pavois: 📸 restore point → %s   (undo with: pavois harden rollback %s --yes)\n", got, got)
+		}
+	}
+
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: copying recipe…")
 	if err := run("scp", append(append(sshOpts(), tmp.Name()), target+":/tmp/pavois-harden.rb")...); err != nil {
 		return fmt.Errorf("copy recipe: %w", err)
@@ -1557,6 +1739,11 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("converge: %w", err)
 		}
 	}
+	// SELinux (rhel/fedora): a config that cinc-apply writes via atomic temp+rename can inherit the
+	// wrong type (tmp_t/etc_t) instead of the target's, so a confined daemon IGNORES it — sshd skips
+	// a mislabeled drop-in and the whole harden silently has NO effect (grade unchanged). Relabel
+	// /etc so every dropped file gets its correct context. No-op off SELinux.
+	_ = runSudoTTY(sudoCmd("sh -c 'selinuxenabled 2>/dev/null && command -v restorecon >/dev/null 2>&1 && restorecon -R /etc 2>/dev/null; true'"))
 	if reboot && haReboot {
 		// Like Ansible's reboot module (wait_for_connection): wait for the connection to
 		// DROP (box going down), then for it to come back — a plain re-ping right away
@@ -1621,7 +1808,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintf(out, "pavois: report %s (%d controls, %d standards)\n", htmlPath, nctrl, nnorm)
 	if nnorm > 0 {
 		letter, pts, _ := audit.GradeResult(res)
-		writeScorecard(out, letter, pts, res.Passed, res.Total, res.Qualified)
+		writeScorecard(out, letter, pts, res.Passed, res.Total, res.Qualified, res.Waived, res.NotApplicable)
 	}
 
 	// Validate every applied remediation actually made its control PASS — a remediation
@@ -1663,6 +1850,30 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 				_, _ = fmt.Fprintf(out, "    - %s\n", c)
 			}
 		}
+	}
+
+	// A plan is a snapshot of the system BEFORE hardening — but hardening MUTATES the system.
+	// pavois installs the packages a control needs to be meaningful (`requires_package`), and a
+	// package brings its own files, units and defaults with it: installing `at` creates
+	// /etc/at.deny (which another control requires to be ABSENT), installing an MTA brings its
+	// banner and VRFY defaults into scope. Those controls were compliant or not-applicable when
+	// the plan was computed, so nothing ever remediated them, and a single apply can never close
+	// them. Name them, and say how to converge.
+	var emerged []string
+	for cid, r := range p.Rules {
+		if st2[cid] == "gap" && r.Status != "gap" {
+			emerged = append(emerged, cid)
+		}
+	}
+	if len(emerged) > 0 {
+		sort.Strings(emerged)
+		_, _ = fmt.Fprintf(out, "\npavois: ⚠ %d control(s) became applicable DURING this run and were not in the plan\n"+
+			"    (hardening installed packages that brought new files/units into scope):\n", len(emerged))
+		for _, c := range emerged {
+			_, _ = fmt.Fprintf(out, "    - %s\n", c)
+		}
+		_, _ = fmt.Fprintf(out, "    Converge: re-plan from the CURRENT state and apply again, until a pass has\n"+
+			"    nothing left to do:  pavois harden plan %s --sudo --from <this report>\n", target)
 	}
 	return nil
 }

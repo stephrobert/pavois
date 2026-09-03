@@ -1,17 +1,17 @@
 {
   "id": "posture-no-compilers",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -25,16 +25,20 @@
   "reboot_survivable": "yes",
   "norms": {},
   "check": [
-    "describe command('for c in gcc cc clang g++ tcc; do command -v $c >/dev/null 2>&1 && echo $c; done') do",
+    "describe command('for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; p=$(readlink -f \\\"$p\\\"); find \\\"$p\\\" -perm -o+x 2>/dev/null; done') do",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "for p in gcc cpp g++ gcc-12 g++-12 cpp-12 clang tcc tcc-dev; do dpkg -l \"$p\" 2>/dev/null | grep -q '^ii' && DEBIAN_FRONTEND=noninteractive apt-get purge -y \"$p\" >/dev/null 2>&1; done; true; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x \"$p\" 2>/dev/null; don; for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; chmod o-x \"$(readlink -f \"$p\")\" 2>/dev/null; done; true",
+    "name": "purge-compilers",
+    "not_if": "test -z \"$(for c in gcc cc c++ g++ cpp make; do p=$(command -v $c 2>/dev/null) || continue; p=$(readlink -f \\\"$p\\\"); find \\\"$p\\\" -perm -o+x 2>/dev/null; done)\"",
+    "resource": "exec"
+  },
   "title": {
     "en": "No compiler available (attack surface)",
     "fr": "Aucun compilateur disponible (surface d'attaque)"
   },
-  "needs_translation": [],
   "summary": {
     "en": "Ensures no C/C++ compiler (`gcc`, `cc`, `clang`, `g++`, `tcc`) is present on a production host, reducing the attack surface available to an intruder.",
     "fr": "Garantit qu'aucun compilateur C/C++ (`gcc`, `cc`, `clang`, `g++`, `tcc`) n'est présent sur un hôte de production, réduisant la surface d'attaque disponible pour un intrus."
@@ -62,5 +66,7 @@
   "impact": {
     "en": "Removing compilers can **break builds and tooling that compile at install/runtime**: DKMS kernel modules, `make`-based installers, some language package managers (native gems/wheels/npm addons), and configuration management that builds from source. Before applying, verify the host does not rely on these, if it does, either keep the compiler with restricted permissions or move that build step to a dedicated build server. Pure runtime/production servers are safe.",
     "fr": "Retirer les compilateurs peut **casser les compilations et outils qui compilent à l'installation ou à l'exécution** : modules noyau DKMS, installeurs basés sur `make`, certains gestionnaires de paquets de langage (gems/wheels/addons npm natifs) et la gestion de configuration compilant depuis les sources. Avant d'appliquer, vérifiez que l'hôte n'en dépend pas, si c'est le cas, conservez le compilateur avec des droits restreints ou déportez cette étape vers un serveur de build dédié. Les serveurs purement d'exécution/production sont sûrs."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

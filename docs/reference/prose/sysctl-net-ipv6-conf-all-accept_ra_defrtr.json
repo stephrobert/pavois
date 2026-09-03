@@ -1,0 +1,37 @@
+{
+  "id": "sysctl-net-ipv6-conf-all-accept_ra_defrtr",
+  "title": {
+    "en": "Configure Accepting Default Router in Router Advertisements on All IPv6 Interfaces",
+    "fr": "Configurer l'acceptation du routeur par défaut dans les annonces de routeur sur toutes les interfaces IPv6"
+  },
+  "summary": {
+    "en": "Stops the host from installing a default IPv6 router learned via Router Advertisements by setting `net.ipv6.conf.all.accept_ra_defrtr` to **0**.",
+    "fr": "Empêche l'hôte d'installer un routeur IPv6 par défaut appris via les annonces de routeur en positionnant `net.ipv6.conf.all.accept_ra_defrtr` à **0**."
+  },
+  "rationale": {
+    "en": "When `accept_ra_defrtr` is enabled, the host learns its default IPv6 router from Router Advertisement (RA) messages. An attacker on the link can send **illicit RAs** to install themselves as the default router, redirecting all the host's IPv6 traffic through them, a classic man-in-the-middle. Hosts with statically configured routing should not accept a default route from RAs.",
+    "fr": "Lorsque `accept_ra_defrtr` est activé, l'hôte apprend son routeur IPv6 par défaut à partir des messages d'annonce de routeur (RA). Un attaquant sur le lien peut envoyer des **RA illicites** pour s'installer comme routeur par défaut et dérouter tout le trafic IPv6 de l'hôte à travers lui, un homme du milieu classique. Les hôtes au routage configuré statiquement ne devraient pas accepter de route par défaut issue des RA."
+  },
+  "check_note": {
+    "en": "Pavois reads the **live** value via `kernel_parameter('net.ipv6.conf.all.accept_ra_defrtr')`, reflecting the running kernel after all `sysctl.conf` / `/etc/sysctl.d/` drop-ins and runtime overrides are merged. Reading `/etc/sysctl.conf` alone can disagree with the effective kernel state, especially since IPv6 RA defaults are frequently overridden by drop-ins.",
+    "fr": "Pavois lit la valeur **effective** via `kernel_parameter('net.ipv6.conf.all.accept_ra_defrtr')`, qui reflète le noyau en cours après fusion de tous les drop-ins `sysctl.conf` / `/etc/sysctl.d/` et des surcharges runtime. Lire le seul `/etc/sysctl.conf` peut diverger de l'état effectif du noyau, d'autant que les valeurs par défaut RA IPv6 sont souvent surchargées par des drop-ins."
+  },
+  "verify": {
+    "en": "Run `sysctl net.ipv6.conf.all.accept_ra_defrtr` and expect `net.ipv6.conf.all.accept_ra_defrtr = 0`.",
+    "fr": "Exécuter `sysctl net.ipv6.conf.all.accept_ra_defrtr` et attendre `net.ipv6.conf.all.accept_ra_defrtr = 0`."
+  },
+  "logs": {
+    "en": "Confirm with `sysctl net.ipv6.conf.all.accept_ra_defrtr` (and per-interface `sysctl -a | grep accept_ra_defrtr`). Inspect the IPv6 routing table for an RA-learned default route with `ip -6 route show default`, and watch RAs on the wire with `tcpdump -ni any 'icmp6 && ip6[40] == 134'`.",
+    "fr": "Confirmer avec `sysctl net.ipv6.conf.all.accept_ra_defrtr` (et par interface via `sysctl -a | grep accept_ra_defrtr`). Inspecter la table de routage IPv6 pour une route par défaut apprise par RA avec `ip -6 route show default`, et observer les RA sur le réseau avec `tcpdump -ni any 'icmp6 && ip6[40] == 134'`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan sets `net.ipv6.conf.all.accept_ra_defrtr = 0` via the **sysctl** resource, persisting it in a Pavois-owned drop-in and applying it live (no reboot). Run it with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois positionne `net.ipv6.conf.all.accept_ra_defrtr = 0` via la ressource **sysctl**, en le persistant dans un drop-in géré par Pavois et en l'appliquant à chaud (sans redémarrage). À exécuter avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "**Can break IPv6 connectivity if the network relies on SLAAC.** Many IPv6 networks distribute the default gateway exclusively through Router Advertisements; disabling `accept_ra_defrtr` there leaves the host with no IPv6 default route and effectively no IPv6 reachability. Precaution: only apply on hosts with **statically configured IPv6 routing** (or those using DHCPv6 for the gateway), or where IPv6 is unused. Verify with `ip -6 route show default` before and after, and have console/IPv4 access in case remote IPv6 access is lost.",
+    "fr": "**Peut casser la connectivité IPv6 si le réseau s'appuie sur SLAAC.** De nombreux réseaux IPv6 ne diffusent la passerelle par défaut que via les annonces de routeur ; y désactiver `accept_ra_defrtr` laisse l'hôte sans route IPv6 par défaut et sans joignabilité IPv6 effective. Précaution : n'appliquer que sur des hôtes au **routage IPv6 configuré statiquement** (ou utilisant DHCPv6 pour la passerelle), ou là où IPv6 n'est pas utilisé. Vérifier avec `ip -6 route show default` avant et après, et disposer d'un accès console/IPv4 en cas de perte de l'accès IPv6 distant."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

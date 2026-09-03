@@ -1,0 +1,37 @@
+{
+  "id": "cmdline-audit",
+  "title": {
+    "en": "Enable Auditing for Processes Which Start Prior to the Audit Daemon",
+    "fr": "Activer l'audit pour les processus démarrés avant le démon d'audit"
+  },
+  "summary": {
+    "en": "Adds the kernel boot parameter `audit=1` so every process is auditable from the very start of boot, before `auditd` is running.",
+    "fr": "Ajoute le paramètre de démarrage du noyau `audit=1` afin que chaque processus soit auditable dès le tout début du démarrage, avant que `auditd` ne tourne."
+  },
+  "rationale": {
+    "en": "Each process carries an \"auditable\" flag that determines whether its activity can be recorded. `auditd` enables this for processes that start **after** it, but everything launched during early boot would otherwise escape auditing. The `audit=1` kernel argument sets the flag for **every** process from PID 1 onward, closing the blind spot an attacker could exploit by acting before the audit daemon comes up.",
+    "fr": "Chaque processus porte un drapeau \"auditable\" qui détermine si son activité peut être enregistrée. `auditd` l'active pour les processus démarrés **après** lui, mais tout ce qui est lancé pendant le début du démarrage échapperait sinon à l'audit. L'argument noyau `audit=1` positionne le drapeau pour **chaque** processus à partir du PID 1, fermant l'angle mort qu'un attaquant pourrait exploiter en agissant avant le démarrage du démon d'audit."
+  },
+  "check_note": {
+    "en": "Pavois reads `/proc/cmdline`, the line the **running** kernel actually booted with, and checks for `audit=1`. This is stronger than inspecting `/etc/default/grub`: those config files state intent for the *next* boot, while `/proc/cmdline` proves the flag is **active now**. A failed `update-grub`/`grub2-mkconfig` or a conflicting drop-in would leave the file correct but the kernel running without it.",
+    "fr": "Pavois lit `/proc/cmdline`, la ligne avec laquelle le noyau **en cours** a réellement démarré, et vérifie la présence de `audit=1`. C'est plus solide qu'inspecter `/etc/default/grub` : ces fichiers de config expriment l'intention pour le *prochain* démarrage, tandis que `/proc/cmdline` prouve que le drapeau est **actif maintenant**. Un `update-grub`/`grub2-mkconfig` échoué ou un drop-in en conflit laisserait le fichier correct alors que le noyau tourne sans lui."
+  },
+  "verify": {
+    "en": "Run `cat /proc/cmdline` and confirm it contains `audit=1`. A configuration change only shows here **after a reboot**, since it is a boot-time kernel argument.",
+    "fr": "Exécutez `cat /proc/cmdline` et confirmez qu'elle contient `audit=1`. Un changement de configuration n'apparaît ici **qu'après un redémarrage**, car c'est un argument noyau pris en compte au démarrage."
+  },
+  "logs": {
+    "en": "Audit records are written to `/var/log/audit/audit.log`; `auditctl -s` reports the runtime audit state. The kernel ring buffer (`dmesg | grep -i audit`) shows audit subsystem messages from early boot.",
+    "fr": "Les enregistrements d'audit sont écrits dans `/var/log/audit/audit.log` ; `auditctl -s` rapporte l'état d'audit à l'exécution. Le tampon noyau (`dmesg | grep -i audit`) montre les messages du sous-système d'audit du début du démarrage."
+  },
+  "remediation_note": {
+    "en": "`pavois harden apply` uses the `kernel_cmdline` resource to add `audit=1` to the bootloader (GRUB) configuration and regenerate it. As a kernel boot parameter it is flagged **reboot_required**: it only appears in `/proc/cmdline` after the next restart.",
+    "fr": "`pavois harden apply` utilise la ressource `kernel_cmdline` pour ajouter `audit=1` à la configuration du chargeur d'amorçage (GRUB) et la régénérer. En tant que paramètre de démarrage du noyau, il est signalé **reboot_required** : il n'apparaît dans `/proc/cmdline` qu'après le redémarrage suivant."
+  },
+  "impact": {
+    "en": "Minimal: enabling the auditable flag for all early processes has negligible performance cost. **Precautions:** it requires a reboot to take effect; verify the bootloader regenerated correctly so you do not boot an unintended kernel line. Combine with an adequate `audit_backlog_limit` so early-boot events are not dropped before `auditd` drains the queue.",
+    "fr": "Minimal : activer le drapeau auditable pour tous les processus précoces a un coût de performance négligeable. **Précautions :** un redémarrage est nécessaire pour prendre effet ; vérifiez que le chargeur d'amorçage s'est régénéré correctement afin de ne pas démarrer une ligne de noyau imprévue. Associez-le à un `audit_backlog_limit` adéquat pour que les événements du début de démarrage ne soient pas abandonnés avant qu'`auditd` ne vide la file."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

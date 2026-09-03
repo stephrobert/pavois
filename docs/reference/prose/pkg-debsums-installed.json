@@ -1,0 +1,33 @@
+{
+  "id": "pkg-debsums-installed",
+  "title": {
+    "en": "Install debsums (verify the files shipped by installed packages)",
+    "fr": "Installer debsums (vérifier les fichiers livrés par les paquets installés)"
+  },
+  "summary": {
+    "en": "`debsums` recomputes the MD5 checksum of every file installed by a `.deb` and compares it with the manifest dpkg stored at install time (`/var/lib/dpkg/info/*.md5sums`), so a binary or library that was replaced, patched or corrupted since installation shows up. It is a **package-integrity spot check**, not a tamper-proof integrity system: the reference sums live on the same host and root can rewrite them (that is AIDE's job, with an off-host database). No standard mandates it; Pavois carries it as a Debian defence-in-depth practice.",
+    "fr": "`debsums` recalcule l'empreinte MD5 de chaque fichier installé par un `.deb` et la compare au manifeste enregistré par dpkg à l'installation (`/var/lib/dpkg/info/*.md5sums`) : un binaire ou une bibliothèque remplacé, modifié ou corrompu depuis l'installation ressort. C'est un **contrôle ponctuel d'intégrité des paquets**, pas un système d'intégrité inviolable : les sommes de référence vivent sur l'hôte lui-même et root peut les réécrire (c'est le rôle d'AIDE, avec une base hors hôte). Aucune norme ne l'impose ; Pavois le porte comme bonne pratique Debian de défense en profondeur."
+  },
+  "check_note": {
+    "en": "Pavois asserts that `debsums` is present in the dpkg inventory. This is an **inventory-state** control: it proves the tool is installed, **not** that a verification was ever run, and not that the result was clean. A host whose `/usr/sbin/sshd` was swapped passes this rule as long as the package is there. Running the verification is a separate, deliberate act (see *Verify*).",
+    "fr": "Pavois vérifie la présence de `debsums` dans l'inventaire dpkg. C'est un contrôle d'**état d'inventaire** : il prouve que l'outil est installé, **pas** qu'une vérification a été lancée un jour, ni que son résultat était propre. Un hôte dont le `/usr/sbin/sshd` a été remplacé passe cette règle du moment que le paquet est présent. Lancer la vérification est un acte séparé et délibéré (voir *Vérifier*)."
+  },
+  "verify": {
+    "en": "Run `dpkg -l debsums` and confirm the state column reads `ii`:\n\n```\nii  debsums  3.0.2  all  tool for verification of installed package files against MD5 checksums\n```\n\nThen actually verify the system: `debsums -s` is silent when every packaged file matches its recorded checksum, and prints one line per mismatch otherwise (`debsums: checksum mismatch /usr/bin/curl`). Use `debsums -c` to list only the failing files, and `debsums -e` to restrict the check to configuration files.",
+    "fr": "Exécutez `dpkg -l debsums` et vérifiez que la colonne d'état affiche `ii` :\n\n```\nii  debsums  3.0.2  all  tool for verification of installed package files against MD5 checksums\n```\n\nPuis vérifiez réellement le système : `debsums -s` reste silencieux quand chaque fichier empaqueté correspond à son empreinte enregistrée, et affiche une ligne par écart sinon (`debsums: checksum mismatch /usr/bin/curl`). `debsums -c` ne liste que les fichiers en échec, `debsums -e` restreint la vérification aux fichiers de configuration."
+  },
+  "logs": {
+    "en": "debsums has **no log file of its own** and no daemon: it prints its findings on stdout/stderr. The package does ship a `/etc/cron.daily/debsums` job, but it is **inert until you enable it** in `/etc/default/debsums` (`CRON_CHECK=daily`); once enabled, the daily run mails any mismatch to root, and that mail (or your MTA's log) becomes the only durable trace. Without that, nothing is recorded and nobody is told.",
+    "fr": "debsums n'a **aucun fichier de journal propre** ni démon : il affiche ses constats sur la sortie standard et d'erreur. Le paquet fournit bien une tâche `/etc/cron.daily/debsums`, mais elle reste **inerte tant que vous ne l'activez pas** dans `/etc/default/debsums` (`CRON_CHECK=daily`) ; une fois activée, l'exécution quotidienne envoie tout écart par courriel à root, et ce courriel (ou le journal de votre MTA) devient la seule trace durable. Sans cela, rien n'est enregistré et personne n'est prévenu."
+  },
+  "remediation_note": {
+    "en": "The Pavois harden plan installs the `debsums` package with the system package manager (`package` resource, action `install`). It does not enable the daily cron check and does not run a verification: the plan puts the tool in place, using it is an operational decision.",
+    "fr": "Le plan de durcissement Pavois installe le paquet `debsums` avec le gestionnaire de paquets du système (ressource `package`, action `install`). Il n'active pas la vérification quotidienne par cron et ne lance aucune vérification : le plan met l'outil en place, son usage relève de l'exploitation."
+  },
+  "impact": {
+    "en": "Without debsums you have no quick way to answer \"is this binary still the one Debian shipped?\" after an incident. The limits and side effects are worth stating plainly: a full `debsums -a` **reads every packaged file on disk**, which is I/O-heavy and noticeable on a busy or spinning-disk host; **legitimately edited conffiles produce expected mismatches** (filter them with `debsums -e` or accept the noise); some packages ship **no md5sums at all**, so their files are silently unverifiable; and an attacker with root can regenerate the reference sums, which is exactly why debsums complements, and never replaces, an AIDE database kept off the host. Installing it changes no runtime behaviour and cannot break a service.",
+    "fr": "Sans debsums, vous n'avez aucun moyen rapide de répondre, après un incident, à la question « ce binaire est-il toujours celui que Debian a livré ? ». Les limites et effets de bord méritent d'être dits sans détour : un `debsums -a` complet **lit tous les fichiers empaquetés du disque**, ce qui est coûteux en entrées/sorties et se remarque sur un hôte chargé ou à disque mécanique ; les **fichiers de configuration légitimement modifiés produisent des écarts attendus** (filtrez avec `debsums -e` ou acceptez le bruit) ; certains paquets ne fournissent **aucune somme MD5**, leurs fichiers sont donc silencieusement invérifiables ; enfin, un attaquant disposant de root peut régénérer les sommes de référence, raison précise pour laquelle debsums complète, sans jamais la remplacer, une base AIDE conservée hors de l'hôte. L'installation ne change aucun comportement d'exécution et ne peut casser aucun service."
+  },
+  "datePublished": "2026-07-14",
+  "dateModified": "2026-07-14"
+}

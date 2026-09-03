@@ -1,0 +1,37 @@
+{
+  "id": "service-telnet-disabled",
+  "title": {
+    "en": "Disable telnet Service",
+    "fr": "Désactiver le service telnet"
+  },
+  "summary": {
+    "en": "Ensures the cleartext `telnet.service` is **disabled** and **not running** so no insecure telnet listener is exposed.",
+    "fr": "Garantit que le service `telnet.service` en clair est **désactivé** et **arrêté** afin qu'aucun service telnet non sécurisé ne soit exposé."
+  },
+  "rationale": {
+    "en": "The **telnet** protocol carries all traffic, including usernames and passwords, in **cleartext**. Any party able to observe the network (a switch span port, a compromised hop, a Wi-Fi sniffer) can capture login credentials and the full session, and telnet offers no protection against **man-in-the-middle** tampering. With strongly authenticated, encrypted alternatives (SSH) universally available, an active telnet listener is a high-severity exposure that hands attackers credentials and remote access.",
+    "fr": "Le protocole **telnet** transporte tout le trafic, y compris les identifiants et mots de passe, en **clair**. Toute personne capable d'observer le réseau (un port miroir de commutateur, un rebond compromis, un renifleur Wi-Fi) peut capturer les identifiants de connexion et la session complète, et telnet n'offre aucune protection contre l'altération de type **man-in-the-middle**. Avec des alternatives chiffrées et fortement authentifiées (SSH) universellement disponibles, un service telnet actif constitue une exposition de sévérité élevée qui livre aux attaquants des identifiants et un accès distant."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective unit state** via `service('telnet.service')` (`systemctl is-enabled` / `is-active`), so it detects telnet whether started directly or via socket activation, and accounts for drop-in overrides. Checking the running unit beats grepping config files: a telnet listener can be socket-activated or enabled through an override that a file scan of `/etc/xinetd.d/` or similar would not flag.",
+    "fr": "Pavois lit l'**état effectif de l'unité** via `service('telnet.service')` (`systemctl is-enabled` / `is-active`), il détecte donc telnet qu'il soit démarré directement ou par activation de socket, et tient compte des surcharges drop-in. Vérifier l'unité en cours d'exécution est supérieur à la recherche dans les fichiers de configuration : un service telnet peut être activé par socket ou par une surcharge qu'un balayage de `/etc/xinetd.d/` ou similaire ne signalerait pas."
+  },
+  "verify": {
+    "en": "Run `systemctl is-enabled telnet.service` (expect `disabled`, `masked`, or `Unit ... could not be found`) and `systemctl is-active telnet.service` (expect `inactive`). Confirm nothing is listening on TCP/23 with `ss -lntp | grep ':23'` (expected: no output).",
+    "fr": "Exécutez `systemctl is-enabled telnet.service` (attendu `disabled`, `masked`, ou `Unit ... could not be found`) et `systemctl is-active telnet.service` (attendu `inactive`). Confirmez que rien n'écoute sur TCP/23 avec `ss -lntp | grep ':23'` (attendu : aucune sortie)."
+  },
+  "logs": {
+    "en": "Telnet activity and unit transitions appear in `journalctl -u telnet.service` and in the auth log (`/var/log/secure` on RHEL/Alma). Listening sockets are confirmed with `ss -lntp | grep ':23'`. After disabling, no new telnet sessions should appear in the auth log.",
+    "fr": "L'activité telnet et les transitions d'unité apparaissent dans `journalctl -u telnet.service` et dans le journal d'authentification (`/var/log/secure` sur RHEL/Alma). Les sockets en écoute se confirment avec `ss -lntp | grep ':23'`. Après désactivation, aucune nouvelle session telnet ne doit apparaître dans le journal d'authentification."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan acts on the **service** resource named `telnet`: it runs `disable` (so it does not start at boot) and `stop` (so it is not running now). It is applied with `pavois harden apply`. For full elimination, also remove the `telnet-server` package and any `telnet.socket` so it cannot be socket-reactivated.",
+    "fr": "Le plan de durcissement de Pavois agit sur la ressource **service** nommée `telnet` : il exécute `disable` (pour qu'il ne démarre pas au boot) et `stop` (pour qu'il ne tourne pas maintenant). Il s'applique avec `pavois harden apply`. Pour une élimination complète, supprimez aussi le paquet `telnet-server` et tout `telnet.socket` pour qu'il ne puisse pas être réactivé par socket."
+  },
+  "impact": {
+    "en": "Disabling telnet removes a remote-access method. The only real risk is on legacy systems where telnet is the **sole** management path. **Precautions:** before disabling, confirm **SSH is installed, running, and reachable** (`systemctl is-active sshd` and a successful test login) so you do not lose remote access; provide console/out-of-band access as a fallback; and migrate any scripts or appliances that still rely on telnet to an encrypted transport.",
+    "fr": "Désactiver telnet supprime une méthode d'accès distant. Le seul risque réel concerne les systèmes anciens où telnet est le **seul** moyen d'administration. **Précautions :** avant de désactiver, confirmez que **SSH est installé, actif et joignable** (`systemctl is-active sshd` et un test de connexion réussi) afin de ne pas perdre l'accès distant ; prévoyez un accès console/hors-bande en repli ; et migrez vers un transport chiffré tout script ou équipement qui dépendrait encore de telnet."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

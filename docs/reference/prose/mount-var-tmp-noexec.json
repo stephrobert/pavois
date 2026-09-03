@@ -1,0 +1,37 @@
+{
+  "id": "mount-var-tmp-noexec",
+  "title": {
+    "en": "Add noexec Option to /var/tmp",
+    "fr": "Ajouter l'option noexec à /var/tmp"
+  },
+  "summary": {
+    "en": "Mount `/var/tmp` with the **`noexec`** option so binaries cannot be executed from this temporary directory.",
+    "fr": "Monter `/var/tmp` avec l'option **`noexec`** afin qu'aucun binaire ne puisse être exécuté depuis ce répertoire temporaire."
+  },
+  "rationale": {
+    "en": "`/var/tmp` is a world-writable temporary directory; executing binaries from it is never needed in normal operation. Mounting it **`noexec`** stops attackers and malware from running a dropped payload from this classic staging area, cutting off a very common privilege-escalation and persistence path.",
+    "fr": "`/var/tmp` est un répertoire temporaire inscriptible par tous ; y exécuter des binaires n'est jamais nécessaire en fonctionnement normal. Le monter en **`noexec`** empêche attaquants et logiciels malveillants de lancer une charge utile déposée dans cette zone de préparation classique, coupant un chemin très courant d'élévation de privilèges et de persistance."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** mount options via `mount('/var/tmp')`, the live kernel view. Since `/var/tmp` is frequently a bind mount or systemd tmpfs, this catches runtime/bind configurations that parsing `/etc/fstab` alone would miss.",
+    "fr": "Pavois lit les options de montage **effectives** via `mount('/var/tmp')`, la vue réelle du noyau. Comme `/var/tmp` est souvent un montage lié ou un tmpfs systemd, cela détecte les configurations à l'exécution ou par bind qu'une simple analyse de `/etc/fstab` manquerait."
+  },
+  "verify": {
+    "en": "Run `findmnt -no OPTIONS /var/tmp` and confirm **`noexec`** is present. You can also test directly: copy `/bin/true` into `/var/tmp` and run it, it should fail with `Permission denied`.",
+    "fr": "Exécutez `findmnt -no OPTIONS /var/tmp` et vérifiez la présence de **`noexec`**. Vous pouvez aussi tester directement : copiez `/bin/true` dans `/var/tmp` et exécutez-le, il doit échouer avec `Permission denied`."
+  },
+  "logs": {
+    "en": "Inspect mount state with `findmnt /var/tmp` and `mount | grep ' /var/tmp '`. A blocked execution attempt surfaces as `Permission denied`; kernel mount events appear in `journalctl -k` / `dmesg`.",
+    "fr": "Inspectez l'état de montage avec `findmnt /var/tmp` et `mount | grep ' /var/tmp '`. Une tentative d'exécution bloquée se manifeste par `Permission denied` ; les événements de montage du noyau apparaissent dans `journalctl -k` / `dmesg`."
+  },
+  "remediation_note": {
+    "en": "There is **no automated harden plan** for this rule, because `/var/tmp` must be a **separate filesystem or bind mount** to carry its own options. Apply it manually: configure `/var/tmp` as its own mount, add `noexec` to its `/etc/fstab` entry (or systemd mount unit), then `mount -o remount /var/tmp` and reboot to confirm persistence.",
+    "fr": "Il n'existe **aucun plan de durcissement automatisé** pour cette règle, car `/var/tmp` doit être un **système de fichiers ou montage lié séparé** pour porter ses propres options. Appliquez-la manuellement : configurez `/var/tmp` comme un montage distinct, ajoutez `noexec` à son entrée `/etc/fstab` (ou à l'unité de montage systemd), puis `mount -o remount /var/tmp` et redémarrez pour confirmer la persistance."
+  },
+  "impact": {
+    "en": "**What can break:** package managers and installers that extract and run helper scripts/binaries from `/var/tmp` (some `dpkg`/`rpm` post-install steps, certain agents and backup tools use it as a scratch area) may fail. **Precautions:** before enforcing, point such tools at an exec-capable scratch dir via `TMPDIR`, and test installs/upgrades in staging. If `/var/tmp` is not yet a separate mount, making it one (often a bind mount) is the prerequisite. Reboot to confirm the option persists.",
+    "fr": "**Ce qui peut casser :** les gestionnaires de paquets et installeurs qui extraient et exécutent des scripts/binaires d'aide depuis `/var/tmp` (certaines étapes post-installation `dpkg`/`rpm`, certains agents et outils de sauvegarde l'utilisent comme zone de travail) peuvent échouer. **Précautions :** avant d'appliquer, orientez ces outils vers un répertoire de travail exécutable via `TMPDIR`, et testez installations/mises à jour en pré-production. Si `/var/tmp` n'est pas encore un montage séparé, en faire un (souvent un bind) est le prérequis. Redémarrez pour confirmer la persistance de l'option."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

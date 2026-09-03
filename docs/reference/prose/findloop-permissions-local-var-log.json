@@ -1,0 +1,37 @@
+{
+  "id": "findloop-permissions-local-var-log",
+  "title": {
+    "en": "Verify permissions of log files",
+    "fr": "Vérifier les permissions des fichiers journaux"
+  },
+  "summary": {
+    "en": "Ensures no file under `/var/log` is group-writable/executable or readable/writable/executable by others (no bit in mask `/037`).",
+    "fr": "Garantit qu'aucun fichier sous `/var/log` n'est inscriptible/exécutable par le groupe ni accessible aux autres en lecture/écriture/exécution (aucun bit du masque `/037`)."
+  },
+  "rationale": {
+    "en": "Log files record system configuration, authentication events and application activity. If they are world-readable, an unprivileged user can mine them for usernames, internal hostnames, paths and error messages that aid an attack; if they are group- or world-writable, an attacker can tamper with or wipe entries to destroy forensic evidence. Restricting `/var/log` to owner (and the dedicated log group) keeps error messages useful for defenders without revealing information that adversaries could exploit.",
+    "fr": "Les fichiers journaux consignent la configuration système, les événements d'authentification et l'activité applicative. S'ils sont lisibles par tous, un utilisateur non privilégié peut y récolter noms d'utilisateurs, noms d'hôtes internes, chemins et messages d'erreur facilitant une attaque ; s'ils sont inscriptibles par le groupe ou par tous, un attaquant peut altérer ou effacer des entrées pour détruire les preuves forensiques. Restreindre `/var/log` au propriétaire (et au groupe de journalisation dédié) maintient des messages d'erreur utiles aux défenseurs sans révéler d'informations exploitables par un adversaire."
+  },
+  "check_note": {
+    "en": "Pavois runs `find /var/log -type f -perm /037` and expects empty output. The mask `/037` matches any file that has **any** of: group-write, group-execute, or any of other-read/write/execute. Empty output means every log file is at most `0640` (owner rw, group r, others none). Scanning the live inodes catches files created at runtime by daemons and logrotate, which a static config audit would miss.",
+    "fr": "Pavois exécute `find /var/log -type f -perm /037` et attend une sortie vide. Le masque `/037` correspond à tout fichier possédant **au moins un** des bits : écriture groupe, exécution groupe, ou lecture/écriture/exécution pour les autres. Une sortie vide signifie que chaque journal est au plus en `0640` (propriétaire rw, groupe r, autres aucun). Analyser les inodes en direct détecte les fichiers créés à l'exécution par les services et logrotate, qu'un audit de configuration statique manquerait."
+  },
+  "verify": {
+    "en": "Run `sudo find /var/log -type f -perm /037 2>/dev/null`. Expected output: **empty**. Each path returned is a log file with too-permissive mode; inspect it with `ls -l <path>`.",
+    "fr": "Exécutez `sudo find /var/log -type f -perm /037 2>/dev/null`. Sortie attendue : **vide**. Chaque chemin renvoyé est un journal au mode trop permissif ; inspectez-le avec `ls -l <chemin>`."
+  },
+  "logs": {
+    "en": "List offending files and their modes with `find /var/log -type f -perm /037 -ls`. After remediation, `find /var/log -type f -perm /037` should print nothing. Watch `logrotate` runs in `/var/log/syslog` if files regain bad modes (a custom `create` directive in `/etc/logrotate.d/*`).",
+    "fr": "Listez les fichiers fautifs et leurs modes avec `find /var/log -type f -perm /037 -ls`. Après remédiation, `find /var/log -type f -perm /037` ne doit rien afficher. Surveillez les exécutions de `logrotate` dans `/var/log/syslog` si des fichiers reprennent de mauvais modes (directive `create` personnalisée dans `/etc/logrotate.d/*`)."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan runs an **exec** resource named `fix-varlog-perms` that finds every offending file and applies `chmod g-wx,o-rwx` to it, stripping group write/execute and all other-access bits while leaving owner and group-read intact. A `not_if` guard skips the action when no file matches, so it is idempotent. Applied with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois exécute une ressource **exec** nommée `fix-varlog-perms` qui repère chaque fichier fautif et lui applique `chmod g-wx,o-rwx`, retirant l'écriture/exécution groupe et tout accès aux autres tout en préservant le propriétaire et la lecture groupe. Une garde `not_if` saute l'action quand aucun fichier ne correspond, garantissant l'idempotence. Appliqué avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "Tightening permissions is low-risk because owner and the log group retain access. However, an application that runs unprivileged and reads its own log under `/var/log` via **other-read** could lose visibility after `o-rwx` is removed; confirm such services run as the file owner or are in the log group. Removing **group-write** can break a non-standard logging setup that has multiple writers sharing a group, verify your rsyslog/journald topology before applying broadly.",
+    "fr": "Resserrer les permissions présente peu de risque car le propriétaire et le groupe de journalisation conservent l'accès. Toutefois, une application non privilégiée qui lit son propre journal sous `/var/log` via la **lecture autres** pourrait perdre cette visibilité après le retrait de `o-rwx` ; vérifiez que ces services s'exécutent en tant que propriétaire du fichier ou appartiennent au groupe de journalisation. Retirer l'**écriture groupe** peut casser une configuration de journalisation non standard à plusieurs écrivains partageant un groupe ; vérifiez votre topologie rsyslog/journald avant une application large."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

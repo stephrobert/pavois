@@ -2,14 +2,20 @@
   "id": "fileperm-etc-security-opasswd-old",
   "supported_os": [
     "debian12",
+    "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
+    "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
+    "debian13": "1.0.0",
     "rhel8": "4.0.0",
+    "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
   },
@@ -44,14 +50,13 @@
     "en": "Verify Permissions on /etc/security/opasswd.old File",
     "fr": "Vérifier les permissions du fichier /etc/security/opasswd.old"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`/etc/security/opasswd.old` is the **backup** of the PAM password-history file, automatically rotated when `opasswd` is updated. It contains the same **old password hashes** and is therefore just as sensitive as `/etc/security/opasswd` itself, a stale backup is just as crackable. If it is **readable** by group or other, those hashes leak; if **writable**, history integrity is lost. `setuid/setgid/executable` bits have no purpose. Only **root** must be able to read or write it.",
-    "fr": "`/etc/security/opasswd.old` est la **sauvegarde** du fichier d'historique des mots de passe PAM, créée automatiquement lors de la mise à jour de `opasswd`. Elle contient les mêmes **anciens condensats de mots de passe** et est donc aussi sensible que `/etc/security/opasswd` lui-même, une sauvegarde ancienne reste tout aussi cassable. Si elle est **lisible** par le groupe ou les autres, ces condensats fuient ; si **modifiable**, l'intégrité de l'historique est perdue. Les bits `setuid/setgid/exécutable` n'ont aucune utilité. Seul **root** doit pouvoir la lire ou l'écrire."
-  },
   "summary": {
     "en": "Ensures the password-history backup `/etc/security/opasswd.old` is unreadable and unwritable by group and other (no setuid/setgid/sticky/exec), so only **root** can access the archived hashes.",
     "fr": "Garantit que la sauvegarde d'historique `/etc/security/opasswd.old` n'est ni lisible ni modifiable par le groupe ou les autres (sans setuid/setgid/sticky/exec), afin que seul **root** puisse accéder aux condensats archivés."
+  },
+  "rationale": {
+    "en": "`/etc/security/opasswd.old` is the **backup** of the PAM password-history file, automatically rotated when `opasswd` is updated. It contains the same **old password hashes** and is therefore just as sensitive as `/etc/security/opasswd` itself, a stale backup is just as crackable. If it is **readable** by group or other, those hashes leak; if **writable**, history integrity is lost. `setuid/setgid/executable` bits have no purpose. Only **root** must be able to read or write it.",
+    "fr": "`/etc/security/opasswd.old` est la **sauvegarde** du fichier d'historique des mots de passe PAM, créée automatiquement lors de la mise à jour de `opasswd`. Elle contient les mêmes **anciens condensats de mots de passe** et est donc aussi sensible que `/etc/security/opasswd` lui-même, une sauvegarde ancienne reste tout aussi cassable. Si elle est **lisible** par le groupe ou les autres, ces condensats fuient ; si **modifiable**, l'intégrité de l'historique est perdue. Les bits `setuid/setgid/exécutable` n'ont aucune utilité. Seul **root** doit pouvoir la lire ou l'écrire."
   },
   "check_note": {
     "en": "Pavois reads the **live mode bits** of `/etc/security/opasswd.old` on the target, including the group/other **read** bit, because the backup carries the same crackable hashes as the live file. Permissions are inode metadata, so the audit reflects exactly what the kernel enforces. The `only_if` guard skips the control when no rotated backup exists.",
@@ -72,5 +77,7 @@
   "impact": {
     "en": "Risk if left mis-set: a readable backup leaks old password hashes just like the live file, attackers often target `.old`/backup copies precisely because they are overlooked. Applying the fix is safe: `0600 root:root` matches the live file's mode. Precaution: do not loosen to world-readable; this backup must mirror the strict permissions of `/etc/security/opasswd`.",
     "fr": "Risque si mal réglé : une sauvegarde lisible divulgue d'anciens condensats comme le fichier actif, les attaquants ciblent souvent les copies `.old`/de sauvegarde précisément parce qu'elles sont négligées. Appliquer le correctif est sûr : `0600 root:root` correspond au mode du fichier actif. Précaution : ne relâchez pas vers une lecture par tous ; cette sauvegarde doit refléter les permissions strictes de `/etc/security/opasswd`."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

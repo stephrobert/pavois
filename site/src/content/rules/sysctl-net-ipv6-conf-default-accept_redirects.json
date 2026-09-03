@@ -1,17 +1,17 @@
 {
   "id": "sysctl-net-ipv6-conf-default-accept_redirects",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -39,6 +39,9 @@
   "check": [
     "describe kernel_parameter('net.ipv6.conf.default.accept_redirects') do",
     "  its('value') { should cmp 0 }",
+    "end",
+    "describe command(\"grep -hsE '^[[:space:]]*net.ipv6.conf.default.accept_redirects[[:space:]]*=[[:space:]]*0([[:space:]]|$)' /etc/sysctl.conf /etc/sysctl.d/*.conf /run/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /lib/sysctl.d/*.conf 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
   "remediation": {
@@ -50,14 +53,13 @@
     "en": "Disable Kernel Parameter for Accepting ICMP Redirects by Default on IPv6 Interfaces",
     "fr": "Désactiver le paramètre noyau d'acceptation des redirections ICMP par défaut sur les interfaces IPv6"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "ICMPv6 redirect messages instruct a host to send traffic for a destination via a different next hop. When `net.ipv6.conf.default.accept_redirects` is enabled, an attacker on the local link can forge redirect messages to alter the host's routing table, diverting traffic through an attacker-controlled gateway, a **man-in-the-middle** attack, or blackholing it for denial of service. A normal end host should never need to accept ICMPv6 redirects, so disabling them by default closes this vector.",
-    "fr": "Les messages de redirection ICMPv6 indiquent à un hôte d'envoyer le trafic vers une destination via un autre saut suivant. Lorsque `net.ipv6.conf.default.accept_redirects` est activé, un attaquant sur le lien local peut forger des messages de redirection pour modifier la table de routage de l'hôte, détournant le trafic via une passerelle contrôlée par l'attaquant, une attaque d'**homme du milieu**, ou le supprimant pour provoquer un déni de service. Un hôte d'extrémité normal ne devrait jamais avoir besoin d'accepter les redirections ICMPv6, donc les désactiver par défaut ferme ce vecteur."
-  },
   "summary": {
     "en": "Sets the default for new IPv6 interfaces to **reject ICMPv6 redirect messages** via `net.ipv6.conf.default.accept_redirects = 0`.",
     "fr": "Définit la valeur par défaut des nouvelles interfaces IPv6 pour **rejeter les messages de redirection ICMPv6** via `net.ipv6.conf.default.accept_redirects = 0`."
+  },
+  "rationale": {
+    "en": "ICMPv6 redirect messages instruct a host to send traffic for a destination via a different next hop. When `net.ipv6.conf.default.accept_redirects` is enabled, an attacker on the local link can forge redirect messages to alter the host's routing table, diverting traffic through an attacker-controlled gateway, a **man-in-the-middle** attack, or blackholing it for denial of service. A normal end host should never need to accept ICMPv6 redirects, so disabling them by default closes this vector.",
+    "fr": "Les messages de redirection ICMPv6 indiquent à un hôte d'envoyer le trafic vers une destination via un autre saut suivant. Lorsque `net.ipv6.conf.default.accept_redirects` est activé, un attaquant sur le lien local peut forger des messages de redirection pour modifier la table de routage de l'hôte, détournant le trafic via une passerelle contrôlée par l'attaquant, une attaque d'**homme du milieu**, ou le supprimant pour provoquer un déni de service. Un hôte d'extrémité normal ne devrait jamais avoir besoin d'accepter les redirections ICMPv6, donc les désactiver par défaut ferme ce vecteur."
   },
   "check_note": {
     "en": "Pavois reads the **effective** kernel value of `net.ipv6.conf.default.accept_redirects`, not a `*.conf` file. The live value is the merge of `/etc/sysctl.conf`, drop-ins in `/etc/sysctl.d/` and `/run/sysctl.d/`, kernel command-line parameters and any runtime `sysctl -w`. A file-based scanner can pass while the running kernel still accepts redirects; Pavois reports the value actually enforced by the kernel.",
@@ -78,5 +80,7 @@
   "impact": {
     "en": "Negligible impact for end hosts and servers, accepting ICMPv6 redirects is rarely useful and is a known attack surface. The only environments that may rely on redirects are some specialized layer-3 topologies with a single shared gateway; even there, static routes are the safer alternative. The change does not drop existing connections and is reversible by resetting the key, so there is essentially no lockout risk.",
     "fr": "Impact négligeable pour les hôtes d'extrémité et les serveurs, accepter les redirections ICMPv6 est rarement utile et constitue une surface d'attaque connue. Les seuls environnements pouvant dépendre des redirections sont certaines topologies de niveau 3 spécialisées avec une passerelle partagée unique ; même là, les routes statiques sont l'alternative plus sûre. Le changement ne coupe pas les connexions existantes et est réversible en réinitialisant la clé, donc il n'y a pratiquement aucun risque de blocage."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

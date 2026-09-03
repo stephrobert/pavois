@@ -1,10 +1,13 @@
 {
   "id": "findloop-file-groupowner-var-log",
   "supported_os": [
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "rhel8": "4.0.0",
@@ -19,10 +22,11 @@
   "norms": {
     "bp28": "R71",
     "cis": [
-      "6.2.3.1",
+      "6.1.4.1",
       "6.2.4.1",
-      "6.2.2.1",
-      "6.1.4.1"
+      "6.2.6.1",
+      "6.2.3.1",
+      "6.2.2.1"
     ],
     "pci-dss": "10.3.2",
     "stig": [
@@ -31,23 +35,28 @@
     ]
   },
   "check": [
-    "describe command('timeout 90 find /var/log -type f ! -group root ! -group adm ! -group syslog 2>/dev/null') do",
+    "describe command('timeout 90 find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal 2>/dev/null') do",
+    "  its('exit_status') { should_not cmp 124 }  # timeout killed the scan: no evidence, not a pass",
     "  its('stdout.strip') { should eq '' }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "command": "find /var/log -type f ! -user root ! -user syslog -exec chown root {} + 2>/dev/null; find /var/log -type f ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal -exec chgrp root {} + 2>/dev/null; true",
+    "name": "fix-varlog-ownership",
+    "not_if": "test -z \"$(find /var/log -type f \\( ! -user root ! -user syslog -o ! -group root ! -group adm ! -group syslog ! -group utmp ! -group systemd-journal \\) 2>/dev/null | head -1)\"",
+    "resource": "exec"
+  },
   "title": {
     "en": "Verify the group owning the /var/log directory",
     "fr": "Vérifier le groupe propriétaire du répertoire /var/log"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The `/var/log` tree holds system, authentication and audit logs that must only be reachable by authorized administrators. A log file group-owned by something other than **root**, **adm** or **syslog** can be read by members of that group, exposing error messages, credentials or session data, or modified to erase evidence of an attack. Restricting the group owner keeps confidentiality and integrity of the audit trail.",
-    "fr": "L'arborescence `/var/log` contient les journaux système, d'authentification et d'audit qui ne doivent être accessibles qu'aux administrateurs autorisés. Un fichier de journal appartenant à un groupe autre que **root**, **adm** ou **syslog** peut être lu par les membres de ce groupe, exposant des messages d'erreur, des identifiants ou des données de session, ou modifié pour effacer les traces d'une attaque. Restreindre le groupe propriétaire préserve la confidentialité et l'intégrité de la piste d'audit."
-  },
   "summary": {
     "en": "Ensures every file under `/var/log` is group-owned by **root**, **adm** or **syslog**.",
     "fr": "Garantit que chaque fichier sous `/var/log` a pour groupe propriétaire **root**, **adm** ou **syslog**."
+  },
+  "rationale": {
+    "en": "The `/var/log` tree holds system, authentication and audit logs that must only be reachable by authorized administrators. A log file group-owned by something other than **root**, **adm** or **syslog** can be read by members of that group, exposing error messages, credentials or session data, or modified to erase evidence of an attack. Restricting the group owner keeps confidentiality and integrity of the audit trail.",
+    "fr": "L'arborescence `/var/log` contient les journaux système, d'authentification et d'audit qui ne doivent être accessibles qu'aux administrateurs autorisés. Un fichier de journal appartenant à un groupe autre que **root**, **adm** ou **syslog** peut être lu par les membres de ce groupe, exposant des messages d'erreur, des identifiants ou des données de session, ou modifié pour effacer les traces d'une attaque. Restreindre le groupe propriétaire préserve la confidentialité et l'intégrité de la piste d'audit."
   },
   "check_note": {
     "en": "Pavois runs `find /var/log -type f ! -group root ! -group adm ! -group syslog` and expects **empty output**. Auditing the live filesystem catches logs created at runtime by daemons, rotated files and operator-dropped files that a static file-list or package check would miss.",
@@ -68,5 +77,7 @@
   "impact": {
     "en": "Risk if left as-is: logs readable or writable by an unprivileged group can leak secrets or be tampered with to hide an intrusion. Before fixing: some services (e.g. a database or web server writing into `/var/log/<service>/`) deliberately own their logs with a dedicated group; forcing `root:adm` can break log rotation or stop the daemon writing. Review the listed files and exclude legitimate service-owned subtrees instead of mass-rewriting.",
     "fr": "Risque en l'état : des journaux lisibles ou modifiables par un groupe non privilégié peuvent fuiter des secrets ou être altérés pour masquer une intrusion. Avant de corriger : certains services (base de données ou serveur web écrivant dans `/var/log/<service>/`) possèdent volontairement leurs journaux avec un groupe dédié ; forcer `root:adm` peut casser la rotation ou empêcher le démon d'écrire. Examinez les fichiers listés et excluez les sous-arborescences légitimes appartenant à un service au lieu de tout réécrire."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

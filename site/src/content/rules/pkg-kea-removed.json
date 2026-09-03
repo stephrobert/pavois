@@ -3,11 +3,14 @@
   "supported_os": [
     "debian12",
     "debian13",
-    "fedora"
+    "fedora",
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
     "debian12": "1.1.0",
-    "debian13": "1.0.0"
+    "debian13": "1.0.0",
+    "ubuntu2404": "1.0.0"
   },
   "severity": "medium",
   "domain": "Packages",
@@ -31,14 +34,13 @@
     "en": "Uninstall kea Package",
     "fr": "Désinstaller le paquet kea"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`kea` is the ISC DHCP server. A DHCP server hands out IP addresses and network parameters to clients; if it runs where it is not needed it can **disrupt the network** (rogue/conflicting leases) and exposes a network-facing daemon to exploitation. Removing the package, rather than just stopping the service, ensures it cannot be easily or accidentally reactivated and reduces the attack surface.",
-    "fr": "`kea` est le serveur DHCP de l'ISC. Un serveur DHCP distribue des adresses IP et des paramètres réseau aux clients ; s'il tourne là où il n'est pas nécessaire, il peut **perturber le réseau** (baux pirates ou conflictuels) et expose un démon en écoute réseau à une exploitation. Retirer le paquet, plutôt que simplement arrêter le service, garantit qu'il ne pourra pas être facilement ou accidentellement réactivé et réduit la surface d'attaque."
-  },
   "summary": {
     "en": "Ensures the `kea` ISC DHCP server package is **not installed** unless the host is an intended DHCP server.",
     "fr": "Garantit que le paquet serveur DHCP ISC `kea` n'est **pas installé**, sauf si l'hôte est un serveur DHCP voulu."
+  },
+  "rationale": {
+    "en": "`kea` is the ISC DHCP server. A DHCP server hands out IP addresses and network parameters to clients; if it runs where it is not needed it can **disrupt the network** (rogue/conflicting leases) and exposes a network-facing daemon to exploitation. Removing the package, rather than just stopping the service, ensures it cannot be easily or accidentally reactivated and reduces the attack surface.",
+    "fr": "`kea` est le serveur DHCP de l'ISC. Un serveur DHCP distribue des adresses IP et des paramètres réseau aux clients ; s'il tourne là où il n'est pas nécessaire, il peut **perturber le réseau** (baux pirates ou conflictuels) et expose un démon en écoute réseau à une exploitation. Retirer le paquet, plutôt que simplement arrêter le service, garantit qu'il ne pourra pas être facilement ou accidentellement réactivé et réduit la surface d'attaque."
   },
   "check_note": {
     "en": "Pavois queries the package database via InSpec `package('kea')` (`dpkg -s kea` / `rpm -q kea`) and asserts it is **not installed**. Checking the package state is more reliable than checking whether a service is stopped: a stopped `kea-dhcp4` unit can be re-enabled at any time, whereas an absent package cannot serve DHCP at all.",
@@ -59,5 +61,7 @@
   "impact": {
     "en": "Removing `kea` will stop and delete the DHCP server. **Precaution:** only apply on hosts that are not meant to provide DHCP. If this machine actually serves leases to a LAN, uninstalling it will **cut off address allocation** for every client that depends on it, clients will lose connectivity as their leases expire. Confirm the role first (`systemctl is-enabled kea-dhcp4-server`, check `/etc/kea/`) and migrate the service before removing.",
     "fr": "Retirer `kea` arrête et supprime le serveur DHCP. **Précaution :** n'appliquez la règle que sur des hôtes qui ne doivent pas fournir de DHCP. Si cette machine distribue réellement des baux à un réseau local, la désinstaller **coupera l'attribution d'adresses** à tous les clients qui en dépendent, ils perdront la connectivité à l'expiration de leurs baux. Vérifiez d'abord le rôle (`systemctl is-enabled kea-dhcp4-server`, inspectez `/etc/kea/`) et migrez le service avant de le retirer."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

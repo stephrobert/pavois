@@ -1,0 +1,37 @@
+{
+  "id": "dconf-gnome-login-banner-text",
+  "title": {
+    "en": "Set the GNOME3 Login Warning Banner Text",
+    "fr": "Définir le texte de la bannière d'avertissement de connexion GNOME3"
+  },
+  "summary": {
+    "en": "Enforces an organization-defined warning banner on the GNOME login screen via `banner-message-text` in the system `dconf` database, locked against user override.",
+    "fr": "Impose une bannière d'avertissement définie par l'organisation sur l'écran de connexion GNOME via `banner-message-text` dans la base `dconf` du système, verrouillée contre toute modification par l'utilisateur."
+  },
+  "rationale": {
+    "en": "A login banner is both a deterrent and a legal notice. Displaying an organization-approved warning at the GNOME login screen (`banner-message-text`) puts every user, and any intruder, on notice that access is monitored and unauthorized use is prohibited. Without it, attackers can later claim they had no notice of restrictions, **weakening any disciplinary or legal action**, and the system silently fails policy and accreditation requirements (NIST AC-8).",
+    "fr": "Une bannière de connexion est à la fois dissuasive et un avis légal. Afficher un avertissement approuvé par l'organisation sur l'écran de connexion GNOME (`banner-message-text`) informe chaque utilisateur, et tout intrus, que l'accès est surveillé et que l'usage non autorisé est interdit. Sans elle, un attaquant peut prétendre n'avoir reçu aucune notification des restrictions, **affaiblissant toute action disciplinaire ou judiciaire**, et le système échoue silencieusement aux exigences de politique et d'accréditation (NIST AC-8)."
+  },
+  "check_note": {
+    "en": "Pavois verifies in the **effective** `dconf` configuration that a drop-in under `/etc/dconf/db/*.d/` actually sets `banner-message-text`, and that `/org/gnome/login-screen/banner-message-text` is listed in a `locks/` file so users cannot clear it. Inspecting the resolved dconf database catches the banner regardless of which keyfile defines it, a file-only scan of one path would miss values set in another drop-in.",
+    "fr": "Pavois vérifie dans la configuration `dconf` **effective** qu'un drop-in sous `/etc/dconf/db/*.d/` définit bien `banner-message-text`, et que `/org/gnome/login-screen/banner-message-text` figure dans un fichier `locks/` afin que les utilisateurs ne puissent pas l'effacer. Inspecter la base dconf résolue capte la bannière quel que soit le fichier de clés qui la définit, un scan d'un seul chemin manquerait une valeur posée dans un autre drop-in."
+  },
+  "verify": {
+    "en": "Run `dconf read /org/gnome/login-screen/banner-message-text` (or `gsettings get org.gnome.login-screen banner-message-text`); the expected output is your approved banner string, e.g. `'Authorized use only. Activity is monitored.'`. Confirm the lock with `grep -r banner-message-text /etc/dconf/db/*/locks/`.",
+    "fr": "Exécutez `dconf read /org/gnome/login-screen/banner-message-text` (ou `gsettings get org.gnome.login-screen banner-message-text`) ; la sortie attendue est votre chaîne de bannière approuvée, p. ex. `'Usage autorisé uniquement. Activité surveillée.'`. Confirmez le verrou avec `grep -r banner-message-text /etc/dconf/db/*/locks/`."
+  },
+  "logs": {
+    "en": "The display manager renders the banner; its lifecycle is logged via `journalctl -u gdm`. Login attempts at the greeter appear in `journalctl -u gdm` and (for the resulting sessions) in `/var/log/auth.log` or `journalctl _COMM=gdm-session-worker`.",
+    "fr": "Le gestionnaire d'affichage rend la bannière ; son cycle de vie est journalisé via `journalctl -u gdm`. Les tentatives de connexion sur l'écran d'accueil apparaissent dans `journalctl -u gdm` et (pour les sessions résultantes) dans `/var/log/auth.log` ou `journalctl _COMM=gdm-session-worker`."
+  },
+  "remediation_note": {
+    "en": "Pavois's harden plan uses the `dconf` resource to write the keyfile setting `banner-message-text` and a matching `locks/` entry, then runs `dconf update`. Provide your organization's approved text; apply with `pavois harden apply`.",
+    "fr": "Le plan de durcissement de Pavois utilise la ressource `dconf` pour écrire le fichier de clés définissant `banner-message-text` et l'entrée `locks/` correspondante, puis exécute `dconf update`. Fournissez le texte approuvé par votre organisation ; appliquez avec `pavois harden apply`."
+  },
+  "impact": {
+    "en": "No technical risk: the banner only adds text to the login greeter and does not affect authentication or services. **Precaution:** the banner content is a legal artifact, use the exact wording mandated by your organization or regulator, as an inaccurate notice can be worse than none. The setting applies only where GDM/GNOME runs; headless servers are unaffected.",
+    "fr": "Aucun risque technique : la bannière n'ajoute que du texte à l'écran d'accueil et n'affecte ni l'authentification ni les services. **Précaution :** le contenu de la bannière est un élément à valeur juridique, utilisez la formulation exacte imposée par votre organisation ou régulateur, car un avis inexact peut être pire que son absence. Le réglage ne s'applique que là où GDM/GNOME s'exécute ; les serveurs sans interface graphique ne sont pas concernés."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

@@ -1,0 +1,37 @@
+{
+  "id": "misc-wireless-disable-interfaces",
+  "title": {
+    "en": "Deactivate Wireless Network Interfaces",
+    "fr": "Désactiver les interfaces réseau sans fil"
+  },
+  "summary": {
+    "en": "Disables all wireless radios (Wi-Fi, etc.) so the host has no active wireless interface, via `nmcli radio` reporting every radio as off.",
+    "fr": "Désactive toutes les radios sans fil (Wi-Fi, etc.) afin que l'hôte n'ait aucune interface sans fil active, `nmcli radio` signalant chaque radio comme éteinte."
+  },
+  "rationale": {
+    "en": "An enabled wireless radio on a server is an uncontrolled network edge. Attackers can stand up a rogue access point and lure the host into a **malicious association** or **ad hoc** connection, then run man-in-the-middle interception, traffic capture or denial of service, entirely bypassing the wired perimeter and firewall. On systems that only need wired networking, turning off all radios removes this attack surface completely.",
+    "fr": "Une radio sans fil activée sur un serveur constitue une bordure réseau non contrôlée. Un attaquant peut déployer un point d'accès pirate et attirer l'hôte vers une **association malveillante** ou une connexion **ad hoc**, puis mener une interception de type homme du milieu, une capture de trafic ou un déni de service, contournant totalement le périmètre filaire et le pare-feu. Sur les systèmes ne nécessitant que le réseau filaire, éteindre toutes les radios supprime entièrement cette surface d'attaque."
+  },
+  "check_note": {
+    "en": "Pavois asks NetworkManager for the **live** radio state with `nmcli radio all` and passes only when nothing reports `enabled`. This reflects the actual runtime status of the radios, including ones brought up after boot, which a static check of config files or kernel module blacklists could miss; the running state is what an attacker can reach.",
+    "fr": "Pavois interroge NetworkManager sur l'état **réel** des radios avec `nmcli radio all` et ne réussit que si rien n'est signalé comme `enabled`. Cela reflète le statut d'exécution effectif des radios, y compris celles activées après le démarrage, qu'un examen statique des fichiers de configuration ou des listes noires de modules noyau pourrait manquer ; c'est l'état en cours qu'un attaquant peut atteindre."
+  },
+  "verify": {
+    "en": "Run `nmcli radio all`. The expected output shows `WIFI`, `WWAN` (and others) as `disabled`/`missing`, with none `enabled`. To make it persistent, `nmcli radio all off` plus blacklisting the wireless kernel modules.",
+    "fr": "Exécutez `nmcli radio all`. La sortie attendue affiche `WIFI`, `WWAN` (et autres) comme `disabled`/`missing`, aucune n'étant `enabled`. Pour rendre cela persistant, `nmcli radio all off` plus la mise en liste noire des modules noyau sans fil."
+  },
+  "logs": {
+    "en": "NetworkManager logs radio changes via `journalctl -u NetworkManager`. The presence and state of wireless devices can be inspected with `nmcli device status`, `rfkill list` and `ip link`; kernel module loads appear in `dmesg`.",
+    "fr": "NetworkManager journalise les changements de radio via `journalctl -u NetworkManager`. La présence et l'état des périphériques sans fil s'inspectent avec `nmcli device status`, `rfkill list` et `ip link` ; les chargements de modules noyau apparaissent dans `dmesg`."
+  },
+  "remediation_note": {
+    "en": "No automated harden plan is defined, so this must be applied **manually**: turn radios off now with `nmcli radio all off`, and make it durable by blacklisting the wireless drivers (e.g. add `install <module> /bin/false` entries under `/etc/modprobe.d/`) so they cannot be reloaded, then verify with `nmcli radio all` and `rfkill list`.",
+    "fr": "Aucun plan de durcissement automatisé n'est défini ; cela doit donc être appliqué **manuellement** : éteignez les radios maintenant avec `nmcli radio all off`, et rendez-le durable en mettant les pilotes sans fil en liste noire (par ex. ajoutez des entrées `install <module> /bin/false` sous `/etc/modprobe.d/`) pour qu'ils ne puissent être rechargés, puis vérifiez avec `nmcli radio all` et `rfkill list`."
+  },
+  "impact": {
+    "en": "Only apply this on hosts that rely solely on **wired** networking. On a laptop or any machine whose **only** connectivity is Wi-Fi, disabling the radios will cut network access, including your remote session, so never run it over the wireless link you depend on. Confirm an active wired path first, and remember the radios may re-enable on reboot unless you also blacklist the modules.",
+    "fr": "N'appliquez ceci que sur des hôtes reposant uniquement sur le réseau **filaire**. Sur un portable ou toute machine dont la **seule** connectivité est le Wi-Fi, désactiver les radios coupera l'accès réseau, y compris votre session distante, ne l'exécutez donc jamais via le lien sans fil dont vous dépendez. Confirmez d'abord un chemin filaire actif, et rappelez-vous que les radios peuvent se réactiver au redémarrage si vous ne mettez pas aussi les modules en liste noire."
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
+}

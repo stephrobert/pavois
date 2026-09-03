@@ -1,11 +1,20 @@
 {
   "id": "ssh-enable-pubkey-auth",
   "supported_os": [
+    "debian12",
+    "debian13",
+    "fedora",
+    "rhel10",
+    "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0",
+    "rhel8": "4.0.0",
     "rhel9": "2.0.0",
     "ubuntu2204": "3.0.0",
     "ubuntu2404": "1.0.0"
@@ -29,7 +38,7 @@
     "directive": "pubkeyauthentication",
     "notify": {
       "action": "reload",
-      "service": "ssh"
+      "service": "ssh.service"
     },
     "resource": "sshd_setting",
     "value": "yes",
@@ -39,14 +48,13 @@
     "en": "Enable Public Key Authentication",
     "fr": "Activer l'authentification par clé publique"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "Public-key authentication is the foundation of strong, phishing-resistant SSH access and a prerequisite for hardware-token or multi-factor setups (smart cards, FIDO/U2F security keys backed by certificates). Keeping **`PubkeyAuthentication yes`** lets you move away from reusable passwords toward cryptographic credentials that cannot be brute-forced or replayed. Disabling it would force a fallback to weaker password authentication, greatly increasing the ease of unauthorized access to privileged functions.",
-    "fr": "L'authentification par clé publique est le socle d'un accès SSH robuste et résistant au phishing, et un prérequis pour les dispositifs à jeton matériel ou multi-facteurs (cartes à puce, clés de sécurité FIDO/U2F adossées à des certificats). Conserver **`PubkeyAuthentication yes`** permet d'abandonner les mots de passe réutilisables au profit d'identifiants cryptographiques qui ne peuvent être ni forcés par force brute ni rejoués. Le désactiver forcerait un repli sur l'authentification par mot de passe, plus faible, augmentant fortement la facilité d'accès non autorisé aux fonctions privilégiées."
-  },
   "summary": {
     "en": "Ensures SSH accepts key-based logins by setting **`PubkeyAuthentication yes`** in `sshd`.",
     "fr": "Garantit que SSH accepte les connexions par clé en positionnant **`PubkeyAuthentication yes`** dans `sshd`."
+  },
+  "rationale": {
+    "en": "Public-key authentication is the foundation of strong, phishing-resistant SSH access and a prerequisite for hardware-token or multi-factor setups (smart cards, FIDO/U2F security keys backed by certificates). Keeping **`PubkeyAuthentication yes`** lets you move away from reusable passwords toward cryptographic credentials that cannot be brute-forced or replayed. Disabling it would force a fallback to weaker password authentication, greatly increasing the ease of unauthorized access to privileged functions.",
+    "fr": "L'authentification par clé publique est le socle d'un accès SSH robuste et résistant au phishing, et un prérequis pour les dispositifs à jeton matériel ou multi-facteurs (cartes à puce, clés de sécurité FIDO/U2F adossées à des certificats). Conserver **`PubkeyAuthentication yes`** permet d'abandonner les mots de passe réutilisables au profit d'identifiants cryptographiques qui ne peuvent être ni forcés par force brute ni rejoués. Le désactiver forcerait un repli sur l'authentification par mot de passe, plus faible, augmentant fortement la facilité d'accès non autorisé aux fonctions privilégiées."
   },
   "check_note": {
     "en": "Pavois reads the **effective** `pubkeyauthentication` value from `sshd -T`, the daemon's resolved configuration. A file scan of `/etc/ssh/sshd_config` could miss the value if it is set in an `Include`d drop-in or a `Match` block, `sshd -T` shows exactly what the running daemon enforces.",
@@ -67,5 +75,7 @@
   "impact": {
     "en": "If key authentication is disabled, the system falls back to passwords, weakening access security and breaking any automation or admin that relies on keys. Enabling it is safe and additive, it does not disable other methods. Precaution: before you later disable password authentication (a complementary hardening step), make sure at least one working **authorized key** is in place for an account with access, and keep a **console or second session open**, otherwise you risk locking yourself out. The reload preserves your current SSH session.",
     "fr": "Si l'authentification par clé est désactivée, le système se rabat sur les mots de passe, affaiblissant la sécurité d'accès et cassant toute automatisation ou administration reposant sur des clés. L'activer est sûr et additif, cela ne désactive pas les autres méthodes. Précaution : avant de désactiver ultérieurement l'authentification par mot de passe (étape de durcissement complémentaire), assurez-vous qu'au moins une **clé autorisée** fonctionnelle est en place pour un compte ayant accès, et gardez une **console ou une seconde session ouverte**, faute de quoi vous risquez de vous bloquer. Le reload préserve votre session SSH en cours."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

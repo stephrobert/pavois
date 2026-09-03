@@ -1,16 +1,17 @@
 {
   "id": "kconfig-compat-vdso",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
+    "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -26,23 +27,25 @@
     "bp28": "R15"
   },
   "check": [
-    "describe command(\"grep -h '^CONFIG_COMPAT_VDSO=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_COMPAT_VDSO='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(CONFIG_COMPAT_VDSO=|PAVOIS_NO_KERNEL_CONFIG)'\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should_not match(/^CONFIG_COMPAT_VDSO=y$/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "resource": "kernel_build"
+  },
   "title": {
     "en": "Disable the 32-bit vDSO",
     "fr": "Désactiver le vDSO 32 bits"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`CONFIG_COMPAT_VDSO=y` maps the vDSO at a **fixed, predictable address** for compatibility with very old glibc versions. A fixed vDSO mapping defeats its randomization and gives attackers a reliable, known location of executable code in every process, a ready source of gadgets for ROP-style exploitation. It also hurts performance. Leaving it unset keeps the vDSO randomized (full ASLR) and removes that predictable code region.",
-    "fr": "`CONFIG_COMPAT_VDSO=y` mappe le vDSO à une **adresse fixe et prévisible** pour la compatibilité avec de très anciennes versions de glibc. Un mappage vDSO fixe déjoue sa randomisation et fournit aux attaquants un emplacement fiable et connu de code exécutable dans chaque processus, une source toute prête de gadgets pour l'exploitation de type ROP. Cela dégrade aussi les performances. Le laisser non défini garde le vDSO randomisé (ASLR complet) et supprime cette région de code prévisible."
-  },
   "summary": {
     "en": "Ensures the running kernel is built **without** `CONFIG_COMPAT_VDSO`, so the vDSO is randomized instead of mapped at a fixed legacy address.",
     "fr": "Garantit que le noyau en cours d'exécution est compilé **sans** `CONFIG_COMPAT_VDSO`, afin que le vDSO soit randomisé plutôt que mappé à une adresse héritée fixe."
+  },
+  "rationale": {
+    "en": "`CONFIG_COMPAT_VDSO=y` maps the vDSO at a **fixed, predictable address** for compatibility with very old glibc versions. A fixed vDSO mapping defeats its randomization and gives attackers a reliable, known location of executable code in every process, a ready source of gadgets for ROP-style exploitation. It also hurts performance. Leaving it unset keeps the vDSO randomized (full ASLR) and removes that predictable code region.",
+    "fr": "`CONFIG_COMPAT_VDSO=y` mappe le vDSO à une **adresse fixe et prévisible** pour la compatibilité avec de très anciennes versions de glibc. Un mappage vDSO fixe déjoue sa randomisation et fournit aux attaquants un emplacement fiable et connu de code exécutable dans chaque processus, une source toute prête de gadgets pour l'exploitation de type ROP. Cela dégrade aussi les performances. Le laisser non défini garde le vDSO randomisé (ASLR complet) et supprime cette région de code prévisible."
   },
   "check_note": {
     "en": "Pavois reads the build-time config of the **running** kernel via `/boot/config-$(uname -r)` (fallback `/proc/config.gz`) and asserts the line is **not** `CONFIG_COMPAT_VDSO=y`. Keying on `uname -r` matches the exact booted image, more reliable than reading a random `/boot/config-*`.",
@@ -63,5 +66,7 @@
   "impact": {
     "en": "**Risk if enabled:** the vDSO sits at a fixed address in every process, providing attackers a predictable code region for ROP and weakening ASLR.\n\n**Precautions before changing it:** the compat vDSO only matters for glibc older than ~2.3.3 (early 2000s); no modern userland depends on it, so disabling has effectively no functional impact. Changing kernels requires a reboot; keep the previous kernel in GRUB as a fallback and validate boot on a console.",
     "fr": "**Risque si activé :** le vDSO se trouve à une adresse fixe dans chaque processus, offrant aux attaquants une région de code prévisible pour le ROP et affaiblissant l'ASLR.\n\n**Précautions avant de modifier :** le vDSO de compatibilité ne concerne que glibc antérieure à ~2.3.3 (début des années 2000) ; aucun espace utilisateur moderne n'en dépend, donc la désactivation n'a effectivement aucun impact fonctionnel. Changer de noyau nécessite un redémarrage ; conservez le noyau précédent dans GRUB en repli et validez le démarrage sur une console."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

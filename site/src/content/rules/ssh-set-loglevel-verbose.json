@@ -1,17 +1,17 @@
 {
   "id": "ssh-set-loglevel-verbose",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -25,8 +25,8 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "5.1.15",
       "2.2.6",
+      "5.1.15",
       "5.1.16"
     ],
     "nist": [
@@ -34,10 +34,7 @@
       "AC-17(a)",
       "CM-6(a)"
     ],
-    "pci-dss": [
-      "2.2.6",
-      "Req-2.2.4"
-    ]
+    "pci-dss": "2.2.6"
   },
   "check": [
     "describe command('sshd -T') do",
@@ -48,7 +45,7 @@
     "directive": "loglevel",
     "notify": {
       "action": "reload",
-      "service": "ssh"
+      "service": "ssh.service"
     },
     "resource": "sshd_setting",
     "value": "verbose",
@@ -58,14 +55,13 @@
     "en": "Set SSH Daemon LogLevel to VERBOSE",
     "fr": "Définir le LogLevel du démon SSH sur VERBOSE"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "**`VERBOSE`** logging records SSH login and logout activity **and the key fingerprint** used to authenticate. That fingerprint is decisive for **incident response** and forensics: it lets you attribute a session to a specific key, spot use of an unexpected or revoked key, and discount sessions that merely disconnected. `DEBUG` is not a substitute, it drowns security signal in protocol noise, and anything below `INFO` loses the audit trail entirely, leaving account misuse undetectable.",
-    "fr": "La journalisation **`VERBOSE`** enregistre l'activité de connexion et de déconnexion SSH **ainsi que l'empreinte de la clé** utilisée pour s'authentifier. Cette empreinte est déterminante pour la **réponse à incident** et l'investigation : elle permet d'attribuer une session à une clé précise, de repérer l'usage d'une clé inattendue ou révoquée, et d'écarter les sessions simplement déconnectées. `DEBUG` n'est pas un substitut, il noie le signal de sécurité sous le bruit du protocole, et tout niveau inférieur à `INFO` supprime la piste d'audit, rendant les abus de comptes indétectables."
-  },
   "summary": {
     "en": "Set `sshd` `LogLevel` to **`VERBOSE`** so login activity and authenticating key fingerprints are logged.",
     "fr": "Régler le `LogLevel` de `sshd` sur **`VERBOSE`** pour journaliser l'activité de connexion et l'empreinte des clés d'authentification."
+  },
+  "rationale": {
+    "en": "**`VERBOSE`** logging records SSH login and logout activity **and the key fingerprint** used to authenticate. That fingerprint is decisive for **incident response** and forensics: it lets you attribute a session to a specific key, spot use of an unexpected or revoked key, and discount sessions that merely disconnected. `DEBUG` is not a substitute, it drowns security signal in protocol noise, and anything below `INFO` loses the audit trail entirely, leaving account misuse undetectable.",
+    "fr": "La journalisation **`VERBOSE`** enregistre l'activité de connexion et de déconnexion SSH **ainsi que l'empreinte de la clé** utilisée pour s'authentifier. Cette empreinte est déterminante pour la **réponse à incident** et l'investigation : elle permet d'attribuer une session à une clé précise, de repérer l'usage d'une clé inattendue ou révoquée, et d'écarter les sessions simplement déconnectées. `DEBUG` n'est pas un substitut, il noie le signal de sécurité sous le bruit du protocole, et tout niveau inférieur à `INFO` supprime la piste d'audit, rendant les abus de comptes indétectables."
   },
   "check_note": {
     "en": "Pavois asserts that the **effective** `sshd -T` output reports exactly `loglevel verbose`. Querying the live daemon reflects the value resolved after all `Include` directives and `/etc/ssh/sshd_config.d/` drop-ins are merged, a file scan can miss a drop-in that downgrades the level and would report a false pass.",
@@ -86,5 +82,7 @@
   "impact": {
     "en": "Raising the log level does not affect connectivity, so there is no lockout risk. Expect **higher log volume** than `INFO`; verify that log rotation and disk space are sized for it. Do not use `DEBUG` in production, it can leak sensitive protocol internals and degrades the usefulness of the audit trail.",
     "fr": "Augmenter le niveau de journalisation n'affecte pas la connectivité, donc aucun risque de verrouillage. Attendez-vous à un **volume de journaux plus élevé** qu'avec `INFO` ; vérifiez que la rotation des logs et l'espace disque sont dimensionnés en conséquence. N'utilisez pas `DEBUG` en production, il peut divulguer des détails internes sensibles du protocole et dégrade l'utilité de la piste d'audit."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

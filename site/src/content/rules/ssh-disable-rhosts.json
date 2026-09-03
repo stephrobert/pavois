@@ -1,17 +1,17 @@
 {
   "id": "ssh-disable-rhosts",
   "supported_os": [
-    "almalinux9",
     "debian12",
     "debian13",
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9",
     "ubuntu2204",
-    "ubuntu2404"
+    "ubuntu2404",
+    "ubuntu2604"
   ],
   "os_versions": {
-    "almalinux9": "2.0.0",
     "debian12": "1.1.0",
     "debian13": "1.0.0",
     "rhel8": "4.0.0",
@@ -25,9 +25,9 @@
   "reboot_survivable": "yes",
   "norms": {
     "cis": [
-      "5.1.13",
       "2.2.6",
-      "5.1.11"
+      "5.1.11",
+      "5.1.13"
     ],
     "nist": [
       "3.1.12",
@@ -47,7 +47,7 @@
     "directive": "ignorerhosts",
     "notify": {
       "action": "reload",
-      "service": "ssh"
+      "service": "ssh.service"
     },
     "resource": "sshd_setting",
     "value": "yes",
@@ -57,14 +57,13 @@
     "en": "Disable SSH Support for .rhosts Files",
     "fr": "Désactiver la prise en charge SSH des fichiers .rhosts"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "`.rhosts`/`.shosts` files implement host-based trust: they let a user from a named host log in **without supplying a credential**. This trust is based on easily-spoofed source addresses and means that compromising one host lets an attacker move trivially to every host that trusts it. `IgnoreRhosts yes` tells SSH to disregard these files entirely, closing this credential-less lateral-movement path.",
-    "fr": "Les fichiers `.rhosts`/`.shosts` implémentent une confiance basée sur l'hôte : ils permettent à un utilisateur d'un hôte nommé de se connecter **sans fournir d'identifiant**. Cette confiance repose sur des adresses source facilement usurpables, si bien que compromettre un hôte permet à un attaquant de rebondir trivialement vers tout hôte qui lui fait confiance. `IgnoreRhosts yes` indique à SSH d'ignorer entièrement ces fichiers, fermant ce chemin de mouvement latéral sans identifiant."
-  },
   "summary": {
     "en": "Forces **`IgnoreRhosts yes`** so SSH ignores `.rhosts` and `.shosts` files when authenticating users.",
     "fr": "Force **`IgnoreRhosts yes`** afin que SSH ignore les fichiers `.rhosts` et `.shosts` lors de l'authentification des utilisateurs."
+  },
+  "rationale": {
+    "en": "`.rhosts`/`.shosts` files implement host-based trust: they let a user from a named host log in **without supplying a credential**. This trust is based on easily-spoofed source addresses and means that compromising one host lets an attacker move trivially to every host that trusts it. `IgnoreRhosts yes` tells SSH to disregard these files entirely, closing this credential-less lateral-movement path.",
+    "fr": "Les fichiers `.rhosts`/`.shosts` implémentent une confiance basée sur l'hôte : ils permettent à un utilisateur d'un hôte nommé de se connecter **sans fournir d'identifiant**. Cette confiance repose sur des adresses source facilement usurpables, si bien que compromettre un hôte permet à un attaquant de rebondir trivialement vers tout hôte qui lui fait confiance. `IgnoreRhosts yes` indique à SSH d'ignorer entièrement ces fichiers, fermant ce chemin de mouvement latéral sans identifiant."
   },
   "check_note": {
     "en": "Pavois reads the **effective** value from `sshd -T`, after every `Include`, `/etc/ssh/sshd_config.d/` drop-in and `Match` block. A `Match` stanza can re-enable rhosts trust for a specific user or address range; only the resolved output exposes that, unlike a read of `/etc/ssh/sshd_config`.",
@@ -85,5 +84,7 @@
   "impact": {
     "en": "**Practically no impact** in any modern environment: host-based `.rhosts` trust is obsolete and almost never legitimately used. The only thing this breaks is intentional rhosts-based authentication; if you depend on it (rare), migrate to key-based auth first. The reload preserves active sessions.",
     "fr": "**Quasiment aucun impact** dans un environnement moderne : la confiance `.rhosts` basée sur l'hôte est obsolète et presque jamais utilisée légitimement. La seule chose que cela casse est une authentification rhosts intentionnelle ; si vous en dépendez (rare), migrez d'abord vers l'authentification par clé. Le rechargement préserve les sessions actives."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }

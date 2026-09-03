@@ -2,6 +2,7 @@
   "id": "cmdline-vsyscall",
   "supported_os": [
     "fedora",
+    "rhel10",
     "rhel8",
     "rhel9"
   ],
@@ -17,21 +18,27 @@
   "check": [
     "describe command('cat /proc/cmdline') do",
     "  its('stdout') { should match(/(^| )vsyscall=none( |$)/) }",
+    "end",
+    "describe command(\"grep -hwsF 'vsyscall=none' /etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg 2>/dev/null\") do",
+    "  its('stdout') { should match(/\\S/) }",
     "end"
   ],
-  "remediation": {},
+  "remediation": {
+    "param": "vsyscall=none",
+    "reboot_required": true,
+    "resource": "kernel_cmdline"
+  },
   "title": {
     "en": "Disable vsyscalls",
     "fr": "Désactiver les vsyscalls"
   },
-  "needs_translation": [],
-  "rationale": {
-    "en": "The legacy vsyscall mechanism maps a small, fixed, executable region of kernel code at a predictable address in every process. Because its location is static, it provides a reliable target (ROP gadgets) for an attacker who already controls the return instruction pointer, weakening ASLR. Setting `vsyscall=none` removes this fixed mapping; modern glibc uses the vDSO instead and is unaffected.",
-    "fr": "L'ancien mécanisme vsyscall mappe une petite région fixe et exécutable de code noyau à une adresse prévisible dans chaque processus. Comme son emplacement est statique, il fournit une cible fiable (gadgets ROP) à un attaquant qui contrôle déjà le pointeur d'instruction de retour, affaiblissant l'ASLR. Définir `vsyscall=none` supprime ce mappage fixe ; la glibc moderne utilise le vDSO à la place et n'est pas affectée."
-  },
   "summary": {
     "en": "Enforces the kernel parameter `vsyscall=none` to remove the legacy fixed-address vsyscall page from process memory.",
     "fr": "Impose le paramètre noyau `vsyscall=none` pour supprimer la page vsyscall héritée à adresse fixe de la mémoire des processus."
+  },
+  "rationale": {
+    "en": "The legacy vsyscall mechanism maps a small, fixed, executable region of kernel code at a predictable address in every process. Because its location is static, it provides a reliable target (ROP gadgets) for an attacker who already controls the return instruction pointer, weakening ASLR. Setting `vsyscall=none` removes this fixed mapping; modern glibc uses the vDSO instead and is unaffected.",
+    "fr": "L'ancien mécanisme vsyscall mappe une petite région fixe et exécutable de code noyau à une adresse prévisible dans chaque processus. Comme son emplacement est statique, il fournit une cible fiable (gadgets ROP) à un attaquant qui contrôle déjà le pointeur d'instruction de retour, affaiblissant l'ASLR. Définir `vsyscall=none` supprime ce mappage fixe ; la glibc moderne utilise le vDSO à la place et n'est pas affectée."
   },
   "check_note": {
     "en": "Pavois reads the **effective** boot command line from `/proc/cmdline`, the arguments the running kernel truly started with. This is more reliable than grepping `/etc/default/grub` or `grub.cfg`, which may be edited without regeneration, overridden by drop-ins under `/etc/default/grub.d/`, or out of sync with the active bootloader entry. Only `/proc/cmdline` proves `vsyscall=none` is in force on this boot.",
@@ -52,5 +59,7 @@
   "impact": {
     "en": "Leaving the vsyscall page mapped gives attackers a stable, executable target that undermines ASLR. Disabling it requires a **reboot** and can break very old statically linked binaries or legacy glibc (pre-2.14) that still call vsyscalls directly, modern userspace using the vDSO is unaffected. Precautions: test legacy applications, prefer `vsyscall=emulate` first if you must support old binaries, schedule the reboot, and keep console access in case of boot issues.",
     "fr": "Laisser la page vsyscall mappée offre aux attaquants une cible stable et exécutable qui sape l'ASLR. La désactiver nécessite un **redémarrage** et peut casser de très anciens binaires liés statiquement ou une glibc héritée (antérieure à 2.14) appelant encore directement les vsyscalls, l'espace utilisateur moderne basé sur le vDSO n'est pas affecté. Précautions : testez les applications héritées, préférez d'abord `vsyscall=emulate` si vous devez supporter d'anciens binaires, planifiez le redémarrage et conservez un accès console en cas de problème de démarrage."
-  }
+  },
+  "datePublished": "2026-06-28",
+  "dateModified": "2026-07-14"
 }
