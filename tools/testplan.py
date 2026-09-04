@@ -251,6 +251,17 @@ RULES: list[Rule] = [
         ],
     ),
     Rule(
+        "the operator-facing wrapper and example files",
+        ["bin/pavois", "docs/reference/*.example", "docs/reference/scanner-account.md"],
+        [
+            (
+                OFFLINE,
+                "run it: bin/pavois version",
+                "that it builds on a machine other than yours; it compiles on demand",
+            ),
+        ],
+    ),
+    Rule(
         "the toolchain and task definitions",
         ["mise.toml", "go/go.mod", "go/go.sum"],
         [
