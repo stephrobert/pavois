@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Automated validation harness for pavois — fast tier, no VM, no datastream.
+# Automated validation harness for pavois: fast tier, no VM, no datastream.
 #
 #   L1 Reference : the pavois reference (docs/reference/pavois-content/<os>.yml)
 #                  is the SOURCE OF TRUTH. Every entry well-formed; rendering the
@@ -24,11 +24,11 @@ ok(){ printf '  \033[32m✔\033[0m %s\n' "$1"; }
 ko(){ printf '  \033[31m✗\033[0m %s\n' "$1"; fail=$((fail+1)); }
 
 # ── L1 Reference (source of truth) ─────────────────────────────────────────
-echo "L1 — reference integrity & fidelity"
+echo "L1: reference integrity & fidelity"
 python3 tools/validate_reference.py || fail=$((fail+1))
 
 # ── L2 Load ────────────────────────────────────────────────────────────────
-echo "L2 — load"
+echo "L2: load"
 rerr=0
 while IFS= read -r f; do ruby -c "$f" >/dev/null 2>&1 || { rerr=1; echo "    ruby KO: $f"; }; done \
   < <(find profiles -name '*.rb')
@@ -49,7 +49,7 @@ fi
 ( cd go && go test ./... ) >/dev/null 2>&1 && ok "go test" || ko "go test"
 
 # ── L3 Grade ───────────────────────────────────────────────────────────────
-echo "L3 — grade A->E"
+echo "L3: grade A->E"
 ( cd go && go test ./internal/audit/ -run TestGrade ) >/dev/null 2>&1 \
   && ok "Go grade A->E test" || ko "Go grade test"
 python3 tools/validate_grade.py && ok "Go grade bands == JS" || ko "Go/JS grade bands diverge"

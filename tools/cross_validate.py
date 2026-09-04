@@ -121,8 +121,8 @@ if "--json" in sys.argv:
         )
     )
     sys.exit(0)
-print(f"CIS cross-validation — {OS}\n")
-print(f"  Sources:  SSG={len(ssg)}  ansible-lockdown({AL_REPO})={len(al)}")
+print(f"CIS cross-validation: {OS}\n")
+print(f"  Sources: SSG={len(ssg)}  ansible-lockdown({AL_REPO})={len(al)}")
 if not al:
     print("  (ansible-lockdown not reachable; showing SSG only)")
 print(f"  Consensus (both agree): {len(consensus)} rules")
@@ -149,7 +149,7 @@ suspicious = sorted(
 )
 if suspicious:
     print(
-        f"  pavois cis NOT in either source ({len(suspicious)} — verify these): "
+        f"  pavois cis NOT in either source ({len(suspicious)}: verify these): "
         + ", ".join(suspicious[:20])
         + (" …" if len(suspicious) > 20 else "")
     )

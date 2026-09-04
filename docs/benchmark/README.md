@@ -1,4 +1,4 @@
-# Pavois vs OpenSCAP / Lynis — reproducible benchmark
+# Pavois vs OpenSCAP / Lynis: reproducible benchmark
 
 Evidence for the comparison on [the tools page](https://pavois.dev/en/docs/tools/). Everything
 here is reproducible from a fresh Debian 12 VM; nothing is hand-asserted.
@@ -9,9 +9,9 @@ A fresh Debian 12 VM is provisioned, the scanners + CINC are installed once, a c
 snapshot is taken, and **every run restores that identical snapshot first** (so the starting
 state never drifts). The scripts:
 
-- `tools/benchmark/effective-config-bench.sh <user@host> <key> <ssg-debian12-ds.xml>` — sets up
+- `tools/benchmark/effective-config-bench.sh <user@host> <key> <ssg-debian12-ds.xml>`: sets up
   the scenario and runs all three scanners, emitting `reports/benchmark-dropin.md`.
-- `test-vms/bench.sh` — the lab wrapper (provision → snapshot → restore → run). Not published
+- `test-vms/bench.sh`: the lab wrapper (provision → snapshot → restore → run). Not published
   (it references the local Incus lab).
 
 ## Versions (this run)
@@ -24,7 +24,7 @@ state never drifts). The scripts:
 | Lynis | 3.0.8 |
 | Target | Debian 12, fresh Incus VM |
 
-## Scenario 1 — sshd drop-in overrides PermitRootLogin
+## Scenario 1: sshd drop-in overrides PermitRootLogin
 
 Main `/etc/ssh/sshd_config` says `PermitRootLogin no`; a drop-in in `/etc/ssh/sshd_config.d/`
 says `yes` (the value `sshd -T` resolves). Exact checks:
@@ -46,7 +46,7 @@ sudo lynis audit system --quick --quiet                     # SSH-7408 suggestio
 | OpenSCAP 1.3.7 + SSG | OVAL on the file | **PASS** (false negative) |
 | Lynis 3.0.8 | `sshd -T` | warns (SSH-7408), caught but heuristic, unmapped |
 
-## Scenario 2 — sysctl runtime vs file (tested: NO edge, kept for honesty)
+## Scenario 2: sysctl runtime vs file (tested: NO edge, kept for honesty)
 
 We tested a second case to check how far the effective-config edge goes: set
 `kernel.kptr_restrict = 2` in `/etc/sysctl.d/` (secure on disk) but `sysctl -w

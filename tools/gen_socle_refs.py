@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assign each control a SOCLE reference — pavois is the executable Linux-host audit profile of the
+"""Assign each control a SOCLE reference: pavois is the executable Linux-host audit profile of the
 SOCLE norm (framework-scsl). A control becomes a leaf requirement under SOCLE's RUN (runtime/observ-
 ability) and CLD (host/infra posture) domains, with a pavois technical family. Format, the SOCLE
 scheme verbatim: SOCLE-<DOMAIN>-<FAMILY>-<NNN>.

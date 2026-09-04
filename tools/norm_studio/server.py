@@ -2,13 +2,13 @@
 # requires-python = ">=3.10"
 # dependencies = ["fastmcp", "pyyaml"]
 # ///
-"""pavois norm studio — an MCP server that surfaces the OFFICIAL standards sources and exploits
+"""pavois norm studio: an MCP server that surfaces the OFFICIAL standards sources and exploits
 the reference documents, so pavois's rule base stays the best-sourced reference in the field.
 
 It is the content engine behind the product plan: it watches the authorities (SSG releases,
 ansible-lockdown <OS>-CIS, cyber.gouv.fr, NIST OSCAL, Wazuh SCA), diffs their CURRENT versions
 against pavois's recorded baseline (docs/reference/norms.yml), and extracts structured rules from
-a source document on demand. Run:  uv run --with fastmcp tools/norm_studio/server.py
+a source document on demand. Run: uv run --with fastmcp tools/norm_studio/server.py
 """
 
 import base64
@@ -119,7 +119,7 @@ def _check_norm_versions() -> list:
     cat = _catalogue()["standards"]
     out = []
 
-    # ANSSI-BP-028 — cyber.gouv.fr is JS-rendered/unscrapable; ComplianceAsCode anssi.yml tracks
+    # ANSSI-BP-028: cyber.gouv.fr is JS-rendered/unscrapable; ComplianceAsCode anssi.yml tracks
     # the implemented ANSSI version reliably.
     anssi = _gh_content("repos/ComplianceAsCode/content/contents/controls/anssi.yml")
     m = re.search(r"^version:\s*'?\"?([\d.]+)", anssi, re.M)
@@ -134,7 +134,7 @@ def _check_norm_versions() -> list:
         }
     )
 
-    # NIST SP 800-53 — highest revision directory published in the NIST OSCAL content repo.
+    # NIST SP 800-53: highest revision directory published in the NIST OSCAL content repo.
     names = subprocess.run(
         [
             "gh",
@@ -159,7 +159,7 @@ def _check_norm_versions() -> list:
         }
     )
 
-    # PCI-DSS — ComplianceAsCode controls/pcidss_4.yml tracks the implemented PCI-DSS version
+    # PCI-DSS: ComplianceAsCode controls/pcidss_4.yml tracks the implemented PCI-DSS version
     # (machine-readable; cyber.gouv/pcisecuritystandards.org are not).
     pci = _gh_content("repos/ComplianceAsCode/content/contents/controls/pcidss_4.yml")
     mp = re.search(r"^version:\s*'?\"?([\d.]+)", pci, re.M)
@@ -291,15 +291,15 @@ def list_sources() -> dict:
         "nist-800-53": [
             "NIST OSCAL (usnistgov/oscal-content)",
             "ComplianceAsCode SSG",
-            "intuitem/ciso-assistant (nist-sp-800-53-rev5 framework — validate_mappings)",
+            "intuitem/ciso-assistant (nist-sp-800-53-rev5 framework: validate_mappings)",
         ],
         "nist-800-171": ["NIST SP 800-171", "Wazuh SCA (nist_800_171)"],
         "pci-dss": [
-            "intuitem/ciso-assistant (pcidss-4_0 framework — canonical requirements)",
+            "intuitem/ciso-assistant (pcidss-4_0 framework: canonical requirements)",
             "ComplianceAsCode pcidss_4.yml (version)",
             "Wazuh SCA (pci_dss)",
         ],
-        "multi_framework": ["Wazuh SCA — iso_27001/hipaa/gdpr/nis2/cmmc/fedramp"],
+        "multi_framework": ["Wazuh SCA: iso_27001/hipaa/gdpr/nis2/cmmc/fedramp"],
     }
 
 
@@ -307,7 +307,7 @@ def list_sources() -> dict:
 def check_updates(os: str = "") -> dict:
     """Check what drifted vs pavois's recorded baseline (norms.yml): the CURRENT CIS benchmark
     version per OS (ansible-lockdown) + the latest SSG release, AND the non-CIS standards under
-    `norms` — ANSSI-BP-028 (ComplianceAsCode anssi.yml), NIST 800-53 (the OSCAL revision dirs),
+    `norms`: ANSSI-BP-028 (ComplianceAsCode anssi.yml), NIST 800-53 (the OSCAL revision dirs),
     PCI-DSS (manual). Each entry carries recorded vs live + update_available. The norm-watcher
     core."""
     return _check_updates(os)
@@ -415,7 +415,7 @@ def _propose_enrichment(os_name: str, limit: int = 12) -> dict:
 @mcp.tool()
 def propose_enrichment(os: str, limit: int = 12) -> dict:
     """For the CIS rules pavois is MISSING vs the live benchmark, scrape each one's SSG detail
-    (title, severity, rationale, references) and return enrichment proposals — the raw material to
+    (title, severity, rationale, references) and return enrichment proposals: the raw material to
     add a neutral pavois rule. Flags what pavois must still author: the effective-config check
     and the harden remediation (which SSG can't provide). The enrich half of the pipeline."""
     return _propose_enrichment(os, limit)
@@ -474,7 +474,7 @@ def _pci_validate(os_name: str) -> dict:
 def pci_validate(os: str) -> dict:
     """Cross-validate pavois's PCI-DSS tags against the canonical PCI-DSS 4.0 framework from
     intuitem/ciso-assistant (373 requirement nodes). Returns which pavois pci-dss tags are valid
-    PCI requirements and which are SUSPECT (absent from the official framework) — densifying the
+    PCI requirements and which are SUSPECT (absent from the official framework): densifying the
     PCI side beyond the SSG/Wazuh references."""
     return _pci_validate(os)
 
@@ -577,7 +577,7 @@ def validate_mappings(os: str, norm: str) -> dict:
 def get_benchmark_rules(os: str, source: str = "ansible_lockdown") -> dict:
     """Exploit a reference document: extract the structured CIS rule list for an OS from a source
     ('ansible_lockdown' = <OS>-CIS repo, or 'ssg' = the SSG datastream cache). Returns the sorted
-    rule numbers + count — the raw material to enrich or cross-check pavois's mappings."""
+    rule numbers + count: the raw material to enrich or cross-check pavois's mappings."""
     if source == "ssg":
         rules = _ssg_cis(os)
     else:
@@ -611,7 +611,7 @@ def _draft_rule_page(os_name: str, rule: str) -> dict:
         "norm_versions": {"cis": cisv} if cisv else {},
         "check": d["pavois"]["check"] or [],
         "references": ac.get("references", {}),
-        # pavois's OWN remediation (its `harden` engine plan) — NOT SSG's bash/ansible fixes.
+        # pavois's OWN remediation (its `harden` engine plan): NOT SSG's bash/ansible fixes.
         "remediation": d["pavois"].get("remediation") or {},
         "title": {"en": title_en, "fr": title_en},  # fr to be filled by a translation pass
         "needs_translation": ["title.fr"],

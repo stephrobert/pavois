@@ -6,7 +6,7 @@
 // site by EXISTING in the rule base, not by someone remembering to add it in three files.
 //
 // The ids come from docs/reference/rules.yml (applicable_os); an unknown id falls back to itself,
-// so a new target is never hidden — at worst it shows up unpolished.
+// so a new target is never hidden: at worst it shows up unpolished.
 export const OS_LABEL: Record<string, string> = {
   debian12: 'Debian 12',
   debian13: 'Debian 13',

@@ -9,7 +9,7 @@ import (
 
 // loadPlan unmarshals a YAML plan into planFile. The Rules map uses an anonymous
 // struct, so tests build fixtures through the real input format (YAML) rather than
-// struct literals — which also exercises the exact decoding path used in production.
+// struct literals: which also exercises the exact decoding path used in production.
 func loadPlan(t *testing.T, src string) planFile {
 	t.Helper()
 	var p planFile
@@ -102,7 +102,7 @@ func TestGenPassword(t *testing.T) {
 			}
 		}
 	}
-	// Two calls must (overwhelmingly) differ — guards against a constant/zeroed buffer.
+	// Two calls must (overwhelmingly) differ: guards against a constant/zeroed buffer.
 	a, b := genPassword(24), genPassword(24)
 	if a == b {
 		t.Error("genPassword returned identical values twice")

@@ -2,7 +2,7 @@
 """Give every rule fiche a real datePublished / dateModified, taken from git.
 
 Not one of the 789 fiches carried a date, so ~1578 TechArticle blocks were emitted with no
-datePublished (Google's Rich Results Test flags it), and the sitemap emitted no `lastmod` at all —
+datePublished (Google's Rich Results Test flags it), and the sitemap emitted no `lastmod` at all:
 the condition `iso(dateModified ?? datePublished)` was always undefined, so a crawler had no way to
 know what had changed.
 

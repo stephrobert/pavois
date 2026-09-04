@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """One-off: convert verbatim checks in docs/reference/rules.yml to `template:` references, but ONLY
 when the template round-trips the check EXACTLY (templates.extract guards this). Lossless by
-construction — gen:verify must stay 100% after running this.
+construction: gen:verify must stay 100% after running this.
 
 A shared check -> `template: {name, ...}`. A check keyed @os (per-OS values) -> `template: {@os:
 {os: {name, ...}}}` when every OS variant matches the same template. Run once; thereafter author

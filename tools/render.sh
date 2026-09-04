@@ -39,4 +39,4 @@ fail=0
 for f in profiles/linux/*/controls/*.rb; do
   ruby -c "$f" >/dev/null 2>&1 || { echo "SYNTAX ERROR in $f"; ruby -c "$f" 2>&1 | head -3; fail=1; }
 done
-[ "$fail" -eq 0 ] || { echo "render: the corpus does not parse — refusing to ship it"; exit 1; }
+[ "$fail" -eq 0 ] || { echo "render: the corpus does not parse: refusing to ship it"; exit 1; }
