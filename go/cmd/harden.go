@@ -1479,6 +1479,58 @@ func sshTTY(target, cmd string) []string {
 	return append(append(append([]string{"-tt"}, sshOpts()...), target), cmd)
 }
 
+// pavoisPrereqs are the tools PAVOIS needs on a target, as opposed to the packages the CONTROLS
+// need (those are `requires_package`, collected into the plan's baseline_packages and installed by
+// the apply itself).
+//
+// The distinction matters because of WHEN: the restore point is taken before a single resource
+// converges, so anything it depends on has to be there already. tar is the case that surfaced, on
+// AlmaLinux cloud images, which are minimal enough to ship without it.
+var pavoisPrereqs = map[string]string{
+	"tar":  "the restore point archive (harden rollback)",
+	"gzip": "compressing that archive",
+}
+
+// missingPrereqs asks the target once for everything, rather than discovering the tools one
+// failure at a time. Returns the missing binaries, sorted.
+func missingPrereqs(target string, opts []string) []string {
+	var probe strings.Builder
+	for tool := range pavoisPrereqs {
+		fmt.Fprintf(&probe, "command -v %s >/dev/null 2>&1 || echo %s; ", tool, tool)
+	}
+	out, err := exec.Command("ssh", append(append(opts, target), probe.String())...).Output() //nolint:gosec // fixed args, operator target
+	if err != nil {
+		return nil // unreachable target: the caller's own connection error will say so better
+	}
+	var missing []string
+	for _, line := range strings.Fields(string(out)) {
+		if _, known := pavoisPrereqs[line]; known {
+			missing = append(missing, line)
+		}
+	}
+	sort.Strings(missing)
+	return missing
+}
+
+// prereqError explains what is missing, why pavois wants it, and how to install it, naming the
+// package manager rather than making the operator guess which distro convention applies.
+func prereqError(osName string, missing []string) error {
+	installer := "apt-get install -y"
+	switch {
+	case strings.HasPrefix(osName, "rhel"), strings.HasPrefix(osName, "alma"),
+		strings.HasPrefix(osName, "rocky"), strings.HasPrefix(osName, "fedora"):
+		installer = "dnf install -y"
+	}
+	var why strings.Builder
+	for _, m := range missing {
+		fmt.Fprintf(&why, "\n    %-6s %s", m, pavoisPrereqs[m])
+	}
+	return fmt.Errorf("the target is missing what pavois needs to operate:%s\n\n"+
+		"  Install them:  sudo %s %s\n"+
+		"  Or skip the restore point with --no-restore-point, and lose `harden rollback`",
+		why.String(), installer, strings.Join(missing, " "))
+}
+
 func runHardenApply(cmd *cobra.Command, args []string) error {
 	raw, err := os.ReadFile(args[0])
 	if err != nil {
@@ -1655,6 +1707,15 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		o, _ := c.Output()
 		return strings.TrimSpace(string(o))
 	}
+	// Ask once, up front, for everything pavois itself needs on the target. Before the cinc
+	// bootstrap on purpose: refusing to proceed AFTER installing 200 MB of Ruby on someone's
+	// machine is a poor way to say "you are missing tar".
+	if !haNoRestorePoint {
+		if missing := missingPrereqs(target, sshOpts()); len(missing) > 0 {
+			return prereqError(p.OS, missing)
+		}
+	}
+
 	_, _ = fmt.Fprintf(os.Stderr, "pavois: ensuring cinc-client on %s…\n", target)
 	// FIRST check presence with NO sudo: a hardened target (use_pty) blocks a naked non-tty sudo,
 	// so we must never need sudo just to CHECK (that breaks the post-harden re-apply). Only if
