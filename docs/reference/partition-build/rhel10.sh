@@ -1,5 +1,5 @@
 #!/bin/bash
-# Pavois — carve separate LVM/XFS partitions on a SECOND disk for the CIS mount/partition
+# Pavois: carve separate LVM/XFS partitions on a SECOND disk for the CIS mount/partition
 # controls (/home /var /var/log /var/log/audit /var/tmp /opt /srv) on RHEL 10 / AlmaLinux /
 # Rocky. DATA, not engine code: like docs/reference/kernel-build/<os>.sh, harden.go delivers
 # this verbatim to /usr/local/sbin/pavois-harden-partition.sh for the operator to review and
@@ -9,7 +9,7 @@
 # data stays on the root fs (shadowed by each mount), so a failed run is fully recoverable by
 # restoring /etc/fstab.pavois-bak and rebooting. Run as root.
 #
-# RHEL specifics vs the Debian recipe: XFS (not ext4), and SELinux — after migrating data the
+# RHEL specifics vs the Debian recipe: XFS (not ext4), and SELinux: after migrating data the
 # new filesystems carry the wrong contexts, so we schedule a full autorelabel on the next boot
 # (/.autorelabel); without it, sshd/systemd/etc. can be denied and the box may not come back.
 set -euo pipefail
@@ -111,7 +111,7 @@ migrate opt         /opt
 migrate srv         /srv
 rmdir /mnt/stage 2>/dev/null || true
 
-# --- fstab (parent before child; /var without noexec — it breaks dnf/rpm scriptlets) --
+# --- fstab (parent before child; /var without noexec: it breaks dnf/rpm scriptlets) --
 [ -f /etc/fstab.pavois-bak ] || cp /etc/fstab /etc/fstab.pavois-bak
 add() { local lv="$1" mnt="$2" opts="$3"; mkdir -p "$mnt"; sed -i "\| $mnt |d" /etc/fstab
   echo "/dev/vghard/$lv $mnt xfs defaults,$opts 0 0" >> /etc/fstab; }
@@ -126,7 +126,7 @@ echo "==> fstab:"; grep vghard /etc/fstab
 systemctl daemon-reload
 # migration done: remove rsync so no rsync daemon/service lingers on the hardened host
 dnf remove -y -q rsync >/dev/null 2>&1 || true
-# SELinux: the freshly-migrated filesystems carry wrong contexts — force a full relabel on the
+# SELinux: the freshly-migrated filesystems carry wrong contexts: force a full relabel on the
 # reboot that activates the new mounts, or confined services get denied and the host may hang.
 touch /.autorelabel
-echo "==> DONE — reboot to activate the separate partitions (a one-time SELinux autorelabel runs)."
+echo "==> DONE: reboot to activate the separate partitions (a one-time SELinux autorelabel runs)."

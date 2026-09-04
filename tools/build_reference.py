@@ -78,7 +78,7 @@ def main(os_name):
     out.mkdir(parents=True, exist_ok=True)
     dest = out / f"{os_name}.yml"
     dest.write_text(
-        f"# pavois compliance content (pavois-owned reference) — {os_name}.\n"
+        f"# pavois compliance content (pavois-owned reference): {os_name}.\n"
         "# Per control: effective check (the test) + "
         "standards/levels/title/severity (the report).\n"
         "# Source of truth: render_reference.py -> InSpec ; future doc API -> /content/<os>.\n"

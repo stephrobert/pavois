@@ -18,7 +18,7 @@ import (
 // `pavois oscal` publishes the Pavois baseline as OSCAL (the NIST format CIS/NIST adopt): a
 // Catalog (one control per neutral id, with the EFFECTIVE-CONFIG check + per-OS CIS/STIG numbers
 // + norm-reference links) and per-OS Profiles that import it. This makes the source of truth a
-// machine-readable STANDARD any OSCAL/GRC tool (ciso-assistant) can consume — uniquely an
+// machine-readable STANDARD any OSCAL/GRC tool (ciso-assistant) can consume: uniquely an
 // effective-config one. The publication face of the reference, alongside `norms` and `rules`.
 const (
 	oscalNS  = "https://pavois.dev/ns/oscal"
@@ -37,7 +37,7 @@ type baselineMeta struct {
 }
 
 func readBaseline(root string) baselineMeta {
-	m := baselineMeta{Name: "Pavois — Effective-Configuration Hardening Baseline", Version: "0.0.0", Released: "1970-01-01"}
+	m := baselineMeta{Name: "Pavois: Effective-Configuration Hardening Baseline", Version: "0.0.0", Released: "1970-01-01"}
 	if b, err := os.ReadFile(filepath.Join(root, "docs", "reference", "baseline.yml")); err == nil {
 		_ = yaml.Unmarshal(b, &m)
 	}
@@ -126,7 +126,7 @@ type oRule struct {
 	Norms    map[string]any `yaml:"norms"`
 }
 
-// provesFor derives what a passing check establishes from its evidence type — the qualified
+// provesFor derives what a passing check establishes from its evidence type: the qualified
 // verdict [running, persistent, reboot-survivable] as yes/unknown/na. Matches the fiche PROVES
 // table and the engine's grade policy (single source: audit.Proves).
 func provesFor(method string) [3]string { return audit.Proves(method) }
@@ -134,7 +134,7 @@ func provesFor(method string) [3]string { return audit.Proves(method) }
 var urlNS = []byte{0x6b, 0xa7, 0xb8, 0x11, 0x9d, 0xad, 0x11, 0xd1, 0x80, 0xb4, 0x00, 0xc0, 0x4f, 0xd4, 0x30, 0xc8}
 
 // uuidName derives a deterministic, syntactically valid RFC 4122 UUID from a name,
-// hashing with SHA-256 (sha1 is weak — G401/G505). OSCAL only requires a well-formed
+// hashing with SHA-256 (sha1 is weak: G401/G505). OSCAL only requires a well-formed
 // UUID for document identifiers, not a true name-based v5, so we keep the version/variant
 // bits well-formed and use the stronger digest. Output is stable across runs for a name.
 func uuidName(name string) string {
@@ -315,7 +315,7 @@ func runOscal(_ *cobra.Command, _ []string) error {
 		sort.Strings(pids)
 		var p oProfile
 		p.Profile.UUID = uuidName("profile:" + osn)
-		p.Profile.Metadata = oMeta{Title: "Pavois baseline — " + osn, LastModified: oscalTS, Version: bl.Version, OscalVersion: oscalVer}
+		p.Profile.Metadata = oMeta{Title: "Pavois baseline: " + osn, LastModified: oscalTS, Version: bl.Version, OscalVersion: oscalVer}
 		p.Profile.Imports = append(p.Profile.Imports, struct {
 			Href            string `json:"href"`
 			IncludeControls []struct {

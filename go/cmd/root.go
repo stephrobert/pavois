@@ -23,7 +23,7 @@ func (e *ComplianceError) Error() string {
 
 var rootCmd = &cobra.Command{
 	Use:   "pavois",
-	Short: "Pavois — Effective Linux Compliance (CINC/InSpec)",
+	Short: "Pavois: Effective Linux Compliance (CINC/InSpec)",
 	Long: `Pavois audits the EFFECTIVE configuration of a Linux system (sshd -T, sysctl,
 systemctl, dpkg/rpm...) via CINC Auditor, maps each control to N standards
 (SOCLE / CIS / ANSSI BP-028 / PCI-DSS / NIST / STIG) and outputs an A-E grade.

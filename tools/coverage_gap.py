@@ -97,7 +97,7 @@ def oscap_verdicts(path: Path) -> dict[str, str]:
 
 
 ERROR_MARKERS = re.compile(
-    r"NoMethodError|undefined method|uninitialized constant|unexpected error|Errno::|"
+    r"NoMethodError|undefined method|uninitialized constant|unexpected error|Errno:|"
     r"NameError|ArgumentError|TypeError|backtrace|raised|exit status [1-9]",
     re.IGNORECASE,
 )
@@ -325,7 +325,7 @@ def main() -> int:
         return 0
 
     scope = f" (profile {args.profile})" if args.profile else ""
-    print(f"# Pavois vs SSG coverage gap — {args.os}{scope}\n")
+    print(f"# Pavois vs SSG coverage gap: {args.os}{scope}\n")
     if verdicts:
         print(
             f"Raw gap {len(gap)} SSG rules, but triaged by oscap on a real target: "

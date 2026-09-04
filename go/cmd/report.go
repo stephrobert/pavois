@@ -51,7 +51,7 @@ func writeScorecard(w io.Writer, letter string, points, passed, total, qualified
 		"", "",
 	}
 	if qualified > 0 {
-		info[4] = mut.Render(fmt.Sprintf("%d runtime-only pass(es) — persistence unproven", qualified))
+		info[4] = mut.Render(fmt.Sprintf("%d runtime-only pass(es): persistence unproven", qualified))
 	}
 	// A waived or N/A control is OUT of the denominator above, so the grade RISES when you add
 	// one. Reporting the grade without these two numbers would let anyone fabricate an A by

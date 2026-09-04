@@ -3,7 +3,7 @@
   - integrity : every entry has the required fields, cids are unique per OS,
                 impact is a sane float, the check is non-empty.
   - fidelity  : rendering the reference reproduces the committed corpus EXACTLY
-                (so the corpus is never edited out of band — the reference rules).
+                (so the corpus is never edited out of band: the reference rules).
 Exit non-zero on any failure.
 """
 
@@ -20,7 +20,7 @@ import build_reference as B
 import render_reference as R
 
 # pavois's per-distro rule base is the SOURCE OF TRUTH (not SSG). `ssg` is now optional
-# provenance only — a pavois-owned rule (e.g. for a distro SSG hasn't covered, like Ubuntu 26)
+# provenance only: a pavois-owned rule (e.g. for a distro SSG hasn't covered, like Ubuntu 26)
 # needs none. Required is the rule's own contract: what it checks and where it belongs.
 REQUIRED = ("domain", "title", "check")
 FIELDS = (
@@ -71,7 +71,7 @@ def main():
                     ko(f"{os}/{cid}: missing/empty '{f}'")
             if not isinstance(e.get("impact"), (int, float)) or not (0 <= e["impact"] <= 1):
                 ko(f"{os}/{cid}: bad impact {e.get('impact')!r}")
-            # the norm is a VIEW (a tag), never part of the id — keeps ids stable as norms evolve
+            # the norm is a VIEW (a tag), never part of the id: keeps ids stable as norms evolve
             if NORM_IN_ID.search(cid):
                 ko(f"{os}/{cid}: a norm name in the id (norms are tags, ids stay neutral)")
         # fidelity : reference -> corpus must equal the committed corpus
@@ -86,7 +86,7 @@ def main():
         finally:
             shutil.rmtree(tmp)
         if set(cur) != set(new):
-            ko(f"{os}: corpus drift — {len(set(cur) ^ set(new))} cid(s) differ from reference")
+            ko(f"{os}: corpus drift: {len(set(cur) ^ set(new))} cid(s) differ from reference")
             continue
         diffs = sum(1 for cid in cur for f in FIELDS if cur[cid].get(f) != new[cid].get(f))
         if diffs:

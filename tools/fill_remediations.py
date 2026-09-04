@@ -94,7 +94,7 @@ def main():
         v = next(iter(vals.values()))
         bad = idioms(v)
         if bad:
-            distro.append(f"{cid}: authored for {sorted(vals)}, missing {missing} — idioms {bad}")
+            distro.append(f"{cid}: authored for {sorted(vals)}, missing {missing}: idioms {bad}")
             continue
         e["remediation"] = v  # portable: share it, every applicable OS now has a remediation
         promoted.append(cid)

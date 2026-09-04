@@ -1,12 +1,12 @@
 # Declared falsifications: for each guard that matters, the mutation that MUST make its test go red.
 #
 # A green test proves nothing on its own. It proves something the day you can show it failing when
-# the thing it guards is removed — and that day has to be re-run, because a test can stop biting
+# the thing it guards is removed: and that day has to be re-run, because a test can stop biting
 # without anybody touching it (a refactor moves the assertion, a helper starts returning early, a
 # fixture drifts until the case is unreachable).
 #
 # Each entry replaces `find` with `replace` in `file`, exactly `occurrences` time(s), then:
-#   1. the mutant MUST still compile — a mutation that breaks the build makes every test fail,
+#   1. the mutant MUST still compile: a mutation that breaks the build makes every test fail,
 #      which looks exactly like the guard being proven and is worth nothing. Prefer a mutation that
 #      neuters the logic while keeping every symbol used (`ContainsAny(p, "")`, `if false && …`);
 #   2. `test` MUST then fail. If it still passes, the guard is not tested, and the claim that it is
@@ -30,7 +30,7 @@ falsifications:
   - name: aggregated-dropin-keeps-compliant-siblings
     why: >-
       The sshd/sysctl/cmdline/keyval drop-ins are rewritten WHOLESALE, so a run must re-emit the
-      compliant siblings too. Emitting only what the operator enabled silently regresses the rest —
+      compliant siblings too. Emitting only what the operator enabled silently regresses the rest:
       re-enabling root SSH is the textbook case, and this project has already shipped that class of
       bug once (a shared drop-in that switched off syslog forwarding while every control stayed green).
     file: go/cmd/harden.go
@@ -57,7 +57,7 @@ falsifications:
       compileRecipe walking a map put the conf lines, PAM edits and execs in a different order on
       every run. The restore point photographs what the recipe will touch and `pavois bundle`
       digests it into signed evidence, so a recipe that differs from itself makes both meaningless
-      — and PAM is a stack where order is correctness, not preference.
+      and PAM is a stack where order is correctness, not preference.
     file: go/cmd/harden.go
     find: 'for _, cid := range slices.Sorted(maps.Keys(p.Rules)) {'
     # slices.Collect keeps both imports used (a mutant that stops compiling proves nothing)

@@ -12,7 +12,7 @@ cross-checks pavois's `bp28:` tags:
   tools/validate_bp28.py            # report
   tools/validate_bp28.py --titles   # also dump the full R -> title table
 
-Source: ANSSI BP-028 v2.0 (2022), under Licence Ouverte / Etalab — reuse with attribution.
+Source: ANSSI BP-028 v2.0 (2022), under Licence Ouverte / Etalab: reuse with attribution.
 """
 
 import re
@@ -77,11 +77,11 @@ def main() -> int:
 
     stale = sorted((r for r in used if r not in off), key=lambda r: int(r[1:]))
     if stale:
-        print("STALE — R-numbers pavois uses that are ABSENT from v2.0 (likely v1.2 residue):")
+        print("STALE: R-numbers pavois uses that are ABSENT from v2.0 (likely v1.2 residue):")
         for r in stale:
             print(f"  {r}: {', '.join(used[r][:4])}{' …' if len(used[r]) > 4 else ''}")
     else:
-        print("OK — every pavois bp28 tag exists in v2.0.")
+        print("OK: every pavois bp28 tag exists in v2.0.")
 
     uncovered = sorted((r for r in off if r not in used), key=lambda r: int(r[1:]))
     print(f"\nv2.0 recommendations NOT referenced by any pavois control: {len(uncovered)}")
