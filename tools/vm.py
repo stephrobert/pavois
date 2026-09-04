@@ -35,28 +35,30 @@ from pathlib import Path
 # Incus image aliases, /cloud variants (they carry cloud-init, which is how sshd gets enabled:
 # an Incus VM is a full OS and exposes nothing by default).
 IMAGES = {
+    # key = the pavois profile (ls profiles/linux/), value = the Incus image alias.
+    # RHEL itself is not distributable, so its profiles are exercised on AlmaLinux, which is what
+    # `pavois scan` auto-detects to rhel<major> anyway (profileForOS in go/cmd/scan.go).
     "debian12": "images:debian/12/cloud",
     "debian13": "images:debian/13/cloud",
-    "ubuntu2404": "images:ubuntu/24.04/cloud",
+    "ubuntu2204": "ubuntu:22.04",
+    "ubuntu2404": "ubuntu:24.04",
     "ubuntu2604": "images:ubuntu/26.04/cloud",
-    "almalinux9": "images:almalinux/9/cloud",
-    "almalinux8": "images:almalinux/8/cloud",
-    "rockylinux9": "images:rockylinux/9/cloud",
-    "fedora": "images:fedora/40/cloud",
+    "rhel8": "images:almalinux/8/cloud",
+    "rhel9": "images:almalinux/9/cloud",
+    "rhel10": "images:almalinux/10/cloud",
+    "fedora": "images:fedora/43/cloud",
+}
+
+# Canonical publishes 22.04 and 24.04 on its own simplestreams remote, not on the community one.
+# Rather than adding a remote behind the operator's back, name the command.
+REMOTE_HINT = {
+    "ubuntu": "incus remote add ubuntu https://cloud-images.ubuntu.com/releases "
+    "--protocol simplestreams --public",
 }
 
 # Which pavois profile each OS is scanned with (`pavois scan` auto-detects; this is for the hint
 # printed at the end, and it mirrors profileForOS in go/cmd/scan.go).
-PROFILES = {
-    "debian12": "linux/debian12",
-    "debian13": "linux/debian13",
-    "ubuntu2404": "linux/ubuntu2404",
-    "ubuntu2604": "linux/ubuntu2604",
-    "almalinux9": "linux/rhel9",
-    "almalinux8": "linux/rhel8",
-    "rockylinux9": "linux/rhel9",
-    "fedora": "linux/fedora",
-}
+# The profile is the key itself, so no second map to keep in sync.
 
 USER = "pavois"
 GREEN, RED, DIM, OFF = "\033[32m", "\033[31m", "\033[2m", "\033[0m"
@@ -202,13 +204,26 @@ def cmd_up(args: argparse.Namespace) -> int:
         )
         return 2
 
-    print(
-        f"vm: launching {name} as a VIRTUAL MACHINE "
-        f"({IMAGES[args.os]}, {args.cpu} vCPU, {args.memory})"
-    )
+    image = IMAGES[args.os]
+    remote = image.split(":", 1)[0]
+    configured = subprocess.run(
+        ["incus", "remote", "list", "--format", "csv"], capture_output=True, text=True, check=False
+    ).stdout
+    if remote not in [
+        line.split(",")[0].replace(" (current)", "") for line in configured.splitlines()
+    ]:
+        hint = REMOTE_HINT.get(remote, f"incus remote add {remote} <url>")
+        print(
+            f"vm: {args.os} needs the {remote!r} image remote, which is not configured.\n"
+            f"    Add it with:  {hint}",
+            file=sys.stderr,
+        )
+        return 2
+
+    print(f"vm: launching {name} as a VIRTUAL MACHINE ({image}, {args.cpu} vCPU, {args.memory})")
     rc = incus(
         "launch",
-        IMAGES[args.os],
+        image,
         name,
         "--vm",  # never a container: see the module docstring
         "-c",
@@ -249,7 +264,7 @@ def cmd_up(args: argparse.Namespace) -> int:
         )
         return 1
 
-    profile = PROFILES.get(args.os, "")
+    profile = f"linux/{args.os}"
     sudo_flag = "--sudo-prompt" if args.sudo_password else "--sudo"
     print(f"{GREEN}vm: {name} is up at {ip}{OFF}\n")
     print("Scan it:")
