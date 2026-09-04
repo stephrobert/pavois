@@ -946,7 +946,7 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 				_, _ = fmt.Fprintf(&b, "  %s %q\n", k, v)
 			}
 		}
-		_, _ = fmt.Fprintf(&b, "  only_if { :File.directory?(%q) }\nend\n\n", path)
+		_, _ = fmt.Fprintf(&b, "  only_if { ::File.directory?(%q) }\nend\n\n", path)
 		n++
 	}
 	for _, path := range sortedFileKeys(files) {
@@ -974,7 +974,7 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		if !hasContent { // pure owner/perm fix: the `file` resource fails on a DIRECTORY or a
 			// missing path (cross-OS noise like /var/log/apt). Guard so it SKIPS instead of
 			// aborting the whole run; a real file gets fixed, anything else is left alone.
-			_, _ = fmt.Fprintf(&b, "  only_if { :File.file?(%q) }\n", path)
+			_, _ = fmt.Fprintf(&b, "  only_if { ::File.file?(%q) }\n", path)
 		}
 		b.WriteString("end\n\n")
 		if !hasContent { // the path may be a DIRECTORY (e.g. /var/log/apt): the file resource
@@ -985,7 +985,7 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 					_, _ = fmt.Fprintf(&b, "  %s %q\n", k, v)
 				}
 			}
-			_, _ = fmt.Fprintf(&b, "  only_if { :File.directory?(%q) }\nend\n\n", path)
+			_, _ = fmt.Fprintf(&b, "  only_if { ::File.directory?(%q) }\nend\n\n", path)
 		}
 		n++
 	}
@@ -998,12 +998,12 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		// The old privdrop drop-in is removed so it can't keep bricking rsyslog on re-apply.
 		b.WriteString("file '/etc/rsyslog.d/00-pavois-privdrop.conf' do\n  action :delete\n" +
 			"  notifies :restart, 'service[rsyslog]', :delayed\n" +
-			"  only_if { :File.exist?('/etc/rsyslog.d/00-pavois-privdrop.conf') }\nend\n\n")
+			"  only_if { ::File.exist?('/etc/rsyslog.d/00-pavois-privdrop.conf') }\nend\n\n")
 		b.WriteString("file \"/etc/rsyslog.d/00-pavois-log-ownership.conf\" do\n" +
 			"  content \"# pavois: own logs as syslog:adm (no privilege drop: breaks rsyslog on Trixie)\\n" +
 			"\\$FileOwner syslog\\n\\$FileGroup adm\\n\\$FileCreateMode 0640\\n\"\n" +
 			"  notifies :restart, 'service[rsyslog]', :delayed\n" +
-			"  only_if { :File.exist?('/etc/rsyslog.conf') }\nend\n\n")
+			"  only_if { ::File.exist?('/etc/rsyslog.conf') }\nend\n\n")
 		// Also chown the EXISTING logs (not just newly-created ones) so the current files match.
 		// The not_if keeps it idempotent (only runs while a log is still root-owned) and it
 		// restarts rsyslog so it reopens them.
@@ -1011,7 +1011,7 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 			"  command 'for f in /var/log/syslog /var/log/messages /var/log/*.log; do [ -f \"$f\" ] && chown syslog:adm \"$f\"; done; true'\n" +
 			"  not_if 'test \"$(stat -c %U /var/log/syslog 2>/dev/null)\" = syslog'\n" +
 			"  notifies :restart, 'service[rsyslog]', :delayed\n" +
-			"  only_if { :File.exist?('/etc/rsyslog.conf') }\nend\n\n")
+			"  only_if { ::File.exist?('/etc/rsyslog.conf') }\nend\n\n")
 		// ignore_failure: a logging-daemon restart hiccup must NEVER abort the whole converge and
 		// leave the box half-hardened (Chef stops on the first unhandled error otherwise).
 		b.WriteString("service 'rsyslog' do\n  action :nothing\n  ignore_failure true\nend\n\n")
@@ -1292,7 +1292,7 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		// Debian-only grub.d SCRIPT (update-grub emits its directives into grub.cfg, reading the
 		// salted hash from a sibling dotfile). only_if update-grub so it is NOT written on RHEL,
 		// which reads /boot/grub2/user.cfg directly (grub2 password path below).
-		_, _ = fmt.Fprintf(&b, "file '/etc/grub.d/40_pavois_password' do\n  content %q\n  mode '0755'\n  only_if { :File.exist?('/usr/sbin/update-grub') || :File.exist?('/usr/bin/update-grub') }\nend\n\n",
+		_, _ = fmt.Fprintf(&b, "file '/etc/grub.d/40_pavois_password' do\n  content %q\n  mode '0755'\n  only_if { ::File.exist?('/usr/sbin/update-grub') || ::File.exist?('/usr/bin/update-grub') }\nend\n\n",
 			"#!/bin/sh\ncat <<EOF\nset superusers=\"root\"\npassword_pbkdf2 root $(cat /etc/grub.d/.pavois-grub-hash)\nEOF\n")
 		// Hash the plaintext ON the target (pbkdf2 is salted), then persist the OS-native way:
 		//  - Debian: hash dotfile + `--unrestricted` on 10_linux (a superuser WITHOUT --unrestricted
