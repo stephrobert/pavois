@@ -286,6 +286,26 @@ Seed corpora run on every `go test`, so they are permanent regression tests. If 
 crasher, Go writes it to `testdata/fuzz/<Target>/`: **commit that file** — it becomes a named
 regression test that runs forever after.
 
+### Getting a target to scan
+
+```bash
+mise run vm -- up debian12                      # a real Incus VM, ~2 min, prints the scan command
+mise run vm -- up debian12 --sudo-password pw   # password sudo: the realistic case, not the cloud default
+mise run vm -- list                             # what is running
+mise run vm -- down debian12
+```
+
+**Virtual machines, never containers.** `incus launch --vm` is not a preference: **259 of the 789
+controls cannot be answered by a container** (70 sysctl, 62 kernel-build, 38 mounts, 23 kernel
+modules, 35 auditd, 18 cmdline, 11 filesystem, grub, MAC). A container shares the host kernel, so
+those controls do not skip — they measure *your* machine, and a scan run from a hardened
+workstation hands back PASSes about a target it never inspected. Audit a container with the
+`container-baseline` profile instead.
+
+Two host requirements, both checked by the tool with an actionable message: Incus with VM support
+(`qemu-system-x86_64`), and a managed network to attach — the default profile often has none, and
+the symptom is silent (the VM boots, runs, and never gets an address).
+
 ### No rule change ships without a real scan
 
 **Non-negotiable.** Any change to `rules.yml` that affects what a target audits, a **new control**,
