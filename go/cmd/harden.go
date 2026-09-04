@@ -1278,7 +1278,15 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 			"cfg=/boot/grub2/grub.cfg; " +
 			"[ -f \"$cfg\" ] || cfg=\"$(find /boot -name grub.cfg 2>/dev/null | head -1)\"; " +
 			"grub2-mkconfig -o \"$cfg\"; fi"
-		_, _ = fmt.Fprintf(&b, "execute 'pavois-grub-apply' do\n  command %q\n  action :nothing\nend\n\n", apply)
+		// ignore_failure: a bootloader that cannot be updated must not cost the operator the other
+		// three hundred remediations. Measured on a fedora cloud image built from a container
+		// image: no /boot/grub2, a grub.cfg that is only an EFI wrapper, and a BLS entry pointing
+		// at a $kernelopts variable that exists nowhere, so NOTHING can write the kernel command
+		// line there. Failing the resource aborts the converge midway and leaves the host half
+		// hardened, which is the outcome this project treats as the worst of all. The re-scan
+		// still tells the truth: those controls stay FAIL, and the operator sees them.
+		_, _ = fmt.Fprintf(&b, "execute 'pavois-grub-apply' do\n  command %q\n  action :nothing\n"+
+			"  ignore_failure true\nend\n\n", apply)
 		reboot = true
 		n++
 	}
