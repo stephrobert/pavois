@@ -67,7 +67,18 @@ while :; do
   fi
 
   say "pass $pass: harden apply ($enabled gaps)"
-  bin/pavois harden apply --target "$TARGET" --key "$KEY" --sudo-prompt --yes "$PLAN" 2>&1 | tail -2
+  # Keep the WHOLE output. `| tail -2` used to be the only trace, so a converge that died left
+  # nothing to diagnose: the fedora row of the first matrix run said "converge: exit status 1" and
+  # the cinc stacktrace that explained it was gone. Cheap to keep, impossible to recover.
+  applylog="$SP/apply-$OS-pass$pass.log"
+  if bin/pavois harden apply --target "$TARGET" --key "$KEY" --sudo-prompt --yes "$PLAN" >"$applylog" 2>&1; then
+    tail -2 "$applylog"
+  else
+    rc=$?
+    echo "harden apply FAILED (exit $rc); last 30 lines of $applylog:"
+    tail -30 "$applylog"
+    exit "$rc"
+  fi
   say "pass $pass: reboot + wait"
   reboot_wait
   say "pass $pass: re-scan"

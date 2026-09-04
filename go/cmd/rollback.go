@@ -219,7 +219,18 @@ func plannedTargets(p planFile, recipe string) ([]rpFile, []rpPkg, []rpSvc, []st
 // state of each package and service. Read-only except for the tar it writes to /tmp.
 func captureScript(rp restorePoint) string {
 	var b strings.Builder
-	b.WriteString("set -u\numask 077\nrm -rf /tmp/pavois-rp && mkdir -p /tmp/pavois-rp\n")
+	// tar is not a given. AlmaLinux cloud images ship without it, and the whole restore point
+	// is two tar invocations, so the capture produced nothing and said nothing: the failure
+	// only surfaced one step later as "fetch restore point: no such file". Check it first and
+	// name both ways out, because losing the rollback is a decision, not an accident.
+	b.WriteString("set -u\numask 077\n" +
+		"if ! command -v tar >/dev/null 2>&1; then\n" +
+		"  echo \"pavois: tar is missing on this target, so no restore point can be taken.\" >&2\n" +
+		"  echo \"       Install it (dnf install -y tar / apt-get install -y tar), or re-run\" >&2\n" +
+		"  echo \"       with --no-restore-point and accept that harden rollback is lost.\" >&2\n" +
+		"  exit 1\n" +
+		"fi\n" +
+		"rm -rf /tmp/pavois-rp && mkdir -p /tmp/pavois-rp\n")
 	b.WriteString("touch /tmp/pavois-rp/present.txt /tmp/pavois-rp/absent.txt\n")
 	for _, f := range rp.Files {
 		fmt.Fprintf(&b, "if [ -e %q ]; then echo %q >> /tmp/pavois-rp/present.txt; else echo %q >> /tmp/pavois-rp/absent.txt; fi\n",
@@ -242,9 +253,21 @@ func captureScript(rp restorePoint) string {
 	// The tar holds the CONTENT of config files, so it stays 0600: but it is written by root and
 	// fetched by the connecting (unprivileged) account, so hand it to that account rather than
 	// opening it to the whole box.
-	b.WriteString("tar czf /tmp/pavois-restore-point.tar.gz -C /tmp/pavois-rp .\n" +
-		"chown \"${SUDO_USER:-root}\" /tmp/pavois-restore-point.tar.gz\n" +
+	// Fail loudly, here, if the archive cannot be produced. The script runs under `set -u`
+	// and used to end on an `echo`, so its exit status described the echo and nothing else:
+	// a failed tar returned 0, pavois believed the state was photographed, and the error
+	// surfaced one step later as "fetch restore point: no such file", which blames the
+	// transfer for what the capture did. Measured on AlmaLinux 8, 9 and 10.
+	b.WriteString("if ! tar czf /tmp/pavois-restore-point.tar.gz -C /tmp/pavois-rp .; then\n" +
+		"  echo \"pavois: FAILED to archive the restore point (tar exit $?)\" >&2\n" +
+		"  exit 1\n" +
+		"fi\n" +
+		"chown \"${SUDO_USER:-root}\" /tmp/pavois-restore-point.tar.gz || true\n" +
 		"chmod 0600 /tmp/pavois-restore-point.tar.gz\n" +
+		"if [ ! -s /tmp/pavois-restore-point.tar.gz ]; then\n" +
+		"  echo \"pavois: the restore point archive is empty\" >&2\n" +
+		"  exit 1\n" +
+		"fi\n" +
 		"echo pavois-rp-ok\n")
 	return b.String()
 }
