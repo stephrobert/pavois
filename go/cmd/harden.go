@@ -405,6 +405,17 @@ func sortedKeys(m map[string]bool) []string {
 // Chef resources. No bash, ever: config files use the native `file` resource. It
 // collects per target so contradictions (same key/path/service, different values)
 // are caught as CONFLICTS before anything is applied.
+// firstArg returns one argument from a kernel command line, used as the witness that grubby
+// really applied them. Checking one is enough: grubby writes them as a set.
+func firstArg(args string) string {
+	for _, a := range strings.Fields(args) {
+		if a != "" {
+			return a
+		}
+	}
+	return ""
+}
+
 func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std string) (string, int, bool, int, []string) {
 	var b strings.Builder
 	// Ruby reads a source file in the locale's encoding unless told otherwise, and a stock
@@ -1237,8 +1248,16 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		// Regenerate the bootloader config the OS-native way: update-grub on Debian; grubby (BLS,
 		// updates every kernel entry directly) on RHEL/clones; grub2-mkconfig as a last resort.
 		// `update-grub` does not exist on RHEL, grubby does not on Debian: hence the detection.
+		// grubby applies the arguments and MAY still exit non-zero, because on EL it finishes by
+		// calling grub2-mkconfig against the EFI wrapper, which refuses the write. Judging the
+		// converge on that exit code aborts a run whose work is already done, so the result is
+		// checked instead: the arguments must be present in the entries afterwards.
 		apply := "if command -v update-grub >/dev/null 2>&1; then update-grub; " +
-			"elif command -v grubby >/dev/null 2>&1; then grubby --update-kernel=ALL --args=\"" + args + "\"; "
+			"elif command -v grubby >/dev/null 2>&1; then " +
+			"grubby --update-kernel=ALL --args=\"" + args + "\" >/dev/null 2>&1 || true; " +
+			"cfg=/boot/grub2/grub.cfg; [ -f \"$cfg\" ] && grub2-mkconfig -o \"$cfg\" >/dev/null 2>&1 || true; " +
+			"grubby --info=ALL | grep -q -- \"" + firstArg(args) + "\" || " +
+			"{ echo \"pavois: grubby did not apply the kernel arguments\" >&2; exit 1; }; "
 		if iommuForce {
 			apply += "systemd-detect-virt -q -v || grubby --update-kernel=ALL --args=\"iommu=force\"; "
 		}
