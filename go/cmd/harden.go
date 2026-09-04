@@ -1518,11 +1518,37 @@ var pavoisPrereqs = map[string]string{
 	"gzip": "compressing that archive",
 }
 
+// rpmPrereqs are needed on EL and Fedora only. grubby is THE supported way to edit the kernel
+// command line on a BLS system, and the cloud images are minimal enough to omit it: measured on a
+// fresh AlmaLinux 10 VM, which has no grubby, no /boot/grub2/grub.cfg, and only the EFI wrapper
+// that grub2-mkconfig refuses to overwrite. Without grubby there is no correct way to apply a
+// cmdline change there at all, so the run stops before pretending otherwise.
+var rpmPrereqs = map[string]string{
+	"grubby": "editing the kernel command line (BLS entries)",
+}
+
+// prereqsFor returns what this OS needs: the common set, plus the RPM ones where they apply.
+func prereqsFor(osName string) map[string]string {
+	out := make(map[string]string, len(pavoisPrereqs)+len(rpmPrereqs))
+	for k, v := range pavoisPrereqs {
+		out[k] = v
+	}
+	switch {
+	case strings.HasPrefix(osName, "rhel"), strings.HasPrefix(osName, "alma"),
+		strings.HasPrefix(osName, "rocky"), strings.HasPrefix(osName, "fedora"):
+		for k, v := range rpmPrereqs {
+			out[k] = v
+		}
+	}
+	return out
+}
+
 // missingPrereqs asks the target once for everything, rather than discovering the tools one
 // failure at a time. Returns the missing binaries, sorted.
-func missingPrereqs(target string, opts []string) []string {
+func missingPrereqs(target, osName string, opts []string) []string {
+	want := prereqsFor(osName)
 	var probe strings.Builder
-	for tool := range pavoisPrereqs {
+	for tool := range want {
 		fmt.Fprintf(&probe, "command -v %s >/dev/null 2>&1 || echo %s; ", tool, tool)
 	}
 	out, err := exec.Command("ssh", append(append(opts, target), probe.String())...).Output() //nolint:gosec // fixed args, operator target
@@ -1531,7 +1557,7 @@ func missingPrereqs(target string, opts []string) []string {
 	}
 	var missing []string
 	for _, line := range strings.Fields(string(out)) {
-		if _, known := pavoisPrereqs[line]; known {
+		if _, known := want[line]; known {
 			missing = append(missing, line)
 		}
 	}
@@ -1565,7 +1591,7 @@ func prereqError(osName string, missing []string) error {
 	}
 	var why strings.Builder
 	for _, m := range missing {
-		fmt.Fprintf(&why, "\n    %-6s %s", m, pavoisPrereqs[m])
+		fmt.Fprintf(&why, "\n    %-7s %s", m, prereqsFor(osName)[m])
 	}
 	return fmt.Errorf("the target is missing what pavois needs to operate:%s\n\n"+
 		"  Install them:  sudo %s %s\n"+
@@ -1753,7 +1779,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	// bootstrap on purpose: refusing to proceed AFTER installing 200 MB of Ruby on someone's
 	// machine is a poor way to say "you are missing tar".
 	if !haNoRestorePoint {
-		if missing := missingPrereqs(target, sshOpts()); len(missing) > 0 {
+		if missing := missingPrereqs(target, p.OS, sshOpts()); len(missing) > 0 {
 			// Install them, rather than sending the operator away to do it by hand. pavois already
 			// installs cinc-client on this target, on the next line: refusing to add tar while
 			// installing 200 MB of Ruby would be a strange place to draw the line, and it leaves
@@ -1763,7 +1789,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 			if err := installPrereqs(target, p.OS, missing, sudoCmd, runSudoTTY); err != nil {
 				return fmt.Errorf("%w\n\n%w", err, prereqError(p.OS, missing))
 			}
-			if still := missingPrereqs(target, sshOpts()); len(still) > 0 {
+			if still := missingPrereqs(target, p.OS, sshOpts()); len(still) > 0 {
 				return prereqError(p.OS, still)
 			}
 		}
