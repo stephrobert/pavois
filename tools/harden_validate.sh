@@ -27,7 +27,18 @@ SP="$(mktemp -d)"; PLAN="$SP/plan-$OS.yml"
 SSH="ssh -tt -F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i $KEY"
 say(){ printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 
-scan(){ bin/pavois scan "$TARGET" --profile "linux/$OS" --sudo --on-target --key "$KEY" 2>&1 | tail -3; }
+# Every scan is kept IN FULL, then summarised. `| tail -3` alone used to be the whole trace, so
+# the baseline posture was thrown away and only the final one survived: the campaign could say
+# where a host ended, never how far it moved, which is most of what a hardening run is for.
+scan(){
+  local out
+  out="$SP/scan-$OS-$(date +%H%M%S).log"
+  bin/pavois scan "$TARGET" --profile "linux/$OS" --sudo --on-target --key "$KEY" >"$out" 2>&1
+  local rc=$?
+  grep -aoE "Remediable posture: grade [A-E] \([0-9]+/[0-9]+[^)]*\)" "$out" | tail -1 >> "$SP/postures-$OS.txt"
+  tail -3 "$out"
+  return $rc
+}
 reboot_wait(){
   $SSH "$TARGET" "echo '$PAVOIS_SUDO_PASSWORD' | sudo -S systemctl reboot" >/dev/null 2>&1 || true
   sleep 8

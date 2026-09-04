@@ -44,6 +44,11 @@ row() { printf '| %-11s | %-10s | %-22s | %s |\n' "$1" "$2" "$3" "$4" >> "$OUT";
 
 for os in "${TARGETS[@]}"; do
   say "$os: provisioning"
+  # A campaign only means something on a FRESH machine: a leftover VM from an earlier run has
+  # already been hardened, so its "before" is somebody else's "after". `vm up` refuses to touch an
+  # existing instance, which is right, so the matrix removes it first and always builds from the
+  # stock cloud image.
+  python3 tools/vm.py down "$os" >/dev/null 2>&1
   if ! python3 tools/vm.py up "$os" --sudo-password "$PAVOIS_SUDO_PASSWORD" > "/tmp/matrix-$os.log" 2>&1; then
     reason=$(grep -m1 -E "^vm: " "/tmp/matrix-$os.log" | cut -c1-120)
     echo "  SKIPPED: ${reason:-provisioning failed}"
@@ -61,12 +66,17 @@ for os in "${TARGETS[@]}"; do
   # The harness prints the posture line after every scan; the LAST one is the outcome.
   # -a: the campaign log carries NUL bytes (ssh -tt), so grep calls it binary and prints nothing
   # without it. That is how ubuntu2204 converged to grade B and the table said "?".
-  posture=$(grep -aoE "Remediable posture: grade [A-E] \([0-9]+/[0-9]+" "$log" | tail -1 | sed 's/Remediable posture: //')
+  # harden_validate.sh writes the postures into its own scratch dir and prints its path; take it
+  # from the log rather than guessing, since it is a mktemp -d.
+  sp=$(grep -aoE "/tmp/tmp\.[A-Za-z0-9]+" "$log" | head -1)
+  postures="$sp/postures-$os.txt"
+  posture=$(tail -1 "$postures" 2>/dev/null | sed 's/Remediable posture: //')
+  baseline=$(head -1 "$postures" 2>/dev/null | sed 's/Remediable posture: grade //;s/ .*//')
   # There is only ONE posture measurement per campaign: harden_validate.sh pipes each scan
   # through `tail -3`, which keeps the final grade and drops the baseline one. So the table can
   # report where a system ENDS, not how far it moved. Saying "from grade ?" pretended otherwise.
   if [ "$rc" -eq 0 ]; then
-    note="final posture; baseline not retained by the harness"
+    note="from grade ${baseline:-?} on a fresh VM"
   else
     note=$(grep -am1 -E "^error:|FATAL:|command not found" "$log" | cut -c1-90)
   fi
