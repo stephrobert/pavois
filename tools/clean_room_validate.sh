@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Pavois: CLEAN-ROOM end-to-end validation: provision a FRESH VM from the Ubuntu cloud
 # image, then run the exact operator pipeline with nothing done by hand:
-#   1 provision (Proxmox, from cloud image)   2 KSPP kernel build (delivered recipe)
+#   1 provision (Incus by default, Proxmox optional)  2 KSPP kernel build (delivered recipe)
 #   3 LVM partitions (delivered recipe)        4 harden apply -> reboot -> scan + lynis
 # The grade + lynis it prints are the honest, reproducible pavois result: a fresh box in,
 # a hardened box out, no manual interventions. This is the machine behind "the result must
@@ -9,12 +9,17 @@
 #
 # Env: PAVOIS_SUDO_PASSWORD (sudo pw of the ci user). Usage:
 #   tools/clean_room_validate.sh [stage]   stage = all|provision|kernel|partition|harden
+#
+# Provider: CK_PROVIDER=incus (default) provisions on THIS machine with tools/vm.py, which is what
+# the project actually has. CK_PROVIDER=proxmox keeps the original path, and needs a Proxmox host
+# with `qm`; the lab it was written for no longer exists, so that path is unverified.
 set -euo pipefail
 STAGE="${1:-all}"
 # All infra targets come from the environment so no lab specifics live in the repo. Defaults use
 # RFC-5737 documentation addresses; export the real ones for a run, e.g.
 #   PVE=root@pve.example CK_IP=203.0.113.62 CK_GW=203.0.113.1 PAVOIS_SUDO_PASSWORD=... \
 #     tools/clean_room_validate.sh all
+PROVIDER="${CK_PROVIDER:-incus}"                                # incus (this machine) | proxmox
 PVE="${PVE:-root@pve.example}"                                  # Proxmox host (ssh target)
 VMID="${CK_VMID:-9000}"; IP="${CK_IP:-203.0.113.62}"; GW="${CK_GW:-203.0.113.1}"
 OS="${CK_OS:-ubuntu2404}"; CIUSER="${CK_USER:-pavois}"
@@ -22,6 +27,13 @@ OS="${CK_OS:-ubuntu2404}"; CIUSER="${CK_USER:-pavois}"
 MEM="${CK_MEM:-12288}"; CORES="${CK_CORES:-8}"
 CLOUDIMG="${CK_CLOUDIMG:-/var/lib/vz/template/iso/noble-server-cloudimg-amd64.img}"
 KEY="${CK_KEY:-$HOME/.ssh/id_ed25519}"; TARGET=$CIUSER@$IP
+# Running a single stage against an Incus VM that already exists: ask the provisioner where it is,
+# rather than making the operator paste an address that changes on every rebuild. provision_incus
+# overwrites both anyway when it creates one.
+if [ "$PROVIDER" = incus ] && [ -z "${CK_IP:-}" ]; then
+  _ip=$(python3 "$(dirname "$0")/vm.py" ip "$OS" 2>/dev/null || true)
+  [ -n "$_ip" ] && { IP=$_ip; TARGET=$CIUSER@$IP; }
+fi
 : "${PAVOIS_SUDO_PASSWORD:?set PAVOIS_SUDO_PASSWORD}"
 pssh(){ ssh -o StrictHostKeyChecking=no "$PVE" "$@"; }
 vssh(){ ssh -tt -F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$KEY" "$TARGET" "$@"; }
@@ -44,8 +56,27 @@ assert_ours(){
   esac
 }
 
+provision_incus(){
+  say "1 PROVISION fresh $OS VM on Incus (this machine)"
+  # tools/vm.py refuses containers by construction: 259 controls read kernel state, and inside a
+  # container they would report on THIS workstation instead of the target.
+  python3 tools/vm.py down "$OS" >/dev/null 2>&1 || true      # a clean room starts empty
+  python3 tools/vm.py up "$OS" --memory "${CK_MEM_INCUS:-12GiB}" --disk "${CK_DISK:-40GiB}" \
+      --cpu "$CORES" --sudo-password "$PAVOIS_SUDO_PASSWORD" >&2 || return 1
+  IP=$(python3 tools/vm.py ip "$OS") || return 1
+  [ -n "$IP" ] || { echo "provision: the VM has no address" >&2; return 1; }
+  TARGET=$CIUSER@$IP
+  say "VM is up at $IP"
+  # Substrate normalization, NOT hardening: a real server is patched, and its sudo asks for a
+  # password. vm.py --sudo-password already did the second half.
+  vrun "cloud-init status --wait >/dev/null 2>&1 || true"
+  vrun "if command -v apt-get >/dev/null; then export DEBIAN_FRONTEND=noninteractive; apt-get update -qq && apt-get -y -qq upgrade; elif command -v dnf >/dev/null; then dnf -y -q upgrade || true; fi" 2>&1 | tail -2
+  vrun "systemctl reboot" || true; sleep 8; waitssh
+}
+
 provision(){
-  say "1 PROVISION fresh $OS VM $VMID @ $IP (from cloud image)"
+  if [ "$PROVIDER" = incus ]; then provision_incus; return $?; fi
+  say "1 PROVISION fresh $OS VM $VMID @ $IP (from cloud image, Proxmox)"
   assert_ours
   # push my pubkey to Proxmox for cloud-init
   scp -o StrictHostKeyChecking=no "${KEY}.pub" "$PVE:/root/pavois-ck.pub" >/dev/null
