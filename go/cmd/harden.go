@@ -1256,8 +1256,16 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 			"elif command -v grubby >/dev/null 2>&1; then " +
 			"grubby --update-kernel=ALL --args=\"" + args + "\" >/dev/null 2>&1 || true; " +
 			"cfg=/boot/grub2/grub.cfg; [ -f \"$cfg\" ] && grub2-mkconfig -o \"$cfg\" >/dev/null 2>&1 || true; " +
-			"grubby --info=ALL | grep -q -- \"" + firstArg(args) + "\" || " +
-			"{ echo \"pavois: grubby did not apply the kernel arguments\" >&2; exit 1; }; "
+			// Where the arguments LAND depends on the distribution, so look in all three places.
+			// AlmaLinux 10 writes them literally into the BLS entry, which `grubby --info=ALL`
+			// then prints. Fedora 43 writes `args="$kernelopts"` in the entry and keeps the real
+			// value in the grub environment, so --info=ALL shows an unexpanded variable and a
+			// check against it can never pass, however well grubby did its job. Measured on both.
+			"__w=\"" + firstArg(args) + "\"; " +
+			"grubby --info=ALL 2>/dev/null | grep -q -- \"$__w\" || " +
+			"grub2-editenv list 2>/dev/null | grep -q -- \"$__w\" || " +
+			"grep -rqs -- \"$__w\" /boot/loader/entries /etc/default/grub || " +
+			"{ echo \"pavois: the kernel arguments are in none of: the BLS entries, the grub\" >&2; echo \"        environment, or /etc/default/grub. Nothing applied them.\" >&2; exit 1; }; "
 		if iommuForce {
 			apply += "systemd-detect-virt -q -v || grubby --update-kernel=ALL --args=\"iommu=force\"; "
 		}
