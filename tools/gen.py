@@ -120,7 +120,7 @@ VAR = re.compile(r"@\{([a-z_][\w.]*)\}")
 def subst(v, os, cid):
     """Resolve @{primitive} against the OS profile. An unknown primitive is a HARD ERROR: it must
     never render as an empty string, because package('') is installed nowhere and would pass
-    forever — a vacuous control, the very thing we are hunting."""
+    forever: a vacuous control, the very thing we are hunting."""
     if isinstance(v, str):
 
         def one(m):
@@ -175,7 +175,7 @@ def assert_resolved(cid, os, field, val):
 
 
 def render(lib):
-    # OS set comes from the SOURCE (rules.yml), never from the (derived) output dir —
+    # OS set comes from the SOURCE (rules.yml), never from the (derived) output dir:
     # so render works on a fresh clone where pavois-content/ does not exist yet.
     oses = sorted({os for entry in lib.values() for os in entry["applicable_os"]})
     out = {os: {} for os in oses}
@@ -249,11 +249,11 @@ def main():
                     print(f"  MISMATCH {os} {cid}")
     if total == 0:
         # The per-OS files are GENERATED and git-ignored, so a fresh clone (or a new worktree)
-        # has none — and "0 of 0 in sync" is not a pass, it is a measurement that never ran.
+        # has none: and "0 of 0 in sync" is not a pass, it is a measurement that never ran.
         # This used to divide by zero and print a traceback, which is a poor way to say
         # "run mise run gen first".
         print(
-            f"verify: no generated OS file under {REF.relative_to(ROOT)} — nothing to verify.\n"
+            f"verify: no generated OS file under {REF.relative_to(ROOT)}: nothing to verify.\n"
             "        Run `mise run gen` (or `mise run regen`) first; on a fresh clone the corpus\n"
             "        and the per-OS reference are rebuilt from docs/reference/rules.yml.",
             file=sys.stderr,

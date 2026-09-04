@@ -2,10 +2,10 @@
 """The site is a DERIVED artifact. Prove it, or fail.
 
 site/src/content/rules/ holds one fiche per control and is VERSIONED, but it is produced by
-tools/generate_rule_pages.py — a script that, until now, no task ever ran. So the site drifted from
+tools/generate_rule_pages.py: a script that, until now, no task ever ran. So the site drifted from
 the rule base and nothing could say so: 19 controls the scanner runs had no page (including the
 whole `growth-*` family and the journald forwarding control written the same day), 17 fiches
-documented controls that had been deleted, and Ubuntu 26.04 — 652 controls in the reference —
+documented controls that had been deleted, and Ubuntu 26.04: 652 controls in the reference:
 appeared on exactly zero pages, while the home page counted "8 Linux targets".
 
 `gen:verify` gives the InSpec corpus that guarantee ("5919/5919 controls in sync"). This is the
@@ -78,17 +78,17 @@ def main():
                 print(f"   ... and {len(items) - 15} more")
 
     if dead:
-        print(f"\ndead controls in rules.yml (no OS runs them — remove or scope them): {len(dead)}")
+        print(f"\ndead controls in rules.yml (no OS runs them: remove or scope them): {len(dead)}")
         for d in dead:
             print(f"   {d}")
-    # editorial debt: reported, never fatal — it is work to do, not a broken build
+    # editorial debt: reported, never fatal: it is work to do, not a broken build
     print(
         f"\neditorial debt: {len(todo)} fiche(s) need authored prose, "
         f"{len(untranslated)} need a FR pass"
     )
 
     if fail:
-        print(f"\nDRIFT: {fail} problem(s) — run `mise run gen:pages` to rebuild the site content")
+        print(f"\nDRIFT: {fail} problem(s): run `mise run gen:pages` to rebuild the site content")
         sys.exit(1)
     print("\nthe site content is in sync with the rule base")
 

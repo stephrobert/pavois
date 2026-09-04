@@ -278,7 +278,7 @@ func runBundleVerify(cmd *cobra.Command, args []string) error {
 	if !ok {
 		return fmt.Errorf("bundle verification FAILED (%d files checked)", nfiles)
 	}
-	_, _ = fmt.Fprintf(out, "OK — %d files intact%s\n", nfiles, map[bool]string{true: ", signature verified", false: " (unsigned)"}[sig])
+	_, _ = fmt.Fprintf(out, "OK: %d files intact%s\n", nfiles, map[bool]string{true: ", signature verified", false: " (unsigned)"}[sig])
 	return nil
 }
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Pavois — carve separate LVM/ext4 partitions on a SECOND disk for the CIS mount/partition
+# Pavois: carve separate LVM/ext4 partitions on a SECOND disk for the CIS mount/partition
 # controls (/home /var /var/log /var/log/audit /var/tmp /opt /srv). DATA, not engine code:
 # like docs/reference/kernel-build/<os>.sh, harden.go delivers this verbatim to
 # /usr/local/sbin/pavois-harden-partition.sh for the operator to review and run (heavy,
@@ -9,7 +9,7 @@
 # Attach a >=20G second disk first (Proxmox: qm set <vmid> --scsi1 <storage>:20). The ORIGINAL
 # data stays on the root fs (shadowed by each mount), so a failed run is fully recoverable by
 # restoring /etc/fstab.pavois-bak and rebooting. Run as root.
-# Pavois — carve separate LVM/ext4 partitions on a second disk for the CIS mount controls.
+# Pavois: carve separate LVM/ext4 partitions on a second disk for the CIS mount controls.
 # Migrates data with integrity checks, writes fstab with hardening mount options; a reboot
 # then activates them. The ORIGINAL data stays on the root fs (shadowed by the mount), so a
 # failed run is fully recoverable by restoring /etc/fstab.pavois-bak and rebooting. Run as root.
@@ -24,7 +24,7 @@ if ! command -v pvcreate >/dev/null 2>&1 || ! command -v rsync >/dev/null 2>&1; 
 fi
 
 # rsync drives the data migration; ensure it is present (purged again at the end so the
-# hardened host ships no rsync daemon — CIS service-rsyncd-disabled / pkg-rsync-removed).
+# hardened host ships no rsync daemon: CIS service-rsyncd-disabled / pkg-rsync-removed).
 command -v rsync >/dev/null 2>&1 || { apt-get update -qq; DEBIAN_FRONTEND=noninteractive apt-get install -y rsync >/dev/null 2>&1; }
 
 # --- find the new empty disk (no partitions, not the root disk) ------------------------
@@ -116,7 +116,7 @@ migrate opt         /opt
 migrate srv         /srv
 rmdir /mnt/stage 2>/dev/null || true
 
-# --- fstab (parent before child; /var without noexec — it breaks apt) -----------------
+# --- fstab (parent before child; /var without noexec: it breaks apt) -----------------
 [ -f /etc/fstab.pavois-bak ] || cp /etc/fstab /etc/fstab.pavois-bak
 add() { local lv="$1" mnt="$2" opts="$3"; mkdir -p "$mnt"; sed -i "\| $mnt |d" /etc/fstab
   echo "/dev/vghard/$lv $mnt ext4 defaults,$opts 0 2" >> /etc/fstab; }
@@ -131,4 +131,4 @@ echo "==> fstab:"; grep vghard /etc/fstab
 systemctl daemon-reload
 # migration done: purge rsync so no rsync daemon/service symlink lingers on the hardened host
 DEBIAN_FRONTEND=noninteractive apt-get purge -y rsync >/dev/null 2>&1 || true
-echo "==> DONE — reboot to activate the separate partitions."
+echo "==> DONE: reboot to activate the separate partitions."

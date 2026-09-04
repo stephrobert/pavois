@@ -17,7 +17,7 @@ rule should read a service's resolved view (`sshd -T`, `sysctl`...) when it expo
 5. **Pinned + reproducible.** Tool versions pinned via `mise`; CI Actions pinned by commit SHA; no
    dependency lifecycle scripts run on install.
 
-## Where to help — how to improve the tool
+## Where to help: how to improve the tool
 
 Pick the track that fits you. Each control's gaps are honest and published: see
 [What Pavois covers](https://pavois.dev/en/handbook/coverage/) and
@@ -25,12 +25,12 @@ Pick the track that fits you. Each control's gaps are honest and published: see
 
 | You want to… | Do this | Impact |
 |---|---|---|
-| **Add or deepen a rule** *(most needed)* | add a control to `docs/reference/rules.yml` that audits the **strongest available evidence** (and declares its evidence type), with its standard mappings + level | grows the library — the core value |
+| **Add or deepen a rule** *(most needed)* | add a control to `docs/reference/rules.yml` that audits the **strongest available evidence** (and declares its evidence type), with its standard mappings + level | grows the library: the core value |
 | **Fill a thin domain** | the partial domains today are **firewall** (ruleset/zones), **logging** (remote forwarding, integrity), **time-sync**, **MAC** (custom SELinux/AppArmor). Deepen one. | turns "partial" into "delivered" |
 | **Add an OS** | extend `rules.yml` `@os` keys + a `profiles/linux/<os>/` target | wider reach |
 | **Fix / source a mapping** | cross-check a CIS/ANSSI/NIST/PCI/STIG ref against an authoritative source; correct it in `rules.yml` | accuracy, trust |
 | **Enrich the site** | bilingual rule fiches, glossary terms, handbook pages under `site/src/content/` | the reference experience |
-| **Improve the engine/CLI** | Go work under `go/` — see the roadmap items in Feature status | capability |
+| **Improve the engine/CLI** | Go work under `go/`: see the roadmap items in Feature status | capability |
 
 **A good rule contribution** audits the strongest available evidence and declares the correct evidence type (effective-runtime, persistent-config, inventory-state or filesystem-state), has a neutral slug id, `impact`/`title`/`desc`,
 a `tag domain:`, at least one **sourced** standard mapping, and per-standard level tags. It must be
@@ -40,24 +40,24 @@ a `tag domain:`, at least one **sourced** standard mapping, and per-standard lev
 
 A single technical control usually belongs to several regulations. We do **not** duplicate it per
 standard: it carries one **stable, standard-neutral id** (a `domain-object` slug) and all its
-normative mappings as **tags**. A "standard" is a *view* — the HTML report lets the reader pick the
+normative mappings as **tags**. A "standard" is a *view*: the HTML report lets the reader pick the
 regulation and recomposes chapters and score client-side.
 
 You edit **YAML** in `docs/reference/rules.yml` (never the `.rb`, which is generated):
 
 ```yaml
-ssh-disable-root-login:               # neutral pavois id, standard-agnostic
+ssh-disable-root-login:              # neutral pavois id, standard-agnostic
   title: Disable SSH Root Login
   domain: SSH                         # neutral chaptering
-  evidence_type: effective-runtime    # 1 of 4 types — auto-filled by `gen:evidence`, omit to let it classify
+  evidence_type: effective-runtime    # 1 of 4 types: auto-filled by `gen:evidence`, omit to let it classify
   severity: critical                  # impact 1.0
   impact: 1.0
   applicable_os: [debian12, ubuntu2404, rhel9]   # ... and the rest
-  check:                              # the EFFECTIVE check: sshd -T, never the file
+  check:                             # the EFFECTIVE check: sshd -T, never the file
     - describe command('sshd -T') do
     - "  its('stdout') { should match(/^permitrootlogin\\s+no$/i) }"
     - end
-  norms:                              # every standard that applies (value can be keyed @os)
+  norms:                             # every standard that applies (value can be keyed @os)
     bp28: R33
     cis: "5.1.20"
     nist: [AC-17(a), IA-2(5)]
@@ -84,10 +84,10 @@ end
 
 **Conventions for a new control:**
 
-- **`domain`** — reuse an existing neutral domain, do not invent one. The canonical list (33) is
+- **`domain`**: reuse an existing neutral domain, do not invent one. The canonical list (33) is
   [`site/src/data/domain-labels.ts`](site/src/data/domain-labels.ts) (e.g. `SSH`, `Sudo`,
   `Kernel & network (sysctl)`, `Audit (auditd)`, `Packages`, `Mounts`...).
-- **`ssg`** — the SSG rule short id you map. To find what that rule actually checks (so your
+- **`ssg`**: the SSG rule short id you map. To find what that rule actually checks (so your
   effective check matches its intent), read the datastream and the gap tooling:
   ```bash
   mise run coverage:gap -- --os debian12 --datastream ssg-debian12-ds.xml   # lists unmapped SSG rules + titles
@@ -96,10 +96,10 @@ end
   The SSG datastream (`ComplianceAsCode/content` release) holds the rule's description, rationale and
   OVAL, the source of truth for what to assert.
 
-## The source of truth — how to add a rule
+## The source of truth: how to add a rule
 
 Controls are **not** edited as `.rb` files directly. The single DRY source is
-[`docs/reference/rules.yml`](docs/reference/rules.yml) — one entry per control id, fields keyed `@os`
+[`docs/reference/rules.yml`](docs/reference/rules.yml): one entry per control id, fields keyed `@os`
 only where they differ. Everything downstream is generated:
 
 ```
@@ -125,7 +125,7 @@ check (the InSpec code never lies about what it reads) and writes `evidence_type
 `gen:reboot` does the same for `reboot_survivable`. Set them by hand only to override the classifier.
 `regen` does **not** run these passes, run them yourself after editing a check.
 
-The `.rb` corpus and the OSCAL bundle are **derived artifacts** — git-ignored, rebuilt from source;
+The `.rb` corpus and the OSCAL bundle are **derived artifacts**: git-ignored, rebuilt from source;
 never commit them. After a fresh clone, run `mise run regen` once before scanning.
 
 ### Fix a rule in minutes
@@ -195,19 +195,19 @@ When you test remediations on an Incus VM:
 ### One command before pushing
 
 ```bash
-mise run prepush     # 13s, offline, deterministic — installed as a pre-push hook
+mise run prepush     # 13s, offline, deterministic: installed as a pre-push hook
 ```
 
 Install it with **`mise run hooks:install`** (not `pre-commit install` alone: the pre-push stage is
-owned by `tools/hooks/pre-push`, which also refuses a direct push to `main` — letting pre-commit
+owned by `tools/hooks/pre-push`, which also refuses a direct push to `main`: letting pre-commit
 install its own hook there would overwrite that guard).
 
 It runs the build, the Go tests and linters, `gen:verify`, `lint:rules`, `validate:mappings` and
-`validate:i18n` — everything a pull request fails on that costs seconds and needs no target.
+`validate:i18n`: everything a pull request fails on that costs seconds and needs no target.
 
 **What it deliberately does not do**, and why it must stay that way: a gate you cannot clear is the
 gate everybody learns to skip with `--no-verify`, which switches off every other hook at the same
-time. So `site:verify` stays out (31s, and it *regenerates* content — a hook must not rewrite the
+time. So `site:verify` stays out (31s, and it *regenerates* content: a hook must not rewrite the
 tree it is checking), the SSG cross-validation stays out (network, minutes), and **a real scan can
 never be a hook** (it needs a live VM).
 
@@ -221,7 +221,7 @@ mise run testplan -- --check # what prepush calls: fails on a path no rule sorts
 The heavy runs are the point. A `docs/reference/rules.yml` change earns a **real scan on debian12
 plus `mise run regression`**, and that is not advice: per `CLAUDE.md` it is the condition for
 merging. `testplan` says so on every push, prints what each run leaves unproven, and refuses a
-changed path that no rule classifies — a path nobody classified is a path nobody knows how to test.
+changed path that no rule classifies: a path nobody classified is a path nobody knows how to test.
 Adding a rule to `tools/testplan.py` is part of adding a new kind of file to the repo.
 
 ### The individual gates
@@ -229,14 +229,14 @@ Adding a rule to `tools/testplan.py` is part of adding a new kind of file to the
 CI enforces all of these; `prepush` runs the offline ones for you.
 
 ```bash
-# Go binary (go/) — `mise run lint` + `mise run test` cover the first line
+# Go binary (go/): `mise run lint` + `mise run test` cover the first line
 cd go && gofmt -l . && go vet ./... && go build ./... && go test -race ./... && golangci-lint run ./...
 govulncheck ./...
 
 # fuzz the parsers fed by input pavois does not control (see "Fuzzing" below)
 mise run fuzz                 # 30s per target; FUZZTIME=5m mise run fuzz for a real session
 
-# Python tooling (tools/) — test-vms/ is local-only (gitignored), lint it yourself if you touch it
+# Python tooling (tools/): test-vms/ is local-only (gitignored), lint it yourself if you touch it
 ruff check tools/ && ruff format --check tools/ && bandit -r tools/ -c pyproject.toml
 
 # the actual tool, on a real target (effective config needs --sudo)
@@ -248,7 +248,7 @@ with `%w`), no needless abstraction, tests for meaningful behavior, documented p
 
 ### Falsification: proving a guard still bites
 
-A green test says nothing is broken. It does not say anything is **guarded** — a test can stop
+A green test says nothing is broken. It does not say anything is **guarded**: a test can stop
 biting without anyone touching it, when a refactor moves an assertion or a case becomes
 unreachable, and nothing goes red the day it happens.
 
@@ -263,7 +263,7 @@ refuses a verdict it cannot trust: **a mutant that no longer compiles is reporte
 pass**, because every test failing looks exactly like the guard being proven and is worth nothing.
 
 Add a declaration whenever you add a guard whose failure would be silent, expensive or
-destructive — the three shipped cover what a rollback deletes, whether an aggregated drop-in keeps
+destructive: the three shipped cover what a rollback deletes, whether an aggregated drop-in keeps
 its compliant siblings, and whether one critical finding still caps the grade in band E.
 
 ### Fuzzing
@@ -283,7 +283,7 @@ FUZZTIME=5m mise run fuzz     # a real session before touching a parser
 ```
 
 Seed corpora run on every `go test`, so they are permanent regression tests. If the fuzzer finds a
-crasher, Go writes it to `testdata/fuzz/<Target>/`: **commit that file** — it becomes a named
+crasher, Go writes it to `testdata/fuzz/<Target>/`: **commit that file**: it becomes a named
 regression test that runs forever after.
 
 ### Getting a target to scan
@@ -334,10 +334,10 @@ Two hard rules:
   applying everything at once is the only way to catch cross-control damage.
 
 > **Always apply a FULL plan (the whole `harden plan` output), never a hand-made subset.**
-> Aggregated remediations — sshd (`/etc/ssh/sshd_config.d/99-pavois.conf`), sysctl
-> (`zz-pavois.conf`), kernel cmdline, keyval drop-ins — are rewritten **wholesale** on every
+> Aggregated remediations: sshd (`/etc/ssh/sshd_config.d/99-pavois.conf`), sysctl
+> (`zz-pavois.conf`), kernel cmdline, keyval drop-ins: are rewritten **wholesale** on every
 > apply. `harden apply` keeps them complete only by re-emitting the *compliant* sibling controls
-> too — which requires those controls to be **present in the plan**. Apply a plan that contains
+> too: which requires those controls to be **present in the plan**. Apply a plan that contains
 > only a subset (e.g. a quick test plan with 3 rules) and the drop-in is regenerated **without the
 > missing controls**, silently regressing dozens of them (a subset sysctl plan wiped ~55 sysctls;
 > a subset sshd plan re-enabled root login). For iteration use `scan --controls <id>` to check one
@@ -357,7 +357,7 @@ chapter of every standard it maps to, with its severity, mappings and effective-
 ### Dangerous remediations: explain the brick, gate the apply
 
 A remediation that can **brick or lock out** the host (loses boot, disk, network, or privilege
-escalation) must carry a `danger:` field in `docs/reference/rules.yml` — a short, specific English
+escalation) must carry a `danger:` field in `docs/reference/rules.yml`: a short, specific English
 sentence stating *what* breaks and *the precondition* to avoid it. Examples already in the corpus:
 `cmdline-iommu-force`, `grub-password`, `kmod-loading-disabled`, `sudo-require-authentication`,
 `sudo-remove-no-authenticate`, `sudo-require-reauthentication`, `mount-var-noexec`.
@@ -368,7 +368,7 @@ and `harden plan` writes it on the item next to `acknowledged: false`.
 
 `harden apply` **refuses to converge** any enabled item that has a `danger:` unless the risk is
 acknowledged: either per item (`acknowledged: true` in the plan) or run-wide (`--i-understand-danger`).
-Never ship a brick-prone auto remediation without a `danger:` line — the gate depends on it.
+Never ship a brick-prone auto remediation without a `danger:` line: the gate depends on it.
 
 ### Firewall and SSH access are plan-configurable
 
@@ -382,14 +382,14 @@ SSH lockout** (learned the hard way; recover offline with `virt-customize -a <di
 Because a default-deny firewall and a user/group SSH restriction can lock you out, both are **scoped
 from the plan** (they default to open so a plan without them never bricks access):
 
-- `ssh_allow_from: [cidr, …]` on `firewall-default-deny` — restrict SSH to those sources.
-- `ssh_allow_users: [name, …]` / `ssh_allow_groups: [name, …]` on `misc-sshd-limit-user-access` —
+- `ssh_allow_from: [cidr, …]` on `firewall-default-deny`: restrict SSH to those sources.
+- `ssh_allow_users: [name, …]` / `ssh_allow_groups: [name, …]` on `misc-sshd-limit-user-access`:
   enforce sshd `AllowUsers`/`AllowGroups` (otherwise the control stays a manual, site-specific stub).
   **The list must include the account you connect as**, or you lock yourself out.
 
 ## Pull-request workflow
 
-- `main` is protected — work on a **feature branch** and open a PR.
+- `main` is protected: work on a **feature branch** and open a PR.
 - Commits follow **[Conventional Commits](https://www.conventionalcommits.org/)**
   (`feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`, `build`; optional scope; imperative).
 - The PR must pass every check: Go + Python quality, **CodeQL** (Go/Python/JS SAST),
@@ -398,6 +398,6 @@ from the plan** (they default to open so a plan without them never bricks access
 
 ## More
 
-- Security issues: **do not** open a public issue — see [SECURITY.md](SECURITY.md).
+- Security issues: **do not** open a public issue: see [SECURITY.md](SECURITY.md).
 - How the code fits together: [ARCHITECTURE.md](ARCHITECTURE.md).
 - By participating you agree to our [Code of Conduct](CODE_OF_CONDUCT.md).

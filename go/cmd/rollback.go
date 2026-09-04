@@ -24,7 +24,7 @@ import (
 // OpenSCAP hands you a bash script and wishes you luck; the CIS Build Kits apply and do not
 // unapply; Lynis and CIS-CAT do not remediate at all; an Ansible role is not a transaction either.
 // (Bastille Linux tried it in 2003 with RevertBastille and died; CalCom sells it commercially.)
-// Where you have NixOS generations, rpm-ostree or ZFS/LVM snapshots, those are strictly better —
+// Where you have NixOS generations, rpm-ostree or ZFS/LVM snapshots, those are strictly better:
 // this is for the mutable hosts that have none. It is why most operators never apply to production.
 //
 // pavois can do better for one specific reason: the plan says, BEFORE anything runs, exactly which
@@ -84,7 +84,7 @@ type restorePoint struct {
 	Irreversible []string `json:"irreversible,omitempty"`
 }
 
-// What the run will touch is READ OFF THE COMPILED RECIPE — the very text that is about to run.
+// What the run will touch is READ OFF THE COMPILED RECIPE: the very text that is about to run.
 //
 // The first version of this hardcoded the aggregated drop-in paths in a table, and the table was
 // wrong within the hour: the recipe writes /etc/ssh/sshd_config.d/00-pavois.conf, the table said
@@ -96,13 +96,13 @@ var (
 	recipePackageRe = regexp.MustCompile(`(?m)^(?:apt_)?package\s+'([^']+)'`)
 	recipeServiceRe = regexp.MustCompile(`(?m)^service\s+'([^']+)'`)
 	// A remediation can also install a package from inside an `exec` (`apt-get install -y acct`), so
-	// the package never appears as a Chef `package` resource — and a rollback left acct and sysstat
+	// the package never appears as a Chef `package` resource: and a rollback left acct and sysstat
 	// behind while removing the 30 declared ones. Read those too.
 	recipeExecInstallRe = regexp.MustCompile(`(?:apt-get|dnf|yum)\s+(?:-y\s+)?install\s+(?:-y\s+)?([a-z0-9][a-z0-9.+-]*)`)
 )
 
 // The config files an `exec` command edits. Deliberately narrow: /etc, /boot and /usr/local paths
-// with a plausible file extension or a known name, never a glob or a directory — a rollback must
+// with a plausible file extension or a known name, never a glob or a directory: a rollback must
 // restore files it is SURE about, and say so about the rest.
 var execPathRe = regexp.MustCompile(`(?:/etc|/boot|/usr/local/(?:s?bin|etc))/[A-Za-z0-9._/-]+`)
 
@@ -239,7 +239,7 @@ func captureScript(rp restorePoint) string {
 		fmt.Fprintf(&b, "echo \"%s $(systemctl is-enabled %q 2>/dev/null || echo unknown) $(systemctl is-active %q 2>/dev/null || echo unknown)\" >> /tmp/pavois-rp/svcs.txt\n",
 			sv.Name, sv.Name, sv.Name)
 	}
-	// The tar holds the CONTENT of config files, so it stays 0600 — but it is written by root and
+	// The tar holds the CONTENT of config files, so it stays 0600: but it is written by root and
 	// fetched by the connecting (unprivileged) account, so hand it to that account rather than
 	// opening it to the whole box.
 	b.WriteString("tar czf /tmp/pavois-restore-point.tar.gz -C /tmp/pavois-rp .\n" +
@@ -385,7 +385,11 @@ func runHardenRollback(cmd *cobra.Command, args []string) error {
 	}
 	opts := sshOptsFor(rbKey)
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: shipping the restore point back…")
-	scp := exec.Command("scp", append(append(opts, tarPath), target+":/tmp/pavois-restore-point.tar.gz")...) //nolint:gosec // fixed args
+	// -O: the legacy SCP protocol, over an exec channel. Modern scp speaks SFTP by default,
+	// and a stock debian13 (OpenSSH 10) declares no `Subsystem sftp`, so an sftp transfer dies
+	// with "subsystem request failed on channel 0" — measured on a fresh VM. -O needs no
+	// subsystem and works on every target we support.
+	scp := exec.Command("scp", append(append([]string{"-O"}, append(opts, tarPath)...), target+":/tmp/pavois-restore-point.tar.gz")...) //nolint:gosec // fixed args
 	scp.Stdout, scp.Stderr = os.Stderr, os.Stderr
 	if err := scp.Run(); err != nil {
 		return fmt.Errorf("copy restore point: %w", err)
@@ -464,7 +468,7 @@ func runScriptAsRoot(target string, opts []string, sudoPass, script, name string
 		return err
 	}
 	remote := "/tmp/" + name
-	scp := exec.Command("scp", append(append(opts, f.Name()), target+":"+remote)...) //nolint:gosec // fixed args
+	scp := exec.Command("scp", append(append([]string{"-O"}, append(opts, f.Name())...), target+":"+remote)...) //nolint:gosec // fixed args
 	scp.Stderr = os.Stderr
 	if err := scp.Run(); err != nil {
 		return fmt.Errorf("copy %s: %w", name, err)
@@ -495,7 +499,7 @@ func writeRestorePoint(p planFile, recipe, target, planPath, dir string, opts []
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
-	fetch := exec.Command("scp", append(append(opts, target+":/tmp/pavois-restore-point.tar.gz"), //nolint:gosec // fixed args
+	fetch := exec.Command("scp", append(append([]string{"-O"}, append(opts, target+":/tmp/pavois-restore-point.tar.gz")...), //nolint:gosec // fixed args
 		filepath.Join(dir, "restore-point.tar.gz"))...)
 	fetch.Stderr = os.Stderr
 	if err := fetch.Run(); err != nil {
@@ -503,7 +507,7 @@ func writeRestorePoint(p planFile, recipe, target, planPath, dir string, opts []
 	}
 	// Which files actually existed: a rollback DELETES the ones pavois created, so getting this
 	// wrong is the difference between restoring /etc/audit/auditd.conf and deleting it. Read it from
-	// the archive we just fetched — NOT by cat'ing it over ssh: root wrote that directory with
+	// the archive we just fetched: NOT by cat'ing it over ssh: root wrote that directory with
 	// umask 077, so the unprivileged account we connect with reads nothing, every file comes back
 	// "did not exist", and the manifest tells the operator we are about to delete 45 config files.
 	existing, err := presentFromArchive(filepath.Join(dir, "restore-point.tar.gz"))

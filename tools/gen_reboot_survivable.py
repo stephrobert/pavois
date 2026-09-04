@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Classify every control by REBOOT-SURVIVABILITY — the second axis of the qualified verdict
+"""Classify every control by REBOOT-SURVIVABILITY: the second axis of the qualified verdict
 (docs/site-review-chatgpt-3.md, the headline chantier). evidence_type says WHAT a check reads;
 this says whether a PASS proves a state that SURVIVES A REBOOT. The two are independent: a
 runtime read can still be reboot-proof (a kernel's compiled config, `sshd -T` re-parsing the
 config files) while another is purely live (`sysctl` of the running kernel, a live mount option).
 
 We derive it from the same check/template signals (the InSpec code never lies about what it reads)
-and write `reboot_survivable: yes|no|unknown` into docs/reference/rules.yml — the DRY source — so
+and write `reboot_survivable: yes|no|unknown` into docs/reference/rules.yml: the DRY source: so
 it flows to the 8 OS files, the corpus tags (`tag reboot:`), the engine (audit.FullPass), the
 fiches and OSCAL.
 
@@ -15,10 +15,10 @@ fiches and OSCAL.
 
 Values (and what they mean for grading):
   yes      a PASS proves a durable state (counts as a FULL pass)
-  no       a PASS proves only the live state; persistence is NOT shown by this check — it needs a
+  no       a PASS proves only the live state; persistence is NOT shown by this check: it needs a
            persistent companion (`requires_companion_control`) to become a full pass, else the
            grade is runtime-qualified (capped under A)
-  unknown  cannot tell (manual / unclassified) — treated as not-full, never silently upgraded
+  unknown  cannot tell (manual / unclassified): treated as not-full, never silently upgraded
 
 The mapping is CONSERVATIVE: when in doubt we say `no`/`unknown`, never `yes`. Over-claiming
 persistence is exactly the dishonesty this axis exists to kill.
@@ -37,7 +37,7 @@ SRC = ROOT / "docs" / "reference" / "rules.yml"
 TEMPLATE_REBOOT = {
     "package": "yes",  # installed/absent: registered state, survives reboot
     "file_owner": "yes",  # path mode/owner/group: on-disk metadata, survives reboot
-    "kconfig": "yes",  # /boot/config-$(uname -r): the kernel binary's build — same after reboot
+    "kconfig": "yes",  # /boot/config-$(uname -r): the kernel binary's build: same after reboot
     "service_disabled": "yes",  # is-enabled: persistent unit enablement (masked/disabled survives)
     "sysctl": "yes",  # folded: live value AND pinned in /etc/sysctl.d → persists
     "mount_option": "yes",  # folded: live option AND pinned in fstab/systemd → persists
@@ -129,7 +129,7 @@ def classify(e):
         if any(s in text for s in RUNTIME_PERSISTENT):
             return "yes"
         return "no"  # conservative: an unrecognised runtime read is treated as live
-    return "unknown"  # no evidence_type yet / unclassified — never guess yes
+    return "unknown"  # no evidence_type yet / unclassified: never guess yes
 
 
 def main():
@@ -148,9 +148,7 @@ def main():
     print("reboot_survivable distribution:")
     for rs, n in dist.most_common():
         print(f"  {rs:8} {n}")
-    print(
-        f"\n  live set ({len(live)}) — these need a persistent companion to count as a full pass:"
-    )
+    print(f"\n  live set ({len(live)}): these need a persistent companion to count as a full pass:")
     for cid in live[:30]:
         print(f"    {cid}")
     if len(live) > 30:

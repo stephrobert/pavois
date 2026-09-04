@@ -4,7 +4,7 @@
 
 <p align="center">
   <b>Effective Linux compliance &amp; hardening, over CINC / InSpec</b><br/>
-  <sub>Audits the configuration your services <i>actually run</i> (<code>sshd -T</code>, <code>sysctl</code>, <code>systemctl</code>, <code>auditctl</code>), not just the files on disk. Maps each control to every applicable standard (CIS, ANSSI BP-028, NIST, PCI-DSS, STIG), grades it <b>A–E</b>, and hardens it as code.</sub>
+  <sub>Audits the configuration your services <i>actually run</i> (<code>sshd -T</code>, <code>sysctl</code>, <code>systemctl</code>, <code>auditctl</code>), not just the files on disk. Maps each control to every applicable standard (CIS, ANSSI BP-028, NIST, PCI-DSS, STIG), grades it <b>A:E</b>, and hardens it as code.</sub>
 </p>
 
 <p align="center">
@@ -45,7 +45,7 @@ difference: it audits the **effective configuration** of a running host, not the
 - **One control, every applicable mapping.** A single effective-config assertion carries all its standard mappings:
   **CIS**, **ANSSI BP-028**, **NIST** (800-53 / 800-171), **PCI-DSS** and **DISA STIG**. One
   neutral control, every applicable mapping, never a duplicated rule.
-- **A–E grade, transparent.** A published scoring formula (failure-weighted, critical-capped),
+- **A:E grade, transparent.** A published scoring formula (failure-weighted, critical-capped),
   computed identically in the CLI and the HTML report.
 - **Harden as code.** `pavois harden` plans the fixes, you opt in per rule, and a native Chef run
   converges them. No blind shell script.
@@ -64,10 +64,10 @@ difference: it audits the **effective configuration** of a running host, not the
 **Today, build from source (Option B).** The verified release binary (Option A) ships with the
 first public release; until then there is no downloadable artifact (see `feature-status`).
 
-### Option A — a verified release binary (planned: first release)
+### Option A: a verified release binary (planned: first release)
 
 Once the first release is published, each release will ship a static binary per platform plus
-`checksums.txt`. The binary is **self-contained** — the rule corpus is embedded (`go:embed`), so
+`checksums.txt`. The binary is **self-contained**: the rule corpus is embedded (`go:embed`), so
 there is nothing to generate: download, verify, scan.
 
 ```bash
@@ -80,7 +80,7 @@ chmod +x pavois-linux-amd64
 ./pavois-linux-amd64 scan local --sudo
 ```
 
-### Option B — build from source
+### Option B: build from source
 
 The repository ships the **source of truth only** (`docs/reference/rules.yml` + the enriched site
 content). The InSpec corpus (`.rb`) and the OSCAL bundle are **derived artifacts**: they are not
@@ -106,7 +106,7 @@ The shortest path, auditing the current host (effective config needs root):
 git clone https://github.com/stephrobert/pavois.git && cd pavois
 mise trust && mise install && mise run build && mise run regen
 ./go/pavois doctor                           # is everything ready?
-./go/pavois scan local --sudo --format html  # audit this host, A–E grade
+./go/pavois scan local --sudo --format html  # audit this host, A:E grade
 ./go/pavois serve                            # browse reports at http://localhost:8098
 ```
 
@@ -125,7 +125,7 @@ pavois scan user@host --key ~/.ssh/id_ed25519 --sudo
 # 2. Plan the fixes, opt in per rule, converge a native Chef run, re-scan
 pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo
 #    edit the plan: flip rules to `apply: true`
-#    a rule with a `danger:` line can brick/lock out the host — read it, then set
+#    a rule with a `danger:` line can brick/lock out the host: read it, then set
 #    `acknowledged: true` on that item (or pass --i-understand-danger) or apply refuses it
 pavois harden apply hardening-plan-debian12.yml --reboot --scan
 
@@ -139,14 +139,14 @@ pavois bundle before.json after.json --plan hardening-plan-debian12.yml --report
 pavois serve   # http://localhost:8098
 ```
 
-The scan prints the deviations by severity and the **A–E grade**, and writes an HTML report. With
+The scan prints the deviations by severity and the **A:E grade**, and writes an HTML report. With
 `--reboot`, harden reboots the target and re-scans, so a pass in that report is **reboot-proven**; it
 also writes a **reboot-proof artifact** (the boot_id before and after, proving the re-scan ran on a
 fresh boot) that you can fold into the evidence bundle (`bundle --reboot-proof`).
 `--format sarif|junit|json|csv|html` and `--fail-under <points>` make the grade a CI gate.
 
 Every scan also prints a **posture breakdown** by remediation class (`auto`, `manual`, `dangerous`,
-`install-time`, `kernel-build`) and a **remediable posture grade**, the A–E formula recomputed over
+`install-time`, `kernel-build`) and a **remediable posture grade**, the A:E formula recomputed over
 only the controls fixable on a running host (it excludes install-time and kernel-build), so an
 unfixable separate partition or a kernel `CONFIG_*` does not mask what you can actually remediate.
 
@@ -159,7 +159,7 @@ delta for an evidence bundle.
 `pavois bundle` packages a campaign into a tamper-evident **evidence bundle**: the before/after scans,
 the plan that was applied, the reports, the reboot proof, the transition delta, plus a `manifest.json`
 (tool + ruleset version, **pavois binary digest**, target, grade delta) and a `checksums.txt`. You then
-**sign `checksums.txt` with your own identity** (`cosign sign-blob` or `gpg --detach-sign`) — pavois does
+**sign `checksums.txt` with your own identity** (`cosign sign-blob` or `gpg --detach-sign`): pavois does
 not own the signing key, the auditor's trust is in your KMS/OIDC identity. **`pavois bundle verify <dir>`**
 re-checks every artifact's SHA-256, the manifest digest, and the signature if present (exit non-zero on
 any tampering; `--require-signature` to also fail when unsigned), turning the package into tamper-evident evidence, opposable once signed under an accepted trust policy,
@@ -170,13 +170,13 @@ $ pavois bundle verify evidence/ --require-signature
   manifest.json        digest OK
   checksums.txt        12/12 artifacts match
   signature            verified (cosign, identity bob@example.org)
-bundle OK — tamper-evident and signed
+bundle OK: tamper-evident and signed
 # exit 0; non-zero on any checksum/manifest mismatch or (with --require-signature) a missing signature
 ```
 
 | Command | Does |
 |---------|------|
-| `scan` | Audit a target's effective config, grade A–E |
+| `scan` | Audit a target's effective config, grade A:E |
 | `harden plan` / `apply` | State-aware Chef hardening, opt-in per rule, `--reboot --scan` |
 | `diff` | Before/after campaign report: transition matrix, regressions, grade delta (`--html` / `--json`) |
 | `bundle` / `bundle verify` | Package tamper-evident evidence (scans + plan + reports + manifest + checksums), audit-ready once signed, then verify integrity + signature |
@@ -200,11 +200,11 @@ Pavois holds itself to the posture it audits:
 - **SLSA build provenance** on every release binary (`actions/attest-build-provenance`); verify
   with `gh attestation verify`.
 - **OpenSSF Scorecard** on the repository.
-- **Plumber-validated CI** — our own workflows are scanned by [Plumber](https://getplumber.io)
+- **Plumber-validated CI**: our own workflows are scanned by [Plumber](https://getplumber.io)
   against a trust policy (`.plumber.yaml`): actions pinned by commit SHA, least-privilege
   permissions, no dangerous triggers, no `write-all`, CVE / archived-action checks.
 - **Trivy dependency audit** (pinned) over the Go and npm locks; a fixable HIGH/CRITICAL blocks CI.
-- **14-day dependency quarantine** — Dependabot `cooldown` delays adopting a new dependency version
+- **14-day dependency quarantine**: Dependabot `cooldown` delays adopting a new dependency version
   until it has aged 14 days (security fixes bypass it).
 
 ## 📦 OSCAL
@@ -223,7 +223,7 @@ deep and what is not.
 
 ## 🤝 Contributing
 
-The **rule library** is where the project most needs help — **[CONTRIBUTING.md](CONTRIBUTING.md)**
+The **rule library** is where the project most needs help: **[CONTRIBUTING.md](CONTRIBUTING.md)**
 has a "Where to help" table mapping each intent (add a rule, deepen a thin domain, add an OS, source
 a mapping…) to a concrete action. How the code fits together: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 By participating you agree to the **[Code of Conduct](CODE_OF_CONDUCT.md)**. Report security issues

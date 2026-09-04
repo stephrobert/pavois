@@ -1,14 +1,14 @@
-# profiles/linux/ — corpus multi-normes par OS (RENDU depuis la référence)
+# profiles/linux/: corpus multi-normes par OS (RENDU depuis la référence)
 
 Chaque `<os>/controls/*.rb` est un **artefact rendu** depuis la référence pavois,
 pas du code écrit à la main. **On ne l'édite jamais à la main** : on édite la
 référence, puis on rend.
 
 ## Source de vérité
-- `docs/reference/pavois-content/<os>.yml` — **la référence pavois** : une entrée
+- `docs/reference/pavois-content/<os>.yml`: **la référence pavois** : une entrée
   par contrôle (check effectif + mappings de normes + niveaux + titre + sévérité +
   domaine). Pavois-owned, maintenue directement (SSG abandonné).
-- `tools/render_reference.py` / `tools/render.sh` — rendent la référence → corpus.
+- `tools/render_reference.py` / `tools/render.sh`: rendent la référence → corpus.
 
 Deux contrôles « identiques » diffèrent par leurs tags/valeurs selon l'OS, donc le
 `.rb` reste par OS. La maintenance réelle = **la référence**, pas les milliers de
@@ -40,6 +40,6 @@ tools/validate.sh             # intégrité + fidélité référence==corpus, ru
 | `fedora` | Fedora courante (42/43) | dnf |
 
 Les clones binaires de RHEL (Rocky, AlmaLinux) s'auditent avec le profil
-`rhel8`/`rhel9` — pas de profil dupliqué. La détection d'OS (`cinc-auditor detect`)
+`rhel8`/`rhel9`: pas de profil dupliqué. La détection d'OS (`cinc-auditor detect`)
 choisit automatiquement le bon profil, avec repli sur la version mineure la plus
 proche de la même famille.

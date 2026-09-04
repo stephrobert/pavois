@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Coherence linter for docs/reference/rules.yml — the guardrail that would have caught the
+"""Coherence linter for docs/reference/rules.yml: the guardrail that would have caught the
 defects the SSG bootstrap left behind, without needing a VM.
 
 Every finding below was a REAL bug found by scanning a live host, which means it survived
@@ -64,11 +64,11 @@ def main():
         # A control no OS runs is dead weight: it inflates the base, gets no page, and reads like a
         # missing fiche on the site.
         if not e.get("applicable_os"):
-            findings["dead-rule"].append(f"{cid}: applicable_os is empty — no OS runs it")
+            findings["dead-rule"].append(f"{cid}: applicable_os is empty: no OS runs it")
 
         # YAML 1.1 (what pyyaml, hence gen.py, speaks) reads a bare `yes` as the BOOLEAN true. So
-        # `reboot_survivable: yes` rendered as `true`, and the site — whose schema is the enum
-        # yes|no|unknown — refused the whole build 800 pages later. Enum fields must be quoted.
+        # `reboot_survivable: yes` rendered as `true`, and the site: whose schema is the enum
+        # yes|no|unknown: refused the whole build 800 pages later. Enum fields must be quoted.
         for f, allowed in (
             ("reboot_survivable", {"yes", "no", "unknown"}),
             ("remediation_class", {"auto", "dangerous", "install-time", "kernel-build", "manual"}),
@@ -79,7 +79,7 @@ def main():
                 continue
             if not isinstance(v, str):
                 findings["enum-type"].append(
-                    f"{cid}: {f} is {v!r} ({type(v).__name__}) — quote it: "
+                    f"{cid}: {f} is {v!r} ({type(v).__name__}): quote it: "
                     "a bare `yes` is a BOOLEAN in YAML 1.1"
                 )
             elif v not in allowed:
@@ -95,7 +95,7 @@ def main():
         # coredump control went on auditing a unit that exists nowhere after being rewritten.
         if e.get("check") and e.get("template"):
             findings["dead-check"].append(
-                f"{cid}: has BOTH check and template — the check is ignored"
+                f"{cid}: has BOTH check and template: the check is ignored"
             )
 
         # primitive leak: the check resolves @{pkg.httpd} (apache2 on Debian) while the remediation
@@ -122,7 +122,7 @@ def main():
         # pkg-mismatch: the check audits one package, the remediation installs/removes ANOTHER.
         # The remediation then cannot make its own check pass, and on a host where the name does
         # not exist it aborts the whole Chef run. pkg-nss-sss-installed audited `libnss-sss` (the
-        # Debian name) and installed `nss-sss` (the RHEL one) — invisible until a live apply.
+        # Debian name) and installed `nss-sss` (the RHEL one): invisible until a live apply.
         for os, tpl in per_os(e, "template").items():
             if not isinstance(tpl, dict) or tpl.get("name") != "package":
                 continue
@@ -133,7 +133,7 @@ def main():
             fixed = str(r.get("name") or r.get("package") or "")
             if audited and fixed and audited != fixed:
                 findings["pkg-mismatch"].append(
-                    f"{cid} [{os}]: audits {audited!r}, remediates {fixed!r} — "
+                    f"{cid} [{os}]: audits {audited!r}, remediates {fixed!r}: "
                     "cannot pass its own check"
                 )
 
@@ -165,7 +165,7 @@ def main():
 
         # A package installed from inside an `exec` (apt-get install -y acct) is invisible: it does
         # not appear in the plan, the operator never opts into it, and `harden rollback` cannot undo
-        # it — it left acct and sysstat behind on a host it had "rolled back". The engine has a
+        # it: it left acct and sysstat behind on a host it had "rolled back". The engine has a
         # declarative mechanism for exactly this (`requires_package`), and it must be used.
         for os, r in rems.items():
             if not isinstance(r, dict) or r.get("resource") != "exec":
@@ -176,7 +176,7 @@ def main():
             )
             if m:
                 findings["exec-installs-package"].append(
-                    f"{cid} [{os}]: an exec installs {m.group(1)!r} — declare it with "
+                    f"{cid} [{os}]: an exec installs {m.group(1)!r}: declare it with "
                     "`requires_package` so the plan shows it and a rollback can undo it"
                 )
 
@@ -192,7 +192,7 @@ def main():
                 and str(r.get("mode", "")) not in ("1777", "01777")
             ):
                 findings["sticky-dir"].append(
-                    f"{cid} [{os}]: chmod {r.get('mode')} {r.get('path')} — must stay 1777"
+                    f"{cid} [{os}]: chmod {r.get('mode')} {r.get('path')}: must stay 1777"
                 )
             # The check reads one literal file, the remediation writes another: the remediation
             # cannot make its own check pass. (Commands are excluded: auditing the EFFECTIVE config
@@ -225,7 +225,7 @@ def main():
         for fam, techs in defaults.items():
             if len(techs) > 1:
                 findings["group-default"].append(
-                    f"{gname} [{fam}]: two defaults {sorted(techs)} — harden sets up both, "
+                    f"{gname} [{fam}]: two defaults {sorted(techs)}: harden sets up both, "
                     "and they cancel each other out"
                 )
     _ = itertools

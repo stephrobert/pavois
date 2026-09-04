@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// `pavois rules` serves the Pavois rule base as JSON — the public contract of the source of
+// `pavois rules` serves the Pavois rule base as JSON: the public contract of the source of
 // truth (the per-distro reference), the seed of the rules API. Filter by OS, standard, domain.
 // Pavois's base is authoritative; this exposes it so other tools (auditors, dashboards) consume
 // it without parsing SSG. Norm mappings (cis/bp28/nist/...) travel with each rule for traceability.
@@ -26,7 +26,7 @@ var (
 var rulesCmd = &cobra.Command{
 	Use:   "rules",
 	Short: "Output the Pavois rule base as JSON (the reference API)",
-	Long: "Emit the Pavois rule base as JSON — id, title, domain, severity, the real norm\n" +
+	Long: "Emit the Pavois rule base as JSON: id, title, domain, severity, the real norm\n" +
 		"mappings (cis/bp28/nist/pci-dss/stig) and per-norm thresholds, the check and the\n" +
 		"remediation. Filter with --os/--standard/--domain. This is the consumable contract of\n" +
 		"Pavois's source-of-truth reference; it does not need a target.",
