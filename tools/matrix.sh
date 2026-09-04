@@ -59,12 +59,16 @@ for os in "${TARGETS[@]}"; do
   rc=$?
 
   # The harness prints the posture line after every scan; the LAST one is the outcome.
-  posture=$(grep -oE "Remediable posture: grade [A-E] \([0-9]+/[0-9]+" "$log" | tail -1 | sed 's/Remediable posture: //')
-  first=$(grep -oE "Remediable posture: grade [A-E] \([0-9]+/[0-9]+" "$log" | head -1 | sed 's/Remediable posture: grade //;s/ .*//')
+  # -a: the campaign log carries NUL bytes (ssh -tt), so grep calls it binary and prints nothing
+  # without it. That is how ubuntu2204 converged to grade B and the table said "?".
+  posture=$(grep -aoE "Remediable posture: grade [A-E] \([0-9]+/[0-9]+" "$log" | tail -1 | sed 's/Remediable posture: //')
+  # There is only ONE posture measurement per campaign: harden_validate.sh pipes each scan
+  # through `tail -3`, which keeps the final grade and drops the baseline one. So the table can
+  # report where a system ENDS, not how far it moved. Saying "from grade ?" pretended otherwise.
   if [ "$rc" -eq 0 ]; then
-    note="from grade ${first:-?}"
+    note="final posture; baseline not retained by the harness"
   else
-    note=$(grep -m1 -E "^error:|FATAL:" "$log" | cut -c1-90)
+    note=$(grep -am1 -E "^error:|FATAL:|command not found" "$log" | cut -c1-90)
   fi
 
   if [ "$rc" -eq 0 ]; then
