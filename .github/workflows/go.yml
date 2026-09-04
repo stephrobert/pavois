@@ -73,10 +73,22 @@ jobs:
           python3 -m pip install --no-cache-dir --quiet pyyaml==6.0.2
           python3 tools/falsify.py
 
+      # The linter binary is CACHED, not rebuilt. Compiling golangci-lint from source on every
+      # run cost 94s of a 3m36 job (measured, run 33844975089) — more than the tests, the vet and
+      # the falsification harness put together, to obtain a binary that is identical every time.
+      # The key carries the version, so a bump misses the cache exactly once, on purpose.
+      - name: Cache golangci-lint
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/bin/golangci-lint
+          key: golangci-lint-v2.12.2-${{ runner.os }}
+
       - name: golangci-lint
         working-directory: pavois/go
         run: |
-          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+          if [ ! -x "$(go env GOPATH)/bin/golangci-lint" ]; then
+            go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+          fi
           "$(go env GOPATH)/bin/golangci-lint" run ./...
 
       - name: govulncheck
