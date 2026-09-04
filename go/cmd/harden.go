@@ -1242,7 +1242,15 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		if iommuForce {
 			apply += "systemd-detect-virt -q -v || grubby --update-kernel=ALL --args=\"iommu=force\"; "
 		}
-		apply += "elif command -v grub2-mkconfig >/dev/null 2>&1; then grub2-mkconfig -o \"$(find /boot -name grub.cfg 2>/dev/null | head -1)\"; fi"
+		// /boot/grub2/grub.cfg FIRST, not whatever `find` returns. On a Fedora EFI install the
+		// first hit is /boot/efi/EFI/<distro>/grub.cfg, which is a wrapper: grub2-mkconfig
+		// refuses to overwrite it ("will overwrite the GRUB wrapper... GRUB configuration file
+		// was not updated"), exits 1, and takes the whole converge down with it. Measured on a
+		// fresh fedora VM.
+		apply += "elif command -v grub2-mkconfig >/dev/null 2>&1; then " +
+			"cfg=/boot/grub2/grub.cfg; " +
+			"[ -f \"$cfg\" ] || cfg=\"$(find /boot -name grub.cfg 2>/dev/null | head -1)\"; " +
+			"grub2-mkconfig -o \"$cfg\"; fi"
 		_, _ = fmt.Fprintf(&b, "execute 'pavois-grub-apply' do\n  command %q\n  action :nothing\nend\n\n", apply)
 		reboot = true
 		n++
@@ -1512,6 +1520,21 @@ func missingPrereqs(target string, opts []string) []string {
 	return missing
 }
 
+// installPrereqs installs the missing tools with the target's own package manager. It is the same
+// bargain pavois already makes for cinc-client, and it is announced on stderr rather than done
+// quietly.
+func installPrereqs(target, osName string, missing []string, sudoCmd func(string) string,
+	run func(string) error,
+) error {
+	mgr := "DEBIAN_FRONTEND=noninteractive apt-get install -y"
+	switch {
+	case strings.HasPrefix(osName, "rhel"), strings.HasPrefix(osName, "alma"),
+		strings.HasPrefix(osName, "rocky"), strings.HasPrefix(osName, "fedora"):
+		mgr = "dnf install -y"
+	}
+	return run(sudoCmd(mgr + " " + strings.Join(missing, " ")))
+}
+
 // prereqError explains what is missing, why pavois wants it, and how to install it, naming the
 // package manager rather than making the operator guess which distro convention applies.
 func prereqError(osName string, missing []string) error {
@@ -1712,7 +1735,18 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	// machine is a poor way to say "you are missing tar".
 	if !haNoRestorePoint {
 		if missing := missingPrereqs(target, sshOpts()); len(missing) > 0 {
-			return prereqError(p.OS, missing)
+			// Install them, rather than sending the operator away to do it by hand. pavois already
+			// installs cinc-client on this target, on the next line: refusing to add tar while
+			// installing 200 MB of Ruby would be a strange place to draw the line, and it leaves
+			// every EL target unusable (the AlmaLinux cloud images ship without tar).
+			_, _ = fmt.Fprintf(os.Stderr, "pavois: installing what it needs on %s: %s\n",
+				target, strings.Join(missing, " "))
+			if err := installPrereqs(target, p.OS, missing, sudoCmd, runSudoTTY); err != nil {
+				return fmt.Errorf("%w\n\n%w", err, prereqError(p.OS, missing))
+			}
+			if still := missingPrereqs(target, sshOpts()); len(still) > 0 {
+				return prereqError(p.OS, still)
+			}
 		}
 	}
 
