@@ -385,7 +385,11 @@ func runHardenRollback(cmd *cobra.Command, args []string) error {
 	}
 	opts := sshOptsFor(rbKey)
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: shipping the restore point back…")
-	scp := exec.Command("scp", append(append(opts, tarPath), target+":/tmp/pavois-restore-point.tar.gz")...) //nolint:gosec // fixed args
+	// -O: the legacy SCP protocol, over an exec channel. Modern scp speaks SFTP by default,
+	// and a stock debian13 (OpenSSH 10) declares no `Subsystem sftp`, so an sftp transfer dies
+	// with "subsystem request failed on channel 0" — measured on a fresh VM. -O needs no
+	// subsystem and works on every target we support.
+	scp := exec.Command("scp", append(append([]string{"-O"}, append(opts, tarPath)...), target+":/tmp/pavois-restore-point.tar.gz")...) //nolint:gosec // fixed args
 	scp.Stdout, scp.Stderr = os.Stderr, os.Stderr
 	if err := scp.Run(); err != nil {
 		return fmt.Errorf("copy restore point: %w", err)
@@ -464,7 +468,7 @@ func runScriptAsRoot(target string, opts []string, sudoPass, script, name string
 		return err
 	}
 	remote := "/tmp/" + name
-	scp := exec.Command("scp", append(append(opts, f.Name()), target+":"+remote)...) //nolint:gosec // fixed args
+	scp := exec.Command("scp", append(append([]string{"-O"}, append(opts, f.Name())...), target+":"+remote)...) //nolint:gosec // fixed args
 	scp.Stderr = os.Stderr
 	if err := scp.Run(); err != nil {
 		return fmt.Errorf("copy %s: %w", name, err)
@@ -495,7 +499,7 @@ func writeRestorePoint(p planFile, recipe, target, planPath, dir string, opts []
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
-	fetch := exec.Command("scp", append(append(opts, target+":/tmp/pavois-restore-point.tar.gz"), //nolint:gosec // fixed args
+	fetch := exec.Command("scp", append(append([]string{"-O"}, append(opts, target+":/tmp/pavois-restore-point.tar.gz")...), //nolint:gosec // fixed args
 		filepath.Join(dir, "restore-point.tar.gz"))...)
 	fetch.Stderr = os.Stderr
 	if err := fetch.Run(); err != nil {
