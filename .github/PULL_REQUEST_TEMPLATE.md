@@ -8,9 +8,9 @@
 
 <!-- Conventional Commits scope of the change. -->
 
-- [ ] feat — new capability
-- [ ] fix — bug fix
-- [ ] rule — new / improved control
+- [ ] feat: new capability
+- [ ] fix: bug fix
+- [ ] rule: new / improved control
 - [ ] docs · refactor · test · ci · chore · build
 
 ## Checklist
@@ -20,7 +20,7 @@
 - [ ] Go gates pass locally: `gofmt -l .` clean, `go vet`, `go build`, `go test -race`, `golangci-lint run`, `govulncheck`.
 - [ ] Python gates pass (if `tools/` changed): `ruff check`, `ruff format --check`, `bandit -c pyproject.toml`.
 - [ ] Tests and docs updated with the code; no dead code.
-- [ ] **No derived artifacts committed** (the `.rb` corpus, OSCAL, `dist/` are generated — `mise run regen`).
+- [ ] **No derived artifacts committed** (the `.rb` corpus, OSCAL, `dist/` are generated: `mise run regen`).
 - [ ] No secrets, real hostnames/IPs or keys in the diff.
 
 ## For a rule change

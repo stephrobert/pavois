@@ -7,7 +7,7 @@
 #   tools/fetch_datastreams.sh          # ensure all datastreams present
 set -euo pipefail
 
-SSG_VERSION="0.1.81"                                   # pinned (no :latest — reproducible oracle)
+SSG_VERSION="0.1.81"                                   # pinned (no :latest: reproducible oracle)
 CACHE="/tmp/oscap-analysis/ssg"
 ZIP="/tmp/ssg-${SSG_VERSION}.zip"
 OSES=(debian12 debian13 ubuntu2204 ubuntu2404 rhel8 rhel9 fedora)
@@ -34,6 +34,6 @@ for os in "${missing[@]}"; do
   if unzip -j -o "$ZIP" "scap-security-guide-${SSG_VERSION}/ssg-${os}-ds.xml" -d "$CACHE" >/dev/null 2>&1; then
     echo "  extracted ssg-${os}-ds.xml"
   else
-    echo "  (no ssg-${os}-ds.xml in SSG v${SSG_VERSION} — single-source until SSG adds it)"
+    echo "  (no ssg-${os}-ds.xml in SSG v${SSG_VERSION}: single-source until SSG adds it)"
   fi
 done

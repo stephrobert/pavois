@@ -3,8 +3,8 @@
 The `Mounts` domain has two kinds of control that **cannot be satisfied at runtime by `harden apply`**
 on a single-partition install:
 
-- `partition-<mp>` — a mount point must be a **separate filesystem**.
-- `mount-<mp>-{nodev,nosuid,noexec}` — that separate filesystem must carry the hardening option.
+- `partition-<mp>`: a mount point must be a **separate filesystem**.
+- `mount-<mp>-{nodev,nosuid,noexec}`: that separate filesystem must carry the hardening option.
 
 A stock cloud image has everything on `/`, so these fail. The remediation is **provisioning**: give
 the host the CIS partition layout. Verified on a Proxmox Debian 12 VM: **31 / 36 `Mounts` controls
@@ -33,7 +33,7 @@ or partition them at install time. Options per mount point (what the controls ch
 Runtime carve with a dedicated disk (`/dev/sdb`), migrating the current content:
 
 ```bash
-# debian12 cloud images ship without LVM/rsync — install them first, or pvcreate/lvcreate
+# debian12 cloud images ship without LVM/rsync: install them first, or pvcreate/lvcreate
 # fail with "command not found" and the carve aborts.
 apt-get install -y lvm2 rsync
 pvcreate /dev/sdb && vgcreate vgpav /dev/sdb

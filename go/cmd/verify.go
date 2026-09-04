@@ -12,11 +12,11 @@ import (
 )
 
 // verify is BEHAVIORAL validation: it attempts the forbidden action and confirms the
-// protection actually holds — tool-independent proof a remediation is operational,
+// protection actually holds: tool-independent proof a remediation is operational,
 // beyond reading config. Probes live in docs/reference/behavioral-probes.yml (extensible).
 var verifyCmd = &cobra.Command{
 	Use:   "verify <target>",
-	Short: "Behavioral validation — attempt the forbidden action, confirm the protection holds",
+	Short: "Behavioral validation: attempt the forbidden action, confirm the protection holds",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runVerify,
 }
@@ -37,7 +37,7 @@ type probe struct {
 }
 
 func runVerify(cmd *cobra.Command, args []string) error {
-	target := args[0] // full user@host — used as-is for the on-target SSH
+	target := args[0] // full user@host: used as-is for the on-target SSH
 	host := target
 	if i := strings.LastIndex(target, "@"); i >= 0 {
 		host = target[i+1:]
@@ -55,7 +55,7 @@ func runVerify(cmd *cobra.Command, args []string) error {
 	}
 
 	out := cmd.OutOrStdout()
-	_, _ = fmt.Fprintf(out, "pavois: behavioral validation of %s — does the hardening actually block the threat?\n\n", target)
+	_, _ = fmt.Fprintf(out, "pavois: behavioral validation of %s: does the hardening actually block the threat?\n\n", target)
 	pass, fail := 0, 0
 	for _, p := range doc.Probes {
 		c := strings.ReplaceAll(strings.ReplaceAll(p.Cmd, "{host}", host), "{target}", target)
@@ -91,7 +91,7 @@ func runVerify(cmd *cobra.Command, args []string) error {
 	}
 	_, _ = fmt.Fprintf(out, "\npavois: %d/%d behavioral probes confirm the protection holds.\n", pass, pass+fail)
 	if fail > 0 {
-		return fmt.Errorf("%d behavioral probe(s) failed — the hardening is NOT operational", fail)
+		return fmt.Errorf("%d behavioral probe(s) failed: the hardening is NOT operational", fail)
 	}
 	return nil
 }

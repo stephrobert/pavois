@@ -367,7 +367,7 @@ func GradeResult(res Result) (letter string, points int, runtimeQualified bool) 
 //   - auto        : automatically remediable (the rest)
 //
 // RemediationClass reads the class off the RULE. It used to be a hardcoded list of id prefixes
-// here in Go while the knowledge already lived in the YAML (`danger:`, `domain`) — two sources of
+// here in Go while the knowledge already lived in the YAML (`danger:`, `domain`): two sources of
 // truth, and they had already drifted: nine rhel10 controls carried `danger:` but the Go list knew
 // only three of them, so six high-risk remediations were reported as plain `auto`. The engine does
 // not decide what a rule is; the rule says it (see docs/reference/rules.yml `remediation_class`).
@@ -479,6 +479,6 @@ func Headline(res Result) string {
 	if rq {
 		q = fmt.Sprintf(" · runtime-qualified (%d runtime-only PASS, persistence not verified)", res.Qualified)
 	}
-	return fmt.Sprintf("Grade %s  (%d/100)  —  Critical %d · High %d · Medium %d · Low %d  ·  %d/%d compliant%s",
+	return fmt.Sprintf("Grade %s  (%d/100): Critical %d · High %d · Medium %d · Low %d  ·  %d/%d compliant%s",
 		letter, pts, c["critical"], c["high"], c["medium"], c["low"], res.Passed, res.Total, q)
 }

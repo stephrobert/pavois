@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""What this diff earns you, cheapest first — and what each run does NOT prove.
+"""What this diff earns you, cheapest first: and what each run does NOT prove.
 
 The problem this solves is not "which tests exist". It is that the expensive, non-negotiable
 runs live in prose. CLAUDE.md states that no rules.yml change merges without a REAL scan on
-debian12, and that static validation never substitutes for it — and PR #129 was merged on
+debian12, and that static validation never substitutes for it: and PR #129 was merged on
 static validation alone anyway, because the rule lived in a file and not in the tooling.
 
 So: read the diff, print the runs it earns, cheapest first, each with the sentence saying what
@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 
 # Cost buckets, ordered. The order is the output order: a contributor should be able to stop
 # reading at the point where the budget runs out and still have run the cheapest useful thing.
-OFFLINE = 0  # seconds, deterministic, no target — hook material
+OFFLINE = 0  # seconds, deterministic, no target: hook material
 LOCAL = 1  # tens of seconds to minutes, still no target
 TARGET = 2  # needs a live VM: never a hook, always before merge
 
@@ -51,7 +51,7 @@ RULES: list[Rule] = [
             (
                 OFFLINE,
                 "mise run gen:verify",
-                "that the generated corpus renders — only that it matches",
+                "that the generated corpus renders: only that it matches",
             ),
             (
                 OFFLINE,
@@ -62,7 +62,7 @@ RULES: list[Rule] = [
             (
                 TARGET,
                 "pavois scan <debian12-vm> --profile linux/debian12 --sudo --on-target",
-                "that the remediation converges — a control can be correct and unfixable",
+                "that the remediation converges: a control can be correct and unfixable",
             ),
             (
                 TARGET,
@@ -78,7 +78,7 @@ RULES: list[Rule] = [
             (
                 OFFLINE,
                 "mise run gen:verify",
-                "that a primitive is TRUE — only that the render is in sync",
+                "that a primitive is TRUE: only that the render is in sync",
             ),
             (
                 LOCAL,
@@ -133,7 +133,7 @@ RULES: list[Rule] = [
         ["go/**"],
         [
             (OFFLINE, "mise run test", "any behaviour against a live target"),
-            (OFFLINE, "mise run lint", "correctness — it proves style and known-bad patterns only"),
+            (OFFLINE, "mise run lint", "correctness: it proves style and known-bad patterns only"),
             (
                 LOCAL,
                 "mise run fuzz  (only if a parser moved: audit/, rollback recipe)",
@@ -142,7 +142,7 @@ RULES: list[Rule] = [
         ],
     ),
     Rule(
-        "the rendered InSpec corpus (GENERATED — edit docs/reference/rules.yml instead)",
+        "the rendered InSpec corpus (GENERATED: edit docs/reference/rules.yml instead)",
         ["profiles/**"],
         [
             (
@@ -164,7 +164,7 @@ RULES: list[Rule] = [
             (
                 LOCAL,
                 "mise run gen:example",
-                "that the fixture is leak-free — re-read it: it ships on the public site",
+                "that the fixture is leak-free: re-read it: it ships on the public site",
             ),
         ],
     ),
@@ -175,7 +175,7 @@ RULES: list[Rule] = [
             (
                 LOCAL,
                 "mise run site:verify",
-                "that the page renders — only that content and rule base agree",
+                "that the page renders: only that content and rule base agree",
             ),
             (
                 LOCAL,
@@ -196,7 +196,7 @@ RULES: list[Rule] = [
             (
                 OFFLINE,
                 "mise run validate:i18n",
-                "that the FR and EN say the same thing — only that they have the same shape",
+                "that the FR and EN say the same thing: only that they have the same shape",
             ),
         ],
     ),
@@ -211,7 +211,7 @@ RULES: list[Rule] = [
             (
                 OFFLINE,
                 "mise run validate:mappings",
-                "that a mapping is the RIGHT one — only that the ref exists upstream",
+                "that a mapping is the RIGHT one: only that the ref exists upstream",
             ),
             (
                 LOCAL,
@@ -246,7 +246,7 @@ RULES: list[Rule] = [
             (
                 OFFLINE,
                 "actionlint + zizmor + poutine  (see #215)",
-                "that the job runs green — only that it is well-formed",
+                "that the job runs green: only that it is well-formed",
             ),
         ],
     ),
@@ -273,7 +273,7 @@ RULES: list[Rule] = [
         ],
     ),
     # Deliberate no-ops: paths that genuinely earn nothing beyond the hook. Listing them is what
-    # keeps --check honest — silence would be indistinguishable from a forgotten rule.
+    # keeps --check honest: silence would be indistinguishable from a forgotten rule.
     Rule(
         "documentation and repo metadata (nothing beyond the hook)",
         [
@@ -381,7 +381,7 @@ def main() -> int:
         print("    Static validation is not a substitute, and a green prepush is not a scan.\n")
 
     if unsorted_paths:
-        print("  ✗ No rule sorts these paths — add one to tools/testplan.py:")
+        print("  ✗ No rule sorts these paths: add one to tools/testplan.py:")
         for path in unsorted_paths:
             print(f"      {path}")
         print("    A path nobody classified is a path nobody knows how to test.")

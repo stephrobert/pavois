@@ -1,7 +1,7 @@
-# Supply-chain hardening — Living Off The Pipeline (LOTP) audit
+# Supply-chain hardening: Living Off The Pipeline (LOTP) audit
 
 [LOTP](https://boostsecurityio.github.io/lotp/) catalogs dev tools whose normal commands can
-execute arbitrary code (config-driven plugins, lifecycle scripts, `go generate` directives, …) —
+execute arbitrary code (config-driven plugins, lifecycle scripts, `go generate` directives, …):
 an RCE-by-design surface when CI runs them on an untrusted PR. This is the audit of every
 LOTP-listed tool pavois uses and how its use is hardened. Goal: **no PR can run bad or malicious
 code in our pipeline, and no dependency runs code on install.**
@@ -14,7 +14,7 @@ code in our pipeline, and no dependency runs code on install.**
 | **golangci-lint** | `go.yml`, pre-commit | custom/module plugins (`.so`, `linters.custom`) | `.golangci.yml` declares **no** custom plugins; only first-party linters. PR runs have `contents: read` and no secrets reach fork PRs. |
 | **pre-commit** | local dev | runs arbitrary hooks from `.pre-commit-config.yaml` | hook repos **pinned by rev**; local hooks run only our own `language: system` commands. Not run in CI. |
 | **stylelint** | `site:lint-css` | JS plugins loaded from config | config uses only published, declared plugins; no inline JS executors. |
-| **trivy** | `deps.yml` | — (scanner) | action **pinned by SHA**; read-only. |
+| **trivy** | `deps.yml` |: (scanner) | action **pinned by SHA**; read-only. |
 | **uv / pip** | `python.yml`, mise | dependency `setup.py` on install | versions **pinned** (`ruff==0.14.9`, `bandit[toml]==1.9.2`); deps from PyPI; tooling only, never the shipped product. |
 | **actions/setup-node** | `deps.yml` | post-setup hooks | **pinned by SHA**. |
 | **bash / sed / awk / tar / wget** | scripts, CI | shell/arg injection | controlled args, `shell=False` equivalents, no untrusted interpolation (enforced by gosec/bandit + review). |
@@ -34,7 +34,7 @@ in the tree).
   Go build/CodeQL job simply can't check out the private dep on a fork PR (fails safe, leaks nothing).
 - **Pinned everything.** All third-party Actions are pinned by **40-char commit SHA**; tool versions
   are pinned; container images (when used) by digest. Enforced by the Plumber compliance gate.
-- **SAST on every PR.** CodeQL (Go, Python, JS/TS, `security-extended`) gates merges — the catch-all
+- **SAST on every PR.** CodeQL (Go, Python, JS/TS, `security-extended`) gates merges: the catch-all
   for injectable/malicious patterns lint misses. Run locally before push too.
 - **Dependency gate.** `dependency-review.yml` blocks a PR that introduces a HIGH/CRITICAL-vuln
   dependency or a copyleft license; `deps.yml` (Trivy) re-audits the full lockfile weekly.

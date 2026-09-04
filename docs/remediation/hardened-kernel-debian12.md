@@ -42,7 +42,7 @@ sudo apt-get install -y build-essential bc flex bison libssl-dev libelf-dev dwar
 > `make clean`) ships modules built against a stale `Module.symvers`: they load with
 > `Unknown symbol … (err -22)` / `no symbol version for …`. If it hits `virtio_net`, the
 > VM boots with **no network** (cloud-init "nic not present", `systemd-networkd-wait-online`
-> times out) — hard to diagnose. If a build fails, `rm -rf` the tree and re-extract.
+> times out): hard to diagnose. If a build fails, `rm -rf` the tree and re-extract.
 
 ```bash
 rm -rf ~/kbuild && mkdir -p ~/kbuild && cd ~/kbuild   # always a FRESH tree (see note above)
@@ -96,7 +96,7 @@ CONFIG_VIRTIO_BALLOON=y
 # CONFIG_SLAB_MERGE_DEFAULT is not set
 # CONFIG_X86_VSYSCALL_EMULATION is not set
 
-# Netfilter — MUST be built-in (=y), never modules. The hardened profile applies
+# Netfilter: MUST be built-in (=y), never modules. The hardened profile applies
 # kernel.modules_disabled=1, so any =m firewall feature can never load post-hardening;
 # and `make localmodconfig` (step 2) DROPS these if they weren't loaded at build time.
 # Without them the firewall can't come up and firewall-default-deny fails (Lynis FIRE-4512).
@@ -114,7 +114,7 @@ CONFIG_NF_CONNTRACK=y
 CONFIG_NF_TABLES=y
 CONFIG_NF_TABLES_INET=y
 CONFIG_NFT_CT=y
-# Only if you insist on ufw/iptables too (not recommended here — fragile, see above):
+# Only if you insist on ufw/iptables too (not recommended here: fragile, see above):
 CONFIG_NFT_COMPAT=y
 CONFIG_NETFILTER_XTABLES=y
 CONFIG_NETFILTER_XT_MATCH_CONNTRACK=y
@@ -148,7 +148,7 @@ make olddefconfig
 ```
 
 > **Do not set `MODULE_SIG_KEY` to an empty string.** With `MODULE_SIG_FORCE=y`, an empty key makes
-> `sign-file` fail (`SSL error ... DECODER routines::unsupported`). Keep the default
+> `sign-file` fail (`SSL error ... DECODER routines:unsupported`). Keep the default
 > `certs/signing_key.pem`; the build auto-generates it and signs every module.
 
 ## 3. Build + install
@@ -163,7 +163,7 @@ sudo reboot
 A VM/build host with **>= 12 cores, >= 12 GB RAM, >= 40 GB disk** builds comfortably.
 `MODULE_SIG_FORCE=y` means only modules built here (and signed) will load: if you used
 `localmodconfig`, make sure every module the host needs at boot (virtio, filesystem, network, **and
-netfilter** — see the fragment) was loaded when you ran it, or the VM may not come back / the
+netfilter**: see the fragment) was loaded when you ran it, or the VM may not come back / the
 firewall will not work. Snapshot first if your storage supports it.
 
 > **Netfilter is the classic `localmodconfig` casualty.** If the build host had no firewall active,

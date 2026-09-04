@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pavois — automate the full per-OS hardening validation cycle, end to end, with NO hand-editing
+# Pavois: automate the full per-OS hardening validation cycle, end to end, with NO hand-editing
 # on the box: scan -> plan -> enable(all safe gaps) -> harden apply -> reboot, LOOPED UNTIL FIXPOINT
 # -> invariants -> grade -> lynis. This is the machine that proves the result is produced by pavois,
 # reproducibly, not by manual interventions.
@@ -8,7 +8,7 @@
 # but hardening MUTATES the system. pavois installs the packages a control needs to be meaningful
 # (`requires_package`), and those packages bring their own files, units and defaults with them:
 #   - installing `at` (so the at.allow/at.deny controls mean something) CREATES /etc/at.deny, which
-#     another control requires to be absent — it was absent when the plan was computed, so nothing
+#     another control requires to be absent: it was absent when the plan was computed, so nothing
 #     ever deleted it;
 #   - installing an MTA (postfix) brings its own banner and VRFY defaults into scope.
 # Those controls were passing (or not applicable) at plan time and are failing afterwards, and a
@@ -42,41 +42,41 @@ J=$(ls -t reports/*"${HOST//./-}"*.json | head -1); echo "report: $J"
 
 pass=1
 while :; do
-  say "pass $pass/$MAX_PASSES — plan from the CURRENT state"
+  say "pass $pass/$MAX_PASSES: plan from the CURRENT state"
   bin/pavois harden plan "$TARGET" --sudo --key "$KEY" --from "$J" --out "$PLAN" 2>&1 | tail -1
   enabled=$(uv run --with pyyaml python3 tools/harden_plan_enable.py "$PLAN" --ssh-user "$SSHUSER" \
     ${PAVOIS_SSH_FROM:+--ssh-from "$PAVOIS_SSH_FROM"} | tee /dev/stderr | grep -oE 'enabled [0-9]+' | grep -oE '[0-9]+')
 
   if [ "${enabled:-0}" -eq 0 ]; then
-    echo "  FIXPOINT: nothing left to apply — hardening has converged in $((pass - 1)) pass(es)"
+    echo "  FIXPOINT: nothing left to apply: hardening has converged in $((pass - 1)) pass(es)"
     break
   fi
   # A gap an apply cannot close (a partition recipe, a kernel rebuild, a human) is re-enabled every
   # pass and closes nothing: without this, the loop would spin to MAX_PASSES on a host that is in
-  # fact done. Convergence is the failing SET no longer shrinking — never a rule's label, which is
+  # fact done. Convergence is the failing SET no longer shrinking: never a rule's label, which is
   # too coarse to decide it (install-time covers both partition-boot and an fstab option the engine
   # sets just fine).
   if [ "${enabled:-0}" -eq "${prev_enabled:-0}" ] && [ "$pass" -gt 1 ]; then
-    echo "  FIXPOINT: the same $enabled gap(s) survive an apply — nothing left that hardening can close"
+    echo "  FIXPOINT: the same $enabled gap(s) survive an apply: nothing left that hardening can close"
     break
   fi
   prev_enabled=$enabled
   if [ "$pass" -gt "$MAX_PASSES" ]; then
-    echo "  WARNING: still $enabled gap(s) after $MAX_PASSES passes — NOT converged, see the scan below"
+    echo "  WARNING: still $enabled gap(s) after $MAX_PASSES passes: NOT converged, see the scan below"
     break
   fi
 
-  say "pass $pass — harden apply ($enabled gaps)"
+  say "pass $pass: harden apply ($enabled gaps)"
   bin/pavois harden apply --target "$TARGET" --key "$KEY" --sudo-prompt --yes "$PLAN" 2>&1 | tail -2
-  say "pass $pass — reboot + wait"
+  say "pass $pass: reboot + wait"
   reboot_wait
-  say "pass $pass — re-scan"
+  say "pass $pass: re-scan"
   scan
   J=$(ls -t reports/*"${HOST//./-}"*.json | head -1)
   pass=$((pass + 1))
 done
 
-say "INVARIANTS — a hardened host that lost a vital function is a FAILURE, not a grade"
+say "INVARIANTS: a hardened host that lost a vital function is a FAILURE, not a grade"
 # We learned this the hard way: two firewall controls with different defaults cancelled each other
 # out and the box came back with NO firewall, and a scan reports that as one failing control among
 # hundreds. These are pass/fail: if hardening broke the machine, say so, loudly, here.
@@ -102,4 +102,4 @@ bin/pavois scan "$TARGET" --profile "linux/$OS" --sudo --on-target --key "$KEY" 
 say "lynis (index)"
 $SSH "$TARGET" "echo '$PAVOIS_SUDO_PASSWORD' | sudo -S bash -c 'test -x /opt/lynis/lynis && cd /opt/lynis && ./lynis audit system --quick --no-colors 2>/dev/null | grep -iE \"Hardening index|Warnings \(\"'" 2>&1 | grep -iE "Hardening|Warnings" || echo "lynis not installed on target"
 
-echo; echo "DONE — grade + lynis above are 100% pavois-produced (rules + harden apply)."
+echo; echo "DONE: grade + lynis above are 100% pavois-produced (rules + harden apply)."

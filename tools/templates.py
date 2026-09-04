@@ -2,7 +2,7 @@
 """Check templates: define the recurring InSpec check patterns ONCE; a control then carries
 `template: {name, ...params}` instead of a verbatim check, and the renderer expands it.
 
-Each template is reversible — expand(extract(lines)) == lines — so migration is LOSSLESS: a control
+Each template is reversible: expand(extract(lines)) == lines: so migration is LOSSLESS: a control
 is only converted to a template when the expansion reproduces its check exactly. Params store the
 VERBATIM ruby token for the variable parts (e.g. value: "0" or "'root'"), so types round-trip.
 
@@ -13,7 +13,7 @@ import re
 
 # name -> (expand(params)->lines, extract(lines)->params|None)
 
-# sysctl: reboot-proof by construction — assert the LIVE kernel value (kernel_parameter) AND that
+# sysctl: reboot-proof by construction: assert the LIVE kernel value (kernel_parameter) AND that
 # the value is PINNED in a persistent sysctl config file, so it survives a reboot. Without the
 # second block a `sysctl -w` (live only) would pass and silently regress on the next boot.
 _SYSCTL_PATHS = (
@@ -124,7 +124,7 @@ def _svc_ext(L):
     return None
 
 
-# mount_option: reboot-proof by construction — assert the option is on the LIVE mount AND that it
+# mount_option: reboot-proof by construction: assert the option is on the LIVE mount AND that it
 # is PINNED persistently (in /etc/fstab OR a systemd .mount unit), so it survives a reboot. A
 # `mount -o remount` (live only) would otherwise pass and silently regress on the next boot.
 def _mount_exp(p):
@@ -231,7 +231,7 @@ def _kconfig_ext(L):
     return None
 
 
-# cmdline: reboot-proof by construction — assert the param is on the LIVE booted kernel
+# cmdline: reboot-proof by construction: assert the param is on the LIVE booted kernel
 # (/proc/cmdline) AND pinned in a persistent boot source (grub / kernel cmdline), so it survives
 # a reboot. A param injected at boot but absent from grub would otherwise pass and regress.
 _GRUB_SRC = (
@@ -283,7 +283,7 @@ def _cmdline_ext(L):
     return None
 
 
-# audit_rule: reboot-proof by construction — assert the rule is LOADED live (auditctl -l, matched
+# audit_rule: reboot-proof by construction: assert the rule is LOADED live (auditctl -l, matched
 # by its key) AND present in the persistent on-disk ruleset (/etc/audit/rules.d, /etc/audit/
 # audit.rules). A rule loaded with `auditctl` but absent from disk would regress on reboot.
 _AUDIT_RULES = "/etc/audit/rules.d/*.rules /etc/audit/audit.rules"

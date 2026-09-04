@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""L4 — GRADE gate: the A->E grade model must be IDENTICAL between the two
+"""L4: GRADE gate: the A->E grade model must be IDENTICAL between the two
 implementations (the HTML report JS and the binary's Go). We extract weights,
 caps and bands from both sources and compare them numerically.
 
@@ -47,7 +47,7 @@ def main():
         if j == g:
             print(f"  ✓ {name} identical: {g}")
         else:
-            print(f"  ✗ {name} diverge — JS {j} vs Go {g}")
+            print(f"  ✗ {name} diverge: JS {j} vs Go {g}")
             ok = False
     return 0 if ok else 1
 

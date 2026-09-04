@@ -83,7 +83,7 @@ def main() -> int:
         if not fw["refs"]:
             print(f"!! could not fetch the {norm} framework")
             return 2
-        print(f"\n=== {norm} — vs {fw['name']} ({len(fw['refs'])} requirements) ===")
+        print(f"\n=== {norm}: vs {fw['name']} ({len(fw['refs'])} requirements) ===")
         for os_name in oses:
             raw = tags(os_name, norm)
             if norm == "nist":

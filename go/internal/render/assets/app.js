@@ -2,11 +2,11 @@
 var LABELS={bp28:"ANSSI BP-028",cis:"CIS",'pci-dss':"PCI-DSS",nist:"NIST 800-171",stig:"STIG",posture:"Posture"};
 // Evidence type: what the check actually demonstrates (honest about "effective" != universal).
 var EVIDENCE={
-  'effective-runtime':{l:"Effective runtime",n:"Verified against the resolved state at runtime (sshd -T, sysctl, systemctl show…) — catches drop-ins and Include. Caveat: runtime != persistence; a value that is correct now may not survive a reboot."},
-  'persistent-config':{l:"Persistent config",n:"Verified against the content of a persistent configuration file — the source of truth across reboots."},
+  'effective-runtime':{l:"Effective runtime",n:"Verified against the resolved state at runtime (sshd -T, sysctl, systemctl show…): catches drop-ins and Include. Caveat: runtime != persistence; a value that is correct now may not survive a reboot."},
+  'persistent-config':{l:"Persistent config",n:"Verified against the content of a persistent configuration file: the source of truth across reboots."},
   'inventory-state':{l:"Inventory state",n:"Verified against what is installed or registered (packages present/absent, account databases)."},
   'filesystem-state':{l:"Filesystem state",n:"Verified against a path's metadata (mode, owner, group, SUID/SGID)."},
-  'manual':{l:"Manual",n:"No automated check — human judgement and business context required."},
+  'manual':{l:"Manual",n:"No automated check: human judgement and business context required."},
   'behavioral':{l:"Behavioral",n:"Verified by actually attempting a forbidden action."}
 };
 var HIER={cis:1,'pci-dss':1,nist:1,stig:1};
@@ -51,7 +51,7 @@ function grade(set){
   if(counts.critical>0&&fin>30)fin=30;
   var L=fin>=90?'A':fin>=71?'B':fin>=51?'C':fin>=31?'D':'E';
   // Qualified-verdict cap: an A is not earned on runtime-only PASS with unproven
-  // persistence. The points are unchanged — only the letter is capped.
+  // persistence. The points are unchanged: only the letter is capped.
   var rq=qualified>0;
   if(rq&&L==='A')L='B';
   return {letter:L,final:fin,counts:counts,qualified:qualified,rq:rq};
@@ -106,7 +106,7 @@ function detail(c,norm){
   if(c.desc)h+='<p class="desc">'+esc(c.desc)+'</p>';
   if(c.evidence&&EVIDENCE[c.evidence]){
     var ev=EVIDENCE[c.evidence];
-    h+='<p class="evid evid-'+c.evidence+'"><span class="evid-k">Evidence</span> <b>'+esc(ev.l)+'</b> — '+esc(ev.n)+'</p>';
+    h+='<p class="evid evid-'+c.evidence+'"><span class="evid-k">Evidence</span> <b>'+esc(ev.l)+'</b>: '+esc(ev.n)+'</p>';
   }
   if(c.danger){
     h+='<p class="danger"><span class="danger-k">⚠ Danger</span> '+esc(c.danger)+'</p>';
@@ -243,7 +243,7 @@ function render(){
     ctrls.forEach(function(c){
       var lvlCell='';
       if(showLvl){var cl=c.levels&&c.levels[norm];
-        lvlCell='<td>'+(cl?'<span class="lvl">'+(LEVEL_LABEL[cl]||cl)+'</span>':'—')+'</td>';}
+        lvlCell='<td>'+(cl?'<span class="lvl">'+(LEVEL_LABEL[cl]||cl)+'</span>':':')+'</td>';}
       out+='<tr class="rule" data-status="'+c.status+'" data-sev="'+c.sev+'" onclick="cfToggle(this)">'
           +'<td class="cid">'+esc(c.id)+'</td><td>'+esc(c.title)+'</td>'+lvlCell
           +'<td>'+sevBadge(c.sev)+'</td><td>'+(BADGE[c.status]||'')+'</td></tr>'

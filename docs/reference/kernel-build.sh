@@ -1,16 +1,16 @@
 #!/bin/sh
-# Pavois — build a KSPP-hardened kernel. HEAVY: ~20GB free disk, 30-60min, then reboot.
+# Pavois: build a KSPP-hardened kernel. HEAVY: ~20GB free disk, 30-60min, then reboot.
 # Review before running. Run as root on a host with enough resources (NOT auto-run by Pavois).
 #
 # This is DATA, not engine code: harden.go reads it from docs/reference/kernel-build.sh and
 # delivers it verbatim to /usr/local/sbin/pavois-harden-kernel.sh (like docs/reference/audit.rules).
-# Edit the KSPP option lists / build steps here — never hardcode them in Go.
+# Edit the KSPP option lists / build steps here: never hardcode them in Go.
 set -e
 KVER=$(uname -r)
 
 # --- Pavois KSPP kconfig sets (shared by every OS branch) --------------------------------------
 # These MIRROR Pavois's own `kconfig-*` controls in docs/reference/rules.yml (the curated,
-# boot-safe KSPP subset — no WERROR/MODULES=n/CFI that would break a GCC distro build), so a
+# boot-safe KSPP subset: no WERROR/MODULES=n/CFI that would break a GCC distro build), so a
 # kernel from this recipe passes every kconfig control. Cross-version by construction: a symbol
 # absent from the target kernel is silently ignored (scripts/config on Debian/Ubuntu; the
 # existence check on RHEL), so the SAME lists serve 4.18 (el8) through 6.x (el10 / Debian 13 /
@@ -21,7 +21,7 @@ KVER=$(uname -r)
 # Keep this in sync with the `kconfig-*` controls (option + set:true/false).
 KSPP_ENABLE="BUG BUG_ON_DATA_CORRUPTION DEBUG_CREDENTIALS DEBUG_LIST DEBUG_NOTIFIERS DEBUG_SG DEBUG_WX FORTIFY_SOURCE HARDENED_USERCOPY LEGACY_VSYSCALL_NONE PANIC_ON_OOPS PAGE_POISONING PAGE_POISONING_NO_SANITY PAGE_POISONING_ZERO PAGE_TABLE_ISOLATION MITIGATION_PAGE_TABLE_ISOLATION RANDOMIZE_BASE RANDOMIZE_MEMORY RETPOLINE MITIGATION_RETPOLINE SCHED_STACK_END_CHECK SECCOMP SECCOMP_FILTER SECURITY SECURITY_DMESG_RESTRICT SECURITY_YAMA SLAB_FREELIST_HARDENED SLAB_FREELIST_RANDOM SLUB_DEBUG STACKPROTECTOR STACKPROTECTOR_STRONG STRICT_KERNEL_RWX STRICT_MODULE_RWX SYN_COOKIES VMAP_STACK MODULE_SIG MODULE_SIG_ALL MODULE_SIG_FORCE MODULE_SIG_SHA512 GCC_PLUGINS GCC_PLUGIN_LATENT_ENTROPY GCC_PLUGIN_RANDSTRUCT RANDSTRUCT_FULL GCC_PLUGIN_STACKLEAK GCC_PLUGIN_STRUCTLEAK GCC_PLUGIN_STRUCTLEAK_BYREF_ALL INIT_STACK_ALL_ZERO INIT_ON_ALLOC_DEFAULT_ON INIT_ON_FREE_DEFAULT_ON"
 KSPP_DISABLE="ACPI_CUSTOM_METHOD BINFMT_MISC COMPAT_BRK COMPAT_VDSO DEVKMEM HARDENED_USERCOPY_FALLBACK HIBERNATION IA32_EMULATION KEXEC LEGACY_PTYS MODIFY_LDT_SYSCALL PROC_KCORE SECURITY_WRITABLE_HOOKS SLAB_MERGE_DEFAULT X86_VSYSCALL_EMULATION DEBUG_INFO"
-# The netfilter/nftables firewall stack — MUST stay present and BUILTIN (=y), never a module
+# The netfilter/nftables firewall stack: MUST stay present and BUILTIN (=y), never a module
 # (#187: olddefconfig pruned it once = firewall-less kernel; and MODULE_SIG_FORCE would block an
 # unsigned nf_tables.ko). NETFILTER + NF_TABLES_* are BOOL and reject =m.
 NF_STACK="NETFILTER NETFILTER_NETLINK NETFILTER_XTABLES NF_CONNTRACK NF_TABLES NF_TABLES_INET NF_TABLES_IPV4 NF_TABLES_IPV6 NFT_CT NFT_COUNTER NFT_LOG NFT_LIMIT NFT_NAT NFT_MASQ NF_NAT IP_NF_IPTABLES IP6_NF_IPTABLES"
@@ -46,7 +46,7 @@ if command -v apt-get >/dev/null 2>&1; then
   for o in $KSPP_DISABLE; do scripts/config --disable "CONFIG_$o"; done
   scripts/config --disable SYSTEM_TRUSTED_KEYS --disable SYSTEM_REVOCATION_KEYS
   make olddefconfig
-  # abort early if the firewall stack got pruned anyway — never ship a firewall-less kernel
+  # abort early if the firewall stack got pruned anyway: never ship a firewall-less kernel
   grep -qE '^CONFIG_NF_TABLES=[ym]' .config || { echo "ERROR: CONFIG_NF_TABLES missing after olddefconfig; the built kernel would have no nftables firewall. Aborting." >&2; exit 1; }
   echo "==> building (long)"; make -j"$(nproc)" bindeb-pkg
   echo "==> installing"; dpkg -i ../linux-image-*.deb
@@ -58,22 +58,22 @@ if command -v apt-get >/dev/null 2>&1; then
   NEWI=$(ls -1 /boot/initrd.img-* 2>/dev/null | sort -V | tail -1)
   [ -n "$NEWK" ] && ln -sf "$NEWK" /vmlinuz
   [ -n "$NEWI" ] && ln -sf "$NEWI" /initrd.img
-  # post-install guard: nf_tables must be reachable in the new kernel — builtin (=y, no .ko) OR
+  # post-install guard: nf_tables must be reachable in the new kernel: builtin (=y, no .ko) OR
   # a present module. Check the installed config, then (module case) that the .ko exists.
   NV=$(make -s kernelrelease 2>/dev/null)
   if grep -qE '^CONFIG_NF_TABLES=y' "/boot/config-$NV" 2>/dev/null; then
-    echo "==> nf_tables builtin (=y) in $NV — firewall OK."
+    echo "==> nf_tables builtin (=y) in $NV: firewall OK."
   elif find "/lib/modules/$NV" -name 'nf_tables.ko*' 2>/dev/null | grep -q .; then
-    echo "==> nf_tables module present in $NV — firewall OK."
+    echo "==> nf_tables module present in $NV: firewall OK."
   else
-    echo "WARNING: nf_tables missing from $NV — nftables/firewalld will fail; do NOT reboot into it as-is." >&2
+    echo "WARNING: nf_tables missing from $NV: nftables/firewalld will fail; do NOT reboot into it as-is." >&2
   fi
   # KSPP sanity: warn if struct-layout randomization silently ended up disabled
   grep -qE '^CONFIG_(RANDSTRUCT_FULL|GCC_PLUGIN_RANDSTRUCT)=y' "/boot/config-$NV" 2>/dev/null || \
-    echo "WARNING: randstruct is NONE in $NV (symbol renamed?) — struct layout not randomized." >&2
-  echo "==> DONE — reboot into the hardened kernel, then re-scan with Pavois."
+    echo "WARNING: randstruct is NONE in $NV (symbol renamed?): struct layout not randomized." >&2
+  echo "==> DONE: reboot into the hardened kernel, then re-scan with Pavois."
 elif command -v dnf >/dev/null 2>&1; then
-  export HOME=/root  # rpmbuild uses ~/rpmbuild — force root's tree even if launched without HOME (systemd-run/sudo -E), else ~ resolves to /rpmbuild on a too-small /
+  export HOME=/root  # rpmbuild uses ~/rpmbuild: force root's tree even if launched without HOME (systemd-run/sudo -E), else ~ resolves to /rpmbuild on a too-small /
   # RHEL/AlmaLinux build the kernel from the SRPM (rpmbuild), NOT a raw tree, and ship it WITHOUT
   # gcc-plugin support, so the plugins must be enabled and gcc-plugin-devel installed explicitly.
   # The shared KSPP set is applied below with a per-symbol existence check against the target
@@ -94,7 +94,7 @@ elif command -v dnf >/dev/null 2>&1; then
   # hardening set kernel.modules_disabled=1 (the kmod-loading-disabled control, via
   # pavois-modules-disabled.service), module loading is frozen one-way and the build fails with
   # "libkcapi ... cannot open netlink socket". It can only be cleared by a REBOOT with that service
-  # disabled — do that BEFORE building on such a host.
+  # disabled: do that BEFORE building on such a host.
   if [ "$(sysctl -n kernel.modules_disabled 2>/dev/null)" = 1 ]; then
     echo "ERROR: kernel.modules_disabled=1 freezes module loading; the kernel build needs crypto_user." >&2
     echo "Run: systemctl disable pavois-modules-disabled.service && reboot, then re-run this build." >&2
@@ -146,7 +146,7 @@ elif command -v dnf >/dev/null 2>&1; then
   awk -v ins="$INJECT" '/\.\/process_configs\.sh/{print; print ins; next} {print}' ~/rpmbuild/SPECS/kernel.spec > ~/rpmbuild/SPECS/kernel.spec.pav && mv ~/rpmbuild/SPECS/kernel.spec.pav ~/rpmbuild/SPECS/kernel.spec
   # --without kabichk: GCC_PLUGIN_RANDSTRUCT randomises struct layout and intentionally BREAKS
   # kABI, so the RHEL kABI stability check must be off (a KSPP kernel is not kABI-compatible with
-  # the stock one; out-of-tree kmods built against stock symbols will not load — an accepted tradeoff).
+  # the stock one; out-of-tree kmods built against stock symbols will not load: an accepted tradeoff).
   cd ~/rpmbuild/SPECS
   # gcc-plugin instrumentation ~doubles per-compile-job RAM; a full -j nproc can OOM (SIGKILL,
   # exit 137). Cap parallelism to fit memory (~1.5GB/job) via _smp_mflags.
@@ -155,7 +155,7 @@ elif command -v dnf >/dev/null 2>&1; then
   # --force so a REBUILT same-NVR kernel actually replaces the installed one (dnf install would
   # no-op on identical name-version-release; the .pavois buildid does not change between builds)
   rpm -Uvh --force ~/rpmbuild/RPMS/"$ARCH"/kernel-core-*pavois*.rpm ~/rpmbuild/RPMS/"$ARCH"/kernel-modules-*pavois*.rpm ~/rpmbuild/RPMS/"$ARCH"/kernel-[0-9]*pavois*.rpm
-  echo "==> DONE — reboot into the -pavois kernel, then re-scan with Pavois."
+  echo "==> DONE: reboot into the -pavois kernel, then re-scan with Pavois."
 else
   echo "unsupported: need apt-get (Debian/Ubuntu) or dnf (RHEL/AlmaLinux)"; exit 1
 fi

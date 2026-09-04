@@ -19,7 +19,7 @@ var serveCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		dir := filepath.Join(findRoot(), "reports")
 		if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
-			return fmt.Errorf("no report yet — run a scan first (pavois scan)")
+			return fmt.Errorf("no report yet: run a scan first (pavois scan)")
 		}
 		addr := fmt.Sprintf(":%d", servePort)
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(),

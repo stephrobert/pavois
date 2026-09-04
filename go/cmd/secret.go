@@ -13,7 +13,7 @@ import (
 func promptSecret(label string) (string, error) {
 	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
 	if err != nil {
-		// no controlling tty (e.g. a pipe) — fall back to stdin, still no echo.
+		// no controlling tty (e.g. a pipe): fall back to stdin, still no echo.
 		_, _ = fmt.Fprint(os.Stderr, label)
 		b, err := term.ReadPassword(int(os.Stdin.Fd()))
 		_, _ = fmt.Fprintln(os.Stderr)
@@ -28,12 +28,12 @@ func promptSecret(label string) (string, error) {
 
 // resolveSudoPass returns the sudo password from, in order: an interactive no-echo
 // prompt (--sudo-prompt), then the PAVOIS_SUDO_PASSWORD env var (for CI). It NEVER
-// accepts an inline CLI value — that would leak via `ps` and the shell history.
+// accepts an inline CLI value: that would leak via `ps` and the shell history.
 func resolveSudoPass(prompt bool) (string, error) {
 	if prompt {
 		// Interactive first, but fall back to the env var when there is no controlling
 		// terminal (CI, `pavois … | tee`, a non-interactive runner) so --sudo-prompt is
-		// usable unattended too — as the flag help promises ("also reads …").
+		// usable unattended too: as the flag help promises ("also reads …").
 		if s, err := promptSecret("[sudo] password for the target: "); err == nil {
 			return s, nil
 		}

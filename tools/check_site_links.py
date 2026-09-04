@@ -33,7 +33,7 @@ DIST = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "site" / "dist"
 
 def main():
     if not DIST.exists():
-        sys.exit(f"{DIST} does not exist — run `mise run site:build` first")
+        sys.exit(f"{DIST} does not exist: run `mise run site:build` first")
 
     pages = {
         ("/" + str(p.parent.relative_to(DIST)) + "/").replace("/./", "/")

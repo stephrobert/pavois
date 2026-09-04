@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Generate site/src/data/domain-refs.json — per control-domain, the authoritative references that
+"""Generate site/src/data/domain-refs.json: per control-domain, the authoritative references that
 make a fiche credible: the pavois handbook guide (internal cross-link), the author's hardening guide
 on blog.stephane-robert.info (external source + SEO backlink), and the relevant man pages.
 
 Handbook id per domain is read from the handbook content; blog slugs + man pages are curated here
-(the blog map includes the guides the author just published — sysctl, mounts, systemd, grub,
-kernel-modules, sudoers — which the older handbook cites didn't have). Run after adding a domain or
+(the blog map includes the guides the author just published: sysctl, mounts, systemd, grub,
+kernel-modules, sudoers: which the older handbook cites didn't have). Run after adding a domain or
 a new guide. See docs/site-enrichment.md.
 """
 

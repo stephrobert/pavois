@@ -97,7 +97,7 @@ function checkFile(path) {
 walk(ROOT);
 console.log(`\nJSON-LD: ${blocks} blocks across ${pages} pages · ${errors} error(s) · ${warns} warning type(s)`);
 if (errors) {
-  console.error('FAILED — fix the errors above (they would fail the Rich Results Test).');
+  console.error('FAILED: fix the errors above (they would fail the Rich Results Test).');
   process.exit(1);
 }
-console.log('OK — no Rich Results errors (warnings are Google "optional / non-critical").');
+console.log('OK: no Rich Results errors (warnings are Google "optional / non-critical").');

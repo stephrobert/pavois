@@ -52,7 +52,7 @@ run_one() {
   local name
   name=$(ssh "$PVE" "qm config $vmid 2>/dev/null | sed -n 's/^name: //p'")
   if [ -n "$name" ] && [[ "$name" != pavois-* ]]; then
-    echo "[$os] REFUSED: VM $vmid is '$name', not a pavois VM — not touching it"
+    echo "[$os] REFUSED: VM $vmid is '$name', not a pavois VM: not touching it"
     return 1
   fi
   ssh "$PVE" "qm stop $vmid >/dev/null 2>&1; qm destroy $vmid --purge >/dev/null 2>&1" || true
@@ -65,7 +65,7 @@ run_one() {
               qm set $vmid --memory 3072 --cores 2 >/dev/null 2>&1; qm start $vmid >/dev/null 2>&1" || true
   local grade
   grade=$(grep -aoE "Grade [A-E]|Hardening index : [0-9]+|invariants OK|INVARIANT FAILED[^\"]*" "$log" | tr '\n' ' ')
-  echo "[$os] ${grade:-NO RESULT — see $log}"
+  echo "[$os] ${grade:-NO RESULT: see $log}"
 }
 
 pids=()
