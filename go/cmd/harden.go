@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -471,7 +473,12 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 			inst[bp.Name] = true
 		}
 	}
-	for cid, r := range p.Rules {
+	// Sorted, not map order: everything this loop appends to a list (conf lines, PAM edits,
+	// execs) would otherwise come out shuffled on every run. The same plan must compile to the
+	// same recipe — the restore point photographs what the recipe will touch, the evidence
+	// bundle digests it, and PAM is a stack where order is correctness, not preference.
+	for _, cid := range slices.Sorted(maps.Keys(p.Rules)) {
+		r := p.Rules[cid]
 		enabled := r.Apply != nil && *r.Apply
 		res := ""
 		if r.Remediation != nil {
@@ -1786,10 +1793,16 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	if _, err := engine.Run(engine.Options{
 		Root: root, Target: target, Profile: "linux/" + p.OS, Engine: "auto",
 		Key: haKey, Sudo: true, JSONOut: jsonPath,
+		// The converge just used this password for every sudo it ran; dropping it here made the
+		// run fail at its last step on any password-sudo host — after the box was already
+		// hardened, and with no report to show for it.
+		SudoPass: sudoPass,
 		// re-scan ON the target for ssh (like harden plan): a real pty so sudo works under
 		// Defaults use_pty, and raw ssh that uses ~/.ssh defaults instead of failing when no
-		// --key/agent key reaches cinc's train-ssh transport.
-		OnTarget: strings.Contains(target, "@"),
+		// --key/agent key reaches cinc's train-ssh transport. On-target sudo assumes NOPASSWD,
+		// so when a password is supplied we take the native SSH transport instead — the same
+		// arbitration harden plan makes.
+		OnTarget: strings.Contains(target, "@") && sudoPass == "",
 	}); err != nil {
 		return err
 	}

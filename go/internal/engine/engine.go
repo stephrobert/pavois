@@ -445,6 +445,35 @@ func stripSecretEnv(env []string) []string {
 	return out
 }
 
+// auditArgs are the arguments EVERY engine must pass, whatever the transport.
+//
+// They were previously written inline in the native branch only, and the docker branch — which
+// builds its own argument list — silently lacked both. That is not a cosmetic drift: without the
+// waiver file the project's own accepted risks come back as plain failures (the grade is wrong and
+// the report tells the operator to apply a remediation pavois deliberately refuses to ship), and
+// without the input every merged rule falls back to `_default`, so `--standard cis` quietly grades
+// against the strictest threshold instead of the CIS one. A wrong verdict is worse than a missing
+// one, so the shared arguments live here, once.
+//
+// profPath is the profile as the ENGINE sees it: the host path natively, /profile inside the
+// container. waiverPath is resolved on the host either way, since that is where the file is read.
+func auditArgs(profPath, waiverPath, standard string) []string {
+	var args []string
+	// Accepted risks: a control we deliberately do not enforce (enforcing it would break the
+	// host, or the check itself is defective) is listed in the profile's waivers.yml with a
+	// justification. cinc SKIPS it instead of failing it, and the justification rides along in
+	// the report — an auditable exception rather than a permanent red mark.
+	if waiverPath != "" {
+		args = append(args, "--waiver-file", profPath+"/waivers.yml")
+	}
+	// Expose the active standard to InSpec so a single merged rule can pick the per-norm
+	// threshold (e.g. PASS_MIN_LEN >= 15 for bp28, >= 12 for nist). "_default" = strictest.
+	if standard == "" {
+		standard = "_default"
+	}
+	return append(args, "--input", "pavois_standard="+standard)
+}
+
 func Run(o Options) (int, error) {
 	if o.OnTarget {
 		return RunOnTarget(o)
@@ -491,20 +520,7 @@ func Run(o Options) (int, error) {
 		// progress-bar -> runCinc parses it for progress (stderr); json ->
 		// file (pavois produces ITS OWN presentation). stdout is not polluted.
 		args := []string{"exec", prof, "--no-create-lockfile", "--reporter", "progress-bar", "json:" + o.JSONOut}
-		// Accepted risks: a control we deliberately do not enforce (enforcing it would break the
-		// host, or the check itself is defective) is listed in the profile's waivers.yml with a
-		// justification. cinc SKIPS it instead of failing it, and the justification rides along in
-		// the report — an auditable exception rather than a permanent red mark.
-		if w := waiverFile(prof); w != "" {
-			args = append(args, "--waiver-file", w)
-		}
-		// Expose the active standard to InSpec so a single merged rule can pick the per-norm
-		// threshold (e.g. PASS_MIN_LEN >= 15 for bp28, >= 12 for nist). "_default" = strictest.
-		std := o.Standard
-		if std == "" {
-			std = "_default"
-		}
-		args = append(args, "--input", "pavois_standard="+std)
+		args = append(args, auditArgs(prof, waiverFile(prof), o.Standard)...)
 		args = append(args, ctlArgs...)
 		if transport != "" {
 			args = append(args, "-t", transport)
@@ -554,6 +570,9 @@ func Run(o Options) (int, error) {
 		}
 		args = append(args, AuditorImage, "exec", profArg, "-t", tgt,
 			"--no-create-lockfile", "--reporter", "progress-bar", "json:/out/"+filepath.Base(o.JSONOut))
+		// The waiver file is read by cinc INSIDE the container, so it is named by the mounted
+		// path (profArg), not the host one — but its existence is checked on the host.
+		args = append(args, auditArgs(profArg, waiverFile(prof), o.Standard)...)
 		args = append(args, ctlArgs...)
 		if secret != "" {
 			args = append(args, "--config", "-") // SSH/sudo passwords via stdin, not argv
