@@ -1,4 +1,4 @@
-# mise — unified toolchain + task runner for pavois (versions pinned, reproducible across
+# mise: unified toolchain + task runner for pavois (versions pinned, reproducible across
 # machines and CI). Activate: `mise install` then `mise trust`. Run a task: `mise run <task>`
 # (alias `mise r <task>`). List: `mise tasks`. This replaces the ad-hoc bin/pavois + scripts.
 [tools]
@@ -101,11 +101,11 @@ description = "Classify each control by evidence_type (effective-runtime / persi
 run = "uv run --with pyyaml python3 tools/gen_evidence_type.py"
 
 [tasks."gen:reboot"]
-description = "Classify each control by reboot_survivable (yes/no/unknown) — the persistence axis of the qualified verdict; run after gen:evidence"
+description = "Classify each control by reboot_survivable (yes/no/unknown): the persistence axis of the qualified verdict; run after gen:evidence"
 run = "uv run --with pyyaml python3 tools/gen_reboot_survivable.py"
 
 [tasks."gen:example"]
-description = "Regenerate the site's sample scan + campaign reports from the anonymized fixtures (docs/examples/) — keeps them current and leak-free by construction"
+description = "Regenerate the site's sample scan + campaign reports from the anonymized fixtures (docs/examples/): keeps them current and leak-free by construction"
 depends = ["build"]
 run = [
   "{{config_root}}/go/pavois render {{config_root}}/docs/examples/after.json --machine 203.0.113.10 --transport ssh --timestamp '2026-07-13 21:07:00 UTC' --out {{config_root}}/site/public/sample-report.html",
@@ -238,7 +238,7 @@ golangci-lint run ./...
 """
 
 [tasks."lint:py"]
-description = "ruff check + ruff format --check + bandit over tools/ — exactly what python.yml runs"
+description = "ruff check + ruff format --check + bandit over tools/: exactly what python.yml runs"
 # The pre-commit hooks only see the files a commit touches, so a lint error in an untouched file
 # reaches CI unopposed. This is how tools/reconcile_os.py failed the first PR of this branch: 5
 # ruff errors in a file nobody had touched in months.
@@ -260,7 +260,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 # skip with `--no-verify`, and a hook that is skipped protects nothing.
 #
 # What is deliberately OUT, and why:
-#   site:verify   31s, and it REGENERATES site/src/content/rules/ — a hook must not rewrite the
+#   site:verify   31s, and it REGENERATES site/src/content/rules/: a hook must not rewrite the
 #                 tree it is checking. Earned by a site/ or rules.yml diff instead (testplan).
 #   validate      needs the SSG datastreams: network, minutes.
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
@@ -303,3 +303,16 @@ echo "hooks installed: pre-commit (commit) + pre-push (no-main guard + mise run 
 [tasks."ruleset"]
 description = "Protect the default branch (run IMMEDIATELY after the repo goes public: rulesets need a public repo)"
 run = "bash {{config_root}}/tools/apply-branch-ruleset.sh"
+
+[tasks."vm"]
+description = "Test VMs on Incus — VMs, never containers: `mise run vm -- up debian12` | list | ip <os> | down <os>"
+# 259 of the 789 controls cannot be answered by a container (kernel, mounts, auditd, cmdline):
+# a container shares the host kernel, so those controls would measure YOUR machine, and a scan
+# from a hardened workstation would come back green about a target it never inspected.
+run = "python3 {{config_root}}/tools/vm.py"
+
+[tasks."matrix"]
+description = "Run the hardening campaign across the supported OSes, one at a time, and print the table"
+# Serial on purpose: each VM wants 4 GB and a kernel build ~20 GB of disk, so two campaigns at once
+# on a workstation measure contention, not hardening.
+run = "bash {{config_root}}/tools/matrix.sh"

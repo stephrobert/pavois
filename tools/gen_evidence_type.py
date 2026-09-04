@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Classify every control by EVIDENCE TYPE — the keystone of the "opposable methodology" axis
+"""Classify every control by EVIDENCE TYPE: the keystone of the "opposable methodology" axis
 (docs/site-review-chatgpt-2.md). A control's honesty depends on what kind of evidence its check
 actually gathers; "effective configuration" is true for some checks, not all. We derive the type
 from the check/template (the InSpec code never lies about what it reads) and write `evidence_type:`
-into docs/reference/rules.yml — the DRY source — so it flows to the 8 OS files, the corpus tags,
+into docs/reference/rules.yml: the DRY source: so it flows to the 8 OS files, the corpus tags,
 the site fiches and OSCAL (where it replaces the blanket method=effective-config claim).
 
   tools/gen_evidence_type.py            # classify -> write evidence_type into rules.yml
@@ -17,7 +17,7 @@ Types (and what they honestly assert):
                      modprobe.d, sshd_config read as a file, audit rules on disk, grub, dconf)
   inventory-state    what is installed/registered (package present/absent, account databases)
   filesystem-state   a path's metadata (mode/owner/group, SUID/SGID, directory existence)
-  manual             no machine check — human judgement / business context
+  manual             no machine check: human judgement / business context
   behavioral         an actively attempted forbidden action
 
 Run after editing checks. The mapping is conservative: anything we cannot classify stays
@@ -229,7 +229,7 @@ def main():
     for et, n in dist.most_common():
         print(f"  {et:18} {n}")
     if unclassified:
-        print(f"\n  UNCLASSIFIED ({len(unclassified)}) — resolve by hand or extend SIGNALS:")
+        print(f"\n  UNCLASSIFIED ({len(unclassified)}): resolve by hand or extend SIGNALS:")
         for cid in unclassified[:40]:
             print(f"    {cid}")
         if len(unclassified) > 40:

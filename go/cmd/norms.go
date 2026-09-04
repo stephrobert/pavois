@@ -10,8 +10,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// `pavois norms` exposes the norm catalogue (docs/reference/norms.yml) — each standard with the
-// version Pavois's mappings target, its authority and source — enriched with LIVE coverage from
+// `pavois norms` exposes the norm catalogue (docs/reference/norms.yml): each standard with the
+// version Pavois's mappings target, its authority and source: enriched with LIVE coverage from
 // the rule base (how many controls and distinct values map to each norm, per OS). This is the
 // self-describing face of the source of truth: the API an auditor consults to trust which standard
 // versions Pavois covers, and the baseline the norm-watcher will diff live sources against.
@@ -20,8 +20,8 @@ var normsPretty bool
 var normsCmd = &cobra.Command{
 	Use:   "norms",
 	Short: "Output the norm catalogue (standards, versions, authorities) + live coverage as JSON",
-	Long: "Emit the standards Pavois maps to — CIS (per-OS benchmark version), ANSSI-BP-028,\n" +
-		"NIST 800-53/800-171, PCI-DSS, STIG — each with its version, authority and source, plus\n" +
+	Long: "Emit the standards Pavois maps to: CIS (per-OS benchmark version), ANSSI-BP-028,\n" +
+		"NIST 800-53/800-171, PCI-DSS, STIG: each with its version, authority and source, plus\n" +
 		"live per-OS coverage from the rule base. The self-describing reference API.",
 	RunE: runNorms,
 }

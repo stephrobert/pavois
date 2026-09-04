@@ -21,7 +21,7 @@ export const GET: APIRoute = async ({ params }) => {
     const keys = [e.data.term, ...(e.data.aliases || [])].filter(Boolean);
     for (const k of keys) {
       const low = String(k).toLowerCase().trim();
-      if (low.length < 3) continue; // skip 1–2 char terms (too noisy)
+      if (low.length < 3) continue; // skip 1:2 char terms (too noisy)
       if (!out[low]) {
         out[low] = {
           term: e.data.term,

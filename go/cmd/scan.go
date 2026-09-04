@@ -47,12 +47,12 @@ func init() {
 	f.StringVar(&scProfile, "profile", "", "override the auto-detected per-OS profile (path or URL to a custom profile)")
 	f.StringVar(&scEngine, "engine", "auto", "auto | native | docker")
 	f.StringVar(&scOut, "out", "", "JSON output dir (default: <root>/reports)")
-	f.StringVar(&scSSHPass, "ssh-pass", "", "SSH password (discouraged — leaks via ps/history; prefer --ssh-prompt or a key)")
+	f.StringVar(&scSSHPass, "ssh-pass", "", "SSH password (discouraged: leaks via ps/history; prefer --ssh-prompt or a key)")
 	f.BoolVar(&scSSHPrompt, "ssh-prompt", false, "prompt for the SSH password (no echo; also reads PAVOIS_SSH_PASSWORD)")
 	f.StringVar(&scKey, "key", "", "SSH private key")
 	f.BoolVar(&scSudo, "sudo", false, "run as root via sudo (effective config of a service)")
 	f.BoolVar(&scSudoPrompt, "sudo-prompt", false, "prompt for the sudo password (no echo; also reads PAVOIS_SUDO_PASSWORD); implies --sudo")
-	f.BoolVar(&scOnTarget, "on-target", false, "run the scan ON the target (local://) — far fewer SSH round-trips, much faster")
+	f.BoolVar(&scOnTarget, "on-target", false, "run the scan ON the target (local://): far fewer SSH round-trips, much faster")
 	f.StringVar(&scStandard, "standard", "", "audit a single standard: bp28|cis|pci-dss|nist|stig (see: Pavois standards)")
 	f.StringVar(&scLevel, "level", "", "level (e.g. --standard cis --level 1)")
 	f.IntVar(&scFailUnder, "fail-under", -1, "exit code 1 if grade < PCT/100")
@@ -144,7 +144,7 @@ func detectProfile(root string, o engine.Options) (profile, detected string) {
 	}
 	if fam := familyOf(name); fam != "" {
 		if near := latestFamilyProfile(root, fam); near != "" {
-			_, _ = fmt.Fprintf(os.Stderr, "pavois: no exact profile for %s — using closest %s\n", detected, near)
+			_, _ = fmt.Fprintf(os.Stderr, "pavois: no exact profile for %s: using closest %s\n", detected, near)
 			return "linux/" + near, detected
 		}
 	}
@@ -170,7 +170,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 	}
 
 	// Detect the TARGET OS (cinc detect, any transport) to pick the right profile
-	// without asking the user — and flag a profile that does not match the machine
+	// without asking the user: and flag a profile that does not match the machine
 	// under test.
 	_, _ = fmt.Fprint(os.Stderr, "  ⠿ detecting target OS…\r")
 	detOpts := engine.Options{Target: target, Key: scKey, SSHPass: sshPass}
@@ -185,7 +185,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 			if detectedOS != "" {
 				hint = "no bundled profile for " + detectedOS
 			}
-			return fmt.Errorf("%s — pass --profile <path|url> (e.g. profiles/linux/debian12)", hint)
+			return fmt.Errorf("%s: pass --profile <path|url> (e.g. profiles/linux/debian12)", hint)
 		}
 		scProfile = autoProf
 		_, _ = fmt.Fprintf(os.Stderr, "pavois: detected %s → profile %s\n", detectedOS, autoProf)
@@ -296,7 +296,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 		// as a LARGE LETTER right at the BOTTOM. In the terminal we only show critical/high;
 		// the full detail (medium/low) is in the HTML report.
 		if res.Total == 0 {
-			_, _ = fmt.Fprintf(out, "  No controls evaluated — is standard %q present in profile %q?\n\n",
+			_, _ = fmt.Fprintf(out, "  No controls evaluated: is standard %q present in profile %q?\n\n",
 				scStandard, scProfile)
 			break
 		}
@@ -312,7 +312,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 			writeScorecard(out, letter, pts, res.Passed, res.Total, res.Qualified, res.Waived, res.NotApplicable)
 			writePosture(out, audit.Breakdown(rep, scStandard, scLevel))
 		} else {
-			_, _ = fmt.Fprintln(out, "  No standard mappings in this profile — grade applies to profiles/linux/* only.")
+			_, _ = fmt.Fprintln(out, "  No standard mappings in this profile: grade applies to profiles/linux/* only.")
 		}
 	}
 

@@ -12,13 +12,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# Auto-discover the OS list from the references pavois actually ships — the pipeline covers
+# Auto-discover the OS list from the references pavois actually ships: the pipeline covers
 # whatever is there, no hand-maintained list. EOL distros are dropped by name here.
 EOL = set()  # add distros once past end-of-life (none yet among shipped refs)
 OSES = sorted(
     p.stem for p in (ROOT / "docs/reference/pavois-content").glob("*.yml") if p.stem not in EOL
 )
-# OSes CIS does not benchmark (no 2nd source can exist) — reported, not counted as a gap.
+# OSes CIS does not benchmark (no 2nd source can exist): reported, not counted as a gap.
 NO_CIS_BENCHMARK = {"fedora"}
 rows, out = [], {}
 for os in OSES:

@@ -1,5 +1,5 @@
 // Package engine runs CINC Auditor (the open source build of InSpec), natively by
-// preference, with a container as fallback. Port of pavois/engine.py — the engine
+// preference, with a container as fallback. Port of pavois/engine.py: the engine
 // stays 100% CINC/InSpec (never oscap), auditing the EFFECTIVE config.
 package engine
 
@@ -29,7 +29,7 @@ var (
 var reDomain = regexp.MustCompile(`tag domain: '([^']+)'`)
 
 // domainMap reads the profile and maps each control ID to its domain
-// (`tag domain:`) — to display a READABLE progress (by domain) rather
+// (`tag domain:`): to display a READABLE progress (by domain) rather
 // than the raw ID. Empty if the profile is not a local directory (URL).
 func domainMap(profDir string) map[string]string {
 	m := map[string]string{}
@@ -62,7 +62,7 @@ func truncShort(s string, n int) string {
 }
 
 // runCinc runs cinc and renders a rich PROGRESS on stderr (N/M, %, current
-// control) by parsing the `progress-bar` reporter — without dumping the hundreds of
+// control) by parsing the `progress-bar` reporter: without dumping the hundreds of
 // PASSED/FAILED lines. stdout stays clean. In non-TTY (CI/pipe), a single line.
 func runCinc(cmd *exec.Cmd, label string, dmap map[string]string) error {
 	fi, _ := os.Stderr.Stat()
@@ -176,7 +176,7 @@ spin:
 }
 
 // Detect queries the TARGET (local/ssh/docker) via `cinc-auditor detect` and
-// returns the OS name and release (e.g. "ubuntu","24.04") — to automatically
+// returns the OS name and release (e.g. "ubuntu","24.04"): to automatically
 // choose the right profile. Empty if undeterminable.
 func Detect(o Options) (name, release string) {
 	bin := NativeBin()
@@ -219,7 +219,7 @@ func Detect(o Options) (name, release string) {
 // AuditorImage: CINC image pinned by digest (docker fallback).
 const AuditorImage = "cincproject/auditor@sha256:14b1a2efb89ab141adb58e93c6c1bdcf196c9623498a292cbfaee28c46603568"
 
-// waiverFile returns the profile's InSpec waiver file — the ACCEPTED RISKS: controls pavois
+// waiverFile returns the profile's InSpec waiver file: the ACCEPTED RISKS: controls pavois
 // deliberately does not enforce (enforcing them would break the host, or the check is defective),
 // each with a justification an auditor can read. Empty when the profile is a URL or has none.
 func waiverFile(prof string) string {
@@ -241,7 +241,7 @@ func NativeBin() string {
 }
 
 // sshAliases reads ~/.ssh/config (and its Include) and returns the explicit
-// Host aliases (without wildcards) — to recognize a target as an SSH host.
+// Host aliases (without wildcards): to recognize a target as an SSH host.
 func sshAliases() map[string]bool {
 	m := map[string]bool{}
 	home, err := os.UserHomeDir()
@@ -334,13 +334,13 @@ type Options struct {
 	Profile  string
 	Engine   string // auto | native | docker
 	SSHPass  string
-	SudoPass string // sudo password — passed to cinc via --config (stdin), NEVER in argv
+	SudoPass string // sudo password: passed to cinc via --config (stdin), NEVER in argv
 	Key      string
 	Sudo     bool
 	JSONOut  string // path of the JSON report to produce
 	Standard string // if set: only RUNS the controls of this standard
 	Level    string // level (cumulative) within the standard, e.g. cis:1
-	OnTarget bool   // run cinc-auditor ON the target (local://) — far fewer
+	OnTarget bool   // run cinc-auditor ON the target (local://): far fewer
 	//                 SSH round-trips, much faster scan
 	Controls []string // if set: runs ONLY these controls (by id), via cinc --controls
 }
@@ -352,7 +352,7 @@ var levelOrder = map[string][]string{
 }
 
 // controlsForNorm lists the control IDs of a profile carrying the standard's
-// tag (and, if provided, at the requested cumulative level) — to run ONLY those
+// tag (and, if provided, at the requested cumulative level): to run ONLY those
 // via `cinc --controls`. Empty if the profile is not local (URL) or the standard is unknown.
 func controlsForNorm(profDir, standard, level string) []string {
 	if standard == "" || standard == "all" {
@@ -414,7 +414,7 @@ func controlsForNorm(profDir, standard, level string) []string {
 // Run runs the scan and returns the CINC exit code (0 ok, 100/101 failures).
 // secretsConfig builds the JSON for cinc-auditor's `--config -` (read from STDIN),
 // carrying the SSH login and/or sudo password. Passing them this way keeps secrets
-// OUT of argv — they never appear in `ps`, the process table or any log. Returns ""
+// OUT of argv: they never appear in `ps`, the process table or any log. Returns ""
 // when there is no secret (the caller then omits --config and stdin).
 func secretsConfig(o Options) string {
 	cfg := map[string]string{}
@@ -447,8 +447,8 @@ func stripSecretEnv(env []string) []string {
 
 // auditArgs are the arguments EVERY engine must pass, whatever the transport.
 //
-// They were previously written inline in the native branch only, and the docker branch — which
-// builds its own argument list — silently lacked both. That is not a cosmetic drift: without the
+// They were previously written inline in the native branch only, and the docker branch: which
+// builds its own argument list: silently lacked both. That is not a cosmetic drift: without the
 // waiver file the project's own accepted risks come back as plain failures (the grade is wrong and
 // the report tells the operator to apply a remediation pavois deliberately refuses to ship), and
 // without the input every merged rule falls back to `_default`, so `--standard cis` quietly grades
@@ -462,7 +462,7 @@ func auditArgs(profPath, waiverPath, standard string) []string {
 	// Accepted risks: a control we deliberately do not enforce (enforcing it would break the
 	// host, or the check itself is defective) is listed in the profile's waivers.yml with a
 	// justification. cinc SKIPS it instead of failing it, and the justification rides along in
-	// the report — an auditable exception rather than a permanent red mark.
+	// the report: an auditable exception rather than a permanent red mark.
 	if waiverPath != "" {
 		args = append(args, "--waiver-file", profPath+"/waivers.yml")
 	}
@@ -571,7 +571,7 @@ func Run(o Options) (int, error) {
 		args = append(args, AuditorImage, "exec", profArg, "-t", tgt,
 			"--no-create-lockfile", "--reporter", "progress-bar", "json:/out/"+filepath.Base(o.JSONOut))
 		// The waiver file is read by cinc INSIDE the container, so it is named by the mounted
-		// path (profArg), not the host one — but its existence is checked on the host.
+		// path (profArg), not the host one: but its existence is checked on the host.
 		args = append(args, auditArgs(profArg, waiverFile(prof), o.Standard)...)
 		args = append(args, ctlArgs...)
 		if secret != "" {
@@ -606,7 +606,7 @@ func Run(o Options) (int, error) {
 	return 0, nil
 }
 
-// RunOnTarget runs cinc-auditor ON the target via local:// — every check executes
+// RunOnTarget runs cinc-auditor ON the target via local://: every check executes
 // locally instead of as an SSH command round-trip, which is dramatically faster for
 // large profiles. cinc-auditor is installed on the target if missing (omnitruck).
 func RunOnTarget(o Options) (int, error) {
@@ -646,7 +646,7 @@ func RunOnTarget(o Options) (int, error) {
 	}
 
 	_, _ = fmt.Fprintf(os.Stderr, "  ensuring cinc-auditor on %s…\n", o.Target)
-	// FIRST check presence with NO sudo — cinc-auditor is world-executable in PATH, and a hardened
+	// FIRST check presence with NO sudo: cinc-auditor is world-executable in PATH, and a hardened
 	// target (use_pty) blocks a naked non-tty sudo, so we must never need sudo just to CHECK (that
 	// broke the post-harden re-scan). Only if it is genuinely absent do we sudo-install it.
 	checkArgs := append(append([]string{}, base...), o.Target, "command -v cinc-auditor >/dev/null 2>&1 || command -v inspec >/dev/null 2>&1")
@@ -674,7 +674,11 @@ func RunOnTarget(o Options) (int, error) {
 
 	const remoteProf, remoteJSON = "/tmp/pavois-profile", "/tmp/pavois-out.json"
 	_ = ssh("rm -rf " + remoteProf)
-	if err := run("scp", append(append([]string{"-r"}, base...), prof, o.Target+":"+remoteProf)...); err != nil {
+	if err := // -O: the legacy SCP protocol, over an exec channel. Modern scp speaks SFTP by default,
+		// and a stock debian13 (OpenSSH 10) declares no `Subsystem sftp`, so an sftp transfer dies
+		// with "subsystem request failed on channel 0" — measured on a fresh VM. -O needs no
+		// subsystem and works on every target we support.
+		run("scp", append(append([]string{"-O", "-r"}, base...), prof, o.Target+":"+remoteProf)...); err != nil {
 		return 2, fmt.Errorf("copy profile to target: %w", err)
 	}
 
@@ -722,12 +726,12 @@ func RunOnTarget(o Options) (int, error) {
 		}
 	}
 	if rc != 0 && rc != 100 && rc != 101 { // anything else = cinc itself failed, there is no report
-		return 2, fmt.Errorf("cinc-auditor failed on the target (exit %d) — no report produced", rc)
+		return 2, fmt.Errorf("cinc-auditor failed on the target (exit %d): no report produced", rc)
 	}
 	// cinc-auditor wrote the report as root; on a hardened box (umask 0027) the scp user
 	// can't read it. Make it world-readable before fetching (it's a transient report).
 	_ = ssh(sudo + "chmod 0644 " + remoteJSON)
-	if err := run("scp", append(append([]string{}, base...), o.Target+":"+remoteJSON, o.JSONOut)...); err != nil {
+	if err := run("scp", append(append([]string{"-O"}, base...), o.Target+":"+remoteJSON, o.JSONOut)...); err != nil {
 		return 2, fmt.Errorf("fetch report from target: %w", err)
 	}
 	// Leave no trace: the profile copy, the report and the scratch HOME are ours, not the target's.

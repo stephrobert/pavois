@@ -2,14 +2,14 @@
 """Replay the declared falsifications: prove each guarded test still BITES today.
 
 A passing test suite is evidence that nothing is broken. It is not evidence that anything is
-guarded — a test can quietly stop biting when a refactor moves an assertion, a helper starts
+guarded: a test can quietly stop biting when a refactor moves an assertion, a helper starts
 returning early, or a case becomes unreachable. The only proof is to remove the guard and watch
 the test go red, and the only proof that survives is the one replayed rather than remembered.
 
 Every verdict here is taken on a COPY of the module, never on the working tree.
 
 The harness refuses a verdict it cannot trust. A mutation that stops the mutant compiling makes
-every test fail, which is indistinguishable from the guard being proven — so a mutant that does
+every test fail, which is indistinguishable from the guard being proven: so a mutant that does
 not build is reported as VOID, not as a pass. That failure mode is the reason this is a harness
 and not a shell loop.
 
@@ -78,7 +78,7 @@ def falsify(entry: dict, *, selftest: bool = False) -> Verdict:
             return Verdict(
                 name,
                 False,
-                f"pattern occurs {found}x in {rel}, declared {want}x — the code moved, "
+                f"pattern occurs {found}x in {rel}, declared {want}x: the code moved, "
                 "so this falsification no longer measures what it claims",
             )
         target.write_text(src.replace(find, replace))
@@ -102,14 +102,14 @@ def falsify(entry: dict, *, selftest: bool = False) -> Verdict:
             return Verdict(
                 name,
                 False,
-                f"the UNMUTATED tree fails {entry['test']} — the harness or the test\n"
+                f"the UNMUTATED tree fails {entry['test']}: the harness or the test\n"
                 f"      is broken:\n{out.strip()[:400]}",
             )
         if rc == 0:
             return Verdict(
                 name,
                 False,
-                f"{entry['test']} STILL PASSES with the guard removed — it does not test it.\n"
+                f"{entry['test']} STILL PASSES with the guard removed: it does not test it.\n"
                 f"      guard: {entry['why'].strip()}",
             )
         return Verdict(name, True, f"{entry['test']} goes red without the guard")
@@ -145,7 +145,7 @@ def main() -> int:
     if bad:
         if args.selftest:
             print(
-                f"{RED}falsify: the harness is unsound — "
+                f"{RED}falsify: the harness is unsound: "
                 f"{len(bad)} declaration(s) fail unmutated.{OFF}"
             )
             print(
@@ -157,7 +157,7 @@ def main() -> int:
         return 1
     if args.selftest:
         print(
-            f"{GREEN}falsify: harness sound — {len(verdicts)} declaration(s) green unmutated.{OFF}"
+            f"{GREEN}falsify: harness sound: {len(verdicts)} declaration(s) green unmutated.{OFF}"
         )
         print("  This says nothing about the guards themselves: run `mise run falsify` for that.")
         return 0

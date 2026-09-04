@@ -90,7 +90,7 @@ def main():
     if a.mirror:
         # onboard a sibling OS: extend the target onto EVERY control the ref already applies to,
         # mirroring the ref's @os values. Used to seed a new release from its closest sibling
-        # (e.g. ubuntu2604 from ubuntu2404) — 26.04 hardens like 24.04.
+        # (e.g. ubuntu2604 from ubuntu2404): 26.04 hardens like 24.04.
         want = [
             c
             for c, v in d.items()

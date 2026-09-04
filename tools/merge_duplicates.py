@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Merge controls that audit exactly the same thing under different ids.
 
-The project's own rule is: ONE control, N norm mappings — the norm is a view, never a copy. The
+The project's own rule is: ONE control, N norm mappings: the norm is a view, never a copy. The
 SSG bootstrap broke it: the same requirement arrived once per benchmark rule, so the base ended up
 with nine /var/log controls for three actual audits, two ids for the same auditctl key, two ids for
 the same pam_pwhistory line. They inflate the denominator, they are counted several times in the
@@ -87,7 +87,7 @@ def main():
             if json.dumps(d[keep].get("check"), sort_keys=True, default=str) != json.dumps(
                 e.get("check"), sort_keys=True, default=str
             ):
-                skipped.append(f"{dup}: check differs from {keep} — NOT a duplicate, left alone")
+                skipped.append(f"{dup}: check differs from {keep}: NOT a duplicate, left alone")
                 continue
             # the norm refs of the duplicate follow into the survivor: a merge loses no mapping
             for nm in NORMS:

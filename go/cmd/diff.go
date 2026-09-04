@@ -20,8 +20,8 @@ var (
 	diffJSONOut string
 )
 
-// diff compares two states — each is either a pavois hardening PLAN (.yml) or a scan
-// report (.json) — and shows what got fixed, regressed, (de)activated, plus the grade
+// diff compares two states: each is either a pavois hardening PLAN (.yml) or a scan
+// report (.json): and shows what got fixed, regressed, (de)activated, plus the grade
 // delta. Plan vs scan answers "did applying the plan actually fix the gaps it found?";
 // scan vs scan confirms a remediation round moved the needle.
 var diffCmd = &cobra.Command{
@@ -56,7 +56,7 @@ func scanStatuses(path string) (map[string]string, error) {
 }
 
 // planStatuses reads a Pavois plan (hardening-plan-<os>.yml) and returns the per-control
-// status it recorded at plan time (compliant | gap | not_applicable) — the same vocabulary
+// status it recorded at plan time (compliant | gap | not_applicable): the same vocabulary
 // as a scan, so the two can be diffed directly.
 func planStatuses(path string) (map[string]string, error) {
 	raw, err := os.ReadFile(path)
@@ -68,7 +68,7 @@ func planStatuses(path string) (map[string]string, error) {
 		return nil, fmt.Errorf("parse plan %s: %w", path, err)
 	}
 	if len(p.Rules) == 0 {
-		return nil, fmt.Errorf("%s has no `rules:` — is it a Pavois plan?", path)
+		return nil, fmt.Errorf("%s has no `rules:`: is it a Pavois plan?", path)
 	}
 	st := map[string]string{}
 	for id, r := range p.Rules {

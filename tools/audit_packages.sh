@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pavois — phantom-package detector.
+# Pavois: phantom-package detector.
 #
 # A `pkg-<x>-removed` control that names a package the distribution does not HAVE always passes
 # and proves NOTHING (dpkg/rpm simply answers "not installed"). A `pkg-<x>-installed` control that
@@ -42,5 +42,5 @@ $SSH "$TARGET" 'if command -v apt-cache >/dev/null 2>&1; then
 rm -f /tmp/pavois-pkgs.$$
 n=$(grep -c PHANTOM /tmp/pavois-phantoms.$$ || true); rm -f /tmp/pavois-phantoms.$$
 [ "$n" -eq 0 ] && { echo "OK: every audited package exists on $OS"; exit 0; }
-echo "FAIL: $n audited package(s) do not exist on $OS — those controls prove nothing"
+echo "FAIL: $n audited package(s) do not exist on $OS: those controls prove nothing"
 exit 1
