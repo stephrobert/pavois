@@ -57,17 +57,10 @@ jobs:
         working-directory: pavois/go
         run: go test -race ./...
 
-      # Fuzz the parsers that consume input pavois does not control: the InSpec JSON a separate
-      # engine produces on a remote target, and the compiled recipe that decides what a rollback
-      # DELETES. Seed corpora run on every `go test`; this step actually mutates, briefly, so a
-      # regression surfaces in CI rather than on someone's host. Any crasher is written to
-      # testdata/fuzz/ and becomes a permanent regression test.
-      - name: go test (fuzz)
-        working-directory: pavois/go
-        run: |
-          go test ./internal/audit/ -run '^$' -fuzz 'FuzzProves' -fuzztime=30s
-          go test ./internal/audit/ -run '^$' -fuzz 'FuzzEvaluate' -fuzztime=60s
-          go test ./cmd/ -run '^$' -fuzz 'FuzzPlannedTargets' -fuzztime=60s
+      # Mutation fuzzing lives in fuzz.yml, nightly, NOT here (#224): it was 2m34 of a 3m43 job,
+      # 69% of the wall-clock, in front of everything that tells a contributor whether their change
+      # is sound. `go test -race` above still replays every seed corpus, so every crasher ever
+      # found remains a permanent regression test on this path.
 
       # A green suite says nothing is broken. It does not say anything is GUARDED — a test can
       # stop biting when a refactor moves an assertion or a case becomes unreachable, and nothing
@@ -80,10 +73,22 @@ jobs:
           python3 -m pip install --no-cache-dir --quiet pyyaml==6.0.2
           python3 tools/falsify.py
 
+      # The linter binary is CACHED, not rebuilt. Compiling golangci-lint from source on every
+      # run cost 94s of a 3m36 job (measured, run 33844975089) — more than the tests, the vet and
+      # the falsification harness put together, to obtain a binary that is identical every time.
+      # The key carries the version, so a bump misses the cache exactly once, on purpose.
+      - name: Cache golangci-lint
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/bin/golangci-lint
+          key: golangci-lint-v2.12.2-${{ runner.os }}
+
       - name: golangci-lint
         working-directory: pavois/go
         run: |
-          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+          if [ ! -x "$(go env GOPATH)/bin/golangci-lint" ]; then
+            go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+          fi
           "$(go env GOPATH)/bin/golangci-lint" run ./...
 
       - name: govulncheck

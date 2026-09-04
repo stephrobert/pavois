@@ -1,0 +1,116 @@
+name: Fuzz
+
+# Mutation fuzzing, nightly, off the pull-request path (#224).
+#
+# It used to run on every push and every pull request, where it was 2m34 of a 3m43 job — 69% of the
+# wall-clock, in front of everything that tells a contributor whether their change is sound (build,
+# vet, the whole suite, the falsification harness, the linters: 45 seconds put together).
+#
+# The trade is deliberate and it is not "less fuzzing": each target now runs SIX times longer than
+# it did per push, once a night, so more input is explored overall. What the pull-request path
+# loses is the chance of catching a new crasher inside that particular minute — and it keeps every
+# crasher ever found, because those live in testdata/fuzz/ and are replayed by every `go test`.
+#
+# The targets parse input pavois does not control, which is why they exist at all:
+#   FuzzEvaluate       the InSpec JSON report — produced by a SEPARATE engine, often on a remote
+#                      target. A malformed or hostile report must never panic pavois, and the grade
+#                      must stay inside its published bounds (a grade outside 0..100 would silently
+#                      break the --fail-under gate people run in CI).
+#   FuzzProves         the evidence_type tag, free-form text out of the report's tags: it decides
+#                      what a PASS is allowed to claim.
+#   FuzzPlannedTargets the compiled Chef recipe, which decides what `harden rollback` RESTORES AND
+#                      DELETES. A parsing slip here does not produce a wrong report, it deletes the
+#                      wrong file on someone's host.
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+    inputs:
+      fuzztime:
+        description: 'Duration per target (Go duration, e.g. 5m or 30m)'
+        required: false
+        default: '5m'
+
+permissions: {}
+
+jobs:
+  fuzz:
+    name: Fuzz the parsers pavois does not control
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write # a red night opens or updates ONE issue; a green night closes it
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26'
+          cache-dependency-path: go/go.sum
+
+      - name: Fuzz
+        id: fuzz
+        working-directory: go
+        env:
+          FUZZTIME: ${{ inputs.fuzztime || '5m' }}
+        run: |
+          go test ./internal/audit/ -run '^$' -fuzz 'FuzzProves' -fuzztime="$FUZZTIME"
+          go test ./internal/audit/ -run '^$' -fuzz 'FuzzEvaluate' -fuzztime="$FUZZTIME"
+          go test ./cmd/ -run '^$' -fuzz 'FuzzPlannedTargets' -fuzztime="$FUZZTIME"
+
+      # A crasher is a permanent regression test, so it must leave the runner. Go writes it under
+      # testdata/fuzz/<Target>/; upload it and say so in the issue, because a corpus entry that
+      # exists only in a deleted workspace is a bug nobody can reproduce.
+      - name: Collect any crasher
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: fuzz-crashers
+          path: go/**/testdata/fuzz/**
+          if-no-files-found: ignore
+
+      # A scheduled failure that leaves only a job log is a failure nobody sees: this workflow ran
+      # red ten nights out of twelve in a sibling project before anyone noticed. One issue, reused.
+      - name: Report a red night
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # The label is created by hand, but a workflow that dies because a label is missing
+          # would hide the very failure it exists to report.
+          gh label create fuzz-red --color b60205 \
+            --description "The nightly fuzz run is failing (managed by fuzz.yml)" 2>/dev/null || true
+          existing=$(gh issue list --label fuzz-red --state open --limit 1 --json number --jq '.[0].number // empty')
+          body="The nightly fuzz run failed: $RUN_URL
+
+          A crasher (if any) is attached to that run as the \`fuzz-crashers\` artifact. Commit it
+          under \`go/**/testdata/fuzz/\` so every \`go test\` replays it from now on, then fix it.
+
+          This issue is reused by every red night and closed automatically by the first green one."
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "Nightly fuzz run is red" --label fuzz-red --body "$body"
+          fi
+
+      - name: Close the report on a green night
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          existing=$(gh issue list --label fuzz-red --state open --limit 1 --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue close "$existing" --reason completed \
+              --comment "Green again: $RUN_URL"
+          fi
