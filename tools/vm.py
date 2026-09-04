@@ -219,11 +219,18 @@ def cmd_up(args: argparse.Namespace) -> int:
         return 2
 
     print(f"vm: launching {name} as a VIRTUAL MACHINE ({image}, {args.cpu} vCPU, {args.memory})")
+    # init + add the agent disk + start, rather than a single `launch`.
+    #
+    # Some VM images refuse to create without it: "This virtual machine image requires an
+    # agent:config disk be added" (measured on images:almalinux/9/cloud, which is what the rhel9
+    # profile is exercised on). The disk carries the incus-agent the guest installs at first boot;
+    # debian's VM images bring their own, the EL ones do not. `launch` gives no opportunity to add
+    # a device, and `-d agent,...` is refused because the device is not in the profile yet.
     rc = incus(
-        "launch",
+        "init",
         image,
         name,
-        "--vm",  # never a container: see the module docstring
+        "--vm",
         "-c",
         f"limits.cpu={args.cpu}",
         "-c",
@@ -236,6 +243,10 @@ def cmd_up(args: argparse.Namespace) -> int:
         "-c",
         f"cloud-init.user-data={cloud_init(pub.read_text().strip(), args.sudo_password)}",
     ).returncode
+    if rc == 0:
+        # Harmless when the image already provides it; required when it does not.
+        incus("config", "device", "add", name, "agent", "disk", "source=agent:config", capture=True)
+        rc = incus("start", name).returncode
     if rc != 0:
         print(
             f"{RED}vm: launch failed.{OFF} A VM image is required — do NOT fall back to a\n"
