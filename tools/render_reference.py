@@ -70,14 +70,14 @@ def render_control(cid, e):
     if e.get("ssg"):
         out.append(f"  tag ssg: {_rb(e['ssg'])}")
     # Mutual exclusivity ("one of"): a per-tech member is N/A when ANOTHER option in its
-    # group already satisfies the requirement — `only_if` skips the control (-> n/a) unless
+    # group already satisfies the requirement: `only_if` skips the control (-> n/a) unless
     # this tech is actually needed. The group's "is any active?" check comes from
     # exclusivity.yml. E.g. with rsyslog running, service-syslogng-enabled is N/A, not a gap.
     grp = e.get("exclusive_group")
     if grp and grp in EXCL:
         out.append(f"  tag exclusive_group: {_rb(grp)}")
         # Build the guard from the group's option services using the InSpec `service`
-        # resource (reliable — no shell/PATH dependency): skip (-> n/a) if ANY option is
+        # resource (reliable: no shell/PATH dependency): skip (-> n/a) if ANY option is
         # already running, since the "one of" requirement is then met by another tech.
         svcs = [o.get("service") for o in EXCL[grp].get("options", {}).values() if o.get("service")]
         cond = " || ".join(f"service({_rb(s)}).running?" for s in svcs) or "false"
@@ -116,7 +116,7 @@ def main(os_name, out_dir=None):
     # Accepted risks -> an InSpec waiver file next to the controls. A control carrying a `waiver:`
     # justification is one we deliberately do NOT enforce because enforcing it would break the host
     # (e.g. noexec on /var kills apt) or because the check itself is defective. `run: false` makes
-    # cinc SKIP it, so it stops counting as a failure while the justification stays in the report —
+    # cinc SKIP it, so it stops counting as a failure while the justification stays in the report:
     # an auditable exception, the way OpenSCAP/CIS handle waivers.
     waived = {
         cid: {"run": False, "justification": ref[cid]["waiver"]}
@@ -126,7 +126,7 @@ def main(os_name, out_dir=None):
     wfile = out.parent / "waivers.yml"
     if waived:
         wfile.write_text(
-            "# Accepted risks (generated — do not edit by hand). Each control here is\n"
+            "# Accepted risks (generated: do not edit by hand). Each control here is\n"
             "# NOT enforced; the justification is what an auditor reads.\n"
             "# Source: the `waiver:` field in docs/reference/rules.yml.\n"
             + yaml.safe_dump(waived, sort_keys=True, allow_unicode=True, width=100),
@@ -138,7 +138,7 @@ def main(os_name, out_dir=None):
     # look like a supported profile structure"), and a scan that dies there can ship back
     # a stale report. Fail loudly here instead.
     if not (out.parent / "inspec.yml").exists():
-        sys.exit(f"{os_name}: missing {out.parent}/inspec.yml — the profile would not be runnable")
+        sys.exit(f"{os_name}: missing {out.parent}/inspec.yml: the profile would not be runnable")
     print(f"{os_name}: {len(ref)} controls -> {out}  ({len(groups)} files, {len(waived)} waived)")
 
 

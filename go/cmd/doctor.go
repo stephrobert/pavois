@@ -38,7 +38,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	}
 	look := func(bin string) (string, bool) { p, err := exec.LookPath(bin); return p, err == nil }
 
-	_, _ = fmt.Fprintln(out, "pavois doctor — environment readiness")
+	_, _ = fmt.Fprintln(out, "pavois doctor: environment readiness")
 	_, _ = fmt.Fprintln(out)
 
 	// CINC engine (native preferred, docker is the fallback). One of them is required.
@@ -110,6 +110,6 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	if !ready {
 		return fmt.Errorf("not ready: install a scan engine (cinc-auditor or docker), then re-run pavois doctor")
 	}
-	_, _ = fmt.Fprintln(out, "ready — try:  pavois scan local --sudo")
+	_, _ = fmt.Fprintln(out, "ready: try: pavois scan local --sudo")
 	return nil
 }

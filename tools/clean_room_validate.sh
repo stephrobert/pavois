@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pavois — CLEAN-ROOM end-to-end validation: provision a FRESH VM from the Ubuntu cloud
+# Pavois: CLEAN-ROOM end-to-end validation: provision a FRESH VM from the Ubuntu cloud
 # image, then run the exact operator pipeline with nothing done by hand:
 #   1 provision (Proxmox, from cloud image)   2 KSPP kernel build (delivered recipe)
 #   3 LVM partitions (delivered recipe)        4 harden apply -> reboot -> scan + lynis
@@ -32,14 +32,14 @@ waitssh(){ local n=0; until ssh -F /dev/null -o StrictHostKeyChecking=no -o User
 # This script DESTROYS $VMID before recreating it. The hypervisor is a shared lab: a VMID picked
 # without looking is a machine someone else loses, and `--purge` leaves nothing to restore. So we
 # look FIRST, and destroy only what pavois itself created (a `pavois-*` name). A free id is fine,
-# an occupied one is not — no matter how convenient the number was.
+# an occupied one is not: no matter how convenient the number was.
 assert_ours(){
   local name
   name=$(pssh "qm config $VMID 2>/dev/null | sed -n 's/^name: //p'" | tr -d '\r')
   [ -z "$name" ] && return 0                                   # free id: nothing to destroy
   case "$name" in
     pavois-*) return 0 ;;                                      # ours, from a previous run
-    *) echo "REFUSING: VM $VMID is '$name' — not a pavois VM. Pick a free VMID (CK_VMID)." >&2
+    *) echo "REFUSING: VM $VMID is '$name': not a pavois VM. Pick a free VMID (CK_VMID)." >&2
        exit 1 ;;
   esac
 }

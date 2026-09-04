@@ -4,7 +4,7 @@ pavois needs root on the target to read the **effective** configuration
 (`sshd -T`, `sysctl`, `systemctl show`, `auditctl`, `getenforce`,
 `authselect current`, `nginx -T`, …) and to run a Chef converge for
 `harden apply`. This guide creates a dedicated scanner account that gets that
-access through an **authenticated** sudo — not `NOPASSWD: ALL` — so the target
+access through an **authenticated** sudo: not `NOPASSWD: ALL`: so the target
 passes pavois's own `sudo-require-authentication` control instead of being
 weakened by the tool that audits it.
 
@@ -75,7 +75,7 @@ users:
     sudo: "ALL=(ALL) ALL"       # NOT "ALL=(ALL) NOPASSWD:ALL"
 ```
 
-## 3. Run pavois — enter the password at the command
+## 3. Run pavois: enter the password at the command
 
 Pass the sudo password over stdin with `--sudo-prompt` (no echo, never in argv or
 shell history):
@@ -100,7 +100,7 @@ PAVOIS_SUDO_PASSWORD="$SUDO_PW" bin/pavois scan pavois@host --profile linux/rhel
   not always match a full root environment, so a few checks can read differently
   than under root.
 - **On-target** (`--on-target`, recommended): pavois runs cinc *as root on the
-  target* for a root-equivalent result. It supports the password account — the
+  target* for a root-equivalent result. It supports the password account: the
   sudo password is fed to the remote `sudo -S` over stdin (never argv). This is
   the accurate path: on a hardened AlmaLinux 8 it scores the same grade as a
   NOPASSWD root run, ~40 controls higher than native-SSH per-command sudo, while

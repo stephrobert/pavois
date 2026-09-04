@@ -11,7 +11,7 @@ import "testing"
 // pwhistory line inserted after pam_unix does nothing). It also makes "same plan, same package"
 // impossible, which is what a generated configuration package needs (#198).
 //
-// The fixture must use remediations that ACCUMULATE INTO A LIST — conf_line, pam_line, exec.
+// The fixture must use remediations that ACCUMULATE INTO A LIST: conf_line, pam_line, exec.
 // Resources that land in a map keyed by file (sysctl, keyval, sshd_setting) are re-sorted at
 // emission, so they hide the defect: a first version of this test used those and passed even with
 // the sort removed, which the falsification harness caught (tools/falsify.yml).
@@ -102,7 +102,7 @@ rules:
 	for i := 2; i <= 10; i++ {
 		got, _, _, _, _ := compileRecipe(plan, "", "", "", "")
 		if got != first {
-			t.Fatalf("compile #%d differs from #1 — the recipe is not reproducible.\n"+
+			t.Fatalf("compile #%d differs from #1: the recipe is not reproducible.\n"+
 				"first:\n%s\n\ncompile #%d:\n%s", i, first, i, got)
 		}
 	}

@@ -30,7 +30,7 @@ func TestSeverity(t *testing.T) {
 }
 
 // ctrlFromJSON builds an audit.Control through JSON so the anonymous Results struct
-// can be populated — the same decoding path used on real InSpec reports.
+// can be populated: the same decoding path used on real InSpec reports.
 func ctrlFromJSON(t *testing.T, raw string) audit.Control {
 	t.Helper()
 	var c audit.Control

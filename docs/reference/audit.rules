@@ -1,8 +1,8 @@
-# pavois audit ruleset — covers every key pavois's audit controls check, with the
+# pavois audit ruleset: covers every key pavois's audit controls check, with the
 # EXACT keys they grep for. Deployed to /etc/audit/rules.d/99-pavois.rules; loaded at
 # boot (or `augenrules --load`). Standard CIS/SSG Linux rules (64- and 32-bit).
 #
-# Sources (sourced, never invented — cf. pavois's mapping principle):
+# Sources (sourced, never invented: cf. pavois's mapping principle):
 #   - Linux audit-userspace sample rules (upstream, maintained):
 #     https://github.com/linux-audit/audit-userspace/tree/master/rules
 #   - Florian Roth (Neo23x0) auditd best-practice config (de-facto community standard):
@@ -11,26 +11,26 @@
 #   - CIS Benchmarks audit section + SSG ssg-*-ds.xml (docs/reference/).
 # auid idiom uses the numeric unset value 4294967295 (community/CIS form), not the
 # `unset` keyword. NB: newer syscalls (fchmodat2/452 on kernel >= 6.6) can only be added
-# by NUMBER per-arch — the `fchmodat2` NAME breaks augenrules where audit-userspace is
+# by NUMBER per-arch: the `fchmodat2` NAME breaks augenrules where audit-userspace is
 # older; coreutils still routes chmod through fchmodat here, so the base set suffices.
 
-## perm_mod — DAC permission / ownership / xattr changes
+## perm_mod: DAC permission / ownership / xattr changes
 -a always,exit -F arch=b64 -S chmod,fchmod,fchmodat,chown,fchown,fchownat,lchown -F auid>=1000 -F auid!=4294967295 -F key=perm_mod
 -a always,exit -F arch=b32 -S chmod,fchmod,fchmodat,chown,fchown,fchownat,lchown -F auid>=1000 -F auid!=4294967295 -F key=perm_mod
 -a always,exit -F arch=b64 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=4294967295 -F key=perm_mod
 -a always,exit -F arch=b32 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=4294967295 -F key=perm_mod
 
-## access — unsuccessful file access (EACCES / EPERM)
+## access: unsuccessful file access (EACCES / EPERM)
 -a always,exit -F arch=b64 -S creat,open,openat,truncate,ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -F key=access
 -a always,exit -F arch=b32 -S creat,open,openat,truncate,ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -F key=access
 -a always,exit -F arch=b64 -S creat,open,openat,truncate,ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -F key=access
 -a always,exit -F arch=b32 -S creat,open,openat,truncate,ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -F key=access
 
-## delete — file / directory deletion
+## delete: file / directory deletion
 -a always,exit -F arch=b64 -S unlink,unlinkat,rename,renameat,rmdir -F auid>=1000 -F auid!=4294967295 -F key=delete
 -a always,exit -F arch=b32 -S unlink,unlinkat,rename,renameat,rmdir -F auid>=1000 -F auid!=4294967295 -F key=delete
 
-## audit_rules_usergroup_modification — identity files
+## audit_rules_usergroup_modification: identity files
 -w /etc/group -p wa -k audit_rules_usergroup_modification
 -w /etc/passwd -p wa -k audit_rules_usergroup_modification
 -w /etc/gshadow -p wa -k audit_rules_usergroup_modification
@@ -38,7 +38,7 @@
 -w /etc/security/opasswd -p wa -k audit_rules_usergroup_modification
 -w /etc/nsswitch.conf -p wa -k audit_rules_usergroup_modification
 
-## system-locale — network configuration changes (CIS 6.3.3.5; the original
+## system-locale: network configuration changes (CIS 6.3.3.5; the original
 ## audit-networkconfig-modification control accepts this key too). /etc/network/ is the
 ## Debian equivalent of RHEL's /etc/sysconfig/network-scripts.
 -a always,exit -F arch=b64 -S sethostname,setdomainname -F key=system-locale
@@ -57,7 +57,7 @@
 -a always,exit -F arch=b64 -S clock_settime -F a0=0x0 -F key=time-change
 -a always,exit -F arch=b32 -S clock_settime -F a0=0x0 -F key=time-change
 
-## MAC — AppArmor policy
+## MAC: AppArmor policy
 -w /etc/apparmor/ -p wa -k MAC-policy
 -w /etc/apparmor.d/ -p wa -k MAC-policy
 
@@ -71,21 +71,21 @@
 -w /var/log/wtmp -p wa -k session
 -w /var/log/btmp -p wa -k session
 
-## modules — kernel module load/unload
+## modules: kernel module load/unload
 -a always,exit -F arch=b64 -S init_module,finit_module,delete_module,create_module -F auid>=1000 -F auid!=4294967295 -F key=modules
 -a always,exit -F arch=b32 -S init_module,finit_module,delete_module,create_module -F auid>=1000 -F auid!=4294967295 -F key=modules
 -w /usr/bin/kmod -p x -k modules
 
-## export — media / mount
+## export: media / mount
 -a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -F key=export
 -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -F key=export
 
-## actions — sudoers and sudo log
+## actions: sudoers and sudo log
 -w /etc/sudoers -p wa -k actions
 -w /etc/sudoers.d -p wa -k actions
 -w /var/log/sudo.log -p wa -k actions
 
-## privileged — privileged command execution
+## privileged: privileged command execution
 -a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=4294967295 -F key=privileged
 -a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=4294967295 -F key=privileged
 -a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=1000 -F auid!=4294967295 -F key=privileged
@@ -94,15 +94,15 @@
 -a always,exit -F path=/usr/bin/passwd -F perm=x -F auid>=1000 -F auid!=4294967295 -F key=privileged
 -a always,exit -F path=/usr/bin/su -F perm=x -F auid>=1000 -F auid!=4294967295 -F key=privileged
 
-## user_emulation — running with a different uid than the login uid
+## user_emulation: running with a different uid than the login uid
 -a always,exit -F arch=b64 -C auid!=uid -S execve -F key=user_emulation
 -a always,exit -F arch=b32 -C auid!=uid -S execve -F key=user_emulation
 
-## execpriv — execve where euid != uid (privilege elevation via setuid binaries)
+## execpriv: execve where euid != uid (privilege elevation via setuid binaries)
 -a always,exit -F arch=b64 -C euid!=uid -F auid!=4294967295 -S execve -F key=execpriv
 -a always,exit -F arch=b32 -C euid!=uid -F auid!=4294967295 -S execve -F key=execpriv
 
-## setuid/setgid — an execve that GAINS root through a setuid/setgid binary. Narrower than
+## setuid/setgid: an execve that GAINS root through a setuid/setgid binary. Narrower than
 ## execpriv above (which is any euid!=uid) and carries the key the audit-suid-privilege-function
 ## control looks for.
 -a always,exit -F arch=b64 -S execve -C uid!=euid -F euid=0 -F key=setuid
@@ -110,11 +110,11 @@
 -a always,exit -F arch=b64 -S execve -C gid!=egid -F egid=0 -F key=setgid
 -a always,exit -F arch=b32 -S execve -C gid!=egid -F egid=0 -F key=setgid
 
-## cronjobs — changes to scheduled jobs under /etc/cron.d
+## cronjobs: changes to scheduled jobs under /etc/cron.d
 -w /etc/cron.d -p wa -k cronjobs
 
-## systemd_journal — tampering with the persistent journal
+## systemd_journal: tampering with the persistent journal
 -w /var/log/journal -p wa -k systemd_journal
 
-## immutable — lock the audit config until reboot (audit-immutable). MUST be last.
+## immutable: lock the audit config until reboot (audit-immutable). MUST be last.
 -e 2

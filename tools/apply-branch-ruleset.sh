@@ -3,7 +3,7 @@
 #
 # Why it cannot be done before. Branch protection and rulesets are unavailable on a private
 # repository under a free plan: the API answers 403 "Upgrade to GitHub Pro or make this repository
-# public to enable this feature." So the order everyone assumes — protect, then publish — is not
+# public to enable this feature." So the order everyone assumes: protect, then publish: is not
 # available here. It is the reverse, and the gap between the two is the window this script exists
 # to close.
 #
@@ -11,12 +11,12 @@
 # `threshold: '100'` and `.plumber.yaml` enables `branchMustBeProtected`. Measured locally against
 # this repository on 2026-09-04, before the flip:
 #
-#     Status: FAILED — score E, 30.0/100, required >= 100
+#     Status: FAILED: score E, 30.0/100, required >= 100
 #     Critical: ISSUE-501 "Branch must be protected"  (the ONLY finding; every other control passes)
 #
 # Plumber also runs with `score-push: 'true'`, which publishes that score to the README badge. So a
 # public flip without this script produces, in public: a red Plumber job, a 30/100 badge, and a
-# Scorecard Branch-Protection check at zero — none of which reflects the state of the project.
+# Scorecard Branch-Protection check at zero: none of which reflects the state of the project.
 #
 # Usage:
 #     tools/apply-branch-ruleset.sh [owner/repo]
@@ -43,9 +43,9 @@ if [ "$visibility" != "PUBLIC" ]; then
   cat >&2 <<EOF
 $repo is $visibility.
 
-Rulesets need a public repository (or GitHub Pro). Flip the repository to public first — that is
+Rulesets need a public repository (or GitHub Pro). Flip the repository to public first: that is
 the same act that activates CodeQL, Scorecard, Plumber and dependency-review, all four of which
-have never run once — then run this script before the first of them completes.
+have never run once: then run this script before the first of them completes.
 EOF
   exit 2
 fi
@@ -119,7 +119,7 @@ cat <<'EOF'
 request with the five checks above green.
 
 Two things to do right after:
-  1. re-run the Plumber workflow — its ISSUE-501 should be gone and the score should leave band E;
+  1. re-run the Plumber workflow: its ISSUE-501 should be gone and the score should leave band E;
   2. give the Plumber job a token carrying Administration:read, otherwise its governance check
      abstains instead of confirming the protection it just gained.
 

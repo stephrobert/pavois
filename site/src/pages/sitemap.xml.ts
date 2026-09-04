@@ -7,7 +7,7 @@ import { languages } from '../i18n/ui';
 // hand-maintained data date (never the build date), omitted otherwise, per the SEO ruleset.
 const LANGS = Object.keys(languages);
 // Hand-maintained, so it drifted: `installation/`, `audit/`, `sample-report/` and `docs/benchmark/`
-// are real pages, linked from the main navigation, and were missing here — 8 URLs a crawler never
+// are real pages, linked from the main navigation, and were missing here: 8 URLs a crawler never
 // saw, including the benchmark, which is the product's whole differentiating argument.
 const STATIC = [
   '', 'start/', 'installation/', 'audit/', 'docs/', 'docs/cli/', 'docs/tools/', 'docs/benchmark/',

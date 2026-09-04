@@ -6,7 +6,7 @@ obligations for that material.
 
 ---
 
-## 1. Derived software content (redistributed — attribution required)
+## 1. Derived software content (redistributed: attribution required)
 
 ### ComplianceAsCode / SCAP Security Guide (SSG)
 
@@ -79,18 +79,18 @@ Apache-2.0). CINC is not bundled; it is installed separately by the user.
 
 ---
 
-## 2. Standards referenced (numbers/identifiers only — not redistributed as text)
+## 2. Standards referenced (numbers/identifiers only: not redistributed as text)
 
 pavois maps each control to standard **reference numbers** (facts), inherited from SSG.
 It does **not** reproduce the prose of these standards' documents.
 
 | Standard | Status | How pavois uses it |
 |---|---|---|
-| **NIST SP 800-53 / 800-171, OSCAL** | U.S. Government work — **public domain** | control identifiers + cross-validation |
-| **DISA STIG** | U.S. Government work — **public domain** | STIG identifiers |
+| **NIST SP 800-53 / 800-171, OSCAL** | U.S. Government work: **public domain** | control identifiers + cross-validation |
+| **DISA STIG** | U.S. Government work: **public domain** | STIG identifiers |
 | **ANSSI-BP-028** | Licence Ouverte / Etalab (open reuse) | R-numbers |
-| **CIS Benchmarks™** | © Center for Internet Security — restrictive EULA, trademark | section **numbers** only (via SSG); no benchmark text reproduced |
-| **PCI DSS** | © PCI Security Standards Council — trademark | requirement **numbers** only; no requirement text reproduced |
+| **CIS Benchmarks™** | © Center for Internet Security: restrictive EULA, trademark | section **numbers** only (via SSG); no benchmark text reproduced |
+| **PCI DSS** | © PCI Security Standards Council: trademark | requirement **numbers** only; no requirement text reproduced |
 
 **CIS Benchmarks**, **PCI DSS**, **STIG** and **NIST** are trademarks of their respective
 owners. pavois is **not affiliated with, endorsed by, or sponsored by** the Center for

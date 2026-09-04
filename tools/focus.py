@@ -9,7 +9,7 @@ so it cannot protect it. And `gen.py invert` re-derives sharing by value equalit
 tell "I forked on purpose" from "I typed the wrong thing".
 
 So: per-OS to READ, never to STORE. This prints the slice you asked for, and prints next to each
-value its BLAST RADIUS — the thing a per-OS file can never show you:
+value its BLAST RADIUS: the thing a per-OS file can never show you:
 
     [shared:9]        this exact value is shared by 9 OSes: changing it changes THEM ALL
     [os:rhel10]       already specific to rhel10: yours alone
@@ -149,7 +149,7 @@ def main():
         # against and remediated with. That is what a reviewer must judge.
         ref = yaml.safe_load((CONTENT / f"{a.os}.yml").read_text())["rules"]
         out = [
-            f"# pavois review dossier — {a.os} — {len(ref)} controls",
+            f"# pavois review dossier: {a.os}: {len(ref)} controls",
             "# Fully resolved: this is EXACTLY what the scanner runs and what harden applies.",
             "# For each control: what it asserts, and what pavois does to make it pass.",
             "",
@@ -196,10 +196,10 @@ def main():
             if any(r.get("status") == "failed" for r in c.get("results", []))
         }
         want &= failed
-        msg = f"scan: {Path(p).name} — {len(failed)} failing, {len(want)} here"
+        msg = f"scan: {Path(p).name}: {len(failed)} failing, {len(want)} here"
         print(f"{C['dim']}{msg}{C['0']}")
 
-    print(f"{C['b']}FOCUS {a.os}{C['0']} — {len(want)} control(s) of {len(lib)}")
+    print(f"{C['b']}FOCUS {a.os}{C['0']}: {len(want)} control(s) of {len(lib)}")
     print(
         f"{C['dim']}read-only. The blast radius is printed next to each value: a {C['0']}"
         f"{C['red']}[shared:N]{C['0']}{C['dim']} value belongs to N OSes.{C['0']}"

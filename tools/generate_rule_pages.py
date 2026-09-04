@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Populate the Astro site with ONE content entry per rule (by neutral control id), not per OS —
+"""Populate the Astro site with ONE content entry per rule (by neutral control id), not per OS:
 a pavois control is OS-neutral by design. Each fiche lists the OSes that support it and the CIS
 benchmark version per OS. Data (check, remediation, rationale) is shared across OSes; norm mappings
 are merged (union). Uses the norm-studio's draft_rule_page (mines reference + SSG, no LLM).
@@ -128,7 +128,7 @@ for rid, items in sorted(by_id.items()):
 # none of them. Saying so in the data makes the gap queryable instead of something you discover by
 # reading 800 pages.
 #
-# needs_translation: this used to default to ["title.fr"] whenever the key was absent — so a fiche
+# needs_translation: this used to default to ["title.fr"] whenever the key was absent: so a fiche
 # somebody had actually translated got re-flagged on the very next build, and the flag meant
 # nothing. A French field is untranslated when it is empty or still identical to the English one.
 # That is checkable, so we check it.
