@@ -674,7 +674,11 @@ func RunOnTarget(o Options) (int, error) {
 
 	const remoteProf, remoteJSON = "/tmp/pavois-profile", "/tmp/pavois-out.json"
 	_ = ssh("rm -rf " + remoteProf)
-	if err := run("scp", append(append([]string{"-r"}, base...), prof, o.Target+":"+remoteProf)...); err != nil {
+	if err := // -O: the legacy SCP protocol, over an exec channel. Modern scp speaks SFTP by default,
+		// and a stock debian13 (OpenSSH 10) declares no `Subsystem sftp`, so an sftp transfer dies
+		// with "subsystem request failed on channel 0" — measured on a fresh VM. -O needs no
+		// subsystem and works on every target we support.
+		run("scp", append(append([]string{"-O", "-r"}, base...), prof, o.Target+":"+remoteProf)...); err != nil {
 		return 2, fmt.Errorf("copy profile to target: %w", err)
 	}
 
@@ -727,7 +731,7 @@ func RunOnTarget(o Options) (int, error) {
 	// cinc-auditor wrote the report as root; on a hardened box (umask 0027) the scp user
 	// can't read it. Make it world-readable before fetching (it's a transient report).
 	_ = ssh(sudo + "chmod 0644 " + remoteJSON)
-	if err := run("scp", append(append([]string{}, base...), o.Target+":"+remoteJSON, o.JSONOut)...); err != nil {
+	if err := run("scp", append(append([]string{"-O"}, base...), o.Target+":"+remoteJSON, o.JSONOut)...); err != nil {
 		return 2, fmt.Errorf("fetch report from target: %w", err)
 	}
 	// Leave no trace: the profile copy, the report and the scratch HOME are ours, not the target's.
