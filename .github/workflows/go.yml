@@ -57,17 +57,10 @@ jobs:
         working-directory: pavois/go
         run: go test -race ./...
 
-      # Fuzz the parsers that consume input pavois does not control: the InSpec JSON a separate
-      # engine produces on a remote target, and the compiled recipe that decides what a rollback
-      # DELETES. Seed corpora run on every `go test`; this step actually mutates, briefly, so a
-      # regression surfaces in CI rather than on someone's host. Any crasher is written to
-      # testdata/fuzz/ and becomes a permanent regression test.
-      - name: go test (fuzz)
-        working-directory: pavois/go
-        run: |
-          go test ./internal/audit/ -run '^$' -fuzz 'FuzzProves' -fuzztime=30s
-          go test ./internal/audit/ -run '^$' -fuzz 'FuzzEvaluate' -fuzztime=60s
-          go test ./cmd/ -run '^$' -fuzz 'FuzzPlannedTargets' -fuzztime=60s
+      # Mutation fuzzing lives in fuzz.yml, nightly, NOT here (#224): it was 2m34 of a 3m43 job,
+      # 69% of the wall-clock, in front of everything that tells a contributor whether their change
+      # is sound. `go test -race` above still replays every seed corpus, so every crasher ever
+      # found remains a permanent regression test on this path.
 
       # A green suite says nothing is broken. It does not say anything is GUARDED — a test can
       # stop biting when a refactor moves an assertion or a case becomes unreachable, and nothing
