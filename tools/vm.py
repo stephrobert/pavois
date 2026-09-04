@@ -40,8 +40,8 @@ IMAGES = {
     # `pavois scan` auto-detects to rhel<major> anyway (profileForOS in go/cmd/scan.go).
     "debian12": "images:debian/12/cloud",
     "debian13": "images:debian/13/cloud",
-    "ubuntu2204": "ubuntu:22.04",
-    "ubuntu2404": "ubuntu:24.04",
+    "ubuntu2204": "images:ubuntu/jammy/cloud",
+    "ubuntu2404": "images:ubuntu/noble/cloud",
     "ubuntu2604": "images:ubuntu/26.04/cloud",
     "rhel8": "images:almalinux/8/cloud",
     "rhel9": "images:almalinux/9/cloud",
@@ -49,12 +49,10 @@ IMAGES = {
     "fedora": "images:fedora/43/cloud",
 }
 
-# Canonical publishes 22.04 and 24.04 on its own simplestreams remote, not on the community one.
-# Rather than adding a remote behind the operator's back, name the command.
-REMOTE_HINT = {
-    "ubuntu": "incus remote add ubuntu https://cloud-images.ubuntu.com/releases "
-    "--protocol simplestreams --public",
-}
+# Every image above lives on the `images:` remote, which Incus configures out of the box. The
+# ubuntu LTS releases are aliased by CODENAME there (jammy, noble), not by version number, which
+# is why a search for "ubuntu/24.04" comes back empty and Canonical's own simplestreams endpoint
+# looks like the answer: it is not, it serves public-cloud image ids, and Incus finds nothing in it.
 
 # Which pavois profile each OS is scanned with (`pavois scan` auto-detects; this is for the hint
 # printed at the end, and it mirrors profileForOS in go/cmd/scan.go).
@@ -212,7 +210,7 @@ def cmd_up(args: argparse.Namespace) -> int:
     if remote not in [
         line.split(",")[0].replace(" (current)", "") for line in configured.splitlines()
     ]:
-        hint = REMOTE_HINT.get(remote, f"incus remote add {remote} <url>")
+        hint = f"incus remote add {remote} <url>"
         print(
             f"vm: {args.os} needs the {remote!r} image remote, which is not configured.\n"
             f"    Add it with:  {hint}",
