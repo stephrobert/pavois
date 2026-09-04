@@ -20,9 +20,11 @@ from __future__ import annotations
 import subprocess
 import sys
 
+# Spelled by code point on purpose: writing the characters literally would make this file its own
+# first offender, and excluding it by name would leave a blind spot in the one file nobody rereads.
 BANNED = {
-    "—": "em-dash",
-    "–": "en-dash",
+    chr(0x2014): "em-dash",
+    chr(0x2013): "en-dash",
 }
 # The site ships a vendored sample report and third-party CSS; neither is ours to reword.
 SKIP_PREFIXES = ("site/public/sample-", "site/node_modules/", "docs/reference/oscap-")
@@ -51,9 +53,11 @@ def main() -> int:
             print("  " + h, file=sys.stderr)
         if len(hits) > 40:
             print(f"  ... and {len(hits) - 40} more", file=sys.stderr)
-        print("\n  Reword the sentence. Do NOT bulk-replace: turning `a - b` into `a: b` inside\n"
-              "  YAML makes an unquoted scalar a mapping, which is how four files broke last time.",
-              file=sys.stderr)
+        print(
+            "\n  Reword the sentence. Do NOT bulk-replace: turning `a - b` into `a: b` inside\n"
+            "  YAML makes an unquoted scalar a mapping, which is how four files broke last time.",
+            file=sys.stderr,
+        )
         return 1
 
     print("lint:emdash: clean")
