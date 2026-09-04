@@ -6,12 +6,13 @@ provisioned on a Proxmox host. This provisions on Incus, on the machine you are 
 a laptop, no hypervisor, no root SSH to a server.
 
 **Virtual machines, never containers.** `incus launch --vm` is not a preference here, it is the
-difference between a verdict and a lie. 259 of the 789 controls cannot be answered by a container —
+difference between a verdict and a lie. 259 of the 789 controls cannot be answered by a container:
 70 sysctl, 62 kernel-build (KSPP), 38 mounts, 23 kernel modules, 35 auditd, 18 kernel cmdline, 11
 filesystem, plus grub and MAC. A container shares the host kernel, so those controls do not skip:
 they measure YOUR machine. Run from a hardened workstation, a container scan hands back PASSes that
 say nothing about the target, which is the worst failure a compliance tool can have, because it is
-green. Audit a container with the `container-baseline` profile instead.
+green. `pavois scan` now refuses this outright; --allow-container overrides it, and
+the kernel controls then describe YOUR machine, which is almost never what you want.
 
   mise run vm -- up debian12        # create + wait for SSH, then print the scan command
   mise run vm -- up debian12 --sudo-password pavois
@@ -145,7 +146,7 @@ def wait_for_ssh(name: str, timeout: int = 300) -> str | None:
                 [
                     "ssh",
                     # -F /dev/null: this machine's ~/.ssh/config carries a `Host *` ProxyJump,
-                    # which breaks a direct connection to a lab address — the ssh CLI honours it
+                    # which breaks a direct connection to a lab address, and the ssh CLI honours it
                     # and the connection dies at the banner exchange. pavois already passes
                     # --ssh-config-file /dev/null to cinc for the same reason; without it here the
                     # probe waits out its whole timeout and reports a perfectly healthy VM as dead.
@@ -180,7 +181,7 @@ def cmd_up(args: argparse.Namespace) -> int:
     pub = Path(args.key).expanduser()
     if not pub.exists():
         print(
-            f"vm: no public key at {pub} — pass --key, or make one with ssh-keygen",
+            f"vm: no public key at {pub}: pass --key, or make one with ssh-keygen",
             file=sys.stderr,
         )
         return 2
@@ -249,7 +250,7 @@ def cmd_up(args: argparse.Namespace) -> int:
         rc = incus("start", name).returncode
     if rc != 0:
         print(
-            f"{RED}vm: launch failed.{OFF} A VM image is required — do NOT fall back to a\n"
+            f"{RED}vm: launch failed.{OFF} A VM image is required. Do NOT fall back to a\n"
             "container: 259 of 789 controls would then measure this host, not the target.",
             file=sys.stderr,
         )

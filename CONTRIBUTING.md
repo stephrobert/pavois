@@ -298,12 +298,13 @@ mise run vm -- down debian12
 **Virtual machines, never containers.** `incus launch --vm` is not a preference: **259 of the 789
 controls cannot be answered by a container** (70 sysctl, 62 kernel-build, 38 mounts, 23 kernel
 modules, 35 auditd, 18 cmdline, 11 filesystem, grub, MAC). A container shares the host kernel, so
-those controls do not skip — they measure *your* machine, and a scan run from a hardened
-workstation hands back PASSes about a target it never inspected. Audit a container with the
-`container-baseline` profile instead.
+those controls do not skip: they measure *your* machine, and a scan run from a hardened
+workstation hands back PASSes about a target it never inspected. `pavois scan` refuses this
+outright; `--allow-container` overrides the refusal, and the kernel controls then report on the
+host rather than the target.
 
 Two host requirements, both checked by the tool with an actionable message: Incus with VM support
-(`qemu-system-x86_64`), and a managed network to attach — the default profile often has none, and
+(`qemu-system-x86_64`), and a managed network to attach, and the default profile often has none, and
 the symptom is silent (the VM boots, runs, and never gets an address).
 
 ### No rule change ships without a real scan
