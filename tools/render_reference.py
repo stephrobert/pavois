@@ -63,8 +63,6 @@ def render_control(cid, e):
             out.append(f"  tag level_{k}: {_rb(e['levels'][k])}")
     if "merge_group" in e:
         out.append(f"  tag merge_group: {_rb(e['merge_group'])}")
-    if "posture" in e:
-        out.append(f"  tag posture: {_rb(e['posture'])}")
     if e.get("remediation_class"):  # the scoring class comes from the RULE, never from Go
         out.append(f"  tag remediation_class: {_rb(e['remediation_class'])}")
     if e.get("ssg"):
