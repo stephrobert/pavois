@@ -247,6 +247,18 @@ def main():
                 bad += 1
                 if bad <= 5:
                     print(f"  MISMATCH {os} {cid}")
+    if total == 0:
+        # The per-OS files are GENERATED and git-ignored, so a fresh clone (or a new worktree)
+        # has none — and "0 of 0 in sync" is not a pass, it is a measurement that never ran.
+        # This used to divide by zero and print a traceback, which is a poor way to say
+        # "run mise run gen first".
+        print(
+            f"verify: no generated OS file under {REF.relative_to(ROOT)} — nothing to verify.\n"
+            "        Run `mise run gen` (or `mise run regen`) first; on a fresh clone the corpus\n"
+            "        and the per-OS reference are rebuilt from docs/reference/rules.yml.",
+            file=sys.stderr,
+        )
+        return 1
     print(f"verify: {total - bad}/{total} controls in sync ({100 * (total - bad) // total}%)")
     return 1 if bad else 0
 
