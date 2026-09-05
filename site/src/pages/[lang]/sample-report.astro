@@ -23,6 +23,38 @@ const newlyOk = tr['na>pass'] ?? 0;
 const stillFailing = tr['fail>fail'] ?? 0;
 const regressions = tr['pass>fail'] ?? 0;
 
+// The full matrix, not a selection of it. Rendered from whatever buckets the campaign actually
+// contains, so a future run with different transitions cannot silently drop one off the page.
+const STATE_LABEL: Record<string, { en: string; fr: string }> = {
+  pass: { en: 'passing', fr: 'conforme' },
+  fail: { en: 'failing', fr: 'en échec' },
+  na: { en: 'not applicable', fr: 'non applicable' },
+  absent: { en: 'not in the corpus', fr: 'absent du corpus' },
+  error: { en: 'errored', fr: 'en erreur' },
+};
+const MEANING: Record<string, { en: string; fr: string }> = {
+  'pass>pass': { en: 'already compliant, and stayed so', fr: 'déjà conforme, et resté conforme' },
+  'fail>pass': { en: 'fixed by the hardening', fr: 'corrigés par le durcissement' },
+  'na>pass': { en: 'became applicable, and passed', fr: 'devenus applicables, et conformes' },
+  'absent>pass': { en: 'added to the corpus between the two scans', fr: 'ajoutés au corpus entre les deux scans' },
+  'fail>fail': { en: 'not closed by hardening', fr: 'non corrigés par le durcissement' },
+  'na>na': { en: 'not applicable to this host, either time', fr: 'non applicables à cet hôte, avant comme après' },
+  'fail>na': { en: 'stopped applying', fr: 'ont cessé de s’appliquer' },
+  'pass>na': { en: 'stopped applying', fr: 'ont cessé de s’appliquer' },
+  'pass>absent': { en: 'removed from the corpus', fr: 'retirés du corpus' },
+  'pass>fail': { en: 'REGRESSED', fr: 'RÉGRESSION' },
+};
+const stateName = (k: string) => (STATE_LABEL[k] ? tr2(STATE_LABEL[k]) : k);
+const tr2 = (f: { en: string; fr: string }) => (fr ? f.fr : f.en);
+const matrix = Object.entries(tr)
+  .filter(([, n]) => n > 0)
+  .sort((a, b) => b[1] - a[1]);
+const matrixTotal = matrix.reduce((a, [, n]) => a + n, 0);
+// The reconciliation the page owes the reader: which buckets add up to "passing after".
+const intoPass = matrix.filter(([k]) => k.endsWith('>pass'));
+const outOfPass = matrix.filter(([k]) => k.startsWith('pass>'));
+const sumOf = (rows: [string, number][]) => rows.reduce((a, [, n]) => a + n, 0);
+
 const title = fr ? 'Rapport d’exemple' : 'Sample report';
 const lede = fr
   ? 'Un vrai rapport Pavois sur une VM Debian 13 (données anonymisées). En bas : le rapport de campagne avant/après un durcissement complet, avec la matrice de transition.'
@@ -44,6 +76,49 @@ const lede = fr
 
   <div class="wrap">
     <div class="prose">
+      <h2 id="transition-matrix">{fr ? 'Matrice de transition' : 'Transition matrix'}</h2>
+      <p>{fr
+        ? `Les ${matrixTotal} contrôles du corpus, rangés par état avant puis après. Le tableau est publié en entier : additionner un sous-ensemble ne redonne pas le total, et un lecteur qui vérifie a le droit de le vérifier.`
+        : `All ${matrixTotal} controls in the corpus, by state before and after. The table is published whole: adding up a subset does not reproduce the total, and a reader who checks is entitled to check.`}</p>
+      <table>
+        <thead>
+          <tr>
+            <th>{fr ? 'Avant' : 'Before'}</th>
+            <th>{fr ? 'Après' : 'After'}</th>
+            <th>{fr ? 'Nombre' : 'Count'}</th>
+            <th>{fr ? 'Signification' : 'Meaning'}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {matrix.map(([k, n]) => (
+            <tr>
+              <td>{stateName(k.split('>')[0])}</td>
+              <td>{stateName(k.split('>')[1])}</td>
+              <td><b>{n}</b></td>
+              <td>{MEANING[k] ? tr2(MEANING[k]) : ''}</td>
+            </tr>
+          ))}
+          <tr>
+            <td colspan="2"><b>{fr ? 'Total' : 'Total'}</b></td>
+            <td><b>{matrixTotal}</b></td>
+            <td>{fr ? 'contrôles du corpus' : 'controls in the corpus'}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>{fr ? 'Comment les totaux se referment' : 'How the totals close'}</h3>
+      <p>{fr
+        ? 'Deux additions valent d’être écrites, parce que ce sont celles qu’un lecteur refait de tête et rate : les conformes d’après ne se déduisent pas des conformes d’avant.'
+        : 'Two sums are worth writing out, because they are the ones a reader redoes mentally and gets wrong: the passing count after does not follow from the passing count before.'}</p>
+      <pre><code>{fr ? 'conformes après' : 'passing after'}  = {intoPass.map(([k, n]) => `${n}`).join(' + ')} = {sumOf(intoPass)}
+{'  '}({intoPass.map(([k]) => k).join(', ')})
+
+{fr ? 'conformes avant' : 'passing before'} = {outOfPass.map(([, n]) => `${n}`).join(' + ')} = {sumOf(outOfPass)}
+{'  '}({outOfPass.map(([k]) => k).join(', ')})</code></pre>
+      <p>{fr
+        ? 'Le terme qui manque à une vérification rapide est pass>pass : il vaut 277, pas 279, parce que deux contrôles conformes avant ont quitté l’ensemble des conformes (l’un est devenu non applicable, l’autre a été retiré du corpus).'
+        : 'The term a quick check misses is pass>pass: it is 277, not 279, because two controls that passed before left the passing set (one stopped applying, one was removed from the corpus).'}</p>
+
       <h2 id="key-results">{fr ? 'Résultats clés' : 'Key results'}</h2>
       <table>
         <thead>
