@@ -34,7 +34,23 @@ command -v apt-get >/dev/null 2>&1 || { echo "this script is for debian12 (needs
   apt-get install -y build-essential fakeroot dpkg-dev debhelper libncurses-dev bison flex libssl-dev libelf-dev bc dwarves rsync kmod cpio lz4 zstd lzop xz-utils
   GCCV=$(gcc -dumpversion | cut -d. -f1)
   apt-get install -y "gcc-${GCCV}-plugin-dev" || apt-get install -y gcc-plugin-dev || true
-  echo "==> kernel source matching the RUNNING kernel (needs deb-src enabled)"
+  echo "==> kernel source matching the RUNNING kernel"
+  # deb-src is absent from every Debian/Ubuntu cloud image, and `apt-get source` needs it. Enable it
+  # here rather than in a prerequisite nobody reads: a recipe that assumes a hand-prepared machine
+  # is not a recipe. Both layouts exist in the field, so handle both and re-run apt-get update.
+  if ! grep -rhsq '^deb-src\|^Types:.*deb-src' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null; then
+    echo "==> enabling deb-src (absent from the cloud image)"
+    for f in /etc/apt/sources.list.d/*.sources; do
+      [ -e "$f" ] || continue
+      sed -i 's/^Types: deb$/Types: deb deb-src/' "$f"
+    done
+    if [ -s /etc/apt/sources.list ]; then
+      sed -n 's/^deb \(.*\)/deb-src \1/p' /etc/apt/sources.list > /etc/apt/sources.list.d/pavois-deb-src.list
+      [ -s /etc/apt/sources.list.d/pavois-deb-src.list ] || rm -f /etc/apt/sources.list.d/pavois-deb-src.list
+    fi
+    apt-get update -qq
+  fi
+
   cd /usr/src
   SRCVER=$(dpkg-query -W -f='${source:Version}' "linux-image-$KVER" 2>/dev/null || true)
   CODENAME=$(. /etc/os-release 2>/dev/null; echo "$VERSION_CODENAME")

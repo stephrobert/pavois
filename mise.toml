@@ -252,6 +252,10 @@ bandit -q -r tools/ -c pyproject.toml
 description = "What this diff earns you, cheapest first, and what each run does NOT prove. `--check` fails on a path no rule sorts."
 run = "python3 {{config_root}}/tools/testplan.py"
 
+[tasks."lint:emdash"]
+description = "Refuse the em-dash anywhere in the tracked tree (an AI tell, and it has broken a generated GRUB line)"
+run = "python3 {{config_root}}/tools/lint_emdash.py"
+
 [tasks.prepush]
 description = "Everything a pull request will fail on that costs seconds and needs no target"
 # Deterministic, offline, 13s wall-clock measured on this repo (mise runs the dependencies in
@@ -266,7 +270,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]
@@ -305,7 +309,7 @@ description = "Protect the default branch (run IMMEDIATELY after the repo goes p
 run = "bash {{config_root}}/tools/apply-branch-ruleset.sh"
 
 [tasks."vm"]
-description = "Test VMs on Incus — VMs, never containers: `mise run vm -- up debian12` | list | ip <os> | down <os>"
+description = "Test VMs on Incus. VMs, never containers: `mise run vm -- up debian12` | list | ip <os> | down <os>"
 # 259 of the 789 controls cannot be answered by a container (kernel, mounts, auditd, cmdline):
 # a container shares the host kernel, so those controls would measure YOUR machine, and a scan
 # from a hardened workstation would come back green about a target it never inspected.

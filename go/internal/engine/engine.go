@@ -175,6 +175,84 @@ spin:
 	return werr
 }
 
+// EffectiveUID returns the uid Pavois will run the checks as on the TARGET, and whether it could
+// be determined at all.
+//
+// This decides whether a verdict is worth anything. The per-OS profiles asserts on the output of
+// privileged commands (sshd -T, auditctl -l, sysctl -a, systemctl show). Unprivileged, those do not
+// return a wrong answer, they return NOTHING: `sshd` is not even on a normal PATH. The assertion
+// then fails on an empty string and the control reports a deviation nobody measured, which is how
+// a compliant host earns two fabricated CRITICAL findings and grade E.
+func EffectiveUID(o Options) (uid int, known bool) {
+	transport := TransportFor(o.Target)
+	const probe = "id -u"
+	var cmd *exec.Cmd
+	switch {
+	case transport == "": // local://
+		cmd = exec.Command("sh", "-c", probe)
+	case strings.HasPrefix(transport, "ssh://"):
+		cmd = exec.Command("ssh", append(containerProbeSSHOpts(o.Key), o.Target, probe)...) //nolint:gosec // fixed args, operator target
+	default:
+		return 0, false // docker: the container guard already refuses these
+	}
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, false
+	}
+	n, convErr := strconv.Atoi(strings.TrimSpace(string(out)))
+	if convErr != nil {
+		return 0, false
+	}
+	return n, true
+}
+
+// IsContainer reports whether the TARGET is a container, and which kind.
+//
+// This matters more than it looks. A container shares the host kernel, so the controls that read
+// kernel state (sysctl, kconfig, modules, mounts, audit, the kernel command line) do not skip
+// inside one: they measure THE HOST. Run a full linux/<os> profile against a container on a
+// hardened workstation and it hands back PASSes that describe the workstation, which is the worst
+// failure mode a compliance tool has, because the operator sees green.
+//
+// The probe is `systemd-detect-virt -c`: exit 0 and a name (lxc, docker, podman...) inside a
+// container, non-zero outside. A host without systemd cannot answer, and there the answer is "no"
+// rather than a guess: a guard that invents a verdict would be worse than no guard.
+func IsContainer(o Options) (yes bool, kind string) {
+	transport := TransportFor(o.Target)
+	if strings.HasPrefix(transport, "docker://") {
+		return true, "docker" // by construction, no probe needed
+	}
+
+	const probe = "systemd-detect-virt -c"
+	var cmd *exec.Cmd
+	switch {
+	case transport == "": // local://
+		cmd = exec.Command("sh", "-c", probe)
+	case strings.HasPrefix(transport, "ssh://"):
+		cmd = exec.Command("ssh", append(containerProbeSSHOpts(o.Key), o.Target, probe)...) //nolint:gosec // fixed args, operator target
+	default:
+		return false, ""
+	}
+	out, err := cmd.Output()
+	got := strings.TrimSpace(string(out))
+	if err != nil || got == "" || got == "none" {
+		return false, ""
+	}
+	return true, got
+}
+
+// containerProbeSSHOpts carries --ssh-config-file's equivalent for the ssh binary. `-F /dev/null`
+// is not optional: a global `Host *` ProxyJump in the operator's ~/.ssh/config silently breaks
+// direct connections, and it applies to the ssh binary exactly as it does to train-ssh.
+func containerProbeSSHOpts(key string) []string {
+	a := []string{"-F", "/dev/null", "-o", "StrictHostKeyChecking=no",
+		"-o", "UserKnownHostsFile=/dev/null", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes"}
+	if key != "" {
+		a = append(a, "-i", key)
+	}
+	return a
+}
+
 // Detect queries the TARGET (local/ssh/docker) via `cinc-auditor detect` and
 // returns the OS name and release (e.g. "ubuntu","24.04"): to automatically
 // choose the right profile. Empty if undeterminable.
@@ -676,7 +754,7 @@ func RunOnTarget(o Options) (int, error) {
 	_ = ssh("rm -rf " + remoteProf)
 	if err := // -O: the legacy SCP protocol, over an exec channel. Modern scp speaks SFTP by default,
 		// and a stock debian13 (OpenSSH 10) declares no `Subsystem sftp`, so an sftp transfer dies
-		// with "subsystem request failed on channel 0" — measured on a fresh VM. -O needs no
+		// with "subsystem request failed on channel 0", measured on a fresh VM. -O needs no
 		// subsystem and works on every target we support.
 		run("scp", append(append([]string{"-O", "-r"}, base...), prof, o.Target+":"+remoteProf)...); err != nil {
 		return 2, fmt.Errorf("copy profile to target: %w", err)

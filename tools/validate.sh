@@ -7,8 +7,10 @@
 #   L2 Load      : ruby -c + cinc-auditor check + go build/vet/test.
 #   L3 Grade     : Go A->E test + Go grade == JS grade (same bands).
 #
-# The VM tier (L4 real execution, L5 remediation round-trip) lives in
-# an Incus-fleet harness (kept local, not published).
+# The VM tier (L4 real execution, L5 remediation round-trip) is published:
+#   tools/vm.py               provision Incus VMs (never containers)
+#   tools/harden_validate.sh  scan -> plan -> apply -> reboot, looped to fixpoint
+#   tools/matrix.sh           the same, serialised across every supported OS
 #
 # Usage: tools/validate.sh [--quick]
 #   default : L1 L2 L3.
@@ -36,7 +38,7 @@ while IFS= read -r f; do ruby -c "$f" >/dev/null 2>&1 || { rerr=1; echo "    rub
 
 if [ "$QUICK" = 0 ] && command -v cinc-auditor >/dev/null; then
   cerr=0
-  for p in profiles/linux/*/ profiles/container-baseline profiles/effective-config; do
+  for p in profiles/linux/*/ profiles/_template; do
     [ -f "$p/inspec.yml" ] || continue
     CHEF_LICENSE=accept-silent cinc-auditor check "$p" 2>/dev/null \
       | grep -q 'Valid : *true' || { cerr=1; echo "    cinc check KO: $p"; }

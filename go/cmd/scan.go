@@ -18,21 +18,23 @@ import (
 )
 
 var (
-	scProfile    string
-	scEngine     string
-	scOut        string
-	scSSHPass    string
-	scSSHPrompt  bool
-	scKey        string
-	scSudo       bool
-	scSudoPrompt bool
-	scOnTarget   bool
-	scStandard   string
-	scControls   []string
-	scLevel      string
-	scFailUnder  int
-	scFormat     string
-	scFrom       string
+	scAllowContainer    bool
+	scAllowUnprivileged bool
+	scProfile           string
+	scEngine            string
+	scOut               string
+	scSSHPass           string
+	scSSHPrompt         bool
+	scKey               string
+	scSudo              bool
+	scSudoPrompt        bool
+	scOnTarget          bool
+	scStandard          string
+	scControls          []string
+	scLevel             string
+	scFailUnder         int
+	scFormat            string
+	scFrom              string
 )
 
 var scanCmd = &cobra.Command{
@@ -59,6 +61,8 @@ func init() {
 	f.StringVarP(&scFormat, "format", "f", "table", "format: table | json | sarif | junit | csv | html")
 	f.StringVar(&scFrom, "from", "", "evaluate an existing InSpec JSON report (no scan)")
 	f.StringArrayVar(&scControls, "controls", nil, "run ONLY these control ids (fast single-rule iteration, e.g. --controls ssh-disable-root-login)")
+	f.BoolVar(&scAllowContainer, "allow-container", false, "scan a container with a full per-OS profile anyway (kernel controls then measure the HOST, not the target)")
+	f.BoolVar(&scAllowUnprivileged, "allow-unprivileged", false, "scan without root anyway (checks that need privilege will report deviations they never measured)")
 	rootCmd.AddCommand(scanCmd)
 }
 
@@ -194,6 +198,32 @@ func runScan(cmd *cobra.Command, args []string) error {
 		// only warn if the profile really designates a different OS.
 		_, _ = fmt.Fprintf(os.Stderr, "pavois: ⚠ profile %s may not match target OS %s (suggested: %s)\n",
 			scProfile, detectedOS, autoProf)
+	}
+
+	// A check that cannot run the command it asserts on does not produce a verdict, it produces
+	// noise with a severity attached. Refuse rather than hand back findings nobody measured.
+	if !scAllowUnprivileged && !sudo && scFrom == "" {
+		if uid, known := engine.EffectiveUID(detOpts); known && uid != 0 {
+			return fmt.Errorf("scanning as a non-root user (uid %d) without --sudo.\n"+
+				"  %s asserts on the output of privileged commands (sshd -T, auditctl -l, sysctl -a, "+
+				"systemctl show). Unprivileged they return nothing, and every check on them reports a "+
+				"deviation that was never measured: a compliant host reads back as grade E with "+
+				"fabricated CRITICAL findings.\n"+
+				"  add --sudo (or --sudo-prompt), or\n"+
+				"  override deliberately: --allow-unprivileged", uid, scProfile)
+		}
+	}
+
+	// A container cannot answer for a kernel it does not own, so refuse before spending a scan on
+	// a report that would be green and meaningless.
+	if !scAllowContainer {
+		if isCT, kind := engine.IsContainer(detOpts); isCT {
+			return fmt.Errorf("target is a %s container, and %s reads kernel state owned by the HOST "+
+				"(sysctl, kconfig, modules, mounts, audit, cmdline). A container shares the host kernel, "+
+				"so those controls would describe the host and the report would be green and meaningless.\n"+
+				"  scan a VM or a real host instead, or\n"+
+				"  override deliberately: --allow-container (kernel controls then report on the host)", kind, scProfile)
+		}
 	}
 
 	jsonPath := scFrom
