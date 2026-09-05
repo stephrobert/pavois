@@ -1854,7 +1854,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: copying recipe…")
 	if err := // -O: the legacy SCP protocol, over an exec channel. Modern scp speaks SFTP by default,
 		// and a stock debian13 (OpenSSH 10) declares no `Subsystem sftp`, so an sftp transfer dies
-		// with "subsystem request failed on channel 0" — measured on a fresh VM. -O needs no
+		// with "subsystem request failed on channel 0", measured on a fresh VM. -O needs no
 		// subsystem and works on every target we support.
 		run("scp", append(append([]string{"-O"}, append(sshOpts(), tmp.Name())...), target+":/tmp/pavois-harden.rb")...); err != nil {
 		return fmt.Errorf("copy recipe: %w", err)
