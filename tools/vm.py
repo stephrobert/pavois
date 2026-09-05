@@ -241,6 +241,16 @@ def cmd_up(args: argparse.Namespace) -> int:
         # explicit: the default profile may carry no NIC at all, and the symptom is silent
         "-n",
         args.network,
+        # Secure Boot OFF, because these VMs exist to run the KSPP kernel recipe and a kernel you
+        # compiled yourself is not signed by a key shim trusts. Left on, the build succeeds, the
+        # reboot never comes back, and the only trace is on the serial console:
+        #     error: bad shim signature.
+        #     error: you need to load the kernel first.
+        #     Failed to boot both default and fallback entries.
+        # This is a property of the test fleet, not advice: on a real host under Secure Boot a
+        # custom kernel needs signing and a MOK enrolled, which the recipe deliberately does not do.
+        "-c",
+        "security.secureboot=false",
         "-c",
         f"cloud-init.user-data={cloud_init(pub.read_text().strip(), args.sudo_password)}",
     ).returncode
