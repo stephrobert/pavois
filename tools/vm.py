@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
@@ -174,6 +175,50 @@ def wait_for_ssh(name: str, timeout: int = 300) -> str | None:
     return None
 
 
+def gib(spec: str) -> float:
+    """Parse an Incus memory spec (4GiB, 2048MiB, 8GB) into GiB. 0.0 when unparseable."""
+    m = re.fullmatch(r"(\d+(?:\.\d+)?)\s*([KMGT]i?B?)?", spec.strip(), re.I)
+    if not m:
+        return 0.0
+    n = float(m.group(1))
+    unit = (m.group(2) or "B").upper().rstrip("B").rstrip("I")
+    return n * {"": 1 / 2**30, "K": 1 / 2**20, "M": 1 / 1024, "G": 1.0, "T": 1024.0}.get(unit, 0.0)
+
+
+def available_gib() -> float:
+    """MemAvailable, which is what can actually be handed out without swapping."""
+    try:
+        for line in Path("/proc/meminfo").read_text().splitlines():
+            if line.startswith("MemAvailable:"):
+                return int(line.split()[1]) / 2**20
+    except OSError:
+        pass
+    return 0.0
+
+
+def check_memory(requested: str, headroom: float = 6.0) -> str | None:
+    """Refuse a VM that would eat the machine it is running on.
+
+    A test VM is a guest on somebody's working laptop, and it competes with their editor, their
+    browser and whatever else is already running. Starting a 12GiB guest next to eight existing
+    ones once pushed this very machine into swap and cost its owner their session, so the tool
+    checks before it launches rather than apologising afterwards. `headroom` is what is left FOR
+    the host, not for the guest.
+    """
+    want = gib(requested)
+    have = available_gib()
+    if want <= 0 or have <= 0:
+        return None  # cannot tell: never refuse on a guess
+    if want + headroom > have:
+        return (
+            f"vm: {requested} would leave {have - want:.1f}GiB for everything else on this machine "
+            f"({have:.1f}GiB available now).\n"
+            f"    Free memory, stop other guests (`incus list`, `virsh list`), or ask for less:\n"
+            f"    --memory {max(2, int(have - headroom))}GiB"
+        )
+    return None
+
+
 def cmd_up(args: argparse.Namespace) -> int:
     if args.os not in IMAGES:
         print(f"vm: unknown OS {args.os!r} (known: {', '.join(sorted(IMAGES))})", file=sys.stderr)
@@ -184,6 +229,11 @@ def cmd_up(args: argparse.Namespace) -> int:
             f"vm: no public key at {pub}: pass --key, or make one with ssh-keygen",
             file=sys.stderr,
         )
+        return 2
+
+    problem = check_memory(args.memory)
+    if problem:
+        print(problem, file=sys.stderr)
         return 2
 
     name = name_of(args.os)
