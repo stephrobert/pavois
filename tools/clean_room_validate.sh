@@ -40,6 +40,26 @@ pssh(){ ssh -o StrictHostKeyChecking=no "$PVE" "$@"; }
 # operator ssh_config silently reroutes a direct transfer to a jump host with no route to
 # the lab. This cost a 40-minute kernel build once, failing on "connection timed out" against
 # an address that appears nowhere in this script.
+# Run a delivered recipe on the VM, showing the interesting lines but KEEPING ALL OF THEM.
+# The stages piped straight into grep, so when a recipe failed the reason was filtered away and the
+# operator was left with "STAGE partition FAILED" and nothing else. A harness that hides why it
+# failed costs more time than the output it was summarising saves.
+recipe(){
+  local tag=$1 filter=$2
+  local log="/tmp/pavois-ck-$tag.log"
+  vrun "bash /tmp/$tag.sh" > "$log" 2>&1
+  local rc=$?
+  grep -aiE "$filter" "$log" | tail -20
+  if [ "$rc" -ne 0 ]; then
+    echo "recipe $tag FAILED (rc=$rc). Last 30 lines of $log:" >&2
+    tail -30 "$log" | tr -d '\r' >&2
+    return "$rc"
+  fi
+  # Explicit, because without it the function returns the status of the failed `if` test: a recipe
+  # that worked would report failure, and set -e would abort the stage that had just succeeded.
+  return 0
+}
+
 vscp(){ scp -F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$KEY" "$1" "$TARGET:$2" >/dev/null; }
 vssh(){ ssh -tt -F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$KEY" "$TARGET" "$@"; }
 vrun(){ vssh "echo '$PAVOIS_SUDO_PASSWORD' | sudo -S bash -c '$1'"; }   # run as root on the VM
@@ -110,7 +130,7 @@ provision(){
 kernel(){
   say "2 KSPP KERNEL BUILD (delivered recipe, ~40min)"
   vscp docs/reference/kernel-build/$OS.sh /tmp/k.sh >/dev/null
-  vrun "bash /tmp/k.sh" 2>&1 | grep -iE '==>|Error|DONE|nf_tables|randstruct' | tail -20
+  recipe k "==>|Error|DONE|nf_tables|randstruct"
   vrun "systemctl reboot" || true; sleep 8; waitssh
   vssh "echo now running: \$(uname -r)"
 }
@@ -118,7 +138,7 @@ kernel(){
 partition(){
   say "3 LVM PARTITIONS (delivered recipe)"
   vscp docs/reference/partition-build/$OS.sh /tmp/p.sh >/dev/null
-  vrun "bash /tmp/p.sh" 2>&1 | grep -iE '==>|migrated|FATAL|fstab|relabel' | tail -20
+  recipe p "==>|migrated|FATAL|fstab|relabel"
   vrun "systemctl reboot" || true; sleep 8; waitssh
   vrun "mount | grep -c vghard; apt-get check 2>&1 | tail -1"
 }
