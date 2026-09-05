@@ -175,6 +175,37 @@ spin:
 	return werr
 }
 
+// EffectiveUID returns the uid Pavois will run the checks as on the TARGET, and whether it could
+// be determined at all.
+//
+// This decides whether a verdict is worth anything. The per-OS profiles asserts on the output of
+// privileged commands (sshd -T, auditctl -l, sysctl -a, systemctl show). Unprivileged, those do not
+// return a wrong answer, they return NOTHING: `sshd` is not even on a normal PATH. The assertion
+// then fails on an empty string and the control reports a deviation nobody measured, which is how
+// a compliant host earns two fabricated CRITICAL findings and grade E.
+func EffectiveUID(o Options) (uid int, known bool) {
+	transport := TransportFor(o.Target)
+	const probe = "id -u"
+	var cmd *exec.Cmd
+	switch {
+	case transport == "": // local://
+		cmd = exec.Command("sh", "-c", probe)
+	case strings.HasPrefix(transport, "ssh://"):
+		cmd = exec.Command("ssh", append(containerProbeSSHOpts(o.Key), o.Target, probe)...) //nolint:gosec // fixed args, operator target
+	default:
+		return 0, false // docker: the container guard already refuses these
+	}
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, false
+	}
+	n, convErr := strconv.Atoi(strings.TrimSpace(string(out)))
+	if convErr != nil {
+		return 0, false
+	}
+	return n, true
+}
+
 // IsContainer reports whether the TARGET is a container, and which kind.
 //
 // This matters more than it looks. A container shares the host kernel, so the controls that read
