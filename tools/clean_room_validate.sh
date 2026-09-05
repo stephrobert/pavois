@@ -36,6 +36,11 @@ if [ "$PROVIDER" = incus ] && [ -z "${CK_IP:-}" ]; then
 fi
 : "${PAVOIS_SUDO_PASSWORD:?set PAVOIS_SUDO_PASSWORD}"
 pssh(){ ssh -o StrictHostKeyChecking=no "$PVE" "$@"; }
+# Same -F /dev/null as vssh, and for the same reason: a global `Host *` ProxyJump in the
+# operator ssh_config silently reroutes a direct transfer to a jump host with no route to
+# the lab. This cost a 40-minute kernel build once, failing on "connection timed out" against
+# an address that appears nowhere in this script.
+vscp(){ scp -F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$KEY" "$1" "$TARGET:$2" >/dev/null; }
 vssh(){ ssh -tt -F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$KEY" "$TARGET" "$@"; }
 vrun(){ vssh "echo '$PAVOIS_SUDO_PASSWORD' | sudo -S bash -c '$1'"; }   # run as root on the VM
 say(){ printf '\n\033[1;35m######## %s ########\033[0m\n' "$*"; }
@@ -104,7 +109,7 @@ provision(){
 
 kernel(){
   say "2 KSPP KERNEL BUILD (delivered recipe, ~40min)"
-  scp -o StrictHostKeyChecking=no -i "$KEY" docs/reference/kernel-build/$OS.sh "$TARGET:/tmp/k.sh" >/dev/null
+  vscp docs/reference/kernel-build/$OS.sh /tmp/k.sh >/dev/null
   vrun "bash /tmp/k.sh" 2>&1 | grep -iE '==>|Error|DONE|nf_tables|randstruct' | tail -20
   vrun "systemctl reboot" || true; sleep 8; waitssh
   vssh "echo now running: \$(uname -r)"
@@ -112,7 +117,7 @@ kernel(){
 
 partition(){
   say "3 LVM PARTITIONS (delivered recipe)"
-  scp -o StrictHostKeyChecking=no -i "$KEY" docs/reference/partition-build/$OS.sh "$TARGET:/tmp/p.sh" >/dev/null
+  vscp docs/reference/partition-build/$OS.sh /tmp/p.sh >/dev/null
   vrun "bash /tmp/p.sh" 2>&1 | grep -iE '==>|migrated|FATAL|fstab|relabel' | tail -20
   vrun "systemctl reboot" || true; sleep 8; waitssh
   vrun "mount | grep -c vghard; apt-get check 2>&1 | tail -1"
