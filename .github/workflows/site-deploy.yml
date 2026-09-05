@@ -1,0 +1,107 @@
+# Publish pavois.dev on every merge to main.
+#
+# Until now the site was built and uploaded by hand, so what pavois.dev served was whatever the
+# maintainer last remembered to push. The site is a projection of the corpus: `mise run site:build`
+# regenerates the rule pages, the CLI reference and the OSCAL bundle from the repository, and
+# site:verify FAILS when the prose and the rule base have drifted apart. Building it on every merge
+# is what keeps that promise true rather than aspirational.
+#
+# No long-lived AWS key exists anywhere: the job assumes a role through GitHub's OIDC provider,
+# and that role trusts this repository on main only. See tools/aws/site-deploy-role.sh.
+name: site-deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # Everything the built site is derived from, not just site/. A rules.yml change rewrites the
+      # rule pages; the Go CLI feeds the command reference.
+      - 'site/**'
+      - 'docs/reference/**'
+      - 'go/**'
+      - 'tools/gen_*.py'
+      - 'tools/verify_site_content.py'
+      - 'mise.toml'
+      - '.github/workflows/site-deploy.yml'
+  workflow_dispatch: {}
+
+# A second merge while the first is still uploading would race on the same bucket prefix. Let the
+# newer one win, but never cancel mid-upload: a half-synced site is worse than a stale one.
+concurrency:
+  group: site-deploy
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write   # the OIDC token this job exchanges for the AWS role
+    timeout-minutes: 20
+    steps:
+      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          version: 2026.2.23
+          install: true
+          cache: true
+
+      # site:build runs gen:cli, which invokes the binary. Build it first rather than letting the
+      # generator fail on a missing ./go/pavois.
+      - name: Build the binary the generators call
+        run: mise run build
+
+      - name: Build the site
+        run: mise run site:build
+
+      - name: Fail on a broken internal link
+        run: mise run site:links
+
+      - uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
+        with:
+          role-to-assume: arn:aws:iam::276757567417:role/pavois-site-deploy
+          aws-region: eu-west-3
+
+      # Two passes, because one cache policy cannot serve both. Fingerprinted assets are immutable
+      # and cached for a year; HTML must not be, or a deploy would be invisible until the TTL runs
+      # out. --delete removes what the build no longer produces.
+      - name: Upload immutable assets
+        run: |
+          aws s3 sync site/dist s3://pavois-dev-site \
+            --delete \
+            --exclude '*.html' --exclude '*.xml' --exclude '*.txt' --exclude '*.json' \
+            --cache-control 'public, max-age=31536000, immutable'
+
+      - name: Upload pages
+        run: |
+          aws s3 sync site/dist s3://pavois-dev-site \
+            --delete \
+            --exclude '*' \
+            --include '*.html' --include '*.xml' --include '*.txt' --include '*.json' \
+            --cache-control 'public, max-age=0, must-revalidate'
+
+      - name: Invalidate the edge cache
+        run: |
+          id=$(aws cloudfront create-invalidation \
+                 --distribution-id EYT0MDPPDEF19 \
+                 --paths '/*' --query 'Invalidation.Id' --output text)
+          echo "invalidation $id"
+          aws cloudfront wait invalidation-completed \
+            --distribution-id EYT0MDPPDEF19 --id "$id"
+
+      - name: Check the site answers
+        run: |
+          # A green upload that serves a 403 is the failure mode this catches: it happened once,
+          # when the bucket policy and the origin access control disagreed.
+          code=$(curl -sS -o /dev/null -w '%{http_code}' https://www.pavois.dev/)
+          echo "https://www.pavois.dev/ -> $code"
+          [ "$code" = 200 ]
