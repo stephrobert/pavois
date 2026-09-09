@@ -148,7 +148,7 @@ The scan prints the deviations by severity and the **A:E grade**, and writes an 
 also writes a **reboot-proof artifact** (the boot_id before and after, proving the re-scan ran on a
 fresh boot) that you can fold into the evidence bundle (`bundle --reboot-proof`).
 `--format sarif|junit|json|csv|html|oscal` and `--fail-under <points>` make the grade a CI gate
-(`oscal` emits schema-valid OSCAL 1.1.2 assessment-results — see [OSCAL](#-oscal)).
+(`oscal` emits schema-valid OSCAL 1.1.2 assessment-results, see [OSCAL](#-oscal)).
 
 Every scan also prints a **posture breakdown** by remediation class (`auto`, `manual`, `dangerous`,
 `install-time`, `kernel-build`) and a **remediable posture grade**, the A:E formula recomputed over
@@ -216,16 +216,16 @@ Pavois holds itself to the posture it audits:
 
 Pavois speaks **OSCAL 1.1.2** on both sides of an audit:
 
-- **The standard** — the control catalogue publishes as an OSCAL **catalog** (+ per-OS
+- **The standard**: the control catalogue publishes as an OSCAL **catalog** (+ per-OS
   **profiles**), consumable by any OSCAL-aware GRC tool. Each control carries its evidence type and
   the qualified verdict (`proves-running` / `proves-persistent` / `proves-reboot-survivable`).
   Derived artifact: `mise run oscal` regenerates it.
-- **The run outcome** — `pavois scan --format oscal` emits OSCAL **assessment-results**
+- **The run outcome**: `pavois scan --format oscal` emits OSCAL **assessment-results**
   (reviewed-controls + observations + findings), with the run provenance (tool + ruleset digests,
   target, timestamp, scope) stamped into the metadata. Passes, failures, not-applicable **and
   not-evaluated** all travel, so a coverage gap can never read as a pass.
 
-**The output is schema-valid and independently verifiable** — not a claim, a check you can run
+**The output is schema-valid and independently verifiable**: not a claim, a check you can run
 yourself against the official [NIST OSCAL 1.1.2 schema](https://github.com/usnistgov/OSCAL/releases/tag/v1.1.2):
 
 ```console

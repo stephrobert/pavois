@@ -327,7 +327,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 			"run":     run, // provenance: host/OS, tool + ruleset digests, timestamp, scope
 		})
 	case "oscal":
-		// OSCAL 1.1.2 assessment-results — the standard machine form of the run outcome
+		// OSCAL 1.1.2 assessment-results, the standard machine form of the run outcome
 		// (reviewed-controls + observations + findings), provenance stamped in metadata.
 		if err := screport.OSCAL(out, audit.Assessment(rep, run, machine, scStandard, scLevel)); err != nil {
 			return err

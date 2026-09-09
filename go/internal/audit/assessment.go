@@ -9,7 +9,7 @@ import (
 // This file is the bridge from pavois's internal audit model to scankit's shared,
 // auditor-facing assessment model (scankit v0.2.0). pavois keeps its own audit.Result /
 // grade / qualified-verdict policy; it ALSO serializes each control to an assessment.Result
-// so the whole dossier — passes, failures, not-applicable, not-evaluated — travels in the
+// so the whole dossier, passes, failures, not-applicable, not-evaluated, travels in the
 // family's exchange form (OSCAL assessment-results, see report.OSCAL) exactly like pepin and
 // pitstop. The mapper is a pure translation: it invents nothing the report does not carry.
 
@@ -26,7 +26,7 @@ var frameworkOf = map[string]string{
 // Assess translates a report into the shared assessment model for the selected (standard,
 // level) view: one Result per control, with a typed status, effective evidence and the exact
 // normative references. A control filtered out of the view, or one that produced no InSpec
-// result, becomes NotEvaluated — so a coverage gap can never be read as a pass. Uses the same
+// result, becomes NotEvaluated, so a coverage gap can never be read as a pass. Uses the same
 // applicable/inLevel/status classification as Evaluate, so the two never diverge.
 func Assess(r *Report, subject, standard, level string) []assessment.Result {
 	var out []assessment.Result
@@ -56,7 +56,7 @@ func Assess(r *Report, subject, standard, level string) []assessment.Result {
 					res.Evidence.Observed, res.Evidence.Expected = failEvidence(c)
 				case "skipped":
 					// A skipped control is either an ACCEPTED RISK (waived, with a written
-					// justification) or genuinely N/A (an only_if guard). A waiver still applies —
+					// justification) or genuinely N/A (an only_if guard). A waiver still applies ,
 					// it is a Fail carrying the justification; a guard is NotApplicable.
 					if j := strings.TrimSpace(c.WaiverData.Justification); j != "" {
 						res.Status = assessment.Fail
@@ -76,7 +76,7 @@ func Assess(r *Report, subject, standard, level string) []assessment.Result {
 
 // Assessment assembles the full opposable dossier: the provenance envelope plus every control
 // result for the selected view. The caller stamps the Run (tool/ruleset digests, target,
-// timestamp) — see cmd/provenance.go.
+// timestamp), see cmd/provenance.go.
 func Assessment(r *Report, run assessment.Run, subject, standard, level string) assessment.Assessment {
 	return assessment.Assessment{Run: run, Results: Assess(r, subject, standard, level)}
 }
@@ -132,7 +132,7 @@ func labelsOf(c Control, standard string) map[string]string {
 	return labels
 }
 
-// evidenceOf fills the evidence type, its source command and the qualified-verdict triple —
+// evidenceOf fills the evidence type, its source command and the qualified-verdict triple ,
 // the effective-configuration proof that makes a pavois verdict opposable. Observed/Expected
 // are filled only for a failing control (see failEvidence).
 func evidenceOf(c Control) assessment.Evidence {
@@ -156,7 +156,7 @@ func evidenceOf(c Control) assessment.Evidence {
 	return e
 }
 
-// sourceOf extracts the effective-config source from the first InSpec result's code_desc —
+// sourceOf extracts the effective-config source from the first InSpec result's code_desc ,
 // e.g. "Command: `sshd -T` stdout…" → "command:sshd -T". Best-effort: the report carries no
 // dedicated source field, so we read the rendered resource description. Falls back to the
 // leading resource token (File, Service…) or "" when nothing is parseable.

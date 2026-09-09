@@ -7,7 +7,7 @@ import (
 )
 
 // TestDirDigestDeterministic: the ruleset content digest is stable across calls and identifies
-// the corpus by content — a byte change flips it, file order does not.
+// the corpus by content, a byte change flips it, file order does not.
 func TestDirDigestDeterministic(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "a.rb"), []byte("control 'x'"), 0o600); err != nil {

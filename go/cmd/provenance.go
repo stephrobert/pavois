@@ -17,7 +17,7 @@ import (
 // provenance.go stamps the run-level envelope that makes an assessment opposable: WHO produced
 // it (pavois version + binary digest), against WHAT ruleset (name + version + content digest),
 // on WHICH target, WHEN, from which source, and over what scope. Without it a per-control
-// result is not reproducible. The tool/ruleset digests are the non-repudiation anchor — the
+// result is not reproducible. The tool/ruleset digests are the non-repudiation anchor, the
 // same ruleset content digest also lands in the evidence bundle's manifest (see bundle.go).
 
 // binaryDigest returns "sha256:<hex>" of the running pavois binary, or "" if it can't be read.
@@ -33,7 +33,7 @@ func binaryDigest() string {
 	return "sha256:" + s
 }
 
-// rulesetDigest is a deterministic content hash of the evaluated profile — the corpus of
+// rulesetDigest is a deterministic content hash of the evaluated profile, the corpus of
 // InSpec controls actually run. It closes the gap the brief flags: the bundle manifest carried
 // a ruleset VERSION string but no content hash, so two different rulesets could share a
 // version. profile is the value passed to `scan --profile` (e.g. "linux/debian12", a path, or a
@@ -120,7 +120,7 @@ func scanProvenance(root, profile, transport, subject string, rep *audit.Report,
 	}
 }
 
-// scopeOf attests which standards and level were evaluated — the coverage an auditor must be
+// scopeOf attests which standards and level were evaluated, the coverage an auditor must be
 // able to trust. An empty standard means every mapped standard was in scope.
 func scopeOf(standard, level string) assessment.Scope {
 	sc := assessment.Scope{}
