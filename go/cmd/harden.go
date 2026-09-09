@@ -1772,14 +1772,22 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		}
 		return "sudo " + rest
 	}
-	// cinc-apply needs a controlling terminal (-tt) to actually CONVERGE: without one it runs but
-	// applies nothing (silent no-op). But `ssh -tt` + a naked piped password races the pty line
-	// discipline and `sudo -S` times out on rhel9. So: force -tt for the tty, but READ the password
-	// from ssh-stdin into a shell var first (draining the pty) and feed it to `sudo -S` via a bash
-	// here-string: no race, and the password never reaches argv. Empty sudoPass (NOPASSWD) just
-	// leaves __P empty, which sudo ignores.
+	// cinc-apply is run under a controlling terminal (-tt). `ssh -tt` plus a naked piped password
+	// races the pty line discipline and `sudo -S` times out on rhel9, so when there IS a password
+	// we drain it from ssh-stdin into a shell var first and feed it to `sudo -S` through a bash
+	// here-string: no race, and it never reaches argv.
+	//
+	// That read runs ONLY when a password is sent. -tt allocates a pty on the target, and closing
+	// local stdin does not become an EOF there (on a terminal, end-of-input is a ^D character, not
+	// a closed stream), so with no password `read` waits for a line that never arrives and the
+	// command hangs forever. This comment used to claim the opposite, that an empty sudoPass "just
+	// leaves __P empty, which sudo ignores"; nothing is left empty, the read never returns.
+	// Measured on Outscale ami-dc3f861d (Debian 12, NOPASSWD sudo, Defaults use_pty).
 	runSudoTTY := func(remote string) error {
-		wrapped := "IFS= read -r __P; " + remote + " <<<\"$__P\""
+		wrapped := remote
+		if sudoPass != "" {
+			wrapped = "IFS= read -r __P; " + remote + " <<<\"$__P\""
+		}
 		args := append(append([]string{"-tt"}, sshOpts()...), target, wrapped)
 		c := exec.Command("ssh", args...) //nolint:gosec // fixed args, operator target
 		c.Stdout, c.Stderr = os.Stderr, os.Stderr
