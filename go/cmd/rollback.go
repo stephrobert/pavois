@@ -496,12 +496,18 @@ func runScriptAsRoot(target string, opts []string, sudoPass, script, name string
 	if err := scp.Run(); err != nil {
 		return fmt.Errorf("copy %s: %w", name, err)
 	}
-	sudo := "sudo -S "
-	if sudoPass == "" {
-		sudo = "sudo "
+	// Draining the password from ssh-stdin into a shell var is what keeps it off argv and out of
+	// the pty line discipline. But it must happen ONLY when a password is actually sent: `ssh -tt`
+	// allocates a pty on the target, and closing local stdin does not become an EOF there (on a
+	// terminal, end-of-input is a ^D character, not a closed stream), so `read` waits for a line
+	// that never comes. With no password Go leaves Stdin nil, which is /dev/null, and the whole
+	// apply stopped forever right after "photographing the prior state". Measured on Outscale
+	// ami-dc3f861d (Debian 12, NOPASSWD, Defaults use_pty).
+	remoteCmd := "sudo bash " + remote
+	if sudoPass != "" {
+		remoteCmd = "IFS= read -r __P; sudo -S bash " + remote + " <<<\"$__P\""
 	}
-	c := exec.Command("ssh", append(append([]string{"-tt"}, opts...), target, //nolint:gosec // fixed args
-		"IFS= read -r __P; "+sudo+"bash "+remote+" <<<\"$__P\"")...)
+	c := exec.Command("ssh", append(append([]string{"-tt"}, opts...), target, remoteCmd)...) //nolint:gosec // fixed args
 	c.Stdout, c.Stderr = os.Stderr, os.Stderr
 	if sudoPass != "" {
 		c.Stdin = strings.NewReader(sudoPass + "\n")
