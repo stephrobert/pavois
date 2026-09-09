@@ -125,6 +125,22 @@ description = "Render the InSpec corpus (profiles/linux/*/controls/*.rb) from th
 depends = ["gen"]
 run = "bash {{config_root}}/tools/render.sh"
 
+[tasks."oscal:verify"]
+description = "FAIL if `scan --format oscal` stops being valid OSCAL 1.1.2 assessment-results"
+# The claim on the site is that the export is conformant, so something has to keep it true.
+# check-jsonschema, not plain jsonschema: the NIST schema uses \p character classes that the
+# latter crashes on.
+run = """
+set -e
+schema=${OSCAL_SCHEMA:-/tmp/oscal_assessment-results_schema.json}
+[ -s "$schema" ] || curl -sSL -o "$schema" \
+  https://github.com/usnistgov/OSCAL/releases/download/v1.1.2/oscal_assessment-results_schema.json
+out=$(mktemp); trap 'rm -f "$out"' EXIT
+{{config_root}}/go/pavois scan local --from "${OSCAL_SAMPLE:?set OSCAL_SAMPLE to an InSpec report json}" \
+  --format oscal > "$out"
+uvx check-jsonschema --schemafile "$schema" "$out"
+"""
+
 [tasks."oscal"]
 description = "Publish the pavois baseline as OSCAL (catalog + per-OS profiles)"
 depends = ["build", "gen"]
