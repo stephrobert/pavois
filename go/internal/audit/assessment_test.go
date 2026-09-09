@@ -39,7 +39,7 @@ func byID(res []assessment.Result, id string) (assessment.Result, bool) {
 
 // TestAssessStatuses freezes the audit -> assessment status mapping: pass/fail, a waiver is a
 // Fail carrying its justification, an only_if guard is NotApplicable, and a control with no
-// InSpec result is NotEvaluated — a gap must never read as a pass.
+// InSpec result is NotEvaluated, a gap must never read as a pass.
 func TestAssessStatuses(t *testing.T) {
 	rep := repOf(t, `[
 	  {"id":"ok","title":"OK","impact":0.5,"tags":{"cis":"1.1"},
@@ -123,7 +123,7 @@ func TestAssessEvidence(t *testing.T) {
 }
 
 // TestAssessNotEvaluatedOutOfScope: a control outside the requested standard is NotEvaluated in
-// that run, never a silent pass — even though it passed at the InSpec level.
+// that run, never a silent pass, even though it passed at the InSpec level.
 func TestAssessNotEvaluatedOutOfScope(t *testing.T) {
 	rep := repOf(t, `[
 	  {"id":"cisonly","impact":0.5,"tags":{"cis":"1.1"},"results":[{"status":"passed"}]},
