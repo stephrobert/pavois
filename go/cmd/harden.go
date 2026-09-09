@@ -190,13 +190,42 @@ func preEnable(selector, status, class, danger string) bool {
 	if status != "gap" || selector == "" || selector == "none" {
 		return false
 	}
+	autoClass := class == "" || class == "auto"
 	switch selector {
 	case "auto":
-		return class == "" && danger == ""
+		return autoClass && danger == ""
 	case "all":
-		return class == ""
+		return autoClass || class == "dangerous"
 	}
 	return false
+}
+
+// profileFromReport reads the platform an InSpec report was taken on, so a plan built with --from
+// needs nothing but the file. Returns empty when the report does not say or names an OS with no
+// bundled profile, and the caller then falls back to probing the target.
+func profileFromReport(root, path string) (profile, detected string) {
+	b, err := os.ReadFile(path) //nolint:gosec // operator-supplied report path
+	if err != nil {
+		return "", ""
+	}
+	var rep struct {
+		Platform struct {
+			Name    string `json:"name"`
+			Release string `json:"release"`
+		} `json:"platform"`
+	}
+	if json.Unmarshal(b, &rep) != nil || rep.Platform.Name == "" {
+		return "", ""
+	}
+	detected = strings.TrimSpace(rep.Platform.Name + " " + rep.Platform.Release)
+	cand := profileForOS(rep.Platform.Name, rep.Platform.Release)
+	if cand == "" {
+		return "", detected
+	}
+	if fi, err := os.Stat(filepath.Join(root, "profiles", "linux", cand)); err != nil || !fi.IsDir() {
+		return "", detected
+	}
+	return "linux/" + cand, detected
 }
 
 func runHardenPlan(cmd *cobra.Command, args []string) error {
@@ -222,11 +251,24 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("read SSH password: %w", err)
 	}
 
-	// Detect the target OS to pick the right reference (no asking the user).
-	_, _ = fmt.Fprint(os.Stderr, "  ⠿ detecting target OS…\r")
-	prof, detected := detectProfile(root, engine.Options{Target: target, Key: hdKey, SSHPass: sshPass})
-	_, _ = fmt.Fprint(os.Stderr, "\033[K")
+	// Pick the reference OS without asking the user. With --from, take it from the REPORT: that
+	// flag exists to reuse a scan you already have, so requiring the target to answer defeats it.
+	// Replaying a report from a host that is off, rebuilt or simply gone used to fail with
+	// "could not detect a Pavois profile", which says nothing about the real problem.
+	var prof, detected string
+	if hdFrom != "" {
+		prof, detected = profileFromReport(root, hdFrom)
+	}
 	if prof == "" {
+		_, _ = fmt.Fprint(os.Stderr, "  ⠿ detecting target OS…\r")
+		prof, detected = detectProfile(root, engine.Options{Target: target, Key: hdKey, SSHPass: sshPass})
+		_, _ = fmt.Fprint(os.Stderr, "\033[K")
+	}
+	if prof == "" {
+		if hdFrom != "" {
+			return fmt.Errorf("could not tell which OS %s was taken on, and the target %q did not answer either",
+				hdFrom, target)
+		}
 		return fmt.Errorf("could not detect a Pavois profile for target %q (%s)", target, detected)
 	}
 	osName := strings.TrimPrefix(prof, "linux/")
