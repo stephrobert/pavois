@@ -43,6 +43,7 @@ var (
 	hdSudoPrompt bool
 	hdEngine     string
 	hdOut        string
+	hdEnable     string
 )
 
 var hardenPlanCmd = &cobra.Command{
@@ -83,6 +84,8 @@ func init() {
 	hardenPlanCmd.Flags().BoolVar(&hdSudoPrompt, "sudo-prompt", false, "prompt for the sudo password (no echo; also reads PAVOIS_SUDO_PASSWORD); implies --sudo")
 	hardenPlanCmd.Flags().StringVar(&hdEngine, "engine", "auto", "cinc engine: auto|native|docker")
 	hardenPlanCmd.Flags().StringVar(&hdOut, "out", "", "plan output path (default: ./hardening-plan-<os>.yml)")
+	hardenPlanCmd.Flags().StringVar(&hdEnable, "enable", "none",
+		"pre-enable gaps in the written plan: none | auto (every gap an apply can actually close) | all (also the dangerous ones, still unacknowledged)")
 	hardenCmd.AddCommand(hardenPlanCmd)
 
 	hardenApplyCmd.Flags().StringVar(&haKey, "key", "", "SSH private key for the target")
@@ -169,10 +172,43 @@ func controlStatus(results []struct {
 	return "compliant"
 }
 
+// preEnable decides whether a rule is written with `apply: true`, for the given --enable selector.
+//
+// Only GAPS are ever pre-enabled: a compliant control carries its remediation so Pavois can
+// re-assert it if it drifts, but switching it on by default would rewrite settings that are
+// already correct.
+//
+// "auto" deliberately stops at the gaps an apply can actually CLOSE. An install-time gap wants a
+// partition, a kernel-build gap wants a recompiled kernel, a manual gap wants a human: enabling
+// them changes nothing on the host, and it makes a convergence loop re-enable the same items every
+// pass without ever reaching a fixpoint. They stay listed, and stay off.
+//
+// "all" adds the dangerous ones. That is NOT a shortcut around the danger gate: they are written
+// with `acknowledged: false`, so `harden apply` still refuses them until a human reads each
+// `danger:` line and flips it (or passes --i-understand-danger).
+func preEnable(selector, status, class, danger string) bool {
+	if status != "gap" || selector == "" || selector == "none" {
+		return false
+	}
+	switch selector {
+	case "auto":
+		return class == "" && danger == ""
+	case "all":
+		return class == ""
+	}
+	return false
+}
+
 func runHardenPlan(cmd *cobra.Command, args []string) error {
 	root := findRoot()
 	target := args[0]
 	_, transport := machineTransport(target)
+
+	switch hdEnable {
+	case "", "none", "auto", "all":
+	default:
+		return fmt.Errorf("--enable %q: expected none, auto or all", hdEnable)
+	}
 
 	// Resolve secrets up front and drop them from our env (no child inherits them);
 	// they reach cinc only over stdin (--config -), never argv.
@@ -235,6 +271,7 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 
 	// Build the state-aware plan.
 	rules := map[string]planRule{}
+	enabled := 0
 	counts := map[string]int{"compliant": 0, "gap": 0, "not_applicable": 0}
 	baseline := map[string]int{}
 	for _, p := range scan.Profiles {
@@ -258,8 +295,13 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 			case "gap", "compliant":
 				// Carry the remediation for BOTH: gaps need fixing, and a control that's
 				// compliant only by OS-default luck must stay enforceable so Pavois can
-				// re-assert it if it drifts. apply defaults to false (opt-in) either way.
-				f := false
+				// re-assert it if it drifts. apply defaults to false (opt-in) either way,
+				// unless --enable pre-selects it (still written to the file, still reviewable,
+				// still refused at apply time when it is dangerous and unacknowledged).
+				f := preEnable(hdEnable, st, e.Class, e.Danger)
+				if f {
+					enabled++
+				}
 				pr.Apply = &f
 				// A dangerous remediation also starts un-acknowledged: apply refuses to
 				// converge it until this is flipped true (or --i-understand-danger is passed).
@@ -319,6 +361,19 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(),
 		"pavois: plan → %s  (compliant %d · gaps %d · n/a %d · baseline installs %d)\n",
 		outPath, counts["compliant"], counts["gap"], counts["not_applicable"], len(pkgs))
+	// Never leave the operator guessing how much is armed. A plan that silently enabled 264 items
+	// would be worse than one that enabled none.
+	if hdEnable == "auto" || hdEnable == "all" {
+		left := counts["gap"] - enabled
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(),
+			"pavois: --enable %s armed %d of %d gap(s); %d left off (dangerous, or needing a partition, "+
+				"a kernel rebuild or a human). Review the file before applying.\n",
+			hdEnable, enabled, counts["gap"], left)
+	} else if counts["gap"] > 0 {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(),
+			"pavois: every gap is off by design. Flip `apply: true` per rule, or re-plan with "+
+				"--enable auto to arm the %d that an apply can close.\n", counts["gap"])
+	}
 	_ = transport
 	return nil
 }
@@ -1772,14 +1827,22 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		}
 		return "sudo " + rest
 	}
-	// cinc-apply needs a controlling terminal (-tt) to actually CONVERGE: without one it runs but
-	// applies nothing (silent no-op). But `ssh -tt` + a naked piped password races the pty line
-	// discipline and `sudo -S` times out on rhel9. So: force -tt for the tty, but READ the password
-	// from ssh-stdin into a shell var first (draining the pty) and feed it to `sudo -S` via a bash
-	// here-string: no race, and the password never reaches argv. Empty sudoPass (NOPASSWD) just
-	// leaves __P empty, which sudo ignores.
+	// cinc-apply is run under a controlling terminal (-tt). `ssh -tt` plus a naked piped password
+	// races the pty line discipline and `sudo -S` times out on rhel9, so when there IS a password
+	// we drain it from ssh-stdin into a shell var first and feed it to `sudo -S` through a bash
+	// here-string: no race, and it never reaches argv.
+	//
+	// That read runs ONLY when a password is sent. -tt allocates a pty on the target, and closing
+	// local stdin does not become an EOF there (on a terminal, end-of-input is a ^D character, not
+	// a closed stream), so with no password `read` waits for a line that never arrives and the
+	// command hangs forever. This comment used to claim the opposite, that an empty sudoPass "just
+	// leaves __P empty, which sudo ignores"; nothing is left empty, the read never returns.
+	// Measured on Outscale ami-dc3f861d (Debian 12, NOPASSWD sudo, Defaults use_pty).
 	runSudoTTY := func(remote string) error {
-		wrapped := "IFS= read -r __P; " + remote + " <<<\"$__P\""
+		wrapped := remote
+		if sudoPass != "" {
+			wrapped = "IFS= read -r __P; " + remote + " <<<\"$__P\""
+		}
 		args := append(append([]string{"-tt"}, sshOpts()...), target, wrapped)
 		c := exec.Command("ssh", args...) //nolint:gosec // fixed args, operator target
 		c.Stdout, c.Stderr = os.Stderr, os.Stderr
