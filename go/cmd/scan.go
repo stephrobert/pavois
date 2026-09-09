@@ -58,7 +58,7 @@ func init() {
 	f.StringVar(&scStandard, "standard", "", "audit a single standard: bp28|cis|pci-dss|nist|stig (see: Pavois standards)")
 	f.StringVar(&scLevel, "level", "", "level (e.g. --standard cis --level 1)")
 	f.IntVar(&scFailUnder, "fail-under", -1, "exit code 1 if grade < PCT/100")
-	f.StringVarP(&scFormat, "format", "f", "table", "format: table | json | sarif | junit | csv | html")
+	f.StringVarP(&scFormat, "format", "f", "table", "format: table | json | sarif | junit | csv | html | oscal")
 	f.StringVar(&scFrom, "from", "", "evaluate an existing InSpec JSON report (no scan)")
 	f.StringArrayVar(&scControls, "controls", nil, "run ONLY these control ids (fast single-rule iteration, e.g. --controls ssh-disable-root-login)")
 	f.BoolVar(&scAllowContainer, "allow-container", false, "scan a container with a full per-OS profile anyway (kernel controls then measure the HOST, not the target)")
@@ -309,6 +309,10 @@ func runScan(cmd *cobra.Command, args []string) error {
 	// duplication with the summary counters).
 	opts := reportOptions(version, scope, fmt.Sprintf("%s (%s) · %s", machine, strings.TrimSuffix(transport, "://"), res.OS), "")
 
+	// Run-level provenance (tool + ruleset digests, target, timestamp, scope): the envelope
+	// that makes the machine-exchange outputs (JSON, OSCAL) reproducible and opposable.
+	run := scanProvenance(root, scProfile, transport, machine, rep, scStandard, scLevel, scFrom != "", time.Now())
+
 	// Output: default = scankit presentation (like pitstop/plumber); otherwise an
 	// optional machine format, clean on stdout, for a CI/CD pipeline.
 	out := cmd.OutOrStdout()
@@ -320,7 +324,14 @@ func runScan(cmd *cobra.Command, args []string) error {
 			"runtime_qualified": rq, "qualified_passes": res.Qualified,
 			"counts": res.Summary.Counts, "findings": res.Findings,
 			"posture": audit.Breakdown(rep, scStandard, scLevel),
+			"run":     run, // provenance: host/OS, tool + ruleset digests, timestamp, scope
 		})
+	case "oscal":
+		// OSCAL 1.1.2 assessment-results — the standard machine form of the run outcome
+		// (reviewed-controls + observations + findings), provenance stamped in metadata.
+		if err := screport.OSCAL(out, audit.Assessment(rep, run, machine, scStandard, scLevel)); err != nil {
+			return err
+		}
 	case "sarif":
 		if err := screport.SARIF(out, opts, machine, res.Findings); err != nil {
 			return err
