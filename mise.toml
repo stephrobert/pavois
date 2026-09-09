@@ -276,6 +276,10 @@ run = "python3 {{config_root}}/tools/testplan.py"
 description = "Refuse the em-dash anywhere in the tracked tree (an AI tell, and it has broken a generated GRUB line)"
 run = "python3 {{config_root}}/tools/lint_emdash.py"
 
+[tasks."lint:norm-refs"]
+description = "FAIL if a norm mapping holds anything but a reference (the claim /attribution makes about redistribution)"
+run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_norm_refs.py"
+
 [tasks.prepush]
 description = "Everything a pull request will fail on that costs seconds and needs no target"
 # Deterministic, offline, 13s wall-clock measured on this repo (mise runs the dependencies in
@@ -290,7 +294,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "lint:emdash", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]
