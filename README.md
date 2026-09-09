@@ -147,7 +147,8 @@ The scan prints the deviations by severity and the **A:E grade**, and writes an 
 `--reboot`, harden reboots the target and re-scans, so a pass in that report is **reboot-proven**; it
 also writes a **reboot-proof artifact** (the boot_id before and after, proving the re-scan ran on a
 fresh boot) that you can fold into the evidence bundle (`bundle --reboot-proof`).
-`--format sarif|junit|json|csv|html` and `--fail-under <points>` make the grade a CI gate.
+`--format sarif|junit|json|csv|html|oscal` and `--fail-under <points>` make the grade a CI gate
+(`oscal` emits schema-valid OSCAL 1.1.2 assessment-results, see [OSCAL](#-oscal)).
 
 Every scan also prints a **posture breakdown** by remediation class (`auto`, `manual`, `dangerous`,
 `install-time`, `kernel-build`) and a **remediable posture grade**, the A:E formula recomputed over
@@ -213,10 +214,31 @@ Pavois holds itself to the posture it audits:
 
 ## 📦 OSCAL
 
-The control catalogue is published as **OSCAL 1.1.2** (catalog + per-OS profiles), consumable by
-any OSCAL-aware GRC tool. Each control carries its evidence type and the qualified verdict
-(`proves-running` / `proves-persistent` / `proves-reboot-survivable`). It is a derived artifact:
-`mise run oscal` regenerates it. See [Downloads](https://pavois.dev/en/downloads/).
+Pavois speaks **OSCAL 1.1.2** on both sides of an audit:
+
+- **The standard**: the control catalogue publishes as an OSCAL **catalog** (+ per-OS
+  **profiles**), consumable by any OSCAL-aware GRC tool. Each control carries its evidence type and
+  the qualified verdict (`proves-running` / `proves-persistent` / `proves-reboot-survivable`).
+  Derived artifact: `mise run oscal` regenerates it.
+- **The run outcome**: `pavois scan --format oscal` emits OSCAL **assessment-results**
+  (reviewed-controls + observations + findings), with the run provenance (tool + ruleset digests,
+  target, timestamp, scope) stamped into the metadata. Passes, failures, not-applicable **and
+  not-evaluated** all travel, so a coverage gap can never read as a pass.
+
+**The output is schema-valid and independently verifiable**: not a claim, a check you can run
+yourself against the official [NIST OSCAL 1.1.2 schema](https://github.com/usnistgov/OSCAL/releases/tag/v1.1.2):
+
+```console
+$ pavois scan user@host --sudo --format oscal > assessment-results.json
+# validate against the official OSCAL 1.1.2 schema (either tool):
+$ oscal-cli assessment-results validate assessment-results.json
+$ check-jsonschema --schemafile oscal_assessment-results_schema.json assessment-results.json
+ok -- validation done
+```
+
+The shared `assessment` model and OSCAL renderer live in
+[scankit](https://github.com/stephrobert/scankit); pavois and its sibling scanners all emit the
+same conformant form. See [Downloads](https://pavois.dev/en/downloads/).
 
 ## 🗺️ Coverage
 

@@ -54,6 +54,10 @@ type Control struct {
 // level_<standard> (e.g. level_bp28, level_cis).
 var normKeys = []string{"bp28", "cis", "pci-dss", "nist", "stig"}
 
+// Standards returns the recognized standard slugs (display order), for callers attesting the
+// evaluated scope. Returns a copy so the internal order can't be mutated.
+func Standards() []string { return append([]string(nil), normKeys...) }
+
 var levelOrder = map[string][]string{
 	"bp28": {"minimal", "intermediary", "enhanced", "high"},
 	"cis":  {"1", "2"},
