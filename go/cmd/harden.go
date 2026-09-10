@@ -884,10 +884,18 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		// dnf/zypper/apt cover every pavois target and then some (Chef's generic package resource
 		// handled zypper/yum too; keep that breadth). On RHEL/clones enable EPEL first (best-effort):
 		// many hardening tools live only in EPEL, else those installs `no match`.
-		cmd := "if command -v dnf >/dev/null 2>&1; then dnf install -y epel-release 2>/dev/null || true; dnf install -y --skip-broken --setopt=strict=0 " + list +
+		// WEAK DEPENDENCIES OFF, on every package manager. Hardening must install what a control
+		// needs and nothing else: a recommended package is a package the operator never asked for,
+		// arriving on a machine being locked down, and it brings its own attack surface AND its own
+		// failing controls. Measured on Debian 12: installing `at` (for file-at-allow-exists) pulls
+		// its Recommends `default-mta | mail-transport-agent`, so POSTFIX lands on the host, and
+		// the campaign report then shows misc-postfix-anti-vrfy and misc-postfix-banner as
+		// regressions the operator never chose. zypper already had --no-recommends here; apt and
+		// dnf did not, which is the whole bug.
+		cmd := "if command -v dnf >/dev/null 2>&1; then dnf install -y epel-release 2>/dev/null || true; dnf install -y --skip-broken --setopt=strict=0 --setopt=install_weak_deps=0 " + list +
 			"; elif command -v zypper >/dev/null 2>&1; then zypper --non-interactive install --no-recommends --ignore-unknown " + list +
 			"; elif command -v apt-get >/dev/null 2>&1; then P=\"\"; for p in " + list +
-			"; do apt-cache show \"$p\" >/dev/null 2>&1 && P=\"$P $p\"; done; [ -n \"$P\" ] && DEBIAN_FRONTEND=noninteractive apt-get install -y $P; fi; true"
+			"; do apt-cache show \"$p\" >/dev/null 2>&1 && P=\"$P $p\"; done; [ -n \"$P\" ] && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $P; fi; true"
 		_, _ = fmt.Fprintf(&b, "execute 'pavois-install-packages' do\n  command %q\n  ignore_failure true\nend\n\n", cmd)
 		n += len(names)
 	}
