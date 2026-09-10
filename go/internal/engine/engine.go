@@ -256,10 +256,21 @@ func containerProbeSSHOpts(key string) []string {
 // Detect queries the TARGET (local/ssh/docker) via `cinc-auditor detect` and
 // returns the OS name and release (e.g. "ubuntu","24.04"): to automatically
 // choose the right profile. Empty if undeterminable.
+//
+// DetectWhy carries the engine's own words when it fails, because the two failures look identical
+// from here and need opposite answers: an OS with no bundled profile wants --profile, while a
+// target that would not answer wants a key, a password or a route. Blaming the profile for a
+// refused connection sends the operator to fix something that was never broken.
 func Detect(o Options) (name, release string) {
+	name, release, _ = DetectWhy(o)
+	return
+}
+
+// DetectWhy is Detect, plus the reason it came back empty.
+func DetectWhy(o Options) (name, release, why string) {
 	bin := NativeBin()
 	if bin == "" {
-		return "", ""
+		return "", "", "no native CINC engine found (install cinc-auditor, or use --engine docker)"
 	}
 	transport := TransportFor(o.Target)
 	args := []string{"detect", "--format", "json"}
@@ -283,15 +294,27 @@ func Detect(o Options) (name, release string) {
 	cmd.Env = stripSecretEnv(append(os.Environ(), "CHEF_LICENSE=accept-silent"))
 	out, err := cmd.Output()
 	if err != nil {
-		return "", ""
+		// cinc's own message is the useful one ("Your SSH Agent has no keys added, and you have
+		// not specified a password or a key file"). Keep the last line of it: the rest is a Ruby
+		// banner nobody needs.
+		reason := strings.TrimSpace(err.Error())
+		var ee *exec.ExitError
+		if errors.As(err, &ee) && len(ee.Stderr) > 0 {
+			for _, line := range strings.Split(strings.TrimSpace(string(ee.Stderr)), "\n") {
+				if l := strings.TrimSpace(line); l != "" {
+					reason = l
+				}
+			}
+		}
+		return "", "", reason
 	}
 	var d struct {
 		Name, Release string
 	}
 	if json.Unmarshal(out, &d) != nil {
-		return "", ""
+		return "", "", "the engine returned something that is not a detection result"
 	}
-	return d.Name, d.Release
+	return d.Name, d.Release, ""
 }
 
 // AuditorImage: CINC image pinned by digest (docker fallback).
