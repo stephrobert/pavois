@@ -58,7 +58,7 @@ func init() {
 	f.StringVar(&scStandard, "standard", "", "audit a single standard: bp28|cis|pci-dss|nist|stig (see: Pavois standards)")
 	f.StringVar(&scLevel, "level", "", "level (e.g. --standard cis --level 1)")
 	f.IntVar(&scFailUnder, "fail-under", -1, "exit code 1 if grade < PCT/100")
-	f.StringVarP(&scFormat, "format", "f", "table", "format: table | json | sarif | junit | csv | html")
+	f.StringVarP(&scFormat, "format", "f", "table", "format: table | json | sarif | junit | csv | html | oscal")
 	f.StringVar(&scFrom, "from", "", "evaluate an existing InSpec JSON report (no scan)")
 	f.StringArrayVar(&scControls, "controls", nil, "run ONLY these control ids (fast single-rule iteration, e.g. --controls ssh-disable-root-login)")
 	f.BoolVar(&scAllowContainer, "allow-container", false, "scan a container with a full per-OS profile anyway (kernel controls then measure the HOST, not the target)")
@@ -255,6 +255,20 @@ func runScan(cmd *cobra.Command, args []string) error {
 
 	res := audit.Evaluate(rep, machine, scStandard, scLevel)
 
+	// A scan that evaluated NOTHING is not a pass, it is an absence of measurement. The grade is
+	// 100 minus the weight of the failures, so an empty run loses nothing and scores a clean "A":
+	// a profile that failed to load, a bad --profile path, a corpus that was never rendered, all
+	// report the target as perfect. This was reproduced by pointing a scan at a freshly cloned
+	// checkout, where profiles/linux/<os>/controls is generated and therefore empty: grade A, on a
+	// stock cloud image, having read nothing at all.
+	if res.Total == 0 && res.NotApplicable == 0 && res.Waived == 0 {
+		return fmt.Errorf("the scan evaluated 0 controls, so there is nothing to grade "+
+			"(an empty result would otherwise score a perfect A having measured nothing).\n"+
+			"  profile: %s\n"+
+			"  if it is a bundled profile, the corpus may not be rendered yet: run `mise run regen`\n"+
+			"  if it is a path or URL, check that it contains controls/*.rb", scProfile)
+	}
+
 	// Name the report so a directory listing is self-describing and chronologically sortable:
 	//   <YYYYMMDD-HHMM>_<os>_<target>_<grade>.{json,html}   e.g. 20260701-1405_debian12_web01_B
 	// Only when we produced the scan (not with --from, which points at the user's own file).
@@ -295,6 +309,10 @@ func runScan(cmd *cobra.Command, args []string) error {
 	// duplication with the summary counters).
 	opts := reportOptions(version, scope, fmt.Sprintf("%s (%s) · %s", machine, strings.TrimSuffix(transport, "://"), res.OS), "")
 
+	// Run-level provenance (tool + ruleset digests, target, timestamp, scope): the envelope
+	// that makes the machine-exchange outputs (JSON, OSCAL) reproducible and opposable.
+	run := scanProvenance(root, scProfile, transport, machine, rep, scStandard, scLevel, scFrom != "", time.Now())
+
 	// Output: default = scankit presentation (like pitstop/plumber); otherwise an
 	// optional machine format, clean on stdout, for a CI/CD pipeline.
 	out := cmd.OutOrStdout()
@@ -306,7 +324,14 @@ func runScan(cmd *cobra.Command, args []string) error {
 			"runtime_qualified": rq, "qualified_passes": res.Qualified,
 			"counts": res.Summary.Counts, "findings": res.Findings,
 			"posture": audit.Breakdown(rep, scStandard, scLevel),
+			"run":     run, // provenance: host/OS, tool + ruleset digests, timestamp, scope
 		})
+	case "oscal":
+		// OSCAL 1.1.2 assessment-results, the standard machine form of the run outcome
+		// (reviewed-controls + observations + findings), provenance stamped in metadata.
+		if err := screport.OSCAL(out, audit.Assessment(rep, run, machine, scStandard, scLevel)); err != nil {
+			return err
+		}
 	case "sarif":
 		if err := screport.SARIF(out, opts, machine, res.Findings); err != nil {
 			return err

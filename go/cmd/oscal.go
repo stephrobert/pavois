@@ -307,6 +307,14 @@ func runOscal(_ *cobra.Command, _ []string) error {
 	if err := os.WriteFile(filepath.Join(oscalOut, "pavois-catalog.json"), cb, 0o600); err != nil {
 		return err
 	}
+	// Ship the checksum next to the catalog. The download page tells the reader to "verify the
+	// download before trusting it" and links to this file; until now it was never written, so the
+	// one instruction on that page about not taking us at our word led to a 404.
+	sum := sha256.Sum256(cb)
+	if err := os.WriteFile(filepath.Join(oscalOut, "pavois-catalog.json.sha256"),
+		[]byte(fmt.Sprintf("%x  pavois-catalog.json\n", sum)), 0o600); err != nil {
+		return err
+	}
 	for _, osn := range oses {
 		pids := make([]string, 0, len(data[osn]))
 		for id := range data[osn] {

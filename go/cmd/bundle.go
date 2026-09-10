@@ -160,12 +160,17 @@ func runBundle(cmd *cobra.Command, args []string) error {
 	artifacts = append(artifacts, bundleArtifact{File: "campaign-delta.json", Role: "delta", SHA256: dSum, Bytes: dN})
 
 	// Target + ruleset version + posture breakdown from the after report (best-effort).
-	platform, release, ruleset := "", "", ""
+	platform, release, ruleset, rulesetSHA := "", "", "", ""
 	var posture *audit.Posture
 	if rep, e := audit.Load(afterPath); e == nil {
 		platform, release = rep.Platform.Name, rep.Platform.Release
 		if len(rep.Profiles) > 0 {
 			ruleset = rep.Profiles[0].Version
+		}
+		// Content digest of the ruleset actually evaluated (not just its version string): two
+		// rulesets can share a version. Resolve the profile from the audited OS.
+		if prof := profileForOS(rep.Platform.Name, rep.Platform.Release); prof != "" {
+			rulesetSHA = rulesetDigest(findRoot(), filepath.Join("linux", prof))
 		}
 		p := audit.Breakdown(rep, "", "")
 		posture = &p
@@ -182,6 +187,7 @@ func runBundle(cmd *cobra.Command, args []string) error {
 		"pavois_version":       version,
 		"pavois_binary_sha256": binDigest,
 		"ruleset_version":      ruleset,
+		"ruleset_sha256":       rulesetSHA,
 		"generated":            time.Now().UTC().Format(time.RFC3339),
 		"target":               map[string]string{"platform": platform, "release": release},
 		"before":               map[string]any{"file": filepath.Base(beforePath), "grade": bGrade, "passed": bPass, "total": bTotal},
