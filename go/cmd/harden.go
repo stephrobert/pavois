@@ -1809,6 +1809,20 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintf(out, "pavois: ⚠ %d enabled rule(s) have no remediation yet (pending): they are skipped, nothing is generated for them.\n", pending)
 	}
 	_, _ = fmt.Fprintf(out, "pavois: compiled %d enabled item(s) into native Chef resources:\n\n%s\n", count, recipe)
+
+	// What was armed that a reboot has to activate. A kernel command-line change is written into
+	// the bootloader and does not exist until the machine boots on it, so a re-scan straight after
+	// the apply still reports those controls as failing. Users read that as "nothing changed".
+	needsBoot := 0
+	for _, r := range p.Rules {
+		if r.Apply == nil || !*r.Apply || r.Remediation == nil {
+			continue
+		}
+		switch s(r.Remediation["resource"]) {
+		case "kernel_cmdline", "grub_cmdline", "kernel_build":
+			needsBoot++
+		}
+	}
 	if reboot {
 		if haReboot {
 			// Reboot is a Chef action, not an out-of-band step. NB: the `reboot` resource's
@@ -2065,9 +2079,23 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintln(os.Stderr, "pavois: target back up after reboot.")
 		writeRebootProof(out, target, bootBefore, capture)
 	}
-	_, _ = fmt.Fprintln(out, "\npavois: converged.")
+	_, _ = fmt.Fprintf(out, "\npavois: converged. %d item(s) applied.\n", count)
+	// Say what a re-scan will NOT show yet. Without this the operator measures a machine that has
+	// not booted on the settings just written, sees the same failures, and concludes the apply did
+	// nothing. Two users reported exactly that.
+	if needsBoot > 0 && !haReboot {
+		_, _ = fmt.Fprintf(out,
+			"pavois: %d of them only take effect after a reboot (kernel command line): a re-scan now "+
+				"will still report those as failing.\n"+
+				"        reboot the target, or re-run with --reboot --scan to reboot and re-measure in one go.\n",
+			needsBoot)
+	}
 	if !haScan {
-		_, _ = fmt.Fprintf(out, "Pavois: re-scan to confirm: bin/pavois scan %s --key … --sudo\n", target)
+		_, _ = fmt.Fprintf(out,
+			"Pavois: measure the result: bin/pavois scan %s --key … --sudo\n"+
+				"        and compare it with the scan the plan came from: bin/pavois diff <before>.json <after>.json\n"+
+				"        (the grade is severity-capped, so a few remaining HIGH findings can hold the letter "+
+				"still while hundreds of controls have moved)\n", target)
 		return nil
 	}
 
