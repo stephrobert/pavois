@@ -62,11 +62,12 @@ var (
 	haReboot   bool
 	haStandard string
 
-	haSudo              bool
-	haSudoPrompt        bool
-	haRestorePoint      string
-	haNoRestorePoint    bool
-	haIUnderstandDanger bool
+	haSudo               bool
+	haSudoPrompt         bool
+	haRestorePoint       string
+	haNoRestorePoint     bool
+	haIUnderstandDanger  bool
+	haIUnderstandLockout bool
 )
 
 var hardenApplyCmd = &cobra.Command{
@@ -107,6 +108,8 @@ func init() {
 	hardenApplyCmd.Flags().StringVar(&haRestorePoint, "restore-point", "", "where to write the restore point (default: restore-points/<target>-<timestamp>)")
 	hardenApplyCmd.Flags().BoolVar(&haNoRestorePoint, "no-restore-point", false, "do NOT photograph the prior state before converging (you lose `harden rollback`)")
 	hardenApplyCmd.Flags().BoolVar(&haIUnderstandDanger, "i-understand-danger", false, "acknowledge ALL `danger:` items at once (brick/lockout risk); otherwise set `acknowledged: true` per item in the plan")
+	hardenApplyCmd.Flags().BoolVar(&haIUnderstandLockout, "i-understand-lockout", false,
+		"apply a remediation that closes the account you are connected with (you will need another way in)")
 	hardenCmd.AddCommand(hardenApplyCmd)
 
 	rootCmd.AddCommand(hardenCmd)
@@ -1732,6 +1735,29 @@ func prereqError(osName string, missing []string) error {
 		why.String(), installer, strings.Join(missing, " "))
 }
 
+// gatewayOffSubnet reports whether the target's default gateway sits outside the subnet of the
+// interface that reaches it. True for a public IP in a /32 with an on-link gateway route, which is
+// how Scaleway and Hetzner hand you a machine, and false on an ordinary network. Any doubt (no
+// route, no ssh, an unparsable answer) returns false: as with the other guards, refusing on a
+// guess would be worse than the problem.
+func gatewayOffSubnet(target, key string) bool {
+	// `ip route get <gw>` answers "<gw> dev X src Y" when the gateway is on-link, and the address
+	// line then says whether the interface owns a /32. Both together are the shape we refuse.
+	const probe = `set -e
+gw=$(ip -4 route show default 2>/dev/null | awk '/default via/ {print $3; exit}')
+[ -n "$gw" ] || exit 1
+dev=$(ip -4 route show default 2>/dev/null | awk '/default via/ {print $5; exit}')
+[ -n "$dev" ] || exit 1
+ip -4 -o addr show dev "$dev" 2>/dev/null | awk '{print $4}' | head -1`
+	out, err := exec.Command("ssh", append(sshOptsFor(key), target, probe)...).Output() //nolint:gosec // fixed args, operator target
+	if err != nil {
+		return false
+	}
+	cidr := strings.TrimSpace(string(out))
+	// A /32 on the interface that carries the default route means the gateway cannot be inside it.
+	return strings.HasSuffix(cidr, "/32")
+}
+
 func runHardenApply(cmd *cobra.Command, args []string) error {
 	raw, err := os.ReadFile(args[0])
 	if err != nil {
@@ -1750,6 +1776,79 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		kernelRecipe, _ = os.ReadFile(filepath.Join(findRoot(), "docs", "reference", "kernel-build.sh"))
 	}
 	out := cmd.OutOrStdout()
+
+	// Lockout gate, before everything else: some remediations close the door you came in
+	// through. Disabling root login on a host whose ONLY account is root is the clearest case,
+	// and it is not hypothetical: on a Scaleway Debian 12 image, whose default access is root,
+	// an apply set PermitRootLogin no, reloaded sshd, and the machine was gone. The hypervisor
+	// still called it running and booted. Nothing can be undone remotely after that, which is
+	// why this refuses instead of warning. OVH, Hetzner and most bare-metal providers hand you
+	// the same root-only shape.
+	// `target` proper is resolved further down, after the dry-run branch; the same two sources.
+	lockTarget := p.Target
+	if haTarget != "" {
+		lockTarget = haTarget
+	}
+	if !haIUnderstandLockout && lockTarget != "" {
+		if uid, known := engine.EffectiveUID(engine.Options{Target: lockTarget, Key: haKey}); known && uid == 0 {
+			var closers []string
+			for id, r := range p.Rules {
+				if r.Apply == nil || !*r.Apply {
+					continue
+				}
+				if r.Remediation != nil && s(r.Remediation["directive"]) == "permitrootlogin" &&
+					strings.EqualFold(s(r.Remediation["value"]), "no") {
+					closers = append(closers, id)
+				}
+			}
+			if len(closers) > 0 {
+				sort.Strings(closers)
+				return fmt.Errorf("refusing to lock you out of %s\n"+
+					"  you are connected as root, and %s would set PermitRootLogin no.\n"+
+					"  the converge reloads sshd, so the next connection is refused and there is no way\n"+
+					"  back in remotely (a Scaleway Debian 12 was lost this way: the hypervisor still\n"+
+					"  reported it running).\n"+
+					"  create an admin account with sudo and an authorized key, re-scan as that account,\n"+
+					"  and apply from there. Or override: --i-understand-lockout",
+					lockTarget, strings.Join(closers, ", "))
+			}
+		}
+	}
+
+	// Network-lockout gate: arp_ignore=2 answers ARP only for senders on the same subnet as the
+	// target address. Where the default gateway is reached by an on-link route and sits outside
+	// the interface's subnet (a public IP in a /32, which is how Scaleway and Hetzner hand you a
+	// machine), the host stops answering its own gateway and drops off the network when the ARP
+	// cache expires. It survives the apply, answers for a few minutes, then vanishes, which reads
+	// as a flaky provider rather than as something pavois did.
+	//
+	// The control is not the problem and is not disabled: CIS and ANSSI both ask for it, and on an
+	// ordinary network (a LAN, a normal VPC, the Incus bridge, Outscale) the same apply is
+	// harmless. Only this routing shape is refused, and only when the rule is actually armed.
+	if !haIUnderstandLockout && lockTarget != "" {
+		var armedARP []string
+		for id, r := range p.Rules {
+			if r.Apply == nil || !*r.Apply || r.Remediation == nil {
+				continue
+			}
+			switch s(r.Remediation["key"]) {
+			case "net.ipv4.conf.all.arp_ignore", "net.ipv4.conf.default.arp_ignore":
+				if s(r.Remediation["value"]) == "2" {
+					armedARP = append(armedARP, id)
+				}
+			}
+		}
+		if len(armedARP) > 0 && gatewayOffSubnet(lockTarget, haKey) {
+			sort.Strings(armedARP)
+			return fmt.Errorf("refusing to cut %s off the network\n"+
+				"  its default gateway is reached by an on-link route and is outside the interface's\n"+
+				"  subnet (a public IP in a /32, as Scaleway and Hetzner provision them), and %s would\n"+
+				"  set arp_ignore=2. The host then stops answering ARP from its own gateway and drops\n"+
+				"  off a few minutes later, once the cache expires.\n"+
+				"  set `apply: false` on that rule for this host, or override: --i-understand-lockout",
+				lockTarget, strings.Join(armedARP, ", "))
+		}
+	}
 
 	// Danger gate: an enabled remediation flagged `danger:` can brick or lock out the
 	// host. Refuse to converge it unless the operator acknowledged the risk: either
