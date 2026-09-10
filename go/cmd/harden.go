@@ -1735,6 +1735,29 @@ func prereqError(osName string, missing []string) error {
 		why.String(), installer, strings.Join(missing, " "))
 }
 
+// gatewayOffSubnet reports whether the target's default gateway sits outside the subnet of the
+// interface that reaches it. True for a public IP in a /32 with an on-link gateway route, which is
+// how Scaleway and Hetzner hand you a machine, and false on an ordinary network. Any doubt (no
+// route, no ssh, an unparsable answer) returns false: as with the other guards, refusing on a
+// guess would be worse than the problem.
+func gatewayOffSubnet(target, key string) bool {
+	// `ip route get <gw>` answers "<gw> dev X src Y" when the gateway is on-link, and the address
+	// line then says whether the interface owns a /32. Both together are the shape we refuse.
+	const probe = `set -e
+gw=$(ip -4 route show default 2>/dev/null | awk '/default via/ {print $3; exit}')
+[ -n "$gw" ] || exit 1
+dev=$(ip -4 route show default 2>/dev/null | awk '/default via/ {print $5; exit}')
+[ -n "$dev" ] || exit 1
+ip -4 -o addr show dev "$dev" 2>/dev/null | awk '{print $4}' | head -1`
+	out, err := exec.Command("ssh", append(sshOptsFor(key), target, probe)...).Output() //nolint:gosec // fixed args, operator target
+	if err != nil {
+		return false
+	}
+	cidr := strings.TrimSpace(string(out))
+	// A /32 on the interface that carries the default route means the gateway cannot be inside it.
+	return strings.HasSuffix(cidr, "/32")
+}
+
 func runHardenApply(cmd *cobra.Command, args []string) error {
 	raw, err := os.ReadFile(args[0])
 	if err != nil {
@@ -1789,6 +1812,41 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 					"  and apply from there. Or override: --i-understand-lockout",
 					lockTarget, strings.Join(closers, ", "))
 			}
+		}
+	}
+
+	// Network-lockout gate: arp_ignore=2 answers ARP only for senders on the same subnet as the
+	// target address. Where the default gateway is reached by an on-link route and sits outside
+	// the interface's subnet (a public IP in a /32, which is how Scaleway and Hetzner hand you a
+	// machine), the host stops answering its own gateway and drops off the network when the ARP
+	// cache expires. It survives the apply, answers for a few minutes, then vanishes, which reads
+	// as a flaky provider rather than as something pavois did.
+	//
+	// The control is not the problem and is not disabled: CIS and ANSSI both ask for it, and on an
+	// ordinary network (a LAN, a normal VPC, the Incus bridge, Outscale) the same apply is
+	// harmless. Only this routing shape is refused, and only when the rule is actually armed.
+	if !haIUnderstandLockout && lockTarget != "" {
+		var armedARP []string
+		for id, r := range p.Rules {
+			if r.Apply == nil || !*r.Apply || r.Remediation == nil {
+				continue
+			}
+			switch s(r.Remediation["key"]) {
+			case "net.ipv4.conf.all.arp_ignore", "net.ipv4.conf.default.arp_ignore":
+				if s(r.Remediation["value"]) == "2" {
+					armedARP = append(armedARP, id)
+				}
+			}
+		}
+		if len(armedARP) > 0 && gatewayOffSubnet(lockTarget, haKey) {
+			sort.Strings(armedARP)
+			return fmt.Errorf("refusing to cut %s off the network\n"+
+				"  its default gateway is reached by an on-link route and is outside the interface's\n"+
+				"  subnet (a public IP in a /32, as Scaleway and Hetzner provision them), and %s would\n"+
+				"  set arp_ignore=2. The host then stops answering ARP from its own gateway and drops\n"+
+				"  off a few minutes later, once the cache expires.\n"+
+				"  set `apply: false` on that rule for this host, or override: --i-understand-lockout",
+				lockTarget, strings.Join(armedARP, ", "))
 		}
 	}
 
