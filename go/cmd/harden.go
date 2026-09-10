@@ -62,6 +62,7 @@ var (
 	haReboot   bool
 	haStandard string
 
+	haSudo              bool
 	haSudoPrompt        bool
 	haRestorePoint      string
 	haNoRestorePoint    bool
@@ -96,6 +97,13 @@ func init() {
 	hardenApplyCmd.Flags().BoolVar(&haReboot, "reboot", false, "when changes need it, reboot the target via a Chef `reboot` resource at the end of the run")
 	hardenApplyCmd.Flags().StringVar(&haStandard, "standard", "", "apply each rule's value for THIS standard (bp28|cis|nist|…); default = the most-secure value")
 	hardenApplyCmd.Flags().BoolVar(&haSudoPrompt, "sudo-prompt", false, "prompt for the sudo password (no echo; also reads PAVOIS_SUDO_PASSWORD): for a least-privilege target account without NOPASSWD")
+	// `scan` and `harden plan` both take --sudo, and apply always sudoes because a converge cannot
+	// work otherwise. Rejecting the flag here made the operator who typed the same thing three
+	// times in a row hit "unknown flag: --sudo" at the last step, and reach for --sudo-prompt
+	// instead, which asks a NOPASSWD cloud image for a password that does not exist. Accept it,
+	// and say it is implicit rather than pretend it does something.
+	hardenApplyCmd.Flags().BoolVar(&haSudo, "sudo", false,
+		"accepted for symmetry with scan and plan; apply always uses sudo, so this changes nothing")
 	hardenApplyCmd.Flags().StringVar(&haRestorePoint, "restore-point", "", "where to write the restore point (default: restore-points/<target>-<timestamp>)")
 	hardenApplyCmd.Flags().BoolVar(&haNoRestorePoint, "no-restore-point", false, "do NOT photograph the prior state before converging (you lose `harden rollback`)")
 	hardenApplyCmd.Flags().BoolVar(&haIUnderstandDanger, "i-understand-danger", false, "acknowledge ALL `danger:` items at once (brick/lockout risk); otherwise set `acknowledged: true` per item in the plan")
@@ -1857,6 +1865,10 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	// on the target, so the sudo password must reach it. resolveSudoPass reads --sudo-prompt
 	// (no-echo) or PAVOIS_SUDO_PASSWORD; empty means NOPASSWD (unchanged behaviour).
 	sudoPass, err := resolveSudoPass(haSudoPrompt)
+	if haSudo && !haSudoPrompt {
+		_, _ = fmt.Fprintln(os.Stderr,
+			"pavois: --sudo is implicit for harden apply (a converge needs root); pass --sudo-prompt only if the account needs a password")
+	}
 	if err != nil {
 		return fmt.Errorf("read sudo password: %w", err)
 	}
