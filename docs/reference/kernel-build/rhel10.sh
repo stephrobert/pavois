@@ -8,6 +8,20 @@
 set -e
 KVER=$(uname -r)
 
+# Secure Boot refuses a kernel it cannot verify, and this recipe signs nothing. Left enabled, the
+# build succeeds, the reboot never returns, and the only trace is on a serial console the operator
+# may not have:
+#   error: bad shim signature.  /  error: you need to load the kernel first.
+# Say so BEFORE spending an hour, not after. Signing and enrolling a MOK is a deliberate choice
+# with its own key management, so this states the requirement rather than guessing at one.
+if command -v mokutil >/dev/null 2>&1 && mokutil --sb-state 2>/dev/null | grep -qi enabled; then
+  echo "!! Secure Boot is ENABLED on this host."
+  echo "!! A kernel built here is unsigned, so the firmware will refuse it and the machine will"
+  echo "!! land in the GRUB rescue prompt. Sign it and enrol a MOK, or disable Secure Boot,"
+  echo "!! before continuing. Set PAVOIS_KERNEL_IGNORE_SECUREBOOT=1 to proceed anyway."
+  [ "${PAVOIS_KERNEL_IGNORE_SECUREBOOT:-0}" = 1 ] || exit 1
+fi
+
 # --- Pavois KSPP kconfig sets (shared by every OS branch) --------------------------------------
 # These MIRROR Pavois's own `kconfig-*` controls in docs/reference/rules.yml (the curated,
 # boot-safe KSPP subset: no WERROR/MODULES=n/CFI that would break a GCC distro build), so a

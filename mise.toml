@@ -5,6 +5,10 @@
 go = "1.26.6"        # the pavois binary (go/)
 node = "22.22.0"     # the bilingual Astro hardening site (site/)
 python = "3.12.11"   # offline tooling: validation, reference render, norm-studio
+uv = "0.12.10"       # 21 tasks shell out to `uv run --with pyyaml python3 ...`; without
+                     # it declared here they only work on a machine that happens to have
+                     # uv from somewhere else, which is how site-deploy failed on a clean
+                     # runner with "uv: not found" while every developer machine was fine
 gh = "2.92.0"        # benchmark sources (ansible-lockdown, SSG releases)
 # Quality + supply-chain tooling (mirrors the CI workflows + pre-commit hooks; pinned).
 golangci-lint = "2.12.2"  # Go linters (errcheck, gosec, staticcheck, errorlint, …)
@@ -120,6 +124,22 @@ run = "uv run --with pyyaml python3 tools/gen_domain_refs.py"
 description = "Render the InSpec corpus (profiles/linux/*/controls/*.rb) from the per-OS reference"
 depends = ["gen"]
 run = "bash {{config_root}}/tools/render.sh"
+
+[tasks."oscal:verify"]
+description = "FAIL if `scan --format oscal` stops being valid OSCAL 1.1.2 assessment-results"
+# The claim on the site is that the export is conformant, so something has to keep it true.
+# check-jsonschema, not plain jsonschema: the NIST schema uses \p character classes that the
+# latter crashes on.
+run = """
+set -e
+schema=${OSCAL_SCHEMA:-/tmp/oscal_assessment-results_schema.json}
+[ -s "$schema" ] || curl -sSL -o "$schema" \
+  https://github.com/usnistgov/OSCAL/releases/download/v1.1.2/oscal_assessment-results_schema.json
+out=$(mktemp); trap 'rm -f "$out"' EXIT
+{{config_root}}/go/pavois scan local --from "${OSCAL_SAMPLE:?set OSCAL_SAMPLE to an InSpec report json}" \
+  --format oscal > "$out"
+uvx check-jsonschema --schemafile "$schema" "$out"
+"""
 
 [tasks."oscal"]
 description = "Publish the pavois baseline as OSCAL (catalog + per-OS profiles)"
@@ -256,6 +276,10 @@ run = "python3 {{config_root}}/tools/testplan.py"
 description = "Refuse the em-dash anywhere in the tracked tree (an AI tell, and it has broken a generated GRUB line)"
 run = "python3 {{config_root}}/tools/lint_emdash.py"
 
+[tasks."lint:norm-refs"]
+description = "FAIL if a norm mapping holds anything but a reference (the claim /attribution makes about redistribution)"
+run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_norm_refs.py"
+
 [tasks.prepush]
 description = "Everything a pull request will fail on that costs seconds and needs no target"
 # Deterministic, offline, 13s wall-clock measured on this repo (mise runs the dependencies in
@@ -270,7 +294,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "lint:emdash", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]
