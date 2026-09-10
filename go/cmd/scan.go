@@ -134,9 +134,16 @@ func latestFamilyProfile(root, fam string) string {
 // linux profile. Falls back to the closest of the same family when the exact
 // version is not bundled (e.g. Ubuntu 26.04 -> ubuntu2404), WITHOUT duplicating the corpus.
 func detectProfile(root string, o engine.Options) (profile, detected string) {
-	name, release := engine.Detect(o)
+	p, d, _ := detectProfileWhy(root, o)
+	return p, d
+}
+
+// detectProfileWhy also returns why detection failed, so the caller can tell "no profile for this
+// OS" (pass --profile) from "the target did not answer" (a key, a password, a route).
+func detectProfileWhy(root string, o engine.Options) (profile, detected, why string) {
+	name, release, why := engine.DetectWhy(o)
 	if name == "" {
-		return "", ""
+		return "", "", why
 	}
 	detected = name + " " + release
 	dir := func(p string) bool {
@@ -144,15 +151,15 @@ func detectProfile(root string, o engine.Options) (profile, detected string) {
 		return err == nil && fi.IsDir()
 	}
 	if cand := profileForOS(name, release); cand != "" && dir(cand) {
-		return "linux/" + cand, detected
+		return "linux/" + cand, detected, ""
 	}
 	if fam := familyOf(name); fam != "" {
 		if near := latestFamilyProfile(root, fam); near != "" {
 			_, _ = fmt.Fprintf(os.Stderr, "pavois: no exact profile for %s: using closest %s\n", detected, near)
-			return "linux/" + near, detected
+			return "linux/" + near, detected, ""
 		}
 	}
-	return "", detected
+	return "", detected, "no bundled profile for " + detected
 }
 
 func runScan(cmd *cobra.Command, args []string) error {
@@ -178,18 +185,24 @@ func runScan(cmd *cobra.Command, args []string) error {
 	// under test.
 	_, _ = fmt.Fprint(os.Stderr, "  ⠿ detecting target OS…\r")
 	detOpts := engine.Options{Target: target, Key: scKey, SSHPass: sshPass}
-	autoProf, detectedOS := detectProfile(root, detOpts)
+	autoProf, detectedOS, detectWhy := detectProfileWhy(root, detOpts)
 	_, _ = fmt.Fprint(os.Stderr, "\033[K")
 	if !cmd.Flags().Changed("profile") {
 		// No --profile given: the per-OS profile is auto-selected from the detected OS.
 		// If detection finds nothing usable, fail clearly rather than fall back to a
 		// phantom default (there is no generic bundled profile).
 		if autoProf == "" {
-			hint := "could not detect the target OS"
-			if detectedOS != "" {
-				hint = "no bundled profile for " + detectedOS
+			// Two very different failures reach here and want opposite answers: an OS with no
+			// bundled profile wants --profile; a target that never answered wants a key, a
+			// password or a route. Sending the second one to --profile fixes nothing.
+			if detectedOS == "" {
+				return fmt.Errorf("could not reach or identify %s: %s\n"+
+					"  a host that answers `ssh %s` can still fail here: the engine does not fall back to\n"+
+					"  ~/.ssh/id_ed25519 the way the ssh command does, so pass --key <path> (or add the key\n"+
+					"  to ssh-agent). If the host is fine and simply has no bundled profile, pass --profile",
+					target, detectWhy, target)
 			}
-			return fmt.Errorf("%s: pass --profile <path|url> (e.g. profiles/linux/debian12)", hint)
+			return fmt.Errorf("no bundled profile for %s: pass --profile <path|url> (e.g. profiles/linux/debian12)", detectedOS)
 		}
 		scProfile = autoProf
 		_, _ = fmt.Fprintf(os.Stderr, "pavois: detected %s → profile %s\n", detectedOS, autoProf)
