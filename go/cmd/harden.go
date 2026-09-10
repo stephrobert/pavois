@@ -62,11 +62,12 @@ var (
 	haReboot   bool
 	haStandard string
 
-	haSudo              bool
-	haSudoPrompt        bool
-	haRestorePoint      string
-	haNoRestorePoint    bool
-	haIUnderstandDanger bool
+	haSudo               bool
+	haSudoPrompt         bool
+	haRestorePoint       string
+	haNoRestorePoint     bool
+	haIUnderstandDanger  bool
+	haIUnderstandLockout bool
 )
 
 var hardenApplyCmd = &cobra.Command{
@@ -107,6 +108,8 @@ func init() {
 	hardenApplyCmd.Flags().StringVar(&haRestorePoint, "restore-point", "", "where to write the restore point (default: restore-points/<target>-<timestamp>)")
 	hardenApplyCmd.Flags().BoolVar(&haNoRestorePoint, "no-restore-point", false, "do NOT photograph the prior state before converging (you lose `harden rollback`)")
 	hardenApplyCmd.Flags().BoolVar(&haIUnderstandDanger, "i-understand-danger", false, "acknowledge ALL `danger:` items at once (brick/lockout risk); otherwise set `acknowledged: true` per item in the plan")
+	hardenApplyCmd.Flags().BoolVar(&haIUnderstandLockout, "i-understand-lockout", false,
+		"apply a remediation that closes the account you are connected with (you will need another way in)")
 	hardenCmd.AddCommand(hardenApplyCmd)
 
 	rootCmd.AddCommand(hardenCmd)
@@ -1750,6 +1753,44 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		kernelRecipe, _ = os.ReadFile(filepath.Join(findRoot(), "docs", "reference", "kernel-build.sh"))
 	}
 	out := cmd.OutOrStdout()
+
+	// Lockout gate, before everything else: some remediations close the door you came in
+	// through. Disabling root login on a host whose ONLY account is root is the clearest case,
+	// and it is not hypothetical: on a Scaleway Debian 12 image, whose default access is root,
+	// an apply set PermitRootLogin no, reloaded sshd, and the machine was gone. The hypervisor
+	// still called it running and booted. Nothing can be undone remotely after that, which is
+	// why this refuses instead of warning. OVH, Hetzner and most bare-metal providers hand you
+	// the same root-only shape.
+	// `target` proper is resolved further down, after the dry-run branch; the same two sources.
+	lockTarget := p.Target
+	if haTarget != "" {
+		lockTarget = haTarget
+	}
+	if !haIUnderstandLockout && lockTarget != "" {
+		if uid, known := engine.EffectiveUID(engine.Options{Target: lockTarget, Key: haKey}); known && uid == 0 {
+			var closers []string
+			for id, r := range p.Rules {
+				if r.Apply == nil || !*r.Apply {
+					continue
+				}
+				if r.Remediation != nil && s(r.Remediation["directive"]) == "permitrootlogin" &&
+					strings.EqualFold(s(r.Remediation["value"]), "no") {
+					closers = append(closers, id)
+				}
+			}
+			if len(closers) > 0 {
+				sort.Strings(closers)
+				return fmt.Errorf("refusing to lock you out of %s\n"+
+					"  you are connected as root, and %s would set PermitRootLogin no.\n"+
+					"  the converge reloads sshd, so the next connection is refused and there is no way\n"+
+					"  back in remotely (a Scaleway Debian 12 was lost this way: the hypervisor still\n"+
+					"  reported it running).\n"+
+					"  create an admin account with sudo and an authorized key, re-scan as that account,\n"+
+					"  and apply from there. Or override: --i-understand-lockout",
+					lockTarget, strings.Join(closers, ", "))
+			}
+		}
+	}
 
 	// Danger gate: an enabled remediation flagged `danger:` can brick or lock out the
 	// host. Refuse to converge it unless the operator acknowledged the risk: either
