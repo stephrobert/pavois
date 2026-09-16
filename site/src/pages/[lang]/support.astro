@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import Toc from '../../components/Toc.astro';
 import { languages, type Lang } from '../../i18n/ui';
 
 export function getStaticPaths() {
@@ -15,20 +16,32 @@ const KOFI = 'https://ko-fi.com/stephanerobert89902';
 const BLOG = 'https://blog.stephane-robert.info';
 const LINKEDIN = 'https://www.linkedin.com/in/stephanerobert1/';
 
-const t = {
-  title: { en: 'Support Pavois', fr: 'Soutenir Pavois' },
-  desc: {
-    en: 'Pavois is built and maintained by one person, on personal time. It is free, has no ads and no tracking. Here is what supporting it changes.',
-    fr: 'Pavois est conçu et maintenu par une seule personne, sur son temps personnel. Il est gratuit, sans publicité ni traqueur. Voici ce que le soutenir change.',
-  },
-};
+const title = fr ? 'Soutenir Pavois · Pavois' : 'Support Pavois · Pavois';
+const desc = fr
+  ? 'Pavois est conçu et maintenu par une seule personne, sur son temps personnel. Gratuit, sans publicité ni traqueur. Voici ce que le soutenir change.'
+  : 'Pavois is built and maintained by one person, on personal time. Free, with no ads and no tracking. Here is what supporting it changes.';
 
-// A DonateAction on the software, so an answer engine can state plainly who maintains Pavois and
-// how to support it. The numbers below are the project's own, not marketing.
+// Same section model as the installation page: a list that feeds both the table of contents and
+// the headings, so the two can never drift apart.
+const sections = [
+  { slug: 'project', en: 'A personal project', fr: 'Un projet personnel' },
+  { slug: 'cost', en: 'What this tool costs', fr: 'Ce que coûte cet outil' },
+  { slug: 'free', en: 'What stays free', fr: 'Ce qui restera gratuit' },
+  { slug: 'donate', en: 'Supporting with money', fr: 'Soutenir financièrement' },
+  { slug: 'free-help', en: 'Supporting without spending', fr: 'Soutenir sans dépenser' },
+  { slug: 'author', en: 'Who writes this', fr: 'Qui écrit tout cela' },
+];
+const toc = sections.map((s) => ({ depth: 2, slug: s.slug, text: fr ? s.fr : s.en }));
+
+const crumbs = [
+  { name: 'Pavois', path: `/${lang}/` },
+  { name: fr ? 'Soutenir' : 'Support', path: `/${lang}/support/` },
+];
+
 const jsonld = [
   {
     '@type': 'WebPage',
-    name: t.title[lang],
+    name: fr ? 'Soutenir Pavois' : 'Support Pavois',
     url: `${origin}/${lang}/support/`,
     inLanguage: fr ? 'fr-FR' : 'en-US',
     about: { '@id': `${origin}/#software` },
@@ -42,92 +55,102 @@ const jsonld = [
 ];
 ---
 
-<Base
-  title={`${t.title[lang]} · Pavois`}
-  description={t.desc[lang]}
-  lang={lang}
-  jsonld={jsonld}
-  breadcrumbs={[{ name: t.title[lang], path: `/${lang}/support/` }]}
->
-  <section class="wrap prose">
+<Base title={title} description={desc} lang={lang} breadcrumbs={crumbs} jsonld={jsonld}>
+  <div class="wrap page-head">
     <h1>{fr ? 'Soutenir Pavois' : 'Support Pavois'}</h1>
+    <p class="lede">{desc}</p>
+  </div>
 
-    <p class="lede">
-      {fr
-        ? "Pavois est un projet personnel. Il n'y a ni entreprise derrière, ni équipe, ni financement : une seule personne, sur son temps libre, le soir et le week-end."
-        : 'Pavois is a personal project. There is no company behind it, no team and no funding: one person, on their own time, evenings and weekends.'}
-    </p>
+  <div class="wrap layout-doc">
+    <div class="doc-col">
+      <div class="prose">
+        <h2 id="project">{fr ? 'Un projet personnel' : 'A personal project'}</h2>
+        <p>
+          {fr
+            ? "Il n'y a ni entreprise derrière Pavois, ni équipe, ni financement. Une seule personne, sur son temps libre, le soir et le week-end."
+            : 'There is no company behind Pavois, no team and no funding. One person, on their own time, evenings and weekends.'}
+        </p>
 
-    <h2>{fr ? 'Ce que représente cet outil' : 'What this tool represents'}</h2>
-    <p>
-      {fr
-        ? "789 contrôles écrits et vérifiés un par un, 2 729 références de normes reliées à la main aux textes officiels, 9 systèmes Linux maintenus en parallèle, et un moteur de durcissement qui doit fonctionner sur de vraies machines sans les casser. Chaque règle est validée par un scan réel sur une machine réelle, parce qu'une règle validée seulement sur le papier finit par mentir."
-        : '789 controls written and verified one by one, 2,729 standard references tied by hand to the official texts, 9 Linux systems maintained in parallel, and a hardening engine that has to work on real machines without breaking them. Every rule is validated by a real scan on a real machine, because a rule validated only on paper eventually lies.'}
-    </p>
-    <p>
-      {fr
-        ? "Ce n'est pas du temps de développement au sens habituel. L'essentiel part en vérification : provisionner une machine neuve, durcir, redémarrer, re-scanner, comprendre pourquoi un contrôle échoue, et recommencer. C'est lent, et c'est la seule façon de produire un outil de conformité auquel on peut se fier."
-        : 'This is not development time in the usual sense. Most of it goes into verification: provision a fresh machine, harden it, reboot, re-scan, work out why a control fails, and start again. It is slow, and it is the only way to produce a compliance tool anyone can rely on.'}
-    </p>
+        <h2 id="cost">{fr ? "Ce que coûte cet outil" : 'What this tool costs'}</h2>
+        <p>
+          {fr
+            ? "789 contrôles écrits et vérifiés un par un, 2 729 références de normes reliées à la main aux textes officiels, 9 systèmes Linux maintenus en parallèle, et un moteur de durcissement qui doit fonctionner sur de vraies machines sans les casser."
+            : '789 controls written and verified one by one, 2,729 standard references tied by hand to the official texts, 9 Linux systems maintained in parallel, and a hardening engine that has to work on real machines without breaking them.'}
+        </p>
+        <p>
+          {fr
+            ? "Ce n'est pas du temps de développement au sens habituel. L'essentiel part en vérification : provisionner une machine neuve, durcir, redémarrer, re-scanner, comprendre pourquoi un contrôle échoue, et recommencer. C'est lent, et c'est la seule façon de produire un outil de conformité auquel on peut se fier."
+            : 'This is not development time in the usual sense. Most of it goes into verification: provision a fresh machine, harden it, reboot, re-scan, work out why a control fails, and start again. It is slow, and it is the only way to produce a compliance tool anyone can rely on.'}
+        </p>
 
-    <h2>{fr ? 'Ce qui restera gratuit' : 'What stays free'}</h2>
-    <p>
-      {fr
-        ? "Tout. Le binaire, la base de règles, la documentation, les exports OSCAL. Pas de version payante, pas de fonctionnalité réservée, pas de publicité et aucun traqueur publicitaire sur ce site. La mesure d'audience est faite avec Plausible, hébergé par mes soins, sans cookie ni donnée personnelle."
-        : 'Everything. The binary, the rule base, the documentation, the OSCAL exports. No paid tier, no reserved feature, no advertising and no ad tracker on this site. Audience measurement uses Plausible, self-hosted, with no cookie and no personal data.'}
-    </p>
+        <h2 id="free">{fr ? 'Ce qui restera gratuit' : 'What stays free'}</h2>
+        <p>
+          {fr
+            ? "Tout. Le binaire, la base de règles, la documentation, les exports OSCAL. Pas de version payante, pas de fonctionnalité réservée, pas de publicité et aucun traqueur publicitaire. La mesure d'audience utilise Plausible, hébergé par mes soins, sans cookie ni donnée personnelle."
+            : 'Everything. The binary, the rule base, the documentation, the OSCAL exports. No paid tier, no reserved feature, no advertising and no ad tracker. Audience measurement uses self-hosted Plausible, with no cookie and no personal data.'}
+        </p>
 
-    <h2>{fr ? 'Soutenir, si vous le souhaitez' : 'Supporting, if you want to'}</h2>
-    <p>
-      {fr
-        ? "Un soutien, même symbolique, couvre l'hébergement et l'infrastructure de test, et surtout il dit que l'outil sert à quelqu'un. C'est ce qui décide de continuer."
-        : 'Any support, even a symbolic one, covers hosting and the test infrastructure, and above all it says the tool is useful to someone. That is what decides whether it continues.'}
-    </p>
-    <div class="cta-row">
-      <a class="btn btn-primary" href={KOFI} target="_blank" rel="noopener">
-        {fr ? 'Offrir un café' : 'Buy me a coffee'} <span class="arr">&#8594;</span>
-      </a>
-      <a class="btn" href={REPO} target="_blank" rel="noopener">
-        {fr ? 'Mettre une étoile sur GitHub' : 'Star it on GitHub'} <span class="arr">&#8594;</span>
-      </a>
+        <h2 id="donate">{fr ? 'Soutenir financièrement' : 'Supporting with money'}</h2>
+        <p>
+          {fr
+            ? "Un soutien, même symbolique, couvre l'hébergement et l'infrastructure de test, et surtout il dit que l'outil sert à quelqu'un. C'est ce qui décide de continuer."
+            : 'Any support, even a symbolic one, covers hosting and the test infrastructure, and above all it says the tool is useful to someone. That is what decides whether it continues.'}
+        </p>
+      </div>
+
+      { /* Outside .prose on purpose: in prose every link is red, which would repaint the label of
+           a red button in red. The other pages keep their buttons out of the prose for the same
+           reason. */ }
+      <div class="cta-row">
+        <a class="btn btn-primary" href={KOFI} target="_blank" rel="noopener">
+          {fr ? 'Offrir un café' : 'Buy me a coffee'} <span class="arr">&#8594;</span>
+        </a>
+        <a class="btn btn-ghost" href={REPO} target="_blank" rel="noopener">
+          {fr ? 'Mettre une étoile sur GitHub' : 'Star it on GitHub'} <span class="arr">&#8594;</span>
+        </a>
+      </div>
+
+      <div class="prose">
+        <h2 id="free-help">{fr ? 'Soutenir sans dépenser' : 'Supporting without spending'}</h2>
+        <p>
+          {fr
+            ? 'Ces gestes valent autant, parfois plus, et ce n\'est pas une formule de politesse :'
+            : 'These are worth as much, sometimes more, and that is meant literally:'}
+        </p>
+        <ul>
+          <li>
+            {fr
+              ? "Signaler un bug. Un outil de conformité qui se trompe est pire qu'inutile : un rapport de terrain vaut des heures de relecture."
+              : 'Report a bug. A compliance tool that is wrong is worse than useless: one field report is worth hours of review.'}
+            {' '}
+            <a href={`${REPO}/issues`} target="_blank" rel="noopener">
+              {fr ? 'Ouvrir une issue' : 'Open an issue'}
+            </a>
+          </li>
+          <li>
+            {fr
+              ? "Dire sur quel système vous l'avez lancé et ce qui s'est passé. La matrice de support se construit avec de vraies machines, pas avec des suppositions."
+              : 'Say which system you ran it on and what happened. The support matrix is built from real machines, not from assumptions.'}
+          </li>
+          <li>
+            {fr
+              ? "En parler autour de vous, ou le citer si vous écrivez sur le durcissement Linux."
+              : 'Mention it to colleagues, or cite it if you write about Linux hardening.'}
+          </li>
+        </ul>
+
+        <h2 id="author">{fr ? 'Qui écrit tout cela' : 'Who writes this'}</h2>
+        <p>
+          {fr ? 'Stéphane Robert, ingénieur DevOps. J\'écris aussi des guides sur ' : 'Stéphane Robert, DevOps engineer. I also write guides on '}
+          <a href={BLOG} target="_blank" rel="noopener">blog.stephane-robert.info</a>
+          {fr
+            ? ", plus de 700 articles gratuits sur la sécurité, l'automatisation et les pratiques DevSecOps. On peut me suivre sur "
+            : ', more than 700 free articles on security, automation and DevSecOps practice. You can follow along on '}
+          <a href={LINKEDIN} target="_blank" rel="noopener">LinkedIn</a>.
+        </p>
+      </div>
     </div>
 
-    <h2>{fr ? 'Soutenir sans dépenser un centime' : 'Supporting without spending anything'}</h2>
-    <p>
-      {fr
-        ? "Ces gestes valent autant, parfois plus, et c'est sincère :"
-        : 'These are worth as much, sometimes more, and that is meant literally:'}
-    </p>
-    <ul>
-      <li>
-        {fr
-          ? 'Signaler un bug. Un outil de conformité qui se trompe est pire qu\'inutile : un rapport de terrain vaut des heures de relecture.'
-          : 'Report a bug. A compliance tool that is wrong is worse than useless: one field report is worth hours of review.'}
-        {' '}
-        <a href={`${REPO}/issues`} target="_blank" rel="noopener">{fr ? 'Ouvrir une issue' : 'Open an issue'}</a>
-      </li>
-      <li>
-        {fr
-          ? 'Dire sur quel système vous l\'avez lancé et ce qui s\'est passé. La matrice de support se construit avec de vraies machines, pas avec des suppositions.'
-          : 'Say which system you ran it on and what happened. The support matrix is built from real machines, not from assumptions.'}
-      </li>
-      <li>
-        {fr
-          ? 'En parler autour de vous, ou le citer si vous écrivez sur le durcissement Linux.'
-          : 'Mention it to colleagues, or cite it if you write about Linux hardening.'}
-      </li>
-    </ul>
-
-    <h2>{fr ? 'Qui écrit tout cela' : 'Who writes all this'}</h2>
-    <p>
-      {fr
-        ? 'Stéphane Robert, ingénieur DevOps. J\'écris aussi des guides sur '
-        : 'Stéphane Robert, DevOps engineer. I also write guides on '}
-      <a href={BLOG} target="_blank" rel="noopener">blog.stephane-robert.info</a>
-      {fr
-        ? ', plus de 700 articles gratuits sur la sécurité, l\'automatisation et les pratiques DevSecOps. On peut me suivre sur '
-        : ', more than 700 free articles on security, automation and DevSecOps practice. You can follow along on '}
-      <a href={LINKEDIN} target="_blank" rel="noopener">LinkedIn</a>.
-    </p>
-  </section>
+    <Toc headings={toc} lang={lang} />
+  </div>
 </Base>
