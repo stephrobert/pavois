@@ -2066,6 +2066,21 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	// installer to a FILE then run it (a `curl | bash` pipe / nested sudo wedges), over ssh WITHOUT
 	// -tt and piping the password (an -tt pty races `sudo -S` on rhel9). Password never hits argv.
 	if err := exec.Command("ssh", append(append(sshOpts(), target), "command -v cinc-apply >/dev/null 2>&1")...).Run(); err != nil { //nolint:gosec // fixed args, operator target
+		// And it is gated, like every other install Pavois can perform. #257 removed the implicit
+		// bootstrap from `scan`, added --bootstrap-cinc to `harden apply`, and then threaded the
+		// flag only into the post-apply re-scan: THIS install stayed unconditional. So the one
+		// subcommand that changes the machine was also the one that installed software on it
+		// without being asked, and it did so BEFORE the "Apply these changes?" prompt, which means
+		// answering "no" still left an unpinned installer having run as root on the target.
+		if !haBootstrapCinc {
+			return fmt.Errorf("cinc-client is not installed on %s, and installing it is not "+
+				"something Pavois does on its own.\n"+
+				"  what it would run, as root on the target:\n"+
+				"    curl -fsSL https://omnitruck.cinc.sh/install.sh | sh -s -- -P cinc\n"+
+				"  either install it yourself from your own mirror, which is what an air-gapped\n"+
+				"  or package-controlled estate wants, or pass --bootstrap-cinc to let Pavois run\n"+
+				"  the command above", target)
+		}
 		ensure := sudoCmd("bash -c 'curl -fsSL https://omnitruck.cinc.sh/install.sh -o /tmp/pavois-cinc-install.sh && sh /tmp/pavois-cinc-install.sh -P cinc'")
 		ec := exec.Command("ssh", append(append(sshOpts(), target), ensure)...) //nolint:gosec // fixed args, operator target
 		ec.Stdout, ec.Stderr = os.Stderr, os.Stderr
