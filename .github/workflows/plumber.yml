@@ -39,7 +39,16 @@ jobs:
       - name: Plumber compliance scan
         uses: getplumber/plumber@10837e44cddfed934eaa2b509e677286af23e149 # v0.4.63
         with:
-          version: v0.3.79
+          # The CLI version, which is what actually scans: a separate pin from the action above,
+          # and it was eighty releases behind it. Bumping the action alone changed nothing.
+          version: v0.4.63
+          # branchMustBeProtected reads main's protection settings, and GITHUB_TOKEN cannot:
+          # `administration` is not a workflow permission scope (actionlint rejects it), so the API
+          # answers 403 and the control reports the branch as non-compliant. Not "abstains":
+          # it accused a branch whose require_code_owner_reviews reads true through the API.
+          # This token is fine-grained, scoped to this repository, and carries Administration:read
+          # and nothing else.
+          github-token: ${{ secrets.PLUMBER_ADMIN_TOKEN }}
           verify-attestation: 'true'
           threshold: '100'
           upload-sarif: 'true'
