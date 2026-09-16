@@ -61,16 +61,21 @@ difference: it audits the **effective configuration** of a running host, not the
   <a href="https://pavois.dev"><img src="site/public/media/harden-demo-poster.jpg" alt="Pavois harden demo" width="680"></a>
 </p>
 
-## 🚀 Quick start
+## 🚀 Install
 
-**Today, build from source (Option B).** The verified release binary (Option A) ships with the
-first public release; until then there is no downloadable artifact (see `feature-status`).
+**Pavois is a single static binary.** The rule corpus is embedded (`go:embed`), so there is nothing
+to generate, no toolchain to install and nothing to compile: download it, verify it, scan.
 
-### Option A: a verified release binary (planned: first release)
+> **Building from source is for contributors, not for users.** It is documented further down
+> because the first release is not published yet, which makes it the only path available today.
+> That is a temporary state, not a second way to install the tool. If you are here to use Pavois,
+> what you want is the binary below.
 
-Once the first release is published, each release will ship a static binary per platform plus
-`checksums.txt`. The binary is **self-contained**: the rule corpus is embedded (`go:embed`), so
-there is nothing to generate: download, verify, scan.
+### Install the binary (from v0.1.0 on)
+
+Each release ships a static binary per platform, `checksums.txt`, an SBOM and a SLSA build
+provenance. Verify both before running it: a hardening tool you did not verify is a strange way to
+start hardening.
 
 ```bash
 gh release download --repo stephrobert/pavois \
@@ -82,7 +87,12 @@ chmod +x pavois-linux-amd64
 ./pavois-linux-amd64 scan local --sudo
 ```
 
-### Option B: build from source
+### Build from source (contributors, and until v0.1.0 ships)
+
+You need this if you contribute to Pavois, or if you want to use it before the first release
+exists. It is not how the tool is meant to be installed, and it never will be: the build pulls a
+pinned Go, Node and Python toolchain, and regenerates artifacts that a release binary already
+carries inside it.
 
 The repository ships the **source of truth only** (`docs/reference/rules.yml` + the enriched site
 content). The InSpec corpus (`.rb`) and the OSCAL bundle are **derived artifacts**: they are not
@@ -97,8 +107,11 @@ mise run regen               # rebuild the rule corpus + OSCAL from docs/referen
 ```
 
 `mise run regen` runs `gen` (rules.yml → per-OS reference) → `render` (→ the `.rb` corpus the
-scanner executes) → `oscal` (→ the OSCAL bundle). CINC Auditor itself installs natively on the
-first scan (via omnitruck); a Docker container is the fallback.
+scanner executes) → `oscal` (→ the OSCAL bundle). Pavois never installs CINC Auditor on its own:
+put `cinc-auditor` on the scanning host yourself (`pavois doctor` prints the omnitruck command when
+it is missing). Without it, `ssh://` and `docker://` targets fall back to the pinned CINC container,
+and `local` refuses (a container cannot audit its host). On the target side, `--on-target` needs the
+engine there too: Pavois stops and says so, and installs it only when you pass `--bootstrap-cinc`.
 
 ### First scan in 5 minutes
 
@@ -114,6 +127,12 @@ mise trust && mise install && mise run build && mise run regen
 
 Once the first release ships, swap the build for the signed binary (Option A). For a remote
 target: `scan user@host --key ~/.ssh/id_ed25519 --sudo`.
+
+> **`--key` is not optional, even when `ssh user@host` works.** Pavois reaches the target through
+> the engine's SSH transport, which does **not** read `~/.ssh/config` and does **not** fall back to
+> `~/.ssh/id_ed25519` the way the `ssh` command does. Omit it and the run stops at
+> `could not reach or identify user@host`, on a host you can log into by hand a second later.
+> Pass `--key <path>`, or add the key to `ssh-agent`.
 
 ## ⚙️ How it works
 
@@ -133,6 +152,17 @@ pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo
 #      --enable all    also the dangerous ones, still unacknowledged
 #    a rule with a `danger:` line can brick/lock out the host: read it, then set
 #    `acknowledged: true` on that item (or pass --i-understand-danger) or apply refuses it
+pavois harden apply hardening-plan-debian12.yml --key ~/.ssh/id_ed25519 --reboot --scan
+
+# 2b. CONVERGE: one apply is not enough, and that is not a defect.
+#     Hardening MUTATES the machine, so it creates gaps the same pass cannot close: installing
+#     `at` creates /etc/at.deny, which another control wants absent; pulling in postfix brings a
+#     banner that names the distribution; sssd ships an AppArmor profile in complain mode.
+#     Measured on a fresh Debian 12: pass 1 armed 211 gaps, pass 2 armed 37, of which 10 existed
+#     only because pass 1 had installed the software they audit.
+#     Re-plan from a CURRENT scan (never replay the old plan: it describes a machine that is gone)
+#     and apply again, until a pass has nothing left to do. Two to three passes in practice.
+pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo --enable auto
 pavois harden apply hardening-plan-debian12.yml --key ~/.ssh/id_ed25519 --reboot --scan
 
 # 3. Build a before/after campaign report (grade delta + transition matrix)

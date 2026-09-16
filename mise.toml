@@ -299,6 +299,14 @@ run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_norm_refs.py"
 description = "FAIL if a remediation held back for safety has drifted back to automatic"
 run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_never_auto.py"
 
+[tasks."validate:run"]
+description = "Is a scan TRUSTWORTHY? Flags verdicts the scan never measured: empty output, shell errors leaking into results, N controls failing with one identical message, a whole family wiped out. Different question from whether the machine is compliant."
+run = "python3 {{config_root}}/tools/validate_run.py"
+
+[tasks."lint:shell-first-word"]
+description = "FAIL if a control's command would lose its privileges under --sudo (starts with a shell keyword, or reads a privileged binary inside $( )). Such a control reports a verdict it never measured."
+run = "python3 {{config_root}}/tools/lint_shell_first_word.py"
+
 [tasks."secrets:history"]
 description = "Scan EVERY commit for credentials and lab topology, not just what a push adds. The hooks and the range-based CI job only ever see a diff; publishing ships the whole history."
 run = "python3 {{config_root}}/tools/scan_history_secrets.py"
@@ -317,7 +325,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]

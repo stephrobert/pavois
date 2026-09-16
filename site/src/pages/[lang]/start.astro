@@ -82,8 +82,8 @@ bash tools/render.sh                      # ${fr ? 'le corpus InSpec (.rb)' : 't
         : 'Pavois is a Go binary on top of CINC Auditor (the open-source build of Chef InSpec). The toolchain is pinned by '}
       <a href="https://mise.jdx.dev" target="_blank" rel="noopener">mise</a>
       {fr
-        ? '. CINC Auditor s’installe en natif au premier scan (via omnitruck) ; un conteneur Docker sert de repli.'
-        : '. CINC Auditor installs natively on the first scan (via omnitruck); a Docker container is the fallback.'}
+        ? '. Pavois n’installe jamais CINC Auditor de lui-même : installez cinc-auditor sur l’hôte qui scanne (pavois doctor affiche la commande s’il manque) ; sans lui, les cibles distantes se rabattent sur un conteneur Docker et local refuse. Sur une cible distante, --on-target n’installe le moteur que si vous passez --bootstrap-cinc.'
+        : '. Pavois never installs CINC Auditor on its own: install cinc-auditor on the scanning host (pavois doctor prints the command when it is missing); without it, remote targets fall back to a Docker container and local refuses. On a remote target, --on-target installs the engine only when you pass --bootstrap-cinc.'}
     </p>
 
     <h2 id="install">{fr ? 'Installer un binaire vérifié (une fois publié)' : 'Install a verified binary (once released)'}</h2>
@@ -126,8 +126,16 @@ ready: try: pavois scan local --sudo
     <h2 id="scan">{fr ? '2. Premier scan (note A à E)' : '2. First scan (A to E grade)'}</h2>
     <p>{fr ? 'Le plus simple : auditer l’hôte courant avec sudo (la config effective exige root) :' : 'Simplest path: audit the current host with sudo (effective config needs root):'}</p>
     <Fragment set:html={highlight(`./go/pavois scan local --sudo`, 'bash')} />
-    <p>{fr ? 'Pour une cible distante via SSH (votre ~/.ssh/config et votre clé) :' : 'For a remote target over SSH (your ~/.ssh/config and key):'}</p>
+    <p>{fr ? 'Pour une cible distante via SSH :' : 'For a remote target over SSH:'}</p>
     <Fragment set:html={highlight(`./go/pavois scan user@host --key ~/.ssh/id_ed25519 --sudo`, 'bash')} />
+    <div class="callout warn">
+      <span class="ci" aria-hidden="true">!</span>
+      <p>
+        {fr
+          ? 'Le drapeau --key n’est pas facultatif, même si ssh user@host fonctionne. Pavois passe par le transport SSH du moteur, qui ne lit pas ~/.ssh/config et ne retombe pas sur ~/.ssh/id_ed25519 comme le fait la commande ssh. Sans lui, la commande s’arrête sur « could not reach or identify user@host », alors que vous vous connectez à la main une seconde plus tard. Indiquez --key <chemin>, ou ajoutez la clé à ssh-agent.'
+          : '--key is not optional, even when ssh user@host works. Pavois reaches the target through the engine\'s SSH transport, which does not read ~/.ssh/config and does not fall back to ~/.ssh/id_ed25519 the way the ssh command does. Omit it and the run stops at "could not reach or identify user@host", on a host you can log into by hand a second later. Pass --key <path>, or add the key to ssh-agent.'}
+      </p>
+    </div>
     <p class="muted">{fr ? 'Le profil (OS) est auto-détecté ; --profile ne sert que pour un profil custom.' : 'The OS profile is auto-detected; --profile is only for a custom profile.'}</p>
     <Fragment set:html={highlight(`# ${fr ? '(profil personnalisé, optionnel)' : '(custom profile, optional)'}
 # ./go/pavois scan user@host --key ~/.ssh/id_ed25519 --sudo --profile profiles/linux/debian12`, 'bash')} />
@@ -161,6 +169,11 @@ ready: try: pavois scan local --sudo
       {fr
         ? ' crée /etc/at.deny, qu’un autre contrôle exige absent. Il était absent quand le plan a été écrit : rien ne l’a supprimé. Un apply en une passe ne peut donc pas fermer les trous qu’il crée lui-même.'
         : ' creates /etc/at.deny, which another control requires to be absent. It was absent when the plan was written, so nothing ever deleted it. A single-pass apply therefore cannot close the gaps it creates itself.'}
+    </p>
+    <p>
+      {fr
+        ? 'Mesuré sur une Debian 12 neuve : la première passe arme 211 écarts, la seconde en arme 37, dont 10 qui n’existaient que parce que la première avait installé le logiciel qu’ils auditent. postfix arrive en dépendance et apporte un bandeau qui nomme la distribution ; sssd livre un profil AppArmor en mode complain ; installer at crée /etc/at.deny. Aucun de ces écarts n’était visible au moment du premier plan, pour la bonne raison qu’aucun n’existait encore.'
+        : 'Measured on a fresh Debian 12: the first pass arms 211 gaps, the second arms 37, of which 10 existed only because the first had installed the software they audit. postfix arrives as a dependency and brings a banner naming the distribution; sssd ships an AppArmor profile in complain mode; installing at creates /etc/at.deny. None of those gaps was visible when the first plan was written, for the simple reason that none of them existed yet.'}
     </p>
     <p>{fr ? 'La boucle : re-scanner, re-planifier, ré-appliquer, jusqu’à ce qu’une passe n’ait plus rien à faire.' : 'The loop: re-scan, re-plan, re-apply, until a pass has nothing left to do.'}</p>
     <Fragment set:html={highlight(`# ${fr ? 'jusqu’au point fixe (2 à 3 passes en pratique)' : 'until the fixpoint (2 to 3 passes in practice)'}

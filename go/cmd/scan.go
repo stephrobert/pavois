@@ -132,14 +132,6 @@ func latestFamilyProfile(root, fam string) string {
 	return best
 }
 
-// detectProfile queries the TARGET (cinc detect, any transport) and returns the
-// linux profile. Falls back to the closest of the same family when the exact
-// version is not bundled (e.g. Ubuntu 26.04 -> ubuntu2404), WITHOUT duplicating the corpus.
-func detectProfile(root string, o engine.Options) (profile, detected string) {
-	p, d, _ := detectProfileWhy(root, o)
-	return p, d
-}
-
 // detectProfileWhy also returns why detection failed, so the caller can tell "no profile for this
 // OS" (pass --profile) from "the target did not answer" (a key, a password, a route).
 func detectProfileWhy(root string, o engine.Options) (profile, detected, why string) {

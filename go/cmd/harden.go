@@ -276,9 +276,10 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 	if hdFrom != "" {
 		prof, detected = profileFromReport(root, hdFrom)
 	}
+	why := ""
 	if prof == "" {
 		_, _ = fmt.Fprint(os.Stderr, "  ⠿ detecting target OS…\r")
-		prof, detected = detectProfile(root, engine.Options{Target: target, Key: hdKey, SSHPass: sshPass})
+		prof, detected, why = detectProfileWhy(root, engine.Options{Target: target, Key: hdKey, SSHPass: sshPass})
 		_, _ = fmt.Fprint(os.Stderr, "\033[K")
 	}
 	if prof == "" {
@@ -286,7 +287,20 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("could not tell which OS %s was taken on, and the target %q did not answer either",
 				hdFrom, target)
 		}
-		return fmt.Errorf("could not detect a Pavois profile for target %q (%s)", target, detected)
+		// This used to read `could not detect a Pavois profile for target "user@host" ()`, with an
+		// EMPTY reason, because it called detectProfile and printed `detected`, which is "" exactly
+		// when detection fails. So the first command a new user runs could fail while saying
+		// nothing about why, on the most common cause there is: no --key. `scan` already answers
+		// this properly; there was no reason for `harden` to answer worse.
+		if detected == "" {
+			return fmt.Errorf("could not reach or identify %s: %s\n"+
+				"  a host that answers `ssh %s` can still fail here: the engine does not fall back to\n"+
+				"  ~/.ssh/id_ed25519 the way the ssh command does, so pass --key <path> (or add the key\n"+
+				"  to ssh-agent). If the host is fine and simply has no bundled profile, pass --profile",
+				target, why, target)
+		}
+		return fmt.Errorf("no bundled Pavois profile for %s (target %q): pass --profile with the closest one",
+			detected, target)
 	}
 	osName := strings.TrimPrefix(prof, "linux/")
 	_, _ = fmt.Fprintf(os.Stderr, "pavois: detected %s → reference %s\n", detected, osName)
@@ -2066,6 +2080,21 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	// installer to a FILE then run it (a `curl | bash` pipe / nested sudo wedges), over ssh WITHOUT
 	// -tt and piping the password (an -tt pty races `sudo -S` on rhel9). Password never hits argv.
 	if err := exec.Command("ssh", append(append(sshOpts(), target), "command -v cinc-apply >/dev/null 2>&1")...).Run(); err != nil { //nolint:gosec // fixed args, operator target
+		// And it is gated, like every other install Pavois can perform. #257 removed the implicit
+		// bootstrap from `scan`, added --bootstrap-cinc to `harden apply`, and then threaded the
+		// flag only into the post-apply re-scan: THIS install stayed unconditional. So the one
+		// subcommand that changes the machine was also the one that installed software on it
+		// without being asked, and it did so BEFORE the "Apply these changes?" prompt, which means
+		// answering "no" still left an unpinned installer having run as root on the target.
+		if !haBootstrapCinc {
+			return fmt.Errorf("cinc-client is not installed on %s, and installing it is not "+
+				"something Pavois does on its own.\n"+
+				"  what it would run, as root on the target:\n"+
+				"    curl -fsSL https://omnitruck.cinc.sh/install.sh | sh -s -- -P cinc\n"+
+				"  either install it yourself from your own mirror, which is what an air-gapped\n"+
+				"  or package-controlled estate wants, or pass --bootstrap-cinc to let Pavois run\n"+
+				"  the command above", target)
+		}
 		ensure := sudoCmd("bash -c 'curl -fsSL https://omnitruck.cinc.sh/install.sh -o /tmp/pavois-cinc-install.sh && sh /tmp/pavois-cinc-install.sh -P cinc'")
 		ec := exec.Command("ssh", append(append(sshOpts(), target), ensure)...) //nolint:gosec // fixed args, operator target
 		ec.Stdout, ec.Stderr = os.Stderr, os.Stderr

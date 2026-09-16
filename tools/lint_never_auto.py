@@ -41,6 +41,21 @@ NEVER_AUTO = {
         "Defaults requiretty forbids every sudo without a terminal: Ansible without a pty, cron, "
         "CI runners, and Pavois itself, which can then no longer re-scan the host it hardened.",
     ),
+    "service-fapolicyd-enabled": (
+        {"dangerous", "manual"},
+        "fapolicyd denies every execution its trust database does not list. Enabled by an apply "
+        "on AlmaLinux 8 it blocked /usr/sbin/auditd from opening its own config: auditd never "
+        "started and 21 audit controls failed (#166). Running `fapolicyd-cli --update` first is "
+        "not enough when a daemon ships an interpreter or plugin outside the RPM set, and the "
+        "denial shows only in /var/log/fapolicyd-access.log. The operator opts in after a "
+        "permissive-mode validation.",
+    ),
+    "pkg-fapolicyd-installed": (
+        {"dangerous", "manual"},
+        "the first half of the change above, with the same danger note: the package lands with no "
+        "trust database built, so whoever enables the service next inherits the denials. Armed "
+        "knowingly, together with the service, never by --enable auto.",
+    ),
 }
 
 
