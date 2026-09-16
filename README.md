@@ -52,8 +52,10 @@ difference: it audits the **effective configuration** of a running host, not the
 - **A qualified verdict.** A PASS states what it proves: **running now** vs **reboot-survivable**.
   A runtime-only pass caps the grade under A until persistence is proven. See [the qualified
   verdict](https://pavois.dev/en/handbook/qualified-verdict/).
-- **Agentless.** Runs `cinc-auditor` natively over `local`, `ssh://` or `docker://` targets, using
-  your own `~/.ssh/config`. No agent on the target.
+- **Nothing installed behind your back.** Runs `cinc-auditor` natively over `local`, `ssh://` or
+  `docker://` targets, using your own `~/.ssh/config`. No agent, no daemon, nothing left running.
+  The fast `--on-target` mode needs the engine present on the target: if it is missing Pavois says
+  so and stops, and only installs it when you pass `--bootstrap-cinc`.
 
 <p align="center">
   <a href="https://pavois.dev"><img src="site/public/media/harden-demo-poster.jpg" alt="Pavois harden demo" width="680"></a>
