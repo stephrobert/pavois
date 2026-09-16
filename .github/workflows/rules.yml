@@ -1,0 +1,80 @@
+name: Rule base
+
+# The guards that keep a dangerous remediation from being armed automatically, and keep the
+# generated corpus honest. They existed already, in the local pre-push hook, which means they were
+# enforced only for whoever ran it: `--no-verify` skips it, a fresh clone that never ran
+# `pre-commit install` does not have it, and an edit made in the GitHub web UI never sees it.
+#
+# The product principle at stake is worth stating: Pavois prefers an explicit FAIL over a dangerous
+# PASS. A one-word edit of `remediation_class` in a 40 000-line YAML is all it takes to arm a
+# remediation that chowns setgid binaries, freezes module loading under a firewall that needs
+# modules, or starts fapolicyd without a trust database. None of those is caught by a unit test.
+#
+# gen:verify matters for a reason this project learned the hard way: the fix went into rules.yml,
+# the generated corpus still said `auto`, and the next run re-applied the dangerous remediation.
+# Source and generated output agreeing is the thing to check, not the source alone.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/reference/rules.yml'
+      - 'docs/reference/pavois-content/**'
+      - 'tools/gen.py'
+      - 'tools/lint_never_auto.py'
+      - 'tools/lint_rules.py'
+      - 'tools/validate_mappings.py'
+      - 'mise.toml'
+      - '.github/workflows/rules.yml'
+  pull_request:
+    paths:
+      - 'docs/reference/rules.yml'
+      - 'docs/reference/pavois-content/**'
+      - 'tools/gen.py'
+      - 'tools/lint_never_auto.py'
+      - 'tools/lint_rules.py'
+      - 'tools/validate_mappings.py'
+      - 'mise.toml'
+      - '.github/workflows/rules.yml'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  guards:
+    name: Never-auto and corpus integrity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          version: 2026.2.23
+          install: true
+          cache: true
+
+      # No remediation known to be able to break a system may belong to `--enable auto`.
+      - name: A dangerous remediation has not drifted back to automatic
+        run: mise run lint:never-auto
+
+      # The generated per-OS corpus must say what rules.yml says. A stale corpus is how a fixed
+      # rule gets re-applied anyway.
+      - name: The generated corpus matches its source
+        run: mise run gen:verify
+
+      - name: Rule-base lints
+        run: mise run lint:rules
+
+      # Every norm tag points at a requirement that exists in the published standard.
+      - name: Mappings are references, not inventions
+        run: mise run validate:mappings
