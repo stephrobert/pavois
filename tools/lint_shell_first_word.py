@@ -36,6 +36,11 @@ CORPUS = ROOT / "profiles" / "linux"
 # A command starting with one of these is not a command at all once `sudo ` is prefixed.
 KEYWORDS = {"if", "for", "while", "until", "case", "test", "["}
 
+# `sudo NAME=value ...` is an environment assignment, not a command: nothing runs. The first rule
+# written here was "the first word must not be a shell keyword", and it was wrong. The rule is
+# "the first word must be something the shell executes", and an assignment is not.
+ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
 # Binaries that need root, live outside the unprivileged PATH, or both. Inside a $( ) they run as
 # the login user, which on a Debian cloud image means /usr/local/bin:/usr/bin:/bin:/usr/games.
 PRIVILEGED = {
@@ -65,7 +70,11 @@ PRIVILEGED = {
     "faillock",
 }
 PRIV_RE = re.compile(r"(?<![\w/-])(" + "|".join(map(re.escape, sorted(PRIVILEGED))) + r")(?![\w-])")
-COMMAND_RE = re.compile(r"command\('((?:[^'\\]|\\.)*)'\)")
+# Ruby concatenates ADJACENT string literals, so `command('a''b')` is one string. A pattern
+# matching a single literal silently skips those, and misc-postfix-anti-vrfy (which starts with
+# `if`) went unwrapped and unreported because of exactly that. Match everything up to the
+# closing `) do`, then strip the literal quoting.
+COMMAND_RE = re.compile(r"command\((\s*'(?:[^'\\]|\\.)*'(?:\s*'(?:[^'\\]|\\.)*')*)\)")
 CONTROL_RE = re.compile(r"^control '([^']+)' do", re.M)
 SUBST_RE = re.compile(r"\$\(([^()]*(?:\([^()]*\)[^()]*)*)\)")
 
@@ -91,7 +100,8 @@ def main() -> int:
         text = rb.read_text(encoding="utf-8")
         for m in COMMAND_RE.finditer(text):
             checked += 1
-            script = m.group(1).replace("\\'", "'").replace("\\\\", "\\")
+            parts = re.findall(r"'((?:[^'\\]|\\.)*)'", m.group(1))
+            script = "".join(parts).replace("\\'", "'").replace("\\\\", "\\")
             ctl = control_at(text, m.start())
             os_name = rb.parent.parent.name
 
@@ -100,6 +110,10 @@ def main() -> int:
                 problems.append(
                     (os_name, ctl, "starts with the shell keyword " + first, script[:80])
                 )
+                continue
+            if ASSIGNMENT_RE.match(first):
+                name = first.split("=")[0]
+                problems.append((os_name, ctl, f"starts with the assignment {name}=", script[:80]))
                 continue
 
             # A privileged read inside a substitution runs unprivileged. `sh -c '...'` makes the

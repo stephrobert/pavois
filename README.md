@@ -144,6 +144,17 @@ pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo
 #    `acknowledged: true` on that item (or pass --i-understand-danger) or apply refuses it
 pavois harden apply hardening-plan-debian12.yml --key ~/.ssh/id_ed25519 --reboot --scan
 
+# 2b. CONVERGE: one apply is not enough, and that is not a defect.
+#     Hardening MUTATES the machine, so it creates gaps the same pass cannot close: installing
+#     `at` creates /etc/at.deny, which another control wants absent; pulling in postfix brings a
+#     banner that names the distribution; sssd ships an AppArmor profile in complain mode.
+#     Measured on a fresh Debian 12: pass 1 armed 211 gaps, pass 2 armed 37, of which 10 existed
+#     only because pass 1 had installed the software they audit.
+#     Re-plan from a CURRENT scan (never replay the old plan: it describes a machine that is gone)
+#     and apply again, until a pass has nothing left to do. Two to three passes in practice.
+pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo --enable auto
+pavois harden apply hardening-plan-debian12.yml --key ~/.ssh/id_ed25519 --reboot --scan
+
 # 3. Build a before/after campaign report (grade delta + transition matrix)
 pavois diff before.json after.json --html campaign.html --json campaign.json
 

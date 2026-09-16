@@ -70,6 +70,12 @@ step "5. scan the hardened machine"
 run "$PAV" scan "$T" --key "$KEY" --sudo --format json --out "$OUT/after" || true
 AFTER=$(latest "$OUT/after")
 
+step "5b. is this scan trustworthy?"
+# Distinct from "is the machine compliant": this asks whether the scan measured anything at all.
+# Three families of controls were found in one day reporting verdicts they never measured, and
+# nothing in the pipeline noticed. This is what notices.
+[ -n "${AFTER:-}" ] && run python3 tools/validate_run.py "$AFTER" || echo "  skipped"
+
 step "6. what changed"
 [ -n "${BEFORE:-}" ] && [ -n "${AFTER:-}" ] && run "$PAV" diff "$BEFORE" "$AFTER" || echo "  skipped"
 

@@ -55,14 +55,49 @@ def _rb(s):
 # quotes matter: with double quotes the remote shell expands $(...) before sudo runs, which moves
 # the bug instead of removing it.
 _SHELL_KEYWORDS = ("if", "for", "while", "until", "case", "test", "[")
-_COMMAND_RE = re.compile(r"command\('((?:[^'\\]|\\.)*)'\)")
+# Ruby concatenates ADJACENT string literals, so `command('a''b')` is one string. A pattern
+# matching a single literal silently skips those, and misc-postfix-anti-vrfy (which starts with
+# `if`) went unwrapped and unreported because of exactly that. Match everything up to the
+# closing `) do`, then strip the literal quoting.
+_COMMAND_RE = re.compile(r"command\((\s*'(?:[^'\\]|\\.)*'(?:\s*'(?:[^'\\]|\\.)*')*)\)")
+
+
+# A leading `NAME=value`: `sudo v=$(...)` hands sudo an environment assignment with no command,
+# so nothing runs and stdout is empty, exactly like a leading keyword. This is the family that
+# broke the twelve pwquality controls, the three umask ones and faillock: one cause, not eighteen.
+_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
 
 def _needs_shell_wrap(script):
     stripped = script.strip()
     if not stripped:
         return False
-    return stripped.split(None, 1)[0] in _SHELL_KEYWORDS
+    first = stripped.split(None, 1)[0]
+    return first in _SHELL_KEYWORDS or bool(_ASSIGNMENT_RE.match(first))
+
+
+# Same defect, third syntax. These commands use Ruby DOUBLE quotes because they interpolate the
+# per-standard value (`#{m}`), so the single-quote pattern above never sees them. They are the
+# nastiest of the three: `sudo v=$(...)` leaves $v unset, the test takes its failure branch, and
+# the command prints a confident "ko" instead of nothing. An empty stdout is detectable at runtime;
+# a wrong answer is not.
+#
+# Escaping, carefully: inside a Ruby double-quoted literal, a POSIX-escaped single quote ('\'')
+# must be written '\\''. The #{...} interpolation is left untouched: it is Ruby's, not the shell's.
+_DQ_COMMAND_RE = re.compile(r'command\("((?:[^"\\]|\\.)*)"\)')
+
+
+def _wrap_shell_dq(line):
+    def repl(m):
+        script = m.group(1)
+        first = script.strip().split(None, 1)[0] if script.strip() else ""
+        if not (first in _SHELL_KEYWORDS or _ASSIGNMENT_RE.match(first)):
+            return m.group(0)
+        # `'` in the Ruby literal is a literal quote for the shell: POSIX-escape it.
+        escaped = script.replace("'", "'\\\\''")
+        return "command(\"sh -c '" + escaped + "'\")"
+
+    return _DQ_COMMAND_RE.sub(repl, line)
 
 
 def _wrap_shell(line):
@@ -70,7 +105,9 @@ def _wrap_shell(line):
     shell keyword. Any other command is returned untouched."""
 
     def repl(m):
-        script = m.group(1).replace("\\'", "'").replace("\\\\", "\\")
+        # Join the adjacent literals into the single string Ruby would build.
+        parts = re.findall(r"'((?:[^'\\]|\\.)*)'", m.group(1))
+        script = "".join(parts).replace("\\'", "'").replace("\\\\", "\\")
         if not _needs_shell_wrap(script):
             return m.group(0)
         shell_arg = "sh -c '" + script.replace("'", "'\\''") + "'"
@@ -128,7 +165,7 @@ def render_control(cid, e):
             + cond
             + ") }"
         )
-    out += ["  " + _wrap_shell(line) for line in e.get("check", [])]
+    out += ["  " + _wrap_shell_dq(_wrap_shell(line)) for line in e.get("check", [])]
     out.append("end\n")
     return "\n".join(out)
 
