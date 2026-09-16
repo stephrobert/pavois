@@ -279,12 +279,18 @@ RULES: list[Rule] = [
     ),
     Rule(
         "packaging and release plumbing",
-        ["nfpm.yaml", ".goreleaser*", "Dockerfile"],
+        ["nfpm.yaml", ".goreleaser*", "Dockerfile", "packaging/*"],
         [
             (
                 LOCAL,
                 "mise run release:check -- vX.Y.Z  (see #211)",
                 "that the published artefact verifies: download it and check",
+            ),
+            (
+                LOCAL,
+                "tools/release/install_matrix.sh  (fresh VM per distribution)",
+                "anything about a machine that already has the repository: the packaging "
+                "failures that matter are only visible on a machine that has never seen it",
             ),
         ],
     ),

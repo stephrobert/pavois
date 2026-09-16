@@ -201,7 +201,7 @@ for os in $OSES; do
     # This is the shape a "missing dependencies" report takes: a dynamically linked binary whose
     # package declares no library, which loads on the build machine and dies on an older one.
     fail "/usr/bin/pavois is dynamically linked" \
-         "$(printf '%s' "$kind" | tr '\n' ' ' | cut -c1-100) — build with CGO_ENABLED=0, as release.yml does"
+         "$(printf '%s' "$kind" | tr '\n' ' ' | cut -c1-90). Build with CGO_ENABLED=0, as release.yml does"
   fi
 
   say "--- 4. does it run"
