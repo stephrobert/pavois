@@ -40,6 +40,18 @@ sudo install -m 0755 pavois-linux-amd64 /usr/local/bin/pavois
 pavois doctor                            # ${t(fr, { en: 'corpus embedded, ready to scan', fr: 'corpus embarqué, prêt à scanner' })}`,
 };
 
+/**
+ * The provenance check alone, to be shown AFTER an install the reader has already done.
+ *
+ * It is one line on purpose. Offering the whole gh download path as the primary route puts a tool
+ * between the reader and the binary for no gain: gh downloads the same file curl does. What gh adds
+ * is this, and only this, so this is what gets shown next to the words that explain it.
+ */
+export const provenance: Block = {
+  id: 'provenance',
+  code: (fr) => `gh attestation verify pavois-linux-amd64 --repo ${REPO}   # ${t(fr, { en: 'who built it', fr: 'qui l’a construit' })}`,
+};
+
 /** The same, through GitHub CLI, which additionally proves WHO built the file. */
 export const binaryGh: Block = {
   id: 'binary-gh',
@@ -88,6 +100,7 @@ pavois serve                             # http://localhost:8098`,
 
 export const ALL: Block[] = [
   binaryCurl,
+  provenance,
   binaryGh,
   packages,
   miseInstall,

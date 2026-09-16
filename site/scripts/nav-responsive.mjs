@@ -123,10 +123,88 @@ function resolveDisplay(css, selector, width) {
   return { value, unknown };
 }
 
+/** All declarations of one property for a selector, at a width, in source order. */
+function resolveProp(css, selector, prop, width) {
+  let value = null;
+  const re = /@media([^{]+)\{|([^{}]+)\{([^{}]*)\}|\}/g;
+  let media = null;
+  let depth = 0;
+  let m;
+  while ((m = re.exec(css)) !== null) {
+    if (m[1] !== undefined) {
+      media = m[1].trim();
+      depth = 1;
+      continue;
+    }
+    if (m[0] === '}') {
+      if (depth === 1) {
+        media = null;
+        depth = 0;
+      }
+      continue;
+    }
+    if (!m[2].split(',').map((s) => s.trim()).includes(selector)) continue;
+    if (media !== null && mediaMatches(media, width) !== true) continue;
+    const decl = m[3].match(new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*([^;!]+)`, 'i'));
+    if (decl) value = decl[1].trim();
+  }
+  return value;
+}
+
 const files = stylesheets(dist);
 if (files.length === 0) {
   console.error(`nav-responsive: no stylesheet under ${dist}/ (build the site first)`);
   process.exit(1);
+}
+
+/**
+ * The language switch has to be REACHABLE on a phone, not merely present in the markup.
+ *
+ * On mobile the header hides `.nav-meta .lang` and the drawer takes over, which is correct. But the
+ * drawer is a 100dvh flex column carrying fifteen navigation links, and `.drawer-links` had no
+ * overflow-y. The column overflowed, `margin-top:auto` on `.drawer-foot` had no free space to push
+ * into, and the foot went off the bottom of the screen with no way to scroll to it. The language
+ * switch and the GitHub link live in that foot, so on a phone there was simply no way to change
+ * language. Every element was in the DOM and every rule read correctly on its own.
+ *
+ * So the check is on the escape route: at a phone width, either the header switch is visible, or
+ * the drawer's own is, and in that case the link list must be able to scroll. min-height:0 is part
+ * of the condition because a flex item will not shrink below its content without it, which makes
+ * overflow-y a no-op.
+ */
+function languageSwitchReachable(width) {
+  const notes = [];
+  let headerLang = null;
+  let footDisplay = null;
+  let overflow = null;
+  let minHeight = null;
+  for (const f of files) {
+    const css = readFileSync(f, 'utf8');
+    headerLang = resolveDisplay(css, '.nav-meta .lang', width).value ?? headerLang;
+    footDisplay = resolveDisplay(css, '.drawer-foot', width).value ?? footDisplay;
+    overflow = resolveProp(css, '.drawer-links', 'overflow-y', width) ?? overflow;
+    minHeight = resolveProp(css, '.drawer-links', 'min-height', width) ?? minHeight;
+  }
+
+  if (headerLang !== 'none') return notes; // reachable straight from the header
+
+  if (footDisplay === 'none') {
+    notes.push('.nav-meta .lang is hidden and .drawer-foot is too: no way to change language');
+    return notes;
+  }
+  if (!overflow || !/auto|scroll/.test(overflow)) {
+    notes.push(
+      '.nav-meta .lang is hidden, so the switch lives in .drawer-foot, but .drawer-links cannot ' +
+        `scroll (overflow-y: ${overflow ?? 'unset'}). A full link list pushes the foot off-screen.`,
+    );
+  }
+  if (minHeight !== '0' && minHeight !== '0px') {
+    notes.push(
+      `.drawer-links needs min-height: 0 for its overflow to engage (found: ${minHeight ?? 'unset'}); ` +
+        'a flex item will not shrink below its content without it.',
+    );
+  }
+  return notes;
 }
 
 let failures = 0;
@@ -153,6 +231,9 @@ for (const { width, label, visible, hidden } of EXPECTATIONS) {
       notes.push(`${selector} should be visible, resolves to display:none`);
     }
   }
+
+  notes.push(...languageSwitchReachable(width));
+
   if (notes.length) {
     failures += 1;
     console.log(`  FAIL ${label} (${width}px)`);
