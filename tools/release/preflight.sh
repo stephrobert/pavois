@@ -150,6 +150,35 @@ else
   ko "the history scan found something" "mise run secrets:history"
 fi
 
+# The .deb and .rpm are built ONLY by the release workflow, at tag time, which means a broken
+# nfpm.yaml is discovered by publishing. The install page offers those packages, so they are part
+# of the promise, and building one takes a second.
+#
+# It builds a real package and looks inside it rather than trusting nfpm's exit code: a config that
+# produces an empty archive, or puts the binary somewhere nothing will find it, exits 0.
+if command -v nfpm >/dev/null 2>&1 && command -v dpkg-deb >/dev/null 2>&1; then
+  pkgdir=$(mktemp -d)
+  mkdir -p "$pkgdir/dist"
+  if [ -x go/pavois ] || mise run build >/dev/null 2>&1; then
+    cp go/pavois "$pkgdir/dist/pavois-linux-amd64"
+    # shellcheck disable=SC2016  # ${ARCH} is nfpm's own placeholder, not a shell variable
+    sed -e 's|${ARCH}|amd64|g' -e "s|\${VERSION}|${VERSION#v}|g" nfpm.yaml > "$pkgdir/nfpm.yaml"
+    if (cd "$pkgdir" && nfpm pkg --config nfpm.yaml --packager deb \
+          --target dist/pavois.deb >/dev/null 2>&1) &&
+       dpkg-deb -c "$pkgdir/dist/pavois.deb" 2>/dev/null | grep -q '/usr/bin/pavois'; then
+      ok "nfpm.yaml builds a .deb that carries /usr/bin/pavois"
+    else
+      ko "nfpm.yaml does not produce an installable package" \
+         "the release workflow would fail, or ship an empty one: nfpm pkg --config nfpm.yaml"
+    fi
+  else
+    ko "could not build the binary to package" "mise run build"
+  fi
+  rm -rf "$pkgdir"
+else
+  note "nfpm or dpkg-deb is missing, so the .deb/.rpm build was not exercised (CI builds it)"
+fi
+
 # --- the claim about real machines -------------------------------------------
 head_ "the field evidence for: $VALIDATED_OS"
 
