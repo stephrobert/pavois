@@ -40,7 +40,17 @@ function pages(dir, base = dir) {
   return out;
 }
 
-const TAG = /<[^>]+>/g;
+// Stripping tags needs a FIXED POINT, not one pass: `<<b>span>` has its inner `<b>` removed and
+// leaves `<span>` behind. Nothing here reaches a DOM, so it was never a vulnerability, but a
+// checker that mis-reads its own input reports differences that are not there.
+function stripTags(s) {
+  let out = s;
+  for (let previous = ''; previous !== out; ) {
+    previous = out;
+    out = out.replace(/<[^>]*>/g, '');
+  }
+  return out;
+}
 
 function unescapeHtml(s) {
   // Numeric entities first: the highlighter emits `&#x26;&#x26;` for `&&`, and a named-only decoder
@@ -67,7 +77,7 @@ function commands(html) {
   const re = /<pre[^>]*>([\s\S]*?)<\/pre>/g;
   let m;
   while ((m = re.exec(html)) !== null) {
-    const text = unescapeHtml(m[1].replace(TAG, ''));
+    const text = unescapeHtml(stripTags(m[1]));
     const lines = text
       .split('\n')
       .map((l) => l.replace(/\s+#.*$/, '').trimEnd()) // trailing comment: the localized part
