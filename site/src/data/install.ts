@@ -8,7 +8,11 @@
 //
 // This project already answers this for its rule base: one source in rules.yml, every per-OS file
 // generated from it. The install commands get the same treatment. A page renders these blocks, it
-// does not retype them, and tools/lint_install_docs.py fails the build if a page grows its own copy.
+// does not retype them, and `mise run lint:install-docs` (in prepush) fails the build if a page
+// grows its own copy, pipes a download into a shell, or renders a block that is not exported here.
+// That linter is itself proven by tools/lint_install_docs_test.py, which plants each defect in a
+// copy of the tree and demands a rejection: this comment claimed the guard existed long before it
+// did, and an unproven guard is how that happens.
 //
 // VERSION is the one value to bump per release.
 
@@ -69,6 +73,36 @@ curl -fsSLO $BASE/pavois-${VERSION.slice(1)}.amd64.rpm && sudo rpm -i pavois-${V
 };
 
 /**
+ * Install the scan engine, the one prerequisite no package manager can fetch.
+ *
+ * Why this block exists. The installation page used to say "the cinc-auditor binary, which you
+ * install yourself: pavois doctor prints the omnitruck command when it is missing", and then never
+ * printed the command. The page explained the requirement and sent the reader to a tool to find out
+ * how to satisfy it. A field report of "missing dependencies on AlmaLinux" was exactly this: the
+ * package installs, nothing is missing, and the first scan stops on an engine nobody was told to
+ * install.
+ *
+ * Why NOT the omnitruck one-liner that upstream documents. It is
+ * `curl -L https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc-auditor`, a script piped
+ * into a root shell, which is the one thing this site says it will never ask for. The same endpoint
+ * also publishes the package URL and its sha256, so the rule costs nothing here: download, verify,
+ * install with the system package manager, and nothing executes until sha256sum has agreed.
+ *
+ * The p/pv keys are omnitruck's own: el/8, el/9, debian/12, debian/13, ubuntu/22.04, ubuntu/24.04.
+ * AlmaLinux and Rocky are `el`, as they are for Pavois's own profile detection.
+ */
+export const engineInstall: Block = {
+  id: 'engine-install',
+  code: (fr) => `META="https://omnitruck.cinc.sh/stable/cinc-auditor/metadata?p=el&pv=9&m=x86_64"
+URL=$(curl -sS "$META" | awk '/^url/{print $2}')     # ${t(fr, { en: 'the package for that platform', fr: 'le paquet de cette plateforme' })}
+SUM=$(curl -sS "$META" | awk '/^sha256/{print $2}')  # ${t(fr, { en: 'and its published checksum', fr: 'et son empreinte publiée' })}
+curl -fsSLO "$URL"
+echo "$SUM  \${URL##*/}" | sha256sum --check         # ${t(fr, { en: 'integrity, before anything runs', fr: 'intégrité, avant toute exécution' })}
+sudo dnf install -y "./\${URL##*/}"                  # ${t(fr, { en: 'Debian/Ubuntu: sudo apt install ./<file>', fr: 'Debian/Ubuntu : sudo apt install ./<fichier>' })}
+pavois doctor                                        # ${t(fr, { en: 'CINC engine (native): /usr/bin/cinc-auditor', fr: 'moteur CINC (natif) : /usr/bin/cinc-auditor' })}`,
+};
+
+/**
  * mise, from a SIGNED repository. extrepo enables mise's APT repository and verifies its key.
  * There is deliberately no `curl https://mise.run | sh` here, however convenient: the get-started
  * page states the rule, so no page of this site may break it.
@@ -103,6 +137,7 @@ export const ALL: Block[] = [
   provenance,
   binaryGh,
   packages,
+  engineInstall,
   miseInstall,
   buildFromSource,
   firstScan,

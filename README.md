@@ -111,10 +111,17 @@ mise run regen               # rebuild the rule corpus + OSCAL from docs/referen
 ```
 
 `mise run regen` runs `gen` (rules.yml → per-OS reference) → `render` (→ the `.rb` corpus the
-scanner executes) → `oscal` (→ the OSCAL bundle). Pavois never installs CINC Auditor on its own:
-put `cinc-auditor` on the scanning host yourself (`pavois doctor` prints the omnitruck command when
-it is missing). Without it, `ssh://` and `docker://` targets fall back to the pinned CINC container,
-and `local` refuses (a container cannot audit its host). On the target side, `--on-target` needs the
+scanner executes) → `oscal` (→ the OSCAL bundle).
+
+**The scan engine is the one thing you install yourself**, whichever way you installed Pavois. CINC
+Auditor is in no distribution repository, so no package manager can fetch it and the `.deb`/`.rpm`
+cannot declare it: without it the first scan stops on `no native CINC engine found`, which is not a
+missing dependency of the package. The verified download (package URL and its published sha256 from
+omnitruck, checksum checked before anything runs) is at
+<https://pavois.dev/en/installation/#engine>, and `pavois doctor` links to it.
+
+Without the engine, `ssh://` and `docker://` targets fall back to the pinned CINC container, and
+`local` refuses (a container cannot audit its host). On the target side, `--on-target` needs the
 engine there too: Pavois stops and says so, and installs it only when you pass `--bootstrap-cinc`.
 
 ### First scan in 5 minutes

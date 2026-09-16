@@ -117,15 +117,27 @@ const crumbs = [
 
     <h2 id="engine">{fr ? 'Le moteur de scan (CINC Auditor)' : 'The scan engine (CINC Auditor)'}</h2>
     <p>{fr
-      ? 'Pavois exécute ses contrôles avec CINC Auditor (le build open-source de Chef InSpec). Deux modes, choisis par --engine (défaut : auto) :'
-      : 'Pavois runs its controls with CINC Auditor (the open-source build of Chef InSpec). Two modes, picked by --engine (default: auto):'}</p>
+      ? 'Installer Pavois ne suffit pas à scanner. Pavois exécute ses contrôles avec CINC Auditor (le build open-source de Chef InSpec), et CINC n’est dans aucun dépôt de distribution : aucun gestionnaire de paquets ne peut aller le chercher, donc le paquet Pavois ne peut pas le déclarer en dépendance. C’est à vous de l’installer, et c’est la seule chose à installer en plus du binaire.'
+      : 'Installing Pavois is not enough to scan. Pavois runs its controls with CINC Auditor (the open-source build of Chef InSpec), and CINC is in no distribution repository: no package manager can fetch it, so the Pavois package cannot declare it as a dependency. Installing it is on you, and it is the only thing to install besides the binary.'}</p>
+    <p>{fr
+      ? 'Si vous sautez cette étape, le premier scan s’arrête sur '
+      : 'Skip this step and the first scan stops on '}<code>no native CINC engine found</code>{fr
+      ? '. Rien ne manque au paquet Pavois : c’est le moteur qui n’est pas là.'
+      : '. Nothing is missing from the Pavois package: the engine is what is absent.'}</p>
+    <Fragment set:html={highlight(install.engineInstall.code(fr), 'bash')} />
+    <p class="muted">{fr
+      ? 'Les clés p et pv sont celles d’omnitruck : el/8, el/9, debian/12, debian/13, ubuntu/22.04, ubuntu/24.04. AlmaLinux et Rocky se déclarent en el, comme pour la détection de profil de Pavois. Le point d’entrée metadata publie l’URL du paquet et son sha256 : on télécharge, on vérifie, on installe avec le gestionnaire du système. La documentation amont propose aussi un script tubé dans un shell root ; ce site ne vous le demandera pas, et cette recette lui est équivalente sans exécuter du code téléchargé à l’aveugle.'
+      : 'The p and pv keys are omnitruck’s own: el/8, el/9, debian/12, debian/13, ubuntu/22.04, ubuntu/24.04. AlmaLinux and Rocky declare as el, as they do for Pavois’s own profile detection. The metadata endpoint publishes the package URL and its sha256, so you download, verify, then install with the system package manager. Upstream also documents a script piped into a root shell; this site will not ask you for that, and this recipe is its equivalent without executing code fetched blind.'}</p>
+    <p>{fr
+      ? 'Deux modes existent, choisis par --engine (défaut : auto) :'
+      : 'Two modes exist, picked by --engine (default: auto):'}</p>
     <ul>
       <li><b>{fr ? 'natif (recommandé)' : 'native (recommended)'}</b> {fr
-        ? ': le binaire cinc-auditor, que vous installez vous-même : pavois doctor affiche la commande omnitruck s’il manque, et Pavois ne lance cet installeur que sur une cible distante, quand vous passez --bootstrap-cinc. Indispensable pour auditer l’hôte courant (local) et pour le SSH (il respecte votre ~/.ssh/config).'
-        : ': the cinc-auditor binary, which you install yourself: pavois doctor prints the omnitruck command when it is missing, and Pavois only ever runs that installer on a remote target, when you pass --bootstrap-cinc. Required to audit the current host (local) and for SSH (it honors your ~/.ssh/config).'}</li>
+        ? ': le binaire cinc-auditor installé ci-dessus. Indispensable pour auditer l’hôte courant (local) et confortable en SSH (il respecte votre ~/.ssh/config). Sur une cible distante, et seulement là, --bootstrap-cinc laisse Pavois l’installer pour vous.'
+        : ': the cinc-auditor binary installed above. Required to audit the current host (local) and convenient over SSH (it honors your ~/.ssh/config). On a remote target, and only there, --bootstrap-cinc lets Pavois install it for you.'}</li>
       <li><b>{fr ? 'Docker (repli)' : 'Docker (fallback)'}</b> {fr
-        ? ': zéro-install, pratique pour scanner un conteneur. Un conteneur ne peut pas auditer son hôte, réservez-le aux cibles docker://.'
-        : ': zero-install, handy to scan a container. A container cannot audit its host, keep it for docker:// targets.'}</li>
+        ? ': zéro-install, pratique pour scanner un conteneur. Un conteneur ne peut pas auditer son hôte, donc ce mode ne remplace pas le moteur natif pour une cible local : réservez-le aux cibles docker://.'
+        : ': zero-install, handy to scan a container. A container cannot audit its host, so this mode does not replace the native engine for a local target: keep it for docker:// targets.'}</li>
     </ul>
 
     <h2 id="targets">{fr ? 'Cibles et transports' : 'Targets and transports'}</h2>
@@ -154,6 +166,9 @@ pavois scan my-container                 # ${fr ? 'conteneur via docker://' : 'c
       ? ' : il vérifie chaque prérequis (moteur CINC, sudo, SSH, OS, corpus) et affiche la commande exacte pour corriger chaque manque ('
       : ': it checks each prerequisite (CINC engine, sudo, SSH, OS, corpus) and prints the exact fix for each gap ('}<a href={`/${lang}/start/#quickstart`}>{fr ? 'voir la sortie' : 'see the output'}</a>{fr ? '). Sinon, les cas fréquents :' : '). Otherwise, the common cases:'}</p>
     <ul>
+      <li><b>no native CINC engine found</b> {fr
+        ? ': le moteur n’est pas installé. C’est de loin le cas le plus fréquent après une installation par paquet, et il est souvent lu comme une dépendance manquante du paquet Pavois : elle ne l’est pas, le binaire est statique et ne réclame aucune bibliothèque. Installez le moteur : '
+        : ': the engine is not installed. This is by far the most common case after a package install, and it is often read as a missing dependency of the Pavois package: it is not one, the binary is static and asks for no library. Install the engine: '}<a href={`/${lang}/installation/#engine`}>{fr ? 'CINC Auditor' : 'CINC Auditor'}</a>.</li>
       <li><b>sudo: a terminal is required / requires a TTY</b> {fr
         ? ': certaines cibles (ex. Debian 12 avec Defaults use_pty) refusent sudo via SSH non-interactif. Utilisez '
         : ': some targets (e.g. Debian 12 with Defaults use_pty) reject sudo over non-interactive SSH. Use '}<code>--on-target</code>{fr ? ' pour exécuter le moteur sur la cible.' : ' to run the engine on the target.'}</li>
