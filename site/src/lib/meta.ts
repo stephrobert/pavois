@@ -48,14 +48,35 @@ export function clampTitle(title: string): string {
  * `<code>` into the snippet, where an engine renders them literally, and that is what a reader
  * sees before deciding whether to click.
  */
+const ENTITIES: Record<string, string> = {
+  nbsp: ' ',
+  '#160': ' ',
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  '#34': '"',
+  '#39': "'",
+  apos: "'",
+};
+
 export function metaDescription(text: string): string {
-  const plain = text
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;|&#160;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;|&#34;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'");
+  // Strip tags until the string stops changing. One pass is not enough: `<<b>script>` has its inner
+  // `<b>` removed and leaves `<script>` behind, which is CodeQL's js/incomplete-multi-character-
+  // sanitization. Looping to a fixed point is what actually removes markup.
+  let plain = text;
+  for (let previous = ''; previous !== plain; ) {
+    previous = plain;
+    plain = plain.replace(/<[^>]*>/g, '');
+  }
+
+  // Decode entities in ONE pass. Decoding `&amp;` before `&lt;` turns `&amp;lt;` into `&lt;` and
+  // then into `<`: the text said "&lt;" literally and comes back as a tag delimiter, which is
+  // js/double-escaping. A single pass over the whole string cannot feed its own output back in.
+  plain = plain.replace(
+    /&(nbsp|amp|lt|gt|quot|apos|#160|#34|#39);/gi,
+    (match, name: string) => ENTITIES[name.toLowerCase()] ?? match,
+  );
+
   return cut(plain, DESC_MAX);
 }

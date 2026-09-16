@@ -42,7 +42,11 @@ RULES = "docs/reference/rules.yml"
 # "AC-6 (1)", "AU-12 b". A single interior space is therefore allowed. The point is to catch PROSE,
 # not to impose a house style on a catalogue that does not have one: nothing under 40 characters
 # with at most one space is a sentence from a benchmark.
-REFERENCE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9./()\[\]_-]*(?: ?[A-Za-z0-9./()\[\]_-]+)*$")
+# The space in the repeated group is MANDATORY, and that single character is the whole fix. With
+# `(?: ?[...]+)*` the group could match without consuming a space, so it overlapped the `[...]*`
+# before it and the engine had exponentially many ways to split the same text. Measured on
+# "0" + "(" * 26: 3.6 seconds before, unmeasurable after, for the same accepted language.
+REFERENCE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9./()\[\]_-]*(?: [A-Za-z0-9./()\[\]_-]+)*$")
 
 # A value that is not a reference is almost always a fragment of the standard's own wording, which
 # is the thing that must not be stored. Report it with enough context to fix it.
