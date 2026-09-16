@@ -234,19 +234,32 @@ if git remote | grep -q . && command -v gh >/dev/null 2>&1; then
   if ! git branch -r --contains "$sha" 2>/dev/null | grep -q .; then
     ko "this commit is not on origin" "CI cannot have run on it yet: push the branch first"
   elif runs="$(gh api "repos/{owner}/{repo}/commits/$sha/check-runs?per_page=100" \
-             --jq '.check_runs[] | "\(.name)\t\(.conclusion)"' 2>/dev/null)"; then
-    state="$(printf '%s\n' "$runs" | awk -F'\t' 'NF {print $2}' | sort -u | paste -sd, -)"
-    case "$state" in
-      success)      ok "every check is green on this commit" ;;
-      "")           ko "no check run found for this commit" "push it and wait for CI" ;;
-      *skipped*|*neutral*)
-        if printf '%s' "$state" | grep -qE 'failure|cancelled|timed_out'; then
-          ko "CI is $state on this commit" "a release is cut from a green commit"
-        else
-          ok "every check is green on this commit (some skipped)"
-        fi ;;
-      *)            ko "CI is $state on this commit" "a release is cut from a green commit" ;;
-    esac
+             --jq '.check_runs[] | "\(.name)\t\(.conclusion // "running")"' 2>/dev/null)"; then
+    # Dependabot's updater posts a check run here once security updates are on, and it fails
+    # whenever a patched version exists with no upgrade path that reaches it. That is a report on
+    # the dependency graph, not on whether this commit's workflows pass, and gating a release on it
+    # means never cutting one while any dependency lacks a clean path. The alerts are still worth
+    # reading; they are simply not this gate.
+    gates="$(printf '%s\n' "$runs" | grep -viE '^Dependabot\b' || true)"
+
+    failed="$(printf '%s\n' "$gates" | awk -F'\t' '$2 ~ /failure|cancelled|timed_out|action_required/ {print $1}')"
+    running="$(printf '%s\n' "$gates" | awk -F'\t' '$2 == "running" {print $1}')"
+    total="$(printf '%s\n' "$gates" | awk -F'\t' 'NF {c++} END {print c+0}')"
+
+    if [ "$total" = 0 ]; then
+      ko "no check run found for this commit" "push it and wait for CI"
+    elif [ -n "$failed" ]; then
+      # Name them. "CI is failure,success" tells the reader nothing they can act on.
+      ko "$(printf '%s\n' "$failed" | grep -c .) check(s) failed on this commit" \
+         "$(printf '%s' "$failed" | paste -sd', ' -)"
+    elif [ -n "$running" ]; then
+      # Not a failure: a release cut from a commit whose checks have not finished is simply
+      # premature, and the answer is to wait rather than to investigate.
+      ko "$(printf '%s\n' "$running" | grep -c .) check(s) still running" \
+         "wait for: $(printf '%s' "$running" | paste -sd', ' -)"
+    else
+      ok "every gating check is green on this commit ($total run(s))"
+    fi
   else
     ko "could not ask CI about this commit" "gh api failed: check authentication, not the commit"
   fi
