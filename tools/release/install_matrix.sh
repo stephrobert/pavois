@@ -23,10 +23,14 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 
-VERSION=v0.1.0
+# The published release to test. It was pinned to v0.1.0 and would have stayed there: a harness
+# pointing at an old tag reports on artifacts nobody ships any more, and says nothing about the one
+# that just went out. Default to whatever the repository calls latest, override with PAVOIS_VERSION.
+VERSION=${PAVOIS_VERSION:-$(gh release view --repo stephrobert/pavois --json tagName --jq .tagName 2>/dev/null)}
+VERSION=${VERSION:-v0.1.1}
 # The version the locally built packages carry. It has to be a real version string: `pavois version`
 # printing "dev" would make step 4 pass on a binary nobody could have released.
-LOCAL_VERSION=${PAVOIS_LOCAL_VERSION:-0.1.1}
+LOCAL_VERSION=${PAVOIS_LOCAL_VERSION:-${VERSION#v}}
 BASE="https://github.com/stephrobert/pavois/releases/download/${VERSION}"
 KEY=${PAVOIS_SSH_KEY:-$HOME/.ssh/id_ed25519}
 # The keys are tools/vm.py's, not the distribution names: `rhel9` IS images:almalinux/9/cloud,
@@ -147,8 +151,16 @@ for os in $OSES; do
     fi
     sshx "cat > sample.json" < docs/examples/after.json || true
   else
-    sshx "curl -fsSLO '$BASE/$pkg'" >/dev/null
-    sshx "curl -fsSLO 'https://raw.githubusercontent.com/stephrobert/pavois/main/docs/examples/after.json' -o sample.json" >/dev/null
+    # The published artifact, fetched by the VM itself: that is the file a user gets, and the only
+    # one whose failure would reach anybody.
+    if ! sshx "curl -fsSLO '$BASE/$pkg'" >/dev/null; then
+      fail "could not download $pkg from the $VERSION release" "$BASE/$pkg"
+      mise run vm -- down "$os" >/dev/null 2>&1
+      continue
+    fi
+    # -o, not -O: curl refuses both at once, and the combination was never exercised because every
+    # run so far used the local-package mode.
+    sshx "curl -fsSL 'https://raw.githubusercontent.com/stephrobert/pavois/main/docs/examples/after.json' -o sample.json" >/dev/null
   fi
 
   out=$(sshsudo "$install; echo \"rc=\$?\"")
