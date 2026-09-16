@@ -19,6 +19,7 @@ import (
 
 var (
 	scAllowContainer    bool
+	scBootstrapCinc     bool
 	scAllowUnprivileged bool
 	scProfile           string
 	scEngine            string
@@ -63,6 +64,7 @@ func init() {
 	f.StringArrayVar(&scControls, "controls", nil, "run ONLY these control ids (fast single-rule iteration, e.g. --controls ssh-disable-root-login)")
 	f.BoolVar(&scAllowContainer, "allow-container", false, "scan a container with a full per-OS profile anyway (kernel controls then measure the HOST, not the target)")
 	f.BoolVar(&scAllowUnprivileged, "allow-unprivileged", false, "scan without root anyway (checks that need privilege will report deviations they never measured)")
+	f.BoolVar(&scBootstrapCinc, "bootstrap-cinc", false, "let Pavois install cinc-auditor ON the target when it is missing (an unpinned installer, run as root there)")
 	rootCmd.AddCommand(scanCmd)
 }
 
@@ -253,7 +255,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 			Root: root, Target: target, Profile: scProfile, Engine: scEngine,
 			SSHPass: sshPass, SudoPass: sudoPass, Key: scKey, Sudo: sudo, JSONOut: jsonPath,
 			Standard: scStandard, Level: scLevel, // only runs the requested standard
-			OnTarget: scOnTarget, Controls: scControls,
+			OnTarget: scOnTarget, Controls: scControls, Bootstrap: scBootstrapCinc,
 		})
 		if err != nil {
 			return err
