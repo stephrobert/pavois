@@ -19,7 +19,19 @@ jobs:
     # Draft while the repo is private: uploading SARIF to Code Scanning needs GitHub Advanced
     # Security (public repos get it free), and Plumber's API checks need broader access than a
     # private default token grants. Skips on private, activates automatically once public.
-    if: ${{ !github.event.repository.private }}
+    #
+    # And skipped on Dependabot's own pull requests, which is not indulgence. Those runs do NOT
+    # receive Actions secrets: Dependabot has a separate secret store, so PLUMBER_ADMIN_TOKEN
+    # resolves to the empty string and the action errors out before scanning anything. The failure
+    # carried an EMPTY exit code, which is how you tell it apart from a real finding. Every
+    # Dependabot pull request would be red for a reason that has nothing to do with its contents,
+    # and a check that is always red is a check people learn to scroll past.
+    #
+    # Nothing is left unaudited: this same workflow runs on every push to main, so a Dependabot
+    # change that touches a workflow is scanned once it lands. The coverage is deferred, not lost.
+    # To audit them on the pull request instead, give Dependabot the token:
+    #   gh secret set PLUMBER_ADMIN_TOKEN --app dependabot
+    if: ${{ !github.event.repository.private && github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
