@@ -324,6 +324,18 @@ run = "python3 {{config_root}}/tools/testplan.py"
 description = "Refuse the em-dash anywhere in the tracked tree (an AI tell, and it has broken a generated GRUB line)"
 run = "python3 {{config_root}}/tools/lint_emdash.py"
 
+[tasks."lint:install-docs"]
+description = "FAIL if a page retypes an install command, pipes a download into a shell, or renders a block install.ts does not export"
+# install.ts has claimed since it was written that this linter fails the build. It did not exist,
+# which is the worst of both: a comment that tells readers the drift is guarded, and no guard. The
+# install instructions are exactly the content that rots unwatched, and the last time they did, a
+# release shipped telling users to satisfy a prerequisite it never showed them how to satisfy.
+run = "python3 {{config_root}}/tools/lint_install_docs.py"
+
+[tasks."lint:install-docs:test"]
+description = "Prove lint:install-docs rejects each defect it claims to catch (a linter that never failed cannot be trusted)"
+run = "python3 {{config_root}}/tools/lint_install_docs_test.py"
+
 [tasks."lint:norm-refs"]
 description = "FAIL if a norm mapping holds anything but a reference (the claim /attribution makes about redistribution)"
 run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_norm_refs.py"
@@ -360,6 +372,13 @@ description = "What becomes visible when the repository goes public, beyond the 
 # which lives in the working tree and none of which any hook has ever read.
 run = "python3 {{config_root}}/tools/release/pre_public.py"
 
+[tasks."release:standalone"]
+description = "Run the built binary from an empty directory: the embedded corpus must be listed and a scan must grade."
+# v0.1.0 shipped unusable because every test, every campaign and the preflight ran from the
+# repository, where profiles/ is on disk. The corpus was genuinely compiled into the binary; the
+# code that looked for a profile asked the filesystem, which is always false outside a checkout.
+run = "bash --noprofile --norc {{config_root}}/tools/release/standalone_binary.sh"
+
 [tasks."release:evidence"]
 description = "Did a golden-path campaign prove the CURRENT corpus, on the systems claimed? Args: <os>..."
 run = "python3 {{config_root}}/tools/release/evidence.py"
@@ -378,7 +397,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]

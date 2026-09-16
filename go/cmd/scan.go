@@ -13,6 +13,7 @@ import (
 	screport "github.com/stephrobert/scankit/report"
 
 	"pavois/internal/audit"
+	"pavois/internal/corpus"
 	"pavois/internal/engine"
 	"pavois/internal/render"
 )
@@ -117,16 +118,28 @@ func familyOf(name string) string {
 // latestFamilyProfile: the family profile with the highest version number
 // present under profiles/linux/ (e.g. ubuntu2204/ubuntu2404 -> ubuntu2404).
 func latestFamilyProfile(root, fam string) string {
-	entries, _ := os.ReadDir(filepath.Join(root, "profiles", "linux"))
+	// Same two sources as dir() above, and for the same reason: on a downloaded binary the disk
+	// listing is empty, and falling back to the family is exactly the case where an exact match was
+	// already missing. Reading only the disk turned "no exact profile, using the closest" into
+	// "no bundled profile at all".
+	names := corpus.Names()
+	if entries, err := os.ReadDir(filepath.Join(root, "profiles", "linux")); err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				names = append(names, e.Name())
+			}
+		}
+	}
+
 	best, bestN := "", -1
-	for _, e := range entries {
-		if !e.IsDir() || !strings.HasPrefix(e.Name(), fam) {
+	for _, name := range names {
+		if !strings.HasPrefix(name, fam) {
 			continue
 		}
 		n := 0
-		_, _ = fmt.Sscanf(strings.TrimPrefix(e.Name(), fam), "%d", &n) // parse failure leaves n=0 (intended fallback)
+		_, _ = fmt.Sscanf(strings.TrimPrefix(name, fam), "%d", &n) // parse failure leaves n=0 (intended fallback)
 		if n > bestN {
-			best, bestN = e.Name(), n
+			best, bestN = name, n
 		}
 	}
 	return best
@@ -150,9 +163,15 @@ func detectProfileWhy(root string, o engine.Options) (profile, detected, why str
 // archived result without touching the host.
 func profileForPlatform(root, name, release string) (profile, detected, why string) {
 	detected = strings.TrimSpace(name + " " + release)
+	// Disk OR embedded. A checkout has profiles/ on disk; a downloaded binary has the corpus
+	// compiled in and nothing on disk. Asking only the filesystem is what made every artifact of
+	// v0.1.0 answer "no bundled profile for debian 12.15" on a machine where the rules were in fact
+	// sitting inside the binary that printed the error.
 	dir := func(p string) bool {
-		fi, err := os.Stat(filepath.Join(root, "profiles", "linux", p))
-		return err == nil && fi.IsDir()
+		if fi, err := os.Stat(filepath.Join(root, "profiles", "linux", p)); err == nil && fi.IsDir() {
+			return true
+		}
+		return corpus.Has(filepath.Join("linux", p))
 	}
 	if cand := profileForOS(name, release); cand != "" && dir(cand) {
 		return "linux/" + cand, detected, ""
