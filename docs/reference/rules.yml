@@ -30765,8 +30765,15 @@ posture-aslr:
   - ubuntu2404
   - ubuntu2604
   check:
-  - describe command('[ "$(sysctl -n kernel.randomize_va_space 2>/dev/null)" = "2" ] && echo ok || echo ko') do
-  - '  its(''stdout.strip'') { should eq ''ok'' }'
+  # Read /proc directly, NOT `sysctl -n`. sysctl lives in /usr/sbin, which is not on a normal
+  # user PATH (/usr/local/bin:/usr/bin:/bin:/usr/games on a Debian 12 cloud image), and the
+  # `2>/dev/null` swallowed the "command not found": the substitution returned an empty string,
+  # the comparison failed, and the control reported a HIGH deviation on a machine whose
+  # randomize_va_space was already 2. A false positive is the worst defect a compliance tool can
+  # have, because it teaches the operator to distrust the green results too.
+  # /proc is also the effective value by definition, which is what this project audits.
+  - describe file('/proc/sys/kernel/randomize_va_space') do
+  - '  its(''content.strip'') { should eq ''2'' }'
   - end
   domain: Hardening (posture)
   evidence_type: effective-runtime
