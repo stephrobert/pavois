@@ -1,6 +1,6 @@
-// Site-wide switches. INDEXABLE gates search-engine indexing: keep it FALSE while the site is
-// pre-launch (every page emits `noindex, nofollow` and robots.txt blocks all crawlers). Flip it to
-// true at launch AND restore public/robots.txt to an allow policy.
+// Site-wide switches. INDEXABLE is the ONE lever that governs indexing. While it is false every
+// page emits `noindex, nofollow`, the generated robots.txt disallows everything, and site:indexnow
+// refuses to submit. Flipping it to true opens all three at once, and nothing else needs editing.
 export const INDEXABLE = false;
 
 // Ownership proofs for the webmaster consoles. Each console hands out one token, we echo it in a

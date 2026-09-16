@@ -45,11 +45,17 @@ non-event, generate another.
 
 ## The launch switch
 
-`INDEXABLE` in `src/config/site.ts` is `false` until launch. While it is false:
+`INDEXABLE` in `src/config/site.ts` is `false` until launch, and it is the **only** lever. While it
+is false:
 
 - every page emits `noindex, nofollow`
-- `public/robots.txt` disallows everything
+- the generated `robots.txt` disallows everything
 - `site:indexnow` refuses to submit, and says so
 
-Flipping it to `true` means editing **both** the flag and `public/robots.txt`. Do it only once the
-live site is what we want indexed: an engine that crawls a placeholder remembers it.
+Flip it to `true` and all three open at once; nothing else needs editing. `robots.txt` is an
+endpoint (`src/pages/robots.txt.ts`), not a static file, precisely so that launching cannot leave
+the flag and the crawl policy disagreeing.
+
+Do it only once the live site is what we want indexed: an engine that crawls a placeholder
+remembers it. Nothing before that moment gets indexed, which is why verification comes first and
+sitemap submission comes after: a sitemap submitted now would report every URL as blocked.
