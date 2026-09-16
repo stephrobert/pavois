@@ -1,7 +1,12 @@
 ---
 import '../styles/global.css'; // the single stylesheet: Tailwind + tokens + design system + pages
 import { ui, type Lang } from '../i18n/ui';
-import { INDEXABLE, GOOGLE_SITE_VERIFICATION, BING_SITE_VERIFICATION } from '../config/site';
+import {
+  INDEXABLE,
+  GOOGLE_SITE_VERIFICATION,
+  BING_SITE_VERIFICATION,
+  PLAUSIBLE_SRC,
+} from '../config/site';
 import { clampTitle, metaDescription } from '../lib/meta';
 
 interface Crumb {
@@ -43,6 +48,17 @@ const {
 // as characters when a description is built from body copy.
 const metaTitle = clampTitle(title);
 const metaDesc = metaDescription(description);
+
+// Audience measurement. Off in a dev build (our own reloads are not an audience) and off on the
+// 404 page, where a hit describes a broken link rather than a reader, and where the CloudFront
+// logs carry the URL, the status and the user-agent anyway.
+//
+// `event-section` is the first path segment after the language, which is what makes "which part of
+// the site do visitors from a given source read" answerable at all. Both values come from the URL,
+// so they cost nothing and leak nothing.
+const segments = Astro.url.pathname.split('/').filter(Boolean);
+const section = segments[1] ?? 'home';
+const trackPage = Boolean(PLAUSIBLE_SRC) && import.meta.env.PROD && !noindex;
 
 const other: Lang = lang === 'fr' ? 'en' : 'fr';
 const otherPath = Astro.url.pathname.replace(`/${lang}`, `/${other}`);
@@ -192,6 +208,23 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
     <meta name="twitter:description" content={metaDesc} />
     <meta name="twitter:image" content={ogImage} />
     <script type="application/ld+json" set:html={JSON.stringify(ldGraph)} />
+    {
+      trackPage && (
+        <script is:inline async src={PLAUSIBLE_SRC} />
+      )
+    }
+    {
+      trackPage && (
+        <script
+          is:inline
+          set:html={
+            'window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},' +
+            'plausible.init=plausible.init||function(i){plausible.o=i||{}};' +
+            `plausible.init({customProperties:{lang:${JSON.stringify(lang)},section:${JSON.stringify(section)}}})`
+          }
+        />
+      )
+    }
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

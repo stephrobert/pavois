@@ -28,6 +28,10 @@
 #   form-action 'self'      a form cannot be made to post elsewhere
 #   upgrade-insecure-requests
 #
+# The Plausible origin is named in script-src (the tracker) and connect-src (where it POSTs each
+# pageview). A tracker blocked by CSP fails silently and reports nothing, which is exactly how the
+# Google Fonts went missing: no error, no data, and no way to notice without looking.
+#
 # 'unsafe-inline' for scripts is a real weakness and is NOT fixed here: the anti-FOUC script, the
 # nav drawer and the glossary tooltips are inline in Base.astro. Removing it needs either hashes
 # or a nonce, which needs the build to emit them. Tracked, not pretended away.
@@ -37,11 +41,11 @@ POLICY_ID=079bcc13-132a-4c31-af51-55a293f1a789
 POLICY_NAME=pavois-dev-security-headers
 
 CSP="default-src 'self'; \
-script-src 'self' 'unsafe-inline'; \
+script-src 'self' 'unsafe-inline' https://analytics.stephrobert.tech; \
 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
 img-src 'self' data:; \
 font-src 'self' https://fonts.gstatic.com; \
-connect-src 'self'; \
+connect-src 'self' https://analytics.stephrobert.tech; \
 object-src 'none'; \
 base-uri 'self'; \
 form-action 'self'; \

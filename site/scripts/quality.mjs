@@ -70,6 +70,25 @@ const attr = (html, re) => {
 const findings = [];
 const add = (page, rule, detail) => findings.push({ page, rule, detail });
 
+/**
+ * Origins the Content-Security-Policy allows, read from the versioned policy rather than from the
+ * live distribution: the check has to work offline, in CI, before anything is deployed.
+ *
+ * This rule exists because the CSP has silently broken the site twice. `font-src 'self'` blocked
+ * Google Fonts for weeks, and every page quietly fell back to system fonts. A tracker would have
+ * failed the same way. A blocked resource raises no build error, no HTTP error and no alert: it
+ * simply does not happen, and the only way to notice is to look.
+ */
+function cspOrigins() {
+  const policy = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "tools", "aws", "site-headers-policy.sh");
+  if (!existsSync(policy)) return null;
+  const text = readFileSync(policy, "utf8");
+  const csp = text.match(/CSP="([\s\S]*?)"\n/)?.[1];
+  if (!csp) return null;
+  return new Set([...csp.matchAll(/https?:\/\/[^\s;\\]+/g)].map((m) => m[0].replace(/\/$/, "")));
+}
+const allowed = cspOrigins();
+
 const pages = htmlFiles(DIST);
 let audited = 0;
 
@@ -114,6 +133,23 @@ for (const file of pages) {
   if (h1 !== 1) add(page, "heading-h1", `${h1} h1`);
 
   if (!/<html[^>]+\blang=/i.test(html)) add(page, "lang-attribute", "");
+
+  // Only what the browser FETCHES counts: a script, a stylesheet, a font, an image. A link in the
+  // prose to an external site is not subject to the CSP and must not be flagged.
+  if (allowed) {
+    const fetched = [
+      ...(html.match(/<script\b[^>]*\bsrc="(https?:\/\/[^"]+)"/gi) ?? []),
+      ...(html.match(/<link\b[^>]*\brel="(?:stylesheet|preload)"[^>]*\bhref="(https?:\/\/[^"]+)"/gi) ?? []),
+      ...(html.match(/<img\b[^>]*\bsrc="(https?:\/\/[^"]+)"/gi) ?? []),
+    ];
+    for (const tag of fetched) {
+      const url = tag.match(/"(https?:\/\/[^"]+)"/)?.[1];
+      if (!url) continue;
+      const origin = new URL(url).origin;
+      if (origin === "https://www.pavois.dev") continue; // 'self'
+      if (!allowed.has(origin)) add(page, "csp-origin", `${origin} is fetched but not in the CSP`);
+    }
+  }
 }
 
 const counts = {};
