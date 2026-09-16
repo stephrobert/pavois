@@ -202,7 +202,12 @@ run = "npm run preview"
 [tasks."site:perf"]
 description = "Lighthouse on every page (unlighthouse, headless). Start `mise run site:preview` in another shell first, then run this; report lands in site/.unlighthouse/."
 dir = "{{config_root}}/site"
-run = "npx unlighthouse-ci --site http://localhost:4321/en/ --build-static"
+# -y so npx fetches it without prompting: @unlighthouse/cli is no longer a devDependency.
+# It pulled lighthouse, puppeteer-core and @puppeteer/browsers, 512 packages carrying six
+# HIGH advisories with no upstream fix (npm's only "fix" was downgrading it eight minor
+# versions). This task already invoked it through npx, so nothing here changes except that
+# a manual, local perf audit stops dictating the security posture of the published site.
+run = "npx -y unlighthouse-ci --site http://localhost:4321/en/ --build-static"
 
 [tasks."site:lint-css"]
 description = "Lint the stylesheet: flag duplicate selectors + hardcoded colors (must use tokens). Guards against CSS debt."

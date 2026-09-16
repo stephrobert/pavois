@@ -51,7 +51,7 @@ def main():
         # CodeQL calls this py/bad-tag-filter; here it produced false link failures, not a
         # vulnerability, which is exactly why nobody had noticed.
         html = re.sub(
-            r"<script\b.*?</script\s*>", "", p.read_text(errors="ignore"), flags=re.S | re.I
+            r"<script\b[^>]*>.*?</script[^>]*>", "", p.read_text(errors="ignore"), flags=re.S | re.I
         )
         for m in re.finditer(r'href="(/[^"#?]*)', html):
             h = m.group(1)
