@@ -1,16 +1,25 @@
 version: 2
 
-# Supply-chain quarantine: a 14-day cooldown before adopting any new dependency version. A freshly
-# published (or freshly compromised) release is not pulled in until it has aged 14 days. Security
-# updates from Dependabot alerts are NOT subject to the cooldown: they open immediately, so a real
-# CVE fix is never delayed. Combined with the Trivy gate (deps.yml) and SHA-pinned actions.
+# Supply-chain quarantine, on the model pepin arrived at (ADR-0021 there).
+#
+# A cooldown lets a fresh release show its defects before it is adopted. Applied UNIFORMLY it also
+# delays security fixes, and that is not theoretical: pepin's scankit v0.2.3 bump closed a silent
+# exfiltration and waited out the full quarantine, because no CVE advisory existed to distinguish it
+# from an ordinary version bump. Dependabot only exempts what it can SEE is a security update.
+#
+# So the quarantine is split. Patch releases wait one day: that is where security fixes land, and it
+# is also the bump whose regression is cheapest to revert. Everything else waits a week.
+#
+# This is the second line, not the first: actions are pinned by commit SHA, the Trivy gate runs in
+# deps.yml, and TruffleHog reads the whole history on every push.
 updates:
   - package-ecosystem: gomod
     directory: /go
     schedule:
       interval: weekly
     cooldown:
-      default-days: 14
+      default-days: 7
+      semver-patch-days: 1
     open-pull-requests-limit: 10
     groups:
       go-modules:
@@ -23,7 +32,8 @@ updates:
     schedule:
       interval: weekly
     cooldown:
-      default-days: 14
+      default-days: 7
+      semver-patch-days: 1
     open-pull-requests-limit: 10
     groups:
       npm:
@@ -31,15 +41,29 @@ updates:
     commit-message:
       prefix: "chore(deps)"
 
-  # Keeps the SHA-pinned actions fresh (Dependabot bumps the pinned SHA + comment).
+  # Keeps the SHA-pinned actions fresh (Dependabot bumps the pinned SHA + comment). Pinning by SHA
+  # is what makes an action trustworthy and is also what makes it rot: without this, the digest ages
+  # with its CVEs in silence. Learned the expensive way here: PR #255 carried eight of these bumps,
+  # was closed unmerged, and closing a Dependabot PR tells it to stop offering that version. Plumber
+  # then sat twenty-three releases behind until someone looked.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
     cooldown:
-      default-days: 14
+      default-days: 7
+      semver-patch-days: 1
     groups:
       actions:
         patterns: ["*"]
     commit-message:
       prefix: "chore(ci)"
+
+# Deliberately NOT tracked: docker.
+#
+# pepin tracks it because it ships an image whose base is pinned by digest, and a pinned digest ages
+# with its CVEs unless something watches it. The only Dockerfile here is
+# targets/sshd-dropin/Dockerfile, a deliberately misconfigured scan target built on `debian:12-slim`,
+# a mutable tag rather than a digest. It is rebuilt fresh, it ships nowhere, and its whole purpose is
+# to be non-compliant. Tracking it would produce pull requests nobody should act on, which is how a
+# bot earns the right to be ignored.
