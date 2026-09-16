@@ -31,8 +31,8 @@ const toc = sections.map((s) => ({ depth: 2, slug: s.slug, text: fr ? s.fr : s.e
 
 const title = fr ? 'Installation · Pavois' : 'Installation · Pavois';
 const desc = fr
-  ? 'Installer Pavois : construire depuis les sources avec mise (la seule voie aujourd’hui ; le binaire signé arrive avec la première release), le moteur CINC Auditor (natif ou Docker), les prérequis sudo/SSH, les OS supportés et les erreurs courantes.'
-  : 'Install Pavois: build from source with mise (the only path today; the signed binary ships with the first release), the CINC Auditor engine (native or Docker), the sudo/SSH prerequisites, supported systems and common errors.';
+  ? 'Installer Pavois : le binaire signé se tire des releases du dépôt (intégrité et provenance SLSA vérifiables), le moteur CINC Auditor (natif ou Docker), les prérequis sudo/SSH, les OS supportés, la construction depuis les sources pour les contributeurs et les erreurs courantes.'
+  : 'Install Pavois: pull the signed binary from the repository releases (integrity and SLSA provenance both checkable), the CINC Auditor engine (native or Docker), the sudo/SSH prerequisites, supported systems, building from source for contributors and common errors.';
 const crumbs = [
   { name: 'Pavois', path: `/${lang}/` },
   { name: 'Installation', path: `/${lang}/installation/` },
@@ -70,12 +70,9 @@ const crumbs = [
     <p>{fr
       ? 'Pavois est un binaire statique unique. Le corpus de règles est embarqué : rien à générer, aucune chaîne d’outils à installer, rien à compiler. C’est la façon d’installer Pavois.'
       : 'Pavois is a single static binary. The rule corpus is embedded: nothing to generate, no toolchain to install, nothing to compile. This is how Pavois is installed.'}</p>
-    <p class="warn-note">{fr
-      ? 'À ce jour, aucune release n’est publiée : les commandes ci-dessous ÉCHOUERONT. Elles documentent ce que la première release fournira. Aujourd’hui, la seule voie est la construction depuis les sources, ci-dessus.'
-      : 'No release is published today: the commands below WILL FAIL. They document what the first release will ship. The only path today is building from source, above.'}</p>
     <p>{fr
-      ? 'Chaque release fournira un binaire statique par plateforme et un checksums.txt. Le binaire sera autoporté (corpus de règles embarqué) : télécharger, vérifier l’intégrité et la provenance, puis scanner.'
-      : 'Each release will ship a static binary per platform plus a checksums.txt. The binary will be self-contained (rule corpus embedded): download, verify integrity and provenance, then scan.'}</p>
+      ? 'Les binaires se tirent du dépôt, depuis les releases GitHub : un binaire statique par plateforme (Linux et macOS, amd64 et arm64), des paquets .deb et .rpm, un checksums.txt, un SBOM CycloneDX et une attestation de provenance SLSA. Le binaire est autoporté (corpus de règles embarqué) : télécharger, vérifier l’intégrité et la provenance, puis scanner.'
+      : 'The binaries are pulled from the repository, from the GitHub releases: one static binary per platform (Linux and macOS, amd64 and arm64), .deb and .rpm packages, a checksums.txt, a CycloneDX SBOM and a SLSA provenance attestation. The binary is self-contained (rule corpus embedded): download, verify integrity and provenance, then scan.'}</p>
     <Fragment set:html={highlight(`gh release download v0.1.0 --repo stephrobert/pavois \\
   --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
 sha256sum --ignore-missing --check checksums.txt                     # ${fr ? 'intégrité' : 'integrity'}
@@ -83,13 +80,13 @@ gh attestation verify pavois-linux-amd64 --repo stephrobert/pavois   # ${fr ? 'p
 chmod +x pavois-linux-amd64
 ./pavois-linux-amd64 doctor                                          # ${fr ? 'corpus embarqué, prêt à scanner' : 'corpus embedded, ready to scan'}`, 'bash')} />
     <p class="muted">{fr
-      ? 'sha256sum confirme l’intégrité face aux empreintes publiées ; gh attestation verify confirme la provenance SLSA, que le fichier est exactement ce que la chaîne de release a construit (disponible une fois le dépôt public). Pas encore de release ? Construis depuis les sources ci-dessous.'
-      : 'sha256sum confirms integrity against the published checksums; gh attestation verify confirms the SLSA provenance, that the file is exactly what the release pipeline built (available once the repository is public). No release yet? Build from source below.'}</p>
+      ? 'sha256sum confirme l’intégrité face aux empreintes publiées ; gh attestation verify confirme la provenance SLSA, c’est-à-dire que le fichier est exactement ce que la chaîne de release a construit, et pas seulement qu’il porte le bon nom. Les deux se vérifient sans aucun accès au dépôt.'
+      : 'sha256sum confirms integrity against the published checksums; gh attestation verify confirms the SLSA provenance, that is, that the file is exactly what the release pipeline built rather than merely a file with the right name. Both are checkable with no access to the repository.'}</p>
 
     <h2 id="build">{fr ? 'Construire depuis les sources (contributeurs)' : 'Build from source (contributors)'}</h2>
     <p>{fr
-      ? 'Cette section s’adresse aux contributeurs, et à qui veut utiliser Pavois avant la première release. Ce n’est pas la façon dont l’outil est censé s’installer, et ça ne le sera jamais : la compilation tire une chaîne Go, Node et Python épinglée, et régénère des artefacts qu’un binaire de release porte déjà en lui.'
-      : 'This section is for contributors, and for anyone wanting to use Pavois before the first release exists. It is not how the tool is meant to be installed, and it never will be: the build pulls a pinned Go, Node and Python toolchain and regenerates artifacts a release binary already carries inside it.'}</p>
+      ? 'Cette section s’adresse aux contributeurs. Ce n’est pas la façon dont l’outil est censé s’installer, et ça ne le sera jamais : la compilation tire une chaîne Go, Node et Python épinglée, et régénère des artefacts qu’un binaire de release porte déjà en lui.'
+      : 'This section is for contributors. It is not how the tool is meant to be installed, and it never will be: the build pulls a pinned Go, Node and Python toolchain and regenerates artifacts a release binary already carries inside it.'}</p>
     <p>{fr
       ? 'Le dépôt ne livre que la source de vérité. Le corpus InSpec (.rb) et le paquet OSCAL sont des artefacts dérivés, régénérés depuis la référence. L’installation est donc : construire, puis régénérer.'
       : 'The repository ships only the source of truth. The InSpec corpus (.rb) and the OSCAL bundle are derived artifacts, regenerated from the reference. So the install is: build, then regen.'}</p>
