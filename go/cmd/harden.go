@@ -1646,7 +1646,22 @@ func sortedFileKeys(m map[string]map[string]string) []string {
 }
 
 func sshOptsFor(key string) []string {
-	o := []string{"-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=15", "-F", "/dev/null"}
+	// ServerAliveInterval/CountMax are not a nicety: without them, a session killed by the reboot
+	// this very command triggers never returns. `ssh -tt` holds a pty, so the dead connection
+	// produces no EOF and no error; it simply waits. Observed on a debian13 apply: cinc-apply ran
+	// `systemctl reboot`, the machine came back in 40 seconds, and the ssh sat in poll() for
+	// SIXTEEN MINUTES on a perfectly healthy host, until it was killed by hand. It is a race, so
+	// it passed twice on debian12 and hung on the next run, which is the worst kind of defect:
+	// absent from the test, present the evening someone hardens production.
+	// 15s x 4 = the client gives up about a minute after the host stops answering, well under the
+	// time a reboot takes, and the caller's own wait-for-reboot loop takes over.
+	o := []string{
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "ConnectTimeout=15",
+		"-o", "ServerAliveInterval=15",
+		"-o", "ServerAliveCountMax=4",
+		"-F", "/dev/null",
+	}
 	if key != "" {
 		o = append(o, "-i", key)
 	}
