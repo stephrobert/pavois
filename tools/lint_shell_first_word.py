@@ -141,6 +141,15 @@ def main() -> int:
         print("restructured so the privileged read comes first.")
         return 1
 
+    # An empty corpus is not a clean corpus. profiles/linux/*/controls/ is derived and gitignored,
+    # so a fresh clone, a failed render or a wrong working directory all leave nothing to read, and
+    # this guard would then announce success having examined zero commands. That is the exact shape
+    # of a harness reporting its own breakdown as a result, which is what it exists to catch.
+    if checked == 0:
+        print("lint:shell-first-word: no command found, so nothing was verified")
+        print("The corpus is derived and gitignored. Render it first: mise run render")
+        return 1
+
     print(f"lint:shell-first-word: {checked} command(s) checked")
     print("lint:shell-first-word: every command runs as the privilege it needs")
     return 0

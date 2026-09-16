@@ -12,12 +12,54 @@ on:
 permissions: {}
 
 jobs:
+  # Everything that decides whether this tag may become a release, before a single binary is built.
+  # It is a separate job so the answer arrives in seconds and every other job hangs off it.
+  guard:
+    name: May this tag be released
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      # `tags: v*` is as wide as it looks: it matches v0.9.0-clean-room, a lab tag this repository
+      # already carries, and it would have driven the whole release pipeline for it. A release is
+      # not a thing you undo, so the tag has to look like a version before anything is built.
+      - name: The tag is a release version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          case "$TAG" in
+            v[0-9]*.[0-9]*.[0-9]*-*) ;;   # pre-release suffix, checked by the regex below
+            v[0-9]*.[0-9]*.[0-9]*)   ;;
+            *) echo "::error::$TAG is not a release tag; only vX.Y.Z (with an optional" \
+                    "-rc.N / -beta.N / -alpha.N) publishes a release."; exit 1 ;;
+          esac
+          if ! printf '%s' "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-(rc|beta|alpha)\.[0-9]+)?$'; then
+            echo "::error::$TAG is not a release tag; only vX.Y.Z (with an optional" \
+                 "-rc.N / -beta.N / -alpha.N) publishes a release."
+            exit 1
+          fi
+          echo "$TAG is a release tag"
+
+      # Five steps in the release job are gated on the repository being public, because GitHub
+      # refuses attestations on a user-owned private repo and because a Cosign signature is written
+      # to the public Rekor log. Gated, they SKIP: a tag pushed while the repo is private would
+      # produce a perfectly green release with no provenance, no SBOM attestation and no signature,
+      # and nothing would say so. The release would look identical and be worth much less.
+      # So the pipeline refuses to start instead. The order is public first, tag second.
+      - name: The repository can sign what it publishes
+        if: ${{ github.event.repository.private }}
+        run: |
+          echo "::error::This repository is private, so build provenance, SBOM attestation and the" \
+               "Cosign signature would all be skipped and the release would ship unsigned." \
+               "Make the repository public, then push the tag again."
+          exit 1
+
   # Render the .rb corpus ONCE (from the reference) and share it with the per-platform builds so
   # each binary embeds it (go:embed in internal/corpus) and ships self-contained. python3 is
   # preinstalled on ubuntu-24.04; a venv avoids PEP-668 system-pip friction.
   corpus:
     name: Render embedded corpus
     runs-on: ubuntu-24.04
+    needs: guard
     permissions:
       contents: read
     steps:
@@ -63,21 +105,14 @@ jobs:
         uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
         with:
           egress-policy: audit
-      # go.mod has `replace github.com/stephrobert/scankit => ../../scankit`, so the private
-      # scankit repo is checked out as a sibling: from pavois/go/go.mod, ../../scankit resolves to
-      # $GITHUB_WORKSPACE/scankit. SCANKIT_TOKEN is a repo secret (PAT/App with read on scankit).
+      # scankit used to be private and consumed through a `replace` directive, which meant checking
+      # it out as a sibling with a PAT. It is public since v0.1.0 and go.mod now pins v0.3.5 from
+      # the module proxy, so the sibling checkout and SCANKIT_TOKEN are gone. The nested `path:` is
+      # kept because every later step addresses pavois/go.
       - name: Checkout pavois
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: pavois
-          persist-credentials: false
-
-      - name: Checkout scankit (private dependency)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: stephrobert/scankit
-          token: ${{ secrets.SCANKIT_TOKEN }}
-          path: scankit
           persist-credentials: false
 
       - name: Setup Go
@@ -123,6 +158,7 @@ jobs:
         uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
         with:
           egress-policy: audit
+
       - name: Checkout (for nfpm.yaml)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

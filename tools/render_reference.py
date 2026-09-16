@@ -69,11 +69,20 @@ _ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
 
 def _needs_shell_wrap(script):
+    """Everything, unless it is already wrapped.
+
+    The predicate used to enumerate dangerous shapes. It was wrong three times in one day, each
+    time for a shape nobody had thought of, and the last one (`cmd1 && cmd2`, where only cmd1 is
+    root) covers 172 commands on debian12 alone. A command that reads a root-only file anywhere
+    but in first position silently swallows a Permission denied and answers with confidence.
+
+    So: wrap everything. `sh -c 'sshd -T'` behaves exactly like `sshd -T`, and the guard becomes a
+    fact to check rather than a list to maintain.
+    """
     stripped = script.strip()
     if not stripped:
         return False
-    first = stripped.split(None, 1)[0]
-    return first in _SHELL_KEYWORDS or bool(_ASSIGNMENT_RE.match(first))
+    return not stripped.startswith("sh -c ")
 
 
 # Same defect, third syntax. These commands use Ruby DOUBLE quotes because they interpolate the
@@ -90,8 +99,9 @@ _DQ_COMMAND_RE = re.compile(r'command\("((?:[^"\\]|\\.)*)"\)')
 def _wrap_shell_dq(line):
     def repl(m):
         script = m.group(1)
-        first = script.strip().split(None, 1)[0] if script.strip() else ""
-        if not (first in _SHELL_KEYWORDS or _ASSIGNMENT_RE.match(first)):
+        # ONE predicate, shared with the single-quote path. Having two was how 92 commands kept
+        # slipping through after the fix that was supposed to cover everything.
+        if not _needs_shell_wrap(script):
             return m.group(0)
         # `'` in the Ruby literal is a literal quote for the shell: POSIX-escape it.
         escaped = script.replace("'", "'\\\\''")

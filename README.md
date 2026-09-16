@@ -66,16 +66,16 @@ difference: it audits the **effective configuration** of a running host, not the
 **Pavois is a single static binary.** The rule corpus is embedded (`go:embed`), so there is nothing
 to generate, no toolchain to install and nothing to compile: download it, verify it, scan.
 
-> **Building from source is for contributors, not for users.** It is documented further down
-> because the first release is not published yet, which makes it the only path available today.
-> That is a temporary state, not a second way to install the tool. If you are here to use Pavois,
-> what you want is the binary below.
+> **Building from source is for contributors, not for users.** It is documented further down, and
+> it is not a second way to install the tool. If you are here to use Pavois, what you want is the
+> binary below.
 
-### Install the binary (from v0.1.0 on)
+### Install the binary
 
-Each release ships a static binary per platform, `checksums.txt`, an SBOM and a SLSA build
-provenance. Verify both before running it: a hardening tool you did not verify is a strange way to
-start hardening.
+Binaries are pulled from this repository's [releases](https://github.com/stephrobert/pavois/releases):
+a static binary per platform (linux and darwin, amd64 and arm64), `.deb` and `.rpm` packages,
+`checksums.txt`, a CycloneDX SBOM, a SLSA build provenance and a keyless Cosign signature. Verify
+before running it: a hardening tool you did not verify is a strange way to start hardening.
 
 ```bash
 gh release download --repo stephrobert/pavois \
@@ -87,12 +87,11 @@ chmod +x pavois-linux-amd64
 ./pavois-linux-amd64 scan local --sudo
 ```
 
-### Build from source (contributors, and until v0.1.0 ships)
+### Build from source (contributors)
 
-You need this if you contribute to Pavois, or if you want to use it before the first release
-exists. It is not how the tool is meant to be installed, and it never will be: the build pulls a
-pinned Go, Node and Python toolchain, and regenerates artifacts that a release binary already
-carries inside it.
+You need this if you contribute to Pavois. It is not how the tool is meant to be installed, and it
+never will be: the build pulls a pinned Go, Node and Python toolchain, and regenerates artifacts
+that a release binary already carries inside it.
 
 The repository ships the **source of truth only** (`docs/reference/rules.yml` + the enriched site
 content). The InSpec corpus (`.rb`) and the OSCAL bundle are **derived artifacts**: they are not
@@ -278,6 +277,13 @@ Pavois audits the effective configuration of a running Linux host across 9 OS ta
 explicit about its edges: some domains (firewall ruleset, log forwarding, MAC policy depth) are
 shallow today. The honest [coverage matrix](https://pavois.dev/en/handbook/coverage/) names what is
 deep and what is not.
+
+**Two of those nine have been proven end to end.** Debian 12 and Debian 13 each go through the full
+campaign in `tools/golden_path.sh` on a fresh VM: scan, plan, apply, reboot, re-scan, a second pass
+re-planned from the resulting state, and an evidence bundle verified at the end. The other seven are
+curated and statically validated, but no campaign has been run on them, so treat them as
+experimental and say what you find. That distinction is deliberate: "9 systems supported" and
+"9 systems proven" are not the same sentence, and only one of them is true.
 
 ## 🤝 Contributing
 

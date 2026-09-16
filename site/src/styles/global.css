@@ -241,7 +241,10 @@ header.nav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--b
 .nav-meta{display:flex;align-items:center;gap:6px}
 .nav-meta .lang{font-family:var(--font-mono);font-size:12px;color:var(--tx-3);padding:6px 8px;border-radius:6px}
 .nav-meta .lang:hover{color:var(--tx);background:var(--panel)}
-.toggle{width:34px;height:34px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--tx-2);font-size:15px;cursor:pointer;display:grid;place-items:center;transition:.15s}
+.navicon{display:grid;place-items:center;width:30px;height:30px;color:var(--tx-3);text-decoration:none;transition:color .15s}
+.navicon svg{display:block;width:19px;height:19px}
+.navicon:hover{color:var(--tx)}
+.toggle{width:36px;height:36px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--tx-2);font-size:19px;line-height:1;cursor:pointer;display:grid;place-items:center;transition:.15s}
 .toggle:hover{color:var(--red);border-color:var(--line-2)}
 .gh{font-size:13.5px;font-weight:600;border:1px solid var(--line);background:var(--panel);padding:7px 13px;border-radius:8px;color:var(--tx);transition:.15s;display:inline-flex;align-items:center;gap:7px}
 .gh:hover{border-color:var(--red);color:var(--red)}
@@ -570,7 +573,15 @@ footer{border-top:1px solid var(--line);background:var(--bg-2);padding:34px 0}
 .drawer-head .brand{font-size:17px}
 .drawer-close{width:36px;height:36px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--tx-2);font-size:15px;cursor:pointer;display:grid;place-items:center;transition:.15s}
 .drawer-close:hover{color:var(--red);border-color:var(--line-2)}
-.drawer-links{display:flex;flex-direction:column;padding:12px 0;gap:2px}
+/* The link list SCROLLS, so the foot below it stays reachable.
+   The drawer is a 100dvh flex column holding fifteen navigation links at roughly 48px each, which
+   is around 780px of content. On a phone that overflows, and `margin-top:auto` on .drawer-foot
+   cannot help: with the column already over-full there is no free space to push into, so the foot
+   went off the bottom of the screen. It carries the language switch and the GitHub link, so on a
+   phone there was no way to change language at all.
+   min-height:0 is not decoration. A flex item defaults to min-height:auto, which refuses to shrink
+   below its content, and overflow-y alone would therefore never engage. */
+.drawer-links{display:flex;flex-direction:column;padding:12px 0;gap:2px;overflow-y:auto;min-height:0}
 .drawer-links a{font-size:16px;font-weight:500;color:var(--tx);padding:13px 10px;border-radius:9px;transition:.14s}
 .drawer-links a:hover,.drawer-links a.active{background:var(--panel);color:var(--red)}
 .drawer-foot{margin-top:auto;padding-top:16px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
@@ -2715,9 +2726,16 @@ footer{border-top:1px solid var(--line);background:var(--bg-2);padding:34px 0}
         color: var(--color-dim);
       }
       /* dropdowns sit inside pavois .nav-links, match its <a> metrics exactly so
-         the summaries align with the flat links (same padding / font / centering). */
-      .nav-links {display:flex;gap:4px;margin-left:22px;
-        align-items: center;
+         the summaries align with the flat links (same padding / font / centering).
+         DESKTOP ONLY, and the media query is the whole point: this rule lives near the end of the
+         stylesheet, `.nav-links{display:none}` at max-width 980px lives near the start, and a
+         media query adds no specificity. Unscoped, the later `display:flex` therefore won at every
+         width, the mobile nav links never hid, and the header wrapped onto two rows behind the
+         hamburger. Any `display` declared for .nav-links from here on has to be width-scoped. */
+      @media (min-width: 981px) {
+        .nav-links {display:flex;gap:4px;margin-left:22px;
+          align-items: center;
+        }
       }
       .std-dd {
         position: relative;
@@ -3092,3 +3110,8 @@ footer{border-top:1px solid var(--line);background:var(--bg-2);padding:34px 0}
   color: var(--color-faint);
   margin: 6px 0 0;
 }
+
+/* A button row inside a documentation column sits BETWEEN two prose blocks, so it needs the
+   bottom margin prose would have given it. Without it the next heading touches the button.
+   Scoped to .doc-col so the home page hero, where .cta-row ends its section, is untouched. */
+.doc-col .cta-row{margin:28px 0 38px}

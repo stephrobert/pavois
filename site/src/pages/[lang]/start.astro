@@ -3,6 +3,7 @@ import Base from '../../layouts/Base.astro';
 import Toc from '../../components/Toc.astro';
 import { languages, type Lang } from '../../i18n/ui';
 import { highlight } from '../../lib/markdown';
+import * as install from '../../data/install';
 
 export function getStaticPaths() {
   return Object.keys(languages).map((lang) => ({ params: { lang } }));
@@ -13,8 +14,7 @@ const fr = lang === 'fr';
 const sections = [
   { slug: 'quickstart', en: 'In short: zero to verdict in six lines', fr: 'En bref : de zéro au verdict en six lignes' },
   { slug: 'prerequisites', en: 'Prerequisites', fr: 'Prérequis' },
-  { slug: 'install', en: 'Install a verified binary (once released)', fr: 'Installer un binaire vérifié (une fois publié)' },
-  { slug: 'build', en: '1. Build from source', fr: '1. Construire depuis les sources' },
+  { slug: 'install', en: '1. Install the verified binary', fr: '1. Installer le binaire vérifié' },
   { slug: 'scan', en: '2. First scan (A to E grade)', fr: '2. Premier scan (note A à E)' },
   { slug: 'harden', en: '3. Harden, then prove', fr: '3. Durcir, puis prouver' },
   { slug: 'converge', en: '4. Converge (an apply is not enough)', fr: '4. Converger (un apply ne suffit pas)' },
@@ -23,6 +23,7 @@ const sections = [
   { slug: 'ci', en: '7. In CI', fr: '7. En CI' },
   { slug: 'revert', en: '8. Reverting a change', fr: '8. Revenir en arrière' },
   { slug: 'fleet', en: '9. A whole fleet', fr: '9. Toute une flotte' },
+  { slug: 'build', en: 'Build from source (contributors)', fr: 'Construire depuis les sources (contributeurs)' },
   { slug: 'takeaways', en: 'Key takeaways', fr: 'À retenir' },
   { slug: 'next', en: 'Next steps', fr: 'Prochaines étapes' },
 ];
@@ -30,8 +31,8 @@ const toc = sections.map((s) => ({ depth: 2, slug: s.slug, text: fr ? s.fr : s.e
 
 const title = fr ? 'Démarrer · Pavois' : 'Get started · Pavois';
 const desc = fr
-  ? 'Construisez Pavois depuis les sources, lancez votre premier scan A à E, puis durcissez une cible et re-scannez. Trois commandes, du build au verdict.'
-  : 'Build Pavois from source, run your first A to E scan, then harden a target and re-scan. Three commands, from build to verdict.';
+  ? 'Installez le binaire vérifié, lancez votre premier scan A à E, puis durcissez une cible et re-scannez. Du téléchargement au verdict en quelques commandes, sans chaîne d’outils à installer.'
+  : 'Install the verified binary, run your first A to E scan, then harden a target and re-scan. From download to verdict in a few commands, with no toolchain to install.';
 const crumbs = [
   { name: 'Pavois', path: `/${lang}/` },
   { name: fr ? 'Démarrer' : 'Get started', path: `/${lang}/start/` },
@@ -48,86 +49,66 @@ const crumbs = [
     <div class="prose">
     <h2 id="quickstart">{fr ? 'En bref : de zéro au verdict en six lignes' : 'In short: zero to verdict in six lines'}</h2>
     <p>{fr
-      ? 'Le chemin le plus court, sur l’hôte courant (la config effective exige root). Build une fois, puis vérifie, scanne, consulte :'
-      : 'The shortest path, on the current host (effective config needs root). Build once, then check, scan, browse:'}</p>
-    <Fragment set:html={highlight(`# ${fr ? 'mise épingle la chaîne d’outils (Go, Node, Python). Dépôt signé, jamais un script tubé :' : 'mise pins the toolchain (Go, Node, Python). A signed repository, never a piped script:'}
-sudo apt install -y extrepo && sudo extrepo enable mise   # Debian 11+ / Ubuntu 22.04+
-sudo apt update && sudo apt install -y mise
-
-git clone https://github.com/stephrobert/pavois.git && cd pavois
-mise trust && mise install && mise run build && mise run regen
-./go/pavois doctor                          # ${fr ? 'tout est-il prêt ?' : 'is everything ready?'}
-./go/pavois scan local --sudo --format html # ${fr ? 'audite cet hôte, note A à E' : 'audit this host, A to E grade'}
-./go/pavois serve                           # http://localhost:8098`, 'bash')} />
+      ? 'Le chemin le plus court, sur l’hôte courant (la config effective exige root). Rien à compiler : le binaire embarque son corpus de règles, et curl suffit.'
+      : 'The shortest path, on the current host (effective config needs root). Nothing to compile: the binary embeds its rule corpus, and curl is the whole dependency list.'}</p>
+    <Fragment set:html={highlight(
+      `${install.binaryCurl.code(fr)}\n${install.firstScan.code(fr)}`, 'bash')} />
     <p class="muted">{fr
-      ? 'Pavois ne vous demandera jamais de tuber un script depuis Internet dans un shell : un outil de durcissement qui commence par un curl | sh a déjà perdu le débat. extrepo active le dépôt APT signé de mise ; sur Fedora ou RHEL, c’est '
-      : 'Pavois will never ask you to pipe a script from the internet into a shell: a hardening tool whose first line is curl | sh has already lost the argument. extrepo enables mise’s signed APT repository; on Fedora or RHEL it is '}
-      <code>dnf copr enable jdxcode/mise && dnf install mise</code>.</p>
-
-    <p class="muted">{fr
-      ? 'Vous refusez d’installer un gestionnaire de chaîne d’outils pour essayer un scanner ? C’est légitime, et rien ne vous y oblige. Avec Go 1.26+ et python3 (module pyyaml) déjà présents :'
-      : 'Do not want to install a toolchain manager just to try a scanner? Fair, and nothing forces you to. With Go 1.26+ and python3 (pyyaml module) already present:'}</p>
-    <Fragment set:html={highlight(`cd go && go build -o pavois . && cd ..   # ${fr ? 'le binaire' : 'the binary'}
-python3 tools/gen.py render               # ${fr ? 'la référence par OS depuis rules.yml' : 'the per-OS reference from rules.yml'}
-bash tools/render.sh                      # ${fr ? 'le corpus InSpec (.rb)' : 'the InSpec corpus (.rb)'}
-./go/pavois doctor`, 'bash')} />
-    <p class="muted">{fr
-      ? 'Vous perdez seulement les tâches mise (le site, les validations). Pour une cible distante : '
-      : 'You only lose the mise tasks (the site, the validations). For a remote target: '}<code>scan user@host</code>.</p>
+      ? 'Télécharger un fichier puis vérifier son empreinte n’est pas tuber un script dans un shell. Pavois ne vous demandera jamais de faire curl | sh : un outil de durcissement qui commence par là a déjà perdu le débat. Ici rien ne s’exécute avant que sha256sum n’ait confirmé l’empreinte publiée, et '
+      : 'Downloading a file and then verifying its checksum is not piping a script into a shell. Pavois will never ask you to curl | sh: a hardening tool whose first line is that has already lost the argument. Here nothing runs until sha256sum has confirmed the published checksum, and '}
+      <a href={`/${lang}/installation/#binary`}>{fr ? 'la page installation' : 'the installation page'}</a>
+      {fr
+        ? ' ajoute la vérification de provenance SLSA, qui prouve en plus QUI a construit le fichier. Paquets .deb et .rpm au même endroit.'
+        : ' adds the SLSA provenance check, which additionally proves WHO built the file. .deb and .rpm packages are in the same place.'}</p>
 
     <h2 id="prerequisites">{fr ? 'Prérequis' : 'Prerequisites'}</h2>
     <p>
       {fr
-        ? 'Pavois est un binaire Go au-dessus de CINC Auditor (build open-source de Chef InSpec). La chaîne d’outils est épinglée par '
-        : 'Pavois is a Go binary on top of CINC Auditor (the open-source build of Chef InSpec). The toolchain is pinned by '}
-      <a href="https://mise.jdx.dev" target="_blank" rel="noopener">mise</a>
+        ? 'Pour installer Pavois : curl, et rien d’autre. Le binaire est statique et embarque son corpus de règles, donc il n’y a ni chaîne d’outils, ni Go, ni Python à mettre en place. mise n’intervient que si vous modifiez Pavois, et c’est décrit en fin de page.'
+        : 'To install Pavois: curl, and nothing else. The binary is static and embeds its rule corpus, so there is no toolchain, no Go and no Python to set up. mise only comes in if you are changing Pavois, which is covered at the end of this page.'}
+    </p>
+    <p>
       {fr
-        ? '. Pavois n’installe jamais CINC Auditor de lui-même : installez cinc-auditor sur l’hôte qui scanne (pavois doctor affiche la commande s’il manque) ; sans lui, les cibles distantes se rabattent sur un conteneur Docker et local refuse. Sur une cible distante, --on-target n’installe le moteur que si vous passez --bootstrap-cinc.'
-        : '. Pavois never installs CINC Auditor on its own: install cinc-auditor on the scanning host (pavois doctor prints the command when it is missing); without it, remote targets fall back to a Docker container and local refuses. On a remote target, --on-target installs the engine only when you pass --bootstrap-cinc.'}
+        ? 'Pour scanner, il faut en plus le moteur. Pavois exécute ses contrôles avec CINC Auditor (le build open-source de Chef InSpec) et ne l’installe jamais de lui-même : installez cinc-auditor sur l’hôte qui scanne (pavois doctor affiche la commande s’il manque) ; sans lui, les cibles distantes se rabattent sur un conteneur Docker et local refuse. Sur une cible distante, --on-target n’installe le moteur que si vous passez --bootstrap-cinc. Enfin, la lecture de la config effective d’un service exige root, donc sudo, et une cible distante exige une clé SSH.'
+        : 'To scan, you also need the engine. Pavois runs its controls with CINC Auditor (the open-source build of Chef InSpec) and never installs it on its own: install cinc-auditor on the scanning host (pavois doctor prints the command when it is missing); without it, remote targets fall back to a Docker container and local refuses. On a remote target, --on-target installs the engine only when you pass --bootstrap-cinc. Finally, reading a service’s effective config needs root, so sudo, and a remote target needs an SSH key.'}
     </p>
 
-    <h2 id="install">{fr ? 'Installer un binaire vérifié (une fois publié)' : 'Install a verified binary (once released)'}</h2>
+    <h2 id="install">{fr ? '1. Installer le binaire vérifié' : '1. Install the verified binary'}</h2>
     <p>{fr
-      ? 'Aucune release n’est publiée à ce jour : la section ci-dessous décrit ce que fera la première, pas ce que vous pouvez faire aujourd’hui (aujourd’hui, c’est le build depuis les sources, juste en dessous). Chaque release publiera un binaire statique par plateforme et un fichier checksums.txt. Sans numéro de version, gh prend la dernière :'
-      : 'No release is published yet: the section below describes what the first one will do, not what you can do today (today, that is the build from source, right underneath). Each release will ship a static binary per platform plus a checksums.txt. With no tag, gh takes the latest:'}</p>
-    <Fragment set:html={highlight(`gh release download --repo stephrobert/pavois \\
-  --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
-sha256sum --ignore-missing --check checksums.txt
-gh attestation verify pavois-linux-amd64 --repo stephrobert/pavois
-chmod +x pavois-linux-amd64 && ./pavois-linux-amd64 version`, 'bash')} />
+      ? 'Chaque release publie un binaire statique par plateforme (Linux et macOS, amd64 et arm64), des paquets .deb et .rpm, un checksums.txt, un SBOM et une attestation de provenance SLSA. Le binaire est autoporté : le corpus de règles est dedans, il n’y a rien à générer.'
+      : 'Each release ships a static binary per platform (Linux and macOS, amd64 and arm64), .deb and .rpm packages, a checksums.txt, an SBOM and a SLSA provenance attestation. The binary is self-contained: the rule corpus is inside it, there is nothing to generate.'}</p>
+    <Fragment set:html={highlight(install.binaryCurl.code(fr), 'bash')} />
     <p class="muted">{fr
-      ? 'sha256sum confirme l’intégrité face aux empreintes publiées ; gh attestation verify confirme la provenance SLSA, que le fichier est exactement ce que le workflow de release a construit (disponible une fois le dépôt public).'
-      : 'sha256sum confirms integrity against the published checksums; gh attestation verify confirms the SLSA provenance, that the file is exactly what the release workflow built (available once the repository is public).'}</p>
+      ? 'sha256sum confirme l’intégrité face aux empreintes publiées. Il ne dit pas QUI a construit le fichier : quelqu’un qui remplace le binaire ET le checksums.txt produit un couple parfaitement cohérent. Pour répondre à cette question il faut l’attestation de provenance SLSA, et c’est la seule chose que '
+      : 'sha256sum confirms integrity against the published checksums. It does not say WHO built the file: someone replacing both the binary AND checksums.txt produces a perfectly consistent pair. Answering that needs the SLSA provenance attestation, and it is the only thing '}
+      <a href="https://cli.github.com/" target="_blank" rel="noopener">GitHub CLI</a>
+      {fr
+        ? ' apporte de plus ici, sur un binaire déjà téléchargé :'
+        : ' adds here, on a binary you have already downloaded:'}</p>
+    <Fragment set:html={highlight(install.provenance.code(fr), 'bash')} />
+    <p class="muted">{fr
+      ? 'Facultatif mais recommandé. Cette vérification interroge un journal de transparence public, donc elle ne demande aucun accès au dépôt. Les paquets .deb et .rpm, les autres plateformes et le dépannage : '
+      : 'Optional but recommended. It queries a public transparency log, so it needs no access to the repository. The .deb and .rpm packages, the other platforms and troubleshooting: '}
+      <a href={`/${lang}/installation/`}>{fr ? 'page installation' : 'installation page'}</a>.</p>
 
-    <h2 id="build">{fr ? '1. Construire depuis les sources' : '1. Build from source'}</h2>
-    <p>{fr ? 'Clonez le dépôt, installez la chaîne épinglée, compilez le binaire, régénérez le corpus :' : 'Clone the repository, install the pinned toolchain, compile the binary, regenerate the corpus:'}</p>
-    <Fragment set:html={highlight(`git clone https://github.com/stephrobert/pavois.git
-cd pavois
-mise trust && mise install   # ${fr ? 'Go, Node, Python épinglés' : 'pinned Go, Node, Python'}
-mise run build               # -> go/pavois
-mise run regen               # ${fr ? 'corpus .rb + OSCAL depuis la référence' : 'rule corpus + OSCAL from the reference'}
-./go/pavois doctor           # ${fr ? 'vérifie CINC, sudo, SSH, OS, corpus' : 'check CINC, sudo, SSH, OS, corpus'}`, 'bash')} />
-    <p class="muted">{fr ? 'Détails et dépannage : ' : 'Details and troubleshooting: '}<a href={`/${lang}/installation/`}>Installation</a>.</p>
-
-    <p>{fr ? '`doctor` confirme que tout est prêt et donne la commande exacte pour chaque manque :' : '`doctor` confirms everything is ready and prints the exact command for each gap:'}</p>
+    <p>{fr ? 'doctor confirme que tout est prêt et donne la commande exacte pour chaque manque :' : 'doctor confirms everything is ready and prints the exact command for each gap:'}</p>
     <Fragment set:html={highlight(`# ${fr ? 'tout est prêt' : 'all set'}
   [OK  ] CINC engine (native)   /usr/bin/cinc-auditor
   [OK  ] sudo                   /usr/bin/sudo
   [OK  ] ssh                    /usr/bin/ssh
-  [OK  ] rule corpus            5928 controls rendered across 9 OS profile(s)
+  [OK  ] rule corpus            embedded, 5928 controls across 9 OS profile(s)
   [OK  ] local OS detected      debian 12
 ready: try: pavois scan local --sudo
 
 # ${fr ? 'exemples de manques signalés (avec la correction)' : 'gaps it flags (with the fix)'}
 [FAIL] CINC engine            install cinc-auditor (omnitruck) or use --engine docker
-[WARN] sudo                   not found; effective-config reads need root, pass --sudo
-[WARN] rule corpus            not generated; run \\\`mise run regen\\\``, 'bash')} />
+[WARN] sudo                   not found; effective-config reads need root, pass --sudo`, 'bash')} />
 
     <h2 id="scan">{fr ? '2. Premier scan (note A à E)' : '2. First scan (A to E grade)'}</h2>
     <p>{fr ? 'Le plus simple : auditer l’hôte courant avec sudo (la config effective exige root) :' : 'Simplest path: audit the current host with sudo (effective config needs root):'}</p>
-    <Fragment set:html={highlight(`./go/pavois scan local --sudo`, 'bash')} />
+    <Fragment set:html={highlight(`pavois scan local --sudo`, 'bash')} />
     <p>{fr ? 'Pour une cible distante via SSH :' : 'For a remote target over SSH:'}</p>
-    <Fragment set:html={highlight(`./go/pavois scan user@host --key ~/.ssh/id_ed25519 --sudo`, 'bash')} />
+    <Fragment set:html={highlight(`pavois scan user@host --key ~/.ssh/id_ed25519 --sudo`, 'bash')} />
     <div class="callout warn">
       <span class="ci" aria-hidden="true">!</span>
       <p>
@@ -138,20 +119,20 @@ ready: try: pavois scan local --sudo
     </div>
     <p class="muted">{fr ? 'Le profil (OS) est auto-détecté ; --profile ne sert que pour un profil custom.' : 'The OS profile is auto-detected; --profile is only for a custom profile.'}</p>
     <Fragment set:html={highlight(`# ${fr ? '(profil personnalisé, optionnel)' : '(custom profile, optional)'}
-# ./go/pavois scan user@host --key ~/.ssh/id_ed25519 --sudo --profile profiles/linux/debian12`, 'bash')} />
+# pavois scan user@host --key ~/.ssh/id_ed25519 --sudo --profile profiles/linux/debian12`, 'bash')} />
     <p>
       {fr
         ? 'La sortie liste les écarts par sévérité et affiche la note A à E en grosse lettre, plus le chemin du rapport HTML. Pour servir les rapports : '
         : 'The output lists deviations by severity and prints the A to E grade as a large letter, plus the HTML report path. To serve reports: '}
-      <code>./go/pavois serve</code> (http://localhost:8098).
+      <code>pavois serve</code> (http://localhost:8098).
     </p>
     <p><a href={`/${lang}/sample-report/`}>{fr ? 'Voir un rapport d’exemple (scan réel) + campagne avant/après →' : 'See a sample report (real scan) + before/after campaign →'}</a></p>
 
     <h2 id="harden">{fr ? '3. Durcir, puis prouver' : '3. Harden, then prove'}</h2>
     <p>{fr ? 'Planifiez les correctifs, activez ceux que vous voulez, convergez un run Chef natif, et re-scannez :' : 'Plan the fixes, opt into the ones you want, converge a native Chef run, and re-scan:'}</p>
-    <Fragment set:html={highlight(`./go/pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo
-# ${fr ? 'édite le plan : passe des règles à apply: true' : 'edit the plan: flip rules to apply: true'}
-./go/pavois harden apply hardening-plan-debian12.yml --scan`, 'bash')} />
+    <Fragment set:html={highlight(`pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo
+# ${fr ? 'éditez le plan : passez des règles à apply: true' : 'edit the plan: flip rules to apply: true'}
+pavois harden apply hardening-plan-debian12.yml --scan`, 'bash')} />
     <p>
       {fr
         ? 'Ajoutez --reboot pour redémarrer la cible et re-scanner après le boot : un PASS y est alors reboot-proven. '
@@ -177,12 +158,12 @@ ready: try: pavois scan local --sudo
     </p>
     <p>{fr ? 'La boucle : re-scanner, re-planifier, ré-appliquer, jusqu’à ce qu’une passe n’ait plus rien à faire.' : 'The loop: re-scan, re-plan, re-apply, until a pass has nothing left to do.'}</p>
     <Fragment set:html={highlight(`# ${fr ? 'jusqu’au point fixe (2 à 3 passes en pratique)' : 'until the fixpoint (2 to 3 passes in practice)'}
-./go/pavois scan user@host --key ~/.ssh/id_ed25519 --sudo
-./go/pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo --from reports/<last>.json
-./go/pavois harden apply --target user@host --key ~/.ssh/id_ed25519 --sudo-prompt plan.yml`, 'bash')} />
+pavois scan user@host --key ~/.ssh/id_ed25519 --sudo
+pavois harden plan user@host --key ~/.ssh/id_ed25519 --sudo --from reports/<last>.json
+pavois harden apply --target user@host --key ~/.ssh/id_ed25519 --sudo-prompt plan.yml`, 'bash')} />
     <p class="muted">
       {fr
-        ? 'Attention aux contrôles qui se contredisent : un paquet installé par l’un peut être retiré par l’autre. Corrige la paire avant de boucler, sinon la boucle oscille.'
+        ? 'Attention aux contrôles qui se contredisent : un paquet installé par l’un peut être retiré par l’autre. Corrigez la paire avant de boucler, sinon la boucle oscille.'
         : 'Watch for controls that contradict each other: a package one installs, another removes. Fix the pair before looping, or the loop oscillates.'}
     </p>
 
@@ -221,14 +202,14 @@ ready: try: pavois scan local --sudo
     <h2 id="survive">{fr ? '6. Prouver que l’hôte a survécu' : '6. Prove the host survived'}</h2>
     <p>
       {fr
-        ? 'Une machine durcie qui a perdu une fonction vitale est un échec, pas une note. Après un apply, vérifie que le pare-feu tourne, que sshd répond, que le gestionnaire de paquets est sain et que la machine journalise encore. Un hôte peut afficher 560 contrôles au vert et n’écrire plus une ligne dans /var/log/syslog.'
+        ? 'Une machine durcie qui a perdu une fonction vitale est un échec, pas une note. Après un apply, vérifiez que le pare-feu tourne, que sshd répond, que le gestionnaire de paquets est sain et que la machine journalise encore. Un hôte peut afficher 560 contrôles au vert et n’écrire plus une ligne dans /var/log/syslog.'
         : 'A hardened host that lost a vital function is a failure, not a grade. After an apply, check that the firewall is up, sshd answers, the package manager is healthy and the machine still logs. A host can show 560 green controls and no longer write a single line to /var/log/syslog.'}
     </p>
-    <Fragment set:html={highlight(`# ${fr ? 'redémarre, re-scanne : un PASS après reboot est reboot-proven' : 'reboot, re-scan: a PASS after reboot is reboot-proven'}
-./go/pavois harden apply --target user@host --key ~/.ssh/id_ed25519 --sudo-prompt --reboot --scan plan.yml
+    <Fragment set:html={highlight(`# ${fr ? 'redémarrage puis re-scan : un PASS après reboot est reboot-proven' : 'reboot, re-scan: a PASS after reboot is reboot-proven'}
+pavois harden apply --target user@host --key ~/.ssh/id_ed25519 --sudo-prompt --reboot --scan plan.yml
 
 # ${fr ? 'validation comportementale : tenter l’action interdite' : 'behavioural validation: attempt the forbidden action'}
-./go/pavois verify user@host --key ~/.ssh/id_ed25519`, 'bash')} />
+pavois verify user@host --key ~/.ssh/id_ed25519`, 'bash')} />
     <p>
       <code>pavois verify</code>
       {fr
@@ -239,10 +220,10 @@ ready: try: pavois scan local --sudo
     <h2 id="ci">{fr ? '7. En CI' : '7. In CI'}</h2>
     <p>{fr ? 'Le code de sortie porte le verdict, et le format de sortie s’adapte à votre outillage :' : 'The exit code carries the verdict, and the output format fits your tooling:'}</p>
     <Fragment set:html={highlight(`# ${fr ? 'échoue la CI sous 80/100 ; SARIF pour GitHub code scanning' : 'fail the build under 80/100; SARIF for GitHub code scanning'}
-./go/pavois scan user@host --key ~/.ssh/id --sudo --fail-under 80 --format sarif --out ./out
+pavois scan user@host --key ~/.ssh/id --sudo --fail-under 80 --format sarif --out ./out
 
 # ${fr ? 'un paquet de preuve horodaté, avec manifeste et empreintes' : 'a timestamped evidence package, with a manifest and checksums'}
-./go/pavois bundle before.json after.json --plan plan.yml --out evidence/`, 'bash')} />
+pavois bundle before.json after.json --plan plan.yml --out evidence/`, 'bash')} />
     <p class="muted">
       {fr
         ? 'Codes de sortie : 0 conforme, 1 sous le seuil, 2 erreur technique. Formats : table, json, sarif, junit, csv, html.'
@@ -268,11 +249,11 @@ ready: try: pavois scan local --sudo
         : ' photographs the prior state: the content of every file the recipe will write, the list of those that did not exist yet (a rollback deletes them), and the installed/enabled state of every package and service it touches.'}
     </p>
     <Fragment set:html={highlight(`# ${fr ? 'l’apply écrit un point de restauration, puis converge' : 'the apply writes a restore point, then converges'}
-./go/pavois harden apply --target user@host --key ~/.ssh/id --sudo-prompt --yes plan.yml
+pavois harden apply --target user@host --key ~/.ssh/id --sudo-prompt --yes plan.yml
 # pavois: 📸 restore point → restore-points/user_192-0-2-10-20260714-1505
 
 # ${fr ? 'annuler : fichiers restaurés, paquets purgés, services remis, démons rechargés' : 'undo: files restored, packages purged, services restored, daemons reloaded'}
-./go/pavois harden rollback restore-points/user_192-0-2-10-20260714-1505 --key ~/.ssh/id --sudo-prompt --yes`, 'bash')} />
+pavois harden rollback restore-points/user_192-0-2-10-20260714-1505 --key ~/.ssh/id --sudo-prompt --yes`, 'bash')} />
     <p>
       {fr
         ? 'Mesuré sur une debian 12 neuve, un apply complet de 268 items puis un rollback : '
@@ -314,7 +295,7 @@ ready: try: pavois scan local --sudo
     </p>
     <Fragment set:html={highlight(`# ${fr ? 'un scan par hôte, un JSON par hôte' : 'one scan per host, one JSON per host'}
 while read -r host; do
-  ./go/pavois scan "$host" --key ~/.ssh/id_ed25519 --sudo --on-target \\
+  pavois scan "$host" --key ~/.ssh/id_ed25519 --sudo --on-target \\
      --format json --out reports/ --fail-under 70 || echo "$host below threshold"
 done < inventory.txt
 
@@ -325,6 +306,16 @@ jq -r '.grade + " " + (.failed|tostring) + " " + .target' reports/*.json`, 'bash
         ? 'Le durcissement suit la même logique : un plan par hôte, revu, puis appliqué. Rien n’empêche de piloter la boucle depuis Ansible ou Rundeck : pavois est un binaire sans agent, qui utilise votre ssh_config et votre sudo.'
         : 'Hardening follows the same shape: one plan per host, reviewed, then applied. Nothing stops you driving the loop from Ansible or Rundeck: pavois is an agentless binary that uses your ssh_config and your sudo.'}
     </p>
+
+    <h2 id="build">{fr ? 'Construire depuis les sources (contributeurs)' : 'Build from source (contributors)'}</h2>
+    <p>{fr
+      ? 'Tout ce qui précède se fait avec le binaire publié. Cette section s’adresse à qui modifie Pavois, et à personne d’autre : la compilation tire une chaîne Go, Node et Python épinglée, puis régénère le corpus de règles et le paquet OSCAL qu’un binaire de release porte déjà en lui.'
+      : 'Everything above works with the published binary. This section is for people changing Pavois, and for nobody else: the build pulls a pinned Go, Node and Python toolchain, then regenerates the rule corpus and the OSCAL bundle that a release binary already carries inside it.'}</p>
+    <Fragment set:html={highlight(
+      `${install.miseInstall.code(fr)}\n\n${install.buildFromSource.code(fr)}`, 'bash')} />
+    <p class="muted">{fr
+      ? 'Sur Fedora ou RHEL : dnf copr enable jdxcode/mise && dnf install mise ; sur macOS : brew install mise. Détails et dépannage : '
+      : 'On Fedora or RHEL: dnf copr enable jdxcode/mise && dnf install mise; on macOS: brew install mise. Details and troubleshooting: '}<a href={`/${lang}/installation/#build`}>Installation</a>.</p>
 
     <h2 id="takeaways">{fr ? 'À retenir' : 'Key takeaways'}</h2>
     <ul>

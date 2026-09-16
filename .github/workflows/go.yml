@@ -96,3 +96,21 @@ jobs:
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.3.0
           "$(go env GOPATH)/bin/govulncheck" ./...
+
+      # The site tells readers the OSCAL export is conformant assessment-results, which is a claim
+      # about a schema a third party can run. `mise run oscal:verify` has existed for that since the
+      # export landed, and ran nowhere: it needed an OSCAL_SAMPLE nobody set, so it was a task a
+      # maintainer had to remember. A promise kept by memory is a promise about to break, so the
+      # export is now checked against the NIST 1.1.2 schema on every push, with the anonymized
+      # fixture the site's own sample report is built from.
+      # check-jsonschema, not plain jsonschema: the NIST schema uses \p classes the latter dies on.
+      - name: OSCAL export is still valid assessment-results
+        working-directory: pavois
+        run: |
+          go build -C go -o pavois .
+          curl -sSL --retry 3 -o /tmp/oscal-schema.json \
+            https://github.com/usnistgov/OSCAL/releases/download/v1.1.2/oscal_assessment-results_schema.json
+          tmp=$(mktemp -d)
+          cp docs/examples/after.json "$tmp/sample.json"
+          ./go/pavois scan local --from "$tmp/sample.json" --out "$tmp" --format oscal > "$tmp/out.json"
+          pipx run check-jsonschema --schemafile /tmp/oscal-schema.json "$tmp/out.json"

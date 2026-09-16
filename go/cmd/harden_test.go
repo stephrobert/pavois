@@ -60,7 +60,17 @@ func TestSortedKeysS(t *testing.T) {
 func TestSSHOptsFor(t *testing.T) {
 	base := sshOptsFor("")
 	joined := strings.Join(base, " ")
-	for _, want := range []string{"StrictHostKeyChecking=no", "ConnectTimeout=15", "-F /dev/null"} {
+	// The two ServerAlive options are load-bearing, not cosmetic. Dropping them brings back a hang
+	// with no error and no timeout: `ssh -tt` holds a pty, so a session killed by the reboot that
+	// apply itself triggers never sees EOF and waits forever. It was measured at sixteen minutes on
+	// a host that had been back for fifteen of them.
+	for _, want := range []string{
+		"StrictHostKeyChecking=no",
+		"ConnectTimeout=15",
+		"ServerAliveInterval=15",
+		"ServerAliveCountMax=4",
+		"-F /dev/null",
+	} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("sshOptsFor() missing %q in %q", want, joined)
 		}
