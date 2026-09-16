@@ -5,6 +5,7 @@ import { osLabel } from '../../lib/os';
 import Toc from '../../components/Toc.astro';
 import { languages, type Lang } from '../../i18n/ui';
 import { highlight } from '../../lib/markdown';
+import * as install from '../../data/install';
 
 export function getStaticPaths() {
   return Object.keys(languages).map((lang) => ({ params: { lang } }));
@@ -74,21 +75,13 @@ const crumbs = [
       ? 'Les binaires se tirent du dépôt, depuis les releases GitHub : un binaire statique par plateforme (Linux et macOS, amd64 et arm64), des paquets .deb et .rpm, un checksums.txt, un SBOM CycloneDX et une attestation de provenance SLSA. Le binaire est autoporté (corpus de règles embarqué) : télécharger, vérifier l’intégrité et la provenance, puis scanner.'
       : 'The binaries are pulled from the repository, from the GitHub releases: one static binary per platform (Linux and macOS, amd64 and arm64), .deb and .rpm packages, a checksums.txt, a CycloneDX SBOM and a SLSA provenance attestation. The binary is self-contained (rule corpus embedded): download, verify integrity and provenance, then scan.'}</p>
     <h3>{fr ? 'Avec curl, sans rien installer d’autre' : 'With curl, installing nothing else'}</h3>
-    <Fragment set:html={highlight(`V=v0.1.0
-BASE=https://github.com/stephrobert/pavois/releases/download/$V
-curl -fsSLO $BASE/pavois-linux-amd64          # ${fr ? 'ou -darwin-arm64, -linux-arm64…' : 'or -darwin-arm64, -linux-arm64…'}
-curl -fsSLO $BASE/checksums.txt
-sha256sum --ignore-missing --check checksums.txt    # ${fr ? 'intégrité' : 'integrity'}
-chmod +x pavois-linux-amd64
-sudo install -m 0755 pavois-linux-amd64 /usr/local/bin/pavois
-pavois doctor                                       # ${fr ? 'corpus embarqué, prêt à scanner' : 'corpus embedded, ready to scan'}`, 'bash')} />
+    <Fragment set:html={highlight(install.binaryCurl.code(fr), 'bash')} />
     <p class="muted">{fr
       ? 'Sur macOS, remplace sha256sum par shasum -a 256 -c. Le binaire n’a aucune dépendance partagée : il n’a besoin ni de Ruby, ni de Go, ni de Python.'
       : 'On macOS, use shasum -a 256 -c instead of sha256sum. The binary has no shared dependency: it needs neither Ruby, nor Go, nor Python.'}</p>
 
     <h3>{fr ? 'Avec un paquet .deb ou .rpm' : 'With a .deb or .rpm package'}</h3>
-    <Fragment set:html={highlight(`curl -fsSLO $BASE/pavois_0.1.0_amd64.deb && sudo dpkg -i pavois_0.1.0_amd64.deb
-curl -fsSLO $BASE/pavois-0.1.0.amd64.rpm && sudo rpm -i pavois-0.1.0.amd64.rpm`, 'bash')} />
+    <Fragment set:html={highlight(install.packages.code(fr), 'bash')} />
 
     <h3>{fr ? 'Vérifier la provenance (optionnel, recommandé)' : 'Check the provenance (optional, recommended)'}</h3>
     <p>{fr
@@ -96,7 +89,7 @@ curl -fsSLO $BASE/pavois-0.1.0.amd64.rpm && sudo rpm -i pavois-0.1.0.amd64.rpm`,
       : 'sha256sum proves the file has not changed since the checksums were published. It does not prove WHO built it: someone replacing both the binary and checksums.txt produces a consistent pair. The SLSA provenance attestation answers that question, and checking it needs '}
       <a href="https://cli.github.com/" target="_blank" rel="noopener">GitHub CLI</a>
       {fr ? ' (paquets officiels Debian, Ubuntu, Fedora, Homebrew, ou un binaire autonome sur cette page) :' : ' (official Debian, Ubuntu, Fedora and Homebrew packages, or a standalone binary on that page):'}</p>
-    <Fragment set:html={highlight(`gh attestation verify pavois-linux-amd64 --repo stephrobert/pavois`, 'bash')} />
+    <Fragment set:html={highlight(install.binaryGh.code(fr), 'bash')} />
     <p class="muted">{fr
       ? 'La commande confirme que ce fichier exact est sorti du workflow de release de ce dépôt, sur ce tag, et pas seulement qu’il porte le bon nom. Elle interroge le journal de transparence public : aucun accès au dépôt n’est requis, et un binaire récupéré ailleurs se vérifie aussi bien.'
       : 'It confirms this exact file came out of this repository’s release workflow, on that tag, rather than merely being a file with the right name. It queries the public transparency log: no access to the repository is required, and a binary obtained elsewhere verifies just as well.'}</p>
@@ -115,16 +108,11 @@ curl -fsSLO $BASE/pavois-0.1.0.amd64.rpm && sudo rpm -i pavois-0.1.0.amd64.rpm`,
       {fr
         ? ' qui l’installe : tu n’as donc ni Go, ni Node, ni Python à gérer à la main, et tu obtiens exactement les versions que la CI utilise. Une seule commande, puis un shell rouvert :'
         : ' installs it, so you have no Go, Node or Python to manage by hand, and you get exactly the versions CI uses. One command, then reopen your shell:'}</p>
-    <Fragment set:html={highlight(`curl https://mise.run | sh
-echo 'eval "$(~/.local/bin/mise activate bash)"' >> ~/.bashrc   # ${fr ? 'zsh : ~/.zshrc et activate zsh' : 'zsh: ~/.zshrc and activate zsh'}`, 'bash')} />
+    <Fragment set:html={highlight(install.miseInstall.code(fr), 'bash')} />
     <p class="muted">{fr
-      ? 'mise est aussi dans Homebrew, les dépôts Arch et Fedora, et se télécharge en binaire autonome. Sa page d’installation liste chaque méthode.'
-      : 'mise is also in Homebrew, the Arch and Fedora repositories, and ships as a standalone binary. Its install page lists every method.'}</p>
-    <Fragment set:html={highlight(`git clone https://github.com/stephrobert/pavois.git
-cd pavois
-mise trust && mise install   # ${fr ? 'Go, Node, Python épinglés' : 'pinned Go, Node, Python'}
-mise run build               # -> go/pavois
-mise run regen               # ${fr ? 'corpus .rb + OSCAL depuis docs/reference/' : 'rule corpus + OSCAL from docs/reference/'}`, 'bash')} />
+      ? 'Un dépôt signé, jamais un script tubé dans un shell. Pavois ne vous demandera jamais de faire curl | sh : un outil de durcissement qui commence par là a déjà perdu le débat. extrepo active le dépôt APT signé de mise et vérifie sa clé ; les blocs curl plus haut téléchargent un fichier dont vous contrôlez ensuite l’empreinte, ce qui n’est pas la même chose qu’exécuter du code téléchargé à l’aveugle.'
+      : 'A signed repository, never a script piped into a shell. Pavois will never ask you to curl | sh: a hardening tool whose first line is that has already lost the argument. extrepo enables mise’s signed APT repository and checks its key; the curl blocks above download a file whose checksum you then verify, which is not the same thing as executing code fetched blind.'}</p>
+    <Fragment set:html={highlight(install.buildFromSource.code(fr), 'bash')} />
     <p class="muted">{fr ? 'Vérifie : ' : 'Verify: '}<code>./go/pavois version</code>.</p>
 
     <h2 id="engine">{fr ? 'Le moteur de scan (CINC Auditor)' : 'The scan engine (CINC Auditor)'}</h2>

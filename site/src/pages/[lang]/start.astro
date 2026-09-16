@@ -3,6 +3,7 @@ import Base from '../../layouts/Base.astro';
 import Toc from '../../components/Toc.astro';
 import { languages, type Lang } from '../../i18n/ui';
 import { highlight } from '../../lib/markdown';
+import * as install from '../../data/install';
 
 export function getStaticPaths() {
   return Object.keys(languages).map((lang) => ({ params: { lang } }));
@@ -13,8 +14,7 @@ const fr = lang === 'fr';
 const sections = [
   { slug: 'quickstart', en: 'In short: zero to verdict in six lines', fr: 'En bref : de zéro au verdict en six lignes' },
   { slug: 'prerequisites', en: 'Prerequisites', fr: 'Prérequis' },
-  { slug: 'install', en: 'Install a verified binary (once released)', fr: 'Installer un binaire vérifié (une fois publié)' },
-  { slug: 'build', en: '1. Build from source', fr: '1. Construire depuis les sources' },
+  { slug: 'install', en: '1. Install the verified binary', fr: '1. Installer le binaire vérifié' },
   { slug: 'scan', en: '2. First scan (A to E grade)', fr: '2. Premier scan (note A à E)' },
   { slug: 'harden', en: '3. Harden, then prove', fr: '3. Durcir, puis prouver' },
   { slug: 'converge', en: '4. Converge (an apply is not enough)', fr: '4. Converger (un apply ne suffit pas)' },
@@ -23,6 +23,7 @@ const sections = [
   { slug: 'ci', en: '7. In CI', fr: '7. En CI' },
   { slug: 'revert', en: '8. Reverting a change', fr: '8. Revenir en arrière' },
   { slug: 'fleet', en: '9. A whole fleet', fr: '9. Toute une flotte' },
+  { slug: 'build', en: 'Build from source (contributors)', fr: 'Construire depuis les sources (contributeurs)' },
   { slug: 'takeaways', en: 'Key takeaways', fr: 'À retenir' },
   { slug: 'next', en: 'Next steps', fr: 'Prochaines étapes' },
 ];
@@ -30,8 +31,8 @@ const toc = sections.map((s) => ({ depth: 2, slug: s.slug, text: fr ? s.fr : s.e
 
 const title = fr ? 'Démarrer · Pavois' : 'Get started · Pavois';
 const desc = fr
-  ? 'Construisez Pavois depuis les sources, lancez votre premier scan A à E, puis durcissez une cible et re-scannez. Trois commandes, du build au verdict.'
-  : 'Build Pavois from source, run your first A to E scan, then harden a target and re-scan. Three commands, from build to verdict.';
+  ? 'Installez le binaire vérifié, lancez votre premier scan A à E, puis durcissez une cible et re-scannez. Du téléchargement au verdict en quelques commandes, sans chaîne d’outils à installer.'
+  : 'Install the verified binary, run your first A to E scan, then harden a target and re-scan. From download to verdict in a few commands, with no toolchain to install.';
 const crumbs = [
   { name: 'Pavois', path: `/${lang}/` },
   { name: fr ? 'Démarrer' : 'Get started', path: `/${lang}/start/` },
@@ -48,32 +49,17 @@ const crumbs = [
     <div class="prose">
     <h2 id="quickstart">{fr ? 'En bref : de zéro au verdict en six lignes' : 'In short: zero to verdict in six lines'}</h2>
     <p>{fr
-      ? 'Le chemin le plus court, sur l’hôte courant (la config effective exige root). Build une fois, puis vérifie, scanne, consulte :'
-      : 'The shortest path, on the current host (effective config needs root). Build once, then check, scan, browse:'}</p>
-    <Fragment set:html={highlight(`# ${fr ? 'mise épingle la chaîne d’outils (Go, Node, Python). Dépôt signé, jamais un script tubé :' : 'mise pins the toolchain (Go, Node, Python). A signed repository, never a piped script:'}
-sudo apt install -y extrepo && sudo extrepo enable mise   # Debian 11+ / Ubuntu 22.04+
-sudo apt update && sudo apt install -y mise
-
-git clone https://github.com/stephrobert/pavois.git && cd pavois
-mise trust && mise install && mise run build && mise run regen
-./go/pavois doctor                          # ${fr ? 'tout est-il prêt ?' : 'is everything ready?'}
-./go/pavois scan local --sudo --format html # ${fr ? 'audite cet hôte, note A à E' : 'audit this host, A to E grade'}
-./go/pavois serve                           # http://localhost:8098`, 'bash')} />
+      ? 'Le chemin le plus court, sur l’hôte courant (la config effective exige root). Rien à compiler : le binaire embarque son corpus de règles, et curl suffit.'
+      : 'The shortest path, on the current host (effective config needs root). Nothing to compile: the binary embeds its rule corpus, and curl is the whole dependency list.'}</p>
+    <Fragment set:html={highlight(
+      `${install.binaryCurl.code(fr)}\n${install.firstScan.code(fr)}`, 'bash')} />
     <p class="muted">{fr
-      ? 'Pavois ne vous demandera jamais de tuber un script depuis Internet dans un shell : un outil de durcissement qui commence par un curl | sh a déjà perdu le débat. extrepo active le dépôt APT signé de mise ; sur Fedora ou RHEL, c’est '
-      : 'Pavois will never ask you to pipe a script from the internet into a shell: a hardening tool whose first line is curl | sh has already lost the argument. extrepo enables mise’s signed APT repository; on Fedora or RHEL it is '}
-      <code>dnf copr enable jdxcode/mise && dnf install mise</code>.</p>
-
-    <p class="muted">{fr
-      ? 'Vous refusez d’installer un gestionnaire de chaîne d’outils pour essayer un scanner ? C’est légitime, et rien ne vous y oblige. Avec Go 1.26+ et python3 (module pyyaml) déjà présents :'
-      : 'Do not want to install a toolchain manager just to try a scanner? Fair, and nothing forces you to. With Go 1.26+ and python3 (pyyaml module) already present:'}</p>
-    <Fragment set:html={highlight(`cd go && go build -o pavois . && cd ..   # ${fr ? 'le binaire' : 'the binary'}
-python3 tools/gen.py render               # ${fr ? 'la référence par OS depuis rules.yml' : 'the per-OS reference from rules.yml'}
-bash tools/render.sh                      # ${fr ? 'le corpus InSpec (.rb)' : 'the InSpec corpus (.rb)'}
-./go/pavois doctor`, 'bash')} />
-    <p class="muted">{fr
-      ? 'Vous perdez seulement les tâches mise (le site, les validations). Pour une cible distante : '
-      : 'You only lose the mise tasks (the site, the validations). For a remote target: '}<code>scan user@host</code>.</p>
+      ? 'Télécharger un fichier puis vérifier son empreinte n’est pas tuber un script dans un shell. Pavois ne vous demandera jamais de faire curl | sh : un outil de durcissement qui commence par là a déjà perdu le débat. Ici rien ne s’exécute avant que sha256sum n’ait confirmé l’empreinte publiée, et '
+      : 'Downloading a file and then verifying its checksum is not piping a script into a shell. Pavois will never ask you to curl | sh: a hardening tool whose first line is that has already lost the argument. Here nothing runs until sha256sum has confirmed the published checksum, and '}
+      <a href={`/${lang}/installation/#binary`}>{fr ? 'la page installation' : 'the installation page'}</a>
+      {fr
+        ? ' ajoute la vérification de provenance SLSA, qui prouve en plus QUI a construit le fichier. Paquets .deb et .rpm au même endroit.'
+        : ' adds the SLSA provenance check, which additionally proves WHO built the file. .deb and .rpm packages are in the same place.'}</p>
 
     <h2 id="prerequisites">{fr ? 'Prérequis' : 'Prerequisites'}</h2>
     <p>
@@ -86,28 +72,16 @@ bash tools/render.sh                      # ${fr ? 'le corpus InSpec (.rb)' : 't
         : '. Pavois never installs CINC Auditor on its own: install cinc-auditor on the scanning host (pavois doctor prints the command when it is missing); without it, remote targets fall back to a Docker container and local refuses. On a remote target, --on-target installs the engine only when you pass --bootstrap-cinc.'}
     </p>
 
-    <h2 id="install">{fr ? 'Installer un binaire vérifié (une fois publié)' : 'Install a verified binary (once released)'}</h2>
+    <h2 id="install">{fr ? '1. Installer le binaire vérifié' : '1. Install the verified binary'}</h2>
     <p>{fr
-      ? 'Aucune release n’est publiée à ce jour : la section ci-dessous décrit ce que fera la première, pas ce que vous pouvez faire aujourd’hui (aujourd’hui, c’est le build depuis les sources, juste en dessous). Chaque release publiera un binaire statique par plateforme et un fichier checksums.txt. Sans numéro de version, gh prend la dernière :'
-      : 'No release is published yet: the section below describes what the first one will do, not what you can do today (today, that is the build from source, right underneath). Each release will ship a static binary per platform plus a checksums.txt. With no tag, gh takes the latest:'}</p>
-    <Fragment set:html={highlight(`gh release download --repo stephrobert/pavois \\
-  --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
-sha256sum --ignore-missing --check checksums.txt
-gh attestation verify pavois-linux-amd64 --repo stephrobert/pavois
-chmod +x pavois-linux-amd64 && ./pavois-linux-amd64 version`, 'bash')} />
+      ? 'Chaque release publie un binaire statique par plateforme (Linux et macOS, amd64 et arm64), des paquets .deb et .rpm, un checksums.txt, un SBOM et une attestation de provenance SLSA. Sans numéro de version, gh prend la dernière :'
+      : 'Each release ships a static binary per platform (Linux and macOS, amd64 and arm64), .deb and .rpm packages, a checksums.txt, an SBOM and a SLSA provenance attestation. With no tag, gh takes the latest:'}</p>
+    <Fragment set:html={highlight(install.binaryGh.code(fr), 'bash')} />
     <p class="muted">{fr
-      ? 'sha256sum confirme l’intégrité face aux empreintes publiées ; gh attestation verify confirme la provenance SLSA, que le fichier est exactement ce que le workflow de release a construit (disponible une fois le dépôt public).'
-      : 'sha256sum confirms integrity against the published checksums; gh attestation verify confirms the SLSA provenance, that the file is exactly what the release workflow built (available once the repository is public).'}</p>
-
-    <h2 id="build">{fr ? '1. Construire depuis les sources' : '1. Build from source'}</h2>
-    <p>{fr ? 'Clonez le dépôt, installez la chaîne épinglée, compilez le binaire, régénérez le corpus :' : 'Clone the repository, install the pinned toolchain, compile the binary, regenerate the corpus:'}</p>
-    <Fragment set:html={highlight(`git clone https://github.com/stephrobert/pavois.git
-cd pavois
-mise trust && mise install   # ${fr ? 'Go, Node, Python épinglés' : 'pinned Go, Node, Python'}
-mise run build               # -> go/pavois
-mise run regen               # ${fr ? 'corpus .rb + OSCAL depuis la référence' : 'rule corpus + OSCAL from the reference'}
-./go/pavois doctor           # ${fr ? 'vérifie CINC, sudo, SSH, OS, corpus' : 'check CINC, sudo, SSH, OS, corpus'}`, 'bash')} />
-    <p class="muted">{fr ? 'Détails et dépannage : ' : 'Details and troubleshooting: '}<a href={`/${lang}/installation/`}>Installation</a>.</p>
+      ? 'sha256sum confirme l’intégrité face aux empreintes publiées. Il ne dit pas QUI a construit le fichier : c’est gh attestation verify qui le prouve, en confrontant le binaire à l’attestation de provenance SLSA du workflow de release. Sans GitHub CLI, le bloc curl du haut de page fait le téléchargement et l’intégrité ; '
+      : 'sha256sum confirms integrity against the published checksums. It does not say WHO built the file: gh attestation verify proves that, by checking the binary against the release workflow’s SLSA provenance attestation. Without GitHub CLI, the curl block at the top of this page covers download and integrity; '}
+      <a href={`/${lang}/installation/`}>{fr ? 'la page installation' : 'the installation page'}</a>
+      {fr ? ' détaille les deux chemins, les paquets et le dépannage.' : ' details both paths, the packages and troubleshooting.'}</p>
 
     <p>{fr ? '`doctor` confirme que tout est prêt et donne la commande exacte pour chaque manque :' : '`doctor` confirms everything is ready and prints the exact command for each gap:'}</p>
     <Fragment set:html={highlight(`# ${fr ? 'tout est prêt' : 'all set'}
@@ -325,6 +299,16 @@ jq -r '.grade + " " + (.failed|tostring) + " " + .target' reports/*.json`, 'bash
         ? 'Le durcissement suit la même logique : un plan par hôte, revu, puis appliqué. Rien n’empêche de piloter la boucle depuis Ansible ou Rundeck : pavois est un binaire sans agent, qui utilise votre ssh_config et votre sudo.'
         : 'Hardening follows the same shape: one plan per host, reviewed, then applied. Nothing stops you driving the loop from Ansible or Rundeck: pavois is an agentless binary that uses your ssh_config and your sudo.'}
     </p>
+
+    <h2 id="build">{fr ? 'Construire depuis les sources (contributeurs)' : 'Build from source (contributors)'}</h2>
+    <p>{fr
+      ? 'Tout ce qui précède se fait avec le binaire publié. Cette section s’adresse à qui modifie Pavois, et à personne d’autre : la compilation tire une chaîne Go, Node et Python épinglée, puis régénère le corpus de règles et le paquet OSCAL qu’un binaire de release porte déjà en lui.'
+      : 'Everything above works with the published binary. This section is for people changing Pavois, and for nobody else: the build pulls a pinned Go, Node and Python toolchain, then regenerates the rule corpus and the OSCAL bundle that a release binary already carries inside it.'}</p>
+    <Fragment set:html={highlight(
+      `${install.miseInstall.code(fr)}\n\n${install.buildFromSource.code(fr)}`, 'bash')} />
+    <p class="muted">{fr
+      ? 'Sur Fedora ou RHEL : dnf copr enable jdxcode/mise && dnf install mise ; sur macOS : brew install mise. Détails et dépannage : '
+      : 'On Fedora or RHEL: dnf copr enable jdxcode/mise && dnf install mise; on macOS: brew install mise. Details and troubleshooting: '}<a href={`/${lang}/installation/#build`}>Installation</a>.</p>
 
     <h2 id="takeaways">{fr ? 'À retenir' : 'Key takeaways'}</h2>
     <ul>
