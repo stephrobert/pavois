@@ -126,8 +126,16 @@ ready: try: pavois scan local --sudo
     <h2 id="scan">{fr ? '2. Premier scan (note A à E)' : '2. First scan (A to E grade)'}</h2>
     <p>{fr ? 'Le plus simple : auditer l’hôte courant avec sudo (la config effective exige root) :' : 'Simplest path: audit the current host with sudo (effective config needs root):'}</p>
     <Fragment set:html={highlight(`./go/pavois scan local --sudo`, 'bash')} />
-    <p>{fr ? 'Pour une cible distante via SSH (votre ~/.ssh/config et votre clé) :' : 'For a remote target over SSH (your ~/.ssh/config and key):'}</p>
+    <p>{fr ? 'Pour une cible distante via SSH :' : 'For a remote target over SSH:'}</p>
     <Fragment set:html={highlight(`./go/pavois scan user@host --key ~/.ssh/id_ed25519 --sudo`, 'bash')} />
+    <div class="callout warn">
+      <span class="ci" aria-hidden="true">!</span>
+      <p>
+        {fr
+          ? 'Le drapeau --key n’est pas facultatif, même si ssh user@host fonctionne. Pavois passe par le transport SSH du moteur, qui ne lit pas ~/.ssh/config et ne retombe pas sur ~/.ssh/id_ed25519 comme le fait la commande ssh. Sans lui, la commande s’arrête sur « could not reach or identify user@host », alors que vous vous connectez à la main une seconde plus tard. Indiquez --key <chemin>, ou ajoutez la clé à ssh-agent.'
+          : '--key is not optional, even when ssh user@host works. Pavois reaches the target through the engine\'s SSH transport, which does not read ~/.ssh/config and does not fall back to ~/.ssh/id_ed25519 the way the ssh command does. Omit it and the run stops at "could not reach or identify user@host", on a host you can log into by hand a second later. Pass --key <path>, or add the key to ssh-agent.'}
+      </p>
+    </div>
     <p class="muted">{fr ? 'Le profil (OS) est auto-détecté ; --profile ne sert que pour un profil custom.' : 'The OS profile is auto-detected; --profile is only for a custom profile.'}</p>
     <Fragment set:html={highlight(`# ${fr ? '(profil personnalisé, optionnel)' : '(custom profile, optional)'}
 # ./go/pavois scan user@host --key ~/.ssh/id_ed25519 --sudo --profile profiles/linux/debian12`, 'bash')} />

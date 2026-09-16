@@ -276,9 +276,10 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 	if hdFrom != "" {
 		prof, detected = profileFromReport(root, hdFrom)
 	}
+	why := ""
 	if prof == "" {
 		_, _ = fmt.Fprint(os.Stderr, "  ⠿ detecting target OS…\r")
-		prof, detected = detectProfile(root, engine.Options{Target: target, Key: hdKey, SSHPass: sshPass})
+		prof, detected, why = detectProfileWhy(root, engine.Options{Target: target, Key: hdKey, SSHPass: sshPass})
 		_, _ = fmt.Fprint(os.Stderr, "\033[K")
 	}
 	if prof == "" {
@@ -286,7 +287,20 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("could not tell which OS %s was taken on, and the target %q did not answer either",
 				hdFrom, target)
 		}
-		return fmt.Errorf("could not detect a Pavois profile for target %q (%s)", target, detected)
+		// This used to read `could not detect a Pavois profile for target "user@host" ()`, with an
+		// EMPTY reason, because it called detectProfile and printed `detected`, which is "" exactly
+		// when detection fails. So the first command a new user runs could fail while saying
+		// nothing about why, on the most common cause there is: no --key. `scan` already answers
+		// this properly; there was no reason for `harden` to answer worse.
+		if detected == "" {
+			return fmt.Errorf("could not reach or identify %s: %s\n"+
+				"  a host that answers `ssh %s` can still fail here: the engine does not fall back to\n"+
+				"  ~/.ssh/id_ed25519 the way the ssh command does, so pass --key <path> (or add the key\n"+
+				"  to ssh-agent). If the host is fine and simply has no bundled profile, pass --profile",
+				target, why, target)
+		}
+		return fmt.Errorf("no bundled Pavois profile for %s (target %q): pass --profile with the closest one",
+			detected, target)
 	}
 	osName := strings.TrimPrefix(prof, "linux/")
 	_, _ = fmt.Fprintf(os.Stderr, "pavois: detected %s → reference %s\n", detected, osName)

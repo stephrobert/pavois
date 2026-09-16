@@ -36,6 +36,49 @@ def _rb(s):
     return "'" + str(s).replace("\\", "\\\\").replace("'", "\\'") + "'"
 
 
+# Shell keywords that cannot be the first word of a command under --sudo.
+#
+# The transport prefixes `sudo ` to the command STRING, which the remote shell reads as
+# `sudo cmd1; cmd2`. Measured on a live debian12 target:
+#
+#     id -u                    -> 0      (root)
+#     echo "$(id -u)"          -> 1000   (NOT root)
+#     for s in ufw ...; do ... -> ""     (`sudo for` is not a command: no output at all)
+#
+# A control whose command starts with a keyword therefore produces an EMPTY stdout, and its matcher
+# reports a verdict on something it never measured. That is how firewall-present and
+# firewall-default-deny claimed a HIGH deviation on a host whose nftables input chain was already
+# `policy drop`. The engine's own --shell option does not fix it; that was tested.
+#
+# Wrapping the script as an argument of `sh -c` makes the first word a real binary, so
+# `sudo sh -c '...'` runs the WHOLE line as root, keywords and substitutions included. Single
+# quotes matter: with double quotes the remote shell expands $(...) before sudo runs, which moves
+# the bug instead of removing it.
+_SHELL_KEYWORDS = ("if", "for", "while", "until", "case", "test", "[")
+_COMMAND_RE = re.compile(r"command\('((?:[^'\\]|\\.)*)'\)")
+
+
+def _needs_shell_wrap(script):
+    stripped = script.strip()
+    if not stripped:
+        return False
+    return stripped.split(None, 1)[0] in _SHELL_KEYWORDS
+
+
+def _wrap_shell(line):
+    """Rewrite command('<script>') as command("sh -c '<script>'") when the script starts with a
+    shell keyword. Any other command is returned untouched."""
+
+    def repl(m):
+        script = m.group(1).replace("\\'", "'").replace("\\\\", "\\")
+        if not _needs_shell_wrap(script):
+            return m.group(0)
+        shell_arg = "sh -c '" + script.replace("'", "'\\''") + "'"
+        return "command(" + _rb(shell_arg) + ")"
+
+    return _COMMAND_RE.sub(repl, line)
+
+
 def _tag(k, v):
     # 'pci-dss' (and any non-identifier key) needs the arrow form
     return f"tag({_rb(k)} => {_rb(v)})" if not k.isidentifier() else f"tag {k}: {_rb(v)}"
@@ -85,7 +128,7 @@ def render_control(cid, e):
             + cond
             + ") }"
         )
-    out += ["  " + line for line in e.get("check", [])]
+    out += ["  " + _wrap_shell(line) for line in e.get("check", [])]
     out.append("end\n")
     return "\n".join(out)
 

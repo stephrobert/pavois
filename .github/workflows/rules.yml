@@ -67,10 +67,25 @@ jobs:
       - name: A dangerous remediation has not drifted back to automatic
         run: mise run lint:never-auto
 
-      # The generated per-OS corpus must say what rules.yml says. A stale corpus is how a fixed
-      # rule gets re-applied anyway.
+      # The per-OS corpus and the .rb profiles are DERIVED and gitignored, so a fresh clone has
+      # neither: gen:verify alone fails with "nothing to verify". Generate first, then verify, then
+      # render. Comparing a corpus to the source it was just generated from is tautological on its
+      # own; what these three steps actually catch is a generator that crashes, that is not
+      # deterministic, or that emits a corpus the renderer cannot turn into valid Ruby. That last
+      # one matters: the renderer now rewrites shell-keyword commands, and a quoting mistake there
+      # would silently produce controls that measure nothing.
+      - name: Generate the per-OS corpus
+        run: mise run gen
+
       - name: The generated corpus matches its source
         run: mise run gen:verify
+
+      - name: The .rb corpus renders
+        run: mise run render
+
+      # Runs AFTER render, because it reads the rendered corpus: that is what actually executes.
+      - name: No control loses its privileges under --sudo
+        run: mise run lint:shell-first-word
 
       - name: Rule-base lints
         run: mise run lint:rules

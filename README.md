@@ -118,6 +118,12 @@ mise trust && mise install && mise run build && mise run regen
 Once the first release ships, swap the build for the signed binary (Option A). For a remote
 target: `scan user@host --key ~/.ssh/id_ed25519 --sudo`.
 
+> **`--key` is not optional, even when `ssh user@host` works.** Pavois reaches the target through
+> the engine's SSH transport, which does **not** read `~/.ssh/config` and does **not** fall back to
+> `~/.ssh/id_ed25519` the way the `ssh` command does. Omit it and the run stops at
+> `could not reach or identify user@host`, on a host you can log into by hand a second later.
+> Pass `--key <path>`, or add the key to `ssh-agent`.
+
 ## ⚙️ How it works
 
 ```bash
