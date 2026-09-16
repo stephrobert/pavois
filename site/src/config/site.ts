@@ -18,3 +18,29 @@ export const INDEXABLE = true;
 // verifying twice.
 export const GOOGLE_SITE_VERIFICATION = '';
 export const BING_SITE_VERIFICATION = 'A49CC502B16F78298FDF79166A73F277';
+
+// Audience measurement, on a self-hosted Plausible: no cookie, no personal data, no consent banner
+// to negotiate, and the data stays on an instance we run. An empty PLAUSIBLE_SRC disables it
+// entirely, script included.
+//
+// This is the current tracker, where the site identity is COMPILED INTO the script rather than
+// passed as `data-domain`. The bundle served at the URL below carries
+// `domain:"pavois.dev", endpoint:"https://analytics.stephrobert.tech/api/event"`, plus outbound
+// links, file downloads and form submissions already switched on. So there is no data-domain to
+// keep in sync here, and the site is identified as `pavois.dev` in the dashboard even though the
+// pages are served from www: the domain is Plausible's site KEY, not a filter on the URL.
+//
+// Custom properties are passed to plausible.init(), which accepts an object or a function. We send
+// `lang` and `section`, because without them "do the French pages reach other countries" is a
+// regex on the path, and "which section do visitors from a given source read" cannot be answered
+// at all. Both are derived from the URL, so they cost nothing and reveal nothing about a visitor.
+//
+// The tracker only loads in a production build: counting our own dev reloads would be worse than
+// counting nothing. It is also skipped on the 404 page, where a hit describes a broken link rather
+// than a reader, and where the CloudFront logs carry the URL, the status and the user-agent.
+//
+// The origin must also appear in the Content-Security-Policy, see
+// tools/aws/site-headers-policy.sh. A tracker blocked by CSP fails silently, which is exactly how
+// the Google Fonts went missing for weeks. `mise run site:quality` now fails when the build
+// fetches an origin the CSP does not allow.
+export const PLAUSIBLE_SRC = 'https://analytics.stephrobert.tech/js/pa-ER-zoy5RDhOrq2p_3xS15.js';

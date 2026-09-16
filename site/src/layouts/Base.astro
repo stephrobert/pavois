@@ -1,7 +1,13 @@
 ---
 import '../styles/global.css'; // the single stylesheet: Tailwind + tokens + design system + pages
 import { ui, type Lang } from '../i18n/ui';
-import { INDEXABLE, GOOGLE_SITE_VERIFICATION, BING_SITE_VERIFICATION } from '../config/site';
+import {
+  INDEXABLE,
+  GOOGLE_SITE_VERIFICATION,
+  BING_SITE_VERIFICATION,
+  PLAUSIBLE_SRC,
+} from '../config/site';
+import { clampTitle, metaDescription } from '../lib/meta';
 
 interface Crumb {
   name: string;
@@ -35,6 +41,24 @@ const {
   jsonld,
   noindex = false,
 } = Astro.props;
+
+// A result page shows ~60-70 characters of title and ~150-160 of description, and cuts the rest
+// mid-word. Normalising HERE means the budget holds for every page, including pages written later
+// by someone who never read lib/meta.ts, and it strips the entities and tags that reach a snippet
+// as characters when a description is built from body copy.
+const metaTitle = clampTitle(title);
+const metaDesc = metaDescription(description);
+
+// Audience measurement. Off in a dev build (our own reloads are not an audience) and off on the
+// 404 page, where a hit describes a broken link rather than a reader, and where the CloudFront
+// logs carry the URL, the status and the user-agent anyway.
+//
+// `event-section` is the first path segment after the language, which is what makes "which part of
+// the site do visitors from a given source read" answerable at all. Both values come from the URL,
+// so they cost nothing and leak nothing.
+const segments = Astro.url.pathname.split('/').filter(Boolean);
+const section = segments[1] ?? 'home';
+const trackPage = Boolean(PLAUSIBLE_SRC) && import.meta.env.PROD && !noindex;
 
 const other: Lang = lang === 'fr' ? 'en' : 'fr';
 const otherPath = Astro.url.pathname.replace(`/${lang}`, `/${other}`);
@@ -161,8 +185,8 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <meta name="theme-color" content="#0a0c10" />
-    <title>{title}</title>
-    <meta name="description" content={description} />
+    <title>{metaTitle}</title>
+    <meta name="description" content={metaDesc} />
     <link rel="canonical" href={canonical} />
     {(noindex || !INDEXABLE) && <meta name="robots" content="noindex, nofollow" />}
     {GOOGLE_SITE_VERIFICATION && <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />}
@@ -172,18 +196,35 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
     <link rel="alternate" hreflang="x-default" href={enUrl} />
     <link rel="alternate" type="application/rss+xml" title="Pavois Blog" href={`/${lang}/rss.xml`} />
     <meta property="og:site_name" content="Pavois" />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
+    <meta property="og:title" content={metaTitle} />
+    <meta property="og:description" content={metaDesc} />
     <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={ogImage} />
     <meta property="og:locale" content={ogLocale} />
     <meta property="og:locale:alternate" content={altLocale} />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={title} />
-    <meta name="twitter:description" content={description} />
+    <meta name="twitter:title" content={metaTitle} />
+    <meta name="twitter:description" content={metaDesc} />
     <meta name="twitter:image" content={ogImage} />
     <script type="application/ld+json" set:html={JSON.stringify(ldGraph)} />
+    {
+      trackPage && (
+        <script is:inline async src={PLAUSIBLE_SRC} />
+      )
+    }
+    {
+      trackPage && (
+        <script
+          is:inline
+          set:html={
+            'window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},' +
+            'plausible.init=plausible.init||function(i){plausible.o=i||{}};' +
+            `plausible.init({customProperties:{lang:${JSON.stringify(lang)},section:${JSON.stringify(section)}}})`
+          }
+        />
+      )
+    }
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
