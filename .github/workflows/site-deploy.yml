@@ -105,3 +105,9 @@ jobs:
           code=$(curl -sS -o /dev/null -w '%{http_code}' https://www.pavois.dev/)
           echo "https://www.pavois.dev/ -> $code"
           [ "$code" = 200 ]
+
+      # Last, and only once the pages are actually online: IndexNow points the engines at URLs, so
+      # submitting before the upload would send them to the previous build. The script exits 0
+      # without submitting while the site is noindex, which is why this step is not conditional.
+      - name: Tell Bing and Yandex what changed
+        run: mise run site:indexnow
