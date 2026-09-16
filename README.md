@@ -61,16 +61,21 @@ difference: it audits the **effective configuration** of a running host, not the
   <a href="https://pavois.dev"><img src="site/public/media/harden-demo-poster.jpg" alt="Pavois harden demo" width="680"></a>
 </p>
 
-## 🚀 Quick start
+## 🚀 Install
 
-**Today, build from source (Option B).** The verified release binary (Option A) ships with the
-first public release; until then there is no downloadable artifact (see `feature-status`).
+**Pavois is a single static binary.** The rule corpus is embedded (`go:embed`), so there is nothing
+to generate, no toolchain to install and nothing to compile: download it, verify it, scan.
 
-### Option A: a verified release binary (planned: first release)
+> **Building from source is for contributors, not for users.** It is documented further down
+> because the first release is not published yet, which makes it the only path available today.
+> That is a temporary state, not a second way to install the tool. If you are here to use Pavois,
+> what you want is the binary below.
 
-Once the first release is published, each release will ship a static binary per platform plus
-`checksums.txt`. The binary is **self-contained**: the rule corpus is embedded (`go:embed`), so
-there is nothing to generate: download, verify, scan.
+### Install the binary (from v0.1.0 on)
+
+Each release ships a static binary per platform, `checksums.txt`, an SBOM and a SLSA build
+provenance. Verify both before running it: a hardening tool you did not verify is a strange way to
+start hardening.
 
 ```bash
 gh release download --repo stephrobert/pavois \
@@ -82,7 +87,12 @@ chmod +x pavois-linux-amd64
 ./pavois-linux-amd64 scan local --sudo
 ```
 
-### Option B: build from source
+### Build from source (contributors, and until v0.1.0 ships)
+
+You need this if you contribute to Pavois, or if you want to use it before the first release
+exists. It is not how the tool is meant to be installed, and it never will be: the build pulls a
+pinned Go, Node and Python toolchain, and regenerates artifacts that a release binary already
+carries inside it.
 
 The repository ships the **source of truth only** (`docs/reference/rules.yml` + the enriched site
 content). The InSpec corpus (`.rb`) and the OSCAL bundle are **derived artifacts**: they are not

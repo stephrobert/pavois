@@ -20,13 +20,23 @@ are scattered; a broken harness fails whole families at once and repeats itself 
 
 Checks, roughly in order of how certain they are:
 
-  R1 empty-output      a failing test whose command returned nothing at all
-  R2 shell-error       output carrying "command not found", "Permission denied", a sudo usage line
-  R3 identical-message N failures sharing the exact same message: one cause, not N problems
-  R4 family-wipeout    a domain where almost everything fails while the rest of the scan is healthy
-  R5 no-evidence       a failure with neither an expectation nor a result to show for it
+  R1 empty-output      a failing test whose command returned nothing at all      ERROR
+  R2 shell-error       output carrying "command not found", "Permission denied"  ERROR
+  R3 identical-message N failures sharing the exact same message                 warning
+  R4 family-wipeout    a domain wiped out while the rest of the scan is healthy  warning
+  R5 no-evidence       a failure with neither an expectation nor a result        warning
 
-Exit 1 when anything is found, so a campaign can gate on it. --strict also fails on warnings.
+KNOWN LIMIT, and it is why R3 and R4 are warnings rather than errors: they cannot tell a broken
+mechanism from an ABSENT one. On a stock machine this run reported 11 of them, and every single one
+was legitimate: the 29 auditd controls all fail because no audit rule is loaded, and 109 controls
+repeat the same message for the same reason, once each. Nothing was broken, nothing was configured.
+
+So R3 and R4 are worth reading AFTER hardening, where the rest of the scan passes and a family
+still failing as a block really is suspicious. R1 and R2 hold in every case, which is why they are
+the only ones that fail a campaign.
+
+Exit 1 on errors. --strict also fails on warnings, which you want on a hardened machine and
+definitely not on a stock one.
 """
 
 from __future__ import annotations
