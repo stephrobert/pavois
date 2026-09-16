@@ -15830,7 +15830,14 @@ findloop-file-groupownership-system-commands-dirs:
   socle: SOCLE-CLD-FSP-182
   ssg: file_groupownership_system_commands_dirs
   title: Verify that system commands files are group owned by root or a system account
-  remediation_class: auto
+  remediation_class: manual
+  danger: >-
+    The remediation chowns root:root every binary whose user OR group is not root, and a setgid
+    binary derives its privilege FROM its group. Measured on a stock Debian: it would take
+    /usr/sbin/unix_chkpwd (root:shadow), which is how PAM reads /etc/shadow, so password
+    authentication stops working; plus crontab (root:crontab), at (daemon:daemon) and ssh-agent
+    (root:_ssh). Deciding which group ownership is legitimate needs per-OS package knowledge that
+    Pavois does not yet carry, so the fix is delivered for review instead of applied.
 findloop-file-owner-var-log:
   applicable_os:
   - rhel8
