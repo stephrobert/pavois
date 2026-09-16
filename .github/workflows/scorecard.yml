@@ -16,10 +16,6 @@ jobs:
     # Skips while the repo is private (pre-launch); activates automatically once public.
     if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-24.04
-    # The privileged token lives in this protected environment, restricted to main. This workflow
-    # never runs on `pull_request`, so the token is unreachable from a fork. Same model as
-    # plumber.yml and as dsoxlab, the best-scoring repository in the fleet.
-    environment: security
     permissions:
       contents: read
       security-events: write
@@ -40,12 +36,23 @@ jobs:
           results_file: results.sarif
           results_format: sarif
           publish_results: true
-          # Branch-Protection read as `n/e` without this, and an unevaluated control is not a zero:
-          # it drops out of the average entirely, so the whole score describes a repository whose
-          # protection nobody measured. Reading a branch's protection needs Administration:read,
-          # which GITHUB_TOKEN cannot carry (`administration` is not a workflow permission scope).
-          # The same fine-grained token Plumber uses, scoped to this repository and nothing else.
-          repo_token: ${{ secrets.PLUMBER_ADMIN_TOKEN }}
+          # NO repo_token, deliberately, and this is a loss worth naming rather than hiding.
+          #
+          # Branch-Protection reads `n/e` without one, and not-evaluated is not a zero: the control
+          # drops out of the average, so the published score describes a repository whose protection
+          # nobody measured, on the control that weighs 10.
+          #
+          # Passing PLUMBER_ADMIN_TOKEN was tried and failed with `401 Bad credentials` on the very
+          # first call, GET /repos/stephrobert/pavois. That token is scoped to Administration:Read
+          # and nothing else, which is exactly right for Plumber's one governance check and far too
+          # narrow for Scorecard, which reads commits, releases, workflows and branches. dsoxlab
+          # runs this same workflow successfully with a token of its own, so the montage is sound
+          # and only the credential is wrong.
+          #
+          # To close it: create a token with the read access ossf/scorecard-action documents, put it
+          # in a secret of its own, and restore `repo_token` plus `environment: security` here. Do
+          # not widen PLUMBER_ADMIN_TOKEN: a token that can read everything is no longer the
+          # narrow, auditable thing it was created to be.
 
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
