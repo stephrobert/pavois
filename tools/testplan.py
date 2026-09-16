@@ -187,6 +187,11 @@ RULES: list[Rule] = [
                 "mise run site:validate-seo",
                 "ranking; it validates structured data, nothing more",
             ),
+            (
+                LOCAL,
+                "mise run site:validate-hreflang",
+                "that an engine honours the annotation: only that it is well-formed and reciprocal",
+            ),
         ],
     ),
     Rule(
