@@ -7,11 +7,16 @@
   <sub>Audits the configuration your services <i>actually run</i> (<code>sshd -T</code>, <code>sysctl</code>, <code>systemctl</code>, <code>auditctl</code>), not just the files on disk. Maps each control to every applicable standard (CIS, ANSSI BP-028, NIST, PCI-DSS, STIG), grades it <b>A:E</b>, and hardens it as code.</sub>
 </p>
 
+<!-- A badge is a MEASUREMENT or it is decoration. The Scorecard one used to carry
+     `&color=dc2626`, which overrides the colour shields.io computes from the score: a 6.9 and a 10
+     rendered identically, in red, so the one badge whose job is to warn could not. The colour is
+     the signal, and it is left alone, like dsoxlab and coucou do.
+     There was also a static SLSA badge, hardcoded red, linking to the spec. It measured nothing and
+     announced "build provenance" while no release existed. The provenance is real and verifiable,
+     so it is stated where a reader can act on it: the install section prints
+     `gh attestation verify`, which checks it against the public transparency log. -->
 <p align="center">
-  <a href="https://securityscorecards.dev/viewer/?uri=github.com/stephrobert/pavois"><img src="https://img.shields.io/ossf-scorecard/github.com/stephrobert/pavois?label=OpenSSF%20Scorecard&style=for-the-badge&labelColor=2b2d42&color=dc2626" alt="OpenSSF Scorecard"></a>
-  &nbsp;&nbsp;
-  <a href="https://slsa.dev/spec/v1.0/levels"><img src="https://img.shields.io/badge/SLSA-build%20provenance-dc2626?style=for-the-badge&logo=slsa&logoColor=white&labelColor=2b2d42" alt="SLSA build provenance"></a>
-  &nbsp;&nbsp;
+  <a href="https://securityscorecards.dev/viewer/?uri=github.com/stephrobert/pavois"><img src="https://img.shields.io/ossf-scorecard/github.com/stephrobert/pavois?label=OpenSSF%20Scorecard" alt="OpenSSF Scorecard"></a>
   <a href="https://score.getplumber.io/github.com/stephrobert/pavois"><img src="https://score.getplumber.io/github.com/stephrobert/pavois.svg" alt="Plumber compliance score"></a>
 </p>
 
