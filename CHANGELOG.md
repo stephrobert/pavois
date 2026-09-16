@@ -12,6 +12,40 @@ its content digest**, so an archived result stays interpretable long after the t
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-16
+
+Every artifact of 0.1.0 installed cleanly and could not scan anything. This release makes them work.
+The baseline is unchanged: no control moved, so an 0.1.0 report stays comparable to an 0.1.1 one.
+
+### Fixed
+
+- **A released binary could not find its own rules.** The corpus was genuinely compiled in, and the
+  lookup asked the filesystem: `os.Stat(<root>/profiles/linux/<os>)`. Inside a git checkout that is
+  true and everything worked. Anywhere else it is always false, so no candidate was produced, the
+  embedded fallback was never reached, and every packaged install answered `no bundled profile for
+  debian 12.15`. `pavois profiles` printed an empty list for the same reason, which reads as "this
+  tool has no rules" rather than as a bug. The lookup now consults the embedded corpus as well as
+  the disk, and `pavois profiles` merges both.
+- **Installing the packages no longer leaves the scan engine unsaid.** CINC Auditor is a runtime
+  dependency that no package manager can fetch, because it is in no distribution repository. It
+  could not be declared, so it was not mentioned at all, and the first scan failing with `no native
+  CINC engine found` was reported as missing dependencies. The packages now print the omnitruck
+  command and point at `pavois doctor` at install time.
+
+### Testing
+
+Nothing caught the profile defect because everything ran from the repository: the unit tests, the
+validation campaigns, the preflight. Three guards now cover the gap, cheapest first.
+
+- `tools/release/standalone_binary.sh` runs the built binary from an empty directory with no
+  `profiles/` above it, and fails if the corpus is invisible or no scan grades. Two seconds, and it
+  fails on the published 0.1.0 binary.
+- The preflight extracts the binary **from the .deb it just built** and runs that same check on it,
+  so the chain is closed end to end rather than at the packaging step.
+- `tools/release/install_matrix.sh` installs the real packages on a fresh VM of five distributions,
+  one at a time, and asserts what a first-time user meets: the manager accepts the package, the
+  binary is static, the embedded corpus is listed, and a scan resolves a profile and grades.
+
 ## [0.1.0] - 2026-09-16
 
 First release. Everything below ships in it; nothing was published before, so there is no earlier
@@ -92,5 +126,6 @@ history to read. The embedded baseline is `pavois-baseline` 0.2.0.
 - OSCAL output is the baseline (catalog and profiles), not yet a per-scan assessment-results
   package. No container image is published yet.
 
-[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/stephrobert/pavois/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/stephrobert/pavois/releases/tag/v0.1.0
