@@ -55,9 +55,9 @@ const crumbs = [
       <li><b>{fr ? 'Poste de contrôle' : 'Control host'}</b> {fr
         ? ': Linux ou macOS. Pavois est un CLI Go sur CINC Auditor ; il scanne une cible locale, SSH ou Docker depuis ce poste, aucun agent sur la cible.'
         : ': Linux or macOS. Pavois is a Go CLI on CINC Auditor; it scans a local, SSH or Docker target from this host, no agent on the target.'}</li>
-      <li><b><a href="https://mise.jdx.dev" target="_blank" rel="noopener">mise</a></b> {fr
-        ? ': la chaîne d’outils est épinglée (Go, Node, Python). Première fois : '
-        : ': the toolchain is pinned (Go, Node, Python). First time: '}<code>mise trust &amp;&amp; mise install</code>.</li>
+      <li><b>curl</b> {fr
+        ? ': c’est tout ce qu’il faut pour installer le binaire. Ni mise, ni Go, ni chaîne d’outils : le corpus de règles est déjà dedans. mise n’est nécessaire que pour construire depuis les sources, et c’est expliqué plus bas.'
+        : ': that is the whole dependency list for installing the binary. No mise, no Go, no toolchain: the rule corpus is already inside it. mise is only needed to build from source, which is covered further down.'}</li>
       <li><b>sudo</b> {fr
         ? ': la config effective d’un service exige root (sshd -T, sysctl, auditctl). Scanne avec '
         : ': effective service config needs root (sshd -T, sysctl, auditctl). Scan with '}<code>--sudo</code>.</li>
@@ -73,15 +73,33 @@ const crumbs = [
     <p>{fr
       ? 'Les binaires se tirent du dépôt, depuis les releases GitHub : un binaire statique par plateforme (Linux et macOS, amd64 et arm64), des paquets .deb et .rpm, un checksums.txt, un SBOM CycloneDX et une attestation de provenance SLSA. Le binaire est autoporté (corpus de règles embarqué) : télécharger, vérifier l’intégrité et la provenance, puis scanner.'
       : 'The binaries are pulled from the repository, from the GitHub releases: one static binary per platform (Linux and macOS, amd64 and arm64), .deb and .rpm packages, a checksums.txt, a CycloneDX SBOM and a SLSA provenance attestation. The binary is self-contained (rule corpus embedded): download, verify integrity and provenance, then scan.'}</p>
-    <Fragment set:html={highlight(`gh release download v0.1.0 --repo stephrobert/pavois \\
-  --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
-sha256sum --ignore-missing --check checksums.txt                     # ${fr ? 'intégrité' : 'integrity'}
-gh attestation verify pavois-linux-amd64 --repo stephrobert/pavois   # ${fr ? 'provenance SLSA' : 'SLSA provenance'}
+    <h3>{fr ? 'Avec curl, sans rien installer d’autre' : 'With curl, installing nothing else'}</h3>
+    <Fragment set:html={highlight(`V=v0.1.0
+BASE=https://github.com/stephrobert/pavois/releases/download/$V
+curl -fsSLO $BASE/pavois-linux-amd64          # ${fr ? 'ou -darwin-arm64, -linux-arm64…' : 'or -darwin-arm64, -linux-arm64…'}
+curl -fsSLO $BASE/checksums.txt
+sha256sum --ignore-missing --check checksums.txt    # ${fr ? 'intégrité' : 'integrity'}
 chmod +x pavois-linux-amd64
-./pavois-linux-amd64 doctor                                          # ${fr ? 'corpus embarqué, prêt à scanner' : 'corpus embedded, ready to scan'}`, 'bash')} />
+sudo install -m 0755 pavois-linux-amd64 /usr/local/bin/pavois
+pavois doctor                                       # ${fr ? 'corpus embarqué, prêt à scanner' : 'corpus embedded, ready to scan'}`, 'bash')} />
     <p class="muted">{fr
-      ? 'sha256sum confirme l’intégrité face aux empreintes publiées ; gh attestation verify confirme la provenance SLSA, c’est-à-dire que le fichier est exactement ce que la chaîne de release a construit, et pas seulement qu’il porte le bon nom. Les deux se vérifient sans aucun accès au dépôt.'
-      : 'sha256sum confirms integrity against the published checksums; gh attestation verify confirms the SLSA provenance, that is, that the file is exactly what the release pipeline built rather than merely a file with the right name. Both are checkable with no access to the repository.'}</p>
+      ? 'Sur macOS, remplace sha256sum par shasum -a 256 -c. Le binaire n’a aucune dépendance partagée : il n’a besoin ni de Ruby, ni de Go, ni de Python.'
+      : 'On macOS, use shasum -a 256 -c instead of sha256sum. The binary has no shared dependency: it needs neither Ruby, nor Go, nor Python.'}</p>
+
+    <h3>{fr ? 'Avec un paquet .deb ou .rpm' : 'With a .deb or .rpm package'}</h3>
+    <Fragment set:html={highlight(`curl -fsSLO $BASE/pavois_0.1.0_amd64.deb && sudo dpkg -i pavois_0.1.0_amd64.deb
+curl -fsSLO $BASE/pavois-0.1.0.amd64.rpm && sudo rpm -i pavois-0.1.0.amd64.rpm`, 'bash')} />
+
+    <h3>{fr ? 'Vérifier la provenance (optionnel, recommandé)' : 'Check the provenance (optional, recommended)'}</h3>
+    <p>{fr
+      ? 'sha256sum prouve que le fichier n’a pas changé depuis la publication des empreintes. Il ne prouve pas QUI l’a construit : quelqu’un qui remplace le binaire et le checksums.txt produit un couple cohérent. C’est l’attestation de provenance SLSA qui répond à cette question, et la vérifier demande '
+      : 'sha256sum proves the file has not changed since the checksums were published. It does not prove WHO built it: someone replacing both the binary and checksums.txt produces a consistent pair. The SLSA provenance attestation answers that question, and checking it needs '}
+      <a href="https://cli.github.com/" target="_blank" rel="noopener">GitHub CLI</a>
+      {fr ? ' (paquets officiels Debian, Ubuntu, Fedora, Homebrew, ou un binaire autonome sur cette page) :' : ' (official Debian, Ubuntu, Fedora and Homebrew packages, or a standalone binary on that page):'}</p>
+    <Fragment set:html={highlight(`gh attestation verify pavois-linux-amd64 --repo stephrobert/pavois`, 'bash')} />
+    <p class="muted">{fr
+      ? 'La commande confirme que ce fichier exact est sorti du workflow de release de ce dépôt, sur ce tag, et pas seulement qu’il porte le bon nom. Elle interroge le journal de transparence public : aucun accès au dépôt n’est requis, et un binaire récupéré ailleurs se vérifie aussi bien.'
+      : 'It confirms this exact file came out of this repository’s release workflow, on that tag, rather than merely being a file with the right name. It queries the public transparency log: no access to the repository is required, and a binary obtained elsewhere verifies just as well.'}</p>
 
     <h2 id="build">{fr ? 'Construire depuis les sources (contributeurs)' : 'Build from source (contributors)'}</h2>
     <p>{fr
@@ -90,6 +108,18 @@ chmod +x pavois-linux-amd64
     <p>{fr
       ? 'Le dépôt ne livre que la source de vérité. Le corpus InSpec (.rb) et le paquet OSCAL sont des artefacts dérivés, régénérés depuis la référence. L’installation est donc : construire, puis régénérer.'
       : 'The repository ships only the source of truth. The InSpec corpus (.rb) and the OSCAL bundle are derived artifacts, regenerated from the reference. So the install is: build, then regen.'}</p>
+    <p>{fr
+      ? 'La chaîne d’outils est épinglée dans mise.toml, et c’est '
+      : 'The toolchain is pinned in mise.toml, and '}
+      <a href="https://mise.jdx.dev" target="_blank" rel="noopener">mise</a>
+      {fr
+        ? ' qui l’installe : tu n’as donc ni Go, ni Node, ni Python à gérer à la main, et tu obtiens exactement les versions que la CI utilise. Une seule commande, puis un shell rouvert :'
+        : ' installs it, so you have no Go, Node or Python to manage by hand, and you get exactly the versions CI uses. One command, then reopen your shell:'}</p>
+    <Fragment set:html={highlight(`curl https://mise.run | sh
+echo 'eval "$(~/.local/bin/mise activate bash)"' >> ~/.bashrc   # ${fr ? 'zsh : ~/.zshrc et activate zsh' : 'zsh: ~/.zshrc and activate zsh'}`, 'bash')} />
+    <p class="muted">{fr
+      ? 'mise est aussi dans Homebrew, les dépôts Arch et Fedora, et se télécharge en binaire autonome. Sa page d’installation liste chaque méthode.'
+      : 'mise is also in Homebrew, the Arch and Fedora repositories, and ships as a standalone binary. Its install page lists every method.'}</p>
     <Fragment set:html={highlight(`git clone https://github.com/stephrobert/pavois.git
 cd pavois
 mise trust && mise install   # ${fr ? 'Go, Node, Python épinglés' : 'pinned Go, Node, Python'}
