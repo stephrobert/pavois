@@ -135,9 +135,12 @@ set -e
 schema=${OSCAL_SCHEMA:-/tmp/oscal_assessment-results_schema.json}
 [ -s "$schema" ] || curl -sSL -o "$schema" \
   https://github.com/usnistgov/OSCAL/releases/download/v1.1.2/oscal_assessment-results_schema.json
-out=$(mktemp); trap 'rm -f "$out"' EXIT
-{{config_root}}/go/pavois scan local --from "${OSCAL_SAMPLE:?set OSCAL_SAMPLE to an InSpec report json}" \
-  --format oscal > "$out"
+out=$(mktemp); tmp=$(mktemp -d); trap 'rm -rf "$out" "$tmp"' EXIT
+# The sample is COPIED into a temp dir before being read. `scan --from` writes its HTML companion
+# report next to its input, so reading docs/examples/after.json directly drops an untracked
+# after.html in the tree on every run, including in CI. --out only moves the JSON.
+cp "${OSCAL_SAMPLE:-{{config_root}}/docs/examples/after.json}" "$tmp/sample.json"
+{{config_root}}/go/pavois scan local --from "$tmp/sample.json" --out "$tmp" --format oscal > "$out"
 uvx check-jsonschema --schemafile "$schema" "$out"
 """
 
@@ -310,6 +313,19 @@ run = "python3 {{config_root}}/tools/lint_shell_first_word.py"
 [tasks."secrets:history"]
 description = "Scan EVERY commit for credentials and lab topology, not just what a push adds. The hooks and the range-based CI job only ever see a diff; publishing ships the whole history."
 run = "python3 {{config_root}}/tools/scan_history_secrets.py"
+
+[tasks."release:preflight"]
+description = "Everything that must be true before a tag exists. Args: vX.Y.Z"
+# Locally, and before anything irreversible: the workflow's own guards only speak after the tag is
+# pushed, and a published release with a wrong binary cannot be replayed at all. The checks that
+# matter most here are the two CI cannot make: that the corpus the binary will EMBED is the one
+# rendered from rules.yml, and that the golden-path campaign behind the support claim measured that
+# same corpus rather than an older one.
+run = "bash --noprofile --norc {{config_root}}/tools/release/preflight.sh"
+
+[tasks."release:evidence"]
+description = "Did a golden-path campaign prove the CURRENT corpus, on the systems claimed? Args: <os>..."
+run = "python3 {{config_root}}/tools/release/evidence.py"
 
 [tasks.prepush]
 description = "Everything a pull request will fail on that costs seconds and needs no target"
