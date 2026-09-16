@@ -1,40 +1,49 @@
 #!/usr/bin/env bash
-# Protect the default branch. Run this IMMEDIATELY after the repository goes public.
+# Protect the default branch with a RULESET, and delete the classic protection it replaces.
 #
-# Why it cannot be done before. Branch protection is unavailable on a private repository under a
-# free plan: the API answers 403 "Upgrade to GitHub Pro or make this repository public to enable
-# this feature." So the order everyone assumes, protect then publish, is not available here. It is
-# the reverse, and the gap between the two is the window this script exists to close.
+# Run this immediately after the repository goes public: branch protection of either kind is
+# unavailable on a private repository under a free plan (403, "Upgrade to GitHub Pro or make this
+# repository public"). The order everyone assumes, protect then publish, is not available; it is the
+# reverse, and this script closes the gap.
 #
-# WHAT CHANGED, AND WHY IT MATTERS MORE THAN IT LOOKS
+# WHY A RULESET AND NOT CLASSIC PROTECTION
 #
-# This script used to write a RULESET with required_approving_review_count: 1 and
-# require_last_push_approval: false. `scorekit explain Branch-Protection` says why that is worse
-# than doing nothing:
+# Both protect the branch identically. They differ in who can READ them, and that decides a control
+# worth 10 points. From ossf/scorecard-action's own documentation:
+#
+#   "Scorecard Action requires additional permissions if you use GitHub's classic Branch Protection
+#    settings and want to see it reflected in your results."
+#   "GitHub's new Repository Rules are accessible to Scorecard Action with the workflow's default
+#    GITHUB_TOKEN."
+#
+# Measured here: with classic protection and no PAT, Scorecard reported Branch-Protection as `n/e`.
+# Not-evaluated is not a zero, it is worse: the control drops out of the average entirely, so the
+# published score describes a repository whose protection nobody measured. Passing a token was
+# tried and failed with `401 Bad credentials`, because the only token available was scoped to
+# Administration:Read for one Plumber check and nothing else. A ruleset needs no token at all.
+#
+# WHY ALL FOUR REVIEW SETTINGS, TOGETHER
+#
+# `scorekit explain Branch-Protection`:
 #
 #   "un réglage LISIBLE mais faux pèse plus lourd qu'un réglage illisible : tant qu'une donnée est
 #    absente elle sort du calcul, une fois exposée et fausse elle casse le tier. Un ruleset à moitié
 #    réglé peut donc noter MOINS bien qu'une absence de ruleset."
 #
-# Scorecard's tiers are sequential, and the "Review" tier (4/10 -> 6/10) needs FOUR things TOGETHER:
-# at least one approval, a pull request to change code, strict status checks, and last-push
-# approval. Setting three of the four exposes the fourth as false and loses the tier.
+# Scorecard's tiers are sequential. The "Review" tier (4/10 -> 6/10) needs FOUR things AT ONCE: at
+# least one approval, a pull request to change code, strict status checks, and last-push approval.
+# Setting three of the four exposes the fourth as false and loses the tier. An earlier version of
+# this script wrote exactly that ruleset, with require_last_push_approval false.
 #
-# So the settings here are not designed, they are COPIED from the best-scoring repository in the
-# fleet, which is what scorekit exists to find: stephrobert/dsoxlab, 8/10, the highest of seven.
-# It uses classic branch protection rather than a ruleset, and the only thing it still lacks is a
-# second approver. Read with:
-#
-#     scorekit explain Branch-Protection
-#     gh api repos/stephrobert/dsoxlab/branches/main/protection
-#
-# enforce_admins stays false, deliberately. A solo maintainer cannot approve their own pull request,
-# so enforcing this on admins would lock the repository against its only contributor. That is an
-# arbitration, not an oversight, and it is the same one the model repository made.
+# enforce_admins stays off, deliberately: a solo maintainer cannot approve their own pull request,
+# and enforcing this on admins would lock the repository against its only contributor. The bypass is
+# an arbitration, not an oversight.
 #
 # Usage: tools/apply-branch-ruleset.sh [owner/repo]
-# Idempotent: PUT replaces the protection wholesale.
+# Idempotent: updates the ruleset of the same name rather than creating a second one.
 set -euo pipefail
+
+NAME="main protection"
 
 command -v gh >/dev/null 2>&1 || { echo "gh is required: https://cli.github.com" >&2; exit 1; }
 
@@ -51,64 +60,86 @@ fi
 echo "repository: $repo"
 
 # The checks that must be green before a merge. A context that never runs on a pull request blocks
-# every pull request forever, so this list is not guessed: it is the set of checks observed on a
-# real commit, minus the ones that cannot gate a merge.
+# every pull request forever, so this list is not guessed: it is the set observed on a real commit,
+# minus the ones that cannot gate a merge.
 #
 #   deploy            runs after the merge, on main. Requiring it would deadlock.
-#   Plumber analyze   fails until this very protection exists, which is circular. Add it once it
-#                     passes, so the gate keeps being true rather than becoming aspirational.
+#   Plumber analyze   skipped on Dependabot pull requests (they receive no Actions secrets), so
+#                     requiring it would block every one of them.
 #
 # Verify the names against reality before changing them:
 #   gh api repos/OWNER/REPO/commits/main/check-runs --jq '.check_runs[].name'
 read -r -d '' payload <<'JSON' || true
 {
-  "required_status_checks": {
-    "strict": true,
-    "contexts": [
-      "Build, test, lint, vuln-scan",
-      "Never-auto and corpus integrity",
-      "actionlint + zizmor + poutine",
-      "ruff + bandit",
-      "Trivy dependency audit",
-      "TruffleHog",
-      "TruffleHog (full history)"
-    ]
-  },
-  "enforce_admins": false,
-  "required_pull_request_reviews": {
-    "required_approving_review_count": 1,
-    "require_last_push_approval": true,
-    "dismiss_stale_reviews": false,
-    "require_code_owner_reviews": false
-  },
-  "restrictions": null,
-  "required_linear_history": true,
-  "allow_force_pushes": false,
-  "allow_deletions": false,
-  "required_conversation_resolution": true
+  "name": "main protection",
+  "target": "branch",
+  "enforcement": "active",
+  "bypass_actors": [
+    { "actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "always" }
+  ],
+  "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    { "type": "required_linear_history" },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 1,
+        "require_code_owner_review": true,
+        "dismiss_stale_reviews_on_push": false,
+        "require_last_push_approval": true,
+        "required_review_thread_resolution": true,
+        "allowed_merge_methods": ["merge", "squash", "rebase"]
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "required_status_checks": [
+          { "context": "Build, test, lint, vuln-scan" },
+          { "context": "Never-auto and corpus integrity" },
+          { "context": "actionlint + zizmor + poutine" },
+          { "context": "ruff + bandit" },
+          { "context": "Trivy dependency audit" },
+          { "context": "TruffleHog" },
+          { "context": "TruffleHog (full history)" }
+        ]
+      }
+    }
+  ]
 }
 JSON
 
-printf '%s' "$payload" | gh api --method PUT "repos/${repo}/branches/main/protection" --input - >/dev/null
-echo "protection applied"
+existing="$(gh api "repos/${repo}/rulesets" --jq ".[] | select(.name == \"${NAME}\") | .id" 2>/dev/null | head -1 || true)"
+if [ -n "$existing" ]; then
+  echo "updating ruleset #${existing}"
+  printf '%s' "$payload" | gh api --method PUT "repos/${repo}/rulesets/${existing}" --input - >/dev/null
+else
+  echo "creating the ruleset"
+  printf '%s' "$payload" | gh api --method POST "repos/${repo}/rulesets" --input - >/dev/null
+fi
+
+# Remove the classic protection this replaces. Leaving both would be the worst of the two: GitHub
+# applies the union, so the branch stays protected, but Scorecard reads the classic settings it
+# cannot see and the whole point of moving is lost.
+if gh api "repos/${repo}/branches/main/protection" >/dev/null 2>&1; then
+  echo "removing the classic branch protection it replaces"
+  gh api --method DELETE "repos/${repo}/branches/main/protection" >/dev/null
+fi
 
 echo
-echo "what is now true of main:"
-gh api "repos/${repo}/branches/main/protection" --jq '
-  "  pull request required, " + (.required_pull_request_reviews.required_approving_review_count|tostring) + " approval(s)",
-  "  last-push approval      " + (.required_pull_request_reviews.require_last_push_approval|tostring),
-  "  branch up to date       " + (.required_status_checks.strict|tostring),
-  "  required checks         " + (.required_status_checks.contexts|length|tostring),
-  "  force-push allowed      " + (.allow_force_pushes.enabled|tostring),
-  "  deletion allowed        " + (.allow_deletions.enabled|tostring),
-  "  linear history          " + (.required_linear_history.enabled|tostring)'
+echo "rules now active on the default branch:"
+gh api "repos/${repo}/rules/branches/main" --jq '.[].type' 2>/dev/null | sort -u | sed 's/^/  /'
 
 cat <<'EOF'
 
-Two things to do right after:
-  1. re-run the Plumber workflow: ISSUE-501 "Branch must be protected" should be gone;
-  2. give the Plumber job a token carrying Administration:read, otherwise its governance check
-     abstains instead of confirming the protection it just gained.
+`main` no longer accepts a direct push or a force-push; every change goes through a pull request
+with the checks above green.
+
+Re-run Scorecard afterwards: Branch-Protection should leave `n/e` and land a real score, read with
+the workflow's own token and no PAT.
 
 The local hook (tools/hooks/pre-push) keeps refusing pushes to main regardless: it is what covered
 this repository while server-side protection was unavailable, and it costs nothing to keep.
