@@ -773,7 +773,8 @@ func RunOnTarget(o Options) (int, error) {
 				"    curl -fsSL https://omnitruck.cinc.sh/install.sh | sh -s -- -P cinc-auditor\n"+
 				"  that is an unpinned installer executed as root on the machine being audited, so it is\n"+
 				"  your call, not ours:\n"+
-				"    install cinc-auditor on the target yourself (your package manager, your mirror), or\n"+
+				"    install cinc-auditor on the target yourself, verified rather than piped:\n"+
+				"      https://pavois.dev/en/installation/#engine\n"+
 				"    scan over ssh without --on-target (slower, nothing lands on the target), or\n"+
 				"    pass --bootstrap-cinc to let Pavois run the command above", o.Target)
 		}

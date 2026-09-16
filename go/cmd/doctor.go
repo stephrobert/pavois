@@ -28,6 +28,11 @@ var doctorCmd = &cobra.Command{
 // a control declaration starts a line: `control 'id' do`
 var controlDecl = regexp.MustCompile(`(?m)^control '`)
 
+// Where to send someone who has no engine. The engine is the one prerequisite a package manager
+// cannot fetch (CINC is in no distribution repository), so this string is the answer to the most
+// common failure a fresh install meets, and it is worth being one place rather than three.
+const engineDocs = "https://pavois.dev/en/installation/#engine"
+
 func init() { rootCmd.AddCommand(doctorCmd) }
 
 func runDoctor(cmd *cobra.Command, _ []string) error {
@@ -53,9 +58,13 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	case cinc != "":
 		line("OK", "CINC engine (native)", cinc)
 	case hasDocker:
-		line("WARN", "CINC engine", "native cinc-auditor missing; the docker fallback will be used ("+docker+"). For a local:// scan, install cinc-auditor: https://omnitruck.cinc.sh")
+		line("WARN", "CINC engine", "native cinc-auditor missing; the docker fallback will be used ("+docker+"). A container cannot audit its host, so a local:// scan still needs the native engine: "+engineDocs)
 	default:
-		line("FAIL", "CINC engine", "install cinc-auditor (curl https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc-auditor) or docker")
+		// Not the omnitruck one-liner upstream documents: that is a script piped into a root shell,
+		// and a hardening tool does not ask for that. The page linked here fetches the package URL
+		// and its published sha256 from the same endpoint, checks the sum, then installs with the
+		// system package manager. Same engine, nothing executed before it has been verified.
+		line("FAIL", "CINC engine", "no scan engine: install cinc-auditor ("+engineDocs+") or docker")
 		ready = false
 	}
 
