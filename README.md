@@ -97,8 +97,11 @@ mise run regen               # rebuild the rule corpus + OSCAL from docs/referen
 ```
 
 `mise run regen` runs `gen` (rules.yml → per-OS reference) → `render` (→ the `.rb` corpus the
-scanner executes) → `oscal` (→ the OSCAL bundle). CINC Auditor itself installs natively on the
-first scan (via omnitruck); a Docker container is the fallback.
+scanner executes) → `oscal` (→ the OSCAL bundle). Pavois never installs CINC Auditor on its own:
+put `cinc-auditor` on the scanning host yourself (`pavois doctor` prints the omnitruck command when
+it is missing). Without it, `ssh://` and `docker://` targets fall back to the pinned CINC container,
+and `local` refuses (a container cannot audit its host). On the target side, `--on-target` needs the
+engine there too: Pavois stops and says so, and installs it only when you pass `--bootstrap-cinc`.
 
 ### First scan in 5 minutes
 

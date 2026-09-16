@@ -713,7 +713,8 @@ func Run(o Options) (int, error) {
 
 // RunOnTarget runs cinc-auditor ON the target via local://: every check executes
 // locally instead of as an SSH command round-trip, which is dramatically faster for
-// large profiles. cinc-auditor is installed on the target if missing (omnitruck).
+// large profiles. If cinc-auditor is missing on the target the run stops (exit 2) and prints what
+// it would have run; the omnitruck install happens only when o.Bootstrap (--bootstrap-cinc) is set.
 func RunOnTarget(o Options) (int, error) {
 	prof, err := ResolveProfile(o.Root, o.Profile)
 	if err != nil {
