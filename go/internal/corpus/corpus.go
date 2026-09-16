@@ -27,6 +27,47 @@ func Available() bool {
 	return n > 0
 }
 
+// Has reports whether profile <p> (e.g. "linux/debian12") is embedded.
+//
+// Callers used to answer this with os.Stat under the repository's profiles/, which is correct in a
+// checkout and always false for a downloaded binary. That is how a release shipped with the corpus
+// compiled in and no way to find it.
+func Has(p string) bool {
+	fi, err := fs.Stat(fsys, filepath.Join("profiles", p))
+	return err == nil && fi.IsDir()
+}
+
+// Names lists the embedded profiles under "linux/", without extracting anything. Used to pick the
+// closest profile of a family when no exact match exists.
+func Names() []string {
+	entries, err := fs.ReadDir(fsys, filepath.Join("profiles", "linux"))
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, e := range entries {
+		if e.IsDir() {
+			out = append(out, e.Name())
+		}
+	}
+	return out
+}
+
+// Title reads a profile's inspec.yml title straight from the embedded filesystem, so the listing
+// command can describe an embedded profile without extracting it to disk first.
+func Title(p string) string {
+	b, err := fs.ReadFile(fsys, filepath.Join("profiles", p, "inspec.yml"))
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		if rest, ok := strings.CutPrefix(strings.TrimSpace(line), "title:"); ok {
+			return strings.Trim(strings.TrimSpace(rest), `"'`)
+		}
+	}
+	return ""
+}
+
 // Extract writes the embedded profile <p> (e.g. "linux/debian12") to <dest>/<p> and returns the
 // directory, or ("", false) if that profile is not embedded. Used by ResolveProfile as a fallback
 // when profiles/ is not on disk (a downloaded binary).

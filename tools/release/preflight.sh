@@ -129,6 +129,19 @@ else
   ko "a control command would lose its sudo" "mise run lint:shell-first-word"
 fi
 
+# Everything above verifies the REPOSITORY's corpus. All of it was true of v0.1.0, and v0.1.0
+# shipped a binary that answered "no bundled profile for debian 12.15" on every machine that was
+# not a checkout. The rules were compiled in; the code that looks for them asked the filesystem.
+#
+# So the binary is run from an empty directory, which is the only place that failure exists. It
+# costs two seconds and it is the check that was missing.
+if mise run build >/dev/null 2>&1 && bash --noprofile --norc tools/release/standalone_binary.sh >/dev/null 2>&1; then
+  ok "the binary works outside the repository (profiles listed, a scan grades)"
+else
+  ko "the binary does not work outside a checkout" \
+     "run tools/release/standalone_binary.sh. This is exactly how v0.1.0 shipped broken."
+fi
+
 # --- the gates the project already owns --------------------------------------
 head_ "the project's own gates"
 
@@ -163,10 +176,30 @@ if command -v nfpm >/dev/null 2>&1 && command -v dpkg-deb >/dev/null 2>&1; then
     cp go/pavois "$pkgdir/dist/pavois-linux-amd64"
     # shellcheck disable=SC2016  # ${ARCH} is nfpm's own placeholder, not a shell variable
     sed -e 's|${ARCH}|amd64|g' -e "s|\${VERSION}|${VERSION#v}|g" nfpm.yaml > "$pkgdir/nfpm.yaml"
+    # nfpm resolves the maintainer scripts relative to its own working directory, so the packaging/
+    # directory travels with the config. Without it nfpm exits non-zero on a missing postinstall,
+    # which would read here as "nfpm.yaml is broken" rather than "the copy is incomplete".
+    cp -r packaging "$pkgdir/packaging"
     if (cd "$pkgdir" && nfpm pkg --config nfpm.yaml --packager deb \
           --target dist/pavois.deb >/dev/null 2>&1) &&
        dpkg-deb -c "$pkgdir/dist/pavois.deb" 2>/dev/null | grep -q '/usr/bin/pavois'; then
       ok "nfpm.yaml builds a .deb that carries /usr/bin/pavois"
+
+      # And the binary INSIDE the package has to work. Checking that the file is present is the
+      # packaging question, and it was already true of v0.1.0: the package installed, /usr/bin/pavois
+      # existed, and the tool answered "no bundled profile" on every machine. Extract it and run it.
+      dpkg-deb -x "$pkgdir/dist/pavois.deb" "$pkgdir/root" 2>/dev/null
+      if [ -x "$pkgdir/root/usr/bin/pavois" ]; then
+        if bash --noprofile --norc tools/release/standalone_binary.sh \
+             "$pkgdir/root/usr/bin/pavois" >/dev/null 2>&1; then
+          ok "the binary extracted FROM the package works on its own"
+        else
+          ko "the packaged binary does not work outside a checkout" \
+             "run tools/release/standalone_binary.sh on it. This is how v0.1.0 shipped."
+        fi
+      else
+        ko "the package carries no executable at /usr/bin/pavois" "dpkg-deb -c dist/pavois.deb"
+      fi
     else
       ko "nfpm.yaml does not produce an installable package" \
          "the release workflow would fail, or ship an empty one: nfpm pkg --config nfpm.yaml"
