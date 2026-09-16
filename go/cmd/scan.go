@@ -139,7 +139,17 @@ func detectProfileWhy(root string, o engine.Options) (profile, detected, why str
 	if name == "" {
 		return "", "", why
 	}
-	detected = name + " " + release
+	return profileForPlatform(root, name, release)
+}
+
+// profileForPlatform maps an ALREADY KNOWN platform to a bundled profile, without touching any
+// machine. Split out of detectProfileWhy so `--from` can use it: an archived report carries its own
+// platform, so re-grading it needs no probe, no engine and no target. That was not true before, and
+// `scan local --from report.json` refused to run on any host without cinc-auditor installed, which
+// is most of them, while the flag's own help says "no scan" and the handbook promises it regrades an
+// archived result without touching the host.
+func profileForPlatform(root, name, release string) (profile, detected, why string) {
+	detected = strings.TrimSpace(name + " " + release)
 	dir := func(p string) bool {
 		fi, err := os.Stat(filepath.Join(root, "profiles", "linux", p))
 		return err == nil && fi.IsDir()
@@ -177,10 +187,25 @@ func runScan(cmd *cobra.Command, args []string) error {
 	// Detect the TARGET OS (cinc detect, any transport) to pick the right profile
 	// without asking the user: and flag a profile that does not match the machine
 	// under test.
-	_, _ = fmt.Fprint(os.Stderr, "  ⠿ detecting target OS…\r")
+	//
+	// With --from there is nothing to detect: the report names its own platform, and the target
+	// argument is a label for the output, not a machine to reach. Probing it anyway made
+	// `scan <anything> --from report.json` fail on a host with no CINC engine, which is every host
+	// that is not already a scanning station. Re-grading an archived report is precisely the case
+	// where the machine may be long gone.
 	detOpts := engine.Options{Target: target, Key: scKey, SSHPass: sshPass}
-	autoProf, detectedOS, detectWhy := detectProfileWhy(root, detOpts)
-	_, _ = fmt.Fprint(os.Stderr, "\033[K")
+	var autoProf, detectedOS, detectWhy string
+	if scFrom != "" {
+		rep, err := audit.Load(scFrom)
+		if err != nil {
+			return fmt.Errorf("read %s: %w", scFrom, err)
+		}
+		autoProf, detectedOS, detectWhy = profileForPlatform(root, rep.Platform.Name, rep.Platform.Release)
+	} else {
+		_, _ = fmt.Fprint(os.Stderr, "  ⠿ detecting target OS…\r")
+		autoProf, detectedOS, detectWhy = detectProfileWhy(root, detOpts)
+		_, _ = fmt.Fprint(os.Stderr, "\033[K")
+	}
 	if !cmd.Flags().Changed("profile") {
 		// No --profile given: the per-OS profile is auto-selected from the detected OS.
 		// If detection finds nothing usable, fail clearly rather than fall back to a
@@ -222,8 +247,9 @@ func runScan(cmd *cobra.Command, args []string) error {
 	}
 
 	// A container cannot answer for a kernel it does not own, so refuse before spending a scan on
-	// a report that would be green and meaningless.
-	if !scAllowContainer {
+	// a report that would be green and meaningless. With --from there is no scan to spend and no
+	// target to ask: the probe would reach a machine that has nothing to do with the archived run.
+	if !scAllowContainer && scFrom == "" {
 		if isCT, kind := engine.IsContainer(detOpts); isCT {
 			return fmt.Errorf("target is a %s container, and %s reads kernel state owned by the HOST "+
 				"(sysctl, kconfig, modules, mounts, audit, cmdline). A container shares the host kernel, "+
