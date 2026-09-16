@@ -16,7 +16,7 @@ const STATIC = [
 ];
 
 export const GET: APIRoute = async ({ site }) => {
-  const origin = (site?.toString() ?? 'https://pavois.dev/').replace(/\/$/, '');
+  const origin = (site?.toString() ?? 'https://www.pavois.dev/').replace(/\/$/, '');
   const rules = await getCollection('rules');
   const handbook = await getCollection('handbook');
   const posts = (await getCollection('blog')).filter((p) => !p.data.draft);
