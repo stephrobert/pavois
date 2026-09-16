@@ -203,22 +203,25 @@ else
      "$(printf '%s' "$stale" | tr '\n' ' ')"
 fi
 
-# CHANGELOG.md carries TWO version streams, the tool and the baseline, and they are at different
-# numbers. A bare grep for the version would find the baseline's 0.1.0 section and report that the
-# tool's release is documented when it is not, which is the wrong answer given confidently.
-# So the search is scoped to the tool stream, between "# The tool" and "# The baseline".
+# The section must exist AND say something. An empty `## [0.1.0]` heading satisfies a grep and
+# publishes a release whose notes are a title, which is worse than no changelog: it looks
+# deliberate. So the body is extracted and measured, exactly as the release workflow will extract
+# it, which also proves the extraction works before it runs unattended on a tag.
 if [ -f CHANGELOG.md ]; then
-  tool_stream="$(awk '/^# The tool/{f=1;next} /^# The baseline/{f=0} f' CHANGELOG.md)"
-  if [ -z "$tool_stream" ]; then
-    ko "CHANGELOG.md has no '# The tool' section" "the two version streams must stay labelled"
-  elif printf '%s\n' "$tool_stream" | grep -q "^## \[\{0,1\}${VERSION#v}"; then
-    ok "CHANGELOG.md documents the tool release ${VERSION#v}"
+  section="$(awk -v v="${VERSION#v}" '
+    $0 ~ "^## \\[?" v { inside = 1; next }
+    inside && (/^## / || /^\\[[^]]+\\]:/) { exit }
+    inside { print }' CHANGELOG.md | grep -c '[^[:space:]]')"
+  if [ "${section:-0}" -eq 0 ]; then
+    ko "CHANGELOG.md has no section for ${VERSION#v}" "the release body is read from there"
+  elif [ "${section:-0}" -lt 5 ]; then
+    ko "the ${VERSION#v} section of CHANGELOG.md is nearly empty ($section lines)" \
+       "a release whose notes are a heading reads as deliberate"
   else
-    ko "the tool stream of CHANGELOG.md has no section for ${VERSION#v}" \
-       "the baseline's own ${VERSION#v} section does not count"
+    ok "CHANGELOG.md documents ${VERSION#v} ($section lines, and that is what the release body uses)"
   fi
 else
-  note "no CHANGELOG.md; the release notes will be generated from the commits"
+  ko "no CHANGELOG.md" "the release body is read from it"
 fi
 
 # --- CI ----------------------------------------------------------------------

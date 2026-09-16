@@ -244,12 +244,44 @@ jobs:
           BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
         run: cp "$BUNDLE_PATH" dist/provenance.intoto.jsonl
 
+      # Extract this version's CHANGELOG section. The preflight runs the same extraction and
+      # refuses a tag whose section is missing or nearly empty, so by the time this runs the body
+      # is known to exist: this step formats it, it does not decide anything.
+      - name: Build the release notes from CHANGELOG.md
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          awk -v v="$version" '
+            $0 ~ "^## \\[?" v { inside = 1; next }
+            inside && (/^## / || /^\\[[^]]+\\]:/) { exit }
+            inside { print }' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::CHANGELOG.md has no section for $version"; exit 1
+          fi
+          {
+            echo
+            echo "---"
+            echo
+            echo "Verify what you downloaded, without any access to this repository:"
+            echo
+            echo '```bash'
+            echo "sha256sum --ignore-missing --check checksums.txt"
+            echo "gh attestation verify pavois-linux-amd64 --repo ${GITHUB_REPOSITORY}"
+            echo '```'
+          } >> release-notes.md
+          echo "release notes: $(wc -l < release-notes.md) lines"
+
       - name: Create release with assets
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
-          generate_release_notes: true
+          # The release body is the CHANGELOG section, not a generated list of merged pull
+          # requests. Those list the plumbing: "bump the actions group", "skip Plumber on
+          # Dependabot". A reader arriving at a release wants to know what the tool DOES, and
+          # that is written by hand, once, in CHANGELOG.md.
+          body_path: ${{ github.workspace }}/release-notes.md
           fail_on_unmatched_files: false
           files: |
             dist/pavois-*
