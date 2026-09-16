@@ -2,6 +2,7 @@
 import '../styles/global.css'; // the single stylesheet: Tailwind + tokens + design system + pages
 import { ui, type Lang } from '../i18n/ui';
 import { INDEXABLE, GOOGLE_SITE_VERIFICATION, BING_SITE_VERIFICATION } from '../config/site';
+import { clampTitle, metaDescription } from '../lib/meta';
 
 interface Crumb {
   name: string;
@@ -35,6 +36,13 @@ const {
   jsonld,
   noindex = false,
 } = Astro.props;
+
+// A result page shows ~60-70 characters of title and ~150-160 of description, and cuts the rest
+// mid-word. Normalising HERE means the budget holds for every page, including pages written later
+// by someone who never read lib/meta.ts, and it strips the entities and tags that reach a snippet
+// as characters when a description is built from body copy.
+const metaTitle = clampTitle(title);
+const metaDesc = metaDescription(description);
 
 const other: Lang = lang === 'fr' ? 'en' : 'fr';
 const otherPath = Astro.url.pathname.replace(`/${lang}`, `/${other}`);
@@ -161,8 +169,8 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <meta name="theme-color" content="#0a0c10" />
-    <title>{title}</title>
-    <meta name="description" content={description} />
+    <title>{metaTitle}</title>
+    <meta name="description" content={metaDesc} />
     <link rel="canonical" href={canonical} />
     {(noindex || !INDEXABLE) && <meta name="robots" content="noindex, nofollow" />}
     {GOOGLE_SITE_VERIFICATION && <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />}
@@ -172,16 +180,16 @@ const ldGraph = { '@context': 'https://schema.org', '@graph': [...graph, ...extr
     <link rel="alternate" hreflang="x-default" href={enUrl} />
     <link rel="alternate" type="application/rss+xml" title="Pavois Blog" href={`/${lang}/rss.xml`} />
     <meta property="og:site_name" content="Pavois" />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
+    <meta property="og:title" content={metaTitle} />
+    <meta property="og:description" content={metaDesc} />
     <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={ogImage} />
     <meta property="og:locale" content={ogLocale} />
     <meta property="og:locale:alternate" content={altLocale} />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={title} />
-    <meta name="twitter:description" content={description} />
+    <meta name="twitter:title" content={metaTitle} />
+    <meta name="twitter:description" content={metaDesc} />
     <meta name="twitter:image" content={ogImage} />
     <script type="application/ld+json" set:html={JSON.stringify(ldGraph)} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
