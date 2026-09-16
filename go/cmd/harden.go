@@ -68,6 +68,8 @@ var (
 	haNoRestorePoint     bool
 	haIUnderstandDanger  bool
 	haIUnderstandLockout bool
+	haBootstrapCinc      bool
+	hdBootstrapCinc      bool
 )
 
 var hardenApplyCmd = &cobra.Command{
@@ -88,6 +90,8 @@ func init() {
 	hardenPlanCmd.Flags().StringVar(&hdOut, "out", "", "plan output path (default: ./hardening-plan-<os>.yml)")
 	hardenPlanCmd.Flags().StringVar(&hdEnable, "enable", "none",
 		"pre-enable gaps in the written plan: none | auto (every gap an apply can actually close) | all (also the dangerous ones, still unacknowledged)")
+	hardenPlanCmd.Flags().BoolVar(&hdBootstrapCinc, "bootstrap-cinc", false,
+		"let Pavois install the engine ON the target when it is missing (an unpinned installer, run as root there)")
 	hardenCmd.AddCommand(hardenPlanCmd)
 
 	hardenApplyCmd.Flags().StringVar(&haKey, "key", "", "SSH private key for the target")
@@ -110,6 +114,8 @@ func init() {
 	hardenApplyCmd.Flags().BoolVar(&haIUnderstandDanger, "i-understand-danger", false, "acknowledge ALL `danger:` items at once (brick/lockout risk); otherwise set `acknowledged: true` per item in the plan")
 	hardenApplyCmd.Flags().BoolVar(&haIUnderstandLockout, "i-understand-lockout", false,
 		"apply a remediation that closes the account you are connected with (you will need another way in)")
+	hardenApplyCmd.Flags().BoolVar(&haBootstrapCinc, "bootstrap-cinc", false,
+		"let Pavois install the engine ON the target when it is missing (an unpinned installer, run as root there)")
 	hardenCmd.AddCommand(hardenApplyCmd)
 
 	rootCmd.AddCommand(hardenCmd)
@@ -298,7 +304,7 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 			// SSH-transport scan breaks under Defaults requiretty/noexec). On-target sudo
 			// assumes NOPASSWD, so when a sudo password is supplied we use the native SSH
 			// transport instead (it feeds the password to cinc over stdin).
-			OnTarget: strings.Contains(target, "@") && sudoPass == "",
+			OnTarget: strings.Contains(target, "@") && sudoPass == "", Bootstrap: hdBootstrapCinc,
 		}); err != nil {
 			return err
 		}
@@ -2225,7 +2231,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		// --key/agent key reaches cinc's train-ssh transport. On-target sudo assumes NOPASSWD,
 		// so when a password is supplied we take the native SSH transport instead: the same
 		// arbitration harden plan makes.
-		OnTarget: strings.Contains(target, "@") && sudoPass == "",
+		OnTarget: strings.Contains(target, "@") && sudoPass == "", Bootstrap: haBootstrapCinc,
 	}); err != nil {
 		return err
 	}

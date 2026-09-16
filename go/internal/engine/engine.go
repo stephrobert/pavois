@@ -443,7 +443,11 @@ type Options struct {
 	Level    string // level (cumulative) within the standard, e.g. cis:1
 	OnTarget bool   // run cinc-auditor ON the target (local://): far fewer
 	//                 SSH round-trips, much faster scan
-	Controls []string // if set: runs ONLY these controls (by id), via cinc --controls
+	// Bootstrap authorises installing the engine ON the target. Off by default: a scan that
+	// silently installs software on the machine it is auditing is not agentless, whatever the
+	// README says, and the install is an unpinned script run as root.
+	Bootstrap bool
+	Controls  []string // if set: runs ONLY these controls (by id), via cinc --controls
 }
 
 // levels ordered per standard (cumulative: a level includes the lower ones).
@@ -761,6 +765,17 @@ func RunOnTarget(o Options) (int, error) {
 		// password: `ssh -tt` + stdin races the pty line discipline and `sudo -S` times out on rhel9;
 		// a plain pipe to sudo -S is reliable and the fresh (not-yet-hardened) target has no use_pty
 		// yet. The password never reaches argv. cinc-auditor absent -> pavois installs it itself.
+		if !o.Bootstrap {
+			return 2, fmt.Errorf("cinc-auditor is not installed on %s, and installing it is not something "+
+				"Pavois does on its own.\n"+
+				"  what it would run, as root on the target:\n"+
+				"    curl -fsSL https://omnitruck.cinc.sh/install.sh | sh -s -- -P cinc-auditor\n"+
+				"  that is an unpinned installer executed as root on the machine being audited, so it is\n"+
+				"  your call, not ours:\n"+
+				"    install cinc-auditor on the target yourself (your package manager, your mirror), or\n"+
+				"    scan over ssh without --on-target (slower, nothing lands on the target), or\n"+
+				"    pass --bootstrap-cinc to let Pavois run the command above", o.Target)
+		}
 		install := ensureSudo + "sh -c 'curl -fsSL https://omnitruck.cinc.sh/install.sh -o /tmp/pavois-cinc-install.sh && sh /tmp/pavois-cinc-install.sh -P cinc-auditor'"
 		instArgs := append(append([]string{}, base...), o.Target, install)
 		ec := exec.Command("ssh", instArgs...) //nolint:gosec // fixed args, operator target
