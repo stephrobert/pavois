@@ -32,7 +32,19 @@ detectors:
 
   # A LITERAL sudo password assigned to the env var. The safe, parameterised forms (value = a shell
   # variable, so it starts with `$`) do not match, because `$` is outside the value character class.
+  #
+  # exclude_regexes_capture drops the documentation placeholders. Without it the detector reported
+  # 17 hits across history, every one of them its own examples (`=...` and `=change-me`, since the
+  # dot and the dash are inside the value class). A detector that cries wolf on its own examples
+  # teaches people to skip its output, which is worse than not having it.
   - name: lab-sudo-password
     keywords: ["SUDO_PASSWORD"]
     regex:
       pw: 'PAVOIS_SUDO_PASSWORD=[A-Za-z0-9._-]+'
+    exclude_regexes_capture:
+      # ellipsis placeholder, as used in usage comments
+      - 'PAVOIS_SUDO_PASSWORD=\.{2,}'
+      # the .env.example value, which exists to be replaced
+      - 'PAVOIS_SUDO_PASSWORD=change-me'
+      # a value that is itself the variable name, e.g. when forwarding the env to a remote shell
+      - 'PAVOIS_SUDO_PASSWORD=PAVOIS_SUDO_PASSWORD'
