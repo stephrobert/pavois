@@ -81,5 +81,19 @@ if (res.status === 200 || res.status === 202) {
   console.log(`indexnow: submitted ${urls.length} URL(s) for ${host} (HTTP ${res.status})`);
   process.exit(0);
 }
-console.error(`indexnow: rejected with HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+
+const body = (await res.text()).slice(0, 300);
+
+// The engine verifies the key file out of band, and the first submission after a key goes live
+// routinely lands while that is still running. It is a state to wait out, not a defect in the
+// build, and failing the deploy on it would turn a successful publish red for no reason. The next
+// deploy retries; a key that is genuinely wrong fails with 403 KeyNotFound instead, which is
+// caught below.
+if (res.status === 403 && /SiteVerificationNotCompleted/i.test(body)) {
+  console.log(`indexnow: the engine is still verifying the key, ${urls.length} URL(s) not submitted yet`);
+  console.log(`indexnow: this resolves on its own; the next deploy submits them`);
+  process.exit(0);
+}
+
+console.error(`indexnow: rejected with HTTP ${res.status}: ${body}`);
 process.exit(1);
