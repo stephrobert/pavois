@@ -12,9 +12,9 @@ const { lang } = Astro.params as { lang: Lang };
 const fr = lang === 'fr';
 
 const sections = [
-  { slug: 'quickstart', en: 'In short: zero to verdict in six lines', fr: 'En bref : de zéro au verdict en six lignes' },
+  { slug: 'quickstart', en: 'In short: from zero to a verdict', fr: 'En bref : de zéro au verdict' },
   { slug: 'prerequisites', en: 'Prerequisites', fr: 'Prérequis' },
-  { slug: 'install', en: '1. Install the verified binary', fr: '1. Installer le binaire vérifié' },
+  { slug: 'install', en: '1. Install Pavois and its scan engine', fr: '1. Installer Pavois et son moteur de scan' },
   { slug: 'scan', en: '2. First scan (A to E grade)', fr: '2. Premier scan (note A à E)' },
   { slug: 'harden', en: '3. Harden, then prove', fr: '3. Durcir, puis prouver' },
   { slug: 'converge', en: '4. Converge (an apply is not enough)', fr: '4. Converger (un apply ne suffit pas)' },
@@ -47,12 +47,23 @@ const crumbs = [
   <div class="wrap layout-doc">
    <div class="doc-col">
     <div class="prose">
-    <h2 id="quickstart">{fr ? 'En bref : de zéro au verdict en six lignes' : 'In short: zero to verdict in six lines'}</h2>
+    <h2 id="quickstart">{fr ? 'En bref : de zéro au verdict' : 'In short: from zero to a verdict'}</h2>
     <p>{fr
-      ? 'Le chemin le plus court, sur l’hôte courant (la config effective exige root). Rien à compiler : le binaire embarque son corpus de règles, et curl suffit.'
-      : 'The shortest path, on the current host (effective config needs root). Nothing to compile: the binary embeds its rule corpus, and curl is the whole dependency list.'}</p>
+      ? 'Le chemin le plus court, sur l’hôte courant (la config effective exige root). Trois choses, dans cet ordre : le binaire, le moteur de scan, le scan. Rien à compiler, le binaire embarque son corpus de règles.'
+      : 'The shortest path, on the current host (effective config needs root). Three things, in this order: the binary, the scan engine, the scan. Nothing to compile, the binary embeds its rule corpus.'}</p>
     <Fragment set:html={highlight(
-      `${install.binaryCurl.code(fr)}\n${install.firstScan.code(fr)}`, 'bash')} />
+      `# ${fr ? '1. le binaire, vérifié' : '1. the binary, verified'}
+${install.binaryCurl.code(fr)}
+
+# ${fr ? '2. le moteur : Pavois exécute ses contrôles avec CINC Auditor' : '2. the engine: Pavois runs its controls with CINC Auditor'}
+${install.engineInstall.code(fr)}
+
+# ${fr ? '3. le scan' : '3. the scan'}
+${install.firstScan.code(fr)}`, 'bash')} />
+    <p class="muted">{fr
+      ? 'L’étape 2 n’est pas facultative et aucun gestionnaire de paquets ne peut la faire à votre place : CINC Auditor n’est dans aucun dépôt de distribution, donc même les paquets .deb et .rpm de Pavois ne peuvent pas le déclarer en dépendance. Sans lui, le premier scan s’arrête sur no native CINC engine found, ce qui se lit comme une dépendance manquante alors que rien ne manque au paquet. Le détail, les autres plateformes et le repli Docker : '
+      : 'Step 2 is not optional and no package manager can do it for you: CINC Auditor is in no distribution repository, so even Pavois’s own .deb and .rpm cannot declare it as a dependency. Without it the first scan stops on no native CINC engine found, which reads as a missing dependency when nothing is missing from the package. The detail, the other platforms and the Docker fallback: '}
+      <a href={`/${lang}/installation/#engine`}>{fr ? 'le moteur de scan' : 'the scan engine'}</a>.</p>
     <p class="muted">{fr
       ? 'Télécharger un fichier puis vérifier son empreinte n’est pas tuber un script dans un shell. Pavois ne vous demandera jamais de faire curl | sh : un outil de durcissement qui commence par là a déjà perdu le débat. Ici rien ne s’exécute avant que sha256sum n’ait confirmé l’empreinte publiée, et '
       : 'Downloading a file and then verifying its checksum is not piping a script into a shell. Pavois will never ask you to curl | sh: a hardening tool whose first line is that has already lost the argument. Here nothing runs until sha256sum has confirmed the published checksum, and '}
@@ -69,11 +80,11 @@ const crumbs = [
     </p>
     <p>
       {fr
-        ? 'Pour scanner, il faut en plus le moteur. Pavois exécute ses contrôles avec CINC Auditor (le build open-source de Chef InSpec) et ne l’installe jamais de lui-même : installez cinc-auditor sur l’hôte qui scanne (pavois doctor affiche la commande s’il manque) ; sans lui, les cibles distantes se rabattent sur un conteneur Docker et local refuse. Sur une cible distante, --on-target n’installe le moteur que si vous passez --bootstrap-cinc. Enfin, la lecture de la config effective d’un service exige root, donc sudo, et une cible distante exige une clé SSH.'
-        : 'To scan, you also need the engine. Pavois runs its controls with CINC Auditor (the open-source build of Chef InSpec) and never installs it on its own: install cinc-auditor on the scanning host (pavois doctor prints the command when it is missing); without it, remote targets fall back to a Docker container and local refuses. On a remote target, --on-target installs the engine only when you pass --bootstrap-cinc. Finally, reading a service’s effective config needs root, so sudo, and a remote target needs an SSH key.'}
+        ? 'Pour scanner, il faut en plus le moteur, et c’est le seul prérequis que rien n’installe à votre place. Pavois exécute ses contrôles avec CINC Auditor (le build open-source de Chef InSpec), qui n’est dans aucun dépôt de distribution : aucun gestionnaire de paquets ne peut aller le chercher, et Pavois ne l’installe jamais de lui-même. La commande est à l’étape 1 ci-dessous. Sans lui, les cibles distantes se rabattent sur un conteneur Docker et local refuse (un conteneur ne peut pas auditer son hôte). Sur une cible distante, --on-target n’installe le moteur que si vous passez --bootstrap-cinc. Enfin, la lecture de la config effective d’un service exige root, donc sudo, et une cible distante exige une clé SSH.'
+        : 'To scan, you also need the engine, and it is the one prerequisite nothing installs for you. Pavois runs its controls with CINC Auditor (the open-source build of Chef InSpec), which is in no distribution repository: no package manager can fetch it, and Pavois never installs it on its own. The command is in step 1 below. Without it, remote targets fall back to a Docker container and local refuses (a container cannot audit its host). On a remote target, --on-target installs the engine only when you pass --bootstrap-cinc. Finally, reading a service’s effective config needs root, so sudo, and a remote target needs an SSH key.'}
     </p>
 
-    <h2 id="install">{fr ? '1. Installer le binaire vérifié' : '1. Install the verified binary'}</h2>
+    <h2 id="install">{fr ? '1. Installer Pavois et son moteur de scan' : '1. Install Pavois and its scan engine'}</h2>
     <p>{fr
       ? 'Chaque release publie un binaire statique par plateforme (Linux et macOS, amd64 et arm64), des paquets .deb et .rpm, un checksums.txt, un SBOM et une attestation de provenance SLSA. Le binaire est autoporté : le corpus de règles est dedans, il n’y a rien à générer.'
       : 'Each release ships a static binary per platform (Linux and macOS, amd64 and arm64), .deb and .rpm packages, a checksums.txt, an SBOM and a SLSA provenance attestation. The binary is self-contained: the rule corpus is inside it, there is nothing to generate.'}</p>
@@ -90,6 +101,16 @@ const crumbs = [
       ? 'Facultatif mais recommandé. Cette vérification interroge un journal de transparence public, donc elle ne demande aucun accès au dépôt. Les paquets .deb et .rpm, les autres plateformes et le dépannage : '
       : 'Optional but recommended. It queries a public transparency log, so it needs no access to the repository. The .deb and .rpm packages, the other platforms and troubleshooting: '}
       <a href={`/${lang}/installation/`}>{fr ? 'page installation' : 'installation page'}</a>.</p>
+
+    <h3>{fr ? 'Puis le moteur de scan' : 'Then the scan engine'}</h3>
+    <p>{fr
+      ? 'Le binaire seul sait lire un rapport archivé, pas auditer une machine. Pour ça il lui faut CINC Auditor, et c’est à vous de l’installer : il n’est dans aucun dépôt de distribution, donc aucun gestionnaire de paquets ne peut le tirer, et les paquets .deb et .rpm de Pavois ne peuvent pas le déclarer en dépendance. Le point d’entrée metadata d’omnitruck publie l’URL du paquet et son empreinte, donc on télécharge, on vérifie, on installe avec le gestionnaire du système :'
+      : 'The binary alone can re-read an archived report, not audit a machine. For that it needs CINC Auditor, and installing it is on you: it is in no distribution repository, so no package manager can pull it, and Pavois’s own .deb and .rpm cannot declare it as a dependency. Omnitruck’s metadata endpoint publishes the package URL and its checksum, so you download, verify, then install with the system package manager:'}</p>
+    <Fragment set:html={highlight(install.engineInstall.code(fr), 'bash')} />
+    <p class="muted">{fr
+      ? 'Les clés p et pv sont celles d’omnitruck : el/8, el/9, debian/12, debian/13, ubuntu/22.04, ubuntu/24.04 ; AlmaLinux et Rocky se déclarent en el. La documentation amont propose aussi un script tubé dans un shell root, que ce site ne vous demandera pas. Le repli Docker et les cas particuliers : '
+      : 'The p and pv keys are omnitruck’s own: el/8, el/9, debian/12, debian/13, ubuntu/22.04, ubuntu/24.04; AlmaLinux and Rocky declare as el. Upstream also documents a script piped into a root shell, which this site will not ask you for. The Docker fallback and the edge cases: '}
+      <a href={`/${lang}/installation/#engine`}>{fr ? 'le moteur de scan' : 'the scan engine'}</a>.</p>
 
     <p>{fr ? 'doctor confirme que tout est prêt et donne la commande exacte pour chaque manque :' : 'doctor confirms everything is ready and prints the exact command for each gap:'}</p>
     <Fragment set:html={highlight(`# ${fr ? 'tout est prêt' : 'all set'}

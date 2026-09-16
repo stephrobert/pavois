@@ -5,8 +5,8 @@ A linter that has never rejected anything is indistinguishable from a linter tha
 exists precisely because a comment in install.ts claimed a guard that did not exist, so the guard
 gets checked the same way a control does: by making it fail on purpose.
 
-Each case plants one defect in a COPY of the tree and asserts the linter catches it, then asserts the
-untouched tree passes. Run: python3 tools/lint_install_docs_test.py
+Each case plants one defect in a COPY of the tree and asserts the linter catches it, then
+asserts the untouched tree passes. Run: python3 tools/lint_install_docs_test.py
 """
 
 from __future__ import annotations
@@ -81,7 +81,7 @@ def main() -> int:
         p.write_text(p.read_text() + "\n{highlight(install.notABlock.code(fr), 'bash')}\n")
 
     rc, out = planted(ghost)
-    check("a page rendering a block that does not exist", rc, out, "which install.ts does not export")
+    check("a page rendering a block that does not exist", rc, out, "does not export")
 
     # 4. A guarded command that has disappeared from the source: the rule would still pass while
     #    protecting nothing, which is the failure mode this whole file exists to rule out.

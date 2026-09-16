@@ -4,8 +4,8 @@
 site/src/data/install.ts exists because the install instructions used to live in three places and
 drifted, as duplicated instructions always do: the get-started page led with a build from source and
 claimed no release existed, while the installation page led with a binary; one told the reader to
-pipe a script into a shell while the other said, correctly, that a hardening tool whose first line is
-`curl | sh` has already lost the argument.
+pipe a script into a shell while the other said, correctly, that a hardening tool whose first
+line is `curl | sh` has already lost the argument.
 
 install.ts said this linter enforced that. It did not exist. A comment claiming a guard that is not
 there is worse than no comment: it is the reason nobody looks.
@@ -67,7 +67,8 @@ def fail(problems: list[str]) -> int:
     for p in problems:
         print(p)
     print(f"\n{len(problems)} problem(s). The install commands live in site/src/data/install.ts;")
-    print("a page renders them with <Fragment set:html={highlight(install.<block>.code(fr), 'bash')} />.")
+    print("a page renders them with")
+    print("  <Fragment set:html={highlight(install.<block>.code(fr), 'bash')} />")
     return 1
 
 
@@ -113,7 +114,8 @@ def main() -> int:
         for name in RENDERS.findall(page.read_text(encoding="utf-8")):
             if name not in exported:
                 problems.append(
-                    f"{page.relative_to(ROOT)}: renders install.{name}, which install.ts does not export\n"
+                    f"{page.relative_to(ROOT)}: renders install.{name}, which install.ts\n"
+                    f"  does not export\n"
                     f"  known blocks: {', '.join(sorted(exported))}"
                 )
 
