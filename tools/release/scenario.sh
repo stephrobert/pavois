@@ -23,6 +23,8 @@
 # Usage:
 #   tools/release/scenario.sh                     # the working tree's binary, built as a release
 #   tools/release/scenario.sh --binary released   # the published artifact, as a user gets it
+#   tools/release/scenario.sh --binary <path>     # a binary built elsewhere, e.g. the one
+#                                                 # ci_release_build.sh got out of release.yml
 #   tools/release/scenario.sh --os ubuntu2404 --keep
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
@@ -105,6 +107,16 @@ if [ "$SOURCE" = released ]; then
     ko "the SLSA attestation did not verify" "gh attestation verify pavois-linux-amd64"
   fi
   BIN="$work/pavois-linux-amd64"
+elif [ -f "$SOURCE" ]; then
+  # A path: the binary somebody else produced, which is how the RELEASE build gets tested before a
+  # tag exists. tools/release/ci_release_build.sh runs release.yml itself and writes its artifact
+  # out with --keep-binary; that file comes here. Without this, the choice before a tag was between
+  # a local build (embed dirs already filled, which is the defect 0.1.2 shipped) and a published
+  # artifact (which does not exist yet).
+  say "== a binary built elsewhere: $SOURCE"
+  cp "$SOURCE" "$work/pavois" || { say "could not read $SOURCE"; exit 1; }
+  chmod +x "$work/pavois"
+  BIN="$work/pavois"
 else
   say "== the working tree, built exactly as the release workflow builds it"
   # NOT `mise run build`: that links against this machine's libc and stamps the version `dev`, so

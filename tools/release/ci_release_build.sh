@@ -17,7 +17,18 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 
-TAG=${1:-v0.0.0-act.1}
+TAG=v0.0.0-act.1
+KEEP=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    # Write the artifact out before the temp directory goes. That binary is what release.yml
+    # produces, so it is what the VM scenario should run before a tag exists:
+    #   tools/release/ci_release_build.sh v0.1.3-rc.1 --keep-binary /tmp/pavois-from-ci
+    #   tools/release/scenario.sh --binary /tmp/pavois-from-ci
+    --keep-binary) KEEP=$2; shift 2 ;;
+    *) TAG=$1; shift ;;
+  esac
+done
 # act has no built-in image for ubuntu-24.04 and SKIPS the job rather than failing, which reads as
 # a clean run and proves nothing. The mapping is mandatory, and the caller is told when it is used.
 IMAGE=${ACT_UBUNTU_IMAGE:-catthehacker/ubuntu:act-24.04}
@@ -140,6 +151,10 @@ if ! cp "$art" "$bin"; then
   exit 1
 fi
 chmod +x "$bin"
+if [ -n "$KEEP" ]; then
+  cp "$bin" "$KEEP" && chmod +x "$KEEP"
+  echo "   kept: $KEEP"
+fi
 echo
 echo "== the guard, on the binary the WORKFLOW produced ($(stat -c%s "$bin") bytes)"
 bash --noprofile --norc tools/release/standalone_binary.sh "$bin"
