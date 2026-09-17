@@ -185,15 +185,44 @@ func profileForPlatform(root, name, release string) (profile, detected, why stri
 	return "", detected, "no bundled profile for " + detected
 }
 
+// reportsDirDefault is where a scan writes when --out is not given. One place, because the sudo
+// re-exec has to hand the same directory back to the user afterwards (#281).
+func reportsDirDefault() string {
+	return filepath.Join(findRoot(), "reports")
+}
+
 func runScan(cmd *cobra.Command, args []string) error {
 	root := findRoot()
 	target := args[0]
 	machine, transport := machineTransport(target)
 
+	// `--sudo` on a local target: re-run the whole command as root, because a local transport
+	// cannot elevate itself and every entry point recommends this exact form (#281). Before the
+	// banner, before any file is written: the child does the work, the parent only waits.
+	if handled, err := reexecUnderSudo(target == "local", scSudo || scSudoPrompt); handled || err != nil {
+		return err
+	}
+
+	// `--bootstrap-cinc` only ever applied to a remote target: on a local one the scan died on the
+	// missing engine before the flag was ever consulted, so a user on a machine without CINC read
+	// the flag, passed it, and got an error that did not mention it (#283). Say so instead, and say
+	// it before the OS detection that used to fail first. Silence on a flag the user passed is the
+	// worst of the three outcomes.
+	if target == "local" && scBootstrapCinc {
+		return fmt.Errorf("--bootstrap-cinc applies to a REMOTE target only.\n" +
+			"  it installs the engine on the machine being audited, over ssh. This machine IS the\n" +
+			"  machine being audited, and Pavois does not install software on the host running it.\n" +
+			"  install cinc-auditor here, verified rather than piped: " + engineDocs)
+	}
+
 	// Resolve secrets ONCE, up front, and drop them from our own environment so no
 	// child process (the detect probe, cinc exec) can inherit them. Passwords reach
 	// cinc only over stdin (--config -), never argv. See engine.secretsConfig.
 	sudo := scSudo || scSudoPrompt
+	// cinc rejects --sudo on a local transport, and it is right to: a process cannot grant itself
+	// privileges. By the time we get here a local --sudo has already re-executed as root, so the
+	// intent is satisfied and the flag must not be forwarded (#281).
+	engineSudo := sudo && target != "local"
 	sudoPass, err := resolveSudoPass(scSudoPrompt)
 	if err != nil {
 		return fmt.Errorf("read sudo password: %w", err)
@@ -234,11 +263,9 @@ func runScan(cmd *cobra.Command, args []string) error {
 			// bundled profile wants --profile; a target that never answered wants a key, a
 			// password or a route. Sending the second one to --profile fixes nothing.
 			if detectedOS == "" {
-				return fmt.Errorf("could not reach or identify %s: %s\n"+
-					"  a host that answers `ssh %s` can still fail here: the engine does not fall back to\n"+
-					"  ~/.ssh/id_ed25519 the way the ssh command does, so pass --key <path> (or add the key\n"+
-					"  to ssh-agent). If the host is fine and simply has no bundled profile, pass --profile",
-					target, detectWhy, target)
+				return fmt.Errorf("could not reach or identify %s: %s%s\n"+
+					"  If the host is fine and simply has no bundled profile, pass --profile",
+					target, detectWhy, withTarget(sshFailureHint(scKey), target))
 			}
 			return fmt.Errorf("no bundled profile for %s: pass --profile <path|url> (e.g. profiles/linux/debian12)", detectedOS)
 		}
@@ -281,7 +308,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 	jsonPath := scFrom
 	reportsDir := scOut
 	if reportsDir == "" {
-		reportsDir = filepath.Join(root, "reports")
+		reportsDir = reportsDirDefault()
 	}
 	ts := time.Now().Format("20060102-150405")
 	if jsonPath == "" {
@@ -290,7 +317,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 		jsonPath = filepath.Join(reportsDir, ".pavois-scanning-"+ts+".json")
 		rc, err := engine.Run(engine.Options{
 			Root: root, Target: target, Profile: scProfile, Engine: scEngine,
-			SSHPass: sshPass, SudoPass: sudoPass, Key: scKey, Sudo: sudo, JSONOut: jsonPath,
+			SSHPass: sshPass, SudoPass: sudoPass, Key: scKey, Sudo: engineSudo, JSONOut: jsonPath,
 			Standard: scStandard, Level: scLevel, // only runs the requested standard
 			OnTarget: scOnTarget, Controls: scControls, Bootstrap: scBootstrapCinc,
 		})
@@ -350,6 +377,10 @@ func runScan(cmd *cobra.Command, args []string) error {
 	if err := os.WriteFile(htmlPath, []byte(htmlStr), 0o600); err == nil {
 		_, _ = fmt.Fprintf(os.Stderr, "pavois: report %s (%d controls, %d standards)\n", htmlPath, nctrl, nnorm)
 	}
+	// Both files exist now, so hand them back. `--sudo` on a local target re-runs this process as
+	// root, and a root process writing into the caller's directory leaves them unable to delete
+	// their own report. Only root can give a file away, so this is done here and not in the parent.
+	RestoreOwnership(reportsDir)
 	scope := scStandard
 	if scope == "" {
 		scope = "all standards"

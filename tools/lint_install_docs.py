@@ -62,6 +62,28 @@ PIPE_TO_SHELL = re.compile(r"(?:curl|wget)[^\n|]*https?://[^\n|]*\|\s*(?:sudo\s+
 # freely; what it may not do is inline their contents.
 RENDERS = re.compile(r"install\.(\w+)\.code\(")
 
+# The two pages a new user opens. They are edited at different times for different requests, which
+# is exactly how one ends up complete and the other half-done: the installation page once listed
+# its prerequisites without the scan engine, while telling the reader that curl "is the whole
+# dependency list". The get-started page said it. A reader who opened the other one was not told.
+#
+# Each claim is (label, any-of-these-strings). One entry per thing a first-run user must be told
+# before their first scan fails.
+ENTRY_PAGES = [
+    "site/src/pages/[lang]/installation.astro",
+    "site/src/pages/[lang]/start.astro",
+]
+ENTRY_CLAIMS = [
+    ("the scan engine is named", ["CINC Auditor"]),
+    (
+        "no package manager can fetch it",
+        ["no distribution repository", "aucun dépôt de distribution"],
+    ),
+    ("the exact error a user meets", ["no native CINC engine found"]),
+    ("the verified install command is rendered", ["install.engineInstall.code"]),
+    ("a link to the engine section", ["installation/#engine"]),
+]
+
 
 def fail(problems: list[str]) -> int:
     for p in problems:
@@ -119,9 +141,26 @@ def main() -> int:
                     f"  known blocks: {', '.join(sorted(exported))}"
                 )
 
+    # The two entry points must tell the same story. A claim that only one of them carries is a
+    # claim half the readers never see, and which of the two they opened is not something the
+    # project gets to choose.
+    for rel in ENTRY_PAGES:
+        page = ROOT / rel
+        if not page.exists():
+            problems.append(f"{rel}: entry page missing; update ENTRY_PAGES if it was renamed")
+            continue
+        text = page.read_text(encoding="utf-8")
+        for label, needles in ENTRY_CLAIMS:
+            if not any(n in text for n in needles):
+                problems.append(
+                    f"{rel}: does not say {label}\n"
+                    f"  both entry pages must: a reader does not choose which one they land on"
+                )
+
     if problems:
         return fail(problems)
-    print("install docs: one source, no page retypes a command, nothing is piped into a shell")
+    print("install docs: one source, no page retypes a command, nothing is piped into a shell,")
+    print("  and both entry points tell the same story about the scan engine")
     return 0
 
 

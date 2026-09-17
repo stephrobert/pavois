@@ -89,6 +89,17 @@ def main() -> int:
         p = tree / SOURCE
         p.write_text(p.read_text().replace("gh attestation verify", "gh att-verify"))
 
+    # 5. One entry page that stops telling a first-run reader about the engine. This is the defect
+    #    that was actually there: the installation page listed its prerequisites without the engine
+    #    while the get-started page named it, so which reader got told depended on which page they
+    #    opened.
+    def half_told(tree: pathlib.Path) -> None:
+        p = tree / PAGE
+        p.write_text(p.read_text().replace("no native CINC engine found", "an error occurs"))
+
+    rc, out = planted(half_told)
+    check("an entry page that drops a first-run claim", rc, out, "both entry pages must")
+
     rc, out = planted(stale)
     check("a fragment that no longer exists in the source", rc, out, "guards nothing")
 

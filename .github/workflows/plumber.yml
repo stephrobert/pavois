@@ -31,7 +31,27 @@ jobs:
     # change that touches a workflow is scanned once it lands. The coverage is deferred, not lost.
     # To audit them on the pull request instead, give Dependabot the token:
     #   gh secret set PLUMBER_ADMIN_TOKEN --app dependabot
-    if: ${{ !github.event.repository.private && github.actor != 'dependabot[bot]' }}
+    #
+    # And skipped on pull requests FROM A FORK, which is the same failure with a different cause and
+    # a worse consequence. A `pull_request` run triggered from a fork receives no secrets at all
+    # ("Secret source: None" in the job log), so PLUMBER_ADMIN_TOKEN is empty, `gh attestation
+    # verify` has no token, and the action exits before scanning anything:
+    #
+    #     GH_TOKEN:
+    #     gh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment variable
+    #
+    # That made the FIRST external contribution to this repository (#287, a three-line fix with a
+    # test) arrive with a red check it could do nothing about. Turning the job red for everyone who
+    # does not have write access is a way of asking people not to contribute.
+    #
+    # Falling back to the default GITHUB_TOKEN is NOT the answer: branchMustBeProtected then gets a
+    # 403 on the protection API and reports the branch as non-compliant, which is a false accusation
+    # rather than an abstention. See the github-token comment below.
+    if: >-
+      ${{ !github.event.repository.private
+          && github.actor != 'dependabot[bot]'
+          && (github.event_name != 'pull_request'
+              || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read

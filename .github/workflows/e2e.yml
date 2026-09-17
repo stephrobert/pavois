@@ -1,0 +1,102 @@
+name: e2e
+
+# The first-run scenario, on a disposable VM, on every pull request.
+#
+# WHY IT BLOCKS
+#
+# Two releases in a row shipped a binary that could not do its job, and both got through the same
+# way: every test ran inside the repository, where profiles/ and docs/reference/ are on disk.
+#   v0.1.0  the rule corpus was compiled in and the lookup asked the filesystem -> no profile
+#           resolved on any machine that was not a checkout.
+#   v0.1.1  `harden plan` read its reference from the CURRENT DIRECTORY, so scan worked and
+#           remediation did not; and `harden apply` read audit.rules the same way WITH THE ERROR
+#           DISCARDED, so it converged an empty ruleset and reported success.
+# Both were found by a user on a fresh VM. Unit tests cannot see either: they run from the tree.
+#
+# So this is the gate. It exercises both transports, because they fail differently:
+#   8a  harden apply on a LOCAL target, the binary hardening the machine it runs on (#200)
+#   8b  harden apply over ssh, this runner hardening the VM
+#
+# WHY A GITHUB RUNNER AND NOT A SELF-HOSTED ONE
+#
+# A self-hosted runner would be faster and already has Incus. It is also how a fork's pull request
+# executes arbitrary code on the maintainer's machine, which is exactly what poutine's
+# `pr_runs_on_self_hosted` check exists to refuse. The project scans its own pipeline with poutine;
+# it does not get to make an exception for its own convenience.
+#
+# THE COST, STATED PLAINLY
+#
+# An image download, a VM boot, a 52 MB engine install and several full scans. Expect 25 to 40
+# minutes. That is the price of the only test that would have caught either release, and it is
+# cheaper than the two releases it would have stopped.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scenario:
+    name: First-run scenario on a disposable VM
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The scenario runs VMs, never containers: 259 of the 789 controls are meaningless in a
+      # container, which does not own a kernel. A green container scan is not a result, so this
+      # step failing is a hard stop rather than a reason to degrade to containers.
+      - name: Is KVM available on this runner
+        run: |
+          ls -l /dev/kvm
+          grep -Ec '(vmx|svm)' /proc/cpuinfo
+
+      - name: Install Incus
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq incus incus-client
+          sudo incus admin init --auto
+          sudo usermod -aG incus-admin "$USER"
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          version: 2026.2.23
+          install: true
+          cache: true
+
+      # `harden apply` over ssh needs a key on this machine and its public half on the VM, which the
+      # scenario installs. A throwaway key, generated here, never leaves the runner.
+      - name: A throwaway ssh key for the ssh-transport half
+        run: ssh-keygen -t ed25519 -N '' -f "$HOME/.ssh/id_ed25519" -C pavois-e2e
+
+      - name: Run the scenario (both transports)
+        env:
+          PAVOIS_SSH_KEY: /home/runner/.ssh/id_ed25519
+        # sg, because the incus-admin group membership added above is not in this shell's
+        # credentials yet and `newgrp` needs a tty.
+        run: sg incus-admin -c "bash --noprofile --norc tools/release/scenario.sh"
+
+      - name: The log, whatever happened
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: scenario-log
+          path: reports/scenario-*/
+          if-no-files-found: warn

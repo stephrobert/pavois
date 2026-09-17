@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -33,9 +32,9 @@ func init() {
 
 func runNorms(_ *cobra.Command, _ []string) error {
 	root := findRoot()
-	raw, err := os.ReadFile(filepath.Join(root, "docs", "reference", "norms.yml"))
+	raw, err := readNormCatalogue(root)
 	if err != nil {
-		return fmt.Errorf("read norm catalogue: %w", err)
+		return err
 	}
 	var catalogue map[string]any
 	if err := yaml.Unmarshal(raw, &catalogue); err != nil {
@@ -43,15 +42,11 @@ func runNorms(_ *cobra.Command, _ []string) error {
 	}
 
 	// Live coverage: for each OS reference, count controls carrying each norm + distinct values.
-	contentDir := filepath.Join(root, "docs", "reference", "pavois-content")
-	entries, _ := os.ReadDir(contentDir)
+	// The reference comes from the checkout or from the binary itself, so this reports real
+	// coverage on a downloaded binary instead of silently reporting none (#286).
 	coverage := map[string]any{}
-	for _, f := range entries {
-		if filepath.Ext(f.Name()) != ".yml" {
-			continue
-		}
-		osName := f.Name()[:len(f.Name())-len(".yml")]
-		b, err := os.ReadFile(filepath.Join(contentDir, f.Name()))
+	for _, osName := range referenceOSes(root) {
+		b, err := readReference(root, osName)
 		if err != nil {
 			continue
 		}
