@@ -224,10 +224,41 @@ jobs:
             "$NFPM" pkg --config "nfpm.${arch}.yaml" --packager rpm --target "dist/pavois-${VERSION}.${arch}.rpm"
           done
 
+      # The exact set of files this release ships, written once and read three times: to compute
+      # the checksums, to upload, and to verify what landed. It used to be a `pavois-*` glob, and
+      # `merge-multiple: true` above puts EVERY artifact in dist/, including the SBOM under its
+      # artifact name. So v0.1.4 shipped a stray pavois-release.cyclonedx.json, a byte-identical
+      # duplicate of sbom.cdx.json, and listed it in checksums.txt as if a consumer should expect
+      # it. A glob decides what ships; a list says it.
+      - name: The asset list
+        working-directory: dist
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          v="${TAG#v}"
+          {
+            echo pavois-linux-amd64
+            echo pavois-linux-arm64
+            echo pavois-darwin-amd64
+            echo pavois-darwin-arm64
+            echo "pavois_${v}_amd64.deb"
+            echo "pavois_${v}_arm64.deb"
+            echo "pavois-${v}.amd64.rpm"
+            echo "pavois-${v}.arm64.rpm"
+          } > artifacts.txt
+          rc=0
+          while read -r f; do
+            [ -s "$f" ] || { echo "::error::dist/$f is missing or empty"; rc=1; }
+          done < artifacts.txt
+          [ "$rc" -eq 0 ] || exit 1
+          echo "$(wc -l < artifacts.txt) artifact(s) to ship"
+
       - name: Generate checksums
         working-directory: dist
         run: |
-          sha256sum pavois-* pavois_* > checksums.txt
+          set -euo pipefail
+          xargs -a artifacts.txt sha256sum > checksums.txt
           cat checksums.txt
 
       # CycloneDX SBOM of the built tree: the component inventory an auditor asks for. Generated
@@ -309,21 +340,88 @@ jobs:
           } >> release-notes.md
           echo "release notes: $(wc -l < release-notes.md) lines"
 
-      - name: Create release with assets
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          # The release body is the CHANGELOG section, not a generated list of merged pull
-          # requests. Those list the plumbing: "bump the actions group", "skip Plumber on
-          # Dependabot". A reader arriving at a release wants to know what the tool DOES, and
-          # that is written by hand, once, in CHANGELOG.md.
-          body_path: ${{ github.workspace }}/release-notes.md
-          fail_on_unmatched_files: false
-          files: |
-            dist/pavois-*
-            dist/pavois_*.deb
-            dist/checksums.txt
-            dist/checksums.txt.cosign.bundle
-            dist/sbom.cdx.json
-            dist/provenance.intoto.jsonl
+      # Assembled as a DRAFT, published only once every asset is present and verified.
+      #
+      # That ordering is not a nicety: it is what made the v0.1.4 upload failure harmless. Three
+      # consecutive network errors left a draft nobody could see, while v0.1.3 stayed the current
+      # release and every download link kept working. Publishing first and uploading after would
+      # have put a half-empty release in front of users instead.
+      #
+      # The release body is the CHANGELOG section, not a generated list of merged pull requests.
+      # Those list the plumbing: "bump the actions group", "skip Plumber on Dependabot". A reader
+      # arriving at a release wants to know what the tool DOES, and that is written by hand, once.
+      - name: Create the release as a draft
+        env:
+          TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release $TAG already exists; reusing it (this is a re-run)"
+          else
+            gh release create "$TAG" --draft --title "$TAG" --notes-file release-notes.md
+          fi
+
+      # ONE AT A TIME, with retries, and resumable.
+      #
+      # The action this replaces uploaded twelve files in parallel and deleted the existing asset
+      # before writing each one. On v0.1.4 it answered `Error creating asset temp dir`, then
+      # `Error saving asset`, then `Headers Timeout Error` on a 20 MB binary: three failures, and
+      # every re-run threw away the progress of the one before it. `--clobber` on a sequential loop
+      # re-sends only what is missing, so a retry moves forward instead of starting over.
+      - name: Upload the assets
+        working-directory: dist
+        env:
+          TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # The signature and the provenance exist only when the repository is public, which the
+          # guard job has already established; listed here so a missing one is visible rather than
+          # silently skipped by a glob.
+          for extra in checksums.txt checksums.txt.cosign.bundle sbom.cdx.json provenance.intoto.jsonl; do
+            [ -s "$extra" ] && echo "$extra" >> artifacts.txt
+          done
+          while read -r f; do
+            for attempt in 1 2 3; do
+              if gh release upload "$TAG" "$f" --clobber; then
+                echo "uploaded $f"
+                break
+              fi
+              if [ "$attempt" -eq 3 ]; then
+                echo "::error::could not upload $f after 3 attempts; the release stays a draft"
+                exit 1
+              fi
+              echo "upload of $f failed, retrying ($attempt/3)"
+              sleep "$((attempt * 10))"
+            done
+          done < artifacts.txt
+
+      # Compared against what is on disk, by name AND by size. A truncated upload reports success
+      # and leaves a shorter asset, which no name check would see. Nothing about this release
+      # becomes visible to anyone until it passes.
+      - name: Every asset landed, at its full size
+        working-directory: dist
+        env:
+          TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" --json assets \
+            --jq '.assets[] | "\(.name) \(.size)"' | sort > published.txt
+          while read -r f; do
+            want=$(stat -c%s "$f")
+            got=$(awk -v n="$f" '$1 == n {print $2}' published.txt)
+            if [ -z "$got" ]; then
+              echo "::error::$f is not on the release"; exit 1
+            elif [ "$got" != "$want" ]; then
+              echo "::error::$f is $got bytes on the release, $want on disk"; exit 1
+            fi
+          done < artifacts.txt
+          echo "$(wc -l < artifacts.txt) asset(s) verified against dist/"
+
+      - name: Publish
+        env:
+          TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$TAG" --draft=false --latest

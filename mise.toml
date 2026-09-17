@@ -455,6 +455,13 @@ description = "Prove release:standalone bites: remove each embedded asset in a c
 # Minutes (a rebuild per mutant), so it is out of prepush and belongs before a release.
 run = "bash --noprofile --norc {{config_root}}/tools/release/falsify_embed.sh"
 
+[tasks."release:assets:test"]
+description = "Prove the release's asset list and its landing check: a missing or truncated asset must stop the publish"
+# v0.1.4 published 12 assets of which one was a stray SBOM duplicate and one binary was missing,
+# because a glob decided what shipped and nothing compared what landed. The upload itself needs the
+# GitHub API and cannot run here; the set logic and the comparison are plain shell and can.
+run = "bash --noprofile --norc {{config_root}}/tools/release/test_asset_list.sh"
+
 [tasks."release:ci-build"]
 description = "Run release.yml ITSELF under act and guard the binary it produces: what the release builds, not what you build."
 # Every check this project had ran on a binary built here, where `mise run embed:all` fills the

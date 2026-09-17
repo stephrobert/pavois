@@ -11,6 +11,13 @@
 name: site-deploy
 
 on:
+  # A published release deploys the site. The site advertises ONE version, and the commit that
+  # bumps it lands on main before the tag exists: on 0.1.4 the install page offered download links
+  # that answered 404 for twenty minutes, because the deploy ran on the preparation commit rather
+  # than on the release. The gate job below is what keeps the two in step; this trigger is what
+  # makes the site catch up as soon as the release is real.
+  release:
+    types: [published]
   push:
     branches: [main]
     paths:
@@ -34,7 +41,58 @@ concurrency:
 permissions: {}
 
 jobs:
+  # Does the release the site advertises actually exist, with its binaries?
+  #
+  # This is a GATE, not a check: when the answer is no, the deploy is SKIPPED rather than failed.
+  # The state it describes is a legitimate step of the release process (the version constant is
+  # bumped, the tag comes last), and a red run for an expected state is a red run people learn to
+  # ignore. The `release: published` trigger above is what deploys the site once the answer is yes.
+  gate:
+    name: The version the site hands out is downloadable
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Is that release published, with its binaries
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          v=$(sed -n "s/^export const VERSION = '\(v[^']*\)';/\1/p" site/src/data/install.ts)
+          [ -n "$v" ] || { echo "::error::no VERSION constant in site/src/data/install.ts"; exit 1; }
+          echo "the site hands out $v"
+          if ! gh release view "$v" --json isDraft --jq .isDraft > /tmp/draft 2>/dev/null; then
+            echo "::notice::$v is not released yet; the site deploy waits for it"
+            echo "ready=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if [ "$(cat /tmp/draft)" = "true" ]; then
+            echo "::notice::$v is still a draft; the site deploy waits for it"
+            echo "ready=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # Published, so the links on the install page must work. A missing asset here IS a
+          # failure: the release claims to be out and is not usable.
+          missing=0
+          for a in pavois-linux-amd64 pavois-linux-arm64 checksums.txt; do
+            gh release view "$v" --json assets --jq '.assets[].name' | grep -qx "$a" \
+              || { echo "::error::$v is published without $a"; missing=1; }
+          done
+          [ "$missing" -eq 0 ] || exit 1
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
   deploy:
+    needs: gate
+    if: ${{ needs.gate.outputs.ready == 'true' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -49,11 +107,15 @@ jobs:
         with:
           persist-credentials: false
 
+      # cache: false, deliberately. This job now also runs on `release: published`, which makes it
+      # a publishing workflow holding the deploy credentials, and a restored cache is content this
+      # job did not build. zizmor flags exactly that (cache-poisoning, high). The tool install
+      # costs less than the class of bug it removes.
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           version: 2026.2.23
           install: true
-          cache: true
+          cache: false
 
       # site:build runs gen:cli, which invokes the binary. Build it first rather than letting the
       # generator fail on a missing ./go/pavois.
