@@ -377,6 +377,21 @@ run = "python3 {{config_root}}/tools/lint_embed_release.py"
 description = "Prove lint:embed bites: plant an embed directory no release step fills and demand red"
 run = "python3 {{config_root}}/tools/lint_embed_release.py --selftest"
 
+[tasks."lint:contradictions"]
+description = "FAIL when two controls make incompatible demands of one file, package, sysctl key or config file"
+# Every other lint reads ONE control and asks whether it is well formed. None can see the defect
+# where two controls are each correct and cannot both be satisfied, because the evidence is spread
+# across two entries no single read brings together. #266 documented one such pair without naming
+# the class. Four families: absence vs attribute, package removed vs needed, one sysctl key with two
+# values, one file with two writers. It consults the RENDERED corpus for the existence guard, so a
+# pair the renderer already neutralises is not reported: the first version did not look and was
+# wrong on all four of its findings.
+run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_contradictions.py"
+
+[tasks."lint:contradictions:test"]
+description = "Prove lint:contradictions bites: plant a package conflict and an unguarded path conflict, demand red"
+run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_contradictions.py --selftest"
+
 [tasks."lint:norm-refs"]
 description = "FAIL if a norm mapping holds anything but a reference (the claim /attribution makes about redistribution)"
 run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_norm_refs.py"
@@ -481,7 +496,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]
