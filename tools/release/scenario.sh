@@ -323,6 +323,58 @@ for c in "rules --os ubuntu2404" "oscal" "norms"; do
   fi
 done
 
+# ------------------------------------------------- 5b. the assets no command above would have missed
+say ""
+say "--- 5b. everything else the binary has to carry, declared by the binary itself"
+# Phase 5 exercises the three assets that ANSWER when they are missing. Three more fail silently,
+# and v0.1.2 shipped with all of them empty while every check above was green:
+#
+#   audit.rules            harden apply pushed an EMPTY audit ruleset and reported success
+#   behavioral-probes.yml  pavois verify answered with an internal repository path
+#   baseline.yml           oscal keeps hardcoded defaults on any error, so with the reference
+#                          embedded and this one not, it SUCCEEDS and publishes a catalogue
+#                          declaring itself version 0.0.0, released 1970-01-01
+#
+# `pavois doctor` enumerates all six with a count each, so one command covers them and a user who
+# meets "this binary embeds none" has something to run.
+out=$(asuser 'cd /tmp && pavois doctor')
+printf '%s\n' "$out" >> "$LOG"
+assets='hardening reference|norm catalogue|baseline identity|audit ruleset|behavioral probes|kernel-build recipes'
+missing=$(printf '%s\n' "$out" | plain | grep -E '^\s*\[FAIL\]' | grep -E "$assets")
+carried=$(printf '%s\n' "$out" | plain | grep -cE '^\s*\[OK  \].*('"$assets"')')
+if [ -n "$missing" ]; then
+  ko "doctor reports $(printf '%s\n' "$missing" | grep -c .) embedded asset(s) missing" \
+     "$(printf '%s' "$missing" | head -1 | sed 's/^ *//' | cut -c1-140)"
+elif [ "${carried:-0}" -lt 6 ]; then
+  ko "doctor accounts for only $carried of the 6 embedded assets" \
+     "either an asset was added without a doctor line, or a line was renamed; both hide a gap"
+else
+  ok "doctor accounts for all 6 embedded assets, from /tmp"
+  printf '%s\n' "$out" | plain | grep -E '^\s*\[OK  \].*('"$assets"')' | sed 's/^ */      /'
+fi
+
+# Embedded is not the same as CORRECT, and this is the one that fails without failing: the check is
+# on the CONTENT of the catalogue, never on the exit code.
+meta=$(asuser 'cd /tmp && pavois oscal' | head -40)
+if rx '"version": *"0\.0\.0"|1970-01-01' "$meta"; then
+  ko "the OSCAL catalogue publishes itself as version 0.0.0 / 1970-01-01" \
+     "baseline.yml is not embedded; readBaseline silently kept its defaults, and nothing failed"
+elif has '"version"' "$meta"; then
+  ok "the OSCAL catalogue carries the real baseline metadata ($(printf '%s' "$meta" | grep -m1 '"version"' | tr -d ' ",' | cut -c1-40))"
+else
+  ko "pavois oscal emitted no catalogue metadata" "$(printf '%s' "$meta" | tail -1 | cut -c1-140)"
+fi
+
+# 203.0.113.x is TEST-NET-3 and answers nothing, which is enough: the question is whether verify can
+# READ ITS PROBES, not whether the target is up. It used to fail before reaching the network.
+out=$(asuser 'cd /tmp && timeout 60 pavois verify 203.0.113.9' 2>&1)
+if rx 'behavioral-probes.yml|no behavioral probes' "$out"; then
+  ko "pavois verify cannot find its probes outside a checkout" \
+     "$(printf '%s' "$out" | head -1 | cut -c1-140)"
+else
+  ok "pavois verify reads its probes and reaches the target"
+fi
+
 say ""
 say "--- 6. nothing was dropped beside the binary to make any of that work"
 stray=$(vmsh 'test -e /docs -o -e /root/docs -o -e /home/tester/docs -o -e /usr/local/bin/docs && echo yes')
