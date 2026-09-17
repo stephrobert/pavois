@@ -43,7 +43,10 @@ an 0.1.2 one.
   detection first with an error that did not mention the flag. It now says it applies to remote
   targets only, and where to get the engine.
 - **`pavois --version` answered `unknown flag`** (#284), on a CLI whose own bug-report form asks for
-  a version string.
+  a version string. Fixed by [@Voyagerroc-Code](https://github.com/Voyagerroc-Code) in #287, the
+  first outside contribution to this repository, and placed better than the version written here:
+  in `version.go`'s `init()`, beside the variable and the subcommand that prints it, rather than
+  split between the root command and `Execute()`.
 - **The SSH failure hint recommended `--key` even when `--key` was passed** (#285), sending the
   reader back to their own command line instead of to the target that was refusing them. The hint
   is now chosen from whether a key was supplied and whether an agent is reachable.
