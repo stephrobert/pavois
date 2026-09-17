@@ -36,6 +36,15 @@ NEVER_AUTO = {
         {"dangerous", "manual"},
         "breaks container runtimes and any overlay-based root filesystem.",
     ),
+    "sudo-noexec": (
+        {"dangerous", "manual"},
+        "`Defaults noexec` forbids a sudo command from executing another one, and a package "
+        "manager execs its own helpers: `sudo apt-get install` fails on dpkg-preconfigure, "
+        "measured on a clean Ubuntu 24.04. A machine whose operator cannot install a package is "
+        "not administrable. The control itself is sound (vi and less genuinely cannot shell out "
+        "under it, measured against a control group), so it is held back rather than dropped, and "
+        "its remediation carves out the package managers explicitly.",
+    ),
     "sudo-requiretty": (
         {"dangerous", "manual"},
         "Defaults requiretty forbids every sudo without a terminal: Ansible without a pty, cron, "

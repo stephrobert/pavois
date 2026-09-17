@@ -1744,7 +1744,10 @@ func (h hostShell) push(src, dst string) error {
 		if err != nil {
 			return err
 		}
-		return os.WriteFile(dst, b, 0o600)
+		// Both ends are pavois's own: src is the temp recipe it just wrote, dst is the fixed
+		// /tmp/pavois-harden.rb the converge reads. Neither is operator input, and on a local
+		// target this is the copy that replaces scp (#200).
+		return os.WriteFile(dst, b, 0o600) //nolint:gosec // both paths are pavois's own constants
 	}
 	// -O: the legacy SCP protocol, over an exec channel. Modern scp speaks SFTP by default, and a
 	// stock debian13 (OpenSSH 10) declares no `Subsystem sftp`, so an sftp transfer dies with
@@ -1761,7 +1764,9 @@ func (h hostShell) fetch(src, dst string) error {
 		if err != nil {
 			return err
 		}
-		return os.WriteFile(dst, b, 0o600)
+		// src is the archive the capture script just produced at a fixed path; dst is the restore
+		// point directory pavois chose. Neither comes from the target or from a flag.
+		return os.WriteFile(dst, b, 0o600) //nolint:gosec // both paths are pavois's own constants
 	}
 	c := exec.Command("scp", append(append([]string{"-O"}, append(sshOptsFor(h.key), h.target+":"+src)...), dst)...) //nolint:gosec // fixed args, operator target
 	c.Stderr = os.Stderr

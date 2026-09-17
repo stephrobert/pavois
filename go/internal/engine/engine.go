@@ -842,6 +842,12 @@ func RunOnTarget(o Options) (int, error) {
 	// its own convenience has lost the argument, and `noexec` there is not dangerous, it is
 	// correct. The answer is to stop assuming any particular directory is executable: /tmp, /var,
 	// /var/tmp and /home all have a noexec control in this very corpus. So the target is asked.
+	// Before hunting for a directory: a global `Defaults noexec` forbids the engine from executing
+	// anything at all, and no directory fixes that. Checking it first turns `exit 126` into a
+	// sentence naming the control responsible and the two ways round it (#288).
+	if o.Sudo && sudoForbidsExec(sshOut) {
+		return 2, noexecError(o.Target)
+	}
 	scratch, err := execDirOnTarget(sshOut, sudoPrefix(o))
 	if err != nil {
 		return 2, err
