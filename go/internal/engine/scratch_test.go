@@ -14,9 +14,17 @@ import (
 // The probe is the fix, so these tests pin what it does rather than what it should find: a fake
 // target answers for each candidate, and the choice is asserted.
 
-// fakeTarget answers the probe as a machine would: a directory whose name is in `exec` returns its
-// own path, everything else returns nothing (which is what a noexec mount produces, since the
-// script is created, chmod'd, and then refused at exec time).
+// expanded is what a target actually prints back. The candidate list holds `$HOME/.pavois-run`,
+// but the remote shell expands it before `printf` ever sees it, so the answer is an absolute path.
+// The first version of this fake returned the candidate verbatim and modelled the wrong side of the
+// exchange, which is how a test ends up asserting a shape the product never produces.
+func expanded(cand string) string {
+	return strings.Replace(cand, "$HOME", "/home/tester", 1)
+}
+
+// fakeTarget answers the probe as a machine would: a directory listed in `execOK` returns its own
+// expanded path, everything else fails the way a noexec mount does, since the script is created,
+// chmod'd, and then refused at exec time.
 func fakeTarget(execOK ...string) func(string) (string, error) {
 	ok := map[string]bool{}
 	for _, d := range execOK {
@@ -28,7 +36,7 @@ func fakeTarget(execOK ...string) func(string) (string, error) {
 				continue
 			}
 			if ok[cand] {
-				return cand, nil
+				return expanded(cand), nil
 			}
 			return "", fmt.Errorf("exit 126")
 		}
@@ -43,7 +51,7 @@ func TestExecDirPrefersTheUsersOwnSpace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("no directory chosen on a host where everything works: %v", err)
 	}
-	if got != "$HOME/.pavois-run" {
+	if got != "/home/tester/.pavois-run" {
 		t.Errorf("chose %q, want the user's own space first", got)
 	}
 }
@@ -77,6 +85,37 @@ func TestExecDirExplainsItselfWhenNothingCanExecute(t *testing.T) {
 	// And it must offer the way out, which is the transport that needs nothing executable there.
 	if !strings.Contains(msg, "WITHOUT --on-target") {
 		t.Errorf("the error does not offer the fallback:\n%s", msg)
+	}
+}
+
+// The defect this fix shipped with, before the scenario caught it on a VM.
+//
+// The probe script PRINTS, and its "ok" landed on stdout right before the path. The caller got
+// "ok\n/home/tester/.pavois-run" and handed scp a two-line destination, which the remote shell read
+// as a command on line 1 and a path on line 2:
+//
+//	bash: line 2: /home/tester/.pavois-run/profile: No such file or directory
+//
+// A login banner, a chatty /etc/profile or a sudo lecture does the same thing. The answer is a path
+// or it is nothing.
+func TestExecDirIgnoresAnythingPrintedBeforeThePath(t *testing.T) {
+	noisy := func(string) (string, error) {
+		return "ok\nWelcome to Ubuntu 24.04.5 LTS\n/home/tester/.pavois-run\n", nil
+	}
+	got, err := execDirOnTarget(noisy, "")
+	if err != nil {
+		t.Fatalf("a chatty target defeated the probe: %v", err)
+	}
+	if got != "/home/tester/.pavois-run" {
+		t.Errorf("chose %q; a banner or the probe's own output leaked into the path", got)
+	}
+}
+
+// And a target that says only noise, with no path, is a target with no answer.
+func TestExecDirRefusesAnAnswerThatIsNotAPath(t *testing.T) {
+	_, err := execDirOnTarget(func(string) (string, error) { return "ok\n", nil }, "")
+	if err == nil {
+		t.Error("\"ok\" was accepted as a directory")
 	}
 }
 
