@@ -27,12 +27,19 @@
     "bp28": "R39"
   },
   "check": [
-    "describe command('grep -rqE \\'^[^#]*Defaults[^#]*\\bnoexec\\b\\' /etc/sudoers /etc/sudoers.d/ 2>/dev/null && echo ok || echo ko') do",
-    "  its('stdout.strip') { should eq 'ok' }",
+    "describe command(\"grep -rhE '^[[:space:]]*Defaults[[:space:]]' /etc/sudoers /etc/sudoers.d/ 2>/dev/null | grep -E 'noexec' | grep -cv '!noexec'\") do",
+    "  its('stdout.strip') { should_not cmp 0 }",
+    "end",
+    "",
+    "# Visibility rather than a verdict: the exceptions are named in the report, so a reader sees",
+    "# what the global default has been carved out for instead of a bare PASS. A scoped override is",
+    "# legitimate (the remediation writes one) and it is never invisible.",
+    "describe command(\"grep -rhE 'Defaults[!:@>][^#]*!noexec|EXEC:' /etc/sudoers /etc/sudoers.d/ 2>/dev/null | head -5\") do",
+    "  its('exit_status') { should cmp 0 }",
     "end"
   ],
   "remediation": {
-    "content": "Defaults noexec\n",
+    "content": "# Global hardening: a command run through sudo may not execute another one.\n# ANSSI BP-028 R39, SSG sudo_add_noexec.\nDefaults noexec\n\n# The exception, and the reason it exists: applied globally, noexec breaks\n# package installation, because the package manager execs its own helpers.\n# A machine an operator cannot install a package on is not administrable.\n# Measured on a clean VM before this exception was written.\n#\n# It does hand the package manager arbitrary root execution (apt-get -o\n# Pre-Invoke runs any command), which is moot for an account that already\n# holds ALL=(ALL) ALL and an escalation wherever it is granted narrowly.\nCmnd_Alias PAVOIS_PKG_MGR = \\\n    /usr/bin/apt, \\\n    /usr/bin/apt-get, \\\n    /usr/bin/dpkg\n\nDefaults!PAVOIS_PKG_MGR !noexec\n",
     "group": "root",
     "mode": "0440",
     "owner": "root",
