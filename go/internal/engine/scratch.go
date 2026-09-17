@@ -49,14 +49,24 @@ func execDirOnTarget(ssh func(string) (string, error), sudo string) (string, err
 			`d=%s; mkdir -p "$d" 2>/dev/null || exit 1; `+
 				`printf '#!/bin/sh\necho ok\n' > "$d/.probe" 2>/dev/null || exit 1; `+
 				`chmod 0700 "$d/.probe" 2>/dev/null || exit 1; `+
-				`"$d/.probe" 2>/dev/null; rc=$?; rm -f "$d/.probe"; `+
+				// >/dev/null, not just 2>/dev/null: the probe script PRINTS, and its "ok" landed on
+				// stdout right before the path did. The caller then got "ok\n/home/tester/.pavois-run"
+				// and scp was handed a two-line destination, which the remote shell read as a command
+				// on line 1 and a path on line 2:
+				//   bash: line 2: /home/tester/.pavois-run/profile: No such file or directory
+				// The probe's job is its exit code; anything it says belongs nowhere.
+				`"$d/.probe" >/dev/null 2>&1; rc=$?; rm -f "$d/.probe"; `+
 				`[ "$rc" = 0 ] && printf '%%s' "$d"`, cand)
 		if sudo != "" && strings.HasPrefix(cand, "/opt") {
 			// /opt is root-owned on every supported system; the rest are reachable as the user.
 			probe = sudo + "sh -c '" + strings.ReplaceAll(probe, "'", `'\''`) + "'"
 		}
 		out, err := ssh(probe)
-		if dir := strings.TrimSpace(out); err == nil && dir != "" {
+		// The LAST line, and a path only. A login shell can print a banner, a profile can echo, and
+		// any of it would be prepended to the answer: the first version of this shipped a two-line
+		// path to scp. A directory never contains a newline, so anything before the last one is
+		// noise by definition.
+		if dir := lastPath(out); err == nil && dir != "" {
 			return dir, nil
 		}
 		tried = append(tried, cand)
@@ -67,6 +77,19 @@ func execDirOnTarget(ssh func(string) (string, error), sudo string) (string, err
 		"  to the target and runs it there, so it needs one executable directory.\n"+
 		"  scan over ssh WITHOUT --on-target: slower, and it needs nothing executable on the target",
 		strings.Join(tried, ", "))
+}
+
+// lastPath returns the last non-empty line of the target's answer, and only if it looks like an
+// absolute path. Belt and braces: the shape is checked as well as the position, so a banner ending
+// in a word cannot be mistaken for a directory.
+func lastPath(out string) string {
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		if s := strings.TrimSpace(lines[i]); strings.HasPrefix(s, "/") {
+			return s
+		}
+	}
+	return ""
 }
 
 // sudoPrefix renders the sudo the caller asked for, if any, in the form the probes use.
