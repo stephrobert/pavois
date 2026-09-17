@@ -422,8 +422,22 @@ func ResolveProfile(root, profile string) (string, error) {
 		return profile, nil
 	}
 	// Fallback: a standalone released binary has no profiles/ on disk but embeds the corpus.
-	if dir, ok := corpus.Extract(filepath.Join(os.TempDir(), "pavois-corpus"), profile); ok {
+	//
+	// The extraction directory is per-user. It used to be a single /tmp/pavois-corpus shared by
+	// everyone, and `--sudo` on a local target now re-runs the scan as root: the scan created that
+	// directory owned by root, and the user's next `harden plan` could no longer write into it.
+	// Extract then failed and the error said "unknown profile", about a profile that was embedded
+	// the whole time. A root scan poisoned every unprivileged run that followed it.
+	dest := filepath.Join(os.TempDir(), fmt.Sprintf("pavois-corpus-%d", os.Getuid()))
+	if dir, ok := corpus.Extract(dest, profile); ok {
 		return dir, nil
+	}
+	// "Not embedded" and "embedded but I could not write it out" are different problems with
+	// different fixes, and answering the second with the first sends the reader to `pavois
+	// profiles`, which will list the profile they were just told does not exist.
+	if corpus.Has(profile) {
+		return "", fmt.Errorf("profile %s is embedded in this binary but could not be extracted to %s: "+
+			"check that directory is writable (TMPDIR moves it)", profile, dest)
 	}
 	return "", fmt.Errorf("unknown profile: %s (see: pavois profiles)", profile)
 }
@@ -704,7 +718,17 @@ func Run(o Options) (int, error) {
 	if runErr != nil {
 		var ee *exec.ExitError
 		if errors.As(runErr, &ee) {
-			return ee.ExitCode(), nil // 100/101 = controls are failing, usable in CI
+			// ONLY 100 and 101 mean "the scan ran and controls are failing", which is a verdict
+			// and belongs in the exit code. Every other code is the engine refusing to run, and
+			// treating it as a verdict is what produced the double error in #282: cinc rejected
+			// --sudo and exited 1, this returned (1, nil), and the caller then reported the JSON
+			// that was never written as `no such file or directory`. The real cause scrolled past
+			// as the FIRST of two messages, and the second one pointed at the wrong thing.
+			if code := ee.ExitCode(); code == 100 || code == 101 {
+				return code, nil
+			}
+			return 2, fmt.Errorf("the scan engine refused to run (cinc-auditor exited %d); "+
+				"its own message is above", ee.ExitCode())
 		}
 		return 2, runErr
 	}

@@ -53,7 +53,7 @@ head_ "the tag"
 # The same shape release.yml's guard job enforces. Checked here too so the answer arrives before
 # the push rather than after it: `tags: v*` matches v0.9.0-clean-room, a lab tag this repository
 # already carries.
-if printf '%s' "$VERSION" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-(rc|beta|alpha)\.[0-9]+)?$'; then
+if grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-(rc|beta|alpha)\.[0-9]+)?$' <<<"$VERSION"; then
   ok "$VERSION is a release version"
 else
   ko "$VERSION is not a release version" "only vX.Y.Z, optionally -rc.N / -beta.N / -alpha.N"

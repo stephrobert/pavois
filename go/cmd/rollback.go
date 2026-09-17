@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -407,14 +406,14 @@ func runHardenRollback(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("read sudo password: %w", err)
 	}
 	opts := sshOptsFor(rbKey)
+	// The machine being rolled back: remote over ssh, or this one when the target is local (#200).
+	host := newHostShell(target, rbKey)
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: shipping the restore point back…")
 	// -O: the legacy SCP protocol, over an exec channel. Modern scp speaks SFTP by default,
 	// and a stock debian13 (OpenSSH 10) declares no `Subsystem sftp`, so an sftp transfer dies
 	// with "subsystem request failed on channel 0", measured on a fresh VM. -O needs no
 	// subsystem and works on every target we support.
-	scp := exec.Command("scp", append(append([]string{"-O"}, append(opts, tarPath)...), target+":/tmp/pavois-restore-point.tar.gz")...) //nolint:gosec // fixed args
-	scp.Stdout, scp.Stderr = os.Stderr, os.Stderr
-	if err := scp.Run(); err != nil {
+	if err := host.push(tarPath, "/tmp/pavois-restore-point.tar.gz"); err != nil {
 		return fmt.Errorf("copy restore point: %w", err)
 	}
 
@@ -427,7 +426,7 @@ func runHardenRollback(cmd *cobra.Command, args []string) error {
 		"tar xzf /tmp/pavois-restore-point.tar.gz -C /tmp/pavois-rp\n" +
 		"cat > /tmp/pavois-rp/pkgs.want.txt <<'PAVOIS_WANT'\n" + want.String() + "PAVOIS_WANT\n" +
 		restoreScript
-	if err := runScriptAsRoot(target, opts, sudoPass, script, "pavois-restore.sh"); err != nil {
+	if err := runScriptAsRoot(target, opts, sudoPass, script, "pavois-restore.sh", host); err != nil {
 		return fmt.Errorf("rollback: %w", err)
 	}
 	_, _ = fmt.Fprintf(out, "\npavois: rolled back. Re-scan to confirm: pavois scan %s --sudo\n", target)
@@ -478,7 +477,7 @@ func presentFromArchive(path string) (map[string]bool, error) {
 // It is shipped as a FILE, not piped: `sudo -S bash -s` reads its script from stdin, which is where
 // the sudo password has to go, so bash was executing the password and the script never ran. The
 // engine already ships its Chef recipe by file for the same reason; so does this.
-func runScriptAsRoot(target string, opts []string, sudoPass, script, name string) error {
+func runScriptAsRoot(target string, opts []string, sudoPass, script, name string, host hostShell) error {
 	f, err := os.CreateTemp("", name)
 	if err != nil {
 		return err
@@ -491,9 +490,7 @@ func runScriptAsRoot(target string, opts []string, sudoPass, script, name string
 		return err
 	}
 	remote := "/tmp/" + name
-	scp := exec.Command("scp", append(append([]string{"-O"}, append(opts, f.Name())...), target+":"+remote)...) //nolint:gosec // fixed args
-	scp.Stderr = os.Stderr
-	if err := scp.Run(); err != nil {
+	if err := host.push(f.Name(), remote); err != nil {
 		return fmt.Errorf("copy %s: %w", name, err)
 	}
 	// Draining the password from ssh-stdin into a shell var is what keeps it off argv and out of
@@ -503,35 +500,30 @@ func runScriptAsRoot(target string, opts []string, sudoPass, script, name string
 	// that never comes. With no password Go leaves Stdin nil, which is /dev/null, and the whole
 	// apply stopped forever right after "photographing the prior state". Measured on Outscale
 	// ami-dc3f861d (Debian 12, NOPASSWD, Defaults use_pty).
-	remoteCmd := "sudo bash " + remote
+	sudoRun := "sudo bash " + remote
 	if sudoPass != "" {
-		remoteCmd = "IFS= read -r __P; sudo -S bash " + remote + " <<<\"$__P\""
+		sudoRun = "sudo -S bash " + remote
 	}
-	c := exec.Command("ssh", append(append([]string{"-tt"}, opts...), target, remoteCmd)...) //nolint:gosec // fixed args
+	c := host.tty(sudoRun, sudoPass)
 	c.Stdout, c.Stderr = os.Stderr, os.Stderr
-	if sudoPass != "" {
-		c.Stdin = strings.NewReader(sudoPass + "\n")
-	}
 	return c.Run()
 }
 
 // writeRestorePoint captures the prior state and stores it locally, BEFORE the converge runs.
-func writeRestorePoint(p planFile, recipe, target, planPath, dir string, opts []string, sudoPass string) (string, error) {
+func writeRestorePoint(p planFile, recipe, target, planPath, dir string, opts []string, sudoPass string, host hostShell) (string, error) {
 	files, pkgs, svcs, irr := plannedTargets(p, recipe)
 	rp := restorePoint{
 		Target: target, OS: p.OS, Created: time.Now().UTC().Format(time.RFC3339),
 		Plan: filepath.Base(planPath), Files: files, Packages: pkgs, Services: svcs, Irreversible: irr,
 	}
-	if err := runScriptAsRoot(target, opts, sudoPass, captureScript(rp), "pavois-capture.sh"); err != nil {
+	if err := runScriptAsRoot(target, opts, sudoPass, captureScript(rp), "pavois-capture.sh", host); err != nil {
 		return "", fmt.Errorf("capture prior state: %w", err)
 	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
-	fetch := exec.Command("scp", append(append([]string{"-O"}, append(opts, target+":/tmp/pavois-restore-point.tar.gz")...), //nolint:gosec // fixed args
-		filepath.Join(dir, "restore-point.tar.gz"))...)
-	fetch.Stderr = os.Stderr
-	if err := fetch.Run(); err != nil {
+	// A local target has the archive on this very filesystem, so there is nothing to fetch (#200).
+	if err := host.fetch("/tmp/pavois-restore-point.tar.gz", filepath.Join(dir, "restore-point.tar.gz")); err != nil {
 		return "", fmt.Errorf("fetch restore point: %w", err)
 	}
 	// Which files actually existed: a rollback DELETES the ones pavois created, so getting this

@@ -166,19 +166,17 @@ func flat(v any) []string {
 
 func runOscal(_ *cobra.Command, _ []string) error {
 	root := findRoot()
-	dir := filepath.Join(root, "docs", "reference", "pavois-content")
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return fmt.Errorf("read reference: %w", err)
+	// The checkout's reference, or the binary's own: exporting an empty catalogue because the
+	// current directory has no docs/ is not a defensible answer for a released binary (#286).
+	names := referenceOSes(root)
+	if len(names) == 0 {
+		return fmt.Errorf("no hardening reference found: this binary embeds none and none is on " +
+			"disk. In a checkout, run `mise run regen`")
 	}
 	var oses []string
 	data := map[string]map[string]oRule{}
-	for _, f := range entries {
-		if filepath.Ext(f.Name()) != ".yml" {
-			continue
-		}
-		osn := strings.TrimSuffix(f.Name(), ".yml")
-		b, err := os.ReadFile(filepath.Join(dir, f.Name()))
+	for _, osn := range names {
+		b, err := readReference(root, osn)
 		if err != nil {
 			return err
 		}
@@ -186,7 +184,7 @@ func runOscal(_ *cobra.Command, _ []string) error {
 			Rules map[string]oRule `yaml:"rules"`
 		}
 		if err := yaml.Unmarshal(b, &doc); err != nil {
-			return fmt.Errorf("parse %s: %w", f.Name(), err)
+			return fmt.Errorf("parse %s: %w", osn, err)
 		}
 		oses = append(oses, osn)
 		data[osn] = doc.Rules

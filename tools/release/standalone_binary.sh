@@ -57,10 +57,10 @@ fi
 #    report, so this needs no target, no transport and no CINC engine: it isolates profile
 #    resolution from everything else that could fail.
 out=$(cd "$work" && ./pavois scan local --from sample.json --out . 2>&1)
-if printf '%s' "$out" | grep -q 'no bundled profile'; then
+if grep -q 'no bundled profile' <<<"$out"; then
   ko "scan cannot resolve a profile outside the repository" \
      "$(printf '%s' "$out" | grep 'no bundled profile' | head -1)"
-elif printf '%s' "$out" | grep -qE 'grade|Remediable posture'; then
+elif grep -qE 'grade|Remediable posture' <<<"$out"; then
   ok "scan resolves an embedded profile and grades ($(printf '%s' "$out" | grep -oE 'Remediable posture: grade [A-E]' | head -1))"
 else
   ko "scan produced no grade outside the repository" "$(printf '%s' "$out" | tail -2 | tr '\n' ' ')"

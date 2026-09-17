@@ -20,6 +20,15 @@
 # Usage: tools/harden_validate.sh <os> <user@host> <ssh_key> [ssh_user]
 set -euo pipefail
 OS="${1:?os}"; TARGET="${2:?user@host}"; KEY="${3:?ssh key}"; SSHUSER="${4:-pavois}"
+
+# The binary under test. The default wrapper BUILDS from the checkout, so this script
+# has only ever proved the source tree. The defects that reached users lived in the gap between that
+# and the artifact they install: harden apply read docs/reference/audit.rules relative to the
+# current directory, with the error discarded, and a downloaded binary therefore converged a plan
+# with an EMPTY audit ruleset while reporting success.
+#
+#   PAVOIS_BIN=/tmp/pavois-linux-amd64 tools/harden_validate.sh ubuntu2404 pavois@10.0.0.2 ~/.ssh/id
+PV="${PAVOIS_BIN:-bin/pavois}"
 HOST="${TARGET#*@}"
 : "${PAVOIS_SUDO_PASSWORD:?set PAVOIS_SUDO_PASSWORD}"
 MAX_PASSES="${CK_MAX_PASSES:-3}"
@@ -33,7 +42,7 @@ say(){ printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 scan(){
   local out
   out="$SP/scan-$OS-$(date +%H%M%S).log"
-  bin/pavois scan "$TARGET" --profile "linux/$OS" --sudo --on-target --key "$KEY" >"$out" 2>&1
+  "$PV" scan "$TARGET" --profile "linux/$OS" --sudo --on-target --key "$KEY" >"$out" 2>&1
   local rc=$?
   grep -aoE "Remediable posture: grade [A-E] \([0-9]+/[0-9]+[^)]*\)" "$out" | tail -1 >> "$SP/postures-$OS.txt"
   tail -3 "$out"
@@ -54,7 +63,7 @@ J=$(ls -t reports/*"${HOST//./-}"*.json | head -1); echo "report: $J"
 pass=1
 while :; do
   say "pass $pass/$MAX_PASSES: plan from the CURRENT state"
-  bin/pavois harden plan "$TARGET" --sudo --key "$KEY" --from "$J" --out "$PLAN" 2>&1 | tail -1
+  "$PV" harden plan "$TARGET" --sudo --key "$KEY" --from "$J" --out "$PLAN" 2>&1 | tail -1
   enabled=$(uv run --with pyyaml python3 tools/harden_plan_enable.py "$PLAN" --ssh-user "$SSHUSER" \
     ${PAVOIS_SSH_FROM:+--ssh-from "$PAVOIS_SSH_FROM"} | tee /dev/stderr | grep -oE 'enabled [0-9]+' | grep -oE '[0-9]+')
 
@@ -82,7 +91,7 @@ while :; do
   # nothing to diagnose: the fedora row of the first matrix run said "converge: exit status 1" and
   # the cinc stacktrace that explained it was gone. Cheap to keep, impossible to recover.
   applylog="$SP/apply-$OS-pass$pass.log"
-  if bin/pavois harden apply --target "$TARGET" --key "$KEY" --sudo-prompt --yes "$PLAN" >"$applylog" 2>&1; then
+  if "$PV" harden apply --target "$TARGET" --key "$KEY" --sudo-prompt --yes "$PLAN" >"$applylog" 2>&1; then
     tail -2 "$applylog"
   else
     rc=$?
@@ -118,7 +127,7 @@ $SSH "$TARGET" "systemctl is-system-running 2>/dev/null | grep -qvx degraded" >/
 [ "$inv" -eq 0 ] && echo "  invariants OK: firewall up, sshd up, package manager healthy, logging alive"
 
 say "grade"
-bin/pavois scan "$TARGET" --profile "linux/$OS" --sudo --on-target --key "$KEY" 2>&1 | \
+"$PV" scan "$TARGET" --profile "linux/$OS" --sudo --on-target --key "$KEY" 2>&1 | \
   grep -iE "Grade|Remediable posture|controls passing|CRITICAL|kernel-build|install-time"
 
 say "lynis (index)"

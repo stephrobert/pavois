@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 
 	"github.com/spf13/cobra"
@@ -43,10 +42,9 @@ func init() {
 }
 
 func runRules(cmd *cobra.Command, _ []string) error {
-	path := filepath.Join(findRoot(), "docs", "reference", "pavois-content", ruOS+".yml")
-	raw, err := os.ReadFile(path)
+	raw, err := readReference(findRoot(), ruOS)
 	if err != nil {
-		return fmt.Errorf("read reference %s: %w", ruOS, err)
+		return err
 	}
 	var doc struct {
 		Rules map[string]map[string]any `yaml:"rules"`
