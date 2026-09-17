@@ -12,6 +12,7 @@ asserts the untouched tree passes. Run: python3 tools/lint_install_docs_test.py
 from __future__ import annotations
 
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -42,8 +43,36 @@ def planted(mutate) -> tuple[int, str]:
         shutil.copytree(ROOT / "site/src/pages", tree / "site/src/pages")
         (tree / "site/src/data").mkdir(parents=True)
         shutil.copy(ROOT / SOURCE, tree / SOURCE)
+        # A git repository carrying the real newest release tag. Without it `newest_tag()` returns
+        # nothing and the version check SKIPS, so the planted stale version was never examined and
+        # the case reported a pass it had not earned. The harness has to reproduce the condition it
+        # claims to test.
+        subprocess.run(["git", "init", "-q"], cwd=tree, check=False, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-q", "--allow-empty", "-m", "base"],
+            cwd=tree,
+            check=False,
+            capture_output=True,
+        )
+        if tag := _newest_release_tag():
+            subprocess.run(["git", "tag", tag], cwd=tree, check=False, capture_output=True)
         mutate(tree)
         return run(tree)
+
+
+def _newest_release_tag() -> str:
+    """The repository's newest vX.Y.Z, so the copy can carry the same one."""
+    out = subprocess.run(
+        ["git", "tag", "--list", "v[0-9]*", "--sort=-v:refname"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout
+    for line in out.splitlines():
+        if re.match(r"^v\d+\.\d+\.\d+$", line.strip()):
+            return line.strip()
+    return ""
 
 
 def main() -> int:
@@ -99,6 +128,25 @@ def main() -> int:
 
     rc, out = planted(half_told)
     check("an entry page that drops a first-run claim", rc, out, "both entry pages must")
+
+    # 6. A site still handing out the previous release. This is the defect that actually happened,
+    #    twice: after v0.1.1 shipped the site offered the v0.1.0 artifacts, which could not resolve
+    #    a profile on any machine, and after v0.1.2 it offered v0.1.1. A reader downloads the
+    #    version this constant names, not the one that was tagged.
+    def stale_version(tree: pathlib.Path) -> None:
+        p = tree / SOURCE
+        s = p.read_text()
+        cur = re.search(r"export const VERSION = '(v[^']+)'", s)
+        if not cur:
+            # Not an assert: bandit refuses those, and rightly, since -O strips them and the
+            # check would vanish from an optimised run.
+            raise RuntimeError("no VERSION constant in install.ts to age")
+        major, minor, patch = (int(x) for x in cur.group(1)[1:].split("-")[0].split("."))
+        old = f"v{major}.{minor}.{max(patch - 1, 0)}"
+        p.write_text(s.replace(cur.group(0), f"export const VERSION = '{old}'", 1))
+
+    rc, out = planted(stale_version)
+    check("a site still handing out the previous release", rc, out, "the newest tag is")
 
     rc, out = planted(stale)
     check("a fragment that no longer exists in the source", rc, out, "guards nothing")

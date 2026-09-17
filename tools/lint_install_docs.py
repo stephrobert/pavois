@@ -85,6 +85,38 @@ ENTRY_CLAIMS = [
 ]
 
 
+# The release the site hands out. It is one constant, bumped by hand at each release, and it was
+# forgotten twice: after v0.1.1 the site still offered the v0.1.0 artifacts, which could not resolve
+# a profile on any machine, and after v0.1.2 it still offered v0.1.1. A reader following the install
+# page downloads the version this says, not the one that was tagged.
+#
+# The check has no network: it compares the constant to the newest tag in the repository, which is
+# what a release creates. A tag that does not exist yet (the constant bumped before the tag) is not
+# flagged, since that is the order the release process asks for.
+def newest_tag() -> str:
+    import subprocess  # noqa: PLC0415 - only needed here, and only in a checkout
+
+    try:
+        out = subprocess.run(  # noqa: S603
+            ["git", "tag", "--list", "v[0-9]*", "--sort=-v:refname"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    # RELEASE tags only. `--sort=-v:refname` ranked `v0.9.0-clean-room` above `v0.1.2`, and this
+    # repository genuinely carries lab tags: a check that compares against one would demand the site
+    # advertise a release that was never published. Same shape the preflight enforces on a tag.
+    release = re.compile(r"^v[0-9]+\.[0-9]+\.[0-9]+(-(rc|beta|alpha)\.[0-9]+)?$")
+    for line in out.splitlines():
+        if release.match(line.strip()):
+            return line.strip()
+    return ""
+
+
 def fail(problems: list[str]) -> int:
     for p in problems:
         print(p)
@@ -140,6 +172,23 @@ def main() -> int:
                     f"  does not export\n"
                     f"  known blocks: {', '.join(sorted(exported))}"
                 )
+
+    # The version the site hands out must be the one that was released. Forgotten twice: the site
+    # offered v0.1.0 after v0.1.1 shipped, and v0.1.1 after v0.1.2. Nothing caught either, because
+    # nothing was looking.
+    m = re.search(r"export const VERSION = '(v[^']+)'", source_text)
+    tag = newest_tag() if m else ""
+    if not m:
+        problems.append(
+            f"{SOURCE.relative_to(ROOT)}: no VERSION constant; the install links carry no version"
+        )
+    elif tag and m.group(1) != tag:
+        rel = SOURCE.relative_to(ROOT)
+        problems.append(
+            f"{rel}: the site hands out {m.group(1)}, the newest tag is {tag}\n"
+            f"  a reader following the install page downloads the version this names.\n"
+            f"  Bump it, or tag {m.group(1)} if that is the release being prepared."
+        )
 
     # The two entry points must tell the same story. A claim that only one of them carries is a
     # claim half the readers never see, and which of the two they opened is not something the
