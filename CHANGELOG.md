@@ -14,9 +14,9 @@ its content digest**, so an archived result stays interpretable long after the t
 
 ## [0.1.3] - 2026-09-17
 
-One defect, and it is the one that matters: the artifact 0.1.2 published could not read its own
-reference. Everything the release fixed was unreachable for anyone who downloaded it. The baseline
-is unchanged, so a 0.1.2 report stays comparable to a 0.1.3 one.
+One class of defect, in three places: the artifact 0.1.2 published could not read what it needs, and
+nothing anywhere said so. Everything that release fixed was unreachable for anyone who downloaded
+it. The baseline is unchanged, so a 0.1.2 report stays comparable to a 0.1.3 one.
 
 ### Fixed
 
@@ -34,12 +34,21 @@ is unchanged, so a 0.1.2 report stays comparable to a 0.1.3 one.
   when the corpus was the only embedded thing, and when the reference embed was added the mise task
   learned about it and the workflow did not.
 
-- **`pavois oscal` published a catalogue dated 1970.** `docs/reference/baseline.yml` was read from
-  the checkout and, on any error, the defaults were kept, so a downloaded binary emitted a catalogue
-  declaring itself version 0.0.0, released 1970-01-01. Nothing failed, which is why it survived two
-  releases: silently wrong output from a compliance tool is worse than an error, because the
-  artifact gets filed. The baseline metadata is embedded now, and the release guard reads the
-  emitted version rather than the exit code.
+  The other half of the fix is that the per-OS reference now travels as an artifact.
+  `docs/reference/pavois-content/` is rendered from `rules.yml` and gitignored, so the build job
+  cannot copy it out of its own checkout; the job that renders it publishes it, exactly as it
+  already published the rule corpus.
+
+- **`pavois oscal` would have published a catalogue dated 1970.** `docs/reference/baseline.yml` was
+  read from the checkout and, on any error, the defaults were kept. No published binary ever emitted
+  that catalogue, because `oscal` failed earlier, on the reference it also could not read: 0.1.0 and
+  0.1.1 answered `read reference: open .../pavois-content: no such file or directory`, and 0.1.2
+  answered `this binary embeds none`. Embedding the reference is what would have let the command
+  reach the baseline and succeed with the wrong one, which is the dangerous outcome: nothing fails,
+  and a compliance artifact declaring itself version 0.0.0, released 1970-01-01, gets filed. It was
+  measured on a build of this branch that carried the reference and not yet the baseline. The
+  baseline metadata is embedded now, and the release guard reads the emitted version rather than the
+  exit code.
 
 - **`pavois verify` could not find its probes outside a checkout.** Same defect as #286, a fifth
   file: `docs/reference/behavioral-probes.yml` was read with a bare `os.ReadFile` under `findRoot()`

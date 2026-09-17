@@ -119,15 +119,24 @@ def check(root: pathlib.Path) -> list[str]:
     # running release.yml itself. A generated source has to reach the build job some other way, so
     # the workflow must name it.
     workflow = (root / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    # A `path:` value, not a substring of the file. The first version matched anywhere in the
+    # workflow, and release.yml explains this very defect in a comment that contains the path, so
+    # deleting both artifact steps and keeping the comment produced zero findings: the rule was
+    # satisfied by the prose describing what it was meant to prevent.
+    restored = {
+        m.group(1).strip().rstrip("/")
+        for m in re.finditer(r"^\s*path:\s*(\S+)\s*$", workflow, re.MULTILINE)
+    }
     for src in copy_sources(root):
         src_dir = pathlib.Path(src).parent if any(c in src for c in "*?[") else pathlib.Path(src)
         if not is_generated(root, src_dir):
             continue
-        if str(src_dir) not in workflow:
+        # The build job checks out into pavois/, so the download path is prefixed there.
+        if not any(p == str(src_dir) or p.endswith("/" + str(src_dir)) for p in restored):
             problems.append(
                 f"{src_dir}: embed_reference.sh copies from it, git does not hold it (it is\n"
-                f"  generated), and release.yml never names it. The build job checks out the\n"
-                f"  repository, so the copy will fail with 'nothing matches {src}'.\n"
+                f"  generated), and no release.yml step restores it to that path. The build job\n"
+                f"  checks out the repository, so the copy fails with 'nothing matches {src}'.\n"
                 f"  Render it in the release job, or upload it from the job that does and\n"
                 f"  download it before the copy."
             )
@@ -190,9 +199,19 @@ def selftest(root: pathlib.Path) -> int:
 
         # And the second half: a copy whose SOURCE the release job will not have. This is the
         # near-miss that act caught, reduced to a rule.
+        #
+        # Only the `path:` values are removed; every comment mentioning the directory is left in
+        # place. That is deliberate, and it is how the first version of this rule was shown to be
+        # decorative: it searched the whole workflow for the path, and release.yml explains this
+        # exact defect in a comment that contains it, so the prose satisfied the rule.
         wf = tree / ".github/workflows/release.yml"
         wf.write_text(
-            wf.read_text().replace("docs/reference/pavois-content", "docs/reference/elsewhere")
+            re.sub(
+                r"^(\s*path:\s*)\S*docs/reference/pavois-content\s*$",
+                r"\1docs/reference/elsewhere",
+                wf.read_text(),
+                flags=re.MULTILINE,
+            )
         )
         problems = check(tree)
         if any("nothing matches" in p for p in problems):

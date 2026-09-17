@@ -71,6 +71,18 @@ EVENT
 docker image inspect "$IMAGE" >/dev/null 2>&1 \
   || { echo "missing runner image $IMAGE (docker pull $IMAGE)" >&2; exit 2; }
 
+# act copies the WORKING TREE, including files git does not hold; GitHub checks out the commit.
+# The first green run here exercised tools/release/embed_reference.sh while it was still untracked,
+# so it proved something about a script the real runner would not have found. A dirty tree makes
+# this check say more than it knows, which is the failure mode the whole file exists to avoid.
+dirty=$(git status --porcelain)
+if [ -n "$dirty" ]; then
+  echo "the working tree is not clean, and act would build THAT rather than the commit:" >&2
+  printf '%s\n' "$dirty" | head -10 >&2
+  echo "commit or stash first (ACT_ALLOW_DIRTY=1 to override, knowing what it costs)" >&2
+  [ "${ACT_ALLOW_DIRTY:-}" = "1" ] || exit 2
+fi
+
 # The artifact hop, and ONLY the artifact hop, is replaced by a local stub.
 #
 # act's own artifact server rejects what actions/upload-artifact@v7 sends

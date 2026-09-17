@@ -40,6 +40,11 @@ runs:
         else
           cp "$ART_PATH" "$dest/"
         fi
+        # actions/upload-artifact v4+ does not preserve file modes: what comes back is 0644. The
+        # stub used to keep the executable bit, so a step that RUNS a downloaded artifact would
+        # pass here and fail on GitHub with Permission denied. A stub must never be more permissive
+        # than the thing it replaces.
+        find "$dest" -type f -exec chmod 0644 {} +
         n=$(find "$dest" -type f | wc -l)
         [ "$n" -gt 0 ] || { echo "::error::artifact $ART_NAME is empty"; exit 1; }
-        echo "act stub: stored artifact $ART_NAME ($n file(s))"
+        echo "act stub: stored artifact $ART_NAME ($n file(s), modes normalised to 0644)"
