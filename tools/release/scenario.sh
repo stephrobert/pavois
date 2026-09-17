@@ -119,31 +119,36 @@ fi
 say "  $(basename "$BIN"), $(stat -c%s "$BIN") bytes"
 
 # ---------------------------------------------------------------- a machine that has nothing
-say ""
-say "== a fresh VM, which has never seen this project"
-incus delete "$VM" --force >/dev/null 2>&1
-# init + device + start, NOT launch + restart: `incus restart` on a fresh VM waits for an ACPI
-# shutdown it will not get, and hangs for as long as you let it.
-incus init "$IMAGE" "$VM" --vm -c limits.cpu=2 -c limits.memory=2GiB >/dev/null 2>&1 \
-  || { say "could not create the VM"; exit 1; }
-incus config device add "$VM" eth0 nic network=incusbr0 >/dev/null 2>&1
-incus start "$VM" >/dev/null 2>&1 || { say "could not start the VM"; exit 1; }
-for _ in $(seq 1 72); do incus exec "$VM" -- true >/dev/null 2>&1 && break; sleep 5; done
-incus exec "$VM" -- true >/dev/null 2>&1 || { say "the agent never answered"; exit 1; }
-say "  up: $(vmsh '. /etc/os-release && echo "$PRETTY_NAME"' | tail -1)"
+#
+# A FUNCTION, because the scenario needs this twice. The two convergences cannot share a VM: the
+# first one hardens it, and the second then measures ground the first changed. That is not a
+# hypothesis, it is #288: after a full apply the converge mounts the scratch directories `noexec`,
+# and `scan --on-target` dies with `sh: 1: env: Permission denied` (exit 126). Reordering does not
+# help, since whichever runs first spoils the other.
+provision_vm() {
+  incus delete "$VM" --force >/dev/null 2>&1
+  # init + device + start, NOT launch + restart: `incus restart` on a fresh VM waits for an ACPI
+  # shutdown it will not get, and hangs for as long as you let it.
+  incus init "$IMAGE" "$VM" --vm -c limits.cpu=2 -c limits.memory=2GiB >/dev/null 2>&1 \
+  || { say "could not create the VM"; return 1; }
+  incus config device add "$VM" eth0 nic network=incusbr0 >/dev/null 2>&1
+  incus start "$VM" >/dev/null 2>&1 || { say "could not start the VM"; return 1; }
+  for _ in $(seq 1 72); do incus exec "$VM" -- true >/dev/null 2>&1 && break; sleep 5; done
+  incus exec "$VM" -- true >/dev/null 2>&1 || { say "the agent never answered"; return 1; }
+  say "  up: $(vmsh '. /etc/os-release && echo "$PRETTY_NAME"' | tail -1)"
 
-# An unprivileged account with passwordless sudo. Running everything as root would hide #281, which
-# is about what happens when you are NOT root, and that is how people actually run a scanner.
-vmsh 'id tester >/dev/null 2>&1 || useradd -m -s /bin/bash tester' >/dev/null
-vmsh 'echo "tester ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/tester && chmod 0440 /etc/sudoers.d/tester' >/dev/null
+  # An unprivileged account with passwordless sudo. Running everything as root would hide #281, which
+  # is about what happens when you are NOT root, and that is how people actually run a scanner.
+  vmsh 'id tester >/dev/null 2>&1 || useradd -m -s /bin/bash tester' >/dev/null
+  vmsh 'echo "tester ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/tester && chmod 0440 /etc/sudoers.d/tester' >/dev/null
 
-# sshd and this machine's public key, because `harden apply` has no local path: it scp's a recipe to
-# the target and runs cinc-client there (#200, the ssh/scp route is hard-wired). So the apply half
-# of the scenario runs FROM here, over ssh, INTO the VM. That is also the documented usage, and it
-# keeps the rule that nothing hardens the workstation: this machine is the control host, the VM is
-# the target.
-PUBKEY=$(cat "${PAVOIS_SSH_KEY:-$HOME/.ssh/id_ed25519}.pub" 2>/dev/null || true)
-if [ -n "$PUBKEY" ]; then
+  # sshd and this machine's public key, because `harden apply` has no local path: it scp's a recipe to
+  # the target and runs cinc-client there (#200, the ssh/scp route is hard-wired). So the apply half
+  # of the scenario runs FROM here, over ssh, INTO the VM. That is also the documented usage, and it
+  # keeps the rule that nothing hardens the workstation: this machine is the control host, the VM is
+  # the target.
+  PUBKEY=$(cat "${PAVOIS_SSH_KEY:-$HOME/.ssh/id_ed25519}.pub" 2>/dev/null || true)
+  if [ -n "$PUBKEY" ]; then
   vmsh 'mkdir -p /home/tester/.ssh && chmod 700 /home/tester/.ssh' >/dev/null
   # Written through a here-doc on the VM rather than scp: since OpenSSH 9, scp speaks SFTP and these
   # cloud images ship no sftp-server.
@@ -151,13 +156,18 @@ if [ -n "$PUBKEY" ]; then
   vmsh 'chmod 600 /home/tester/.ssh/authorized_keys && chown -R tester:tester /home/tester/.ssh' >/dev/null
   vmsh 'command -v sshd >/dev/null || (apt-get update -qq && apt-get install -y -qq openssh-server)' >/dev/null
   vmsh 'systemctl enable --now ssh 2>/dev/null || systemctl enable --now sshd 2>/dev/null' >/dev/null
-fi
-VM_IP=$(vmsh "ip -4 -o addr show scope global | awk '{print \$4}' | cut -d/ -f1 | head -1" | tr -d '[:space:]')
-say "  reachable at ${VM_IP:-<no address>}"
+  fi
+  VM_IP=$(vmsh "ip -4 -o addr show scope global | awk '{print \$4}' | cut -d/ -f1 | head -1" | tr -d '[:space:]')
+  say "  reachable at ${VM_IP:-<no address>}"
 
-incus file push "$BIN" "$VM/usr/local/bin/pavois" >/dev/null 2>&1 || { say "push failed"; exit 1; }
-vm chmod 0755 /usr/local/bin/pavois >/dev/null
-say "  installed at /usr/local/bin/pavois, and nothing else was copied"
+  incus file push "$BIN" "$VM/usr/local/bin/pavois" >/dev/null 2>&1 || { say "push failed"; return 1; }
+  vm chmod 0755 /usr/local/bin/pavois >/dev/null
+  say "  installed at /usr/local/bin/pavois, and nothing else was copied"
+}
+
+say ""
+say "== a fresh VM, which has never seen this project"
+provision_vm || exit 1
 
 # ---------------------------------------------------------------- 1. it answers at all
 say ""
@@ -223,24 +233,32 @@ say "--- 3. install the engine, running THE DOCUMENTATION'S OWN COMMANDS"
 # omnitruck platform keys (the page lists el/8, el/9, debian/12, ubuntu/24.04...) and the package
 # manager (the block's own trailing comment says "Debian/Ubuntu: sudo apt install ./<file>").
 # Nothing else is touched, so any other drift in the page breaks this step, which is the point.
-{
-  echo 'set -e'
-  echo 'command -v curl >/dev/null || { apt-get update -qq && apt-get install -y -qq curl; }'
-  mise exec -- node --experimental-strip-types tools/doc_commands.mjs --id engine-install \
-    | sed -e 's|p=el&pv=9|p=ubuntu\&pv=24.04|' \
-          -e 's|sudo dnf install -y|sudo apt-get install -y|' \
-          -e 's|^pavois doctor.*|true|'
-} > "$work/install-cinc.sh"
+#
+# A function for the same reason provision_vm() is one: the ssh transport gets its own VM (#288),
+# and that VM needs an engine too.
+install_engine() {
+  {
+    echo 'set -e'
+    echo 'command -v curl >/dev/null || { apt-get update -qq && apt-get install -y -qq curl; }'
+    mise exec -- node --experimental-strip-types tools/doc_commands.mjs --id engine-install \
+      | sed -e 's|p=el&pv=9|p=ubuntu\&pv=24.04|' \
+            -e 's|sudo dnf install -y|sudo apt-get install -y|' \
+            -e 's|^pavois doctor.*|true|'
+  } > "$work/install-cinc.sh"
+  incus file push "$work/install-cinc.sh" "$VM/root/install-cinc.sh" >/dev/null 2>&1
+  if incus exec "$VM" -- bash /root/install-cinc.sh >>"$LOG" 2>&1; then
+    ok "cinc-auditor $(vm cinc-auditor version | tail -1) installed, checksum checked"
+    vm rm -f /root/install-cinc.sh >/dev/null
+    return 0
+  fi
+  ko "could not install the engine" "its output is in $LOG"
+  return 1
+}
+
 say "  the command under test, as the page gives it:"
-sed -n '3,12p' "$work/install-cinc.sh" | sed 's/^/    /' | tee -a "$LOG"
-incus file push "$work/install-cinc.sh" "$VM/root/install-cinc.sh" >/dev/null 2>&1
-if incus exec "$VM" -- bash /root/install-cinc.sh 2>&1 | sed 's/^/  /' | tee -a "$LOG"; then
-  ok "cinc-auditor $(vm cinc-auditor version | tail -1) installed, checksum checked"
-else
-  ko "could not install the engine (output above)" "the scenario cannot continue without it"
-  exit "$fails"
-fi
-vm rm -f /root/install-cinc.sh >/dev/null
+mise exec -- node --experimental-strip-types tools/doc_commands.mjs --id engine-install \
+  | sed 's/^/    /' | tee -a "$LOG"
+install_engine || exit "$fails"
 out=$(asuser 'pavois doctor')
 has ready "$(lower "$out")" \
   && ok "doctor now says the host is ready" \
@@ -402,12 +420,44 @@ if [ "${PAVOIS_SCENARIO_APPLY:-1}" = "1" ]; then
     ko "the local apply loaded no audit rules (${before:-0} -> ${after:-0})" \
        "an apply that reports success and changes nothing is exactly the defect"
   fi
+
+  # #288, and this is the assertion that matters: the host has just been HARDENED, so the scan an
+  # operator runs next, to prove the result, must still work. It did not: the converge mounts the
+  # scratch directories noexec, and a --on-target scan copied its profile to /tmp and executed it
+  # there, dying with `sh: 1: env: Permission denied` and exit 126. A tool that hardens a machine
+  # out of its own reach has verified nothing.
+  if [ -n "$VM_IP" ] && [ -f "${PAVOIS_SSH_KEY:-$HOME/.ssh/id_ed25519}" ]; then
+    out=$("$BIN" scan "tester@$VM_IP" --key "${PAVOIS_SSH_KEY:-$HOME/.ssh/id_ed25519}" \
+            --sudo --on-target --out "$work/after" 2>&1 | plain)
+    printf '%s\n' "$out" >> "$LOG"
+    if has 'Permission denied' "$out" || has 'exit 126' "$out"; then
+      ko "--on-target cannot scan the host it just hardened (#288)" \
+         "$(printf '%s' "$out" | grep -iE 'permission denied|126' | head -1 | cut -c1-140)"
+    elif rx 'grade [a-e]' "$(lower "$out")"; then
+      ok "--on-target still scans the host after hardening it (#288)"
+    else
+      ko "--on-target produced no grade on the hardened host" \
+         "$(printf '%s' "$out" | tail -2 | tr '\n' ' ' | cut -c1-160)"
+    fi
+  fi
 else
   note "the local convergence was skipped (PAVOIS_SCENARIO_APPLY=0)"
 fi
 
 say ""
-say "--- 8b. remediation, applied for real, from this machine to the VM over ssh"
+say "--- 8b. remediation, applied for real, from this machine to a VM over ssh"
+#
+# ON A FRESH VM, because 8a hardened the previous one and the two convergences cannot share a
+# machine: after a full apply, `scan --on-target` dies with exit 126 on scratch directories the
+# converge mounted `noexec` (#288). The ssh leg uses --on-target, so it would be measuring the
+# consequences of 8a rather than itself.
+say "  a second VM, because 8a hardened the first one (#288)"
+if ! provision_vm; then
+  ko "could not provision a VM for the ssh transport" "the local transport's result above still stands"
+  VM_IP=""
+else
+  install_engine || ko "could not install the engine on the second VM" "see $LOG"
+fi
 #
 # This exists because stopping at `harden plan` is the same mistake as testing from inside the
 # repository: it leaves half the product unexercised, and that half held the worst defect of the
