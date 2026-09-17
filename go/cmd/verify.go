@@ -2,9 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -43,7 +41,7 @@ func runVerify(cmd *cobra.Command, args []string) error {
 		host = target[i+1:]
 	}
 
-	raw, err := os.ReadFile(filepath.Join(findRoot(), "docs", "reference", "behavioral-probes.yml"))
+	raw, err := readBehavioralProbes(findRoot())
 	if err != nil {
 		return err
 	}

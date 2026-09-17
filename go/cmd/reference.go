@@ -94,6 +94,32 @@ func readAuditRules(root string) ([]byte, error) {
 	return b, nil
 }
 
+// readBaselineMeta returns docs/reference/baseline.yml, from the checkout or from the binary.
+// Its caller keeps hardcoded defaults for the case where neither exists, so the ONLY symptom of
+// this read failing is an OSCAL catalogue that publishes itself as version 0.0.0, released
+// 1970-01-01. Two releases did exactly that.
+func readBaselineMeta(root string) ([]byte, error) {
+	if b, err := os.ReadFile(filepath.Join(root, "docs", "reference", "baseline.yml")); err == nil {
+		return b, nil
+	}
+	return reference.Baseline()
+}
+
+// readBehavioralProbes returns docs/reference/behavioral-probes.yml, from the checkout or from the
+// binary. `pavois verify` used to read it with a bare os.ReadFile and return that error verbatim,
+// so outside a checkout it answered with an internal repository path the user cannot create.
+func readBehavioralProbes(root string) ([]byte, error) {
+	if b, err := os.ReadFile(filepath.Join(root, "docs", "reference", "behavioral-probes.yml")); err == nil {
+		return b, nil
+	}
+	b, err := reference.Probes()
+	if err != nil || len(b) == 0 {
+		return nil, fmt.Errorf("no behavioral probes: this binary embeds none and none is on disk. " +
+			"In a checkout, run `mise run regen`")
+	}
+	return b, nil
+}
+
 func readKernelRecipe(root, osName string) ([]byte, error) {
 	for _, p := range []string{
 		filepath.Join(root, "docs", "reference", "kernel-build", osName+".sh"),

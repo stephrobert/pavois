@@ -12,6 +12,72 @@ its content digest**, so an archived result stays interpretable long after the t
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-17
+
+One defect, and it is the one that matters: the artifact 0.1.2 published could not read its own
+reference. Everything the release fixed was unreachable for anyone who downloaded it. The baseline
+is unchanged, so a 0.1.2 report stays comparable to a 0.1.3 one.
+
+### Fixed
+
+- **The published 0.1.2 binary could not read its own reference.** `scan` worked; `harden plan`,
+  `rules`, `norms` and `oscal` all answered `this binary embeds none and none is on disk`. 0.1.2
+  fixed the code that reads the reference and shipped an artifact with nothing in it to read: the
+  release workflow filled the rule corpus, which is the only embed directory it knew about, and left
+  the three that had just been added holding their `.keep`. An empty `//go:embed` directory is not a
+  build error. Nothing failed anywhere. The binary was simply smaller, and answered that sentence to
+  the first command a user ran.
+
+  The fix is not another copy step. The copy now lives in one script,
+  `tools/release/embed_reference.sh`, which both `mise run embed:reference` and the release workflow
+  run, because duplication is what allowed the drift: the workflow had its own copy step, written
+  when the corpus was the only embedded thing, and when the reference embed was added the mise task
+  learned about it and the workflow did not.
+
+- **`pavois oscal` published a catalogue dated 1970.** `docs/reference/baseline.yml` was read from
+  the checkout and, on any error, the defaults were kept, so a downloaded binary emitted a catalogue
+  declaring itself version 0.0.0, released 1970-01-01. Nothing failed, which is why it survived two
+  releases: silently wrong output from a compliance tool is worse than an error, because the
+  artifact gets filed. The baseline metadata is embedded now, and the release guard reads the
+  emitted version rather than the exit code.
+
+- **`pavois verify` could not find its probes outside a checkout.** Same defect as #286, a fifth
+  file: `docs/reference/behavioral-probes.yml` was read with a bare `os.ReadFile` under `findRoot()`
+  and the error returned verbatim, so the command answered with an internal repository path the
+  reader has no way to create.
+
+### Added
+
+- `tools/release/verify_published_vm.sh`: downloads the **published** binary, verifies its checksum
+  and SLSA attestation, pushes it to a fresh Incus VM, installs the engine the way the documentation
+  says to, and runs the commands. Run against the published 0.1.2 it reports four failures, which is
+  what a user got.
+- `tools/release/ci_release_build.sh`: runs `.github/workflows/release.yml` itself, under `act`, and
+  checks the binary that comes out. A hand-written replay of the workflow can drift from the
+  workflow exactly the way the workflow drifted from the mise task, so nothing here is retyped. It
+  earned its place immediately: the first version of the workflow fix copied the per-OS reference
+  straight out of the build job's checkout, and `docs/reference/pavois-content/` is gitignored, so
+  the release would have failed with `nothing matches`. It is rendered by the corpus job, which now
+  publishes it as an artifact the way it already published the corpus.
+- `mise run lint:embed`: two rules, both mechanical. An embed directory git holds empty must be
+  filled by the release path (`mise.toml` deliberately does not count as proof: at 0.1.2 the mise
+  task named all three directories, so a linter that accepted it passed on the tree that shipped
+  broken; checked against the 0.1.2 tree, this one flags all three). And a copy whose source is
+  generated rather than committed must be named by the workflow, which is the near-miss above.
+- `mise run release:standalone:test`: removes one embedded asset at a time, rebuilds and demands the
+  guard go red. The guard's first version passed with the audit ruleset and the behavioral probes
+  deleted, because it matched an error string the code no longer produced and never exercised the
+  ruleset at all.
+
+### Changed
+
+- **`pavois doctor` now declares what the binary carries**: the per-OS reference, the norm
+  catalogue, the baseline identity, the audit ruleset, the behavioral probes and the kernel-build
+  recipes, each with a count, and FAIL per missing one. A user who meets `this binary embeds none
+  and none is on disk` has a command to run rather than an issue to file, and the release guard has
+  one place to read instead of six commands to probe by hand. The kernel recipes are counted against
+  the systems the reference covers, so eight of nine is a failure rather than a pass.
+
 ## [0.1.2] - 2026-09-17
 
 Ten defects. Six were opened against 0.1.1 by a user working from a fresh VM, four more were found
@@ -203,7 +269,8 @@ history to read. The embedded baseline is `pavois-baseline` 0.2.0.
 - OSCAL output is the baseline (catalog and profiles), not yet a per-scan assessment-results
   package. No container image is published yet.
 
-[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/stephrobert/pavois/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/stephrobert/pavois/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/stephrobert/pavois/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/stephrobert/pavois/releases/tag/v0.1.0

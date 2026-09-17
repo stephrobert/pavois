@@ -77,6 +77,66 @@ else
      "the embedded copy is stale: mise run embed:corpus, then rebuild"
 fi
 
+# 4. The RULE CORPUS is not the only thing compiled in, and this check knew only about it.
+#
+# v0.1.2 shipped with an embedded corpus and an EMPTY reference: `scan` worked, and `harden plan`,
+# `rules`, `norms` and `oscal` all answered "this binary embeds none and none is on disk". The
+# release workflow placed the corpus where go:embed picks it up and nothing else, because the
+# reference embed did not exist when that step was written. Everything local passed, because a
+# local build runs `mise run embed:all`.
+#
+# So it is the same defect as v0.1.0, one floor down, and this is the check that was missing again:
+# the artifact carries FOUR embedded things now, and each of them has a command that proves it.
+for probe in "rules --os debian12:hardening reference" \
+             "norms:norm catalogue" \
+             "oscal:OSCAL catalogue"; do
+  cmd=${probe%%:*}
+  what=${probe#*:}
+  # shellcheck disable=SC2086  # cmd carries its own flags on purpose
+  out=$(cd "$work" && ./pavois $cmd 2>&1)
+  if printf '%s' "$out" | grep -qE 'embeds none|no such file|no hardening reference|no norm catalogue'; then
+    ko "the $what is not embedded (pavois $cmd)" \
+       "$(printf '%s' "$out" | grep -iE 'error' | head -1 | cut -c1-110)"
+  elif [ "$(printf '%s' "$out" | wc -c)" -lt 400 ]; then
+    ko "pavois $cmd returned almost nothing outside a checkout" \
+       "an empty catalogue is worse than an error: it succeeds and reports nothing"
+  else
+    ok "the $what is embedded (pavois $cmd: $(printf '%s' "$out" | wc -c) bytes)"
+  fi
+done
+
+# 5. The binary carries SIX embedded assets, and the checks above exercise three of them. The other
+#    three fail in ways no command surfaces:
+#
+#      docs/reference/baseline.yml           the OSCAL catalogue declared itself version 0.0.0,
+#                                            released 1970-01-01, for two releases, with no error
+#      docs/reference/audit.rules            `harden apply` pushed an EMPTY audit ruleset
+#      docs/reference/behavioral-probes.yml  `pavois verify` answered with an internal repo path
+#
+#    A first version of this check probed `oscal` and `verify` by hand and passed with
+#    behavioral-probes.yml and audit.rules deleted from the embed: it was matching an error string
+#    the code no longer produces, and nothing exercised the ruleset at all. Proven by deleting each
+#    file from a copy of the tree, rebuilding, and demanding red.
+#
+#    So the check asks the BINARY what it carries. `pavois doctor` enumerates all six and reports
+#    FAIL per missing one, which also means a user who meets "this binary embeds none" has one
+#    command to run instead of an issue to file. Only the asset lines are read: doctor also grades
+#    the engine and sudo, which say nothing about the artifact.
+doc=$(cd "$work" && ./pavois doctor 2>&1 | sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g')
+assets="hardening reference|norm catalogue|baseline identity|audit ruleset|behavioral probes|kernel-build recipes"
+missing=$(printf '%s\n' "$doc" | grep -E '^\s*\[FAIL\]' | grep -E "$assets")
+carried=$(printf '%s\n' "$doc" | grep -cE '^\s*\[OK  \].*('"$assets"')')
+if [ -n "$missing" ]; then
+  ko "pavois doctor reports $(printf '%s\n' "$missing" | wc -l) embedded asset(s) missing" \
+     "$(printf '%s' "$missing" | head -1 | sed 's/^ *//' | cut -c1-110)"
+elif [ "${carried:-0}" -lt 6 ]; then
+  ko "pavois doctor accounts for only $carried of the 6 embedded assets" \
+     "either an asset was added without a doctor line, or a line was renamed; both hide a gap"
+else
+  ok "pavois doctor accounts for all 6 embedded assets"
+  printf '%s\n' "$doc" | grep -E '^\s*\[OK  \].*('"$assets"')' | sed 's/^ */      /'
+fi
+
 echo
 if [ "$fails" -gt 0 ]; then
   printf "%s%d check(s) failed: this binary would ship broken.%s\n" "$RED" "$fails" "$OFF" >&2
