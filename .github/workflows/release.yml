@@ -87,6 +87,17 @@ jobs:
           name: corpus
           path: profiles/linux
 
+      # The per-OS reference is GENERATED (docs/reference/pavois-content/ is gitignored: the source
+      # of truth is docs/reference/rules.yml, and `gen.py render` above just produced it). So the
+      # build job cannot copy it out of its own checkout, and a first fix that tried to do exactly
+      # that failed the release with `nothing matches docs/reference/pavois-content/*.yml`.
+      # It travels the same way the corpus does, from the one job that renders it.
+      - name: Upload the rendered reference
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: reference
+          path: docs/reference/pavois-content
+
   binaries:
     name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
     runs-on: ubuntu-24.04
@@ -127,6 +138,28 @@ jobs:
         with:
           name: corpus
           path: pavois/go/internal/corpus/profiles/linux
+
+      # The corpus is not the only thing compiled in, and this step used to place only it.
+      #
+      # v0.1.2 shipped with an embedded corpus and an EMPTY reference: `scan` worked, and
+      # `harden plan`, `rules`, `norms` and `oscal` all answered "this binary embeds none and none
+      # is on disk". Every local check passed, because a local build runs `mise run embed:all`.
+      # The same shape as v0.1.0, one floor down: compiled in, not shipped.
+      #
+      # The norm catalogue, the baseline identity, the audit ruleset and the kernel recipes are
+      # COMMITTED under docs/reference/. The per-OS reference is not: it is rendered from rules.yml
+      # and gitignored, so it arrives from the corpus job as an artifact.
+      - name: Download the rendered reference
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: reference
+          path: pavois/docs/reference/pavois-content
+
+      # The script is the SAME one `mise run embed:reference` calls, so this path and the local path
+      # cannot drift apart again, and it fails loudly if a directory comes out empty.
+      - name: Place the reference, the norm catalogue and the apply-time data
+        working-directory: pavois
+        run: bash tools/release/embed_reference.sh
 
       - name: Build binary
         working-directory: pavois/go

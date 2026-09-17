@@ -17,6 +17,11 @@ trufflehog = "3.95.6"     # secret scanning (pre-commit + CI)
 actionlint = "1.7.12"
 zizmor = "1.30.0"
 "ubi:boostsecurityio/poutine" = "1.1.6"
+# Runs release.yml itself, locally, so what is checked is what the release build produces rather
+# than a local build with the embed directories already filled (see tools/release/ci_release_build.sh).
+# 0.2.89 or newer: act's artifact server rejected actions/upload-artifact@v7 before that, with
+# `unknown field "mime_type"`, which fails the corpus job and never reaches the build.
+act = "0.2.89"
 
 [env]
 CHEF_LICENSE = "accept-silent"   # CINC/InSpec runs non-interactively
@@ -292,21 +297,10 @@ description = "Copy the per-OS hardening reference into the binary's embed dir (
 # then failed on `harden plan` with a path resolved against the current directory (#286). Half the
 # product was unreachable for anyone who installed from a release.
 depends = ["gen"]
-# Three kinds of thing, all of which a downloaded binary needs and none of which it had:
-#   content/    the per-OS reference        -> harden plan, rules, oscal, norms coverage
-#   catalogue/  norms.yml                   -> pavois norms
-#   data/       audit.rules, kernel-build/  -> what harden APPLY pushes to the target, and the one
-#               that failed silently: both were read with the error discarded, so an apply ran with
-#               an empty ruleset and an empty recipe and reported success.
-run = """
-rm -f {{config_root}}/go/internal/reference/content/*.yml
-cp {{config_root}}/docs/reference/pavois-content/*.yml {{config_root}}/go/internal/reference/content/
-rm -f {{config_root}}/go/internal/reference/catalogue/*.yml
-cp {{config_root}}/docs/reference/norms.yml {{config_root}}/go/internal/reference/catalogue/
-rm -f {{config_root}}/go/internal/reference/data/audit.rules {{config_root}}/go/internal/reference/data/kernel-build/*.sh
-cp {{config_root}}/docs/reference/audit.rules {{config_root}}/go/internal/reference/data/
-cp {{config_root}}/docs/reference/kernel-build/*.sh {{config_root}}/go/internal/reference/data/kernel-build/
-"""
+# The copy itself lives in tools/release/embed_reference.sh, and the release workflow runs that same
+# script. It used to be written out here AND again in the workflow: when this task learned about the
+# reference, the workflow did not, and v0.1.2 shipped with three empty embed directories.
+run = "bash {{config_root}}/tools/release/embed_reference.sh {{config_root}}"
 
 [tasks."embed:all"]
 description = "Populate every embed dir (corpus + reference), as a release build does"
@@ -371,6 +365,18 @@ run = "node --experimental-strip-types {{config_root}}/tools/doc_commands.mjs"
 description = "Prove lint:install-docs rejects each defect it claims to catch (a linter that never failed cannot be trusted)"
 run = "python3 {{config_root}}/tools/lint_install_docs_test.py"
 
+[tasks."lint:embed"]
+description = "FAIL if the binary embeds a directory the RELEASE build never fills (an empty embed is not a build error)"
+# v0.1.2 shipped with three empty embed directories: `scan` worked and `harden plan`, `rules`,
+# `norms` and `oscal` answered "this binary embeds none and none is on disk". Nothing local could
+# see it, because a local build fills them first. Checked against the v0.1.2 tree: this rule flags
+# all three. `--selftest` plants the same defect in a copy and demands red.
+run = "python3 {{config_root}}/tools/lint_embed_release.py"
+
+[tasks."lint:embed:test"]
+description = "Prove lint:embed bites: plant an embed directory no release step fills and demand red"
+run = "python3 {{config_root}}/tools/lint_embed_release.py --selftest"
+
 [tasks."lint:norm-refs"]
 description = "FAIL if a norm mapping holds anything but a reference (the claim /attribution makes about redistribution)"
 run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_norm_refs.py"
@@ -414,6 +420,29 @@ description = "Run the built binary from an empty directory: the embedded corpus
 # code that looked for a profile asked the filesystem, which is always false outside a checkout.
 run = "bash --noprofile --norc {{config_root}}/tools/release/standalone_binary.sh"
 
+[tasks."release:standalone:test"]
+description = "Prove release:standalone bites: remove each embedded asset in a copy, rebuild, demand red."
+# Its first version passed with behavioral-probes.yml and audit.rules deleted from the embed: it
+# matched an error string the code no longer produced, and nothing exercised the ruleset at all.
+# Minutes (a rebuild per mutant), so it is out of prepush and belongs before a release.
+run = "bash --noprofile --norc {{config_root}}/tools/release/falsify_embed.sh"
+
+[tasks."release:ci-build"]
+description = "Run release.yml ITSELF under act and guard the binary it produces: what the release builds, not what you build."
+# Every check this project had ran on a binary built here, where `mise run embed:all` fills the
+# embed directories first. The release workflow fills the ones it knows about, and v0.1.2 added
+# three it did not, so the published artifact carried an empty reference while everything local was
+# green. A hand-written replay of the workflow would drift from the workflow the same way; this
+# reads release.yml. Needs docker. Args: vX.Y.Z
+run = "bash --noprofile --norc {{config_root}}/tools/release/ci_release_build.sh"
+
+[tasks."release:published"]
+description = "Download the PUBLISHED binary, run it on a fresh VM: the only check whose subject is the artifact a user gets."
+# act is a simulation of the runner, not the runner. This one downloads what GitHub published,
+# verifies its checksum and SLSA attestation, installs the engine the way the docs say to, and runs
+# the commands. Against the published v0.1.2 it reports four failures. Args: vX.Y.Z
+run = "bash --noprofile --norc {{config_root}}/tools/release/verify_published_vm.sh"
+
 [tasks."release:scenario"]
 description = "THE complete first-run scenario on one disposable VM: install, doctor, scan, harden plan, from a machine that has nothing. Every closed first-run issue has an assertion here."
 # Two releases shipped a binary that could not do its job, and both got through the same way: every
@@ -439,7 +468,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]
