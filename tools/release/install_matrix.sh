@@ -23,10 +23,14 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 
-VERSION=v0.1.0
+# The published release to test. It was pinned to v0.1.0 and would have stayed there: a harness
+# pointing at an old tag reports on artifacts nobody ships any more, and says nothing about the one
+# that just went out. Default to whatever the repository calls latest, override with PAVOIS_VERSION.
+VERSION=${PAVOIS_VERSION:-$(gh release view --repo stephrobert/pavois --json tagName --jq .tagName 2>/dev/null)}
+VERSION=${VERSION:-v0.1.1}
 # The version the locally built packages carry. It has to be a real version string: `pavois version`
 # printing "dev" would make step 4 pass on a binary nobody could have released.
-LOCAL_VERSION=${PAVOIS_LOCAL_VERSION:-0.1.1}
+LOCAL_VERSION=${PAVOIS_LOCAL_VERSION:-${VERSION#v}}
 BASE="https://github.com/stephrobert/pavois/releases/download/${VERSION}"
 KEY=${PAVOIS_SSH_KEY:-$HOME/.ssh/id_ed25519}
 # The keys are tools/vm.py's, not the distribution names: `rhel9` IS images:almalinux/9/cloud,
@@ -147,13 +151,21 @@ for os in $OSES; do
     fi
     sshx "cat > sample.json" < docs/examples/after.json || true
   else
-    sshx "curl -fsSLO '$BASE/$pkg'" >/dev/null
-    sshx "curl -fsSLO 'https://raw.githubusercontent.com/stephrobert/pavois/main/docs/examples/after.json' -o sample.json" >/dev/null
+    # The published artifact, fetched by the VM itself: that is the file a user gets, and the only
+    # one whose failure would reach anybody.
+    if ! sshx "curl -fsSLO '$BASE/$pkg'" >/dev/null; then
+      fail "could not download $pkg from the $VERSION release" "$BASE/$pkg"
+      mise run vm -- down "$os" >/dev/null 2>&1
+      continue
+    fi
+    # -o, not -O: curl refuses both at once, and the combination was never exercised because every
+    # run so far used the local-package mode.
+    sshx "curl -fsSL 'https://raw.githubusercontent.com/stephrobert/pavois/main/docs/examples/after.json' -o sample.json" >/dev/null
   fi
 
   out=$(sshsudo "$install; echo \"rc=\$?\"")
   printf '%s\n' "$out" >> "$LOG"
-  if printf '%s' "$out" | grep -q 'rc=0'; then
+  if grep -q 'rc=0' <<<"$out"; then
     pass "the package installs, and the manager asks for nothing else"
     # The engine is a runtime dependency no package manager can fetch (CINC Auditor is in no distro
     # repository). Since it cannot be declared, it has to be said, at the one moment the user is
@@ -161,7 +173,7 @@ for os in $OSES; do
     # Three spellings, because dnf5 prefixes scriptlet output with ">>> " and truncates each line at
     # the terminal width: `cinc-auditor` came back as `cinc-a` on Fedora while the message was
     # perfectly present. Matching one exact token would make this check a measure of column count.
-    if printf '%s' "$out" | grep -qiE 'cinc.auditor|omnitruck|pavois doctor'; then
+    if grep -qiE 'cinc.auditor|omnitruck|pavois doctor' <<<"$out"; then
       pass "the install tells the user CINC Auditor is needed to scan"
     else
       fail "the install says nothing about the scan engine" \
@@ -193,9 +205,9 @@ for os in $OSES; do
   # ldd comes with the C library, so it is on every one of these machines.
   kind=$(sshx "ldd /usr/bin/pavois 2>&1 || true")
   printf '%s\n' "$kind" >> "$LOG"
-  if printf '%s' "$kind" | grep -qE 'not a dynamic executable|statically linked'; then
+  if grep -qE 'not a dynamic executable|statically linked' <<<"$kind"; then
     pass "/usr/bin/pavois is a static binary (no libc to be missing)"
-  elif printf '%s' "$kind" | grep -q 'command not found'; then
+  elif grep -q 'command not found' <<<"$kind"; then
     fail "cannot tell whether /usr/bin/pavois is static" "neither ldd nor file on this image"
   else
     # This is the shape a "missing dependencies" report takes: a dynamically linked binary whose
@@ -209,7 +221,7 @@ for os in $OSES; do
   # returned the banner and the check failed on all five machines while the package was correct.
   ver=$(sshx "pavois version 2>&1")
   printf '%s\n' "$ver" >> "$LOG"
-  if printf '%s' "$ver" | grep -qF "$PKG_VERSION"; then
+  if grep -qF "$PKG_VERSION" <<<"$ver"; then
     pass "pavois version reports $PKG_VERSION"
   else
     fail "pavois version does not report $PKG_VERSION" \
@@ -231,10 +243,10 @@ for os in $OSES; do
   # fixes, and the field report confused them.
   replay=$(sshx "pavois scan local --from sample.json --out . 2>&1 | tail -20")
   printf '%s\n' "$replay" >> "$LOG"
-  if printf '%s' "$replay" | grep -q 'no bundled profile'; then
+  if grep -q 'no bundled profile' <<<"$replay"; then
     fail "no profile resolves for this platform" \
          "$(printf '%s' "$replay" | grep 'no bundled profile' | head -1)"
-  elif printf '%s' "$replay" | grep -qE 'grade [A-E]'; then
+  elif grep -qE 'grade [A-E]' <<<"$replay"; then
     pass "a scan resolves a profile and grades ($(printf '%s' "$replay" | grep -oE 'grade [A-E]' | head -1))"
   else
     fail "the scan produced no grade" "$(printf '%s' "$replay" | tail -2 | tr '\n' ' ' | cut -c1-120)"

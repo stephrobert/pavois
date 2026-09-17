@@ -286,6 +286,33 @@ description = "Copy the rendered .rb corpus into the binary's embed dir (for a s
 depends = ["render"]
 run = "rm -rf {{config_root}}/go/internal/corpus/profiles/linux && cp -r {{config_root}}/profiles/linux {{config_root}}/go/internal/corpus/profiles/linux"
 
+[tasks."embed:reference"]
+description = "Copy the per-OS hardening reference into the binary's embed dir (for a self-contained release build)"
+# The corpus was embedded and the reference was not, so a downloaded binary could scan a host and
+# then failed on `harden plan` with a path resolved against the current directory (#286). Half the
+# product was unreachable for anyone who installed from a release.
+depends = ["gen"]
+# Three kinds of thing, all of which a downloaded binary needs and none of which it had:
+#   content/    the per-OS reference        -> harden plan, rules, oscal, norms coverage
+#   catalogue/  norms.yml                   -> pavois norms
+#   data/       audit.rules, kernel-build/  -> what harden APPLY pushes to the target, and the one
+#               that failed silently: both were read with the error discarded, so an apply ran with
+#               an empty ruleset and an empty recipe and reported success.
+run = """
+rm -f {{config_root}}/go/internal/reference/content/*.yml
+cp {{config_root}}/docs/reference/pavois-content/*.yml {{config_root}}/go/internal/reference/content/
+rm -f {{config_root}}/go/internal/reference/catalogue/*.yml
+cp {{config_root}}/docs/reference/norms.yml {{config_root}}/go/internal/reference/catalogue/
+rm -f {{config_root}}/go/internal/reference/data/audit.rules {{config_root}}/go/internal/reference/data/kernel-build/*.sh
+cp {{config_root}}/docs/reference/audit.rules {{config_root}}/go/internal/reference/data/
+cp {{config_root}}/docs/reference/kernel-build/*.sh {{config_root}}/go/internal/reference/data/kernel-build/
+"""
+
+[tasks."embed:all"]
+description = "Populate every embed dir (corpus + reference), as a release build does"
+depends = ["embed:corpus", "embed:reference"]
+run = "echo 'corpus and reference embedded'"
+
 [tasks."regression"]
 description = "PILOT: per-OS scan-result baseline + regression detector. Keeps the best result per OS; a re-scan that flips baseline-passing controls to FAIL (or drops lynis) exits non-zero. Args: <scan.json> --os <os> [--lynis N] [--update]"
 run = "uv run --with pyyaml python3 tools/regression.py"
@@ -331,6 +358,14 @@ description = "FAIL if a page retypes an install command, pipes a download into 
 # install instructions are exactly the content that rots unwatched, and the last time they did, a
 # release shipped telling users to satisfy a prerequisite it never showed them how to satisfy.
 run = "python3 {{config_root}}/tools/lint_install_docs.py"
+
+[tasks."doc:commands"]
+description = "Print or check the commands the documentation tells a reader to run (--list | --check | --id <block> [--lang fr])"
+# The documentation is the test input: tools/release/scenario.sh runs THESE blocks on the VM rather
+# than a hand-written copy, so a page that changes changes what gets proved. --check also fails when
+# the two languages would run different commands, which is not a translation question.
+dir = "{{config_root}}"
+run = "node --experimental-strip-types {{config_root}}/tools/doc_commands.mjs"
 
 [tasks."lint:install-docs:test"]
 description = "Prove lint:install-docs rejects each defect it claims to catch (a linter that never failed cannot be trusted)"
@@ -378,6 +413,13 @@ description = "Run the built binary from an empty directory: the embedded corpus
 # repository, where profiles/ is on disk. The corpus was genuinely compiled into the binary; the
 # code that looked for a profile asked the filesystem, which is always false outside a checkout.
 run = "bash --noprofile --norc {{config_root}}/tools/release/standalone_binary.sh"
+
+[tasks."release:scenario"]
+description = "THE complete first-run scenario on one disposable VM: install, doctor, scan, harden plan, from a machine that has nothing. Every closed first-run issue has an assertion here."
+# Two releases shipped a binary that could not do its job, and both got through the same way: every
+# test ran inside the repository, where profiles/ and docs/reference/ are on disk. Both were found
+# by a user on a fresh VM. This is that user, automated. Args: --binary released | --os | --keep
+run = "bash --noprofile --norc {{config_root}}/tools/release/scenario.sh"
 
 [tasks."release:evidence"]
 description = "Did a golden-path campaign prove the CURRENT corpus, on the systems claimed? Args: <os>..."

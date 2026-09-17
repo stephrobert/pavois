@@ -1,0 +1,198 @@
+name: e2e
+
+# The first-run scenario, on a disposable VM, on a machine nobody here owns.
+#
+# WHY IT EXISTS
+#
+# Two releases in a row shipped a binary that could not do its job, and both got through the same
+# way: every test ran inside the repository, where profiles/ and docs/reference/ are on disk.
+#   v0.1.0  the rule corpus was compiled in and the lookup asked the filesystem -> no profile
+#           resolved on any machine that was not a checkout.
+#   v0.1.1  `harden plan` read its reference from the CURRENT DIRECTORY, so scan worked and
+#           remediation did not; and `harden apply` read audit.rules the same way WITH THE ERROR
+#           DISCARDED, so it converged an empty ruleset and reported success.
+# Both were found by a user on a fresh VM. No unit test can see either: they run from the tree.
+#
+# It exercises BOTH transports, because they fail differently:
+#   8a  harden apply on a LOCAL target, the binary hardening the machine it runs on (#200)
+#   8b  harden apply over ssh, this runner hardening the VM
+#
+# WHY NOT ON pull_request, YET
+#
+# This was written as a required check on every pull request, and feint's runtime-proof.yml already
+# says why that is wrong, from measurement rather than from taste:
+#
+#   "a harness fails more often than what it measures (five false verdicts in one day are on
+#    record), and a mandatory network suite that reds on runner weather gets disarmed, which is
+#    worse than not running."
+#
+# This project has the same receipts, collected while writing the scenario itself: scp speaking
+# SFTP to images with no sftp-server, `file` absent from the cloud images, `incus restart` hanging
+# on a fresh VM, `set -o pipefail` with `grep -q` reporting a match as a failure. Four false
+# verdicts, none of them about pavois. A gate that behaves like that on every pull request is a
+# gate somebody switches off within a week.
+#
+# So: nightly and on demand, and PROMOTION IS EARNED BY MEASUREMENT. The `streak` job below counts
+# consecutive green scheduled runs, because a criterion nobody computes is a sentence waiting for
+# someone to think of opening the Actions history. At 14, move `pull_request:` back into `on:` and
+# make it required in the ruleset. Not before, and not by opinion.
+#
+# WHY A GITHUB RUNNER AND NOT A SELF-HOSTED ONE
+#
+# A self-hosted runner is faster and already has Incus. It is also how a fork's pull request
+# executes arbitrary code on the maintainer's machine, which is exactly what poutine's
+# `pr_runs_on_self_hosted` check refuses. This repository scans its own pipeline with poutine; it
+# does not get an exception for its own convenience.
+
+on:
+  schedule:
+    # Nightly. Offset from the other scheduled workflows so they never compete for the same
+    # third-party mirrors at the same minute.
+    - cron: '17 3 * * *'
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scenario:
+    name: First-run scenario on a disposable VM
+    runs-on: ubuntu-24.04
+    # An image download, a VM boot, a 52 MB engine install, several full scans and two converges.
+    # Generous on purpose: a timeout that fires on a slow mirror is a red that measures the mirror.
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The scenario runs VMs, never containers: 259 of the 789 controls are meaningless in a
+      # container, which does not own a kernel. So this failing is a hard stop, never a reason to
+      # degrade to containers and report a green that measures nothing.
+      - name: Is KVM available on this runner
+        run: |
+          ls -l /dev/kvm
+          grep -Ec '(vmx|svm)' /proc/cpuinfo
+
+      # Zabbly stable, not the Ubuntu package: 24.04 ships Incus 6.0.0, and feint's runtime proof
+      # records that the distro package proves less than it appears to. The key fingerprint is
+      # compared rather than shown, because a workflow has no human to show it to.
+      - name: Install Incus (Zabbly stable, key fingerprint pinned)
+        env:
+          ZABBLY_FPR: '4EFC590696CB15B87C73A3AD82CC8797C838DCFD'
+        run: |
+          set -euo pipefail
+          workdir="$(mktemp -d)"
+          curl --retry 3 --retry-connrefused -fsSL https://pkgs.zabbly.com/key.asc -o "${workdir}/zabbly.asc"
+          fpr="$(gpg --show-keys --with-colons "${workdir}/zabbly.asc" | awk -F: '/^fpr/ {print $10; exit}')"
+          if [ "${fpr}" != "${ZABBLY_FPR}" ]; then
+            echo "unexpected Zabbly key fingerprint: ${fpr}" >&2
+            exit 1
+          fi
+          sudo install -D -m 0644 "${workdir}/zabbly.asc" /etc/apt/keyrings/zabbly.asc
+          # shellcheck disable=SC1091
+          codename="$(. /etc/os-release && echo "${VERSION_CODENAME}")"
+          arch="$(dpkg --print-architecture)"
+          sudo tee /etc/apt/sources.list.d/zabbly-incus.sources >/dev/null <<EOF
+          Enabled: yes
+          Types: deb
+          URIs: https://pkgs.zabbly.com/incus/stable
+          Suites: ${codename}
+          Components: main
+          Architectures: ${arch}
+          Signed-By: /etc/apt/keyrings/zabbly.asc
+          EOF
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends incus incus-client
+          sudo incus --version
+          sudo incus admin init --auto
+          sudo usermod -aG incus-admin "$USER"
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          version: 2026.2.23
+          install: true
+          cache: true
+
+      # `harden apply` over ssh needs a key here and its public half on the VM, which the scenario
+      # installs. A throwaway key, generated here, never leaving the runner.
+      - name: A throwaway ssh key for the ssh-transport half
+        run: ssh-keygen -t ed25519 -N '' -f "$HOME/.ssh/id_ed25519" -C pavois-e2e
+
+      - name: Run the scenario (both transports)
+        env:
+          PAVOIS_SSH_KEY: /home/runner/.ssh/id_ed25519
+        # sg, because the incus-admin membership added above is not in this shell's credentials
+        # yet and `newgrp` wants a tty.
+        run: sg incus-admin -c "bash --noprofile --norc tools/release/scenario.sh"
+
+      - name: The log, whatever happened
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: scenario-log
+          path: reports/scenario-*/
+          if-no-files-found: warn
+
+  streak:
+    name: Consecutive green scheduled runs
+    needs: [scenario]
+    # Scheduled runs only. A dispatch is a human asking a question; the criterion counts nights,
+    # and mixing the two would let the streak be earned by pressing a button fourteen times.
+    if: always() && github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Count the streak, from the Actions history
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET: '14'
+        run: |
+          set -euo pipefail
+          conclusions="$(gh api --paginate \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/e2e.yml/runs?event=schedule&per_page=100" \
+            --jq '.workflow_runs[] | select(.status == "completed") | .conclusion')"
+          streak=0
+          for c in $conclusions; do
+            if [ "$c" = "success" ]; then
+              streak=$((streak + 1))
+            else
+              break
+            fi
+          done
+          total="$(printf '%s\n' "$conclusions" | grep -c . || true)"
+          {
+            echo "## Promotion criterion"
+            echo
+            echo "| | |"
+            echo "|---|--:|"
+            echo "| Consecutive green scheduled runs | **${streak}** |"
+            echo "| Target | ${TARGET} |"
+            echo "| Completed scheduled runs on record | ${total} |"
+            echo
+            if [ "${streak}" -ge "${TARGET}" ]; then
+              echo "The criterion is met: add \`pull_request:\` to this workflow's \`on:\` and make"
+              echo "it a required check in the ruleset."
+            else
+              echo "Not yet. Until the streak reaches ${TARGET}, this workflow stays advisory: a"
+              echo "mandatory suite that reds on runner weather is a suite somebody disarms."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

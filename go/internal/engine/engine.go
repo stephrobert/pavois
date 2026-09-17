@@ -422,8 +422,22 @@ func ResolveProfile(root, profile string) (string, error) {
 		return profile, nil
 	}
 	// Fallback: a standalone released binary has no profiles/ on disk but embeds the corpus.
-	if dir, ok := corpus.Extract(filepath.Join(os.TempDir(), "pavois-corpus"), profile); ok {
+	//
+	// The extraction directory is per-user. It used to be a single /tmp/pavois-corpus shared by
+	// everyone, and `--sudo` on a local target now re-runs the scan as root: the scan created that
+	// directory owned by root, and the user's next `harden plan` could no longer write into it.
+	// Extract then failed and the error said "unknown profile", about a profile that was embedded
+	// the whole time. A root scan poisoned every unprivileged run that followed it.
+	dest := filepath.Join(os.TempDir(), fmt.Sprintf("pavois-corpus-%d", os.Getuid()))
+	if dir, ok := corpus.Extract(dest, profile); ok {
 		return dir, nil
+	}
+	// "Not embedded" and "embedded but I could not write it out" are different problems with
+	// different fixes, and answering the second with the first sends the reader to `pavois
+	// profiles`, which will list the profile they were just told does not exist.
+	if corpus.Has(profile) {
+		return "", fmt.Errorf("profile %s is embedded in this binary but could not be extracted to %s: "+
+			"check that directory is writable (TMPDIR moves it)", profile, dest)
 	}
 	return "", fmt.Errorf("unknown profile: %s (see: pavois profiles)", profile)
 }
@@ -704,7 +718,17 @@ func Run(o Options) (int, error) {
 	if runErr != nil {
 		var ee *exec.ExitError
 		if errors.As(runErr, &ee) {
-			return ee.ExitCode(), nil // 100/101 = controls are failing, usable in CI
+			// ONLY 100 and 101 mean "the scan ran and controls are failing", which is a verdict
+			// and belongs in the exit code. Every other code is the engine refusing to run, and
+			// treating it as a verdict is what produced the double error in #282: cinc rejected
+			// --sudo and exited 1, this returned (1, nil), and the caller then reported the JSON
+			// that was never written as `no such file or directory`. The real cause scrolled past
+			// as the FIRST of two messages, and the second one pointed at the wrong thing.
+			if code := ee.ExitCode(); code == 100 || code == 101 {
+				return code, nil
+			}
+			return 2, fmt.Errorf("the scan engine refused to run (cinc-auditor exited %d); "+
+				"its own message is above", ee.ExitCode())
 		}
 		return 2, runErr
 	}
@@ -750,6 +774,18 @@ func RunOnTarget(o Options) (int, error) {
 		}
 		return c.Run()
 	}
+	// The same, but returning what the target said. The scratch-directory probe (#288) has to READ
+	// the answer: it asks the target which directory can execute a file, and a bare exit code
+	// cannot carry a path. No -tt here, because nothing it runs needs sudo.
+	sshOut := func(remote string) (string, error) {
+		args := append(append([]string{}, base...), o.Target, remote)
+		c := exec.Command("ssh", args...) //nolint:gosec // fixed args, operator target
+		if o.Sudo && o.SudoPass != "" {
+			c.Stdin = strings.NewReader(o.SudoPass + "\n")
+		}
+		out, err := c.Output()
+		return string(out), err
+	}
 
 	_, _ = fmt.Fprintf(os.Stderr, "  ensuring cinc-auditor on %s…\n", o.Target)
 	// FIRST check presence with NO sudo: cinc-auditor is world-executable in PATH, and a hardened
@@ -790,7 +826,34 @@ func RunOnTarget(o Options) (int, error) {
 		}
 	}
 
-	const remoteProf, remoteJSON = "/tmp/pavois-profile", "/tmp/pavois-out.json"
+	// WHERE the profile lands is not a detail, it is issue #288.
+	//
+	// This used to be /tmp, unconditionally. Then Pavois hardens the host, `mount-tmp-noexec`
+	// applies (bp28 intermediary, CIS level 1, nine systems), and the next `--on-target` scan of
+	// that same host dies:
+	//
+	//     sh: 1: env: Permission denied
+	//     error: cinc-auditor failed on the target (exit 126): no report produced
+	//
+	// So the tool hardened a machine into a state where its own verification could not run, which
+	// is exactly the scan an operator performs AFTER hardening to prove the result.
+	//
+	// The answer is not to stop hardening /tmp. A compliance scanner that weakens a standard for
+	// its own convenience has lost the argument, and `noexec` there is not dangerous, it is
+	// correct. The answer is to stop assuming any particular directory is executable: /tmp, /var,
+	// /var/tmp and /home all have a noexec control in this very corpus. So the target is asked.
+	// Before hunting for a directory: a global `Defaults noexec` forbids the engine from executing
+	// anything at all, and no directory fixes that. Checking it first turns `exit 126` into a
+	// sentence naming the control responsible and the two ways round it (#288).
+	if o.Sudo && sudoForbidsExec(sshOut) {
+		return 2, noexecError(o.Target)
+	}
+	scratch, err := execDirOnTarget(sshOut, sudoPrefix(o))
+	if err != nil {
+		return 2, err
+	}
+	remoteProf := scratch + "/profile"
+	remoteJSON := scratch + "/out.json"
 	_ = ssh("rm -rf " + remoteProf)
 	if err := // -O: the legacy SCP protocol, over an exec channel. Modern scp speaks SFTP by default,
 		// and a stock debian13 (OpenSSH 10) declares no `Subsystem sftp`, so an sftp transfer dies
@@ -814,7 +877,7 @@ func RunOnTarget(o Options) (int, error) {
 	// HOME is forced to a scratch dir: sudo keeps the caller's HOME, so cinc (running as root)
 	// creates a root-owned ~/.inspec in the audited user's home. An auditor must leave NO trace on
 	// the target, and pavois was failing its own home-files-permissions control on that garbage.
-	const remoteHome = "/tmp/pavois-home"
+	remoteHome := scratch + "/home"
 	cincCmd := fmt.Sprintf("env HOME=%s CHEF_LICENSE=accept-silent $(command -v cinc-auditor || command -v inspec) "+
 		"exec %s -t local:// --no-create-lockfile --input pavois_standard=%s --reporter json:%s",
 		remoteHome, remoteProf, std, remoteJSON)
@@ -833,7 +896,10 @@ func RunOnTarget(o Options) (int, error) {
 	// only root can remove it. Without this, a scan that dies before writing (bad profile, cinc
 	// error) silently ships the STALE report back and pavois reports someone else's results.
 	_ = ssh(sudo + "rm -f " + remoteJSON)
-	_, _ = fmt.Fprintf(os.Stderr, "  scanning %s on the target (local, fast)…\n", o.Target)
+	// The working directory is named, because when this fails the question is always which one it
+	// picked: a hardened host mounts several of the candidates noexec, and `exit 126` with no path
+	// tells a reader nothing (#288).
+	_, _ = fmt.Fprintf(os.Stderr, "  scanning %s on the target (local, fast), working in %s…\n", o.Target, scratch)
 	rc := 0
 	if err := ssh(exe); err != nil {
 		var ee *exec.ExitError
@@ -854,6 +920,9 @@ func RunOnTarget(o Options) (int, error) {
 	}
 	// Leave no trace: the profile copy, the report and the scratch HOME are ours, not the target's.
 	// (Older pavois versions left a root-owned ~/.inspec behind; remove that too.)
-	_ = ssh(sudo + "rm -rf " + remoteProf + " " + remoteJSON + " " + remoteHome + " ~/.inspec")
+	// The whole scratch directory, not its three children: an auditor leaves no trace, and a
+	// `.pavois-run` left behind in the audited user's home is a trace. It is also the directory
+	// this very scan's home-files-permissions control would then report on.
+	_ = ssh(sudo + "rm -rf " + scratch + " ~/.inspec")
 	return rc, nil
 }

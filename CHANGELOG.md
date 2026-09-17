@@ -12,6 +12,80 @@ its content digest**, so an archived result stays interpretable long after the t
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-17
+
+Ten defects. Six were opened against 0.1.1 by a user working from a fresh VM, four more were found
+by the harness written to close them, and not one is visible from inside a checkout, which is why
+none was caught before shipping. The baseline is unchanged, so an 0.1.1 report stays comparable to
+an 0.1.2 one.
+
+### Fixed
+
+- **`harden plan` could not run from a downloaded binary** (#286). The reference was read with
+  `os.ReadFile` under `findRoot()`, and `findRoot()` falls back to the CURRENT DIRECTORY when it
+  finds no `profiles/` above it. The path moved when you `cd`'d, which is the tell. So `scan`
+  honoured the self-contained promise and `harden` did not: half the product was unreachable for
+  anyone who installed from a release, and the error named an internal repository path rather than
+  anything the reader could act on. The reference is now embedded like the rule corpus already was.
+  The same defect reached three more commands the issue did not name: `rules`, `norms` and `oscal`
+  all read the reference the same way, and the last two failed *worse* than `harden`, by succeeding
+  with an empty catalogue.
+- **`scan local --sudo` was refused by the engine** (#281), while `pavois doctor`, the README, the
+  site and Pavois's own unprivileged-scan refusal all recommended that exact form. CINC is right to
+  refuse: a local transport cannot elevate itself. `--sudo` states an intent, so on a local target
+  Pavois now re-runs the command under sudo, says so, and hands the reports back to the user who
+  asked for them.
+- **A failed scan reported a second, misleading error** (#282). Any non-zero exit from the engine
+  was treated as "controls are failing", so a refusal to run came back as a verdict and the caller
+  then complained about a report file that was never written. Only 100 and 101 are verdicts now.
+- **`--bootstrap-cinc` was silent on a local target** (#283). The flag whose purpose is "the engine
+  is missing, install it" was unreachable in exactly that case, because the scan died on OS
+  detection first with an error that did not mention the flag. It now says it applies to remote
+  targets only, and where to get the engine.
+- **`pavois --version` answered `unknown flag`** (#284), on a CLI whose own bug-report form asks for
+  a version string.
+- **The SSH failure hint recommended `--key` even when `--key` was passed** (#285), sending the
+  reader back to their own command line instead of to the target that was refusing them. The hint
+  is now chosen from whether a key was supplied and whether an agent is reachable.
+- **`--out` meant a directory on `scan` and a file on `harden plan`**, so `--out ~/reports` answered
+  `is a directory` on the second of two commands people run one after the other. `harden plan` now
+  accepts a directory and creates the path.
+- **`norms.yml` was read the same way** and was missed on the first pass at #286: `pavois norms`
+  still answered `read norm catalogue: open /tmp/docs/reference/norms.yml`. Embedded too.
+- **`harden apply` converged an EMPTY audit ruleset and reported success.** `audit.rules` and the
+  per-OS kernel recipe were read under `findRoot()` **with the error discarded**, so a downloaded
+  binary hardened a machine, skipped those two domains entirely, and told the operator it had
+  worked. The worst of the family, because it did not fail: #286 at least stopped and said so. Both
+  are embedded, and a read that fails now stops the apply.
+- **`harden apply` could not target `local`** (#200). It invoked ssh and scp unconditionally, at ten
+  places, so a local target meant `ssh -tt local …`: an attempt to reach a host literally named
+  "local". Not even a clean failure, since a `Host local` entry in `~/.ssh/config` would have sent
+  the converge to an arbitrary machine. A transport indirection now decides once, from the target,
+  whether a command runs over ssh or here.
+- **`sudo-noexec` left a host neither administrable nor auditable** (#288). `Defaults noexec`
+  forbids a command run through sudo, and everything it spawns, from executing anything. Measured on
+  a clean Ubuntu 24.04 against a control group: `sudo apt-get install` fails, and cinc-auditor is
+  blocked on its first control, because auditing effective configuration means running `sshd -T`,
+  `sysctl` and `systemctl show`. So a host carrying it cannot be audited through sudo at all,
+  including for that very control, and that applies to any such scanner. The control is not dropped
+  (it genuinely stops vi and less from spawning a shell, measured): it becomes `dangerous`, its
+  remediation carves out the package managers per distribution, its check now requires a GLOBAL
+  default instead of accepting any `Defaults ... noexec` line, and Pavois says what is wrong instead
+  of `exit 126: no report produced`.
+
+### Testing
+
+- `tools/release/scenario.sh` (`mise run release:scenario`) is the complete first-run scenario on
+  one disposable VM: install the binary, read what a machine with no engine is told, install the
+  engine, scan from an unprivileged account, remediate from several directories. Every issue above
+  has an assertion in it. It found the `--out` defect on its first run.
+- `tools/doc_commands.mjs` makes the documentation the test input. The scenario installs the engine
+  by running the block the install pages render, not a copy of it, with only the two substitutions
+  the page itself tells the reader to make. `--check` also fails when the two languages would run
+  different commands.
+- `.claude/skills/vm-proof-harness` records the ladder of proof and the traps already paid for, so
+  they are paid once.
+
 ## [0.1.1] - 2026-09-16
 
 Every artifact of 0.1.0 installed cleanly and could not scan anything. This release makes them work.
@@ -126,6 +200,7 @@ history to read. The embedded baseline is `pavois-baseline` 0.2.0.
 - OSCAL output is the baseline (catalog and profiles), not yet a per-scan assessment-results
   package. No container image is published yet.
 
-[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/stephrobert/pavois/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/stephrobert/pavois/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/stephrobert/pavois/releases/tag/v0.1.0

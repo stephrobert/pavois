@@ -293,11 +293,9 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 		// nothing about why, on the most common cause there is: no --key. `scan` already answers
 		// this properly; there was no reason for `harden` to answer worse.
 		if detected == "" {
-			return fmt.Errorf("could not reach or identify %s: %s\n"+
-				"  a host that answers `ssh %s` can still fail here: the engine does not fall back to\n"+
-				"  ~/.ssh/id_ed25519 the way the ssh command does, so pass --key <path> (or add the key\n"+
-				"  to ssh-agent). If the host is fine and simply has no bundled profile, pass --profile",
-				target, why, target)
+			return fmt.Errorf("could not reach or identify %s: %s%s\n"+
+				"  If the host is fine and simply has no bundled profile, pass --profile",
+				target, why, withTarget(sshFailureHint(hdKey), target))
 		}
 		return fmt.Errorf("no bundled Pavois profile for %s (target %q): pass --profile with the closest one",
 			detected, target)
@@ -333,9 +331,9 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 	if err := json.Unmarshal(scanRaw, &scan); err != nil {
 		return fmt.Errorf("parse scan JSON: %w", err)
 	}
-	refRaw, err := os.ReadFile(filepath.Join(root, "docs", "reference", "pavois-content", osName+".yml"))
+	refRaw, err := readReference(root, osName)
 	if err != nil {
-		return fmt.Errorf("read reference: %w", err)
+		return err
 	}
 	var ref refDoc
 	if err := yaml.Unmarshal(refRaw, &ref); err != nil {
@@ -415,6 +413,19 @@ func runHardenPlan(cmd *cobra.Command, args []string) error {
 	outPath := hdOut
 	if outPath == "" {
 		outPath = fmt.Sprintf("hardening-plan-%s.yml", osName)
+	} else if fi, err := os.Stat(outPath); err == nil && fi.IsDir() {
+		// `scan --out` is a DIRECTORY and `harden plan --out` is a FILE: the same flag name with
+		// opposite meanings on two commands people run one after the other. Someone who learned
+		// `--out ~/reports` from the scan got `open ~/reports: is a directory` here, which reads as
+		// a broken tool rather than as a flag that changed shape. A directory is now accepted and
+		// the default filename goes inside it.
+		outPath = filepath.Join(outPath, fmt.Sprintf("hardening-plan-%s.yml", osName))
+	}
+	if dir := filepath.Dir(outPath); dir != "." && dir != "" {
+		// And the directory is created rather than reported as missing, the same way the scan's
+		// output directory is: being told a file cannot be opened inside a path you just named is
+		// never the answer you wanted.
+		_ = os.MkdirAll(dir, 0o750)
 	}
 	body, err := yaml.Marshal(plan)
 	if err != nil {
@@ -1670,6 +1681,107 @@ func sshOptsFor(key string) []string {
 
 func sshOpts() []string { return sshOptsFor(haKey) }
 
+// hostShell runs a command ON THE MACHINE BEING HARDENED, which is a remote host over ssh or this
+// very machine when the target is local.
+//
+// Issue #200. `harden apply` invoked `ssh` and `scp` unconditionally, at ten places, so a local
+// target meant `ssh -tt local …`: an attempt to reach a host literally named "local". The failure
+// was not even clean, because an operator with a `Host local` entry in ~/.ssh/config would have
+// been sent to an arbitrary machine instead of being told no.
+//
+// So `pavois scan local` worked and `pavois harden apply` did not, on the one target every user
+// tries first: their own machine. The asymmetry has no justification in the product; it was an
+// implementation detail of the transport leaking into what the tool can do.
+//
+// Everything below is written so the two paths differ only where they must: locally there is no
+// pty to negotiate (sudo talks to the real terminal), and pushing a file is a copy.
+type hostShell struct {
+	local  bool
+	target string
+	key    string
+}
+
+func newHostShell(target, key string) hostShell {
+	_, tr := machineTransport(target)
+	return hostShell{local: tr == "local://", target: target, key: key}
+}
+
+// cmd builds a command with no controlling terminal: probes, and anything whose output is read.
+func (h hostShell) cmd(remote string) *exec.Cmd {
+	if h.local {
+		return exec.Command("bash", "-lc", remote) //nolint:gosec // our own probe strings
+	}
+	return exec.Command("ssh", append(append(sshOptsFor(h.key), h.target), remote)...) //nolint:gosec // fixed args, operator target
+}
+
+// tty builds a command that can run sudo under `Defaults requiretty`. Remotely that needs `ssh -tt`
+// and the password-through-stdin dance; locally sudo already has the operator's own terminal, so
+// the password is simply fed on stdin when there is one.
+func (h hostShell) tty(remote, sudoPass string) *exec.Cmd {
+	if h.local {
+		c := exec.Command("bash", "-lc", remote) //nolint:gosec // our own command strings
+		if sudoPass != "" {
+			c.Stdin = strings.NewReader(sudoPass + "\n")
+		}
+		return c
+	}
+	wrapped := remote
+	if sudoPass != "" {
+		wrapped = "IFS= read -r __P; " + remote + " <<<\"$__P\""
+	}
+	c := exec.Command("ssh", append(append(append([]string{"-tt"}, sshOptsFor(h.key)...), h.target), wrapped)...) //nolint:gosec // fixed args, operator target
+	if sudoPass != "" {
+		c.Stdin = strings.NewReader(sudoPass + "\n")
+	}
+	return c
+}
+
+// push puts a local file at <dst> on the target. Remotely that is scp; locally it is a copy, and
+// the file is already on the right machine.
+func (h hostShell) push(src, dst string) error {
+	if h.local {
+		b, err := os.ReadFile(src) //nolint:gosec // our own temp file
+		if err != nil {
+			return err
+		}
+		// Both ends are pavois's own: src is the temp recipe it just wrote, dst is the fixed
+		// /tmp/pavois-harden.rb the converge reads. Neither is operator input, and on a local
+		// target this is the copy that replaces scp (#200).
+		return os.WriteFile(dst, b, 0o600) //nolint:gosec // both paths are pavois's own constants
+	}
+	// -O: the legacy SCP protocol, over an exec channel. Modern scp speaks SFTP by default, and a
+	// stock debian13 (OpenSSH 10) declares no `Subsystem sftp`, so an sftp transfer dies with
+	// "subsystem request failed on channel 0", measured on a fresh VM.
+	c := exec.Command("scp", append(append([]string{"-O"}, append(sshOptsFor(h.key), src)...), h.target+":"+dst)...) //nolint:gosec // fixed args, operator target
+	c.Stdout, c.Stderr = os.Stderr, os.Stderr
+	return c.Run()
+}
+
+// fetch brings <src> from the target to <dst> on this machine. Locally the file is already here.
+func (h hostShell) fetch(src, dst string) error {
+	if h.local {
+		b, err := os.ReadFile(src) //nolint:gosec // a path pavois itself wrote
+		if err != nil {
+			return err
+		}
+		// src is the archive the capture script just produced at a fixed path; dst is the restore
+		// point directory pavois chose. Neither comes from the target or from a flag.
+		return os.WriteFile(dst, b, 0o600) //nolint:gosec // both paths are pavois's own constants
+	}
+	c := exec.Command("scp", append(append([]string{"-O"}, append(sshOptsFor(h.key), h.target+":"+src)...), dst)...) //nolint:gosec // fixed args, operator target
+	c.Stderr = os.Stderr
+	return c.Run()
+}
+
+// reachable answers whether the target responds at all. Locally it always does, which is what the
+// reboot-wait loop needs to stop treating "this machine" as a host that can go away.
+func (h hostShell) reachable() bool {
+	if h.local {
+		return true
+	}
+	return h.cmd("true").Run() == nil
+}
+
 // sshTTY builds ssh args with a forced pseudo-tty (-tt) so `sudo` works even under
 // `Defaults requiretty` (ANSSI BP-028 R39): Pavois can apply that control, so its own
 // management path must survive it. Used for the sudo cinc-apply runs (not scp).
@@ -1716,13 +1828,13 @@ func prereqsFor(osName string) map[string]string {
 
 // missingPrereqs asks the target once for everything, rather than discovering the tools one
 // failure at a time. Returns the missing binaries, sorted.
-func missingPrereqs(target, osName string, opts []string) []string {
+func missingPrereqs(host hostShell, osName string) []string {
 	want := prereqsFor(osName)
 	var probe strings.Builder
 	for tool := range want {
 		fmt.Fprintf(&probe, "command -v %s >/dev/null 2>&1 || echo %s; ", tool, tool)
 	}
-	out, err := exec.Command("ssh", append(append(opts, target), probe.String())...).Output() //nolint:gosec // fixed args, operator target
+	out, err := host.cmd(probe.String()).Output()
 	if err != nil {
 		return nil // unreachable target: the caller's own connection error will say so better
 	}
@@ -1802,13 +1914,20 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	if err := yaml.Unmarshal(raw, &p); err != nil {
 		return fmt.Errorf("parse plan: %w", err)
 	}
-	auditRules, _ := os.ReadFile(filepath.Join(findRoot(), "docs", "reference", "audit.rules"))
+	// The audit ruleset and the kernel-build recipe are the DATA this apply pushes to the target.
+	// They used to be read with the error discarded, so a downloaded binary applied a plan with
+	// both of them EMPTY and said nothing: the audit domain was silently skipped on every hardened
+	// host. An error here stops the apply, which is the only defensible outcome.
+	auditRules, err := readAuditRules(findRoot())
+	if err != nil {
+		return err
+	}
 	// The kernel-build recipe is DATA, one script per OS/version under docs/reference/kernel-build/
 	// (each tailored to its distro + kernel: apt bindeb-pkg vs dnf rpmbuild, version quirks). Pick
 	// the target's; fall back to the legacy single kernel-build.sh if a per-OS file is absent.
-	kernelRecipe, _ := os.ReadFile(filepath.Join(findRoot(), "docs", "reference", "kernel-build", p.OS+".sh"))
-	if len(kernelRecipe) == 0 {
-		kernelRecipe, _ = os.ReadFile(filepath.Join(findRoot(), "docs", "reference", "kernel-build.sh"))
+	kernelRecipe, err := readKernelRecipe(findRoot(), p.OS)
+	if err != nil {
+		return err
 	}
 	out := cmd.OutOrStdout()
 
@@ -2012,11 +2131,6 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("close temp recipe: %w", err)
 	}
 
-	run := func(name string, a ...string) error {
-		c := exec.Command(name, a...)
-		c.Stdout, c.Stderr = os.Stderr, os.Stderr
-		return c.Run()
-	}
 	// Least-privilege target account (no NOPASSWD): the converge runs `sudo cinc-apply`
 	// on the target, so the sudo password must reach it. resolveSudoPass reads --sudo-prompt
 	// (no-echo) or PAVOIS_SUDO_PASSWORD; empty means NOPASSWD (unchanged behaviour).
@@ -2048,31 +2162,26 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	// command hangs forever. This comment used to claim the opposite, that an empty sudoPass "just
 	// leaves __P empty, which sudo ignores"; nothing is left empty, the read never returns.
 	// Measured on Outscale ami-dc3f861d (Debian 12, NOPASSWD sudo, Defaults use_pty).
+	// The machine being hardened: a remote host over ssh, or this one when the target is local
+	// (#200). Every command below goes through it rather than calling ssh directly, which is what
+	// made `harden apply local` impossible.
+	host := newHostShell(target, haKey)
 	runSudoTTY := func(remote string) error {
-		wrapped := remote
-		if sudoPass != "" {
-			wrapped = "IFS= read -r __P; " + remote + " <<<\"$__P\""
-		}
-		args := append(append([]string{"-tt"}, sshOpts()...), target, wrapped)
-		c := exec.Command("ssh", args...) //nolint:gosec // fixed args, operator target
+		c := host.tty(remote, sudoPass)
 		c.Stdout, c.Stderr = os.Stderr, os.Stderr
-		if sudoPass != "" {
-			c.Stdin = strings.NewReader(sudoPass + "\n")
-		}
 		return c.Run()
 	}
-	// capture runs a read-only command on the target over raw ssh and returns its trimmed
-	// stdout (used for the reboot proof: boot_id is world-readable, no sudo needed).
+	// capture runs a read-only command on the target and returns its trimmed stdout (used for the
+	// reboot proof: boot_id is world-readable, no sudo needed).
 	capture := func(remote string) string {
-		c := exec.Command("ssh", append(append(sshOpts(), target), remote)...) //nolint:gosec // fixed args, operator target
-		o, _ := c.Output()
+		o, _ := host.cmd(remote).Output()
 		return strings.TrimSpace(string(o))
 	}
 	// Ask once, up front, for everything pavois itself needs on the target. Before the cinc
 	// bootstrap on purpose: refusing to proceed AFTER installing 200 MB of Ruby on someone's
 	// machine is a poor way to say "you are missing tar".
 	if !haNoRestorePoint {
-		if missing := missingPrereqs(target, p.OS, sshOpts()); len(missing) > 0 {
+		if missing := missingPrereqs(host, p.OS); len(missing) > 0 {
 			// Install them, rather than sending the operator away to do it by hand. pavois already
 			// installs cinc-client on this target, on the next line: refusing to add tar while
 			// installing 200 MB of Ruby would be a strange place to draw the line, and it leaves
@@ -2082,7 +2191,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 			if err := installPrereqs(target, p.OS, missing, sudoCmd, runSudoTTY); err != nil {
 				return fmt.Errorf("%w\n\n%w", err, prereqError(p.OS, missing))
 			}
-			if still := missingPrereqs(target, p.OS, sshOpts()); len(still) > 0 {
+			if still := missingPrereqs(host, p.OS); len(still) > 0 {
 				return prereqError(p.OS, still)
 			}
 		}
@@ -2094,7 +2203,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	// cinc-apply is genuinely absent do we sudo-install it: as root (sudo first), download the
 	// installer to a FILE then run it (a `curl | bash` pipe / nested sudo wedges), over ssh WITHOUT
 	// -tt and piping the password (an -tt pty races `sudo -S` on rhel9). Password never hits argv.
-	if err := exec.Command("ssh", append(append(sshOpts(), target), "command -v cinc-apply >/dev/null 2>&1")...).Run(); err != nil { //nolint:gosec // fixed args, operator target
+	if err := host.cmd("command -v cinc-apply >/dev/null 2>&1").Run(); err != nil {
 		// And it is gated, like every other install Pavois can perform. #257 removed the implicit
 		// bootstrap from `scan`, added --bootstrap-cinc to `harden apply`, and then threaded the
 		// flag only into the post-apply re-scan: THIS install stayed unconditional. So the one
@@ -2102,16 +2211,20 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		// without being asked, and it did so BEFORE the "Apply these changes?" prompt, which means
 		// answering "no" still left an unpinned installer having run as root on the target.
 		if !haBootstrapCinc {
+			where := "as root on the target"
+			if host.local {
+				where = "as root ON THIS MACHINE"
+			}
 			return fmt.Errorf("cinc-client is not installed on %s, and installing it is not "+
 				"something Pavois does on its own.\n"+
-				"  what it would run, as root on the target:\n"+
+				"  what it would run, %s:\n"+
 				"    curl -fsSL https://omnitruck.cinc.sh/install.sh | sh -s -- -P cinc\n"+
 				"  either install it yourself from your own mirror, which is what an air-gapped\n"+
 				"  or package-controlled estate wants, or pass --bootstrap-cinc to let Pavois run\n"+
-				"  the command above", target)
+				"  the command above", target, where)
 		}
 		ensure := sudoCmd("bash -c 'curl -fsSL https://omnitruck.cinc.sh/install.sh -o /tmp/pavois-cinc-install.sh && sh /tmp/pavois-cinc-install.sh -P cinc'")
-		ec := exec.Command("ssh", append(append(sshOpts(), target), ensure)...) //nolint:gosec // fixed args, operator target
+		ec := host.cmd(ensure)
 		ec.Stdout, ec.Stderr = os.Stderr, os.Stderr
 		if sudoPass != "" {
 			ec.Stdin = strings.NewReader(sudoPass + "\n")
@@ -2132,7 +2245,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 					time.Now().UTC().Format("20060102-1504")))
 		}
 		_, _ = fmt.Fprintln(os.Stderr, "pavois: photographing the prior state (restore point)…")
-		if got, err := writeRestorePoint(p, recipe, target, args[0], dir, sshOpts(), sudoPass); err != nil {
+		if got, err := writeRestorePoint(p, recipe, target, args[0], dir, sshOpts(), sudoPass, host); err != nil {
 			return fmt.Errorf("restore point: %w (re-run with --no-restore-point to skip, but you lose the rollback)", err)
 		} else {
 			_, _ = fmt.Fprintf(out, "pavois: 📸 restore point → %s   (undo with: pavois harden rollback %s --yes)\n", got, got)
@@ -2140,11 +2253,7 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 	}
 
 	_, _ = fmt.Fprintln(os.Stderr, "pavois: copying recipe…")
-	if err := // -O: the legacy SCP protocol, over an exec channel. Modern scp speaks SFTP by default,
-		// and a stock debian13 (OpenSSH 10) declares no `Subsystem sftp`, so an sftp transfer dies
-		// with "subsystem request failed on channel 0", measured on a fresh VM. -O needs no
-		// subsystem and works on every target we support.
-		run("scp", append(append([]string{"-O"}, append(sshOpts(), tmp.Name())...), target+":/tmp/pavois-harden.rb")...); err != nil {
+	if err := host.push(tmp.Name(), "/tmp/pavois-harden.rb"); err != nil {
 		return fmt.Errorf("copy recipe: %w", err)
 	}
 
@@ -2214,10 +2323,10 @@ func runHardenApply(cmd *cobra.Command, args []string) error {
 		// Like Ansible's reboot module (wait_for_connection): wait for the connection to
 		// DROP (box going down), then for it to come back: a plain re-ping right away
 		// would false-positive on the still-up box before it actually reboots.
-		ping := func() bool {
-			c := exec.Command("ssh", append(append(sshOpts(), target), "true")...) // quiet
-			return c.Run() == nil
-		}
+		// A local target cannot be waited for: rebooting it kills this very process. `--reboot`
+		// already refuses a local target for that reason, so this loop is only ever reached
+		// remotely; reachable() answers true locally rather than spinning for four minutes.
+		ping := host.reachable
 		_, _ = fmt.Fprintln(os.Stderr, "pavois: waiting for the target to reboot…")
 		for i := 0; i < 24 && ping(); i++ { // wait until it goes down (~2min max)
 			time.Sleep(5 * time.Second)
