@@ -68,6 +68,33 @@ func Title(p string) string {
 	return ""
 }
 
+// Controls counts the control declarations in the embedded corpus, without extracting anything.
+//
+// It exists so `pavois doctor` can report the SAME number whether the corpus is on disk or
+// compiled in. It used to print the count only in the first case, which means only to somebody
+// standing in a checkout: the user who needs to know what their binary carries, because a command
+// just failed, got a vaguer sentence instead. Counted the way doctor counts the on-disk corpus, so
+// the two numbers are comparable rather than merely both present.
+func Controls() int {
+	n := 0
+	_ = fs.WalkDir(fsys, "profiles", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(d.Name(), ".rb") {
+			return nil
+		}
+		b, e := fsys.ReadFile(path)
+		if e != nil {
+			return nil
+		}
+		for _, line := range strings.Split(string(b), "\n") {
+			if strings.HasPrefix(line, "control '") {
+				n++
+			}
+		}
+		return nil
+	})
+	return n
+}
+
 // Extract writes the embedded profile <p> (e.g. "linux/debian12") to <dest>/<p> and returns the
 // directory, or ("", false) if that profile is not embedded. Used by ResolveProfile as a fallback
 // when profiles/ is not on disk (a downloaded binary).

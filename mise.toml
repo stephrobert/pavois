@@ -377,6 +377,21 @@ run = "python3 {{config_root}}/tools/lint_embed_release.py"
 description = "Prove lint:embed bites: plant an embed directory no release step fills and demand red"
 run = "python3 {{config_root}}/tools/lint_embed_release.py --selftest"
 
+[tasks."lint:contradictions"]
+description = "FAIL when two controls make incompatible demands of one file, package, sysctl key or config file"
+# Every other lint reads ONE control and asks whether it is well formed. None can see the defect
+# where two controls are each correct and cannot both be satisfied, because the evidence is spread
+# across two entries no single read brings together. #266 documented one such pair without naming
+# the class. Four families: absence vs attribute, package removed vs needed, one sysctl key with two
+# values, one file with two writers. It consults the RENDERED corpus for the existence guard, so a
+# pair the renderer already neutralises is not reported: the first version did not look and was
+# wrong on all four of its findings.
+run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_contradictions.py"
+
+[tasks."lint:contradictions:test"]
+description = "Prove lint:contradictions bites: plant a package conflict and an unguarded path conflict, demand red"
+run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_contradictions.py --selftest"
+
 [tasks."lint:norm-refs"]
 description = "FAIL if a norm mapping holds anything but a reference (the claim /attribution makes about redistribution)"
 run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_norm_refs.py"
@@ -419,6 +434,19 @@ description = "Run the built binary from an empty directory: the embedded corpus
 # repository, where profiles/ is on disk. The corpus was genuinely compiled into the binary; the
 # code that looked for a profile asked the filesystem, which is always false outside a checkout.
 run = "bash --noprofile --norc {{config_root}}/tools/release/standalone_binary.sh"
+
+[tasks."release:same-outside"]
+description = "THE INVARIANT: the same binary, run from the repository and from an empty directory, must know the same things."
+# Seven defects of one family were found one at a time, by users, after releases: scan (v0.1.0),
+# harden plan + rules + norms + oscal (#286), verify and oscal's baseline (v0.1.3), harden plan
+# --from (#295), bundle's ruleset digest (#296). Each was a DIFFERENT lookup, so grep does not
+# generalise and the next one will have a shape nobody enumerated. This compares behaviour instead:
+# a difference in what the binary KNOWS is a defect whatever produced it. Seconds, no VM, no target.
+run = "bash --noprofile --norc {{config_root}}/tools/release/same_outside_checkout.sh"
+
+[tasks."release:same-outside:test"]
+description = "Prove the invariant harness bites: put each known defect back, rebuild, demand red"
+run = "bash --noprofile --norc {{config_root}}/tools/release/falsify_outside_checkout.sh"
 
 [tasks."release:standalone:test"]
 description = "Prove release:standalone bites: remove each embedded asset in a copy, rebuild, demand red."
@@ -468,7 +496,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]

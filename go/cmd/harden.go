@@ -19,6 +19,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"pavois/internal/audit"
+	"pavois/internal/corpus"
 	"pavois/internal/engine"
 	"pavois/internal/render"
 )
@@ -239,10 +240,19 @@ func profileFromReport(root, path string) (profile, detected string) {
 	if cand == "" {
 		return "", detected
 	}
-	if fi, err := os.Stat(filepath.Join(root, "profiles", "linux", cand)); err != nil || !fi.IsDir() {
-		return "", detected
+	// Disk first, embedded second. This used to ask os.Stat and nothing else, and findRoot() falls
+	// back to the current directory outside a checkout, so the stat was always false for a
+	// downloaded binary: the function returned empty and the caller probed the TARGET instead.
+	// `--from` exists precisely so a plan needs nothing but the report, and replaying one from a
+	// host that is off, rebuilt or gone then failed while the report said, in plain text, what it
+	// had been taken on (#295).
+	if fi, err := os.Stat(filepath.Join(root, "profiles", "linux", cand)); err == nil && fi.IsDir() {
+		return "linux/" + cand, detected
 	}
-	return "linux/" + cand, detected
+	if corpus.Has(filepath.Join("linux", cand)) {
+		return "linux/" + cand, detected
+	}
+	return "", detected
 }
 
 func runHardenPlan(cmd *cobra.Command, args []string) error {

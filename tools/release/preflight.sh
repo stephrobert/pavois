@@ -142,6 +142,23 @@ else
      "run tools/release/standalone_binary.sh. This is exactly how v0.1.0 shipped broken."
 fi
 
+# The check above asks whether the binary WORKS outside a checkout. This one asks whether it knows
+# the SAME THINGS, which is a different question and the one that keeps being answered by users
+# after a release: scan (v0.1.0), harden plan + rules + norms + oscal (#286), verify and the OSCAL
+# baseline (v0.1.3), harden plan --from (#295), bundle's ruleset digest (#296). Seven instances,
+# seven different lookups, so it compares behaviour rather than enumerating shapes.
+#
+# It lives here rather than in go.yml because it needs a RELEASE-SHAPED binary, with the embed
+# directories populated, and filling them renders the corpus. go.yml checks out into a subdirectory
+# and carries no mise, which is where a first attempt at wiring it there failed. The consequence is
+# honest and worth stating: this runs before every tag, not on every pull request.
+if bash --noprofile --norc tools/release/same_outside_checkout.sh >/dev/null 2>&1; then
+  ok "the binary knows the same things outside a checkout as inside it"
+else
+  ko "the binary answers differently outside a checkout" \
+     "run tools/release/same_outside_checkout.sh: it names the command and the difference."
+fi
+
 # --- the gates the project already owns --------------------------------------
 head_ "the project's own gates"
 
