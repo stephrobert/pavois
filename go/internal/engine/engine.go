@@ -890,7 +890,10 @@ func RunOnTarget(o Options) (int, error) {
 	// only root can remove it. Without this, a scan that dies before writing (bad profile, cinc
 	// error) silently ships the STALE report back and pavois reports someone else's results.
 	_ = ssh(sudo + "rm -f " + remoteJSON)
-	_, _ = fmt.Fprintf(os.Stderr, "  scanning %s on the target (local, fast)…\n", o.Target)
+	// The working directory is named, because when this fails the question is always which one it
+	// picked: a hardened host mounts several of the candidates noexec, and `exit 126` with no path
+	// tells a reader nothing (#288).
+	_, _ = fmt.Fprintf(os.Stderr, "  scanning %s on the target (local, fast), working in %s…\n", o.Target, scratch)
 	rc := 0
 	if err := ssh(exe); err != nil {
 		var ee *exec.ExitError

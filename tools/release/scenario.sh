@@ -466,9 +466,9 @@ fi
 # ruleset and an EMPTY kernel recipe, and reported success. #286 at least stopped and said so; this
 # hardened a machine, skipped two domains, and told the operator it had worked.
 #
-# It runs over ssh because `harden apply` has no local path: it scp's the recipe to the target and
-# runs cinc-client there (#200). This machine is the control host, the VM is the target, which is
-# the documented usage and keeps the rule that nothing hardens the workstation.
+# It runs over ssh, which used to be the ONLY way `harden apply` worked (#200 fixed the local one).
+# This machine is the control host, the VM is the target, which is the documented usage and keeps
+# the rule that nothing hardens the workstation.
 KEY=${PAVOIS_SSH_KEY:-$HOME/.ssh/id_ed25519}
 if [ -z "$VM_IP" ] || [ ! -f "$KEY" ]; then
   ko "cannot reach the VM over ssh to apply" "no address, or no key at $KEY"
@@ -484,6 +484,20 @@ else
     ok "harden plan reached the VM over ssh and wrote a plan"
   else
     ko "harden plan over ssh produced nothing" "see $LOG"
+  fi
+
+  # The SAME enable step as the local leg. Forgetting it here is how this phase asserted against a
+  # recipe that was legitimately empty: a plan is born with `apply: false` on every gap, because
+  # flipping them is the operator's decision, so an apply straight off a fresh plan converges
+  # nothing and loads no audit rules. The assertion then reads as a product defect.
+  if [ -s "$planfile" ]; then
+    enabled=$(uv run --with pyyaml python3 tools/harden_plan_enable.py "$planfile" --ssh-user tester 2>&1 | tail -2)
+    printf '%s\n' "$enabled" >> "$LOG"
+    if rx 'enabled [0-9]+' "$enabled"; then
+      ok "the plan's gaps were enabled ($(printf '%s' "$enabled" | grep -oE 'enabled [0-9]+' | head -1))"
+    else
+      ko "could not enable the ssh plan's gaps" "$(printf '%s' "$enabled" | tr '\n' ' ' | cut -c1-140)"
+    fi
   fi
 
   if [ -s "$planfile" ]; then
