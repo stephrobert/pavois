@@ -19,4 +19,8 @@ var versionCmd = &cobra.Command{
 	},
 }
 
-func init() { rootCmd.AddCommand(versionCmd) }
+func init() {
+	rootCmd.Version = version
+	rootCmd.SetVersionTemplate("Pavois {{.Version}}\n")
+	rootCmd.AddCommand(versionCmd)
+}
