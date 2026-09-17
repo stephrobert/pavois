@@ -420,6 +420,19 @@ description = "Run the built binary from an empty directory: the embedded corpus
 # code that looked for a profile asked the filesystem, which is always false outside a checkout.
 run = "bash --noprofile --norc {{config_root}}/tools/release/standalone_binary.sh"
 
+[tasks."release:same-outside"]
+description = "THE INVARIANT: the same binary, run from the repository and from an empty directory, must know the same things."
+# Seven defects of one family were found one at a time, by users, after releases: scan (v0.1.0),
+# harden plan + rules + norms + oscal (#286), verify and oscal's baseline (v0.1.3), harden plan
+# --from (#295), bundle's ruleset digest (#296). Each was a DIFFERENT lookup, so grep does not
+# generalise and the next one will have a shape nobody enumerated. This compares behaviour instead:
+# a difference in what the binary KNOWS is a defect whatever produced it. Seconds, no VM, no target.
+run = "bash --noprofile --norc {{config_root}}/tools/release/same_outside_checkout.sh"
+
+[tasks."release:same-outside:test"]
+description = "Prove the invariant harness bites: put each known defect back, rebuild, demand red"
+run = "bash --noprofile --norc {{config_root}}/tools/release/falsify_outside_checkout.sh"
+
 [tasks."release:standalone:test"]
 description = "Prove release:standalone bites: remove each embedded asset in a copy, rebuild, demand red."
 # Its first version passed with behavioral-probes.yml and audit.rules deleted from the embed: it

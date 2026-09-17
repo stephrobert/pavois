@@ -3,6 +3,7 @@ package cmd
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -12,6 +13,7 @@ import (
 	"github.com/stephrobert/scankit/assessment"
 
 	"pavois/internal/audit"
+	"pavois/internal/corpus"
 )
 
 // provenance.go stamps the run-level envelope that makes an assessment opposable: WHO produced
@@ -34,26 +36,36 @@ func binaryDigest() string {
 }
 
 // rulesetDigest is a deterministic content hash of the evaluated profile, the corpus of
-// InSpec controls actually run. It closes the gap the brief flags: the bundle manifest carried
-// a ruleset VERSION string but no content hash, so two different rulesets could share a
-// version. profile is the value passed to `scan --profile` (e.g. "linux/debian12", a path, or a
-// URL); root is the repo root. Returns "sha256:<hex>" or "" when the profile is not a local dir
-// (a URL) or is unreadable.
+// InSpec controls actually run. The bundle manifest carried a ruleset VERSION string and no
+// content hash, so two different rulesets could share a version. profile is the value passed to
+// `scan --profile` (e.g. "linux/debian12", a path, or a URL); root is the repo root.
+//
+// It used to ask the filesystem and nothing else, so a downloaded binary wrote the field as an
+// empty string, with no error, into an artifact whose entire purpose is to stay interpretable
+// after the fact (#296). An evidence bundle is read months later, by someone else; a blank
+// identity is discovered at the one moment it cannot be recovered.
+//
+// The embedded corpus is byte-for-byte the rendered profiles/, so extracting it yields the same
+// digest a checkout does. That equality is the reason a release bundle and a source bundle remain
+// comparable, and it is asserted by tools/release/same_outside_checkout.sh rather than assumed.
+//
+// Returns "sha256:<hex>", or "" only when the profile genuinely has no local content to hash (a
+// URL). Callers must NOT write "" into a manifest as if it were a digest: see bundle.go.
 func rulesetDigest(root, profile string) string {
-	dir := ""
 	for _, cand := range []string{
 		filepath.Join(root, "profiles", profile), // bundled name: profiles/linux/debian12
 		profile,                                  // an explicit path
 	} {
 		if fi, err := os.Stat(cand); err == nil && fi.IsDir() {
-			dir = cand
-			break
+			return dirDigest(cand)
 		}
 	}
-	if dir == "" {
-		return ""
+	// Nothing on disk: a released binary. Extract the embedded copy and hash that.
+	if dest, ok := corpus.Extract(filepath.Join(os.TempDir(),
+		fmt.Sprintf("pavois-digest-%d", os.Getuid())), profile); ok {
+		return dirDigest(dest)
 	}
-	return dirDigest(dir)
+	return ""
 }
 
 // dirDigest hashes every regular file under dir (relative path + content, in sorted order) into

@@ -169,8 +169,18 @@ func runBundle(cmd *cobra.Command, args []string) error {
 		}
 		// Content digest of the ruleset actually evaluated (not just its version string): two
 		// rulesets can share a version. Resolve the profile from the audited OS.
+		//
+		// When it cannot be computed the field is NOT left blank. A bundle is read long after it
+		// was made, by someone who was not there, and an empty string in a field named
+		// ruleset_sha256 reads as "hashed to nothing" rather than as "never recorded". It says so,
+		// in the manifest and on stderr, so the gap is visible while somebody can still act on it.
 		if prof := profileForOS(rep.Platform.Name, rep.Platform.Release); prof != "" {
 			rulesetSHA = rulesetDigest(findRoot(), filepath.Join("linux", prof))
+		}
+		if rulesetSHA == "" {
+			rulesetSHA = "unknown: the evaluated ruleset could not be identified"
+			_, _ = fmt.Fprintln(os.Stderr, "pavois: warning: this bundle cannot name the ruleset "+
+				"that produced its verdicts. The manifest records that, rather than an empty digest.")
 		}
 		p := audit.Breakdown(rep, "", "")
 		posture = &p

@@ -41,6 +41,25 @@ KEYWORDS = {"if", "for", "while", "until", "case", "test", "["}
 # "the first word must be something the shell executes", and an assignment is not.
 ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
+# Shell BUILTINS are not keywords, and they are not binaries either. Debian ships no
+# /usr/bin/command, so `sudo command -v aide` is not a privilege problem, it is a hard failure:
+#
+#     $ sudo command -v ls
+#     sudo: command: command not found
+#
+# and the matcher then reads an empty stdout as a verdict. Same family as the keywords above, one
+# word list apart, and #266 reported it against `command -v`.
+BUILTINS = {"command", "type", "source", ".", "eval", "exec", "export", "read", "set", "unset"}
+
+# `sudo A && B` privileges A and nothing else: B runs as the login user. #266 measured
+#
+#     command -v aide >/dev/null 2>&1 && echo found || echo NOT-FOUND
+#
+# answering NOT-FOUND on a host where aide was installed. Inside `sh -c '...'` the whole line is
+# root, so a wrapped command is fine, which is what the renderer produces. The corpus is clean
+# today on all nine systems; this is what keeps it that way.
+CHAIN_RE = re.compile(r"(&&|\|\|)")
+
 # Binaries that need root, live outside the unprivileged PATH, or both. Inside a $( ) they run as
 # the login user, which on a Debian cloud image means /usr/local/bin:/usr/bin:/bin:/usr/games.
 PRIVILEGED = {
@@ -106,6 +125,14 @@ def main() -> int:
             os_name = rb.parent.parent.name
 
             first = script.strip().split(None, 1)[0] if script.strip() else ""
+            if first in BUILTINS:
+                problems.append(
+                    (os_name, ctl, f"starts with the shell builtin {first}", script[:80])
+                )
+                continue
+            if not script.lstrip().startswith("sh -c ") and CHAIN_RE.search(script):
+                problems.append((os_name, ctl, "chains with && or || outside sh -c", script[:80]))
+                continue
             if first in KEYWORDS:
                 problems.append(
                     (os_name, ctl, "starts with the shell keyword " + first, script[:80])

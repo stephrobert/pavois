@@ -99,11 +99,23 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		ctrls += len(controlDecl.FindAll(b, -1))
 		oses[filepath.Base(filepath.Dir(filepath.Dir(f)))] = true
 	}
+	// The COUNT is reported either way. It used to be printed only when the corpus was on disk,
+	// which means only to somebody standing in a checkout: the user who actually needs to know what
+	// their binary carries, because a command just failed, got the vaguer sentence. Found by
+	// tools/release/same_outside_checkout.sh, which compares the two runs and has no opinion about
+	// which line is nicer.
+	// Both branches report the SAME two numbers, and differ only in the trailing provenance. That
+	// is deliberate: the count used to be printed only for the on-disk corpus, so the user who
+	// needs it least got it. It also makes the two runs comparable, which is how
+	// tools/release/same_outside_checkout.sh can assert that a downloaded binary knows what a
+	// checkout knows without being fooled by a difference in wording.
 	switch {
 	case len(rb) > 0:
-		line("OK", "rule corpus", fmt.Sprintf("%d controls rendered across %d OS profile(s)", ctrls, len(oses)))
+		line("OK", "rule corpus", fmt.Sprintf("%d controls across %d OS profile(s) (rendered on disk)",
+			ctrls, len(oses)))
 	case corpus.Available():
-		line("OK", "rule corpus", "embedded in this binary (self-contained release build)")
+		line("OK", "rule corpus", fmt.Sprintf("%d controls across %d OS profile(s) (embedded in this binary)",
+			corpus.Controls(), len(corpus.Names())))
 	default:
 		line("WARN", "rule corpus", "not generated; run `mise run regen` (renders the .rb corpus + OSCAL from the reference)")
 	}
