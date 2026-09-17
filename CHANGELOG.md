@@ -12,6 +12,52 @@ its content digest**, so an archived result stays interpretable long after the t
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-09-17
+
+Two commands were still reading from the checkout, and neither said so. One fell back to probing a
+target it was told not to need; the other wrote a blank where an evidence bundle records which rules
+produced its verdicts. The baseline is unchanged, so a 0.1.3 report stays comparable to a 0.1.4 one.
+
+### Fixed
+
+- **`harden plan --from` could not resolve a profile outside a checkout** (#295). The flag exists so
+  a plan needs nothing but a report you already have: replaying one from a host that is off, rebuilt
+  or gone is the whole point. `profileFromReport` asked `os.Stat` and nothing else, and `findRoot()`
+  falls back to the current directory for a downloaded binary, so the answer was always no and the
+  caller probed the target instead. The report said what it had been taken on, in plain text, the
+  entire time. Measured on the published 0.1.3 binary: `could not tell which OS report.json was
+  taken on` from an empty directory, `detected debian 12.15` from a checkout, same binary, same
+  report.
+
+- **`bundle` recorded an empty ruleset digest, silently** (#296). The manifest carries a CONTENT
+  hash of the evaluated rules because two rulesets can share a version string. Outside a checkout
+  `rulesetDigest` returned `""` and the manifest took it as if it were a digest. An evidence bundle
+  is read months later by somebody who was not there, and `""` in a field named `ruleset_sha256`
+  reads as "hashed to nothing" rather than "never recorded": the gap is discovered at the one moment
+  it cannot be recovered. It now hashes the embedded corpus, which is byte-for-byte the rendered
+  one, so a release bundle and a source bundle stay comparable. When the ruleset genuinely cannot be
+  identified it says so, in the manifest and on stderr.
+
+### Changed
+
+- **`pavois doctor` reports the corpus size wherever it runs.** The count was printed only when the
+  corpus was on disk, which is to say only to somebody standing in a checkout. The user who needs to
+  know what their binary carries, because a command just failed on a downloaded one, got the vaguer
+  sentence. Both cases now read `5928 controls across 9 OS profile(s)` and differ only in the
+  provenance.
+
+### Added
+
+- `mise run release:same-outside`: the same binary, run from the repository and from an empty
+  directory, must know the same things. Seven defects of this family have been found one at a time,
+  by users, after releases, each a different lookup, so it compares behaviour rather than
+  enumerating shapes. It found the two fixed above and the doctor gap on its first run, and
+  `release:same-outside:test` puts each defect back and demands it go red.
+- `mise run lint:contradictions`: fails when two controls make incompatible demands of one file,
+  package, sysctl key or configuration file. Its first version reported four pairs and was wrong on
+  all four, because it read the reference and not the rendered corpus, where 642 of 642
+  file-attribute controls carry an existence guard.
+
 ## [0.1.3] - 2026-09-17
 
 One class of defect, in three places: the artifact 0.1.2 published could not read what it needs, and
@@ -278,7 +324,8 @@ history to read. The embedded baseline is `pavois-baseline` 0.2.0.
 - OSCAL output is the baseline (catalog and profiles), not yet a per-scan assessment-results
   package. No container image is published yet.
 
-[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/stephrobert/pavois/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/stephrobert/pavois/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/stephrobert/pavois/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/stephrobert/pavois/compare/v0.1.0...v0.1.1
