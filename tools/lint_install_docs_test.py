@@ -141,7 +141,12 @@ def main() -> int:
             # Not an assert: bandit refuses those, and rightly, since -O strips them and the
             # check would vanish from an optimised run.
             raise RuntimeError("no VERSION constant in install.ts to age")
-        major, minor, patch = (int(x) for x in cur.group(1)[1:].split("-")[0].split("."))
+        # Aged relative to the newest TAG, not to the constant. The rule is "the site is behind the
+        # newest release", so during release prep the constant is legitimately AHEAD of the tag and
+        # decrementing it produced a version that is not stale at all: the case then tested nothing
+        # and reported a pass it had not earned.
+        base = _newest_release_tag() or cur.group(1)
+        major, minor, patch = (int(x) for x in base[1:].split("-")[0].split("."))
         old = f"v{major}.{minor}.{max(patch - 1, 0)}"
         p.write_text(s.replace(cur.group(0), f"export const VERSION = '{old}'", 1))
 

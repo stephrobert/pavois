@@ -117,6 +117,21 @@ def newest_tag() -> str:
     return ""
 
 
+def _older(site: str, tag: str) -> bool:
+    """Is the version the site hands out older than the newest release tag?
+
+    Compared as numbers, not as text: 'v0.1.10' is newer than 'v0.1.9' and sorts before it. A
+    pre-release suffix is ignored, since a site pointing at v0.2.0 while v0.2.0-rc.1 is the newest
+    tag is not handing out a stale artifact.
+    """
+
+    def parts(v: str) -> tuple[int, ...]:
+        core = v.lstrip("v").split("-", 1)[0]
+        return tuple(int(x) if x.isdigit() else 0 for x in core.split("."))
+
+    return parts(site) < parts(tag)
+
+
 def fail(problems: list[str]) -> int:
     for p in problems:
         print(p)
@@ -182,7 +197,12 @@ def main() -> int:
         problems.append(
             f"{SOURCE.relative_to(ROOT)}: no VERSION constant; the install links carry no version"
         )
-    elif tag and m.group(1) != tag:
+    elif tag and _older(m.group(1), tag):
+        # BEHIND the newest tag, only. Ahead is the release-prep state: the constant is bumped, the
+        # CHANGELOG section is cut, and the tag is pushed last, which is the order the release
+        # process asks for. This used to compare for inequality and rejected that state, so the one
+        # commit the rule exists to protect was the one it blocked. The defect is a reader landing
+        # on the install page and downloading a version that is no longer current.
         rel = SOURCE.relative_to(ROOT)
         problems.append(
             f"{rel}: the site hands out {m.group(1)}, the newest tag is {tag}\n"

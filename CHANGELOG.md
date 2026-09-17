@@ -12,6 +12,12 @@ its content digest**, so an archived result stays interpretable long after the t
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-17
+
+One defect, and it is the one that matters: the artifact 0.1.2 published could not read its own
+reference. Everything the release fixed was unreachable for anyone who downloaded it. The baseline
+is unchanged, so a 0.1.2 report stays comparable to a 0.1.3 one.
+
 ### Fixed
 
 - **The published 0.1.2 binary could not read its own reference.** `scan` worked; `harden plan`,
@@ -263,7 +269,8 @@ history to read. The embedded baseline is `pavois-baseline` 0.2.0.
 - OSCAL output is the baseline (catalog and profiles), not yet a per-scan assessment-results
   package. No container image is published yet.
 
-[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/stephrobert/pavois/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/stephrobert/pavois/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/stephrobert/pavois/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/stephrobert/pavois/releases/tag/v0.1.0

@@ -62,17 +62,21 @@ incus exec "$VM" -- chmod +x /root/pavois
 
 say ""
 say "== the engine, installed by the documentation's own command"
-cat > "$work/installer-cinc.sh" <<'CINC'
-set -e
-command -v curl >/dev/null || { apt-get update -qq && apt-get install -y -qq curl; }
-META=$(curl -fsSL "https://omnitruck.cinc.sh/stable/cinc-auditor/metadata?p=debian&pv=13&m=x86_64")
-URL=$(printf '%s\n' "$META" | awk '/^url/ {print $2}')
-SHA=$(printf '%s\n' "$META" | awk '/^sha256/ {print $2}')
-[ -n "$URL" ] || { echo "omnitruck returned no url"; printf '%s\n' "$META"; exit 1; }
-curl -fsSL "$URL" -o /tmp/cinc-auditor.deb
-echo "$SHA  /tmp/cinc-auditor.deb" | sha256sum --check -
-dpkg -i /tmp/cinc-auditor.deb >/dev/null
-CINC
+# Read out of site/src/data/install.ts rather than retyped here, the same way scenario.sh does it:
+# a hand-written copy is a second source that drifts, and the point of this file is to run what a
+# reader is told to run. Only the platform coordinates are substituted, which is what the block's
+# own comment tells a Debian reader to do.
+{
+  echo 'set -e'
+  echo 'command -v curl >/dev/null || { apt-get update -qq && apt-get install -y -qq curl; }'
+  mise exec -- node --experimental-strip-types tools/doc_commands.mjs --id engine-install \
+    | sed -e 's|p=el&pv=9|p=debian\&pv=13|' \
+          -e 's|sudo dnf install -y|apt-get install -y|' \
+          -e 's|^pavois doctor.*|true|'
+} > "$work/installer-cinc.sh"
+[ -s "$work/installer-cinc.sh" ] || { say "could not read the engine-install block"; exit 1; }
+say "  the command under test, as the page gives it:"
+sed -n '3,$p' "$work/installer-cinc.sh" | sed 's/^/    /'
 incus file push "$work/installer-cinc.sh" "$VM/root/installer-cinc.sh" >/dev/null 2>&1
 incus exec "$VM" -- chmod +x /root/installer-cinc.sh
 if timeout 900 incus exec "$VM" -- bash /root/installer-cinc.sh 2>&1 | tail -3 | sed 's/^/  /'; then
