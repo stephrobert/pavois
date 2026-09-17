@@ -1,0 +1,45 @@
+name: 'upload-artifact (act stub)'
+description: >
+  Stands in for actions/upload-artifact when release.yml is run locally under act. act's artifact
+  server rejects the protocol actions/upload-artifact@v7 speaks (`unknown field "mime_type"`), which
+  fails the corpus job before the build step ever runs. Only the TRANSPORT is replaced: a copy into
+  a directory shared between jobs. Nothing else about the workflow is altered, which is the point,
+  since the defect this whole exercise is about lived in a step the local path never ran.
+
+inputs:
+  name:
+    description: 'Artifact name'
+    required: true
+  path:
+    description: 'Files to store'
+    required: true
+  if-no-files-found:
+    description: 'Accepted and ignored (this stub always fails on an empty upload)'
+    required: false
+    default: 'warn'
+  retention-days:
+    description: 'Accepted and ignored'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      env:
+        ART_NAME: ${{ inputs.name }}
+        ART_PATH: ${{ inputs.path }}
+      run: |
+        set -euo pipefail
+        dest="/tmp/act-artifacts/$ART_NAME"
+        rm -rf "$dest"
+        mkdir -p "$dest"
+        # Same shape as the real action: the contents of `path` land at the artifact root.
+        if [ -d "$ART_PATH" ]; then
+          cp -r "$ART_PATH/." "$dest/"
+        else
+          cp "$ART_PATH" "$dest/"
+        fi
+        n=$(find "$dest" -type f | wc -l)
+        [ "$n" -gt 0 ] || { echo "::error::artifact $ART_NAME is empty"; exit 1; }
+        echo "act stub: stored artifact $ART_NAME ($n file(s))"

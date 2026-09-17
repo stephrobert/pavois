@@ -4,12 +4,31 @@ name: Go
 # units, golangci-lint and govulncheck. Mirrors .pre-commit-config.yaml and the
 # go-production-engineer standard. Actions pinned by commit SHA; tools pinned by version.
 
+# The release paths are in the filter because the embed check below has two halves and either one
+# can break it: a new //go:embed under go/, or a copy step removed from the release build. A filter
+# that watched only go/** would pass the day somebody deleted a line from embed_reference.sh.
+#
+# The list is written twice rather than shared through a YAML anchor: GitHub Actions does not
+# resolve anchors, although actionlint does, so a workflow that uses one parses locally and is
+# rejected by the runner.
 on:
   push:
     branches: [main]
-    paths: ['go/**', '.github/workflows/go.yml', '.golangci.yml']
+    paths:
+      - 'go/**'
+      - '.github/workflows/go.yml'
+      - '.github/workflows/release.yml'
+      - '.golangci.yml'
+      - 'tools/lint_embed_release.py'
+      - 'tools/release/embed_reference.sh'
   pull_request:
-    paths: ['go/**', '.github/workflows/go.yml', '.golangci.yml']
+    paths:
+      - 'go/**'
+      - '.github/workflows/go.yml'
+      - '.github/workflows/release.yml'
+      - '.golangci.yml'
+      - 'tools/lint_embed_release.py'
+      - 'tools/release/embed_reference.sh'
   workflow_dispatch:
 
 permissions: {}
@@ -52,6 +71,17 @@ jobs:
       - name: go build
         working-directory: pavois/go
         run: go build ./...
+
+      # A build says nothing about what the build EMBEDS. An empty //go:embed directory compiles
+      # cleanly and produces a binary that answers "this binary embeds none and none is on disk" to
+      # the first command a user runs, which is exactly what 0.1.2 shipped: the release workflow
+      # filled the corpus and left the three directories added in that same release holding their
+      # .keep. This rule fails when an embed directory git holds empty is not filled by the release
+      # path, and it runs HERE rather than only at release time, so the answer arrives on the pull
+      # request that adds the embed.
+      - name: every embed directory is filled by the release build
+        working-directory: pavois
+        run: python3 tools/lint_embed_release.py
 
       - name: go test (race)
         working-directory: pavois/go
