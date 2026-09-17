@@ -97,7 +97,8 @@ func readAuditRules(root string) ([]byte, error) {
 // readBaselineMeta returns docs/reference/baseline.yml, from the checkout or from the binary.
 // Its caller keeps hardcoded defaults for the case where neither exists, so the ONLY symptom of
 // this read failing is an OSCAL catalogue that publishes itself as version 0.0.0, released
-// 1970-01-01. Two releases did exactly that.
+// 1970-01-01, with no error anywhere. No release reached that state, because oscal failed first on
+// the reference; embedding the reference is what would have unlocked it.
 func readBaselineMeta(root string) ([]byte, error) {
 	if b, err := os.ReadFile(filepath.Join(root, "docs", "reference", "baseline.yml")); err == nil {
 		return b, nil

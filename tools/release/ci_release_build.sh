@@ -17,7 +17,18 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 
-TAG=${1:-v0.0.0-act.1}
+TAG=v0.0.0-act.1
+KEEP=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    # Write the artifact out before the temp directory goes. That binary is what release.yml
+    # produces, so it is what the VM scenario should run before a tag exists:
+    #   tools/release/ci_release_build.sh v0.1.3-rc.1 --keep-binary /tmp/pavois-from-ci
+    #   tools/release/scenario.sh --binary /tmp/pavois-from-ci
+    --keep-binary) KEEP=$2; shift 2 ;;
+    *) TAG=$1; shift ;;
+  esac
+done
 # act has no built-in image for ubuntu-24.04 and SKIPS the job rather than failing, which reads as
 # a clean run and proves nothing. The mapping is mandatory, and the caller is told when it is used.
 IMAGE=${ACT_UBUNTU_IMAGE:-catthehacker/ubuntu:act-24.04}
@@ -71,6 +82,18 @@ EVENT
 docker image inspect "$IMAGE" >/dev/null 2>&1 \
   || { echo "missing runner image $IMAGE (docker pull $IMAGE)" >&2; exit 2; }
 
+# act copies the WORKING TREE, including files git does not hold; GitHub checks out the commit.
+# The first green run here exercised tools/release/embed_reference.sh while it was still untracked,
+# so it proved something about a script the real runner would not have found. A dirty tree makes
+# this check say more than it knows, which is the failure mode the whole file exists to avoid.
+dirty=$(git status --porcelain)
+if [ -n "$dirty" ]; then
+  echo "the working tree is not clean, and act would build THAT rather than the commit:" >&2
+  printf '%s\n' "$dirty" | head -10 >&2
+  echo "commit or stash first (ACT_ALLOW_DIRTY=1 to override, knowing what it costs)" >&2
+  [ "${ACT_ALLOW_DIRTY:-}" = "1" ] || exit 2
+fi
+
 # The artifact hop, and ONLY the artifact hop, is replaced by a local stub.
 #
 # act's own artifact server rejects what actions/upload-artifact@v7 sends
@@ -115,10 +138,23 @@ if [ "$rc" -ne 0 ]; then
   exit 1
 fi
 
-bin=$(find "$work/artifacts" -name 'pavois-linux-amd64' -type f | head -1)
-[ -n "$bin" ] || bin=$(find "$work" -name 'pavois-linux-amd64' -type f | head -1)
-[ -n "$bin" ] || { echo "act produced no pavois-linux-amd64 artifact"; tail -20 "$work/act.log"; exit 1; }
+art=$(find "$work/artifacts" -name 'pavois-linux-amd64' -type f | head -1)
+[ -n "$art" ] || art=$(find "$work" -name 'pavois-linux-amd64' -type f | head -1)
+[ -n "$art" ] || { echo "act produced no pavois-linux-amd64 artifact"; tail -20 "$work/act.log"; exit 1; }
+# Copied out before being made executable: the runner container wrote it through the bind mount, so
+# it is owned by root and this user cannot chmod it in place. It arrives as 0644 because the upload
+# stub normalises modes exactly as actions/upload-artifact v4+ does, which is also what a user gets
+# from a release asset: the install instructions say chmod for that reason.
+bin="$work/pavois-from-workflow"
+if ! cp "$art" "$bin"; then
+  echo "could not take a copy of the artifact act produced" >&2
+  exit 1
+fi
 chmod +x "$bin"
+if [ -n "$KEEP" ]; then
+  cp "$bin" "$KEEP" && chmod +x "$KEEP"
+  echo "   kept: $KEEP"
+fi
 echo
 echo "== the guard, on the binary the WORKFLOW produced ($(stat -c%s "$bin") bytes)"
 bash --noprofile --norc tools/release/standalone_binary.sh "$bin"

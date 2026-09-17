@@ -108,8 +108,10 @@ done
 # 5. The binary carries SIX embedded assets, and the checks above exercise three of them. The other
 #    three fail in ways no command surfaces:
 #
-#      docs/reference/baseline.yml           the OSCAL catalogue declared itself version 0.0.0,
-#                                            released 1970-01-01, for two releases, with no error
+#      docs/reference/baseline.yml           the OSCAL catalogue declares itself version 0.0.0,
+#                                            released 1970-01-01, with no error anywhere. No release
+#                                            reached it: oscal failed first, on the reference.
+#                                            Embedding the reference is what unlocks it.
 #      docs/reference/audit.rules            `harden apply` pushed an EMPTY audit ruleset
 #      docs/reference/behavioral-probes.yml  `pavois verify` answered with an internal repo path
 #

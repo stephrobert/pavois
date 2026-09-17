@@ -94,10 +94,13 @@ func AuditRules() ([]byte, error) {
 // Baseline returns the embedded baseline metadata (docs/reference/baseline.yml): the name, version,
 // release date, licence and authority the OSCAL catalogue publishes about itself.
 //
-// This one never failed, which is why it survived two releases. readBaseline read it off the disk
-// and, on any error, kept its hardcoded defaults: a downloaded binary emitted a catalogue declaring
-// version 0.0.0, released 1970-01-01, under the wrong authority. Silently wrong output from a
-// compliance tool is worse than an error, because the artifact gets filed.
+// readBaseline reads it off the disk and, on any error, keeps its hardcoded defaults. No published
+// binary ever emitted the resulting catalogue, because `oscal` failed earlier on the reference it
+// also could not read; embedding the reference is what would have let the command get this far and
+// succeed with the WRONG metadata, which is the dangerous outcome. Measured on a build of this
+// branch carrying the reference and not yet the baseline: version 0.0.0, released 1970-01-01.
+// Silently wrong output from a compliance tool is worse than an error, because the artifact gets
+// filed.
 func Baseline() ([]byte, error) {
 	return catalogue.ReadFile(filepath.Join("catalogue", "baseline"+ext))
 }

@@ -119,6 +119,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	//
 	// So doctor says so. A user who meets "this binary embeds none and none is on disk" can now run
 	// one command and see which asset is missing, instead of filing an issue about `harden plan`.
+	var missingAssets []string
 	for _, a := range []struct {
 		label string
 		count func() (string, error)
@@ -202,6 +203,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		if detail, err := a.count(); err != nil {
 			line("FAIL", a.label, err.Error()+"; this binary was built without it, "+
 				"so the commands that read it cannot work. Report it with `pavois version`.")
+			missingAssets = append(missingAssets, a.label)
 			ready = false
 		} else {
 			line("OK", a.label, detail)
@@ -218,6 +220,15 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	}
 
 	_, _ = fmt.Fprintln(out)
+	// The advice has to match what is actually missing. A binary built without an embedded asset
+	// used to be told to install a scan engine, with the engine sitting right there in the OK line
+	// above: nothing the reader could do would fix it, and the one thing that would (get a working
+	// build) was not mentioned.
+	if len(missingAssets) > 0 {
+		return fmt.Errorf("not ready: this binary was built without %s. No installation fixes that: "+
+			"download the release binary again, or build from a checkout with `mise run embed:all`",
+			strings.Join(missingAssets, ", "))
+	}
 	if !ready {
 		return fmt.Errorf("not ready: install a scan engine (cinc-auditor or docker), then re-run pavois doctor")
 	}
