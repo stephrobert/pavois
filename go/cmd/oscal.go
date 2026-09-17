@@ -38,7 +38,10 @@ type baselineMeta struct {
 
 func readBaseline(root string) baselineMeta {
 	m := baselineMeta{Name: "Pavois: Effective-Configuration Hardening Baseline", Version: "0.0.0", Released: "1970-01-01"}
-	if b, err := os.ReadFile(filepath.Join(root, "docs", "reference", "baseline.yml")); err == nil {
+	// Those defaults are a last resort, not a fallback to live on: a catalogue published as version
+	// 0.0.0 released 1970-01-01 is what a downloaded binary emitted for two releases, because the
+	// file was only ever read from the checkout and the error was discarded.
+	if b, err := readBaselineMeta(root); err == nil {
 		_ = yaml.Unmarshal(b, &m)
 	}
 	return m

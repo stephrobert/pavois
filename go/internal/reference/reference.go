@@ -91,6 +91,28 @@ func AuditRules() ([]byte, error) {
 	return data.ReadFile(filepath.Join("data", "audit.rules"))
 }
 
+// Baseline returns the embedded baseline metadata (docs/reference/baseline.yml): the name, version,
+// release date, licence and authority the OSCAL catalogue publishes about itself.
+//
+// This one never failed, which is why it survived two releases. readBaseline read it off the disk
+// and, on any error, kept its hardcoded defaults: a downloaded binary emitted a catalogue declaring
+// version 0.0.0, released 1970-01-01, under the wrong authority. Silently wrong output from a
+// compliance tool is worse than an error, because the artifact gets filed.
+func Baseline() ([]byte, error) {
+	return catalogue.ReadFile(filepath.Join("catalogue", "baseline"+ext))
+}
+
+// Probes returns the embedded behavioral probes (docs/reference/behavioral-probes.yml).
+//
+// Found after the fact, by grepping for every findRoot() still left: `pavois verify` read this file
+// straight off the disk and returned the raw os.ReadFile error, so on a downloaded binary the
+// command answered `open /root/docs/reference/behavioral-probes.yml: no such file or directory`.
+// Same defect as #286, a fifth file, still shipping. It is data the binary needs and the user has
+// no way to obtain, which is the test for whether something belongs here.
+func Probes() ([]byte, error) {
+	return data.ReadFile(filepath.Join("data", "behavioral-probes"+ext))
+}
+
 // KernelRecipe returns the embedded kernel-build recipe for <osName>, falling back to the legacy
 // single kernel-build.sh when no per-OS file exists.
 func KernelRecipe(osName string) ([]byte, error) {
