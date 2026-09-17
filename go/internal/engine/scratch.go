@@ -92,6 +92,47 @@ func lastPath(out string) string {
 	return ""
 }
 
+// sudoForbidsExec reports whether sudoers carries a global `Defaults noexec`, which forbids a
+// command run through sudo, and everything it spawns, from executing anything.
+//
+// That is not a directory problem and no working directory fixes it. An effective-configuration
+// scan exists to execute commands (`sshd -T`, `sysctl -a`, `systemctl show`), so under this setting
+// cinc-auditor is blocked inside mixlib-shellout on its first control. Measured on a clean Ubuntu
+// 24.04 against a control group: the same scan runs with noexec off and is blocked with it on,
+// whether or not the package managers are carved out.
+//
+// Pavois cannot work around it, and should not try: the control is doing exactly what it says. What
+// it CAN do is stop reporting `exit 126: no report produced`, which names nothing the reader can
+// act on, and say what is true.
+func sudoForbidsExec(ssh func(string) (string, error)) bool {
+	out, err := ssh("sudo -n grep -rhE '^[[:space:]]*Defaults[[:space:]]' /etc/sudoers /etc/sudoers.d/ 2>/dev/null " +
+		"| grep -E 'noexec' | grep -cv '!noexec'")
+	if err != nil {
+		return false // cannot tell: never accuse a target on a failed probe
+	}
+	n := strings.TrimSpace(out)
+	return n != "" && n != "0"
+}
+
+// noexecError explains the one thing a reader can act on.
+func noexecError(target string) error {
+	// The HOST, not the target: `strings.TrimPrefix(target, "root@")` left `pavois@10.0.0.2`
+	// untouched and the message then offered `pavois scan root@pavois@10.0.0.2`, a command nobody
+	// can run. Caught by the test that reads the message rather than trusting it.
+	host := target
+	if at := strings.LastIndex(target, "@"); at >= 0 {
+		host = target[at+1:]
+	}
+	return fmt.Errorf("the scan engine cannot run on %s: sudoers carries a global `Defaults noexec`, "+
+		"which forbids anything run through sudo from executing another command.\n"+
+		"  auditing the EFFECTIVE configuration means running sshd -T, sysctl and systemctl show, so\n"+
+		"  the engine is blocked on its first control. No working directory and no elevation trick\n"+
+		"  changes that; the setting is doing what it says (ANSSI BP-028 R39, control sudo-noexec).\n"+
+		"  scan from a root session instead, where noexec does not apply: pavois scan root@%s --key <path>\n"+
+		"  or drop --on-target, which runs the engine here and reaches the target over ssh",
+		target, host)
+}
+
 // sudoPrefix renders the sudo the caller asked for, if any, in the form the probes use.
 func sudoPrefix(o Options) string {
 	if !o.Sudo {
