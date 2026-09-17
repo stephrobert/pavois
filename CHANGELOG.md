@@ -12,9 +12,12 @@ its content digest**, so an archived result stays interpretable long after the t
 
 ## [Unreleased]
 
-Six issues opened against 0.1.1 by a user working from a fresh VM, and one more found by the
-harness written to close them. All of them are first-run defects: none is visible from inside a
-checkout, which is why none of them was caught before shipping. The baseline is unchanged.
+## [0.1.2] - 2026-09-17
+
+Ten defects. Six were opened against 0.1.1 by a user working from a fresh VM, four more were found
+by the harness written to close them, and not one is visible from inside a checkout, which is why
+none was caught before shipping. The baseline is unchanged, so an 0.1.1 report stays comparable to
+an 0.1.2 one.
 
 ### Fixed
 
@@ -47,6 +50,28 @@ checkout, which is why none of them was caught before shipping. The baseline is 
 - **`--out` meant a directory on `scan` and a file on `harden plan`**, so `--out ~/reports` answered
   `is a directory` on the second of two commands people run one after the other. `harden plan` now
   accepts a directory and creates the path.
+- **`norms.yml` was read the same way** and was missed on the first pass at #286: `pavois norms`
+  still answered `read norm catalogue: open /tmp/docs/reference/norms.yml`. Embedded too.
+- **`harden apply` converged an EMPTY audit ruleset and reported success.** `audit.rules` and the
+  per-OS kernel recipe were read under `findRoot()` **with the error discarded**, so a downloaded
+  binary hardened a machine, skipped those two domains entirely, and told the operator it had
+  worked. The worst of the family, because it did not fail: #286 at least stopped and said so. Both
+  are embedded, and a read that fails now stops the apply.
+- **`harden apply` could not target `local`** (#200). It invoked ssh and scp unconditionally, at ten
+  places, so a local target meant `ssh -tt local …`: an attempt to reach a host literally named
+  "local". Not even a clean failure, since a `Host local` entry in `~/.ssh/config` would have sent
+  the converge to an arbitrary machine. A transport indirection now decides once, from the target,
+  whether a command runs over ssh or here.
+- **`sudo-noexec` left a host neither administrable nor auditable** (#288). `Defaults noexec`
+  forbids a command run through sudo, and everything it spawns, from executing anything. Measured on
+  a clean Ubuntu 24.04 against a control group: `sudo apt-get install` fails, and cinc-auditor is
+  blocked on its first control, because auditing effective configuration means running `sshd -T`,
+  `sysctl` and `systemctl show`. So a host carrying it cannot be audited through sudo at all,
+  including for that very control, and that applies to any such scanner. The control is not dropped
+  (it genuinely stops vi and less from spawning a shell, measured): it becomes `dangerous`, its
+  remediation carves out the package managers per distribution, its check now requires a GLOBAL
+  default instead of accepting any `Defaults ... noexec` line, and Pavois says what is wrong instead
+  of `exit 126: no report produced`.
 
 ### Testing
 
@@ -175,6 +200,7 @@ history to read. The embedded baseline is `pavois-baseline` 0.2.0.
 - OSCAL output is the baseline (catalog and profiles), not yet a per-scan assessment-results
   package. No container image is published yet.
 
-[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/stephrobert/pavois/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/stephrobert/pavois/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/stephrobert/pavois/releases/tag/v0.1.0
