@@ -774,6 +774,18 @@ func RunOnTarget(o Options) (int, error) {
 		}
 		return c.Run()
 	}
+	// The same, but returning what the target said. The scratch-directory probe (#288) has to READ
+	// the answer: it asks the target which directory can execute a file, and a bare exit code
+	// cannot carry a path. No -tt here, because nothing it runs needs sudo.
+	sshOut := func(remote string) (string, error) {
+		args := append(append([]string{}, base...), o.Target, remote)
+		c := exec.Command("ssh", args...) //nolint:gosec // fixed args, operator target
+		if o.Sudo && o.SudoPass != "" {
+			c.Stdin = strings.NewReader(o.SudoPass + "\n")
+		}
+		out, err := c.Output()
+		return string(out), err
+	}
 
 	_, _ = fmt.Fprintf(os.Stderr, "  ensuring cinc-auditor on %s…\n", o.Target)
 	// FIRST check presence with NO sudo: cinc-auditor is world-executable in PATH, and a hardened
@@ -814,7 +826,28 @@ func RunOnTarget(o Options) (int, error) {
 		}
 	}
 
-	const remoteProf, remoteJSON = "/tmp/pavois-profile", "/tmp/pavois-out.json"
+	// WHERE the profile lands is not a detail, it is issue #288.
+	//
+	// This used to be /tmp, unconditionally. Then Pavois hardens the host, `mount-tmp-noexec`
+	// applies (bp28 intermediary, CIS level 1, nine systems), and the next `--on-target` scan of
+	// that same host dies:
+	//
+	//     sh: 1: env: Permission denied
+	//     error: cinc-auditor failed on the target (exit 126): no report produced
+	//
+	// So the tool hardened a machine into a state where its own verification could not run, which
+	// is exactly the scan an operator performs AFTER hardening to prove the result.
+	//
+	// The answer is not to stop hardening /tmp. A compliance scanner that weakens a standard for
+	// its own convenience has lost the argument, and `noexec` there is not dangerous, it is
+	// correct. The answer is to stop assuming any particular directory is executable: /tmp, /var,
+	// /var/tmp and /home all have a noexec control in this very corpus. So the target is asked.
+	scratch, err := execDirOnTarget(sshOut, sudoPrefix(o))
+	if err != nil {
+		return 2, err
+	}
+	remoteProf := scratch + "/profile"
+	remoteJSON := scratch + "/out.json"
 	_ = ssh("rm -rf " + remoteProf)
 	if err := // -O: the legacy SCP protocol, over an exec channel. Modern scp speaks SFTP by default,
 		// and a stock debian13 (OpenSSH 10) declares no `Subsystem sftp`, so an sftp transfer dies
@@ -838,7 +871,7 @@ func RunOnTarget(o Options) (int, error) {
 	// HOME is forced to a scratch dir: sudo keeps the caller's HOME, so cinc (running as root)
 	// creates a root-owned ~/.inspec in the audited user's home. An auditor must leave NO trace on
 	// the target, and pavois was failing its own home-files-permissions control on that garbage.
-	const remoteHome = "/tmp/pavois-home"
+	remoteHome := scratch + "/home"
 	cincCmd := fmt.Sprintf("env HOME=%s CHEF_LICENSE=accept-silent $(command -v cinc-auditor || command -v inspec) "+
 		"exec %s -t local:// --no-create-lockfile --input pavois_standard=%s --reporter json:%s",
 		remoteHome, remoteProf, std, remoteJSON)
@@ -878,6 +911,9 @@ func RunOnTarget(o Options) (int, error) {
 	}
 	// Leave no trace: the profile copy, the report and the scratch HOME are ours, not the target's.
 	// (Older pavois versions left a root-owned ~/.inspec behind; remove that too.)
-	_ = ssh(sudo + "rm -rf " + remoteProf + " " + remoteJSON + " " + remoteHome + " ~/.inspec")
+	// The whole scratch directory, not its three children: an auditor leaves no trace, and a
+	// `.pavois-run` left behind in the audited user's home is a trace. It is also the directory
+	// this very scan's home-files-permissions control would then report on.
+	_ = ssh(sudo + "rm -rf " + scratch + " ~/.inspec")
 	return rc, nil
 }
