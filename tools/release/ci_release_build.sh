@@ -127,9 +127,18 @@ if [ "$rc" -ne 0 ]; then
   exit 1
 fi
 
-bin=$(find "$work/artifacts" -name 'pavois-linux-amd64' -type f | head -1)
-[ -n "$bin" ] || bin=$(find "$work" -name 'pavois-linux-amd64' -type f | head -1)
-[ -n "$bin" ] || { echo "act produced no pavois-linux-amd64 artifact"; tail -20 "$work/act.log"; exit 1; }
+art=$(find "$work/artifacts" -name 'pavois-linux-amd64' -type f | head -1)
+[ -n "$art" ] || art=$(find "$work" -name 'pavois-linux-amd64' -type f | head -1)
+[ -n "$art" ] || { echo "act produced no pavois-linux-amd64 artifact"; tail -20 "$work/act.log"; exit 1; }
+# Copied out before being made executable: the runner container wrote it through the bind mount, so
+# it is owned by root and this user cannot chmod it in place. It arrives as 0644 because the upload
+# stub normalises modes exactly as actions/upload-artifact v4+ does, which is also what a user gets
+# from a release asset: the install instructions say chmod for that reason.
+bin="$work/pavois-from-workflow"
+if ! cp "$art" "$bin"; then
+  echo "could not take a copy of the artifact act produced" >&2
+  exit 1
+fi
 chmod +x "$bin"
 echo
 echo "== the guard, on the binary the WORKFLOW produced ($(stat -c%s "$bin") bytes)"
