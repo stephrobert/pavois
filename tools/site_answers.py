@@ -76,6 +76,7 @@ SOURCES = [None, "1.1.1.1", "8.8.8.8"]  # None: whatever /etc/resolv.conf points
 AWS_RANGES = "https://ip-ranges.amazonaws.com/ip-ranges.json"
 
 fails: list[str] = []
+warns: list[str] = []
 
 
 def bad(msg: str) -> None:
@@ -86,6 +87,7 @@ def bad(msg: str) -> None:
 def warn(msg: str) -> None:
     """Said out loud, never fatal: a deploy gate that reds on the environment gets switched off."""
     print(f"  warn {msg}")
+    warns.append(msg)
 
 
 def curl(url: str, follow: bool) -> tuple[str, str]:
@@ -210,7 +212,15 @@ def main() -> int:
     if fails:
         print(f"{len(fails)} problem(s): the deployed site does not answer the way it must")
         return 1
-    print("both names answer on both address families, and the front door redirects to /en/")
+    # The closing line says what this run actually established, which is not always the same
+    # sentence. The first green run printed "both names answer on both address families" under two
+    # warnings saying no AAAA could be seen at all: a summary that claims more than the run checked
+    # is how a green gate stops meaning anything.
+    if warns:
+        print("the front door redirects to /en/ and every address SEEN is CloudFront, but the")
+        print(f"IPv6 side was not observable from here ({len(warns)} warning(s) above)")
+    else:
+        print("both names answer on both address families, and the front door redirects to /en/")
     return 0
 
 
