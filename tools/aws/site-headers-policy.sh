@@ -35,6 +35,19 @@
 # 'unsafe-inline' for scripts is a real weakness and is NOT fixed here: the anti-FOUC script, the
 # nav drawer and the glossary tooltips are inline in Base.astro. Removing it needs either hashes
 # or a nonce, which needs the build to emit them. Tracked, not pretended away.
+#
+# WHAT CHANGED AND WHY, 2026-09-18
+#
+# Two headers the site once served had quietly stopped being served, and an audit of the open
+# issues found it, not a person looking at the site: `Permissions-Policy` and the `preload` token
+# on HSTS. #210 quotes both from a live capture. CloudFront's SecurityHeadersConfig has no field
+# for Permissions-Policy, which is why it went missing the moment this policy became the source of
+# truth: it has to go in CustomHeadersConfig, and it now does. The features are denied outright
+# because a documentation site needs none of them, and a hardening project is judged on its own
+# headers.
+#
+# `tools/site_answers.py` now asserts these headers after every deploy, so the next disappearance
+# is a red build rather than a discovery months later.
 set -uo pipefail
 
 POLICY_ID=079bcc13-132a-4c31-af51-55a293f1a789
@@ -54,7 +67,7 @@ upgrade-insecure-requests"
 
 current() {
   aws cloudfront get-response-headers-policy --id "$POLICY_ID" \
-    --query 'ResponseHeadersPolicy.ResponseHeadersPolicyConfig.SecurityHeadersConfig.{Frame:FrameOptions.FrameOption,CSP:ContentSecurityPolicy.ContentSecurityPolicy}' \
+    --query 'ResponseHeadersPolicy.ResponseHeadersPolicyConfig.{Frame:SecurityHeadersConfig.FrameOptions.FrameOption,CSP:SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy,HSTSPreload:SecurityHeadersConfig.StrictTransportSecurity.Preload,Custom:CustomHeadersConfig.Items[].Header}' \
     --output json
 }
 
@@ -63,7 +76,7 @@ if [ "${1:-}" != "--apply" ]; then
   current
   echo
   echo "=== wanted ==="
-  printf '{\n    "Frame": "SAMEORIGIN",\n    "CSP": "%s"\n}\n' "$CSP"
+  printf '{\n    "Frame": "SAMEORIGIN",\n    "CSP": "%s",\n    "HSTSPreload": true,\n    "Custom": [\n        "Permissions-Policy"\n    ]\n}\n' "$CSP"
   echo
   echo "run with --apply to write it"
   exit 0
@@ -84,9 +97,19 @@ CONFIG=$(cat <<JSON
       "Override": true,
       "AccessControlMaxAgeSec": 63072000,
       "IncludeSubdomains": true,
-      "Preload": false
+      "Preload": true
     },
     "XSSProtection": { "Override": true, "Protection": true, "ModeBlock": true }
+  },
+  "CustomHeadersConfig": {
+    "Quantity": 1,
+    "Items": [
+      {
+        "Header": "Permissions-Policy",
+        "Value": "accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), xr-spatial-tracking=()",
+        "Override": true
+      }
+    ]
   }
 }
 JSON
