@@ -770,7 +770,8 @@ audit-immutable:
   - ubuntu2404
   - ubuntu2604
   check:
-  - describe command('auditctl -s') do
+  - describe command('auditctl -s | grep . || echo PAVOIS_NO_AUDITCTL') do
+  - "  its('stdout') { should_not match(/PAVOIS_NO_AUDITCTL/) }"
   - '  its(''stdout'') { should match(/enabled[[:space:]]+2/) }'
   - end
   domain: Audit (auditd)
@@ -17431,7 +17432,8 @@ journald-forwardtosyslog:
   - ubuntu2604
   check:
   - only_if { !service('rsyslog').running? && !service('syslog-ng').running? }
-  - describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*ForwardToSyslog[[:space:]]*=" | tail -1') do
+  - describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*ForwardToSyslog[[:space:]]*=" | tail -1 | grep . || echo PAVOIS_NO_PERSISTED_OPTION') do
+  - "  its('stdout') { should_not match(/PAVOIS_NO_PERSISTED_OPTION/) }"
   - "  its('stdout') { should match(/=\\s*no/i) }"
   - end
   domain: Logging (journald)
@@ -33675,7 +33677,8 @@ service-systemd-coredump-disabled:
   ssg: service_systemd-coredump_disabled
   title: Disable acquiring, saving, and processing core dumps
   check:
-  - describe command('systemd-analyze cat-config systemd/coredump.conf 2>/dev/null | grep -iE "^[[:space:]]*Storage[[:space:]]*=" | tail -1') do
+  - describe command('systemd-analyze cat-config systemd/coredump.conf 2>/dev/null | grep -iE "^[[:space:]]*Storage[[:space:]]*=" | tail -1 | grep . || echo PAVOIS_NO_PERSISTED_OPTION') do
+  - "  its('stdout') { should_not match(/PAVOIS_NO_PERSISTED_OPTION/) }"
   - "  its('stdout') { should match(/=\\s*none/i) }"
   - end
   remediation_class: auto
@@ -40850,7 +40853,8 @@ growth-journal-bounded:
   remediation_class: auto
   note: "An unbounded journal fills /var/log, which pavois's own partition recipe makes a SEPARATE filesystem. journald defaults to 10% of the filesystem, but the value must be EXPLICIT and audited: a filesystem pavois carves out is pavois's responsibility."
   check:
-  - describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*SystemMaxUse[[:space:]]*=" | tail -1') do
+  - describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*SystemMaxUse[[:space:]]*=" | tail -1 | grep . || echo PAVOIS_NO_PERSISTED_OPTION') do
+  - "  its('stdout') { should_not match(/PAVOIS_NO_PERSISTED_OPTION/) }"
   - "  its('stdout') { should match(/=\\s*\\d+[KMG]?/i) }"
   - end
   remediation:
@@ -40944,7 +40948,8 @@ journald-forward-to-running-syslog:
   - ubuntu2604
   check:
   - only_if { (service('rsyslog').running? || service('syslog-ng').running?) && !command('grep -rqsE \'^[[:space:]]*(module\\(load="imjournal"|\\$ModLoad[[:space:]]+imjournal)\' /etc/rsyslog.conf /etc/rsyslog.d/ 2>/dev/null').exit_status.zero? }
-  - describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*ForwardToSyslog[[:space:]]*=" | tail -1 | grep -qiE "=[[:space:]]*(no|false|0)" && echo ko || echo ok') do
+  - describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*ForwardToSyslog[[:space:]]*=" | tail -1 | grep -qiE "=[[:space:]]*(no|false|0)" && echo ko || echo ok | grep . || echo PAVOIS_NO_PERSISTED_OPTION') do
+  - "  its('stdout') { should_not match(/PAVOIS_NO_PERSISTED_OPTION/) }"
   - "  its('stdout.strip') { should eq 'ok' }"
   - end
   remediation:
