@@ -44,19 +44,16 @@ def _sysctl_exp(p):
         f"describe kernel_parameter('{k}') do",
         f"  its('value') {{ should cmp {v} }}",
         "end",
-        f"describe command(\"grep -hsE '{pat}' {paths} 2>/dev/null\") do",
-        "  its('stdout') { should match(/\\S/) }",
-        "end",
-    ]
+    ] + _persist(f"grep -hsE '{pat}' {paths} 2>/dev/null")
 
 
 def _sysctl_ext(L):
-    if len(L) != 6 or L[2] != "end" or L[5] != "end":
+    if len(L) != 7 or L[2] != "end":
         return None
     m1 = re.fullmatch(r"describe kernel_parameter\('([^']+)'\) do", L[0])
     m2 = re.fullmatch(r"  its\('value'\) \{ should cmp (.+) \}", L[1])
-    m3 = re.fullmatch(r"describe command\(\"grep -hsE '.*' .*2>/dev/null\"\) do", L[3])
-    if m1 and m2 and m3 and L[4] == "  its('stdout') { should match(/\\S/) }":
+    cmd = _persist_ext(L[3:])
+    if m1 and m2 and cmd and cmd.startswith("grep -hsE '"):
         return {"name": "sysctl", "key": m1.group(1), "value": m2.group(1)}
     return None
 
@@ -160,6 +157,35 @@ _BUILTIN_MOUNT_OPTS = {"/dev/shm": ("nodev", "nosuid")}  # nosec B108
 # option", and the assertion below demands the option itself, so the verdict is unchanged and the
 # evidence is no longer blank.
 _PERSIST_NONE = "PAVOIS_NO_PERSISTED_OPTION"
+
+
+def _persist(cmd: str) -> list[str]:
+    """The persistence half of a control: grep the sources, and SAY when they hold nothing.
+
+    Without the sentinel the block answers "" and the message reads `expected "" to match /\\S/`,
+    which is indistinguishable from a probe that never ran: on a stock debian12 that was 73 of the
+    trust gate's errors, and it is what kept a golden campaign from reaching PASSED. With it, the
+    absence is an answer. The verdict does not change: the sentinel fails the first assertion, so
+    a setting nobody persisted is still a deviation, now with evidence instead of a blank.
+    """
+    return [
+        f'describe command("{cmd} || echo {_PERSIST_NONE}") do',
+        f"  its('stdout') {{ should_not match(/{_PERSIST_NONE}/) }}",
+        "  its('stdout') { should match(/\\S/) }",
+        "end",
+    ]
+
+
+def _persist_ext(L: list[str]) -> str | None:
+    """The command of a persistence block, or None when the shape is not one."""
+    if len(L) != 4 or L[3] != "end":
+        return None
+    if L[1] != f"  its('stdout') {{ should_not match(/{_PERSIST_NONE}/) }}":
+        return None
+    if L[2] != "  its('stdout') { should match(/\\S/) }":
+        return None
+    m = re.fullmatch(rf'describe command\("(.+) \|\| echo {_PERSIST_NONE}"\) do', L[0])
+    return m.group(1) if m else None
 
 
 def _mount_exp(p):
@@ -313,26 +339,19 @@ def _cmdline_exp(p):
         "describe command('cat /proc/cmdline') do",
         f"  its('stdout') {{ should match(/(^| ){tok}( |$)/) }}",
         "end",
-        f"describe command(\"grep -hwsF '{tok}' {_GRUB_SRC} 2>/dev/null\") do",
-        "  its('stdout') { should match(/\\S/) }",
-        "end",
     ]
+    lines += _persist(f"grep -hwsF '{tok}' {_GRUB_SRC} 2>/dev/null")
     return lines
 
 
 def _cmdline_ext(L):
     if L and L[0] == _VIRT_ONLY_IF:  # strip the optional virt guard, re-added by _cmdline_exp
         L = L[1:]
-    if (
-        len(L) != 6
-        or L[2] != "end"
-        or L[5] != "end"
-        or L[0] != "describe command('cat /proc/cmdline') do"
-    ):
+    if len(L) != 7 or L[2] != "end" or L[0] != "describe command('cat /proc/cmdline') do":
         return None
     m = re.fullmatch(r"  its\('stdout'\) \{ should match\(/\(\^\| \)(.+)\( \|\$\)/\) \}", L[1])
-    m3 = re.fullmatch(r"describe command\(\"grep -hwsF '.+' .*2>/dev/null\"\) do", L[3])
-    if m and m3 and L[4] == "  its('stdout') { should match(/\\S/) }":
+    cmd = _persist_ext(L[3:])
+    if m and cmd and cmd.startswith("grep -hwsF '"):
         return {"name": "cmdline", "param": m.group(1)}
     return None
 
@@ -362,23 +381,20 @@ def _audit_exp(p):
         f"  its('stdout') {{ should_not match(/{_AUDITCTL_NONE}/) }}",
         f"  its('stdout') {{ should match(/(-k +|key=){key}\\b/) }}",
         "end",
-        f"describe command(\"grep -rhwsE '{key}' {_AUDIT_RULES} 2>/dev/null\") do",
-        "  its('stdout') { should match(/\\S/) }",
-        "end",
-    ]
+    ] + _persist(f"grep -rhwsE '{key}' {_AUDIT_RULES} 2>/dev/null")
 
 
 def _audit_ext(L):
     if (
-        len(L) != 6
-        or L[2] != "end"
-        or L[5] != "end"
-        or L[0] != "describe command('auditctl -l') do"
+        len(L) != 8
+        or L[3] != "end"
+        or L[0] != f"describe command('auditctl -l 2>/dev/null || echo {_AUDITCTL_NONE}') do"
+        or L[1] != f"  its('stdout') {{ should_not match(/{_AUDITCTL_NONE}/) }}"
     ):
         return None
-    m = re.fullmatch(r"  its\('stdout'\) \{ should match\(/\(-k \+\|key=\)(.+)\\b/\) \}", L[1])
-    m3 = re.fullmatch(r"describe command\(\"grep -rhwsE '.+' .*2>/dev/null\"\) do", L[3])
-    if m and m3 and L[4] == "  its('stdout') { should match(/\\S/) }":
+    m = re.fullmatch(r"  its\('stdout'\) \{ should match\(/\(-k \+\|key=\)(.+)\\b/\) \}", L[2])
+    cmd = _persist_ext(L[4:])
+    if m and cmd and cmd.startswith("grep -rhwsE '"):
         return {"name": "audit_rule", "key": m.group(1)}
     return None
 
