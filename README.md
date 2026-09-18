@@ -82,15 +82,20 @@ a static binary per platform (linux and darwin, amd64 and arm64), `.deb` and `.r
 `checksums.txt`, a CycloneDX SBOM, a SLSA build provenance and a keyless Cosign signature. Verify
 before running it: a hardening tool you did not verify is a strange way to start hardening.
 
+<!-- doc-commands: binary-gh -->
 ```bash
 gh release download --repo stephrobert/pavois \
-  --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'   # no tag: the latest release
-sha256sum --ignore-missing --check checksums.txt
-gh attestation verify pavois-linux-amd64 --repo stephrobert/pavois   # SLSA build provenance
-chmod +x pavois-linux-amd64
-./pavois-linux-amd64 doctor          # rule corpus: embedded in this binary
-./pavois-linux-amd64 scan local --sudo
+  --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
+sha256sum --ignore-missing --check checksums.txt   # integrity
+gh attestation verify pavois-linux-amd64 --repo stephrobert/pavois   # SLSA provenance
+sudo install -m 0755 pavois-linux-amd64 /usr/local/bin/pavois && pavois version
 ```
+<!-- /doc-commands -->
+
+Those commands are not typed here. They are generated from `site/src/data/install.ts`, the one place
+the install instructions live, and `tools/release/scenario.sh` runs that same source on a fresh VM.
+The page a reader follows, the test that proves it works, and this README cannot drift apart,
+because there is only one of them. `mise run gen:readme` fills the block; CI fails if it is stale.
 
 ### Build from source (contributors)
 
@@ -126,17 +131,19 @@ engine there too: Pavois stops and says so, and installs it only when you pass `
 
 ### First scan in 5 minutes
 
-The shortest path, auditing the current host (effective config needs root):
+The shortest path, auditing the current host (effective config needs root). It continues from the
+binary you verified above rather than from a checkout: that binary is the product, and this is the
+path that has to exercise it.
 
+<!-- doc-commands: first-scan -->
 ```bash
-git clone https://github.com/stephrobert/pavois.git && cd pavois
-mise trust && mise install && mise run build && mise run regen
-./go/pavois doctor                           # is everything ready?
-./go/pavois scan local --sudo --format html  # audit this host, A:E grade
-./go/pavois serve                            # browse reports at http://localhost:8098
+pavois scan local --sudo --format html   # audit this host, A to E grade
+pavois serve                             # http://localhost:8098
 ```
+<!-- /doc-commands -->
 
-Once the first release ships, swap the build for the signed binary (Option A). For a remote
+Run `pavois doctor` first if anything is unclear: it names what is missing before a scan fails on
+it, the scan engine included, which is the one thing no package can install for you. For a remote
 target: `scan user@host --key ~/.ssh/id_ed25519 --sudo`.
 
 > **`--key` is not optional, even when `ssh user@host` works.** Pavois reaches the target through

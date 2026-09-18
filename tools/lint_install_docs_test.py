@@ -43,6 +43,7 @@ def planted(mutate) -> tuple[int, str]:
         shutil.copytree(ROOT / "site/src/pages", tree / "site/src/pages")
         (tree / "site/src/data").mkdir(parents=True)
         shutil.copy(ROOT / SOURCE, tree / SOURCE)
+        shutil.copy(ROOT / "README.md", tree / "README.md")
         # A git repository carrying the real newest release tag. Without it `newest_tag()` returns
         # nothing and the version check SKIPS, so the planted stale version was never examined and
         # the case reported a pass it had not earned. The harness has to reproduce the condition it
@@ -155,6 +156,39 @@ def main() -> int:
 
     rc, out = planted(stale)
     check("a fragment that no longer exists in the source", rc, out, "guards nothing")
+
+    # 7. A quickstart that sends a USER to build from source, under a heading saying the opposite.
+    #    This was in the tree: the README told a reader to `git clone` and `mise run build` while
+    #    four releases existed, and the linter did not look at the README at all.
+    def readme_build(tree: pathlib.Path) -> None:
+        # Inserted right after the heading rather than swapped for a fixed string: the quickstart's
+        # commands are GENERATED from install.ts now, so a mutator that matched their text stopped
+        # applying the day they changed, and the case reported a pass having mutated nothing.
+        p = tree / "README.md"
+        p.write_text(
+            p.read_text().replace(
+                "### First scan in 5 minutes\n",
+                "### First scan in 5 minutes\n\n```bash\ngit clone https://example.com/x\n"
+                "mise run build\n```\n",
+                1,
+            )
+        )
+
+    rc, out = planted(readme_build)
+    check(
+        "a quickstart that tells a user to build from source",
+        rc,
+        out,
+        "the quickstart tells a user",
+    )
+
+    # 8. A sentence that stopped being true the day the first release shipped.
+    def readme_stale(tree: pathlib.Path) -> None:
+        p = tree / "README.md"
+        p.write_text(p.read_text() + "\nOnce the first release ships, swap the build for it.\n")
+
+    rc, out = planted(readme_stale)
+    check("a README still waiting for the first release", rc, out, "and releases exist")
 
     print("\nthe linter accepts the tree as it stands:")
     rc, out = run(ROOT)

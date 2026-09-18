@@ -117,6 +117,57 @@ def newest_tag() -> str:
     return ""
 
 
+# The README is the first page anybody reads, and this linter did not look at it. It carried a
+# quickstart that told a USER to `git clone` and `mise run build`, under a heading that says
+# "Building from source is for contributors, not for users", plus a "Once the first release ships"
+# left over from before there were four of them. The install commands drifted exactly where the
+# guard was not looking, which is the whole reason this file exists.
+README = ROOT / "README.md"
+
+# Sentences that are false the moment a release exists.
+README_STALE = [
+    "Once the first release ships",
+    "no release has shipped",
+    "when the first release lands",
+]
+
+
+def check_readme() -> list[str]:
+    if not README.exists():
+        return ["README.md is missing"]
+    text = README.read_text(encoding="utf-8")
+    problems: list[str] = []
+
+    for phrase in README_STALE:
+        if phrase in text:
+            problems.append(
+                f"README.md: says {phrase!r}, and releases exist.\n"
+                f"  A reader takes that as the current state of the project."
+            )
+
+    # The user-facing quickstart must not send a reader to build from source. What it DOES run is
+    # no longer this linter's business: those blocks are generated from install.ts by
+    # `mise run gen:readme`, and `gen:readme:verify` fails when they drift. A rule that also
+    # asserted their contents went stale the moment the generated block changed shape, which is the
+    # argument for generating rather than policing.
+    m = re.search(r"^### First scan in 5 minutes$(.*?)^## ", text, re.M | re.S)
+    if not m:
+        problems.append(
+            "README.md: no 'First scan in 5 minutes' section; update this rule if it was renamed"
+        )
+    else:
+        quickstart = m.group(1)
+        for build in ("mise run build", "git clone"):
+            if build in quickstart:
+                problems.append(
+                    f"README.md: the quickstart tells a user to {build!r}.\n"
+                    f"  It is the path a first-time reader takes, so it has to exercise the"
+                    f" published\n  binary, which is the product. Building from source is the"
+                    f" contributor section."
+                )
+    return problems
+
+
 def _older(site: str, tag: str) -> bool:
     """Is the version the site hands out older than the newest release tag?
 
@@ -146,7 +197,7 @@ def main() -> int:
         print(f"missing {SOURCE.relative_to(ROOT)}: the single source of the install commands")
         return 1
 
-    problems: list[str] = []
+    problems: list[str] = check_readme()
     source_text = SOURCE.read_text(encoding="utf-8")
 
     # Every command this linter guards must actually appear in the source, or the fragment has gone
