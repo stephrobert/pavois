@@ -12,6 +12,59 @@ its content digest**, so an archived result stays interpretable long after the t
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-09-18
+
+Fewer invented deviations, and one real one the scanner could not see. The baseline gains a control
+and loses no rule, so a 0.1.4 report stays comparable to a 0.1.5 one: the controls that changed
+verdict here were reporting a deviation that did not exist.
+
+### Fixed
+
+- **A mount option was audited on a filesystem that is not mounted** (#321). When `/home` is a plain
+  directory of the root filesystem, nothing can carry `nodev` on it, and the check answered
+  `expected nil to include "nodev"`, nil being the mount that does not exist. CIS words every
+  1.1.2.x audit "IF a separate partition exists", `partition-<x>` already reports the missing
+  partition, and the host was counted non compliant twice for one fact. The `mount_option` template
+  now guards on the mount existing. Measured on a stock debian12 VM: the mount family goes from 24
+  failures to 1, the whole scan from 267 failures to 244, and no control outside the family changes
+  status. Measured again on a full golden campaign: residual failures 56 to 33, zero regression
+  against the frozen baseline, the same 210 controls fixed by hardening as the day before.
+- **`/dev/shm` was asked for an artefact that cannot exist.** systemd mounts it before fstab and
+  before any unit, with `nosuid,nodev` pinned in its own source, so it is persistent by construction
+  and no file carries it: the persistence probe answered empty on a compliant host, every scan, on
+  three distributions, while the live assertion passed. Those two controls keep the live assertion
+  only. `noexec` is not in systemd's table and keeps both: a missing `noexec` there is real.
+
+### Changed
+
+- **A probe that cannot run now says so.** `auditctl -l` on a host without auditd answered nothing,
+  and so did every persistence grep whose files do not exist. The control failed, correctly, but by
+  luck rather than by measurement, and nothing could tell that apart from a broken probe: on a stock
+  debian12 the trust gate counted 88 such cases. Five templates and five hand-written checks now
+  emit a sentinel (`PAVOIS_NO_AUDITCTL`, `PAVOIS_NO_PERSISTED_OPTION`), so an absent source is
+  stated instead of silent. Measured on a stock host: 88 unmeasured verdicts, then zero.
+- **Applicability is a declared field of the rule base** (#324). It used to be answered by four
+  unrelated mechanisms, one of them a guard baked into a template where no reader could find it. The
+  28 mount and virt guards now carry `applies_if:` with the norm wording that justifies them:
+
+      applies_if:
+        - mount: /home
+          because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /home"'
+
+  The vocabulary is closed and has no escape hatch, and `because:` is mandatory: the source of a
+  non-applicability is the norm or a physical fact, never "my prerequisite is missing". The rendered
+  corpus is unchanged apart from the guard messages, so no verdict moved.
+
+### Added
+
+- **`growth-audit-trail-unbounded`** (#299): a host can be told to halt when its audit partition
+  fills and separately be left with an unbounded audit trail. Each setting is compliant alone;
+  together they do not protect the host, they schedule its shutdown. This is the control that
+  catches the combination that powered a hardened machine off six seconds into every boot while
+  every other control stayed green. Its remediation is deliberately manual: on a STIG host `halt` is
+  the required value, and rewriting it silently would trade an availability incident for a
+  compliance deviation nobody asked for.
+
 ## [0.1.4] - 2026-09-17
 
 Two commands were still reading from the checkout, and neither said so. One fell back to probing a

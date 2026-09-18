@@ -16,7 +16,7 @@
 //
 // VERSION is the one value to bump per release.
 
-export const VERSION = 'v0.1.4';
+export const VERSION = 'v0.1.5';
 export const REPO = 'stephrobert/pavois';
 export const RELEASE_BASE = `https://github.com/${REPO}/releases/download/${VERSION}`;
 
