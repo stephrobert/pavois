@@ -141,12 +141,35 @@ provision_vm() {
   incus delete "$VM" --force >/dev/null 2>&1
   # init + device + start, NOT launch + restart: `incus restart` on a fresh VM waits for an ACPI
   # shutdown it will not get, and hangs for as long as you let it.
-  incus init "$IMAGE" "$VM" --vm -c limits.cpu=2 -c limits.memory=2GiB >/dev/null 2>&1 \
-  || { say "could not create the VM"; return 1; }
-  incus config device add "$VM" eth0 nic network=incusbr0 >/dev/null 2>&1
-  incus start "$VM" >/dev/null 2>&1 || { say "could not start the VM"; return 1; }
+  # The output of these four is KEPT. The first nightly run of e2e.yml on a GitHub runner died
+  # here with "could not create the VM" and nothing else, because every one of them ended in
+  # `>/dev/null 2>&1`: the message that would have said WHY had been thrown away by the script
+  # reporting the failure. The project's own trap catalogue says never to do this on a step that
+  # can fail, and this is the step that fails when the environment is not the maintainer's laptop.
+  if ! incus init "$IMAGE" "$VM" --vm -c limits.cpu=2 -c limits.memory=2GiB > "$work/vm.log" 2>&1; then
+    say "could not create the VM:"
+    sed 's/^/    /' "$work/vm.log" | tail -10 | tee -a "$LOG"
+    say "  storage pools and networks the daemon knows about:"
+    { incus storage list 2>&1; incus network list 2>&1; } | sed 's/^/    /' | tee -a "$LOG"
+    return 1
+  fi
+  if ! incus config device add "$VM" eth0 nic network=incusbr0 > "$work/vm.log" 2>&1; then
+    say "could not attach the NIC:"
+    sed 's/^/    /' "$work/vm.log" | tail -6 | tee -a "$LOG"
+    return 1
+  fi
+  if ! incus start "$VM" > "$work/vm.log" 2>&1; then
+    say "could not start the VM:"
+    sed 's/^/    /' "$work/vm.log" | tail -10 | tee -a "$LOG"
+    return 1
+  fi
   for _ in $(seq 1 72); do incus exec "$VM" -- true >/dev/null 2>&1 && break; sleep 5; done
-  incus exec "$VM" -- true >/dev/null 2>&1 || { say "the agent never answered"; return 1; }
+  if ! incus exec "$VM" -- true > "$work/vm.log" 2>&1; then
+    say "the agent never answered after 6 minutes:"
+    sed 's/^/    /' "$work/vm.log" | tail -6 | tee -a "$LOG"
+    say "  (a VM whose agent is down still has a console: script -qec 'incus console $VM' /dev/null)"
+    return 1
+  fi
   say "  up: $(vmsh '. /etc/os-release && echo "$PRETTY_NAME"' | tail -1)"
 
   # An unprivileged account with passwordless sudo. Running everything as root would hide #281, which
