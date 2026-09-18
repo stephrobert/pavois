@@ -32,7 +32,7 @@ var gradeBand = map[string]string{
 
 // writeScorecard renders the A→E grade as a BIG colored LETTER (like pitstop/plumber)
 // + points + band, next to the letter.
-func writeScorecard(w io.Writer, letter string, points, passed, total, qualified, waived, na int) {
+func writeScorecard(w io.Writer, letter string, points, passed, total, qualified, waived, na, unmeasured int) {
 	art := gradeArt[letter]
 	if art == nil {
 		art = gradeArt["E"]
@@ -54,12 +54,21 @@ func writeScorecard(w io.Writer, letter string, points, passed, total, qualified
 	if qualified > 0 {
 		info[4] = mut.Render(fmt.Sprintf("%d runtime-only pass(es): persistence unproven", qualified))
 	}
-	// A waived or N/A control is OUT of the denominator above, so the grade RISES when you add
-	// one. Reporting the grade without these two numbers would let anyone fabricate an A by
+	// A waived, N/A or unmeasured control is OUT of the denominator above, so the grade RISES when
+	// you add one. Reporting the grade without these numbers would let anyone fabricate an A by
 	// waiving what fails: they belong to the verdict, not to a footnote.
-	if waived > 0 || na > 0 {
-		info[5] = mut.Render(fmt.Sprintf("%d waived (accepted risk) · %d n/a · %d of %d evaluated",
-			waived, na, total, total+waived+na))
+	//
+	// `unmeasured` is printed even though nobody likes reading it. It counts the controls that
+	// left the denominator saying nothing: a guard with no message is indistinguishable from a
+	// guard that is broken, and the previous line filed both as n/a, where they were invisible.
+	if waived > 0 || na > 0 || unmeasured > 0 {
+		line := fmt.Sprintf("%d waived (accepted risk) · %d n/a · %d of %d evaluated",
+			waived, na, total, total+waived+na+unmeasured)
+		if unmeasured > 0 {
+			line = fmt.Sprintf("%d waived · %d n/a · %d unmeasured · %d of %d evaluated",
+				waived, na, unmeasured, total, total+waived+na+unmeasured)
+		}
+		info[5] = mut.Render(line)
 	}
 	_, _ = fmt.Fprintln(w)
 	for i, line := range art {

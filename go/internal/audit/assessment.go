@@ -55,14 +55,19 @@ func Assess(r *Report, subject, standard, level string) []assessment.Result {
 					res.Status = assessment.Fail
 					res.Evidence.Observed, res.Evidence.Expected = failEvidence(c)
 				case "skipped":
-					// A skipped control is either an ACCEPTED RISK (waived, with a written
-					// justification) or genuinely N/A (an only_if guard). A waiver still applies ,
-					// it is a Fail carrying the justification; a guard is NotApplicable.
+					// Three outcomes, and they used to be two. An ACCEPTED RISK still applies: it
+					// is a Fail carrying the justification an auditor can refuse. A DECLARED
+					// non-applicability (`n/a: <object>`) is NotApplicable. A guard that fired
+					// without saying why is NotEvaluated, the state this file already reserves for
+					// "a coverage gap can never be read as a pass": nobody can tell a requirement
+					// that does not address this host from a guard that is simply broken.
 					if j := strings.TrimSpace(c.WaiverData.Justification); j != "" {
 						res.Status = assessment.Fail
 						res.Waiver = &assessment.Waiver{Justification: j}
-					} else {
+					} else if declaresNA(c) {
 						res.Status = assessment.NotApplicable
+					} else {
+						res.Status = assessment.NotEvaluated
 					}
 				default: // "empty": no InSpec result at all
 					res.Status = assessment.NotEvaluated

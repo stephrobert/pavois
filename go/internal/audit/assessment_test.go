@@ -38,8 +38,15 @@ func byID(res []assessment.Result, id string) (assessment.Result, bool) {
 }
 
 // TestAssessStatuses freezes the audit -> assessment status mapping: pass/fail, a waiver is a
-// Fail carrying its justification, an only_if guard is NotApplicable, and a control with no
-// InSpec result is NotEvaluated, a gap must never read as a pass.
+// Fail carrying its justification, a guard that DECLARED a non-applicability is NotApplicable,
+// and both a guard that said nothing and a control with no InSpec result are NotEvaluated. A gap
+// must never read as a pass, and "skipped" alone is a gap: nobody can tell a requirement that
+// does not address this host from a guard that is broken.
+//
+// The `na` case carries InSpec's real wire format, prefix included. It is the whole reason
+// skipPayload exists: on a 653-control ubuntu2404 report, 22 of 22 declared non-applicabilities
+// arrive wrapped in "Skipped control due to only_if condition: ", so a HasPrefix on the raw
+// message matches none of them.
 func TestAssessStatuses(t *testing.T) {
 	rep := repOf(t, `[
 	  {"id":"ok","title":"OK","impact":0.5,"tags":{"cis":"1.1"},
@@ -48,19 +55,25 @@ func TestAssessStatuses(t *testing.T) {
 	   "results":[{"status":"failed","code_desc":"Command: ~sysctl -n x~ stdout","message":"\nexpected: \"1\"\n     got: \"0\"\n"}]},
 	  {"id":"waived","title":"Waived","impact":0.7,
 	   "waiver_data":{"justification":"accepted until Q3"},
-	   "results":[{"status":"skipped","skip_message":"waived"}]},
+	   "results":[{"status":"skipped","skip_message":"Skipped control due to waiver condition: accepted until Q3"}]},
 	  {"id":"na","title":"NA","impact":0.7,
-	   "results":[{"status":"skipped","skip_message":"no sssd domain"}]},
+	   "results":[{"status":"skipped","skip_message":"Skipped control due to only_if condition: n/a: requires /home mounted"}]},
+	  {"id":"mute","title":"Guard with no message","impact":0.7,
+	   "results":[{"status":"skipped","skip_message":"Skipped control due to only_if condition."}]},
+	  {"id":"hand","title":"Hand-written message","impact":0.7,
+	   "results":[{"status":"skipped","skip_message":"Skipped control due to only_if condition: arm64 only"}]},
 	  {"id":"empty","title":"Empty","impact":0.4,"results":[]}
 	]`)
 
 	res := Assess(rep, "host1", "", "")
-	if len(res) != 5 {
-		t.Fatalf("got %d results, want 5", len(res))
+	if len(res) != 7 {
+		t.Fatalf("got %d results, want 7", len(res))
 	}
 	want := map[string]assessment.Status{
 		"ok": assessment.Pass, "bad": assessment.Fail,
-		"waived": assessment.Fail, "na": assessment.NotApplicable, "empty": assessment.NotEvaluated,
+		"waived": assessment.Fail, "na": assessment.NotApplicable,
+		"mute": assessment.NotEvaluated, "hand": assessment.NotEvaluated,
+		"empty": assessment.NotEvaluated,
 	}
 	for id, ws := range want {
 		r, ok := byID(res, id)
