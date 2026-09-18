@@ -87,11 +87,11 @@ echo "invalidation $id"
 aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION" --id "$id" \
   || die "the invalidation did not complete: the edge may still serve the previous build"
 
-# A green upload that serves a 403 is the failure mode this catches. It happened once, when the
-# bucket policy and the origin access control disagreed, and every step before this one was green.
+# THE SAME CHECK THE WORKFLOW RUNS, not a second copy of it. This step used to be its own three
+# lines demanding 200 on $SITE, and it broke the day the front door became a 301 at the edge: it
+# asserted the old bug. The workflow's copy was fixed that morning; this one was not, because
+# nobody runs it every day. One check, two callers.
 step "does the site answer"
-code=$(curl -sS -o /dev/null -w '%{http_code}' "$SITE")
-echo "$SITE -> $code"
-[ "$code" = 200 ] || die "the site does not answer 200"
+python3 tools/site_answers.py || die "the deployed site does not answer the way it must"
 
 printf '\npublished: %s\n' "$SITE"

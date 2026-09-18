@@ -57,6 +57,25 @@ REDIRECTS_TO_EN = [f"{APEX}/", f"{WWW}/"]
 
 NAMES = ["pavois.dev", "www.pavois.dev"]
 
+# The security headers, and the reason they are asserted rather than trusted: two of them stopped
+# being served and nobody noticed for a fortnight. #210 quotes a live capture with
+# `Permissions-Policy` and an HSTS `preload` token; the site served neither until this was written.
+# CloudFront's SecurityHeadersConfig has no Permissions-Policy field, so it vanished the moment the
+# console policy became a versioned script, silently, which is the whole failure mode.
+#
+# Each entry is (header, what must appear in its value). A substring, not the whole value: the CSP
+# is long and evolves, and pinning it whole would make this a copy of the policy rather than a
+# check that the policy is applied.
+HEADERS = [
+    ("strict-transport-security", "max-age=63072000"),
+    ("strict-transport-security", "preload"),
+    ("permissions-policy", "geolocation=()"),
+    ("content-security-policy", "default-src 'self'"),
+    ("content-security-policy", "frame-ancestors 'self'"),
+    ("x-content-type-options", "nosniff"),
+    ("referrer-policy", "strict-origin-when-cross-origin"),
+]
+
 # A real DNS query, and the resolver that answers is whichever one CAN answer.
 #
 # Two attempts got this wrong in opposite directions, and both are worth keeping written down.
@@ -105,6 +124,26 @@ def curl(url: str, follow: bool) -> tuple[str, str]:
         return "000", f"({e})"
     parts = out.split(maxsplit=1)
     return (parts[0] if parts else "000"), (parts[1].strip() if len(parts) > 1 else "")
+
+
+def headers_of(url: str) -> dict[str, str]:
+    """Response headers, lowercased, from the page a reader actually gets."""
+    try:
+        out = subprocess.run(
+            ["curl", "-sSI", "--max-time", "30", "-L", url],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        ).stdout
+    except subprocess.SubprocessError as e:
+        bad(f"could not read the headers of {url} ({e})")
+        return {}
+    got: dict[str, str] = {}
+    for line in out.splitlines():
+        if ":" in line:
+            k, _, v = line.partition(":")
+            got[k.strip().lower()] = v.strip()
+    return got
 
 
 def have_dig() -> bool:
@@ -186,6 +225,15 @@ def main() -> int:
             bad(f"{url} answered {code}: the root must redirect, not serve a page")
         elif not loc.endswith("/en/"):
             bad(f"{url} redirects to {loc or 'nothing'}, not to /en/")
+
+    print("\n--- the security headers a hardening project is judged on")
+    got = headers_of(f"{WWW}/en/")
+    for header, wanted in HEADERS:
+        value = got.get(header, "")
+        if wanted in value:
+            print(f"  {header}: {wanted}")
+        else:
+            bad(f"{header} does not carry {wanted!r} (got {value or 'nothing'!r})")
 
     print("\n--- every address, A and AAAA, belongs to CloudFront")
     if not have_dig():
