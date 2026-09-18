@@ -26,7 +26,8 @@
   "norms": {},
   "check": [
     "only_if { (service('rsyslog').running? || service('syslog-ng').running?) && !command('grep -rqsE \\'^[[:space:]]*(module\\\\(load=\"imjournal\"|\\\\$ModLoad[[:space:]]+imjournal)\\' /etc/rsyslog.conf /etc/rsyslog.d/ 2>/dev/null').exit_status.zero? }",
-    "describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE \"^[[:space:]]*ForwardToSyslog[[:space:]]*=\" | tail -1 | grep -qiE \"=[[:space:]]*(no|false|0)\" && echo ko || echo ok') do",
+    "describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE \"^[[:space:]]*ForwardToSyslog[[:space:]]*=\" | tail -1 | grep -qiE \"=[[:space:]]*(no|false|0)\" && echo ko || echo ok | grep . || echo PAVOIS_NO_PERSISTED_OPTION') do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_PERSISTED_OPTION/) }",
     "  its('stdout.strip') { should eq 'ok' }",
     "end"
   ],
