@@ -19,6 +19,12 @@ promising otherwise. So this checks the shape of every mapping value:
     (AC-17(a), 3.1.1, 5.4.2.1, V-230234, R33, 8.2.1)
   - nothing that reads as a sentence: spaces beyond a joining word, prose punctuation, or length
 
+And one rule about `ssg:`, which is provenance rather than a norm mapping but fails the same way.
+An `ssg` value equal to the control's own id is not a mapping: it is "this control has no SSG rule"
+written so that every tool believes it has one. `tools/coverage_gap.py` counted 11 such controls as
+covered, and a reader of the fiche saw an upstream reference that does not exist. A pavois-native
+control simply omits the field, which is what the growth-* family already does.
+
   mise run lint:norm-refs
 """
 
@@ -62,6 +68,12 @@ def offenders(path: str) -> list[str]:
     bad: list[str] = []
     seen = 0
     for rid, rule in items:
+        for ssg in flatten(rule.get("ssg")):
+            if ssg == rid:
+                bad.append(
+                    f"{rid}: ssg: points at the control itself, which is not a mapping: "
+                    f"omit the field on a pavois-native control"
+                )
         for norm, value in (rule.get("norms") or {}).items():
             for ref in flatten(value):
                 seen += 1
