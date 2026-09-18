@@ -94,6 +94,19 @@ jobs:
       - name: Rule-base lints
         run: mise run lint:rules
 
+      # Applicability is declared now (#324). Two things to keep true: the 28 `applies_if` blocks
+      # are well formed, which nothing read before (tools/applies_if.py only validated itself), and
+      # the 90 hand-written `only_if` guards left do not become 91 while they are being migrated.
+      #
+      # Placed next to the other rule-base coherence lints rather than appended at the end of the
+      # job, because another open pull request appends there and two additions at one anchor is a
+      # conflict for no reason. tools/validate_prs.sh found that by merging the branches together.
+      - name: Applicability is declared, and the old way does not grow back
+        run: mise run lint:applies-if
+
+      - name: And that lint still bites
+        run: mise run lint:applies-if:test
+
       # Every norm tag points at a requirement that exists in the published standard.
       - name: Mappings are references, not inventions
         run: mise run validate:mappings
@@ -108,3 +121,23 @@ jobs:
 
       - name: And that check still bites
         run: mise run lint:prose:test
+
+      # The fiches under site/src/content/rules/ are a PROJECTION of the rule base, and they are
+      # tracked so the Astro build works from a plain clone. Nothing compared them to their source:
+      # site:verify depends on gen:pages, so it regenerates them and then checks the regenerated
+      # copy against itself. Three merged pull requests changed what every audit control executes
+      # and the 137 fiches in git kept advertising the previous command, for as long as nobody read
+      # them in a diff. The deploy rebuilds them, so the published site was never wrong, which is
+      # exactly why this went unnoticed.
+      #
+      # This step is the non-tautological half: regenerate, then ask git whether the tracked files
+      # moved. It runs here rather than in the pre-push hook because it costs 30 seconds and the
+      # only way to reach it is to change the rule base, which is what this workflow triggers on.
+      - name: The site's fiches match the rule base they are generated from
+        run: |
+          mise run gen:pages
+          if ! git diff --quiet -- site/src/content/rules/; then
+            echo "::error::the rule fiches in git are stale; run 'mise run gen:pages' and commit the result"
+            git diff --stat -- site/src/content/rules/
+            exit 1
+          fi

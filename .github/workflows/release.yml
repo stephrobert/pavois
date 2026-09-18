@@ -425,3 +425,44 @@ jobs:
           TAG: ${{ github.ref_name }}
           GH_TOKEN: ${{ github.token }}
         run: gh release edit "$TAG" --draft=false --latest
+
+  # The site advertises ONE version, and from here it is this one.
+  #
+  # This job is the whole of #329. site-deploy.yml declares `on: release: published`, and that
+  # trigger can never fire: the release above is created with the default GITHUB_TOKEN, and GitHub
+  # starts no workflow from an event that token produced. So the site kept serving the previous
+  # version until somebody dispatched the deploy by hand, which is what happened for 0.1.5.
+  # A call involves no trigger at all. It is the same run, so the rule does not apply to it.
+  #
+  # It is a CALL and not a copy. That deploy is fifteen steps ending in an S3 sync and a CloudFront
+  # invalidation, in front of eight checks that refuse to publish a broken site. A second copy of
+  # it in this file would be a second thing to keep correct, and this repository has already paid
+  # for that shape of mistake: the embed copies now live in exactly one script for the same reason.
+  #
+  # It runs at the tag, so the site is built from the commit whose install.ts names this version,
+  # and site-deploy's own gate then checks that version is downloadable before touching the bucket.
+  # The AWS role has to trust the tag ref for this to work: tools/aws/site-deploy-role.sh.
+  #
+  # KNOWN FINDING, and it is a tool disagreement rather than a decision. zizmor's `self-repository`
+  # audit wants `uses: $/...`, the form GitHub added in July 2026, which is not subject to runtime
+  # filesystem state. No released actionlint understands it: v1.7.12 is the latest (2026-03-30) and
+  # rejects it as not matching either accepted format. Measured, both ways:
+  #
+  #     ./            actionlint accepts   zizmor refuses (self-repository)
+  #     $/            actionlint refuses   zizmor accepts
+  #     owner/repo@main  actionlint accepts  zizmor refuses (unpinned-uses)
+  #
+  # No form satisfies both gates, so this is not a choice between a safe line and an unsafe one: it
+  # is a linter older than the platform feature the other linter asks for. `actionlint + zizmor +
+  # poutine` is a REQUIRED status check on main, so leaving the finding visible does not mean
+  # living with a red mark, it means the pull request can only land by bypassing the gate, which is
+  # how a gate stops meaning anything. It is acquitted in .github/zizmor.yml, targeted by rule and
+  # by file, with the measurement written next to it. Delete that entry and switch this line to
+  # `$/` the day actionlint ships a release that parses it: that form is genuinely the safer one.
+  site:
+    name: Publish the site this release advertises
+    needs: release
+    permissions:
+      contents: read
+      id-token: write   # exchanged for the AWS role through OIDC, no stored key
+    uses: ./.github/workflows/site-deploy.yml

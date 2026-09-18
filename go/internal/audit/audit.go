@@ -123,6 +123,49 @@ func status(c Control) string {
 	}
 }
 
+// InSpec never hands a skip message over raw: it prefixes its own sentence, so a control that
+// declares `only_if('n/a: requires /home mounted')` arrives as
+//
+//	Skipped control due to only_if condition: n/a: requires /home mounted
+//
+// Testing HasPrefix on the whole string therefore matches NOTHING, and would file every declared
+// non-applicability as unmeasured. Measured on a 653-control ubuntu2404 report: 22 of 22.
+const (
+	skipOnlyIf = "Skipped control due to only_if condition"
+	skipWaiver = "Skipped control due to waiver condition"
+)
+
+// skipPayload returns what the control's author wrote, with InSpec's prefix removed. A guard with
+// no message at all ("Skipped control due to only_if condition.") yields the empty string, which
+// is the case that matters most: it is a control leaving the denominator saying nothing.
+func skipPayload(msg string) string {
+	m := strings.TrimSpace(msg)
+	for _, p := range []string{skipOnlyIf, skipWaiver} {
+		if rest, ok := strings.CutPrefix(m, p); ok {
+			if body, found := strings.CutPrefix(rest, ":"); found {
+				return strings.TrimSpace(body)
+			}
+			return "" // "…condition." : a guard that fired and explained nothing
+		}
+	}
+	return m
+}
+
+// declaresNA reports whether a skipped control stated a non-applicability, in the one shape
+// applies_if renders. Anything else is unmeasured: a guard whose condition nobody can read is
+// indistinguishable from a guard that is broken, and both must stay visible.
+func declaresNA(c Control) bool {
+	for _, r := range c.Results {
+		if r.Status != "skipped" {
+			continue
+		}
+		if strings.HasPrefix(skipPayload(r.SkipMessage), "n/a: ") {
+			return true
+		}
+	}
+	return false
+}
+
 func applicable(c Control, standard string) bool {
 	return standard == "" || standard == "all" || tagStr(c, standard) != ""
 }
@@ -162,8 +205,14 @@ type Result struct {
 	// Reporting the grade without these two numbers would let anyone fabricate an A by waiving
 	// what fails. They are part of the verdict, not a footnote.
 	Waived        int // accepted risks: run: false in the profile's waivers.yml, with a justification
-	NotApplicable int // skipped by an only_if guard (no SSSD domain, no wireless card, no GRUB...)
-	OS            string
+	NotApplicable int // DECLARED not applicable: a guard that said `n/a: <the missing object>`
+	// Skipped or empty, with nothing said. It used to be filed as NotApplicable, which made a
+	// broken guard indistinguishable from a requirement that genuinely does not address the host:
+	// both left the denominator and neither left a trace. 86 of the 108 on a real ubuntu2404 run.
+	// It is NOT scored (an unknown is not a failure), and it is NOT hidden (an unknown is not a
+	// pass). It is the number the applies_if migration has to drive to zero.
+	Unmeasured int
+	OS         string
 }
 
 // Proves derives what a PASS establishes from the control's evidence type:
@@ -224,7 +273,7 @@ func Evaluate(r *Report, subject, standard, level string) Result {
 	}
 
 	var fs []finding.Finding
-	passed, scored, qualified, waived, na := 0, 0, 0, 0, 0
+	passed, scored, qualified, waived, na, unmeasured := 0, 0, 0, 0, 0, 0
 	for _, p := range r.Profiles {
 		for _, c := range p.Controls {
 			if !applicable(c, standard) || !inLevel(c, standard, level) {
@@ -240,12 +289,19 @@ func Evaluate(r *Report, subject, standard, level string) Result {
 				continue
 			}
 			if st != "failed" {
-				// Skipped: either an ACCEPTED RISK (waived, with a justification) or genuinely
-				// N/A (an only_if guard). Both leave the denominator, so both must be reported.
-				if c.WaiverData.Justification != "" {
+				// Three different things leave the denominator here, and filing them together is
+				// how a broken guard disappears. An ACCEPTED RISK carries a justification an
+				// auditor can refuse. A DECLARED non-applicability names the object the norm's
+				// wording makes this requirement depend on. Everything else is simply not known,
+				// including a control InSpec returned no result for at all, and saying so is the
+				// whole point: an unknown that reads as not-applicable is a silent pass.
+				switch {
+				case c.WaiverData.Justification != "":
 					waived++
-				} else {
+				case st == "skipped" && declaresNA(c):
 					na++
+				default:
+					unmeasured++
 				}
 				continue
 			}
@@ -263,7 +319,7 @@ func Evaluate(r *Report, subject, standard, level string) Result {
 	os := strings.TrimSpace(r.Platform.Name + " " + r.Platform.Release)
 	return Result{
 		Findings: fs, Summary: scoring.Summarize(fs), Passed: passed, Total: scored,
-		Qualified: qualified, Waived: waived, NotApplicable: na, OS: os,
+		Qualified: qualified, Waived: waived, NotApplicable: na, Unmeasured: unmeasured, OS: os,
 	}
 }
 

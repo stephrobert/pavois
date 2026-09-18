@@ -1,0 +1,39 @@
+# zizmor (GitHub Actions static analysis) config for Pavois.
+# https://docs.zizmor.sh/configuration/
+#
+# Objective, the same one .poutine.yml states: zero findings, and every acquittal TARGETED, by rule
+# and by file, never by relaxing a rule for the repository. An acquittal that silences a rule
+# everywhere is not an acquittal, it is a mute button, and the next finding it hides is the one
+# that mattered.
+#
+# ---------------------------------------------------------------------------------------------
+# self-repository, on release.yml
+#
+# This one is not a security decision. It is a linter that is older than the platform feature the
+# other linter asks for, and the two gates this repository runs disagree.
+#
+# release.yml calls the site deploy as a reusable workflow, which is the whole of #329: the
+# `release: published` trigger can never fire, because the release is created with the default
+# GITHUB_TOKEN and GitHub starts no workflow from an event that token produced.
+#
+# zizmor wants `uses: $/...`, the self-repository form GitHub added in July 2026, which is not
+# subject to runtime filesystem state. actionlint rejects it as matching neither accepted format,
+# and v1.7.12 (2026-03-30) is the latest release there is. Measured, all three forms:
+#
+#     ./                 actionlint accepts   zizmor refuses (self-repository)
+#     $/                 actionlint refuses   zizmor accepts
+#     owner/repo/…@main  actionlint accepts   zizmor refuses (unpinned-uses)
+#
+# So no form satisfies both, and a permanently red gate is a gate people learn to ignore.
+#
+# Scope, stated because it is the cost: this acquits the rule for the WHOLE of release.yml, not for
+# one line. release.yml has exactly one local `uses:` today; a second one would be acquitted
+# without anybody seeing it. A line-pinned form (`release.yml:451`) exists and was not used, because
+# the number moves on every edit above it and the acquittal would then apply to the wrong line.
+#
+# DELETE THIS the day actionlint ships a release that parses `$/`, and switch the call over: the
+# self-repository form is genuinely the safer one, which is why zizmor asks for it.
+rules:
+  self-repository:
+    ignore:
+      - release.yml

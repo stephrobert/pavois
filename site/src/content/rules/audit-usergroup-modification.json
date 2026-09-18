@@ -59,10 +59,12 @@
     ]
   },
   "check": [
-    "describe command('auditctl -l') do",
+    "describe command('auditctl -l 2>/dev/null || echo PAVOIS_NO_AUDITCTL') do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_AUDITCTL/) }",
     "  its('stdout') { should match(/(-k +|key=)audit_rules_usergroup_modification\\b/) }",
     "end",
-    "describe command(\"grep -rhwsE 'audit_rules_usergroup_modification' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null\") do",
+    "describe command(\"grep -rhwsE 'audit_rules_usergroup_modification' /etc/audit/rules.d/*.rules /etc/audit/audit.rules 2>/dev/null | grep . || echo PAVOIS_NO_PERSISTED_OPTION\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_PERSISTED_OPTION/) }",
     "  its('stdout') { should match(/\\S/) }",
     "end"
   ],

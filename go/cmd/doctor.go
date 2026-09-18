@@ -154,10 +154,57 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	// So doctor says so. A user who meets "this binary embeds none and none is on disk" can now run
 	// one command and see which asset is missing, instead of filing an issue about `harden plan`.
 	var missingAssets []string
-	for _, a := range []struct {
-		label string
-		count func() (string, error)
-	}{
+	for _, a := range embeddedAssets(root) {
+		if detail, err := a.count(); err != nil {
+			line("FAIL", a.label, err.Error()+"; this binary was built without it, "+
+				"so the commands that read it cannot work. Report it with `pavois version`.")
+			missingAssets = append(missingAssets, a.label)
+			ready = false
+		} else {
+			line("OK", a.label, detail)
+		}
+	}
+
+	// Local OS detection (only meaningful if a native engine is present).
+	if cinc != "" {
+		if name, rel := engine.Detect(engine.Options{Target: "local"}); name != "" {
+			line("OK", "local OS detected", fmt.Sprintf("%s %s", name, rel))
+		} else {
+			line("WARN", "local OS", "could not detect the local OS via cinc-auditor")
+		}
+	}
+
+	_, _ = fmt.Fprintln(out)
+	// The advice has to match what is actually missing. A binary built without an embedded asset
+	// used to be told to install a scan engine, with the engine sitting right there in the OK line
+	// above: nothing the reader could do would fix it, and the one thing that would (get a working
+	// build) was not mentioned.
+	if len(missingAssets) > 0 {
+		return fmt.Errorf("not ready: this binary was built without %s. No installation fixes that: "+
+			"download the release binary again, or build from a checkout with `mise run embed:all`",
+			strings.Join(missingAssets, ", "))
+	}
+	if engineBroken {
+		return fmt.Errorf("not ready: the scan engine is installed but cannot run on this system. "+
+			"Install the cinc-auditor package built for it (%s), then re-run pavois doctor", engineDocs)
+	}
+	if !ready {
+		return fmt.Errorf("not ready: install a scan engine (cinc-auditor or docker), then re-run pavois doctor")
+	}
+	_, _ = fmt.Fprintln(out, "ready: try: pavois scan local --sudo")
+	return nil
+}
+
+// assetProbe is one of the things a binary CARRIES and no package manager can supply. The list
+// lives here, in one place, because `pavois support` reports the same six: a bug report whose
+// inventory disagreed with doctor would send a maintainer looking in the wrong place.
+type assetProbe struct {
+	label string
+	count func() (string, error)
+}
+
+func embeddedAssets(root string) []assetProbe {
+	return []assetProbe{
 		{"hardening reference", func() (string, error) {
 			n := referenceOSes(root)
 			if len(n) == 0 {
@@ -233,43 +280,5 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 			}
 			return fmt.Sprintf("%d system(s)", len(oses)), nil
 		}},
-	} {
-		if detail, err := a.count(); err != nil {
-			line("FAIL", a.label, err.Error()+"; this binary was built without it, "+
-				"so the commands that read it cannot work. Report it with `pavois version`.")
-			missingAssets = append(missingAssets, a.label)
-			ready = false
-		} else {
-			line("OK", a.label, detail)
-		}
 	}
-
-	// Local OS detection (only meaningful if a native engine is present).
-	if cinc != "" {
-		if name, rel := engine.Detect(engine.Options{Target: "local"}); name != "" {
-			line("OK", "local OS detected", fmt.Sprintf("%s %s", name, rel))
-		} else {
-			line("WARN", "local OS", "could not detect the local OS via cinc-auditor")
-		}
-	}
-
-	_, _ = fmt.Fprintln(out)
-	// The advice has to match what is actually missing. A binary built without an embedded asset
-	// used to be told to install a scan engine, with the engine sitting right there in the OK line
-	// above: nothing the reader could do would fix it, and the one thing that would (get a working
-	// build) was not mentioned.
-	if len(missingAssets) > 0 {
-		return fmt.Errorf("not ready: this binary was built without %s. No installation fixes that: "+
-			"download the release binary again, or build from a checkout with `mise run embed:all`",
-			strings.Join(missingAssets, ", "))
-	}
-	if engineBroken {
-		return fmt.Errorf("not ready: the scan engine is installed but cannot run on this system. "+
-			"Install the cinc-auditor package built for it (%s), then re-run pavois doctor", engineDocs)
-	}
-	if !ready {
-		return fmt.Errorf("not ready: install a scan engine (cinc-auditor or docker), then re-run pavois doctor")
-	}
-	_, _ = fmt.Fprintln(out, "ready: try: pavois scan local --sudo")
-	return nil
 }

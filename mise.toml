@@ -430,6 +430,20 @@ run = "uv run --with pyyaml python3 {{config_root}}/tools/false_positives.py"
 description = "Prove lint:false-positives bites: plant one control per signature, demand red, then plant the corrected witness and demand silence"
 run = "uv run --with pyyaml python3 {{config_root}}/tools/false_positives.py --selftest"
 
+[tasks."lint:applies-if"]
+description = "FAIL on a malformed applies_if, or on a NEW hand-written only_if (applicability is declared now, #324)"
+# tools/applies_if.py validated only ITSELF: its closed vocabulary and its mandatory `because:`
+# were enforced at render time at best, and nothing ever read the 28 blocks in rules.yml.
+# The second half is the ratchet. Replacing the four applicability mechanisms is a long job, and a
+# long job without a ratchet never finishes: 90 hand-written guards remain, and nothing stopped a
+# 91st from being written beside them. That list may only SHRINK: a control that grows a new guard
+# fails, and a listed control that no longer has one fails too, so it stays a worklist.
+run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_applies_if.py"
+
+[tasks."lint:applies-if:test"]
+description = "Prove lint:applies-if bites: plant a missing because, an unknown predicate, a new only_if (including one hidden in an @os-keyed check), both mechanisms at once and a stale entry, then demand silence on the witness"
+run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_applies_if.py --selftest"
+
 [tasks."lint:prose"]
 description = "FAIL if a live control has no authored bilingual prose, or if prose describes a control that no longer exists"
 # A control added to rules.yml needs a page, and a page needs the one thing no generator can
@@ -564,7 +578,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "lint:prose", "lint:false-positives", "regression:test", "validate:run:test", "gen:readme:verify", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "lint:prose", "lint:false-positives", "lint:applies-if", "regression:test", "validate:run:test", "gen:readme:verify", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]

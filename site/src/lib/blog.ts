@@ -4,7 +4,11 @@ import type { Lang } from '../i18n/ui';
 
 // Editorial categories (slug -> bilingual label). Used by the breadcrumb, filters and the
 // articleSection in the Article JSON-LD.
+// A slug absent from this map falls back to the slug itself, which renders an English word in the
+// French breadcrumb and an unlabelled chip on the index. So a new category is added HERE, in both
+// languages, or it is not a category.
 export const BLOG_CATEGORIES: Record<string, { en: string; fr: string }> = {
+  project: { en: 'Project news', fr: 'Vie du projet' },
   release: { en: 'Release notes', fr: 'Notes de version' },
   methodology: { en: 'Methodology', fr: 'Méthodologie' },
   'field-notes': { en: 'Field notes', fr: 'Retours de terrain' },

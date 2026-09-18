@@ -2,15 +2,24 @@
 # https://github.com/boostsecurityio/poutine
 #
 # Objective: zero findings. The ONLY finding is `github_action_from_unverified_creator_used` (a
-# "note"), raised for two actions we deliberately adopt and pin by 40-char commit SHA. We acquit them
-# TARGETED, by package, never by disabling the rule globally, so any NEW unverified action still trips
-# the rule and gets reviewed.
+# "note"), raised for three actions we deliberately adopt and pin by 40-char commit SHA. We acquit
+# them TARGETED, by package, never by disabling the rule globally, so any NEW unverified action still
+# trips the rule and gets reviewed.
 #
 #   - getplumber/plumber      the CI/CD trust-policy scanner this very workflow runs; pinned by SHA,
 #                             and the action verifies the SLSA build-provenance of the binary it fetches.
 #   - softprops/action-gh-release  the release-asset uploader; widely used, pinned by SHA.
+#   - jdx/mise-action         installs the pinned toolchain (mise 2026.2.23) every job needs; pinned
+#                             by SHA, and used by four workflows.
+#
+# jdx/mise-action was raised four times and acquitted by nobody, which is the failure mode this file
+# exists to avoid: the objective above said zero, the scan said four, and four permanent notes are
+# exactly what a fifth one would hide. The trust decision was made when the action was adopted; this
+# only records it where the scanner can see it. An acquittal is a STATEMENT, so it belongs next to
+# the reason, and the reason has to survive a reader who was not there.
 skip:
   - rule: github_action_from_unverified_creator_used
     purl:
       - pkg:githubactions/getplumber/plumber
       - pkg:githubactions/softprops/action-gh-release
+      - pkg:githubactions/jdx/mise-action
