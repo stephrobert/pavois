@@ -18,6 +18,10 @@
 #                                               that has no pull request yet
 #   tools/validate_prs.sh 331 feat/my-branch    numbers are pull requests, anything else a branch
 #   FAST=1 tools/validate_prs.sh                skip the site build (the slow half)
+#   tools/validate_prs.sh --vm                  ALSO run the real first-run scenario on a
+#                                               disposable debian/12 VM (~20 min). Everything
+#                                               else is offline and touches no machine.
+#   tools/validate_prs.sh --os ubuntu/24.04     the same, on another image (implies --vm)
 
 set -uo pipefail
 
@@ -65,9 +69,10 @@ bad() { printf '  \033[31mFAIL\033[0m %s\n' "$*"; }
 # also what tells a slow step apart from a stuck one.
 HEARTBEAT="${HEARTBEAT:-30}"
 
-run_step() {  # step, logfile -> exit status of the step
+run_step() {  # label, logfile, cmd... -> exit status of the command
   local step="$1" log="$2" pid elapsed=0 last
-  mise run "$step" > "$log" 2>&1 &
+  shift 2
+  "$@" > "$log" 2>&1 &
   pid=$!
   while kill -0 "$pid" 2>/dev/null; do
     sleep 1
@@ -87,9 +92,16 @@ run_step() {  # step, logfile -> exit status of the step
 # ---------------------------------------------------------------- which pull requests
 
 ALL_BRANCHES=0
+VM_STAGE=0
+VM_OS="${VM_OS:-debian/12}"
 ARGS=()
-for a in "$@"; do
-  if [ "$a" = "--all-branches" ]; then ALL_BRANCHES=1; else ARGS+=("$a"); fi
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --all-branches) ALL_BRANCHES=1; shift ;;
+    --vm)           VM_STAGE=1; shift ;;
+    --os)           VM_OS="$2"; VM_STAGE=1; shift 2 ;;
+    *)              ARGS+=("$1"); shift ;;
+  esac
 done
 
 if [ "${#ARGS[@]}" -gt 0 ]; then
@@ -165,7 +177,7 @@ fi
 # own absence. Render first, then gate.
 say "Preparing the worktree (the corpus is derived, a fresh checkout has none)"
 printf '  %-24s ' "render"
-if run_step render "$LOGS/render.log"; then
+if run_step render "$LOGS/render.log" mise run render; then
   printf '\033[32mOK\033[0m\n'
 else
   printf '\033[31mFAIL\033[0m\n'
@@ -184,7 +196,7 @@ echo "  (a heartbeat every ${HEARTBEAT}s while a step runs, with the last line i
 failed=()
 for step in "${STEPS[@]}"; do
   printf '  %-24s ' "$step"
-  if run_step "$step" "$LOGS/${step//:/-}.log"; then
+  if run_step "$step" "$LOGS/${step//:/-}.log" mise run "$step"; then
     printf '\033[32mOK\033[0m\n'
   else
     printf '\033[31mFAIL\033[0m\n'
@@ -192,6 +204,51 @@ for step in "${STEPS[@]}"; do
     sed -e 's/\x1b\[[0-9;]*m//g' "$LOGS/${step//:/-}.log" | tail -25 | sed 's/^/        /'
   fi
 done
+
+# ---------------------------------------------------------------- the real one, on a VM
+#
+# Everything above is OFFLINE. It proves the merged tree builds, lints and renders; it touches no
+# machine and therefore proves nothing about what pavois DOES. This repository's own rule is that a
+# change to what a target audits is verified by a real run on a real VM, and two releases shipped a
+# binary that could not do its job precisely because every test ran inside the checkout.
+#
+# So --vm runs tools/release/scenario.sh against the MERGED tree: it builds that tree's binary as a
+# release would, provisions one disposable VM, and walks install, doctor, scan and harden plan from
+# a machine that has nothing, with one assertion per closed first-run issue. Twenty minutes or so.
+#
+# The VM rules it inherits, and they are not negotiable: a VM and never a container, never `local`
+# on this workstation, one VM at a time, deleted on exit including on interrupt.
+if [ "$VM_STAGE" = 1 ]; then
+  if [ "${#failed[@]}" -gt 0 ]; then
+    say "Skipping the VM stage"
+    bad "the offline gate is red: not spending twenty minutes on a VM to confirm it"
+  else
+    say "Real validation on a fresh $VM_OS VM (the MERGED binary, on a machine that has nothing)"
+    # These VMs run beside the maintainer's own session. Ask before taking 4 GiB of it.
+    avail=$(free -g | awk '/^Mem:/{print $7}')
+    running=$(incus list --format csv -c n 2>/dev/null | grep -c . || echo 0)
+    echo "  host: ${avail:-?} GiB available, $running VM(s) already running"
+    if [ "${avail:-0}" -lt 6 ]; then
+      bad "under 6 GiB available: refusing to start a VM next to the maintainer's session"
+      failed+=("vm:scenario")
+    elif [ "$running" -gt 0 ]; then
+      bad "$running VM(s) already running: one at a time, so this one is not starting"
+      failed+=("vm:scenario")
+    else
+      printf '  %-24s ' "vm:scenario"
+      if run_step vm:scenario "$LOGS/vm-scenario.log" \
+           bash --noprofile --norc tools/release/scenario.sh --os "$VM_OS"; then
+        printf '\033[32mOK\033[0m\n'
+        STEPS+=("vm:scenario")
+      else
+        printf '\033[31mFAIL\033[0m\n'
+        failed+=("vm:scenario")
+        STEPS+=("vm:scenario")
+        sed -e 's/\x1b\[[0-9;]*m//g' "$LOGS/vm-scenario.log" | tail -30 | sed 's/^/        /'
+      fi
+    fi
+  fi
+fi
 
 # A generated tree that the gate rewrote is a finding too: it means a merged branch shipped a
 # stale projection, which is what the fiche drift was. Report it rather than leaving it in a
