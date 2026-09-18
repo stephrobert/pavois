@@ -14,6 +14,8 @@ from pathlib import Path
 
 import yaml
 
+import applies_if  # the closed applicability vocabulary (#324)
+
 ROOT = Path(__file__).resolve().parent.parent
 NORMS = ("bp28", "cis", "pci-dss", "nist", "stig")
 
@@ -161,6 +163,12 @@ def render_control(cid, e):
     # group already satisfies the requirement: `only_if` skips the control (-> n/a) unless
     # this tech is actually needed. The group's "is any active?" check comes from
     # exclusivity.yml. E.g. with rsyslog running, service-syslogng-enabled is N/A, not a gap.
+    # Applicability, DECLARED in the rule base rather than hidden in a check or a template (#324).
+    # Emitted before the exclusive-group guard and before the check: InSpec reports the message of
+    # the first guard that is false, and "this host has no /home partition" is the answer the
+    # operator needs before anything about nodev.
+    out += applies_if.lines(e.get("applies_if"))
+
     grp = e.get("exclusive_group")
     if grp and grp in EXCL:
         out.append(f"  tag exclusive_group: {_rb(grp)}")
