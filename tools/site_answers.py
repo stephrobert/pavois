@@ -57,14 +57,22 @@ REDIRECTS_TO_EN = [f"{APEX}/", f"{WWW}/"]
 
 NAMES = ["pavois.dev", "www.pavois.dev"]
 
-# Two independent public resolvers, and a real DNS query rather than getaddrinfo.
+# A real DNS query, and the resolver that answers is whichever one CAN answer.
 #
-# The first version used socket.getaddrinfo, and the runner failed it with "pavois.dev has no AAAA
-# record" for a name that has eight. getaddrinfo answers for THIS HOST: on a machine with no global
-# IPv6 address it filters the AAAA family out entirely, so the check was measuring the runner's
-# stack, not the zone. The comment two paragraphs up already said runners have no IPv6, and the API
-# chosen depended on exactly that. A question about the DNS has to be asked of the DNS.
-RESOLVERS = ["1.1.1.1", "8.8.8.8"]
+# Two attempts got this wrong in opposite directions, and both are worth keeping written down.
+#
+#   socket.getaddrinfo answers for THIS HOST: on a machine with no global IPv6 address it filters
+#   the AAAA family out entirely, so the runner reported "no AAAA record" for a name that has
+#   eight. It was measuring the runner's network stack, not the zone.
+#
+#   Asking 1.1.1.1 and 8.8.8.8 directly then returned NOTHING for every query: a GitHub runner does
+#   not get to send DNS to an arbitrary public resolver. It was measuring the runner's egress.
+#
+# So the sources are tried in order and the first one that answers is the one used: the system
+# resolver, which is what a visitor on this machine actually uses, and the public ones as a
+# fallback for a host whose own resolver is broken or blocked. `dig` rather than the libc path,
+# because dig asks for the record type it was told to ask for, whatever this host can connect to.
+SOURCES = [None, "1.1.1.1", "8.8.8.8"]  # None: whatever /etc/resolv.conf points at
 AWS_RANGES = "https://ip-ranges.amazonaws.com/ip-ranges.json"
 
 fails: list[str] = []
@@ -73,6 +81,11 @@ fails: list[str] = []
 def bad(msg: str) -> None:
     print(f"  FAIL {msg}")
     fails.append(msg)
+
+
+def warn(msg: str) -> None:
+    """Said out loud, never fatal: a deploy gate that reds on the environment gets switched off."""
+    print(f"  warn {msg}")
 
 
 def curl(url: str, follow: bool) -> tuple[str, str]:
@@ -96,18 +109,19 @@ def have_dig() -> bool:
     return shutil.which("dig") is not None
 
 
-def dig(name: str, rr: str, resolver: str) -> list[str]:
+def dig(name: str, rr: str, resolver: str | None) -> list[str]:
     """The addresses that resolver hands out for that name, and nothing else.
 
     `dig +short` also prints CNAME targets and, on failure, its own diagnostics, so only lines that
     parse as an address are kept: a check that counts a hostname as an address reports success for
     a name that resolves to nothing.
     """
-    cmd = ["dig", "+short", "+time=5", "+tries=2", rr, name, f"@{resolver}"]
+    cmd = ["dig", "+short", "+time=5", "+tries=2", rr, name]
+    if resolver:
+        cmd.append(f"@{resolver}")
     try:
         out = subprocess.run(cmd, capture_output=True, text=True, timeout=30).stdout
-    except subprocess.SubprocessError as e:
-        bad(f"could not query {resolver} for {name} {rr} ({e})")
+    except subprocess.SubprocessError:
         return []
     addrs = []
     for line in out.split():
@@ -116,6 +130,15 @@ def dig(name: str, rr: str, resolver: str) -> list[str]:
         except ValueError:
             continue
     return sorted(addrs)
+
+
+def resolve(name: str, rr: str) -> tuple[list[str], str]:
+    """The first source that answers wins, and the answer says which one it was."""
+    for src in SOURCES:
+        got = dig(name, rr, src)
+        if got:
+            return got, src or "system resolver"
+    return [], "no resolver answered"
 
 
 def cloudfront_networks() -> list:
@@ -168,15 +191,20 @@ def main() -> int:
     else:
         nets = cloudfront_networks()
         for name in NAMES:
-            for resolver in RESOLVERS:
-                for rr in ("A", "AAAA"):
-                    got = dig(name, rr, resolver)
-                    print(f"  {name} {rr} @{resolver}: {' '.join(got) if got else 'NOTHING'}")
-                    if not got:
-                        bad(f"{name} has no {rr} record at {resolver}")
-                    for addr in got:
-                        if nets and not any(ipaddress.ip_address(addr) in n for n in nets):
-                            bad(f"{name} {rr} is {addr} at {resolver}, not a CloudFront address")
+            for rr in ("A", "AAAA"):
+                got, src = resolve(name, rr)
+                print(f"  {name} {rr} ({src}): {' '.join(got) if got else 'NOTHING'}")
+                if not got and rr == "A":
+                    bad(f"{name} has no A record: the site is unreachable")
+                elif not got:
+                    # NOT fatal, and the reason is the two wrong turns above: a host can be unable
+                    # to SEE a AAAA that exists. The incident this check is for was an address that
+                    # was WRONG, not one that was missing, and a wrong address is caught below
+                    # whichever source answers.
+                    warn(f"{name}: no AAAA from any source (a host filtering IPv6 looks the same)")
+                for addr in got:
+                    if nets and not any(ipaddress.ip_address(addr) in n for n in nets):
+                        bad(f"{name} {rr} is {addr}, which is not a CloudFront address")
 
     print()
     if fails:
