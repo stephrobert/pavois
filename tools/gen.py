@@ -49,8 +49,33 @@ SCALAR = [
     "exclusive_group",
     "danger",
     "waiver",  # accepted risk: justification for a control we deliberately do NOT enforce
+    "applies_if",  # declared applicability (#324): the norm's own "IF ..." wording, rendered
 ]
+
+# The comment above says this list MUST be exhaustive, and nothing made it true: adding
+# `applies_if` to rules.yml rendered a corpus that silently LOST all 28 guards, because a field
+# absent from SCALAR never reaches the per-OS files. gen:verify stayed at 5937/5937, since it
+# compares the generated corpus to the same truncated view. So the list is now checked against the
+# source rather than trusted: a per-control key nobody declared here stops the build.
+KNOWN = set(SCALAR) | {"norms", "applicable_os", "template"}
 NORMS = ["bp28", "nist", "pci-dss", "cis", "stig"]
+
+
+def refuse_unknown_fields(src):
+    """A field in rules.yml that SCALAR does not name is silently dropped: refuse it instead."""
+    unknown = {}
+    for cid, e in src.items():
+        if not isinstance(e, dict) or "applicable_os" not in e:
+            continue
+        for k in e:
+            if k not in KNOWN and not k.startswith("@"):
+                unknown.setdefault(k, []).append(cid)
+    if unknown:
+        for k, ids in sorted(unknown.items()):
+            print(f"gen: unknown per-control field {k!r} on {len(ids)} control(s): {ids[:3]}")
+        print("Add it to SCALAR (and to the renderer) or remove it: an undeclared field is")
+        print("dropped on the way to the per-OS files, and nothing downstream can tell.")
+        raise SystemExit(1)
 
 
 def load_os():
@@ -174,6 +199,7 @@ def assert_resolved(cid, os, field, val):
 
 
 def render(lib):
+    refuse_unknown_fields(lib)
     # OS set comes from the SOURCE (rules.yml), never from the (derived) output dir:
     # so render works on a fresh clone where pavois-content/ does not exist yet.
     oses = sorted({os for entry in lib.values() for os in entry["applicable_os"]})

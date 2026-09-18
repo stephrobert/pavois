@@ -770,7 +770,8 @@ audit-immutable:
   - ubuntu2404
   - ubuntu2604
   check:
-  - describe command('auditctl -s') do
+  - describe command('auditctl -s | grep . || echo PAVOIS_NO_AUDITCTL') do
+  - "  its('stdout') { should_not match(/PAVOIS_NO_AUDITCTL/) }"
   - '  its(''stdout'') { should match(/enabled[[:space:]]+2/) }'
   - end
   domain: Audit (auditd)
@@ -3037,6 +3038,10 @@ cmdline-iommu-force:
   severity: medium
   socle: SOCLE-CLD-KRN-004
   ssg: grub2_enable_iommu_force
+  applies_if:
+    - virt: false
+      because: 'ineffective in a virtualized guest, and harden skips the remediation there (systemd-detect-virt
+  gate in go/cmd/harden.go)'
   template:
     name: cmdline
     param: iommu=force
@@ -17431,7 +17436,8 @@ journald-forwardtosyslog:
   - ubuntu2604
   check:
   - only_if { !service('rsyslog').running? && !service('syslog-ng').running? }
-  - describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*ForwardToSyslog[[:space:]]*=" | tail -1') do
+  - describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*ForwardToSyslog[[:space:]]*=" | tail -1 | grep . || echo PAVOIS_NO_PERSISTED_OPTION') do
+  - "  its('stdout') { should_not match(/PAVOIS_NO_PERSISTED_OPTION/) }"
   - "  its('stdout') { should match(/=\\s*no/i) }"
   - end
   domain: Logging (journald)
@@ -23032,6 +23038,9 @@ mount-boot-efi-nosuid:
   severity: medium
   socle: SOCLE-CLD-MNT-001
   ssg: mount_option_boot_efi_nosuid
+  applies_if:
+    - mount: '/boot/efi'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /boot/efi"'
   template:
     mount_point: /boot/efi
     name: mount_option
@@ -23057,6 +23066,9 @@ mount-boot-nodev:
   severity: medium
   socle: SOCLE-CLD-MNT-002
   ssg: mount_option_boot_nodev
+  applies_if:
+    - mount: '/boot'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /boot"'
   template:
     mount_point: /boot
     name: mount_option
@@ -23090,6 +23102,9 @@ mount-boot-noexec:
   severity: medium
   socle: SOCLE-CLD-MNT-003
   ssg: mount_option_boot_noexec
+  applies_if:
+    - mount: '/boot'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /boot"'
   template:
     mount_point: /boot
     name: mount_option
@@ -23130,6 +23145,9 @@ mount-boot-nosuid:
   severity: medium
   socle: SOCLE-CLD-MNT-004
   ssg: mount_option_boot_nosuid
+  applies_if:
+    - mount: '/boot'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /boot"'
   template:
     mount_point: /boot
     name: mount_option
@@ -23171,6 +23189,9 @@ mount-dev-shm-nodev:
   severity: medium
   socle: SOCLE-CLD-MNT-005
   ssg: mount_option_dev_shm_nodev
+  applies_if:
+    - mount: '/dev/shm'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /dev/shm"'
   template:
     mount_point: /dev/shm
     name: mount_option
@@ -23212,6 +23233,9 @@ mount-dev-shm-noexec:
   severity: medium
   socle: SOCLE-CLD-MNT-006
   ssg: mount_option_dev_shm_noexec
+  applies_if:
+    - mount: '/dev/shm'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /dev/shm"'
   template:
     mount_point: /dev/shm
     name: mount_option
@@ -23253,6 +23277,9 @@ mount-dev-shm-nosuid:
   severity: medium
   socle: SOCLE-CLD-MNT-007
   ssg: mount_option_dev_shm_nosuid
+  applies_if:
+    - mount: '/dev/shm'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /dev/shm"'
   template:
     mount_point: /dev/shm
     name: mount_option
@@ -23286,6 +23313,9 @@ mount-home-nodev:
   severity: medium
   socle: SOCLE-CLD-MNT-008
   ssg: mount_option_home_nodev
+  applies_if:
+    - mount: '/home'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /home"'
   template:
     mount_point: /home
     name: mount_option
@@ -23320,6 +23350,9 @@ mount-home-noexec:
   severity: medium
   socle: SOCLE-CLD-MNT-009
   ssg: mount_option_home_noexec
+  applies_if:
+    - mount: '/home'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /home"'
   template:
     mount_point: /home
     name: mount_option
@@ -23396,6 +23429,9 @@ mount-home-nosuid:
   severity: medium
   socle: SOCLE-CLD-MNT-010
   ssg: mount_option_home_nosuid
+  applies_if:
+    - mount: '/home'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /home"'
   template:
     mount_point: /home
     name: mount_option
@@ -23429,6 +23465,9 @@ mount-opt-nosuid:
   severity: medium
   socle: SOCLE-CLD-MNT-011
   ssg: mount_option_opt_nosuid
+  applies_if:
+    - mount: '/opt'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /opt"'
   template:
     mount_point: /opt
     name: mount_option
@@ -23462,6 +23501,9 @@ mount-srv-nosuid:
   severity: medium
   socle: SOCLE-CLD-MNT-012
   ssg: mount_option_srv_nosuid
+  applies_if:
+    - mount: '/srv'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /srv"'
   template:
     mount_point: /srv
     name: mount_option
@@ -23503,6 +23545,9 @@ mount-tmp-nodev:
   severity: medium
   socle: SOCLE-CLD-MNT-013
   ssg: mount_option_tmp_nodev
+  applies_if:
+    - mount: '/tmp'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /tmp"'
   template:
     mount_point: /tmp
     name: mount_option
@@ -23580,6 +23625,9 @@ mount-tmp-noexec:
   severity: medium
   socle: SOCLE-CLD-MNT-014
   ssg: mount_option_tmp_noexec
+  applies_if:
+    - mount: '/tmp'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /tmp"'
   template:
     mount_point: /tmp
     name: mount_option
@@ -23657,6 +23705,9 @@ mount-tmp-nosuid:
   severity: medium
   socle: SOCLE-CLD-MNT-015
   ssg: mount_option_tmp_nosuid
+  applies_if:
+    - mount: '/tmp'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /tmp"'
   template:
     mount_point: /tmp
     name: mount_option
@@ -23697,6 +23748,9 @@ mount-var-log-audit-nodev:
   severity: medium
   socle: SOCLE-CLD-MNT-016
   ssg: mount_option_var_log_audit_nodev
+  applies_if:
+    - mount: '/var/log/audit'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /var/log/audit"'
   template:
     mount_point: /var/log/audit
     name: mount_option
@@ -23737,6 +23791,9 @@ mount-var-log-audit-noexec:
   severity: medium
   socle: SOCLE-CLD-MNT-017
   ssg: mount_option_var_log_audit_noexec
+  applies_if:
+    - mount: '/var/log/audit'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /var/log/audit"'
   template:
     mount_point: /var/log/audit
     name: mount_option
@@ -23777,6 +23834,9 @@ mount-var-log-audit-nosuid:
   severity: medium
   socle: SOCLE-CLD-MNT-018
   ssg: mount_option_var_log_audit_nosuid
+  applies_if:
+    - mount: '/var/log/audit'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /var/log/audit"'
   template:
     mount_point: /var/log/audit
     name: mount_option
@@ -23817,6 +23877,9 @@ mount-var-log-nodev:
   severity: medium
   socle: SOCLE-CLD-MNT-019
   ssg: mount_option_var_log_nodev
+  applies_if:
+    - mount: '/var/log'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /var/log"'
   template:
     mount_point: /var/log
     name: mount_option
@@ -23893,6 +23956,9 @@ mount-var-log-noexec:
   severity: medium
   socle: SOCLE-CLD-MNT-020
   ssg: mount_option_var_log_noexec
+  applies_if:
+    - mount: '/var/log'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /var/log"'
   template:
     mount_point: /var/log
     name: mount_option
@@ -23969,6 +24035,9 @@ mount-var-log-nosuid:
   severity: medium
   socle: SOCLE-CLD-MNT-021
   ssg: mount_option_var_log_nosuid
+  applies_if:
+    - mount: '/var/log'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /var/log"'
   template:
     mount_point: /var/log
     name: mount_option
@@ -24009,6 +24078,9 @@ mount-var-nodev:
   severity: medium
   socle: SOCLE-CLD-MNT-022
   ssg: mount_option_var_nodev
+  applies_if:
+    - mount: '/var'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /var"'
   template:
     mount_point: /var
     name: mount_option
@@ -24050,6 +24122,9 @@ mount-var-noexec:
   severity: medium
   socle: SOCLE-CLD-MNT-023
   ssg: mount_option_var_noexec
+  applies_if:
+    - mount: '/var'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /var"'
   template:
     mount_point: /var
     name: mount_option
@@ -24120,6 +24195,9 @@ mount-var-nosuid:
   severity: medium
   socle: SOCLE-CLD-MNT-024
   ssg: mount_option_var_nosuid
+  applies_if:
+    - mount: '/var'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /var"'
   template:
     mount_point: /var
     name: mount_option
@@ -24153,6 +24231,9 @@ mount-var-tmp-nodev:
   severity: medium
   socle: SOCLE-CLD-MNT-025
   ssg: mount_option_var_tmp_nodev
+  applies_if:
+    - mount: '/var/tmp'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /var/tmp"'
   template:
     mount_point: /var/tmp
     name: mount_option
@@ -24222,6 +24303,9 @@ mount-var-tmp-noexec:
   severity: medium
   socle: SOCLE-CLD-MNT-026
   ssg: mount_option_var_tmp_noexec
+  applies_if:
+    - mount: '/var/tmp'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /var/tmp"'
   template:
     mount_point: /var/tmp
     name: mount_option
@@ -24291,6 +24375,9 @@ mount-var-tmp-nosuid:
   severity: medium
   socle: SOCLE-CLD-MNT-027
   ssg: mount_option_var_tmp_nosuid
+  applies_if:
+    - mount: '/var/tmp'
+      because: 'CIS 1.1.2.x wording: "IF a separate partition exists for /var/tmp"'
   template:
     mount_point: /var/tmp
     name: mount_option
@@ -33675,7 +33762,8 @@ service-systemd-coredump-disabled:
   ssg: service_systemd-coredump_disabled
   title: Disable acquiring, saving, and processing core dumps
   check:
-  - describe command('systemd-analyze cat-config systemd/coredump.conf 2>/dev/null | grep -iE "^[[:space:]]*Storage[[:space:]]*=" | tail -1') do
+  - describe command('systemd-analyze cat-config systemd/coredump.conf 2>/dev/null | grep -iE "^[[:space:]]*Storage[[:space:]]*=" | tail -1 | grep . || echo PAVOIS_NO_PERSISTED_OPTION') do
+  - "  its('stdout') { should_not match(/PAVOIS_NO_PERSISTED_OPTION/) }"
   - "  its('stdout') { should match(/=\\s*none/i) }"
   - end
   remediation_class: auto
@@ -40850,7 +40938,8 @@ growth-journal-bounded:
   remediation_class: auto
   note: "An unbounded journal fills /var/log, which pavois's own partition recipe makes a SEPARATE filesystem. journald defaults to 10% of the filesystem, but the value must be EXPLICIT and audited: a filesystem pavois carves out is pavois's responsibility."
   check:
-  - describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*SystemMaxUse[[:space:]]*=" | tail -1') do
+  - describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*SystemMaxUse[[:space:]]*=" | tail -1 | grep . || echo PAVOIS_NO_PERSISTED_OPTION') do
+  - "  its('stdout') { should_not match(/PAVOIS_NO_PERSISTED_OPTION/) }"
   - "  its('stdout') { should match(/=\\s*\\d+[KMG]?/i) }"
   - end
   remediation:
@@ -40944,7 +41033,8 @@ journald-forward-to-running-syslog:
   - ubuntu2604
   check:
   - only_if { (service('rsyslog').running? || service('syslog-ng').running?) && !command('grep -rqsE \'^[[:space:]]*(module\\(load="imjournal"|\\$ModLoad[[:space:]]+imjournal)\' /etc/rsyslog.conf /etc/rsyslog.d/ 2>/dev/null').exit_status.zero? }
-  - describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*ForwardToSyslog[[:space:]]*=" | tail -1 | grep -qiE "=[[:space:]]*(no|false|0)" && echo ko || echo ok') do
+  - describe command('systemd-analyze cat-config systemd/journald.conf 2>/dev/null | grep -iE "^[[:space:]]*ForwardToSyslog[[:space:]]*=" | tail -1 | grep -qiE "=[[:space:]]*(no|false|0)" && echo ko || echo ok | grep . || echo PAVOIS_NO_PERSISTED_OPTION') do
+  - "  its('stdout') { should_not match(/PAVOIS_NO_PERSISTED_OPTION/) }"
   - "  its('stdout.strip') { should eq 'ok' }"
   - end
   remediation:

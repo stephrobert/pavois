@@ -44,19 +44,16 @@ def _sysctl_exp(p):
         f"describe kernel_parameter('{k}') do",
         f"  its('value') {{ should cmp {v} }}",
         "end",
-        f"describe command(\"grep -hsE '{pat}' {paths} 2>/dev/null\") do",
-        "  its('stdout') { should match(/\\S/) }",
-        "end",
-    ]
+    ] + _persist(f"grep -hsE '{pat}' {paths} 2>/dev/null")
 
 
 def _sysctl_ext(L):
-    if len(L) != 6 or L[2] != "end" or L[5] != "end":
+    if len(L) != 7 or L[2] != "end":
         return None
     m1 = re.fullmatch(r"describe kernel_parameter\('([^']+)'\) do", L[0])
     m2 = re.fullmatch(r"  its\('value'\) \{ should cmp (.+) \}", L[1])
-    m3 = re.fullmatch(r"describe command\(\"grep -hsE '.*' .*2>/dev/null\"\) do", L[3])
-    if m1 and m2 and m3 and L[4] == "  its('stdout') { should match(/\\S/) }":
+    cmd = _persist_ext(L[3:])
+    if m1 and m2 and cmd and cmd.startswith("grep -hsE '"):
         return {"name": "sysctl", "key": m1.group(1), "value": m2.group(1)}
     return None
 
@@ -127,23 +124,6 @@ def _svc_ext(L):
 # mount_option: reboot-proof by construction: assert the option is on the LIVE mount AND that it
 # is PINNED persistently (in /etc/fstab OR a systemd .mount unit), so it survives a reboot. A
 # `mount -o remount` (live only) would otherwise pass and silently regress on the next boot.
-# The option controls are guarded on the mount point BEING a mount.
-#
-# When /home is a plain directory of the root filesystem, no filesystem can carry `nodev` on it,
-# and CIS words every 1.1.2.x audit "IF a separate partition exists for <mp>". `partition-<x>`
-# already reports the missing partition, so failing the option control too counted one fact twice:
-# 21 of the 56 residual failures of the debian12 golden campaign of 2026-09-17, 18 of 52 on
-# debian13, every one of them phrased `expected nil to include "nodev"`, nil being the absent
-# mount. Same shape as the virt guard below: a constant line, added by _exp and stripped by _ext so
-# `mise run gen:verify` stays a round trip.
-_MOUNT_ONLY_IF = (
-    "only_if('n/a: {mp} is not a separate mount, no filesystem carries the option') "
-    "{{ mount('{mp}').mounted? }}"
-)
-_MOUNT_ONLY_IF_RE = re.compile(
-    r"only_if\('n/a: (\S+) is not a separate mount, no filesystem carries the option'\) "
-    r"\{ mount\('(\S+)'\)\.mounted\? \}"
-)
 
 # Options systemd sets itself on the API filesystems it mounts before fstab and before any unit is
 # read (src/shared/mount-setup.c pins /dev/shm as mode=01777,nosuid,nodev,strictatime). They are
@@ -154,11 +134,52 @@ _MOUNT_ONLY_IF_RE = re.compile(
 # nosec B108: this is a MOUNT POINT being audited, not a temp path this tool writes to.
 _BUILTIN_MOUNT_OPTS = {"/dev/shm": ("nodev", "nosuid")}  # nosec B108
 
+# The persistence probe greps three sources for the option. Finding nothing is a MEASUREMENT (no
+# file declares it), but an empty stdout reads exactly like a probe that could not run, and the
+# trust gate has to guess. It now says which: the sentinel is the answer "no source declares this
+# option", and the assertion below demands the option itself, so the verdict is unchanged and the
+# evidence is no longer blank.
+_PERSIST_NONE = "PAVOIS_NO_PERSISTED_OPTION"
+
+
+def _persist(cmd: str) -> list[str]:
+    """The persistence half of a control: grep the sources, and SAY when they hold nothing.
+
+    Without the sentinel the block answers "" and the message reads `expected "" to match /\\S/`,
+    which is indistinguishable from a probe that never ran: on a stock debian12 that was 73 of the
+    trust gate's errors, and it is what kept a golden campaign from reaching PASSED. With it, the
+    absence is an answer. The verdict does not change: the sentinel fails the first assertion, so
+    a setting nobody persisted is still a deviation, now with evidence instead of a blank.
+    """
+    # `| grep .` is not decoration, and it cost a golden campaign to learn: `grep -s` silences the
+    # MESSAGE for a missing file, not the exit STATUS. These probes read a LIST of paths, most of
+    # which do not exist on a given host (/boot/grub2/grub.cfg, /run/sysctl.d/*.conf), so grep exits
+    # 2 even when it matched, `|| echo` fired anyway, and the sentinel came out NEXT TO the match.
+    # 73 correctly hardened controls failed. `grep .` makes the fallback depend on what was
+    # PRINTED rather than on an exit status that is about file access.
+    return [
+        f'describe command("{cmd} | grep . || echo {_PERSIST_NONE}") do',
+        f"  its('stdout') {{ should_not match(/{_PERSIST_NONE}/) }}",
+        "  its('stdout') { should match(/\\S/) }",
+        "end",
+    ]
+
+
+def _persist_ext(L: list[str]) -> str | None:
+    """The command of a persistence block, or None when the shape is not one."""
+    if len(L) != 4 or L[3] != "end":
+        return None
+    if L[1] != f"  its('stdout') {{ should_not match(/{_PERSIST_NONE}/) }}":
+        return None
+    if L[2] != "  its('stdout') { should match(/\\S/) }":
+        return None
+    m = re.fullmatch(rf'describe command\("(.+) \| grep \. \|\| echo {_PERSIST_NONE}"\) do', L[0])
+    return m.group(1) if m else None
+
 
 def _mount_exp(p):
     mp, opt = p["mount_point"], p["option"]
     live = [
-        _MOUNT_ONLY_IF.format(mp=mp),
         f"describe mount('{mp}') do",
         f"  its('options') {{ should include '{opt}' }}",
         "end",
@@ -172,19 +193,17 @@ def _mount_exp(p):
         + mp
         + " 2>/dev/null) 2>/dev/null; } | grep -ow '"
         + opt
-        + "'"
+        + "' || echo "
+        + _PERSIST_NONE
     )
     return live + [
         f'describe command("{persist}") do',
-        "  its('stdout') { should match(/\\S/) }",
+        f"  its('stdout') {{ should match(/^{opt}$/) }}",
         "end",
     ]
 
 
 def _mount_ext(L):
-    g = _MOUNT_ONLY_IF_RE.fullmatch(L[0]) if L else None
-    if g and g.group(1) == g.group(2):  # strip the guard, re-added by _mount_exp
-        L = L[1:]
     # The live-only shape is accepted for the builtin table ONLY: no other control may lose its
     # persistence probe silently.
     if len(L) == 3 and L[2] == "end":
@@ -197,8 +216,10 @@ def _mount_ext(L):
         return None
     m = re.fullmatch(r"describe mount\('([^']+)'\) do", L[0])
     m2 = re.fullmatch(r"  its\('options'\) \{ should include '([^']+)' \}", L[1])
-    m3 = re.fullmatch(r"describe command\(\".*grep -ow '[^']+'\"\) do", L[3])
-    if m and m2 and m3 and L[4] == "  its('stdout') { should match(/\\S/) }":
+    m3 = re.fullmatch(
+        r"describe command\(\".*grep -ow '[^']+' \|\| echo " + _PERSIST_NONE + r"\"\) do", L[3]
+    )
+    if m and m2 and m3 and L[4] == f"  its('stdout') {{ should match(/^{m2.group(1)}$/) }}":
         return {"name": "mount_option", "mount_point": m.group(1), "option": m2.group(1)}
     return None
 
@@ -284,45 +305,23 @@ _GRUB_SRC = (
 )
 
 
-# cmdline params that are unsafe or ineffective inside a virtualized guest: the harden
-# remediation skips them under systemd-detect-virt, so the check must be N/A there too (else it
-# fails forever on a VM). Keep in sync with the remediation gate in go/cmd/harden.go.
-_CMDLINE_VIRT_UNSAFE = {"iommu=force"}
-_VIRT_ONLY_IF = (
-    "only_if('n/a in a virtualized guest: applied only on bare metal') "
-    "{ command('systemd-detect-virt -q').exit_status != 0 }"
-)
-
-
 def _cmdline_exp(p):
     tok = p["param"]
-    lines = []
-    if tok in _CMDLINE_VIRT_UNSAFE:
-        lines.append(_VIRT_ONLY_IF)
-    lines += [
+    lines = [
         "describe command('cat /proc/cmdline') do",
         f"  its('stdout') {{ should match(/(^| ){tok}( |$)/) }}",
         "end",
-        f"describe command(\"grep -hwsF '{tok}' {_GRUB_SRC} 2>/dev/null\") do",
-        "  its('stdout') { should match(/\\S/) }",
-        "end",
     ]
+    lines += _persist(f"grep -hwsF '{tok}' {_GRUB_SRC} 2>/dev/null")
     return lines
 
 
 def _cmdline_ext(L):
-    if L and L[0] == _VIRT_ONLY_IF:  # strip the optional virt guard, re-added by _cmdline_exp
-        L = L[1:]
-    if (
-        len(L) != 6
-        or L[2] != "end"
-        or L[5] != "end"
-        or L[0] != "describe command('cat /proc/cmdline') do"
-    ):
+    if len(L) != 7 or L[2] != "end" or L[0] != "describe command('cat /proc/cmdline') do":
         return None
     m = re.fullmatch(r"  its\('stdout'\) \{ should match\(/\(\^\| \)(.+)\( \|\$\)/\) \}", L[1])
-    m3 = re.fullmatch(r"describe command\(\"grep -hwsF '.+' .*2>/dev/null\"\) do", L[3])
-    if m and m3 and L[4] == "  its('stdout') { should match(/\\S/) }":
+    cmd = _persist_ext(L[3:])
+    if m and cmd and cmd.startswith("grep -hwsF '"):
         return {"name": "cmdline", "param": m.group(1)}
     return None
 
@@ -333,32 +332,39 @@ def _cmdline_ext(L):
 _AUDIT_RULES = "/etc/audit/rules.d/*.rules /etc/audit/audit.rules"
 
 
+# A missing auditctl used to answer NOTHING, and nothing is indistinguishable from "the rule is not
+# loaded". On a stock debian12 that made 29 audit controls fail by luck rather than by measurement,
+# and the trust gate said so: 88 empty-output errors, which is what kept a golden campaign from ever
+# reaching PASSED. The sentinel is the same device the kconfig template already uses: the absence is
+# STATED, so the first assertion fails loudly when the tool is not there and PASSES when it is,
+# which also tells `validate_run` that the probe ran.
+_AUDITCTL_NONE = "PAVOIS_NO_AUDITCTL"
+
+
 def _audit_exp(p):
     key = p["key"]  # regex token as authored, e.g. perm_mod, user\-modify or (a|b)
     # Extended-regex (-E) grep so an alternation key like (a|b) is honoured; -F would
     # take the parentheses/pipe literally and never match. For a plain single key -E
     # and -F are equivalent, so single-key controls are unaffected.
     return [
-        "describe command('auditctl -l') do",
+        f"describe command('auditctl -l 2>/dev/null || echo {_AUDITCTL_NONE}') do",
+        f"  its('stdout') {{ should_not match(/{_AUDITCTL_NONE}/) }}",
         f"  its('stdout') {{ should match(/(-k +|key=){key}\\b/) }}",
         "end",
-        f"describe command(\"grep -rhwsE '{key}' {_AUDIT_RULES} 2>/dev/null\") do",
-        "  its('stdout') { should match(/\\S/) }",
-        "end",
-    ]
+    ] + _persist(f"grep -rhwsE '{key}' {_AUDIT_RULES} 2>/dev/null")
 
 
 def _audit_ext(L):
     if (
-        len(L) != 6
-        or L[2] != "end"
-        or L[5] != "end"
-        or L[0] != "describe command('auditctl -l') do"
+        len(L) != 8
+        or L[3] != "end"
+        or L[0] != f"describe command('auditctl -l 2>/dev/null || echo {_AUDITCTL_NONE}') do"
+        or L[1] != f"  its('stdout') {{ should_not match(/{_AUDITCTL_NONE}/) }}"
     ):
         return None
-    m = re.fullmatch(r"  its\('stdout'\) \{ should match\(/\(-k \+\|key=\)(.+)\\b/\) \}", L[1])
-    m3 = re.fullmatch(r"describe command\(\"grep -rhwsE '.+' .*2>/dev/null\"\) do", L[3])
-    if m and m3 and L[4] == "  its('stdout') { should match(/\\S/) }":
+    m = re.fullmatch(r"  its\('stdout'\) \{ should match\(/\(-k \+\|key=\)(.+)\\b/\) \}", L[2])
+    cmd = _persist_ext(L[4:])
+    if m and cmd and cmd.startswith("grep -rhwsE '"):
         return {"name": "audit_rule", "key": m.group(1)}
     return None
 

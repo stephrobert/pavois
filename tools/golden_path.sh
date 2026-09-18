@@ -66,7 +66,10 @@ mise run build >/dev/null 2>&1 || { echo "build failed"; exit 1; }
 
 step "1. a FRESH VM, created by the published tooling"
 mise run vm -- down "$OS" >/dev/null 2>&1
-run mise run vm -- up "$OS" --sudo-password "${PAVOIS_SUDO_PASSWORD:-}" >/dev/null || {
+# --sudo-password takes NO value: vm.py reads PAVOIS_SUDO_PASSWORD from the environment. Passing
+# it here put the lab password into `ps` output for the whole run, on a machine where every user
+# can read it, and this repository's own rule forbids exactly that.
+run mise run vm -- up "$OS" --sudo-password >/dev/null || {
   echo "VM creation failed"; exit 1; }
 IP=$(mise run vm -- ip "$OS" 2>/dev/null | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -1)
 [ -n "$IP" ] || { echo "no IP for $OS"; exit 1; }
