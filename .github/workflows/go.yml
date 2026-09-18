@@ -21,14 +21,20 @@ on:
       - '.golangci.yml'
       - 'tools/lint_embed_release.py'
       - 'tools/release/embed_reference.sh'
+  # NO paths filter on the events that GATE A MERGE, and that is not an oversight either way.
+  #
+  # "Build, test, lint, vuln-scan" is a REQUIRED status check. A required check that is filtered
+  # out does not report "skipped", it reports NOTHING, and GitHub waits for a result that will
+  # never come. Every pull request touching no Go file was therefore permanently blocked, and the
+  # only way past it was an admin bypass: twelve were merged that way in one evening, which is how
+  # the contradiction stayed invisible. A merge queue makes it fatal rather than annoying, because
+  # there is no bypass inside the queue, only a timeout.
+  #
+  # So the filter stays on `push` (a push to main gates nothing) and goes from the two events that
+  # decide whether a change may land. The cost is a Go build on a documentation-only pull request;
+  # the alternative is a gate nobody can satisfy.
   pull_request:
-    paths:
-      - 'go/**'
-      - '.github/workflows/go.yml'
-      - '.github/workflows/release.yml'
-      - '.golangci.yml'
-      - 'tools/lint_embed_release.py'
-      - 'tools/release/embed_reference.sh'
+  merge_group:
   workflow_dispatch:
 
 permissions: {}
