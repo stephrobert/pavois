@@ -58,6 +58,12 @@ RULES: list[Rule] = [
                 "mise run lint:rules",
                 "nothing about a live system: it lints the content, not the verdict",
             ),
+            (
+                OFFLINE,
+                "mise run lint:prose",
+                "that the prose is true or useful: only that the new control HAS a page, in both "
+                "languages",
+            ),
             (LOCAL, "mise run render", "that a rendered control actually evaluates on a host"),
             (
                 TARGET,
@@ -107,7 +113,12 @@ RULES: list[Rule] = [
         "the bilingual prose behind the rule pages",
         ["docs/reference/prose/*"],
         [
-            (LOCAL, "mise run site:verify", "that FR and EN say the same thing"),
+            (
+                OFFLINE,
+                "mise run lint:prose",
+                "that FR and EN say the same thing: only that both exist and differ",
+            ),
+            (LOCAL, "mise run site:verify", "that the page built from it renders"),
         ],
     ),
     Rule(

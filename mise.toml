@@ -410,6 +410,20 @@ run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_contradictions.py
 description = "Prove lint:contradictions bites: plant a package conflict and an unguarded path conflict, demand red"
 run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_contradictions.py --selftest"
 
+[tasks."lint:prose"]
+description = "FAIL if a live control has no authored bilingual prose, or if prose describes a control that no longer exists"
+# A control added to rules.yml needs a page, and a page needs the one thing no generator can
+# produce: docs/reference/prose/<id>.json. Nothing offline demanded it, so the gap was found by
+# site-deploy going red on main, after the merge, with the whole pipeline built. site:verify does
+# refuse that state, but it REGENERATES site/src/content/rules/ to do it, which keeps it out of
+# prepush (a hook must not rewrite the tree it checks). This half needs no generated tree at all:
+# two directories, offline, milliseconds. verify_site_content.py imports it rather than repeating it.
+run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_prose_coverage.py"
+
+[tasks."lint:prose:test"]
+description = "Prove lint:prose bites: plant a control with no prose, an orphan fiche, a missing field and an untranslated one, demand red"
+run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_prose_coverage.py --selftest"
+
 [tasks."lint:norm-refs"]
 description = "FAIL if a norm mapping holds anything but a reference (the claim /attribution makes about redistribution)"
 run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_norm_refs.py"
@@ -524,11 +538,13 @@ description = "Everything a pull request will fail on that costs seconds and nee
 # What is deliberately OUT, and why:
 #   site:verify   31s, and it REGENERATES site/src/content/rules/: a hook must not rewrite the
 #                 tree it is checking. Earned by a site/ or rules.yml diff instead (testplan).
+#                 Its PROSE half needs no generated tree, so it is in, as lint:prose: that is the
+#                 half that went red on main and blocked the site, and it costs milliseconds.
 #   validate      needs the SSG datastreams: network, minutes.
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "regression:test", "validate:run:test", "gen:readme:verify", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "lint:prose", "regression:test", "validate:run:test", "gen:readme:verify", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]

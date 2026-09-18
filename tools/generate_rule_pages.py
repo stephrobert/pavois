@@ -6,8 +6,9 @@ are merged (union). Uses the norm-studio's draft_rule_page (mines reference + SS
 
   tools/generate_rule_pages.py            # all OS references -> one fiche per unique id
 
-Wipes and regenerates site/src/content/rules/ (then the gold hand-authored fiches are re-applied
-separately). FR fields echo EN until a translation pass.
+Wipes and regenerates site/src/content/rules/ from two sources: the rule base, and the AUTHORED
+bilingual prose in docs/reference/prose/. Editing a fiche directly is writing into the output of a
+generator that runs on the next build: the prose file is where a paragraph survives.
 """
 
 import json
@@ -23,7 +24,7 @@ import server  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 REF = ROOT / "docs" / "reference" / "pavois-content"
 PROSE = ROOT / "docs" / "reference" / "prose"  # the authored bilingual prose: SOURCE, versioned
-OUT = ROOT / "site" / "src" / "content" / "rules"  # 100% derived: generated here, gitignored
+OUT = ROOT / "site" / "src" / "content" / "rules"  # 100% derived: versioned, never hand-edited
 
 # The output directory is DERIVED: rebuild it from scratch. No stale fiche can survive a merge, a
 # rename or a deletion, because nothing in it is authored any more.
