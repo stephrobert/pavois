@@ -54,6 +54,36 @@ say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 ok()  { printf '  \033[32mOK  \033[0m %s\n' "$*"; }
 bad() { printf '  \033[31mFAIL\033[0m %s\n' "$*"; }
 
+# A long step reports WHILE it runs, or it is indistinguishable from a hung one.
+#
+# This used to print the step name and then nothing until it finished. site:build alone is about
+# ninety seconds, so the whole gate spent minutes looking identical to a crash, and the only way to
+# know it was alive was to go and read the log by hand. Reporting on completion is not reporting as
+# you go: the interesting moment is the silence, not the verdict.
+#
+# Every HEARTBEAT seconds it prints the elapsed time and the last line the step wrote, which is
+# also what tells a slow step apart from a stuck one.
+HEARTBEAT="${HEARTBEAT:-30}"
+
+run_step() {  # step, logfile -> exit status of the step
+  local step="$1" log="$2" pid elapsed=0 last
+  mise run "$step" > "$log" 2>&1 &
+  pid=$!
+  while kill -0 "$pid" 2>/dev/null; do
+    sleep 1
+    elapsed=$((elapsed + 1))
+    if [ "$((elapsed % HEARTBEAT))" -eq 0 ]; then
+      last=$(sed -e 's/\x1b\[[0-9;]*m//g' "$log" 2>/dev/null | grep -v '^[[:space:]]*$' | tail -n1)
+      printf '\n      %3ds  %-22s %s' "$elapsed" "$step" "${last:0:70}"
+    fi
+  done
+  wait "$pid"
+  local rc=$?
+  [ "$elapsed" -ge "$HEARTBEAT" ] && printf '\n  %-24s ' "$step"   # re-anchor the OK/FAIL column
+  return "$rc"
+}
+
+
 # ---------------------------------------------------------------- which pull requests
 
 ALL_BRANCHES=0
@@ -135,7 +165,7 @@ fi
 # own absence. Render first, then gate.
 say "Preparing the worktree (the corpus is derived, a fresh checkout has none)"
 printf '  %-24s ' "render"
-if mise run render > "$LOGS/render.log" 2>&1; then
+if run_step render "$LOGS/render.log"; then
   printf '\033[32mOK\033[0m\n'
 else
   printf '\033[31mFAIL\033[0m\n'
@@ -150,10 +180,11 @@ if [ "${FAST:-0}" != "1" ]; then
 fi
 
 say "Running the gate on the merged result (${#merged[@]} change(s): ${merged[*]})"
+echo "  (a heartbeat every ${HEARTBEAT}s while a step runs, with the last line it wrote)"
 failed=()
 for step in "${STEPS[@]}"; do
   printf '  %-24s ' "$step"
-  if mise run "$step" > "$LOGS/${step//:/-}.log" 2>&1; then
+  if run_step "$step" "$LOGS/${step//:/-}.log"; then
     printf '\033[32mOK\033[0m\n'
   else
     printf '\033[31mFAIL\033[0m\n'
