@@ -94,6 +94,19 @@ jobs:
       - name: Rule-base lints
         run: mise run lint:rules
 
+      # Applicability is declared now (#324). Two things to keep true: the 28 `applies_if` blocks
+      # are well formed, which nothing read before (tools/applies_if.py only validated itself), and
+      # the 90 hand-written `only_if` guards left do not become 91 while they are being migrated.
+      #
+      # Placed next to the other rule-base coherence lints rather than appended at the end of the
+      # job, because another open pull request appends there and two additions at one anchor is a
+      # conflict for no reason. tools/validate_prs.sh found that by merging the branches together.
+      - name: Applicability is declared, and the old way does not grow back
+        run: mise run lint:applies-if
+
+      - name: And that lint still bites
+        run: mise run lint:applies-if:test
+
       # Every norm tag points at a requirement that exists in the published standard.
       - name: Mappings are references, not inventions
         run: mise run validate:mappings
@@ -108,12 +121,3 @@ jobs:
 
       - name: And that check still bites
         run: mise run lint:prose:test
-
-      # Applicability is declared now (#324). Two things to keep true: the 28 `applies_if` blocks
-      # are well formed, which nothing read before (tools/applies_if.py only validated itself), and
-      # the 90 hand-written `only_if` guards left do not become 91 while they are being migrated.
-      - name: Applicability is declared, and the old way does not grow back
-        run: mise run lint:applies-if
-
-      - name: And that check still bites
-        run: mise run lint:applies-if:test
