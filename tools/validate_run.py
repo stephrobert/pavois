@@ -92,6 +92,32 @@ def family_of(control: dict) -> str:
     return cid.split("-", 1)[0] if "-" in cid else cid
 
 
+def proved_it_ran(control: dict, failing: dict) -> bool:
+    """Did this control demonstrate that its probe actually ran, despite the empty output?
+
+    R1 reads an empty output as "this control measured nothing". For a grep that looks for a
+    setting, empty means the setting is ABSENT, which is a measurement and a legitimate failure. The
+    two are indistinguishable from the message alone, and after #307 widened the detector this cost
+    34 errors on a golden campaign that had passed the day before: 10 of them were kconfig controls
+    whose probe had visibly worked.
+
+    Two things settle it, both read from the report rather than assumed:
+
+      - the control carries a SENTINEL (`echo PAVOIS_NO_...`) whose job is exactly to make an
+        unreadable source loud, and that assertion PASSED: the source was readable, so the empty
+        output is the answer, not the absence of one;
+      - any sibling assertion of the same control passed on the same target: something answered.
+
+    A control where nothing passed and nothing came back keeps its error, which is the case the rule
+    was written for (`mount-var-nodev` on a host where /var is not a separate mount: both its
+    assertions fail, one on nil, one on empty).
+    """
+    return any(
+        other is not failing and other.get("status") == "passed"
+        for other in control.get("results", [])
+    )
+
+
 def analyse(report: dict) -> dict:
     errors: list[tuple[str, str]] = []
     warnings: list[tuple[str, str]] = []
@@ -126,7 +152,7 @@ def analyse(report: dict) -> dict:
         # nothing and reported a deviation anyway, phrased `expected "" to match /re/` by the
         # `match` matcher. The run was saved by the coarser identical-message heuristic, which says
         # "suspect one cause" rather than "this control measured nothing" (#303).
-        if measured_nothing(msg):
+        if measured_nothing(msg) and not proved_it_ran(control, result):
             errors.append(
                 ("empty-output", f"{cid}: expected {wanted!r}, the command returned nothing")
             )
