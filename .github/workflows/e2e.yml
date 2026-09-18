@@ -118,6 +118,16 @@ jobs:
           sudo incus --version
           sudo incus admin init --auto
           sudo usermod -aG incus-admin "$USER"
+          # `sudo incus` writes its CLIENT config into the invoking user's HOME, owned by root.
+          # The scenario then runs as `runner` (via sg, for the daemon socket) and cannot read its
+          # own config file:
+          #
+          #   Failed to load configuration: Unable to read the configuration file:
+          #   open /home/runner/.config/incus/config.yml: permission denied
+          #
+          # which surfaced as "could not create the VM" and nothing else. Group membership grants
+          # the SOCKET; it does not make a root-owned file in $HOME readable. Hand it back.
+          sudo chown -R "$USER:$USER" "$HOME/.config/incus"
 
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
