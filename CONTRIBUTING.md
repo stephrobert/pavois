@@ -307,6 +307,22 @@ Two host requirements, both checked by the tool with an actionable message: Incu
 (`qemu-system-x86_64`), and a managed network to attach, and the default profile often has none, and
 the symptom is silent (the VM boots, runs, and never gets an address).
 
+### A new CLI command is not delivered until it is documented
+
+A command nobody can find is a command nobody runs, and the documentation is part of the feature,
+not follow-up work. A pull request that adds a command to the binary lands **four** things with it:
+
+| surface | what goes there |
+|---|---|
+| `site/src/pages/[lang]/start.astro` | a section and its table-of-contents entry, **in FR and EN** |
+| `README.md` | one mention where a reader meets the problem the command solves |
+| `site/src/data/cli-fr.json` | the French sentence for that command |
+| `site/src/data/cli.json` | **nothing**: it is gitignored and regenerated from the binary by `mise run gen:cli`, so it cannot drift |
+
+The gloss is the one that gets forgotten, because nothing fails without it: an untranslated command
+falls back to the English help, so the page still builds and the omission is invisible. It is
+complete today. Whoever opens the first gap should do it on purpose, not by accident.
+
 ### No rule change ships without a real scan
 
 **Non-negotiable.** Any change to `rules.yml` that affects what a target audits, a **new control**,
