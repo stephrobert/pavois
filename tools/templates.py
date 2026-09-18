@@ -154,6 +154,13 @@ _MOUNT_ONLY_IF_RE = re.compile(
 # nosec B108: this is a MOUNT POINT being audited, not a temp path this tool writes to.
 _BUILTIN_MOUNT_OPTS = {"/dev/shm": ("nodev", "nosuid")}  # nosec B108
 
+# The persistence probe greps three sources for the option. Finding nothing is a MEASUREMENT (no
+# file declares it), but an empty stdout reads exactly like a probe that could not run, and the
+# trust gate has to guess. It now says which: the sentinel is the answer "no source declares this
+# option", and the assertion below demands the option itself, so the verdict is unchanged and the
+# evidence is no longer blank.
+_PERSIST_NONE = "PAVOIS_NO_PERSISTED_OPTION"
+
 
 def _mount_exp(p):
     mp, opt = p["mount_point"], p["option"]
@@ -172,11 +179,12 @@ def _mount_exp(p):
         + mp
         + " 2>/dev/null) 2>/dev/null; } | grep -ow '"
         + opt
-        + "'"
+        + "' || echo "
+        + _PERSIST_NONE
     )
     return live + [
         f'describe command("{persist}") do',
-        "  its('stdout') { should match(/\\S/) }",
+        f"  its('stdout') {{ should match(/^{opt}$/) }}",
         "end",
     ]
 
@@ -197,8 +205,10 @@ def _mount_ext(L):
         return None
     m = re.fullmatch(r"describe mount\('([^']+)'\) do", L[0])
     m2 = re.fullmatch(r"  its\('options'\) \{ should include '([^']+)' \}", L[1])
-    m3 = re.fullmatch(r"describe command\(\".*grep -ow '[^']+'\"\) do", L[3])
-    if m and m2 and m3 and L[4] == "  its('stdout') { should match(/\\S/) }":
+    m3 = re.fullmatch(
+        r"describe command\(\".*grep -ow '[^']+' \|\| echo " + _PERSIST_NONE + r"\"\) do", L[3]
+    )
+    if m and m2 and m3 and L[4] == f"  its('stdout') {{ should match(/^{m2.group(1)}$/) }}":
         return {"name": "mount_option", "mount_point": m.group(1), "option": m2.group(1)}
     return None
 
@@ -333,13 +343,23 @@ def _cmdline_ext(L):
 _AUDIT_RULES = "/etc/audit/rules.d/*.rules /etc/audit/audit.rules"
 
 
+# A missing auditctl used to answer NOTHING, and nothing is indistinguishable from "the rule is not
+# loaded". On a stock debian12 that made 29 audit controls fail by luck rather than by measurement,
+# and the trust gate said so: 88 empty-output errors, which is what kept a golden campaign from ever
+# reaching PASSED. The sentinel is the same device the kconfig template already uses: the absence is
+# STATED, so the first assertion fails loudly when the tool is not there and PASSES when it is,
+# which also tells `validate_run` that the probe ran.
+_AUDITCTL_NONE = "PAVOIS_NO_AUDITCTL"
+
+
 def _audit_exp(p):
     key = p["key"]  # regex token as authored, e.g. perm_mod, user\-modify or (a|b)
     # Extended-regex (-E) grep so an alternation key like (a|b) is honoured; -F would
     # take the parentheses/pipe literally and never match. For a plain single key -E
     # and -F are equivalent, so single-key controls are unaffected.
     return [
-        "describe command('auditctl -l') do",
+        f"describe command('auditctl -l 2>/dev/null || echo {_AUDITCTL_NONE}') do",
+        f"  its('stdout') {{ should_not match(/{_AUDITCTL_NONE}/) }}",
         f"  its('stdout') {{ should match(/(-k +|key=){key}\\b/) }}",
         "end",
         f"describe command(\"grep -rhwsE '{key}' {_AUDIT_RULES} 2>/dev/null\") do",
