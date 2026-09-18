@@ -15,7 +15,7 @@ green. `pavois scan` now refuses this outright; --allow-container overrides it, 
 the kernel controls then describe YOUR machine, which is almost never what you want.
 
   mise run vm -- up debian12        # create + wait for SSH, then print the scan command
-  mise run vm -- up debian12 --sudo-password pavois
+  PAVOIS_SUDO_PASSWORD=... mise run vm -- up debian12 --sudo-password   # value from the env
   mise run vm -- list
   mise run vm -- ip debian12
   mise run vm -- down debian12
@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -219,7 +220,36 @@ def check_memory(requested: str, headroom: float = 6.0) -> str | None:
     return None
 
 
+def sudo_password_of(args) -> str | None:
+    """The password, from the ENVIRONMENT, never from argv.
+
+    A value passed on the command line is refused rather than used: accepting it "just this once"
+    is what put `--sudo-password pavois` into `ps` output on a machine every user can read. The
+    harness did it (golden_path.sh), and then so did a maintainer debugging that very defect, which
+    is how you learn a rule nobody can follow is not a rule.
+    """
+    if args.sudo_password:
+        print(
+            "vm: refusing a password given on the command line (ps is world readable).\n"
+            "    export PAVOIS_SUDO_PASSWORD instead, then pass --sudo-password with no value.",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+    if args.sudo_password is None:
+        return None
+    pw = os.environ.get("PAVOIS_SUDO_PASSWORD", "")
+    if not pw:
+        print(
+            "vm: --sudo-password given but PAVOIS_SUDO_PASSWORD is empty.\n"
+            "    export it (from a file, a password manager, anything but argv) and retry.",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+    return pw
+
+
 def cmd_up(args: argparse.Namespace) -> int:
+    sudo_pw = sudo_password_of(args)
     if args.os not in IMAGES:
         print(f"vm: unknown OS {args.os!r} (known: {', '.join(sorted(IMAGES))})", file=sys.stderr)
         return 2
@@ -253,12 +283,23 @@ def cmd_up(args: argparse.Namespace) -> int:
         )
         return 2
 
-    image = IMAGES[args.os]
-    remote = image.split(":", 1)[0]
+    # An image alias may be overridden, and the reason is not convenience: the `images:` remote
+    # stalled mid release once (11 KiB/s for a 300 MB VM image, no Incus operation registered, the
+    # run wedged for 13 minutes on `incus init`), and a proof harness that cannot run because a
+    # third-party mirror is slow proves nothing about the product. A locally cached image of the
+    # same distribution answers the same question; the campaign's claim is about the CORPUS, so the
+    # evidence records which image it ran on.
+    #   PAVOIS_VM_IMAGE=feint/debian/12 mise run vm -- up debian12
+    image = os.environ.get("PAVOIS_VM_IMAGE") or IMAGES[args.os]
+    if image != IMAGES[args.os]:
+        print(f"image overridden: {image} (default {IMAGES[args.os]})", file=sys.stderr)
+    # A local alias (no `remote:` prefix) needs no remote at all, and the check below would ask
+    # for one named after the alias itself.
+    remote = image.split(":", 1)[0] if ":" in image else ""
     configured = subprocess.run(
         ["incus", "remote", "list", "--format", "csv"], capture_output=True, text=True, check=False
     ).stdout
-    if remote not in [
+    if remote and remote not in [
         line.split(",")[0].replace(" (current)", "") for line in configured.splitlines()
     ]:
         hint = f"incus remote add {remote} <url>"
@@ -302,7 +343,7 @@ def cmd_up(args: argparse.Namespace) -> int:
         "-c",
         "security.secureboot=false",
         "-c",
-        f"cloud-init.user-data={cloud_init(pub.read_text().strip(), args.sudo_password)}",
+        f"cloud-init.user-data={cloud_init(pub.read_text().strip(), sudo_pw)}",
     ).returncode
     if rc == 0:
         # Harmless when the image already provides it; required when it does not.
@@ -335,14 +376,14 @@ def cmd_up(args: argparse.Namespace) -> int:
         return 1
 
     profile = f"linux/{args.os}"
-    sudo_flag = "--sudo-prompt" if args.sudo_password else "--sudo"
+    sudo_flag = "--sudo-prompt" if sudo_pw else "--sudo"
     print(f"{GREEN}vm: {name} is up at {ip}{OFF}\n")
     print("Scan it:")
     key = pub.with_suffix("")
     print(
         f"    bin/pavois scan {USER}@{ip} --profile {profile} {sudo_flag} --on-target --key {key}"
     )
-    if args.sudo_password:
+    if sudo_pw:
         print(f"    {DIM}(PAVOIS_SUDO_PASSWORD is read by --sudo-prompt when set){OFF}")
     print(f"\nHarden it:\n    bin/pavois harden plan {USER}@{ip} {sudo_flag}")
     return 0
@@ -399,10 +440,18 @@ def main() -> int:
     )
     up.add_argument("--memory", default="4GiB", help="4GiB is enough; a kernel build wants more")
     up.add_argument("--disk", default="20GiB", help="a KSPP kernel build needs ~20GiB on its own")
+    # The VALUE is deliberately not accepted on the command line any more: argv is world readable
+    # through `ps`, and this repository's own rule says the lab password never appears there. It
+    # was violated by the harness itself (golden_path.sh passed it as an argument) and then by a
+    # maintainer debugging that very defect, which is how a rule nobody can follow gets found.
+    # The flag now takes no value and reads PAVOIS_SUDO_PASSWORD from the environment.
     up.add_argument(
         "--sudo-password",
+        nargs="?",
+        const="",
         default=None,
-        help="give the account a sudo PASSWORD (the realistic case) instead of NOPASSWD",
+        help="give the account a sudo PASSWORD instead of NOPASSWD; the value comes from "
+        "PAVOIS_SUDO_PASSWORD, never from argv (ps is world readable)",
     )
     up.set_defaults(func=cmd_up)
 
