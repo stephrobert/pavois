@@ -19,8 +19,8 @@ Three families, one incident each.
 3. The ADDRESSES, both families. The apex was right over IPv4 and, for a resolver still holding the
    old delegation, pointed at the registrar over IPv6. Browsers prefer IPv6, so those visitors were
    sent to the wrong host while every IPv4 check stayed green. The runner has no IPv6 connectivity,
-   so the assertion is on the DNS rather than the connection: every address the name resolves to,
-   A and AAAA, must be a CloudFront address, checked against the ranges AWS publishes.
+   so the assertion is on the DNS rather than on the connection: every address two public resolvers
+   hand out, A and AAAA, must be a CloudFront address, checked against the ranges AWS publishes.
 
 Usage: python3 tools/site_answers.py      (exit 1 on anything wrong, and it says which)
 """
@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import ipaddress
 import json
-import socket
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -56,6 +56,15 @@ ENDS_AT = [
 REDIRECTS_TO_EN = [f"{APEX}/", f"{WWW}/"]
 
 NAMES = ["pavois.dev", "www.pavois.dev"]
+
+# Two independent public resolvers, and a real DNS query rather than getaddrinfo.
+#
+# The first version used socket.getaddrinfo, and the runner failed it with "pavois.dev has no AAAA
+# record" for a name that has eight. getaddrinfo answers for THIS HOST: on a machine with no global
+# IPv6 address it filters the AAAA family out entirely, so the check was measuring the runner's
+# stack, not the zone. The comment two paragraphs up already said runners have no IPv6, and the API
+# chosen depended on exactly that. A question about the DNS has to be asked of the DNS.
+RESOLVERS = ["1.1.1.1", "8.8.8.8"]
 AWS_RANGES = "https://ip-ranges.amazonaws.com/ip-ranges.json"
 
 fails: list[str] = []
@@ -81,6 +90,32 @@ def curl(url: str, follow: bool) -> tuple[str, str]:
         return "000", f"({e})"
     parts = out.split(maxsplit=1)
     return (parts[0] if parts else "000"), (parts[1].strip() if len(parts) > 1 else "")
+
+
+def have_dig() -> bool:
+    return shutil.which("dig") is not None
+
+
+def dig(name: str, rr: str, resolver: str) -> list[str]:
+    """The addresses that resolver hands out for that name, and nothing else.
+
+    `dig +short` also prints CNAME targets and, on failure, its own diagnostics, so only lines that
+    parse as an address are kept: a check that counts a hostname as an address reports success for
+    a name that resolves to nothing.
+    """
+    cmd = ["dig", "+short", "+time=5", "+tries=2", rr, name, f"@{resolver}"]
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=30).stdout
+    except subprocess.SubprocessError as e:
+        bad(f"could not query {resolver} for {name} {rr} ({e})")
+        return []
+    addrs = []
+    for line in out.split():
+        try:
+            addrs.append(str(ipaddress.ip_address(line)))
+        except ValueError:
+            continue
+    return sorted(addrs)
 
 
 def cloudfront_networks() -> list:
@@ -128,26 +163,20 @@ def main() -> int:
             bad(f"{url} redirects to {loc or 'nothing'}, not to /en/")
 
     print("\n--- every address, A and AAAA, belongs to CloudFront")
-    nets = cloudfront_networks()
-    for name in NAMES:
-        try:
-            got = sorted({ai[4][0] for ai in socket.getaddrinfo(name, 443)})
-        except socket.gaierror as e:
-            bad(f"{name} does not resolve ({e})")
-            continue
-        v4 = [a for a in got if ":" not in a]
-        v6 = [a for a in got if ":" in a]
-        print(f"  {name}: {len(v4)} A, {len(v6)} AAAA")
-        if not v4:
-            bad(f"{name} has no A record")
-        if not v6:
-            # Not cosmetic: a browser on an IPv6-only network cannot reach a name without one, and
-            # the CloudFront distribution serves both.
-            bad(f"{name} has no AAAA record: IPv6 visitors cannot reach it")
-        for addr in got:
-            ip = ipaddress.ip_address(addr)
-            if nets and not any(ip in n for n in nets):
-                bad(f"{name} resolves to {addr}, which is not a CloudFront address")
+    if not have_dig():
+        bad("dig is not installed, so the address check cannot run (apt: bind9-dnsutils)")
+    else:
+        nets = cloudfront_networks()
+        for name in NAMES:
+            for resolver in RESOLVERS:
+                for rr in ("A", "AAAA"):
+                    got = dig(name, rr, resolver)
+                    print(f"  {name} {rr} @{resolver}: {' '.join(got) if got else 'NOTHING'}")
+                    if not got:
+                        bad(f"{name} has no {rr} record at {resolver}")
+                    for addr in got:
+                        if nets and not any(ipaddress.ip_address(addr) in n for n in nets):
+                            bad(f"{name} {rr} is {addr} at {resolver}, not a CloudFront address")
 
     print()
     if fails:
