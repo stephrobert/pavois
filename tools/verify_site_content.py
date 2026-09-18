@@ -21,11 +21,13 @@ from pathlib import Path
 
 import yaml
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import lint_prose_coverage  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 RULES = ROOT / "docs" / "reference" / "rules.yml"
 REF = ROOT / "docs" / "reference" / "pavois-content"
 FICHES = ROOT / "site" / "src" / "content" / "rules"
-PROSE = ROOT / "docs" / "reference" / "prose"
 
 
 def main():
@@ -37,16 +39,18 @@ def main():
     dead = sorted(k for k, v in live.items() if not v.get("applicable_os"))
     expected = {k for k in live if live[k].get("applicable_os")}
 
-    # The fiches are now GENERATED (site/src/content/rules/ is rebuilt from scratch and gitignored),
-    # so comparing them to the rule base would always pass: the generator makes them agree. What can
+    # The fiches are now GENERATED (site/src/content/rules/ is wiped and rebuilt on every run), so
+    # comparing them to the rule base would always pass: the generator makes them agree. What can
     # actually drift is the SOURCE that feeds them, the authored prose, so that is what we check.
+    #
+    # That half is `lint:prose`, and it is IMPORTED rather than repeated here: it reads two
+    # directories and no generated tree, so it also runs in prepush, which is where this failure
+    # belongs. It used to be discovered here, after the merge, with site-deploy red on main.
     have = {
         Path(p).stem: json.loads(Path(p).read_text(encoding="utf-8"))
         for p in glob.glob(str(FICHES / "*.json"))
     }
-    prose = {Path(p).stem for p in glob.glob(str(PROSE / "*.json"))}
-    no_prose = sorted(expected - prose)
-    orphan_prose = sorted(prose - expected)
+    prose_problems = lint_prose_coverage.check(ROOT)
 
     missing = sorted(expected - set(have))
     stale = sorted(set(have) - expected)
@@ -66,8 +70,7 @@ def main():
         ("MISSING (the scanner runs it, the site does not document it)", missing),
         ("STALE (a page for a control that no longer exists)", stale),
         ("UNCOVERED OS (a whole target invisible on the site)", uncovered),
-        ("NO PROSE (a control nobody has written a word about)", no_prose),
-        ("ORPHAN PROSE (prose about a control that no longer exists)", orphan_prose),
+        ("PROSE (see `mise run lint:prose`, which says the same thing in prepush)", prose_problems),
     ):
         if items:
             fail += len(items)

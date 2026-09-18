@@ -20,7 +20,9 @@ on:
     paths:
       - 'docs/reference/rules.yml'
       - 'docs/reference/pavois-content/**'
+      - 'docs/reference/prose/**'
       - 'tools/gen.py'
+      - 'tools/lint_prose_coverage.py'
       - 'tools/lint_never_auto.py'
       - 'tools/lint_rules.py'
       - 'tools/validate_mappings.py'
@@ -30,7 +32,9 @@ on:
     paths:
       - 'docs/reference/rules.yml'
       - 'docs/reference/pavois-content/**'
+      - 'docs/reference/prose/**'
       - 'tools/gen.py'
+      - 'tools/lint_prose_coverage.py'
       - 'tools/lint_never_auto.py'
       - 'tools/lint_rules.py'
       - 'tools/validate_mappings.py'
@@ -93,3 +97,14 @@ jobs:
       # Every norm tag points at a requirement that exists in the published standard.
       - name: Mappings are references, not inventions
         run: mise run validate:mappings
+
+      # A control with no page is a control the site cannot ship. This used to be discovered by
+      # site-deploy, on main, after the merge: the rule base gained growth-audit-trail-unbounded,
+      # the site build refused it, and the deploy stayed red until six paragraphs were written.
+      # The check is offline and reads two directories, so it belongs on the PR that adds the
+      # control, not on the pipeline that publishes it.
+      - name: Every live control has authored bilingual prose
+        run: mise run lint:prose
+
+      - name: And that check still bites
+        run: mise run lint:prose:test
