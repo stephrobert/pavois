@@ -40818,6 +40818,39 @@ umask-etc-profile:
       ubuntu2404: Ensure the Default Umask is Set Correctly in /etc/profile
       ubuntu2604: Ensure the Default Umask is Set Correctly in /etc/profile
   remediation_class: auto
+growth-audit-trail-unbounded:
+  applicable_os: [debian12, debian13, ubuntu2204, ubuntu2404, ubuntu2604, fedora, rhel8, rhel9, rhel10]
+  title: The audit trail cannot grow until a stopping action fires
+  domain: Hardening (posture)
+  severity: high
+  impact: 0.7
+  evidence_type: effective-runtime
+  reboot_survivable: 'yes'
+  remediation_class: manual
+  norms:
+    nist: AU-4
+  note: "Two settings that are each compliant and together power the host off. auditd can be told to halt or drop to single-user when its partition fills (DISA STIG requires it, and the check of auditd-admin-space-left-action accepts it), and pavois separately recommends a SEPARATE /var/log/audit, which is a BOUNDED filesystem. If the trail is also unbounded, the stopping action is not a safety net, it is a schedule: the host powers itself off, and every control stays green. This measures the combination, so neither of the three individual controls has to become non-compliant, and it is why the remediation is manual: the operator chooses between a bounded trail, a larger partition, shipping the journal elsewhere, or an action the norm still accepts. LIMIT, deliberately: it reads auditd.conf only. A trail bounded at num_logs x max_log_file on a partition SMALLER than that is not detected, because deciding it needs df and du and five times the code of the longest check in this base. Absent keys are the documented auditd defaults (max_log_file 0, num_logs 0, action IGNORE), which is not the same thing as a value that could not be read: the latter reports unknown and fails, it never passes."
+  check:
+  - describe command('sh -c \'v() { grep -iE "^[[:space:]]*$1[[:space:]]*=" /etc/audit/auditd.conf
+    2>/dev/null | tail -1 | sed -E "s/^[^=]*=[[:space:]]*//; s/[[:space:]]*(#.*)?$//" | tr A-Z a-z;
+    }; a=$(v admin_space_left_action); f=$(v disk_full_action); m=$(v max_log_file_action); n=$(v
+    num_logs); s=$(v max_log_file); case "$a$f" in *halt*|*single*) ;; *) echo "ok no stopping
+    action"; exit 0;; esac; n=${n:-0}; s=${s:-0}; case "$n$s" in *[!0-9]*) echo "unknown num_logs
+    or max_log_file not numeric"; exit 0;; esac; if [ "$m" = rotate ] && [ "$n" -gt 1 ] && [ "$s"
+    -gt 0 ]; then echo "ok bounded at $((n * s)) MiB"; elif [ "$m" = suspend ] && [ "$s" -gt 0 ];
+    then echo "ok bounded at $s MiB"; else echo "ko UNBOUNDED trail (max_log_file_action=${m:-ignore}
+    num_logs=$n max_log_file=$s) with a stopping action (admin_space_left_action=${a:-ignore}
+    disk_full_action=${f:-ignore})"; fi\'') do
+  - "  its('stdout') { should match(/^ok /) }"
+  - end
+  remediation:
+    resource: manual
+    reason: "The operator chooses: bound the trail (max_log_file_action = rotate with num_logs > 1
+      and a max_log_file), enlarge /var/log/audit, ship the journal off the host, or set an action
+      the applicable norm still accepts. Pavois will not pick for them: on a STIG host halt is the
+      REQUIRED value, so silently rewriting it would trade an availability incident for a
+      compliance deviation the operator did not ask for."
+
 growth-journal-bounded:
   title: The systemd journal is bounded (SystemMaxUse)
   domain: Hardening (posture)
