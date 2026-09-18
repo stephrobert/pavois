@@ -405,7 +405,14 @@ func runScan(cmd *cobra.Command, args []string) error {
 		_ = json.NewEncoder(out).Encode(map[string]any{
 			"grade": letter, "points": pts, "passed": res.Passed, "total": res.Total,
 			"runtime_qualified": rq, "qualified_passes": res.Qualified,
-			"counts": res.Summary.Counts, "findings": res.Findings,
+			// `total` is the DENOMINATOR, not the profile size, and these three say where the
+			// difference went. Without them a pipeline reads 287/541 and cannot tell whether the
+			// other 112 controls do not address this host, were accepted as risks, or simply were
+			// not measured. The terminal has printed waived and n/a for a while; the machine
+			// format, which is the one a gate actually parses, printed neither.
+			"waived": res.Waived, "not_applicable": res.NotApplicable,
+			"unmeasured": res.Unmeasured,
+			"counts":     res.Summary.Counts, "findings": res.Findings,
 			"posture": audit.Breakdown(rep, scStandard, scLevel),
 			"run":     run, // provenance: host/OS, tool + ruleset digests, timestamp, scope
 		})
@@ -447,7 +454,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 		// without mappings (e.g. container-baseline) has no grade.
 		if nnorm > 0 {
 			letter, pts, _ := audit.GradeResult(res)
-			writeScorecard(out, letter, pts, res.Passed, res.Total, res.Qualified, res.Waived, res.NotApplicable)
+			writeScorecard(out, letter, pts, res.Passed, res.Total, res.Qualified, res.Waived, res.NotApplicable, res.Unmeasured)
 			writePosture(out, audit.Breakdown(rep, scStandard, scLevel))
 		} else {
 			_, _ = fmt.Fprintln(out, "  No standard mappings in this profile: grade applies to profiles/linux/* only.")
