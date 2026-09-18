@@ -302,7 +302,7 @@ func runDiff(cmd *cobra.Command, args []string) error {
 			BeforePass: bPass, BeforeTotal: bTotal, AfterPass: aPass, AfterTotal: aTotal,
 			Rows: rows, Sections: sections,
 		}
-		if err := os.WriteFile(diffHTMLOut, []byte(render.Campaign(data)), 0o600); err != nil {
+		if err := writeArtefact(diffHTMLOut, []byte(render.Campaign(data))); err != nil {
 			return fmt.Errorf("write %s: %w", diffHTMLOut, err)
 		}
 		_, _ = fmt.Fprintf(out, "\ncampaign report -> %s\n", diffHTMLOut)
@@ -315,7 +315,7 @@ func runDiff(cmd *cobra.Command, args []string) error {
 			"controls":    buckets,
 		}
 		blob, _ := json.MarshalIndent(payload, "", "  ")
-		if err := os.WriteFile(diffJSONOut, blob, 0o600); err != nil {
+		if err := writeArtefact(diffJSONOut, blob); err != nil {
 			return fmt.Errorf("write %s: %w", diffJSONOut, err)
 		}
 		_, _ = fmt.Fprintf(out, "campaign delta -> %s\n", diffJSONOut)
