@@ -331,7 +331,7 @@ if has 'sudo is only valid' "$(lower "$out")"; then
 # carries the two numbers, so it also cannot be produced by a run that measured nothing.
 elif rx '([0-9]+)/([0-9]+) controls passing' "$(lower "$out")"; then
   scored=$(printf '%s' "$out" | grep -oiE '[0-9]+/[0-9]+ controls passing' | head -1)
-  ok "scan local --sudo graded the host ($(printf '%s' "$out" | grep -oiE 'grade [A-E]$|grade [A-E] ' | head -1 | tr -d ' '), $scored)"
+  ok "scan local --sudo graded the host ($(printf '%s' "$out" | grep -oiE 'grade [A-E]$|grade [A-E] ' | head -1 | sed 's/ *$//'), $scored)"
 elif rx 'grade [a-e]' "$(lower "$out")"; then
   ko "scan local --sudo printed a grade with no scorecard behind it (#281)" \
      "the word 'grade' appears in the banner: this is the banner, not a result"
@@ -488,7 +488,12 @@ fi
 # asserted against a recipe that was legitimately empty. tools/harden_plan_enable.py encodes the
 # enable policy (every gap on, danger items off unless boot-safe, ssh lock-out guards set), which is
 # the automation half of "the result is produced by pavois, not by hand-editing YAML".
-vmsh 'command -v python3 >/dev/null || (apt-get update -qq && apt-get install -y -qq python3 python3-yaml)' >/dev/null
+# Test the MODULE, not the interpreter. This used to be `command -v python3`, and the `||` then
+# skipped the whole install, python3-yaml included, on any image that ships python3 without it.
+# Ubuntu 24.04 ships both, so it never bit; Debian 12 ships python3 alone, and enable.py died on
+# `ModuleNotFoundError: No module named 'yaml'`. Three assertions went red in a row on a binary
+# that had just written a correct plan, because nothing could arm it.
+vmsh 'python3 -c "import yaml" 2>/dev/null || (apt-get update -qq && apt-get install -y -qq python3 python3-yaml)' >/dev/null
 incus file push tools/harden_plan_enable.py "$VM/home/tester/enable.py" >/dev/null 2>&1
 vmsh 'chown tester:tester /home/tester/enable.py' >/dev/null
 enabled=$(asuser "cd ~ && python3 enable.py $planlocal --ssh-user tester 2>&1 | tail -2")
