@@ -264,22 +264,14 @@ say "--- 3. install the engine, running THE DOCUMENTATION'S OWN COMMANDS"
 # that retypes a documented command proves the retyped version: the day the page changed, this
 # would have kept certifying the old recipe.
 #
-# Exactly two substitutions, and they are the two the documentation tells the reader to make: the
-# omnitruck platform keys (the page lists el/8, el/9, debian/12, ubuntu/24.04...) and the package
-# manager (the block's own trailing comment says "Debian/Ubuntu: sudo apt install ./<file>").
-# Nothing else is touched, so any other drift in the page breaks this step, which is the point.
+# Rendering it moved to tools/release/engine_install_script.sh, because the e2e runner needs the
+# same script for ITS control host: detection of an ssh target is native-only, so the machine that
+# drives phase 8b needs the engine as much as the VM does. Two callers, one renderer, no copy.
 #
 # A function for the same reason provision_vm() is one: the ssh transport gets its own VM (#288),
 # and that VM needs an engine too.
 install_engine() {
-  {
-    echo 'set -e'
-    echo 'command -v curl >/dev/null || { apt-get update -qq && apt-get install -y -qq curl; }'
-    mise exec -- node --experimental-strip-types tools/doc_commands.mjs --id engine-install \
-      | sed -e 's|p=el&pv=9|p=ubuntu\&pv=24.04|' \
-            -e 's|sudo dnf install -y|sudo apt-get install -y|' \
-            -e 's|^pavois doctor.*|true|'
-  } > "$work/install-cinc.sh"
+  bash --noprofile --norc tools/release/engine_install_script.sh > "$work/install-cinc.sh"
   incus file push "$work/install-cinc.sh" "$VM/root/install-cinc.sh" >/dev/null 2>&1
   if incus exec "$VM" -- bash /root/install-cinc.sh >>"$LOG" 2>&1; then
     ok "cinc-auditor $(vm cinc-auditor version | tail -1) installed, checksum checked"

@@ -152,6 +152,29 @@ jobs:
           install: true
           cache: true
 
+      # The CONTROL HOST needs the engine too, and the first night the scenario got as far as phase
+      # 8b is the night that showed it:
+      #
+      #   error: could not reach or identify tester@10.251.169.174:
+      #   no native CINC engine found (install cinc-auditor, or use --engine docker)
+      #
+      # `harden plan <ssh target>` identifies the target by running `cinc-auditor detect` FROM here,
+      # and that detection is native-only (engine.DetectWhy), so the hint's `--engine docker` does
+      # not help: see #312. On the maintainer's machine cinc-auditor has been installed for a year,
+      # which is exactly why phase 8b passed there and had never run anywhere else.
+      #
+      # The scenario itself must not do this: its control host is the maintainer's workstation, and
+      # nothing in this repository installs software there (#206). A runner is disposable, so the
+      # workflow does it, from the documentation's own block, the same renderer the VMs get.
+      #
+      # In a scratch directory: the block downloads a 50 MB package into the current one, and the
+      # current one here is the checkout.
+      - name: The control host has the scan engine (ssh detection runs from here)
+        run: |
+          bash --noprofile --norc tools/release/engine_install_script.sh > "${RUNNER_TEMP}/install-cinc.sh"
+          cd "${RUNNER_TEMP}" && bash install-cinc.sh
+          cinc-auditor version
+
       # `harden apply` over ssh needs a key here and its public half on the VM, which the scenario
       # installs. A throwaway key, generated here, never leaving the runner.
       - name: A throwaway ssh key for the ssh-transport half
