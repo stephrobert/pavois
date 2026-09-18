@@ -129,6 +129,23 @@ jobs:
           # the SOCKET; it does not make a root-owned file in $HOME readable. Hand it back.
           sudo chown -R "$USER:$USER" "$HOME/.config/incus"
 
+          # The VM has to reach omnitruck.cinc.sh: the scenario installs the scan engine by running
+          # the documentation's own commands, which download a package and check its sha256. On the
+          # runner that timed out twice at 134s with "Couldn't connect to server", so the engine
+          # install failed and phase 3 went red.
+          #
+          # incusbr0 comes up with ipv4.nat=true (verified: `incus network show incusbr0`), so the
+          # NAT rule is there. What is not is permission to forward: Docker is preinstalled on these
+          # runners and sets the iptables FORWARD policy to DROP, which drops every packet crossing
+          # any OTHER bridge. Incus is that other bridge.
+          #
+          # Printed before and after, because a fix that is asserted rather than shown is how the
+          # next person spends an afternoon on it.
+          echo "FORWARD policy before: $(sudo iptables -S FORWARD | head -1)"
+          sudo iptables -P FORWARD ACCEPT
+          echo "FORWARD policy after:  $(sudo iptables -S FORWARD | head -1)"
+          sudo incus network show incusbr0 | grep -E 'ipv4.address|ipv4.nat' || true
+
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           version: 2026.2.23

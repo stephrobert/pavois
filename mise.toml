@@ -101,6 +101,17 @@ run = "uv run --with pyyaml python3 tools/gen.py render"
 description = "CI guard: the 8 OS files match render(rules.yml) (DRY source in sync)"
 run = "uv run --with pyyaml python3 tools/gen.py verify"
 
+[tasks."gen:readme"]
+description = "Fill the README's command blocks from site/src/data/install.ts (--check fails when stale)"
+# scenario.sh already runs the documentation's own blocks on a VM, so the page IS the test input.
+# The README was outside that: it carried retyped commands, and they drifted into telling a USER to
+# clone and build, under a heading saying building is for contributors, while four releases existed.
+run = "python3 {{config_root}}/tools/gen_readme_commands.py"
+
+[tasks."gen:readme:verify"]
+description = "CI guard: the README's command blocks match install.ts"
+run = "python3 {{config_root}}/tools/gen_readme_commands.py --check"
+
 [tasks."gen:socle"]
 description = "Assign SOCLE-<DOM>-<FAM>-<N> refs to controls (pavois = SOCLE Linux profile)"
 run = "uv run --with pyyaml python3 tools/gen_socle_refs.py"
@@ -517,7 +528,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "regression:test", "validate:run:test", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "regression:test", "validate:run:test", "gen:readme:verify", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]
