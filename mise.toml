@@ -416,6 +416,20 @@ run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_contradictions.py
 description = "Prove lint:contradictions bites: plant a package conflict and an unguarded path conflict, demand red"
 run = "uv run --with pyyaml python3 {{config_root}}/tools/lint_contradictions.py --selftest"
 
+[tasks."lint:false-positives"]
+description = "FAIL when a control would report a deviation on a host that SATISFIES its requirement (stricter than its norm, or an artefact a compliant host may lack)"
+# Every other lint asks whether a control is well formed, runs with its privileges, or agrees with
+# its neighbours. None asked whether it demands MORE than the norm it maps to. Users found those,
+# one scan at a time, and the golden campaigns structurally cannot: those hosts are hardened BY
+# pavois, which writes the artefact the check wants and sets the exact value it expects.
+# A ratchet: the 16 found on the day it landed are listed with their issue (#321), a NEW one fails,
+# and a listed one that stops firing fails too, so the list can only shrink, on purpose.
+run = "uv run --with pyyaml python3 {{config_root}}/tools/false_positives.py"
+
+[tasks."lint:false-positives:test"]
+description = "Prove lint:false-positives bites: plant one control per signature, demand red, then plant the corrected witness and demand silence"
+run = "uv run --with pyyaml python3 {{config_root}}/tools/false_positives.py --selftest"
+
 [tasks."lint:prose"]
 description = "FAIL if a live control has no authored bilingual prose, or if prose describes a control that no longer exists"
 # A control added to rules.yml needs a page, and a page needs the one thing no generator can
@@ -550,7 +564,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "lint:prose", "regression:test", "validate:run:test", "gen:readme:verify", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "lint:prose", "lint:false-positives", "regression:test", "validate:run:test", "gen:readme:verify", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]
