@@ -24,7 +24,21 @@ set -uo pipefail
 REPO_ROOT=$(git rev-parse --show-toplevel)
 cd "$REPO_ROOT" || exit 1
 
-WORK=$(mktemp -d -t pavois-pr-validate-XXXXXX)
+WORK="${TMPDIR:-/tmp}/pavois-pr-validate"
+
+# golangci-lint caches results keyed by ABSOLUTE path, and this harness lints a directory that is
+# deleted at the end of every run. The cache then replays entries pointing into a worktree that no
+# longer exists and fails on every Go file with "no such file or directory": `lint` and `prepush`
+# both went red on code that is fine, which is a harness measuring itself.
+#
+# A fixed WORK path is not enough, and that was the first fix: entries written by earlier runs,
+# under their own random directories, are still in the shared cache and keep being replayed. So the
+# cache is ISOLATED in the throwaway tree instead. It costs a cold lint each run, and it means this
+# script cannot poison, or be poisoned by, the cache `mise run lint` uses in the real checkout.
+export GOLANGCI_LINT_CACHE="$WORK/golangci-cache"
+# The logs OUTLIVE the run. They used to live under the directory the trap removes, so the one
+# thing needed to diagnose a failure was deleted the moment the failure was reported.
+LOGS="$REPO_ROOT/.pr-validate-logs"
 BRANCH="zz-pr-integration-$$"
 cleanup() {
   cd "$REPO_ROOT" || return
@@ -33,6 +47,8 @@ cleanup() {
   rm -rf "$WORK"
 }
 trap cleanup EXIT INT TERM
+rm -rf "$WORK" "$LOGS"
+mkdir -p "$WORK" "$LOGS"
 
 say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 ok()  { printf '  \033[32mOK  \033[0m %s\n' "$*"; }
@@ -119,11 +135,11 @@ fi
 # own absence. Render first, then gate.
 say "Preparing the worktree (the corpus is derived, a fresh checkout has none)"
 printf '  %-24s ' "render"
-if mise run render > "$WORK/render.log" 2>&1; then
+if mise run render > "$LOGS/render.log" 2>&1; then
   printf '\033[32mOK\033[0m\n'
 else
   printf '\033[31mFAIL\033[0m\n'
-  sed -e 's/\x1b\[[0-9;]*m//g' "$WORK/render.log" | tail -20 | sed 's/^/        /'
+  sed -e 's/\x1b\[[0-9;]*m//g' "$LOGS/render.log" | tail -20 | sed 's/^/        /'
   bad "the merged result cannot even render its corpus"
   exit 1
 fi
@@ -137,18 +153,19 @@ say "Running the gate on the merged result (${#merged[@]} change(s): ${merged[*]
 failed=()
 for step in "${STEPS[@]}"; do
   printf '  %-24s ' "$step"
-  if mise run "$step" > "$WORK/${step//:/-}.log" 2>&1; then
+  if mise run "$step" > "$LOGS/${step//:/-}.log" 2>&1; then
     printf '\033[32mOK\033[0m\n'
   else
     printf '\033[31mFAIL\033[0m\n'
     failed+=("$step")
-    sed -e 's/\x1b\[[0-9;]*m//g' "$WORK/${step//:/-}.log" | tail -25 | sed 's/^/        /'
+    sed -e 's/\x1b\[[0-9;]*m//g' "$LOGS/${step//:/-}.log" | tail -25 | sed 's/^/        /'
   fi
 done
 
 # A generated tree that the gate rewrote is a finding too: it means a merged branch shipped a
 # stale projection, which is what the fiche drift was. Report it rather than leaving it in a
 # worktree nobody will look at again.
+dirty_files=$(git status --porcelain | sed 's/^...//' | head -12)
 dirty=$(git status --porcelain | wc -l)
 
 # ---------------------------------------------------------------- verdict
@@ -161,7 +178,9 @@ fi
 echo "  gate steps     : $(( ${#STEPS[@]} - ${#failed[@]} ))/${#STEPS[@]} green"
 if [ "$dirty" -gt 0 ]; then
   echo "  NOTE: the gate rewrote $dirty generated file(s); a merged branch carries a stale projection"
+  printf '        %s\n' $dirty_files
 fi
+echo "  logs           : $LOGS"
 
 if [ "${#failed[@]}" -gt 0 ] || [ "${#conflicted[@]}" -gt 0 ]; then
   echo
@@ -169,4 +188,4 @@ if [ "${#failed[@]}" -gt 0 ] || [ "${#conflicted[@]}" -gt 0 ]; then
   exit 1
 fi
 echo
-echo "  the ${#merged[@]} pull requests build and pass together."
+echo "  the ${#merged[@]} change(s) build and pass together."
