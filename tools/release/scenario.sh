@@ -271,15 +271,30 @@ say "--- 3. install the engine, running THE DOCUMENTATION'S OWN COMMANDS"
 # A function for the same reason provision_vm() is one: the ssh transport gets its own VM (#288),
 # and that VM needs an engine too.
 install_engine() {
-  bash --noprofile --norc tools/release/engine_install_script.sh > "$work/install-cinc.sh"
+  # The engine package has to match the VM, not the default. `images:debian/12` becomes the
+  # omnitruck pair `debian/12`, which is the spelling the install page itself lists.
+  bash --noprofile --norc tools/release/engine_install_script.sh "${IMAGE#images:}" \
+    > "$work/install-cinc.sh"
   incus file push "$work/install-cinc.sh" "$VM/root/install-cinc.sh" >/dev/null 2>&1
-  if incus exec "$VM" -- bash /root/install-cinc.sh >>"$LOG" 2>&1; then
-    ok "cinc-auditor $(vm cinc-auditor version | tail -1) installed, checksum checked"
-    vm rm -f /root/install-cinc.sh >/dev/null
-    return 0
+  if ! incus exec "$VM" -- bash /root/install-cinc.sh >>"$LOG" 2>&1; then
+    ko "could not install the engine" "its output is in $LOG"
+    return 1
   fi
-  ko "could not install the engine" "its output is in $LOG"
-  return 1
+  # Installed is not the same as WORKS, and the difference is not academic. A cinc-auditor package
+  # built for another libc installs perfectly: dpkg is happy, the checksum was right, and the first
+  # thing it prints is
+  #     /opt/cinc-auditor/embedded/bin/ruby: libc.so.6: version `GLIBC_2.38' not found
+  # This step used to interpolate `vm cinc-auditor version` straight into its own success message,
+  # so the failure was REPORTED AS THE VERSION, inside a green line, and everything downstream ran
+  # against an engine that cannot start.
+  if ! incus exec "$VM" -- cinc-auditor version >"$work/cinc-version" 2>"$work/cinc-err"; then
+    ko "the engine installed but cannot run" \
+       "$(head -1 "$work/cinc-err" | cut -c1-150)"
+    return 1
+  fi
+  ok "cinc-auditor $(tail -1 "$work/cinc-version") installed, checksum checked, and it runs"
+  vm rm -f /root/install-cinc.sh >/dev/null
+  return 0
 }
 
 say "  the command under test, as the page gives it:"
@@ -301,8 +316,25 @@ printf '%s\n' "$out" >> "$LOG"
 if has 'sudo is only valid' "$(lower "$out")"; then
   ko "scan local --sudo is still refused by the engine (#281)" \
      "every entry point recommends this exact form"
+# The evidence is the SCORECARD, not the word "grade".
+#
+# This used to match `grade [a-e]`, and pavois prints its own tagline on every single launch:
+#
+#     vdev  · Effective Linux Compliance (CINC/InSpec) · grade A-E
+#
+# Lowercased, that contains "grade a". So the assertion for "the first scan works" was satisfied by
+# the BANNER of a binary whose scan had produced nothing at all, and it reported the host as
+# "grade a" by extracting it from "grade A-E". Measured on a debian 12 VM whose engine could not
+# start: three green assertions in a row on an installation that never ran a control.
+#
+# `N/M controls passing` is a line only writeScorecard emits, and only after an evaluation: it
+# carries the two numbers, so it also cannot be produced by a run that measured nothing.
+elif rx '([0-9]+)/([0-9]+) controls passing' "$(lower "$out")"; then
+  scored=$(printf '%s' "$out" | grep -oiE '[0-9]+/[0-9]+ controls passing' | head -1)
+  ok "scan local --sudo graded the host ($(printf '%s' "$out" | grep -oiE 'grade [A-E]$|grade [A-E] ' | head -1 | tr -d ' '), $scored)"
 elif rx 'grade [a-e]' "$(lower "$out")"; then
-  ok "scan local --sudo graded the host ($(printf '%s' "$out" | grep -oiE 'grade [A-E]' | head -1))"
+  ko "scan local --sudo printed a grade with no scorecard behind it (#281)" \
+     "the word 'grade' appears in the banner: this is the banner, not a result"
 else
   ko "scan local --sudo produced no grade (#281)" "$(printf '%s' "$out" | tail -3 | tr '\n' ' ' | cut -c1-180)"
 fi
