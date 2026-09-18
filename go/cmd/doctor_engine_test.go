@@ -46,14 +46,22 @@ func TestDoctorRefusesAnEngineThatCannotRun(t *testing.T) {
 			t.Errorf("the report does not contain %q:\n%s", want, got)
 		}
 	}
-	// The closing advice must match what is actually wrong. "install a scan engine" sends the
-	// reader to do the thing they already did, which is the defect this file warns about for the
-	// missing-asset case.
+	// The closing advice must never be "install a scan engine": that sends the reader to do the
+	// thing they already did, and it is the defect this file warns about for the missing-asset
+	// case too.
 	if strings.Contains(err.Error(), "install a scan engine") {
 		t.Errorf("the advice tells them to install an engine that IS installed: %v", err)
 	}
-	if !strings.Contains(err.Error(), "cannot run on this system") {
-		t.Errorf("the advice does not say what is wrong: %v", err)
+	// Which advice it IS depends on the environment, and asserting the engine one unconditionally
+	// is what made this test pass here and fail in CI. A bare checkout has no rendered corpus, so
+	// the missing-asset error comes first, and that ORDER is deliberate: a binary carrying no
+	// reference is unusable whatever the engine does. So the engine advice is demanded only when
+	// nothing more fundamental is wrong, and the report line above carries the contract that holds
+	// in both environments.
+	if !strings.Contains(got, "[FAIL] hardening reference") && !strings.Contains(err.Error(), "built without") {
+		if !strings.Contains(err.Error(), "cannot run on this system") {
+			t.Errorf("the advice does not say what is wrong: %v", err)
+		}
 	}
 	if strings.Contains(got, "ready: try:") {
 		t.Error("doctor still declared the host ready")
