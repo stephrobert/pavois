@@ -26,15 +26,14 @@ Exit 1 if any control is silent, so a campaign can gate on it.
 from __future__ import annotations
 
 import json
-import re
 import sys
 from pathlib import Path
+
+from inspec_message import evidence, measured_nothing
 
 # An InSpec failure message looks like:
 #     expected: "ok"
 #          got: ""
-GOT_RE = re.compile(r"got:\s*\"((?:[^\"\\]|\\.)*)\"", re.S)
-EXPECTED_RE = re.compile(r"expected:\s*\"((?:[^\"\\]|\\.)*)\"", re.S)
 
 
 def silent_results(report: dict):
@@ -48,14 +47,16 @@ def silent_results(report: dict):
                 if result.get("status") != "failed":
                     continue
                 msg = result.get("message") or ""
-                got = GOT_RE.search(msg)
-                exp = EXPECTED_RE.search(msg)
-                if not got or not exp:
-                    continue
                 # Empty output, against an expectation that wanted something. A control that
                 # legitimately expects "" is not silent, it is asserting emptiness.
-                if got.group(1).strip() == "" and exp.group(1).strip() != "":
-                    yield cid, title, result.get("code_desc", "")[:120], exp.group(1)
+                #
+                # Read through inspec_message, which knows the shapes this one did not: the pattern
+                # here required `got: "..."` with quotes, and 140 of 391 failures on a real debian12
+                # scan say `expected "" to match /re/` instead, which is the SAME thing phrased by a
+                # different matcher. This detector found none of them (#303).
+                if measured_nothing(msg):
+                    _, wanted, _ = evidence(msg)
+                    yield cid, title, result.get("code_desc", "")[:120], wanted or "?"
 
 
 def main() -> int:

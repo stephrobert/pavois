@@ -47,6 +47,8 @@ import re
 import sys
 from pathlib import Path
 
+from inspec_message import evidence, measured_nothing
+
 GOT_RE = re.compile(r"got:\s*\"((?:[^\"\\]|\\.)*)\"", re.S)
 EXPECTED_RE = re.compile(r"expected:\s*\"((?:[^\"\\]|\\.)*)\"", re.S)
 
@@ -93,6 +95,7 @@ def family_of(control: dict) -> str:
 def analyse(report: dict) -> dict:
     errors: list[tuple[str, str]] = []
     warnings: list[tuple[str, str]] = []
+    unreadable = 0  # failures whose message none of the known shapes could read
 
     per_family_total = collections.Counter()
     per_family_failed = collections.Counter()
@@ -112,13 +115,20 @@ def analyse(report: dict) -> dict:
         per_family_failed[fam] += 1
         msg = result.get("message") or ""
 
-        got = GOT_RE.search(msg)
-        exp = EXPECTED_RE.search(msg)
+        observed, wanted, readable = evidence(msg)
+        if not readable:
+            unreadable += 1
 
         # R1: nothing came back.
-        if got and exp and got.group(1).strip() == "" and exp.group(1).strip() != "":
+        #
+        # This used to require the message to say `got: ""`, with quotes, which only the `eq` family
+        # prints. On a real debian12 scan it fired on ZERO failures while 140 controls had returned
+        # nothing and reported a deviation anyway, phrased `expected "" to match /re/` by the
+        # `match` matcher. The run was saved by the coarser identical-message heuristic, which says
+        # "suspect one cause" rather than "this control measured nothing" (#303).
+        if measured_nothing(msg):
             errors.append(
-                ("empty-output", f"{cid}: expected {exp.group(1)!r}, the command returned nothing")
+                ("empty-output", f"{cid}: expected {wanted!r}, the command returned nothing")
             )
             continue
 
@@ -130,7 +140,7 @@ def analyse(report: dict) -> dict:
                 break
         else:
             # R5: a failure with nothing to show.
-            if not got and not exp and len(msg.strip()) < 2:
+            if not readable and len(msg.strip()) < 2:
                 warnings.append(("no-evidence", f"{cid}: failed with no expectation and no result"))
 
         # R3 material: normalise the message so identical causes collapse together.
@@ -170,6 +180,7 @@ def analyse(report: dict) -> dict:
         "failed": failed,
         "errors": errors,
         "warnings": warnings,
+        "unreadable": unreadable,
     }
 
 
@@ -193,7 +204,21 @@ def main() -> int:
         print(json.dumps(res, indent=2))
         return 1 if res["errors"] or (strict and res["warnings"]) else 0
 
-    print(f"run-validation: {res['total']} test(s), {res['failed']} failing\n")
+    print(f"run-validation: {res['total']} test(s), {res['failed']} failing")
+    # Said out loud, always. A detector that examines part of its input without saying so gives a
+    # confidence it has not earned, which is the defect this tool had: it read 73 of 391 failure
+    # messages and reported "no sign that any verdict was invented" (#303).
+    if res["failed"]:
+        read = res["failed"] - res["unreadable"]
+        print(
+            f"run-validation: evidence read from {read}/{res['failed']} failure message(s)"
+            + (
+                f", {res['unreadable']} in a shape this tool cannot parse"
+                if res["unreadable"]
+                else ""
+            )
+        )
+    print()
 
     if res["errors"]:
         print(f"ERRORS ({len(res['errors'])}): the scan did not measure what it reported")
@@ -213,6 +238,11 @@ def main() -> int:
 
     if not res["errors"] and not res["warnings"]:
         print("run-validation: no sign that any verdict was invented")
+        if res["unreadable"]:
+            print(
+                f"run-validation: NOTE {res['unreadable']} failure(s) were not examined; that is"
+                " not the same as examined and cleared"
+            )
         print("run-validation: failures are scattered and each one produced evidence")
         return 0
 
