@@ -151,8 +151,14 @@ def _persist(cmd: str) -> list[str]:
     absence is an answer. The verdict does not change: the sentinel fails the first assertion, so
     a setting nobody persisted is still a deviation, now with evidence instead of a blank.
     """
+    # `| grep .` is not decoration, and it cost a golden campaign to learn: `grep -s` silences the
+    # MESSAGE for a missing file, not the exit STATUS. These probes read a LIST of paths, most of
+    # which do not exist on a given host (/boot/grub2/grub.cfg, /run/sysctl.d/*.conf), so grep exits
+    # 2 even when it matched, `|| echo` fired anyway, and the sentinel came out NEXT TO the match.
+    # 73 correctly hardened controls failed. `grep .` makes the fallback depend on what was
+    # PRINTED rather than on an exit status that is about file access.
     return [
-        f'describe command("{cmd} || echo {_PERSIST_NONE}") do',
+        f'describe command("{cmd} | grep . || echo {_PERSIST_NONE}") do',
         f"  its('stdout') {{ should_not match(/{_PERSIST_NONE}/) }}",
         "  its('stdout') { should match(/\\S/) }",
         "end",
@@ -167,7 +173,7 @@ def _persist_ext(L: list[str]) -> str | None:
         return None
     if L[2] != "  its('stdout') { should match(/\\S/) }":
         return None
-    m = re.fullmatch(rf'describe command\("(.+) \|\| echo {_PERSIST_NONE}"\) do', L[0])
+    m = re.fullmatch(rf'describe command\("(.+) \| grep \. \|\| echo {_PERSIST_NONE}"\) do', L[0])
     return m.group(1) if m else None
 
 
