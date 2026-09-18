@@ -108,3 +108,23 @@ jobs:
 
       - name: And that check still bites
         run: mise run lint:prose:test
+
+      # The fiches under site/src/content/rules/ are a PROJECTION of the rule base, and they are
+      # tracked so the Astro build works from a plain clone. Nothing compared them to their source:
+      # site:verify depends on gen:pages, so it regenerates them and then checks the regenerated
+      # copy against itself. Three merged pull requests changed what every audit control executes
+      # and the 137 fiches in git kept advertising the previous command, for as long as nobody read
+      # them in a diff. The deploy rebuilds them, so the published site was never wrong, which is
+      # exactly why this went unnoticed.
+      #
+      # This step is the non-tautological half: regenerate, then ask git whether the tracked files
+      # moved. It runs here rather than in the pre-push hook because it costs 30 seconds and the
+      # only way to reach it is to change the rule base, which is what this workflow triggers on.
+      - name: The site's fiches match the rule base they are generated from
+        run: |
+          mise run gen:pages
+          if ! git diff --quiet -- site/src/content/rules/; then
+            echo "::error::the rule fiches in git are stale; run 'mise run gen:pages' and commit the result"
+            git diff --stat -- site/src/content/rules/
+            exit 1
+          fi
