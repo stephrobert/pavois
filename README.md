@@ -152,6 +152,18 @@ target: `scan user@host --key ~/.ssh/id_ed25519 --sudo`.
 > `could not reach or identify user@host`, on a host you can log into by hand a second later.
 > Pass `--key <path>`, or add the key to `ssh-agent`.
 
+If it still does not work, `pavois support` turns that into a report somebody can act on. It collects
+the facts that decide the diagnosis (version, engine, OS, and whether the rule corpus came from
+**inside the binary** or from the disk), rewrites the target, addresses, `/home/<name>` and the
+`--key` path out of the command and the message you pass it, prints exactly what it would send, and
+opens a pre-filled issue. It holds no token, posts nothing, and never attaches a scan report: that
+report is the map of a real machine.
+
+```bash
+pavois support --command "pavois scan user@host --key ~/.ssh/id_ed25519 --sudo" \
+               --error "could not reach or identify user@host" --open
+```
+
 ## ⚙️ How it works
 
 ```bash
@@ -311,6 +323,9 @@ has a "Where to help" table mapping each intent (add a rule, deepen a thin domai
 a mapping…) to a concrete action. How the code fits together: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 By participating you agree to the **[Code of Conduct](CODE_OF_CONDUCT.md)**. Report security issues
 privately via **[SECURITY.md](SECURITY.md)**.
+
+Reporting a bug takes one command: **`pavois support`** builds the body and opens a pre-filled issue,
+with the machine's identity removed and no scan report attached.
 
 ## 📄 License & attribution
 
