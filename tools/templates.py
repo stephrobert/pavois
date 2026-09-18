@@ -124,23 +124,6 @@ def _svc_ext(L):
 # mount_option: reboot-proof by construction: assert the option is on the LIVE mount AND that it
 # is PINNED persistently (in /etc/fstab OR a systemd .mount unit), so it survives a reboot. A
 # `mount -o remount` (live only) would otherwise pass and silently regress on the next boot.
-# The option controls are guarded on the mount point BEING a mount.
-#
-# When /home is a plain directory of the root filesystem, no filesystem can carry `nodev` on it,
-# and CIS words every 1.1.2.x audit "IF a separate partition exists for <mp>". `partition-<x>`
-# already reports the missing partition, so failing the option control too counted one fact twice:
-# 21 of the 56 residual failures of the debian12 golden campaign of 2026-09-17, 18 of 52 on
-# debian13, every one of them phrased `expected nil to include "nodev"`, nil being the absent
-# mount. Same shape as the virt guard below: a constant line, added by _exp and stripped by _ext so
-# `mise run gen:verify` stays a round trip.
-_MOUNT_ONLY_IF = (
-    "only_if('n/a: {mp} is not a separate mount, no filesystem carries the option') "
-    "{{ mount('{mp}').mounted? }}"
-)
-_MOUNT_ONLY_IF_RE = re.compile(
-    r"only_if\('n/a: (\S+) is not a separate mount, no filesystem carries the option'\) "
-    r"\{ mount\('(\S+)'\)\.mounted\? \}"
-)
 
 # Options systemd sets itself on the API filesystems it mounts before fstab and before any unit is
 # read (src/shared/mount-setup.c pins /dev/shm as mode=01777,nosuid,nodev,strictatime). They are
@@ -191,7 +174,6 @@ def _persist_ext(L: list[str]) -> str | None:
 def _mount_exp(p):
     mp, opt = p["mount_point"], p["option"]
     live = [
-        _MOUNT_ONLY_IF.format(mp=mp),
         f"describe mount('{mp}') do",
         f"  its('options') {{ should include '{opt}' }}",
         "end",
@@ -216,9 +198,6 @@ def _mount_exp(p):
 
 
 def _mount_ext(L):
-    g = _MOUNT_ONLY_IF_RE.fullmatch(L[0]) if L else None
-    if g and g.group(1) == g.group(2):  # strip the guard, re-added by _mount_exp
-        L = L[1:]
     # The live-only shape is accepted for the builtin table ONLY: no other control may lose its
     # persistence probe silently.
     if len(L) == 3 and L[2] == "end":
@@ -320,22 +299,9 @@ _GRUB_SRC = (
 )
 
 
-# cmdline params that are unsafe or ineffective inside a virtualized guest: the harden
-# remediation skips them under systemd-detect-virt, so the check must be N/A there too (else it
-# fails forever on a VM). Keep in sync with the remediation gate in go/cmd/harden.go.
-_CMDLINE_VIRT_UNSAFE = {"iommu=force"}
-_VIRT_ONLY_IF = (
-    "only_if('n/a in a virtualized guest: applied only on bare metal') "
-    "{ command('systemd-detect-virt -q').exit_status != 0 }"
-)
-
-
 def _cmdline_exp(p):
     tok = p["param"]
-    lines = []
-    if tok in _CMDLINE_VIRT_UNSAFE:
-        lines.append(_VIRT_ONLY_IF)
-    lines += [
+    lines = [
         "describe command('cat /proc/cmdline') do",
         f"  its('stdout') {{ should match(/(^| ){tok}( |$)/) }}",
         "end",
@@ -345,8 +311,6 @@ def _cmdline_exp(p):
 
 
 def _cmdline_ext(L):
-    if L and L[0] == _VIRT_ONLY_IF:  # strip the optional virt guard, re-added by _cmdline_exp
-        L = L[1:]
     if len(L) != 7 or L[2] != "end" or L[0] != "describe command('cat /proc/cmdline') do":
         return None
     m = re.fullmatch(r"  its\('stdout'\) \{ should match\(/\(\^\| \)(.+)\( \|\$\)/\) \}", L[1])
