@@ -11,11 +11,29 @@
 name: site-deploy
 
 on:
-  # A published release deploys the site. The site advertises ONE version, and the commit that
-  # bumps it lands on main before the tag exists: on 0.1.4 the install page offered download links
-  # that answered 404 for twenty minutes, because the deploy ran on the preparation commit rather
-  # than on the release. The gate job below is what keeps the two in step; this trigger is what
-  # makes the site catch up as soon as the release is real.
+  # Called by release.yml, from inside the run that publishes the release.
+  #
+  # This is how a release reaches the site, and it has to be a call because the trigger below
+  # cannot fire: release.yml creates the release with the default GITHUB_TOKEN, and GitHub starts
+  # no workflow from an event that token produced. That anti-recursion rule is documented, and it
+  # means no site-deploy run has ever been started by a release (#329). The site advertised v0.1.4
+  # while v0.1.5 was out, until somebody dispatched this workflow by hand.
+  #
+  # Being called has a second property worth having on purpose: a called workflow runs at the
+  # CALLER's ref, which during a release is the tag. So the site is built from the tagged commit,
+  # which is the one whose install.ts names the version being published. The gate below then
+  # verifies that version is downloadable, from the same commit that claims it.
+  #
+  # The site advertises ONE version, and the commit that bumps it lands on main BEFORE the tag
+  # exists: on 0.1.4 the install page offered download links that answered 404 for twenty minutes,
+  # because the deploy ran on the preparation commit rather than on the release. That is what the
+  # gate protects, and calling from release.yml is what finally makes the site catch up without a
+  # human once the release is real.
+  workflow_call: {}
+
+  # Kept for the case the anti-recursion rule does not cover: a release published by hand from the
+  # web UI, under a person's own account, which does start workflows. It is not the path the
+  # release pipeline takes, so nothing depends on it.
   release:
     types: [published]
   push:
@@ -50,7 +68,8 @@ jobs:
   # This is a GATE, not a check: when the answer is no, the deploy is SKIPPED rather than failed.
   # The state it describes is a legitimate step of the release process (the version constant is
   # bumped, the tag comes last), and a red run for an expected state is a red run people learn to
-  # ignore. The `release: published` trigger above is what deploys the site once the answer is yes.
+  # ignore. release.yml CALLING this workflow, after it has published the release and verified
+  # every asset, is what makes the answer yes without anybody waiting for it.
   gate:
     name: The version the site hands out is downloadable
     runs-on: ubuntu-24.04
