@@ -12,6 +12,74 @@ its content digest**, so an archived result stays interpretable long after the t
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-09-18
+
+A release about what the tool SAYS rather than what it checks. The baseline is unchanged, so every
+0.1.5 report stays comparable: no control was added, removed or re-scoped. What changed is that
+three different things which all printed green now print what they actually measured.
+
+### Added
+
+- **`pavois support`** (#330) turns "it did not work" into a report a maintainer can act on. It
+  gathers the facts that decide a diagnosis, including the one a user cannot guess, whether the rule
+  corpus came from INSIDE the binary or from the disk, and builds a pre-filled issue. It holds no
+  token and posts nothing: it prints what it would send, and the human clicks submit. The command
+  and the error message are rewritten rather than dropped (`user@host` to `<target>`, addresses to
+  `<ip>`, `/home/<name>` to `~`), and a scan report is never attached, because a pavois report is
+  the map of a real machine. The redaction is falsified in both directions, and the witness case
+  caught a real defect: a rule matching the SHAPE of an address ate `12:34:56` and `15:04:05`, so
+  IPv6 is decided by `net.ParseIP` now, not by a regular expression.
+
+### Fixed
+
+- **`doctor` certified an engine it had never started.** On a Debian 12 host given the Ubuntu
+  cinc-auditor package, it answered `[OK] CINC engine (native)` and `ready: try: pavois scan local
+  --sudo`, while `cinc-auditor version` exited 1 with `libc.so.6: version 'GLIBC_2.38' not found`. A
+  package built for another libc installs perfectly. doctor stopped at `LookPath`, and the one step
+  that does run the engine only downgrades to WARN, so `ready` survived. It now runs the engine and
+  reports the loader's own first line, which is the sentence that tells a reader they installed the
+  wrong package rather than that something is missing.
+- **A skipped control was filed as "not applicable", whatever it said.** A requirement the norm does
+  not address, a guard whose condition is wrong and a guard with no message all produced the same
+  silent line and all left the denominator without a trace. A skip now counts as not applicable only
+  when it declared one (`n/a: <the missing object>`); everything else, including a control with no
+  InSpec result, is **unmeasured**: not scored, because an unknown is not a failure, and not hidden,
+  because an unknown is not a pass. Measured on a 653-control ubuntu2404 report: 22 declared, 86
+  unmeasured, and the grade does not move, because both were already outside the denominator. The
+  JSON output, which published neither `waived` nor `not_applicable`, now carries all three.
+- **A generated report did not end with a newline**, so `sample-report.html` and
+  `sample-campaign.json` were rewritten by every site build, differing from their committed copies
+  by exactly one byte. `git status` was dirty after any build, and the tool that reports a stale
+  projection said so about two files that had not drifted.
+
+### Changed
+
+- **The site's rule pages advertise the check code pavois actually runs.** 137 fiches were one
+  release behind: #320, #322 and #325 changed what every audit and persistence control executes, and
+  the published pages kept showing the previous command. The deployed site was never wrong, because
+  it is rebuilt from the rule base on every deploy, which is exactly why it went unnoticed: the
+  guard that should have caught it regenerates the fiches and then compares them to themselves.
+- **The release publishes the site instead of waiting for a human** (#329). `site-deploy` declared
+  an `on: release: published` trigger that can never fire, because the release is created with the
+  default `GITHUB_TOKEN` and GitHub starts no workflow from an event that token produced. Measured
+  on 0.1.5: 12 assets published, no site-deploy run carried `event=release`, and the live site kept
+  advertising v0.1.4 until the deploy was dispatched by hand. `release.yml` now calls the deploy
+  workflow, which involves no trigger at all.
+
+### Internal
+
+- **Applicability is declared, and the old way cannot grow back.** `applies_if` (#324) had no linter
+  at all: its closed vocabulary and its mandatory `because:` validated only themselves, and nothing
+  read the 28 blocks in `rules.yml`. The new lint also freezes the 90 hand-written `only_if` guards
+  that remain as a worklist that may only shrink, so a 91st is refused.
+- **A required status check that never runs is a gate nobody can pass.** Three of the seven were
+  filtered by `paths:`, so a pull request touching no Go file could never satisfy
+  `Build, test, lint, vuln-scan`. A filtered required check reports nothing rather than "skipped",
+  and GitHub waits forever: every pull request was blocked, and only an admin bypass crossed it.
+- **The first-run scenario could pass on a binary that scanned nothing.** Its assertion matched
+  `grade [a-e]` anywhere in the output, and pavois prints `grade A-E` in its own banner on every
+  launch. It now requires `N/M controls passing`, a line only a real scorecard emits.
+
 ## [0.1.5] - 2026-09-18
 
 Fewer invented deviations, and one real one the scanner could not see. The baseline gains a control
@@ -377,7 +445,9 @@ history to read. The embedded baseline is `pavois-baseline` 0.2.0.
 - OSCAL output is the baseline (catalog and profiles), not yet a per-scan assessment-results
   package. No container image is published yet.
 
-[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/stephrobert/pavois/compare/v0.1.5...v0.1.6
+[0.1.5]: https://github.com/stephrobert/pavois/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/stephrobert/pavois/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/stephrobert/pavois/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/stephrobert/pavois/compare/v0.1.1...v0.1.2
