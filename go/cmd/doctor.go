@@ -40,6 +40,9 @@ func init() { rootCmd.AddCommand(doctorCmd) }
 func runDoctor(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 	ready := true
+	// An engine that is installed and cannot run is not a missing engine, and the closing advice
+	// has to say so: "install a scan engine" sends the reader to do what they already did.
+	engineBroken := false
 	line := func(mark, label, detail string) {
 		_, _ = fmt.Fprintf(out, "  [%-4s] %-22s %s\n", mark, label, detail)
 	}
@@ -58,7 +61,26 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	docker, hasDocker := look("docker")
 	switch {
 	case cinc != "":
-		line("OK", "CINC engine (native)", cinc)
+		// PRESENT is not the same as WORKING, and doctor's whole job is the difference.
+		//
+		// This used to stop at LookPath. A cinc-auditor package built for another libc installs
+		// perfectly: the file is there, it is executable, and the first thing it prints is
+		//     /opt/cinc-auditor/embedded/bin/ruby: libc.so.6: version `GLIBC_2.38' not found
+		// doctor answered "ready: try: pavois scan local --sudo" on that machine, because the one
+		// step that does run the engine, the OS detection below, only downgrades to WARN.
+		// A command that exists to say "this host is ready to scan" must not certify an engine it
+		// has never started.
+		if out, err := exec.Command(cinc, "version").CombinedOutput(); err != nil { //nolint:gosec // cinc comes from LookPath
+			first := strings.TrimSpace(strings.SplitN(strings.TrimSpace(string(out)), "\n", 2)[0])
+			if first == "" {
+				first = err.Error()
+			}
+			line("FAIL", "CINC engine (native)", cinc+" is installed but cannot run: "+first+
+				". Install the package built for THIS system ("+engineDocs+")")
+			ready, engineBroken = false, true
+		} else {
+			line("OK", "CINC engine (native)", cinc)
+		}
 	case hasDocker:
 		line("WARN", "CINC engine", "native cinc-auditor missing; the docker fallback will be used ("+docker+"). A container cannot audit its host, so a local:// scan still needs the native engine: "+engineDocs)
 	default:
@@ -161,6 +183,10 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("not ready: this binary was built without %s. No installation fixes that: "+
 			"download the release binary again, or build from a checkout with `mise run embed:all`",
 			strings.Join(missingAssets, ", "))
+	}
+	if engineBroken {
+		return fmt.Errorf("not ready: the scan engine is installed but cannot run on this system. "+
+			"Install the cinc-auditor package built for it (%s), then re-run pavois doctor", engineDocs)
 	}
 	if !ready {
 		return fmt.Errorf("not ready: install a scan engine (cinc-auditor or docker), then re-run pavois doctor")
