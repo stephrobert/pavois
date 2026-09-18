@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/charmbracelet/lipgloss"
 
@@ -164,4 +165,21 @@ func reportOptions(_ /*version*/, mode, source, headline string) screport.Option
 		return f.Label("level")
 	}
 	return o
+}
+
+// writeArtefact writes a generated file, always ending it with a newline.
+//
+// Without that last byte, `mise run gen:example` rewrote site/public/sample-report.html and
+// sample-campaign.json on every single run: the committed copies end with a newline, the
+// generator did not, and the files differed by exactly one byte. So `git status` was dirty after
+// any site build, and tools/validate_prs.sh reported "a merged branch carries a stale projection"
+// on two files that had not drifted at all. A warning that always fires stops being read, which
+// is the failure mode this repository keeps paying for.
+//
+// It also makes the files POSIX text files, which is what every tool downstream of them assumes.
+func writeArtefact(path string, body []byte) error {
+	if n := len(body); n == 0 || body[n-1] != '\n' {
+		body = append(body, '\n')
+	}
+	return os.WriteFile(path, body, 0o600)
 }
