@@ -34,16 +34,66 @@ def localname(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
+def _ids(value, os_name: str) -> list[str]:
+    """Every SSG id a field holds, for THIS OS.
+
+    `ssg:` is not always a scalar. It is keyed `@os` on 13 controls (the same fact carries a
+    different id per distribution: `journald_forward_to_syslog` on Debian against
+    `journald_disable_forward_to_syslog` on RHEL) and it can be a list. `str(value)` on those
+    produced a `"{'@os': ...}"` string, which equals no SSG id, so each of those controls counted
+    as covering NOTHING: the tool reported gaps that were in fact closed, and the 14 coverage
+    issues could never be closed by their own criterion.
+
+    """
+    if value is None:
+        return []
+    if isinstance(value, dict):
+        keyed = value.get("@os", value)
+        if isinstance(keyed, dict):
+            return _ids(keyed.get(os_name), os_name)
+        return _ids(keyed, os_name)
+    if isinstance(value, list):
+        return [i for v in value for i in _ids(v, os_name)]
+    return [str(value)]
+
+
 def covered_ssg_ids(rules_yml: Path, os_name: str) -> set[str]:
-    """SSG short ids already mapped by a Pavois control applicable to this OS."""
+    """SSG short ids already mapped by a Pavois control applicable to this OS.
+
+    `replaces:` counts too, but ONLY as what it is. A control that declares it replaces an upstream
+    rule has made a DECISION about it, which is not the same as auditing it: `logging-present`
+    replaces `rsyslog_remote_loghost` while only asserting that a syslog daemon is active. They are
+    returned separately so a report can say "covered" and "decided" without merging the two.
+    """
     doc = yaml.safe_load(rules_yml.read_text(encoding="utf-8"))
     rules = doc.get("rules", doc)
+    out: set[str] = set()
+    for rid, ctl in rules.items():
+        if not isinstance(ctl, dict):
+            continue
+        if os_name not in (ctl.get("applicable_os") or []):
+            continue
+        out.update(i for i in _ids(ctl.get("ssg"), os_name) if i != rid)
+    return out
+
+
+def decided_ssg_ids(rules_yml: Path, os_name: str) -> set[str]:
+    """SSG ids a control declares it REPLACES: decided, not audited.
+
+    `replaces:` holds two namespaces at once: upstream SSG rule ids, and pavois ids of controls that
+    were renamed. Only the first are relevant here, so anything that is itself a control id in this
+    file is dropped.
+    """
+    doc = yaml.safe_load(rules_yml.read_text(encoding="utf-8"))
+    rules = doc.get("rules", doc)
+    own = set(rules)
     out: set[str] = set()
     for ctl in rules.values():
         if not isinstance(ctl, dict):
             continue
-        if os_name in (ctl.get("applicable_os") or []) and ctl.get("ssg"):
-            out.add(str(ctl["ssg"]))
+        if os_name not in (ctl.get("applicable_os") or []):
+            continue
+        out.update(i for i in _ids(ctl.get("replaces"), os_name) if i not in own)
     return out
 
 
