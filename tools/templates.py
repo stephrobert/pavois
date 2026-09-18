@@ -127,8 +127,44 @@ def _svc_ext(L):
 # mount_option: reboot-proof by construction: assert the option is on the LIVE mount AND that it
 # is PINNED persistently (in /etc/fstab OR a systemd .mount unit), so it survives a reboot. A
 # `mount -o remount` (live only) would otherwise pass and silently regress on the next boot.
+# The option controls are guarded on the mount point BEING a mount.
+#
+# When /home is a plain directory of the root filesystem, no filesystem can carry `nodev` on it,
+# and CIS words every 1.1.2.x audit "IF a separate partition exists for <mp>". `partition-<x>`
+# already reports the missing partition, so failing the option control too counted one fact twice:
+# 21 of the 56 residual failures of the debian12 golden campaign of 2026-09-17, 18 of 52 on
+# debian13, every one of them phrased `expected nil to include "nodev"`, nil being the absent
+# mount. Same shape as the virt guard below: a constant line, added by _exp and stripped by _ext so
+# `mise run gen:verify` stays a round trip.
+_MOUNT_ONLY_IF = (
+    "only_if('n/a: {mp} is not a separate mount, no filesystem carries the option') "
+    "{{ mount('{mp}').mounted? }}"
+)
+_MOUNT_ONLY_IF_RE = re.compile(
+    r"only_if\('n/a: (\S+) is not a separate mount, no filesystem carries the option'\) "
+    r"\{ mount\('(\S+)'\)\.mounted\? \}"
+)
+
+# Options systemd sets itself on the API filesystems it mounts before fstab and before any unit is
+# read (src/shared/mount-setup.c pins /dev/shm as mode=01777,nosuid,nodev,strictatime). They are
+# persistent by construction and NO file carries them, so the persistence probe answers "" on a
+# compliant host, every scan, on debian12, debian13 and ubuntu2404, while the live assertion
+# passes. Demanding an artefact there failed a host that was in fact compliant and reboot-proof.
+# `noexec` is NOT in that table, so it keeps both assertions: it is a real deviation when missing.
+# nosec B108: this is a MOUNT POINT being audited, not a temp path this tool writes to.
+_BUILTIN_MOUNT_OPTS = {"/dev/shm": ("nodev", "nosuid")}  # nosec B108
+
+
 def _mount_exp(p):
     mp, opt = p["mount_point"], p["option"]
+    live = [
+        _MOUNT_ONLY_IF.format(mp=mp),
+        f"describe mount('{mp}') do",
+        f"  its('options') {{ should include '{opt}' }}",
+        "end",
+    ]
+    if opt in _BUILTIN_MOUNT_OPTS.get(mp, ()):
+        return live
     persist = (
         "{ findmnt --fstab -no OPTIONS " + mp + " 2>/dev/null; "
         "grep -hsE '[[:space:]]" + mp + "[[:space:]]' /etc/fstab 2>/dev/null; "
@@ -138,10 +174,7 @@ def _mount_exp(p):
         + opt
         + "'"
     )
-    return [
-        f"describe mount('{mp}') do",
-        f"  its('options') {{ should include '{opt}' }}",
-        "end",
+    return live + [
         f'describe command("{persist}") do',
         "  its('stdout') { should match(/\\S/) }",
         "end",
@@ -149,6 +182,17 @@ def _mount_exp(p):
 
 
 def _mount_ext(L):
+    g = _MOUNT_ONLY_IF_RE.fullmatch(L[0]) if L else None
+    if g and g.group(1) == g.group(2):  # strip the guard, re-added by _mount_exp
+        L = L[1:]
+    # The live-only shape is accepted for the builtin table ONLY: no other control may lose its
+    # persistence probe silently.
+    if len(L) == 3 and L[2] == "end":
+        m = re.fullmatch(r"describe mount\('([^']+)'\) do", L[0])
+        m2 = re.fullmatch(r"  its\('options'\) \{ should include '([^']+)' \}", L[1])
+        if m and m2 and m2.group(1) in _BUILTIN_MOUNT_OPTS.get(m.group(1), ()):
+            return {"name": "mount_option", "mount_point": m.group(1), "option": m2.group(1)}
+        return None
     if len(L) != 6 or L[2] != "end" or L[5] != "end":
         return None
     m = re.fullmatch(r"describe mount\('([^']+)'\) do", L[0])
