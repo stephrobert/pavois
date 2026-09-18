@@ -197,7 +197,11 @@ jobs:
       # address families (#297: the apex was right over IPv4 and wrong over IPv6, and nothing here
       # could see it).
       - name: Check the site answers
-        run: python3 tools/site_answers.py
+        run: |
+          # The address half asks two public resolvers directly, so it needs dig. sudo lives here
+          # rather than in the tool: a runner is disposable, a workstation is not.
+          command -v dig >/dev/null || sudo apt-get install -y -qq bind9-dnsutils
+          python3 tools/site_answers.py
 
       # Last, and only once the pages are actually online: IndexNow points the engines at URLs, so
       # submitting before the upload would send them to the previous build. The script exits 0
