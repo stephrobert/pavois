@@ -23,6 +23,7 @@ const sections = [
   { slug: 'ci', en: '7. In CI', fr: '7. En CI' },
   { slug: 'revert', en: '8. Reverting a change', fr: '8. Revenir en arrière' },
   { slug: 'fleet', en: '9. A whole fleet', fr: '9. Toute une flotte' },
+  { slug: 'report', en: 'When it does not work: reporting it', fr: 'Quand ça ne marche pas : le signaler' },
   { slug: 'build', en: 'Build from source (contributors)', fr: 'Construire depuis les sources (contributeurs)' },
   { slug: 'takeaways', en: 'Key takeaways', fr: 'À retenir' },
   { slug: 'next', en: 'Next steps', fr: 'Prochaines étapes' },
@@ -327,6 +328,41 @@ jq -r '.grade + " " + (.failed|tostring) + " " + .target' reports/*.json`, 'bash
         ? 'Le durcissement suit la même logique : un plan par hôte, revu, puis appliqué. Rien n’empêche de piloter la boucle depuis Ansible ou Rundeck : pavois est un binaire sans agent, qui utilise votre ssh_config et votre sudo.'
         : 'Hardening follows the same shape: one plan per host, reviewed, then applied. Nothing stops you driving the loop from Ansible or Rundeck: pavois is an agentless binary that uses your ssh_config and your sudo.'}
     </p>
+
+    <h2 id="report">{fr ? 'Quand ça ne marche pas : le signaler' : 'When it does not work: reporting it'}</h2>
+    <p>
+      {fr
+        ? 'Un rapport de bug utile tient dans quelques faits, et l’un d’eux décide la moitié des diagnostics sans qu’on puisse le deviner : le corpus de règles vient-il de l’INTÉRIEUR du binaire, ou du disque ? C’est exactement la panne que trois versions ont livrée, un binaire téléchargé répondant this binary embeds none and none is on disk. '
+        : 'A useful bug report is a handful of facts, and one of them decides half the diagnoses while being impossible to guess: did the rule corpus come from INSIDE the binary, or from the disk? That is precisely the defect three releases shipped, a downloaded binary answering this binary embeds none and none is on disk. '}
+      <code>pavois support</code>
+      {fr ? ' les rassemble à votre place :' : ' gathers them for you:'}
+    </p>
+    <Fragment set:html={highlight(`# ${fr ? 'les faits seuls' : 'the facts alone'}
+pavois support
+
+# ${fr ? 'avec la commande qui a échoué et le message obtenu' : 'with the command that failed and the message it printed'}
+pavois support --command "pavois scan user@host --key ~/.ssh/id_ed25519 --sudo" \\
+               --error "could not reach or identify user@host" --open`, 'bash')} />
+    <p>
+      {fr
+        ? 'La commande et le message sont ce qui rend un bug reproductible, et tous deux portent votre cible. Ils ne sont donc pas jetés, ils sont réécrits :'
+        : 'The command and the message are what make a bug reproducible, and both carry your target. So they are not dropped, they are rewritten:'}
+    </p>
+    <Fragment set:html={highlight(`pavois scan <target> --key <key> --sudo
+error: could not reach or identify <target> (<ip>): no native CINC engine found`, 'bash')} />
+    <p class="muted">
+      {fr
+        ? 'La cible user@hôte, toute adresse IPv4 ou IPv6, /home/<nom>, le chemin passé à --key et le nom d’hôte local sont remplacés. Ce qui explique la panne survit intact, y compris ce qui RESSEMBLE à une adresse sans en être une : un horodatage 15:04:05 ou une durée 00:12:34 restent lisibles, parce qu’une règle trop gourmande viderait le rapport sans que personne ne s’en aperçoive. '
+        : 'The user@host target, any IPv4 or IPv6 address, /home/<name>, the path given to --key and the local hostname are replaced. What explains the failure survives untouched, including what LOOKS like an address without being one: a 15:04:05 timestamp or a 00:12:34 duration stay readable, because an over-eager rule would empty the report and nobody would notice. '}
+    </p>
+    <div class="callout note">
+      <span class="ci" aria-hidden="true">i</span>
+      <p>
+        {fr
+          ? 'Aucun rapport de scan n’est joint, jamais, et ce n’est pas une limite : un rapport pavois est la carte d’une vraie machine (comptes, services, chemins, adresses). La commande ne détient aucun jeton et ne poste rien. Elle affiche ce qu’elle enverrait, puis ouvre un formulaire pré-rempli : le dernier geste est le vôtre.'
+          : 'No scan report is ever attached, and that is not a limitation: a pavois report is the map of a real machine (accounts, services, paths, addresses). The command holds no token and posts nothing. It prints what it would send, then opens a pre-filled form: the last move is yours.'}
+      </p>
+    </div>
 
     <h2 id="build">{fr ? 'Construire depuis les sources (contributeurs)' : 'Build from source (contributors)'}</h2>
     <p>{fr
