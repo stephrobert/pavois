@@ -189,13 +189,15 @@ jobs:
           aws cloudfront wait invalidation-completed \
             --distribution-id EYT0MDPPDEF19 --id "$id"
 
+      # This used to be one line, `https://www.pavois.dev/` must be 200, and it went red for the
+      # best possible reason: the front door became a 301 at the edge, so demanding 200 on the root
+      # was demanding the old meta-refresh page back. A check that has to be weakened when the
+      # product improves was measuring the wrong thing. It now asserts the apex on a PATH (#292,
+      # which a status-only check reads as 200 while the reader lands on the home page) and both
+      # address families (#297: the apex was right over IPv4 and wrong over IPv6, and nothing here
+      # could see it).
       - name: Check the site answers
-        run: |
-          # A green upload that serves a 403 is the failure mode this catches: it happened once,
-          # when the bucket policy and the origin access control disagreed.
-          code=$(curl -sS -o /dev/null -w '%{http_code}' https://www.pavois.dev/)
-          echo "https://www.pavois.dev/ -> $code"
-          [ "$code" = 200 ]
+        run: python3 tools/site_answers.py
 
       # Last, and only once the pages are actually online: IndexNow points the engines at URLs, so
       # submitting before the upload would send them to the previous build. The script exits 0
