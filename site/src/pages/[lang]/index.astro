@@ -118,6 +118,13 @@ const c = {
     en: 'Some gaps cannot be closed by any command: a separate <code>/var/log</code> is decided when the disk is partitioned, and a kernel without the KSPP options cannot grow them at runtime. Those controls carry the classes <code>install-time</code> and <code>kernel-build</code> because <b>no apply can close them on a box that is serving traffic</b>. Point Pavois at a legacy host and it still tells you the truth, including which share of the gaps needs a rebuild rather than a command.',
     fr: 'Certains écarts ne se ferment par aucune commande : un <code>/var/log</code> séparé se décide au partitionnement du disque, et un noyau sans les options KSPP ne peut pas les acquérir à chaud. Ces contrôles portent les classes <code>install-time</code> et <code>kernel-build</code> parce qu’<b>aucun apply ne peut les fermer sur une machine en production</b>. Pointez Pavois sur un hôte legacy et il vous dit quand même la vérité, y compris quelle part des écarts exige une reconstruction plutôt qu’une commande.',
   },
+  // The sentence a reader with an existing stack needs before the two columns mean anything.
+  // Nothing here has to be removed to adopt Pavois, and saying it plainly is cheaper than letting
+  // somebody infer the opposite and close the tab.
+  fitAlongside: {
+    en: 'None of this replaces what you already run. Your configuration management stays the source of desired state and your scanner keeps its verdict: Pavois reads back the <b>effective</b> state a machine resolved, and the smallest useful first step is one image, side by side, comparing what the two of them actually measured.',
+    fr: 'Rien de tout cela ne remplace ce que vous faites déjà tourner. Votre gestion de configuration reste la source de l’état voulu et votre scanner garde son verdict : Pavois relit l’état <b>effectif</b> qu’une machine a résolu, et le premier pas utile est une seule image, côte à côte, en comparant ce que chacun a réellement mesuré.',
+  },
   fitYesH: { en: 'Built for', fr: 'Fait pour' },
   fitNoH: { en: 'Not a fit', fr: 'Pas fait pour' },
   stdKick: { en: 'standards', fr: 'normes' },
@@ -127,6 +134,20 @@ const c = {
     fr: 'Une seule assertion de config effective porte tous ses mappings applicables. Un contrôle neutre, chaque norme qui la couvre, jamais de règle dupliquée, jamais de résultat divergent.',
   },
   mapCheck: { en: 'effective-config check', fr: 'check config effective' },
+  // Multi-standard mapping is a property of the CORPUS, not a requirement for the operator, and
+  // saying so is the point of this block. Read without it, "controls cross 3 standards" and
+  // "5 standards, one rule base" sound like a precondition: that Pavois is for organisations that
+  // need several frameworks at once. `--standard` filters what the engine RUNS, not what the
+  // report displays, so an organisation that only answers to ANSSI can audit only ANSSI.
+  stdOneH: { en: 'You audit the one you need.', fr: 'Vous auditez celle dont vous avez besoin.' },
+  stdOneP: {
+    en: 'Mapping several standards is how the rule base avoids duplicating the same check five times. It is not something you have to adopt. Pick one standard and Pavois runs that one:',
+    fr: 'Relier plusieurs normes est ce qui évite de dupliquer cinq fois le même contrôle dans la base de règles. Ce n’est pas quelque chose que vous avez à adopter. Choisissez une norme et Pavois n’exécute que celle-là :',
+  },
+  stdOneNote: {
+    en: '<code>--standard</code> filters what the engine runs, not what the report shows, and <code>pavois harden apply</code> takes it too, for the remediation values that differ between standards.',
+    fr: '<code>--standard</code> filtre ce que le moteur exécute, pas ce que le rapport affiche, et <code>pavois harden apply</code> l’accepte aussi, pour les valeurs de remédiation qui diffèrent d’une norme à l’autre.',
+  },
   socleKick: { en: 'the reference', fr: 'la référence' },
   socleH2a: { en: 'Built on ', fr: 'Bâti sur ' },
   socleH2b: { en: ', one hardening norm, every tool.', fr: ', une norme de durcissement, tous les outils.' },
@@ -156,6 +177,11 @@ const fitYes = [
   { en: '<b>Watching a fleet for drift</b>: scan the hosts you shipped, catch the drop-in someone added last Tuesday.', fr: '<b>Surveiller la dérive d’un parc</b> : scanner les hôtes livrés, attraper le drop-in ajouté mardi dernier.' },
   { en: '<b>Proving a posture</b>: a chaptered report, a signed evidence bundle, an OSCAL export an auditor can consume.', fr: '<b>Prouver une posture</b> : rapport chapitré, paquet de preuve signé, export OSCAL exploitable par un auditeur.' },
   { en: '<b>Gating a pipeline</b>: <code>--fail-under</code> turns the grade into a CI check on the image you are about to ship.', fr: '<b>Verrouiller un pipeline</b> : <code>--fail-under</code> transforme la note en check CI sur l’image que vous vous apprêtez à livrer.' },
+  // The two contexts a reader with an existing stack arrives in. Without them the honest answer to
+  // "I already have Ansible and a scanner, why add this?" is left to be inferred, and inferring it
+  // is work a reader does not owe a tool they have not adopted yet.
+  { en: '<b>Already running Ansible, Puppet or Packer</b>: they stay the source of desired state. Pavois reads back what the machine ACTUALLY resolved, which is not the same question and not the same answer.', fr: '<b>Déjà sous Ansible, Puppet ou Packer</b> : ils restent la source de l’état voulu. Pavois relit ce que la machine a <b>réellement</b> résolu, ce qui n’est ni la même question ni la même réponse.' },
+  { en: '<b>Already running a compliance scanner</b>: keep it. Run Pavois beside it on one image, compare the two verdicts and the evidence behind them, and decide from what you measured.', fr: '<b>Déjà équipé d’un scanner de conformité</b> : gardez-le. Lancez Pavois à côté sur une seule image, comparez les deux verdicts et les preuves qui les soutiennent, et décidez sur ce que vous avez mesuré.' },
 ];
 const fitNo = [
   { en: 'A <b>ten-year-old production host</b> you cannot repartition or reboot. It will be audited honestly, and a share of its gaps will stay open.', fr: 'Un <b>hôte de production de dix ans</b> que vous ne pouvez ni repartitionner ni redémarrer. Il sera audité honnêtement, et une part de ses écarts restera ouverte.' },
@@ -331,6 +357,7 @@ const softwareApp = {
       <div class="sec-head">
         <h2 set:html={tr(c.fitH2)} />
         <p set:html={tr(c.fitP)} />
+        <p class="fit-alongside" set:html={tr(c.fitAlongside)} />
       </div>
       <div class="feat two">
         <div class="fcard fit-yes">
@@ -373,6 +400,14 @@ const softwareApp = {
             ))}
           </div>
         </div>
+      </div>
+
+      <div class="std-one">
+        <h3>{tr(c.stdOneH)}</h3>
+        <p>{tr(c.stdOneP)}</p>
+        <div class="cmd"><span class="p">$</span><span>pavois scan local --sudo --standard bp28</span></div>
+        <div class="cmd"><span class="p">$</span><span>pavois scan local --sudo --standard cis --level 1</span></div>
+        <p class="muted" set:html={tr(c.stdOneNote)} />
       </div>
     </div>
   </section>

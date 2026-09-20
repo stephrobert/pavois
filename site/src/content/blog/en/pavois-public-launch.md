@@ -1,7 +1,7 @@
 ---
 lang: en
-title: "Pavois is public: why I waited, and where it is going"
-description: "On 16 September 2026 Pavois went from a private repository to a public project. Five releases in three days, two of them unusable. Here is what that cost, what it proved, and the direction."
+title: "From first public release to an evidence-backed delivery chain"
+description: "Pavois has been public since 16 September 2026. The first releases exposed a gap between tests run from a checkout and the standalone artefact delivered to a clean machine. Here is what that gap changed in the delivery chain, and what is now mechanically verified."
 datePublished: "2026-09-18"
 dateModified: "2026-09-18"
 category: project
@@ -20,7 +20,7 @@ That reasoning has a flaw, and it cost me months: a tool that stays private neve
 
 ## What the first 48 hours proved
 
-Five releases in three days. That is not a cadence I am proud of, it is the trace of a lesson.
+Five releases in three days. That is not product instability: it is a delivery chain being hardened in public, and the cadence measures how fast the fixes landed, not how fast things broke. What was actually wrong fits in one sentence.
 
 **v0.1.0 and v0.1.1 shipped a binary incapable of doing its job.** Both times for the same reason: every test I ran lived **inside the repository**, where the rule profiles and the reference sit on disk. The published binary arrives alone on a fresh machine. Both times a user on a clean VM found it, not me. v0.1.2 did worse in another register: three empty embedded directories, which is **not a build error**. It compiles, it publishes, and the only symptom is a sentence the user meets on their first command: `this binary embeds none and none is on disk`.
 
@@ -83,7 +83,7 @@ There is no fleet aggregation either. One run audits one target. A loop and a re
 
 - Pavois has been public since 16 September 2026, under Apache-2.0.
 - It audits **effective** configuration (`sshd -T`, `sysctl`, `systemctl show`), not files.
-- Five releases in three days: users found in 48 hours what my tests could not see, because every one of them ran inside the repository.
+- The gap that mattered was not in the controls but in the packaging: tests run from a checkout cannot see what a standalone artefact does on a clean machine. Five releases in three days closed that hole, and each rung of the ladder is the trace of it.
 - The direction: a qualified verdict, three states including `UNKNOWN`, two grades including the remediable posture, and a rollback that publishes its own limits.
 
 ## Next steps
