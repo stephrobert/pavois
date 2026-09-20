@@ -430,6 +430,19 @@ run = "uv run --with pyyaml python3 {{config_root}}/tools/false_positives.py"
 description = "Prove lint:false-positives bites: plant one control per signature, demand red, then plant the corrected witness and demand silence"
 run = "uv run --with pyyaml python3 {{config_root}}/tools/false_positives.py --selftest"
 
+[tasks."lint:wrapper"]
+description = "FAIL if bin/pavois only works on the machine it was written on (an absolute path, a scratchpad, no dirname)"
+# On 2026-09-04 bin/pavois was committed holding one line, an `exec` into a temporary session
+# directory, and every clone answered "No such file or directory" for a fortnight. testplan already
+# asked for `bin/pavois version` on a change to that file, and that check would have PASSED: the
+# directory existed on the machine that baked it in. A path decided at commit time is only wrong
+# somewhere else, and later, so this reads the file instead of running it.
+run = "uv run python3 {{config_root}}/tools/lint_wrapper.py"
+
+[tasks."lint:wrapper:test"]
+description = "Prove lint:wrapper bites: the exact file that shipped broken, a hardcoded home, a missing dirname, then the real wrapper demanded silent"
+run = "uv run python3 {{config_root}}/tools/lint_wrapper.py --selftest"
+
 [tasks."lint:applies-if"]
 description = "FAIL on a malformed applies_if, or on a NEW hand-written only_if (applicability is declared now, #324)"
 # tools/applies_if.py validated only ITSELF: its closed vocabulary and its mandatory `because:`
@@ -578,7 +591,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "lint:prose", "lint:false-positives", "lint:applies-if", "regression:test", "validate:run:test", "gen:readme:verify", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "lint:prose", "lint:false-positives", "lint:applies-if", "lint:wrapper", "regression:test", "validate:run:test", "gen:readme:verify", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]
