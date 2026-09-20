@@ -260,6 +260,20 @@ views: [CIS](https://pavois.dev/en/standards/cis/) · [ANSSI BP-028](https://pav
 · [NIST](https://pavois.dev/en/standards/nist/) · [PCI-DSS](https://pavois.dev/en/standards/pci-dss/)
 · [STIG](https://pavois.dev/en/standards/stig/).
 
+**You audit the one you need.** Carrying several mappings is how the rule base avoids writing the
+same check five times; it is a property of the corpus, not something you have to adopt. If your
+organisation only answers to ANSSI, audit only ANSSI:
+
+```bash
+pavois scan local --sudo --standard bp28
+pavois scan local --sudo --standard cis --level 1
+```
+
+`--standard` filters what the **engine runs**, not what the report displays, and `harden apply`
+takes it too, for the remediation values that differ between standards. A passing check is evidence
+toward its mappings, never a blanket certification: Pavois produces the evidence, the auditor
+produces the verdict.
+
 ## 🔒 Supply chain
 
 Pavois holds itself to the posture it audits:
