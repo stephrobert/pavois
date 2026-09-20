@@ -1,7 +1,7 @@
 ---
 lang: fr
-title: "Pavois est public : pourquoi j'ai attendu, et ce que j'en veux faire"
-description: "Le 16 septembre 2026, Pavois est passé de dépôt privé à projet public. Cinq versions en trois jours, dont deux inutilisables. Voici ce que ça a coûté, ce que ça a prouvé, et la direction."
+title: "De la première publication à une chaîne de livraison vérifiée"
+description: "Pavois est public depuis le 16 septembre 2026. Les premières versions ont révélé un écart entre des tests lancés depuis le dépôt et l'artefact autonome livré sur une machine vierge. Voici ce que cet écart a changé dans la chaîne de livraison, et ce qui est désormais vérifié mécaniquement."
 datePublished: "2026-09-18"
 dateModified: "2026-09-18"
 category: project
@@ -20,7 +20,7 @@ Ce raisonnement a une faille, et elle m'a coûté des mois : un outil qui reste 
 
 ## Ce que les 48 premières heures ont prouvé
 
-Cinq versions en trois jours. Ce n'est pas un rythme dont je suis fier, c'est la trace d'une leçon.
+Cinq versions en trois jours. Ces cinq versions ne correspondent pas à cinq refontes du produit : elles retracent surtout la stabilisation de sa chaîne de livraison. Ce qui était en cause tenait en une phrase.
 
 **v0.1.0 et v0.1.1 ont livré un binaire incapable de faire son travail.** Les deux fois pour la même raison : tous mes tests tournaient **dans le dépôt**, là où les profils de règles et la référence sont sur le disque. Le binaire publié, lui, arrive seul sur une machine neuve. Les deux fois, c'est un utilisateur sur une VM vierge qui l'a trouvé, pas moi. La v0.1.2 a fait pire dans un autre registre : trois répertoires embarqués vides, ce qui n'est **pas une erreur de compilation**. Ça compile, ça se publie, et le seul symptôme est une phrase que l'utilisateur découvre à la première commande : `this binary embeds none and none is on disk`.
 
@@ -59,6 +59,32 @@ pavois harden plan user@host --sudo --key ~/.ssh/id_ed25519
 pavois harden apply plan.yml --reboot --scan   # un PASS après reboot est prouvé
 ```
 
+## « J'ai déjà Ansible et un scanner. Pourquoi ajouter Pavois ? »
+
+C'est la question que je me suis le plus souvent entendu poser, et la réponse honnête commence par ce que Pavois **ne** demande **pas**.
+
+Votre gestion de configuration reste la source de l'état voulu. Ansible, Puppet ou Packer décrivent ce que la machine **devrait** être ; Pavois relit ce qu'elle a **réellement** résolu, ce qui n'est ni la même question ni la même réponse. Un playbook qui a convergé sans erreur ne dit pas qu'un drop-in ajouté ensuite n'a pas défait son travail.
+
+Votre scanner de conformité peut rester en place. Le premier pas utile n'est pas un remplacement, c'est une comparaison : une seule image, les deux outils côte à côte, et on regarde ce que chacun a mesuré et avec quelle preuve. C'est peu coûteux, c'est réversible, et ça décide sur des faits plutôt que sur une promesse.
+
+Ce que Pavois apporte de spécifique tient en trois choses : il lit l'état **effectif** plutôt que les fichiers, il dit si un PASS **survit au reboot**, et il produit une preuve exportable en OSCAL, SARIF ou JSON. Si ces trois-là ne vous manquent pas, gardez ce que vous avez.
+
+## « Faut-il adopter plusieurs référentiels ? »
+
+Non. C'est une confusion que le site entretenait, et elle méritait d'être corrigée.
+
+Les correspondances multiples appartiennent au **corpus** de Pavois : un contrôle neutre porte tous ses mappings CIS, ANSSI BP-028, NIST, PCI DSS et STIG, ce qui évite d'écrire cinq fois la même vérification. C'est une propriété de la base de règles, pas une obligation pour vous.
+
+Si votre organisation ne répond qu'à l'ANSSI, n'auditez que l'ANSSI :
+
+```bash
+pavois scan local --sudo --standard bp28
+```
+
+`--standard` filtre ce que le **moteur exécute**, pas l'affichage du rapport. Et `pavois harden apply` l'accepte aussi, pour les valeurs de remédiation qui diffèrent d'une norme à l'autre.
+
+Une dernière précision qui compte : un mapping n'est pas une certification. Qu'un contrôle porte la référence CIS 5.2.1 signifie qu'il mesure ce que ce paragraphe demande, pas que votre machine est certifiée CIS. Pavois produit la preuve ; l'auditeur rend le verdict.
+
 ## Ce que je veux en faire
 
 L'objectif n'est pas de multiplier les contrôles. C'est de faire de Pavois une **référence méthodologique opposable** : un outil dont on peut discuter les verdicts parce qu'ils sont motivés, sourcés et reproductibles.
@@ -83,7 +109,7 @@ Il n'y a pas non plus d'agrégation de flotte. Un run audite une cible. Une bouc
 
 - Pavois est public depuis le 16 septembre 2026, sous licence Apache-2.0.
 - Il audite la configuration **effective** (`sshd -T`, `sysctl`, `systemctl show`), pas les fichiers.
-- Cinq versions en trois jours : les utilisateurs ont trouvé en 48 heures ce que mes tests ne pouvaient pas voir, parce qu'ils tournaient tous dans le dépôt.
+- L'écart qui comptait n'était pas dans les contrôles mais dans l'emballage : des tests lancés depuis le dépôt ne voient pas ce qu'un artefact autonome fait sur une machine vierge. Cinq versions en trois jours ont servi à fermer ce trou, et chaque barreau de l'échelle en est la trace.
 - La direction : un verdict qualifié, trois états dont `UNKNOWN`, deux notes dont la posture remédiable, et un rollback qui publie ses propres limites.
 
 ## Prochaines étapes

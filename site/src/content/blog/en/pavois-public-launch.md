@@ -1,7 +1,7 @@
 ---
 lang: en
-title: "Pavois is public: why I waited, and where it is going"
-description: "On 16 September 2026 Pavois went from a private repository to a public project. Five releases in three days, two of them unusable. Here is what that cost, what it proved, and the direction."
+title: "From first public release to an evidence-backed delivery chain"
+description: "Pavois has been public since 16 September 2026. The first releases exposed a gap between tests run from a checkout and the standalone artefact delivered to a clean machine. Here is what that gap changed in the delivery chain, and what is now mechanically verified."
 datePublished: "2026-09-18"
 dateModified: "2026-09-18"
 category: project
@@ -20,7 +20,7 @@ That reasoning has a flaw, and it cost me months: a tool that stays private neve
 
 ## What the first 48 hours proved
 
-Five releases in three days. That is not a cadence I am proud of, it is the trace of a lesson.
+Five releases in three days. Those five releases are not five reworks of the product: they mostly trace the stabilisation of its delivery chain. What was actually wrong fits in one sentence.
 
 **v0.1.0 and v0.1.1 shipped a binary incapable of doing its job.** Both times for the same reason: every test I ran lived **inside the repository**, where the rule profiles and the reference sit on disk. The published binary arrives alone on a fresh machine. Both times a user on a clean VM found it, not me. v0.1.2 did worse in another register: three empty embedded directories, which is **not a build error**. It compiles, it publishes, and the only symptom is a sentence the user meets on their first command: `this binary embeds none and none is on disk`.
 
@@ -59,6 +59,32 @@ pavois harden plan user@host --sudo --key ~/.ssh/id_ed25519
 pavois harden apply plan.yml --reboot --scan   # a PASS after reboot is proven
 ```
 
+## "I already have Ansible and a scanner. Why add Pavois?"
+
+It is the question I have been asked most, and the honest answer starts with what Pavois does **not** ask for.
+
+Your configuration management stays the source of desired state. Ansible, Puppet or Packer describe what the machine **should** be; Pavois reads back what it **actually** resolved, which is not the same question and not the same answer. A playbook that converged without an error does not tell you that a drop-in added afterwards has not undone its work.
+
+Your compliance scanner can stay where it is. The useful first step is not a replacement, it is a comparison: one image, both tools side by side, and you look at what each of them measured and with what evidence. It costs little, it is reversible, and it decides on facts rather than on a promise.
+
+What Pavois adds is three things: it reads the **effective** state rather than the files, it says whether a PASS **survives a reboot**, and it produces evidence you can export as OSCAL, SARIF or JSON. If you do not miss those three, keep what you have.
+
+## "Do I need to adopt several standards?"
+
+No. The site encouraged that confusion, and it deserved fixing.
+
+The multiple mappings belong to Pavois's **corpus**: one neutral control carries all of its CIS, ANSSI BP-028, NIST, PCI DSS and STIG references, which is how the rule base avoids writing the same check five times. That is a property of the corpus, not an obligation for you.
+
+If your organisation only answers to ANSSI, audit only ANSSI:
+
+```bash
+pavois scan local --sudo --standard bp28
+```
+
+`--standard` filters what the **engine runs**, not what the report displays. And `pavois harden apply` takes it too, for the remediation values that differ between standards.
+
+One last distinction that matters: a mapping is not a certification. A control carrying the reference CIS 5.2.1 means it measures what that paragraph asks for, not that your machine is CIS certified. Pavois produces the evidence; the auditor produces the verdict.
+
 ## Where I want to take it
 
 The goal is not to pile up controls. It is to make Pavois a **methodology you can argue with**: a tool whose verdicts can be challenged because they are motivated, sourced and reproducible.
@@ -83,7 +109,7 @@ There is no fleet aggregation either. One run audits one target. A loop and a re
 
 - Pavois has been public since 16 September 2026, under Apache-2.0.
 - It audits **effective** configuration (`sshd -T`, `sysctl`, `systemctl show`), not files.
-- Five releases in three days: users found in 48 hours what my tests could not see, because every one of them ran inside the repository.
+- The gap that mattered was not in the controls but in the packaging: tests run from a checkout cannot see what a standalone artefact does on a clean machine. Five releases in three days closed that hole, and each rung of the ladder is the trace of it.
 - The direction: a qualified verdict, three states including `UNKNOWN`, two grades including the remediable posture, and a rollback that publishes its own limits.
 
 ## Next steps
