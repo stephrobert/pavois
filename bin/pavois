@@ -1,2 +1,19 @@
-#!/bin/sh
-exec "/tmp/claude-1000/-home-bob-Projets-confkit/3ee84c0c-7597-4031-99f0-ab6688af296e/scratchpad/wt-go/go/pavois" "$@"
+#!/usr/bin/env sh
+# Pavois wrapper: build the Go binary (if needed) then exec it.
+#
+# It resolves everything from its OWN location, never from the caller's working directory and never
+# from an absolute path baked in at some point in the past. On 2026-09-04 this file was committed
+# holding a single `exec` into a temporary session directory:
+#
+#     exec "/tmp/claude-1000/<session>/scratchpad/wt-go/go/pavois" "$@"
+#
+# which meant `bin/pavois` answered "No such file or directory" for every clone of this repository
+# for a fortnight. It is the entry point CLAUDE.md documents, the default of
+# tools/harden_validate.sh (`PAVOIS_BIN:-bin/pavois`) and the command the project's own
+# non-negotiable rule names ("verified by a real `bin/pavois scan`"), so nothing noticed because
+# everything that runs in CI uses `mise run build` instead.
+set -e
+here="$(cd "$(dirname "$0")/.." && pwd)"
+bin="$here/go/pavois"
+( cd "$here/go" && go build -o pavois . )
+exec "$bin" "$@"
