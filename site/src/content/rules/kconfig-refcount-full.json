@@ -28,7 +28,8 @@
   },
   "check": [
     "only_if('option exists (removed in kernel >= 5.5)') { command('grep -q REFCOUNT_FULL /boot/config-$(uname -r)').exit_status == 0 }",
-    "describe command(\"grep -h '^CONFIG_REFCOUNT_FULL=' /boot/config-$(uname -r) 2>/dev/null; zcat /proc/config.gz 2>/dev/null | grep '^CONFIG_REFCOUNT_FULL='\") do",
+    "describe command(\"C=/boot/config-$(uname -r); if [ -r \\\"$C\\\" ]; then cat \\\"$C\\\"; elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; else echo PAVOIS_NO_KERNEL_CONFIG; fi | grep -E '^(# )?CONFIG_REFCOUNT_FULL[= ]|^PAVOIS_NO_KERNEL_CONFIG' || echo PAVOIS_NO_KERNEL_CONFIG\") do",
+    "  its('stdout') { should_not match(/PAVOIS_NO_KERNEL_CONFIG/) }",
     "  its('stdout') { should match(/^CONFIG_REFCOUNT_FULL=y$/) }",
     "end"
   ],
