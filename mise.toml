@@ -367,7 +367,13 @@ run = "python3 {{config_root}}/tools/testplan.py"
 
 [tasks."lint:emdash"]
 description = "Refuse the em-dash anywhere in the tracked tree (an AI tell, and it has broken a generated GRUB line)"
-run = "python3 {{config_root}}/tools/lint_emdash.py"
+# The selftest runs first, on every invocation: the escape patterns are assembled from string
+# pieces so the linter is not its own first offender, and that assembly is one typo away from
+# matching nothing at all. A guard that silently stops guarding is worse than no guard.
+run = [
+  "python3 {{config_root}}/tools/lint_emdash.py --selftest",
+  "python3 {{config_root}}/tools/lint_emdash.py",
+]
 
 [tasks."lint:install-docs"]
 description = "FAIL if a page retypes an install command, pipes a download into a shell, or renders a block install.ts does not export"
