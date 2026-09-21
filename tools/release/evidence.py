@@ -239,6 +239,35 @@ def verify_checksums(bundle: pathlib.Path) -> bool | None:
     return True
 
 
+def advertised_version() -> str:
+    """The version the site tells people to install, read from its single source.
+
+    `site/src/data/install.ts` is that source, and `site:install-single-source` already refuses a
+    page that retypes it. Reading it here rather than keeping a second copy is the same discipline:
+    two places holding a version number is one place holding a stale one.
+    """
+    src = ROOT / "site" / "src" / "data" / "install.ts"
+    if not src.is_file():
+        return ""
+    m = re.search(r"export const VERSION\s*=\s*'([^']+)'", src.read_text())
+    return m.group(1).lstrip("v") if m else ""
+
+
+ADVERTISED = advertised_version()
+
+
+def tested_version(facts: dict) -> str:
+    """Which pavois produced this campaign's evidence.
+
+    `dev` is what a binary built from a checkout reports, so it doubles as the marker for "this
+    campaign proved the working tree, not a release".
+    """
+    v = facts.get("pavois_version") or ""
+    if not v:
+        v = ((facts.get("after") or {}).get("run") or {}).get("tool", {}).get("version", "")
+    return str(v).lstrip("v")
+
+
 def recorded_digest(summary: dict | None) -> str:
     return ((summary or {}).get("run") or {}).get("ruleset", {}).get("digest", "")
 
@@ -308,13 +337,31 @@ def classify(facts: dict, now: dt.datetime, window_days: int = FRESHNESS_WINDOW_
     if not recorded:
         return INCOMPLETE, where + ["the scan recorded no ruleset digest (pavois too old?)"]
 
+    # WHICH corpus a campaign must match depends on WHAT it was proving.
+    #
+    # A campaign run against a RELEASED binary measures the rule base embedded in that release. The
+    # working tree's corpus moves on the next commit to rules.yml, and comparing the two would flip
+    # all nine platforms to STALE the moment main advances, while the release they describe has not
+    # changed at all. A campaign proves a (version, platform) pair, and judging it against a corpus
+    # it was never asked to run is a category error.
+    #
+    # So: a campaign of a released version is judged self-consistent by construction, and what can
+    # make it stale is its AGE, or the site advertising a different version than the one proved.
+    # A campaign of the working tree keeps the digest comparison, because there the corpus on disk
+    # IS the thing it claimed to measure.
+    tested = tested_version(facts)
     current = facts.get("current_digest", "")
-    if recorded != current:
+    if tested in ("", "dev") and recorded != current:
         return STALE, where + [
-            "the campaign measured a DIFFERENT corpus than the one being released",
+            "the campaign measured a DIFFERENT corpus than the working tree",
             f"  campaign: {recorded}",
             f"  current:  {current}",
             "  re-run tools/golden_path.sh " + facts["os"],
+        ]
+    if tested not in ("", "dev") and ADVERTISED and tested != ADVERTISED:
+        return STALE, where + [
+            f"the campaign proved {tested}, and the site advertises {ADVERTISED}",
+            "  a verdict is about one version; re-run the campaign against the released one",
         ]
 
     ran = campaign_time(facts)
@@ -548,8 +595,22 @@ def selftest() -> int:
         ),
         # Evidence that exists but does not describe the thing being released.
         (
-            "corpus drift: passed, on another corpus",
-            {**good, "current_digest": "sha256:" + "b" * 64},
+            "corpus drift: a working-tree campaign, on another corpus",
+            {**good, "current_digest": "sha256:" + "b" * 64, "pavois_version": "dev"},
+            STALE,
+        ),
+        (
+            "a RELEASED campaign is not judged on the working tree's corpus",
+            {
+                **good,
+                "current_digest": "sha256:" + "b" * 64,
+                "pavois_version": ADVERTISED or "0.0.0",
+            },
+            VERIFIED,
+        ),
+        (
+            "the campaign proved a version the site no longer advertises",
+            {**good, "pavois_version": "0.0.1-ancient"},
             STALE,
         ),
         (
