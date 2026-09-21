@@ -597,7 +597,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "lint:prose", "lint:false-positives", "lint:applies-if", "lint:wrapper", "regression:test", "validate:run:test", "gen:readme:verify", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "lint:prose", "lint:false-positives", "lint:applies-if", "lint:wrapper", "merge:one:test", "regression:test", "validate:run:test", "gen:readme:verify", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]
@@ -634,6 +634,19 @@ echo "hooks installed: pre-commit (commit) + pre-push (no-main guard + mise run 
 [tasks."ruleset"]
 description = "Protect the default branch (run IMMEDIATELY after the repo goes public: rulesets need a public repo)"
 run = "bash {{config_root}}/tools/apply-branch-ruleset.sh"
+
+[tasks."merge:one"]
+description = "Merge ONE pull request, or refuse: up to date with main, every required check green, nothing running"
+# GitHub's merge queue would do this, and it cannot be used here: the merge_queue rule type is for
+# repositories owned by an ORGANISATION, and this one is owned by a user account. The API refuses
+# it alone in a ruleset of its own with no parameters at all, so there is nothing to tune.
+#
+# `mise run merge:one -- 357` to merge, `-- 357 --dry-run` to verify only.
+run = "python3 {{config_root}}/tools/merge_one.py"
+
+[tasks."merge:one:test"]
+description = "The merge guard's decision function on synthetic cases, witness included"
+run = "python3 {{config_root}}/tools/merge_one.py --selftest"
 
 [tasks."vm"]
 description = "Test VMs on Incus. VMs, never containers: `mise run vm -- up debian12` | list | ip <os> | down <os>"

@@ -39,6 +39,24 @@
 # and enforcing this on admins would lock the repository against its only contributor. The bypass is
 # an arbitration, not an oversight.
 #
+# WHY THERE IS NO MERGE QUEUE HERE
+#
+# The obvious answer to "one pull request at a time, each tested against main" is the merge queue,
+# and it is not available to this repository. `merge_queue` is a rule type for repositories owned by
+# an ORGANISATION; this one is owned by a user account. Measured, not assumed: the API answers
+#
+#   422 Validation Failed, "Invalid rule 'merge_queue': "
+#
+# to the rule with full parameters, with a larger build budget, with the strict up-to-date policy
+# off, without required_linear_history, and alone in a brand-new ruleset of its own with no
+# parameters at all. Five refusals with an empty reason: it is the rule type, not the tuning.
+#
+# What stands in for it is `strict_required_status_checks_policy: true` below, which already forbids
+# merging a branch that is behind main, plus `mise run merge:one`, which verifies that condition and
+# the required checks BEFORE using the admin bypass. The bypass then covers only the review rule
+# nobody here can satisfy, instead of covering everything at once. Twelve pull requests merged in one
+# batch through that door, and the pipeline went red.
+#
 # Usage: tools/apply-branch-ruleset.sh [owner/repo]
 # Idempotent: updates the ruleset of the same name rather than creating a second one.
 set -euo pipefail
