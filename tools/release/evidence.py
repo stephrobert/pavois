@@ -560,7 +560,10 @@ def selftest() -> int:
             "findings": [{"code": "ssh-permitrootlogin", "subject": "203.0.113.10"}],
             "run": {
                 "ruleset": {"digest": d},
-                "tool": {"version": "0.1.6"},
+                # Follows the advertised version rather than pinning one: a release bump would
+                # otherwise turn the witness STALE for a version mismatch, and a fixture that
+                # breaks on an unrelated edit teaches people to edit the test.
+                "tool": {"version": ADVERTISED or "0.0.0"},
                 "target": {"id": "203.0.113.10", "platform": "debian 12.15"},
                 "timestamp": ts,
             },

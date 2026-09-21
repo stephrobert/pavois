@@ -103,6 +103,14 @@ The goal is not to pile up controls. It is to make Pavois a **methodology you ca
 
 Pavois covers **nine** Linux systems. **Two** have been through the full campaign on a clean VM: Debian 12 and Debian 13. The other seven are curated and statically validated, but no campaign has run on them: treat them as experimental. "9 systems supported" and "9 systems proven" are not the same sentence, and only one of them is true.
 
+> **Update, 21 September 2026.** All nine have since been through the full campaign, and the seven
+> that had never run all failed on the first attempt, for one cause: four controls were reporting
+> verdicts they had never measured. The distinction this paragraph drew is now enforced rather than
+> narrated, on [the platform matrix](/en/platforms/), which keeps "curated" and "proved" apart as
+> separate states instead of leaving it to prose. Leaving the paragraph above as it was written:
+> it was true on the day, and a post that quietly rewrites itself is worth less than one that dates
+> its corrections.
+
 There is no fleet aggregation either. One run audits one target. A loop and a report directory are enough, because every scan emits a complete JSON, but that is a stated gap, not a hidden feature.
 
 ## Key takeaways
