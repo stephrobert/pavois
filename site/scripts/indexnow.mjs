@@ -37,8 +37,16 @@ function findKey(dir) {
 }
 
 function urlsFromSitemap(dir) {
-  const xml = readFileSync(join(dir, "sitemap.xml"), "utf8");
-  return [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  // sitemap.xml is an index: its <loc> elements point at child sitemaps, not at pages. Reading it
+  // alone would submit five sitemap URLs, or nothing, without saying so.
+  const idx = readFileSync(join(dir, "sitemap.xml"), "utf8");
+  const children = [...idx.matchAll(/<loc>[^<]*\/(sitemap-[^<\/]+\.xml)<\/loc>/g)].map((m) => m[1]);
+  if (!children.length) throw new Error("sitemap.xml lists no child sitemap");
+  const urls = children.flatMap((c) =>
+    [...readFileSync(join(dir, c), "utf8").matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1])
+  );
+  if (!urls.length) throw new Error(`the ${children.length} child sitemap(s) hold no URL`);
+  return urls;
 }
 
 function isIndexable(dir) {

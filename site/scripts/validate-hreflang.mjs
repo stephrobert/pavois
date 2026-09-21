@@ -129,11 +129,27 @@ for (const [path, page] of declared) {
 }
 
 // The sitemap, when it carries alternates, must say the same thing as the HTML.
-const sitemapPath = join(DIST, "sitemap.xml");
+// sitemap.xml is an INDEX now, and it holds no <url> at all. Reading it alone would find zero
+// alternates and take the "no alternates declared (allowed)" branch below: the check would go on
+// passing while measuring nothing, which is worse than the split it was meant to survive. So the
+// children are read, and an index that lists none is itself a failure.
+const indexPath = join(DIST, "sitemap.xml");
 let sitemapNote = "sitemap: no alternates declared (allowed: the HTML link elements carry them)";
-if (existsSync(sitemapPath)) {
-  const xml = readFileSync(sitemapPath, "utf8");
+if (existsSync(indexPath)) {
+  const idx = readFileSync(indexPath, "utf8");
+  const children = [...idx.matchAll(/<loc>[^<]*\/(sitemap-[^<\/]+\.xml)<\/loc>/g)].map((m) => m[1]);
+  if (!children.length) {
+    console.error("sitemap.xml lists no child sitemap: the alternates cannot be checked");
+    process.exit(1);
+  }
+  const xml = children
+    .map((c) => (existsSync(join(DIST, c)) ? readFileSync(join(DIST, c), "utf8") : ""))
+    .join("\n");
   const blocks = [...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].map((m) => m[1]);
+  if (!blocks.length) {
+    console.error(`the ${children.length} child sitemap(s) hold no <url>`);
+    process.exit(1);
+  }
   const withAlts = blocks.filter((b) => b.includes("hreflang"));
   if (withAlts.length) {
     for (const b of blocks) {
