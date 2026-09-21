@@ -518,7 +518,8 @@ history to read. The embedded baseline is `pavois-baseline` 0.2.0.
 - OSCAL output is the baseline (catalog and profiles), not yet a per-scan assessment-results
   package. No container image is published yet.
 
-[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/stephrobert/pavois/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/stephrobert/pavois/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/stephrobert/pavois/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/stephrobert/pavois/compare/v0.1.3...v0.1.4
