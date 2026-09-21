@@ -29,6 +29,7 @@ const LANGS = Object.keys(languages);
 const STATIC = [
   '', 'start/', 'installation/', 'audit/', 'docs/', 'docs/cli/', 'docs/tools/', 'docs/benchmark/',
   'handbook/', 'rules/', 'blog/', 'glossary/', 'about/', 'support/', 'downloads/', 'sample-report/', 'attribution/',
+  'platforms/',
   'standards/cis/', 'standards/bp28/', 'standards/nist/', 'standards/pci-dss/', 'standards/stig/',
 ];
 

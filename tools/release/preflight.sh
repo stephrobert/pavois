@@ -28,7 +28,11 @@ cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 VERSION="${1:-}"
 # The systems the release claims to have validated. Override when the claim changes:
 #   PAVOIS_VALIDATED_OS="debian12 debian13 ubuntu2404" tools/release/preflight.sh v0.2.0
-VALIDATED_OS="${PAVOIS_VALIDATED_OS:-debian12 debian13}"
+# All nine, since 2026-09-21. It was debian12 and debian13 for as long as they were the only
+# two with a campaign; the other seven had never had one, and the first seven that ran all
+# failed on controls reporting verdicts they had never measured (#359). The claim a release
+# makes is exactly the list this gate insists on having evidence for.
+VALIDATED_OS="${PAVOIS_VALIDATED_OS:-debian12 debian13 ubuntu2204 ubuntu2404 ubuntu2604 rhel8 rhel9 rhel10 fedora}"
 REPORTS="${PAVOIS_REPORTS:-reports}"
 
 GREEN=$'\033[32m'; RED=$'\033[31m'; DIM=$'\033[2m'; OFF=$'\033[0m'
