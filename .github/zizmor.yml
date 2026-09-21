@@ -33,7 +33,26 @@
 #
 # DELETE THIS the day actionlint ships a release that parses `$/`, and switch the call over: the
 # self-repository form is genuinely the safer one, which is why zizmor asks for it.
+# ---------------------------------------------------------------------------------------------
+# artipacked, on campaign.yml
+#
+# The `publish` job checks out WITH credentials on purpose: it is the job that commits the
+# regenerated platform matrix and pushes it, which is how the scheduled campaign reaches the site
+# at all (site/** is in site-deploy's trigger paths).
+#
+# What the audit warns about is a persisted credential leaking into an uploaded artifact. That job
+# uploads nothing: it downloads the campaign bundles, regenerates one JSON file, commits and
+# pushes. The nine `campaign` jobs, which DO upload artifacts, keep `persist-credentials: false`
+# and are not acquitted here.
+#
+# Narrower than it looks, and still wider than ideal: this acquits the rule for the whole file, so
+# a future job in campaign.yml that both persists credentials and uploads an artifact would pass
+# unnoticed. A line-pinned form exists and was not used for the reason stated above: the number
+# moves on every edit and the acquittal then lands on the wrong line.
 rules:
   self-repository:
     ignore:
       - release.yml
+  artipacked:
+    ignore:
+      - campaign.yml
