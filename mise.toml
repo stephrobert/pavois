@@ -375,6 +375,16 @@ run = [
   "python3 {{config_root}}/tools/lint_emdash.py",
 ]
 
+[tasks."lint:measured-verdict"]
+description = "FAIL if a check filters its command down to the very thing its matcher then asserts (#359)"
+# Such a check cannot tell "the setting is wrong" from "the command produced nothing", so its FAIL
+# is invented. Four controls of this shape failed the campaign on five platforms; this linter found
+# two more that no x86 campaign could ever reach, because an `only_if('arm64 only')` skips them.
+run = [
+  "python3 {{config_root}}/tools/lint_measured_verdict.py --selftest",
+  "python3 {{config_root}}/tools/lint_measured_verdict.py",
+]
+
 [tasks."lint:install-docs"]
 description = "FAIL if a page retypes an install command, pipes a download into a shell, or renders a block install.ts does not export"
 # install.ts has claimed since it was written that this linter fails the build. It did not exist,
@@ -581,6 +591,27 @@ run = "bash --noprofile --norc {{config_root}}/tools/release/scenario.sh"
 description = "Did a golden-path campaign prove the CURRENT corpus, on the systems claimed? Args: <os>..."
 run = "python3 {{config_root}}/tools/release/evidence.py"
 
+[tasks."evidence:matrix"]
+description = "Platform verification matrix: one state per system (VERIFIED/FAILED/STALE/INCOMPLETE/CURATED/UNKNOWN)"
+# A report, not a gate: it is expected to contain CURATED systems, so it exits 0 whatever it finds.
+# `-- --json FILE` writes the machine-readable record the site will eventually consume (#351).
+run = "python3 {{config_root}}/tools/release/evidence.py --all"
+
+[tasks."gen:platform-matrix"]
+description = "Generate site/src/data/platform-matrix.json from the golden-path campaigns, so the site cannot claim a platform nobody proved"
+# Generated, never typed. The states come from the same state machine `release:evidence` gates the
+# release with, so the site and the release can never disagree about what has been proved.
+run = "python3 {{config_root}}/tools/release/evidence.py --all --json {{config_root}}/site/src/data/platform-matrix.json"
+
+[tasks."evidence:test"]
+description = "The platform state machine and its sanitiser, on fixtures no VM can produce on demand"
+run = "python3 {{config_root}}/tools/release/evidence.py --selftest"
+
+[tasks."campaign:all"]
+description = "Golden-path campaign on every system not yet VERIFIED, ONE VM at a time. Needs PAVOIS_SUDO_PASSWORD"
+# Hours, and it creates and destroys real VMs on this machine. Never a dependency of another task.
+run = "bash {{config_root}}/tools/campaign_all.sh"
+
 [tasks.prepush]
 description = "Everything a pull request will fail on that costs seconds and needs no target"
 # Deterministic, offline, 13s wall-clock measured on this repo (mise runs the dependencies in
@@ -597,7 +628,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "lint:prose", "lint:false-positives", "lint:applies-if", "lint:wrapper", "merge:one:test", "regression:test", "validate:run:test", "gen:readme:verify", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "lint:prose", "lint:false-positives", "lint:applies-if", "lint:wrapper", "merge:one:test", "evidence:test", "lint:measured-verdict", "regression:test", "validate:run:test", "gen:readme:verify", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]
