@@ -133,17 +133,110 @@ def gather(os_name: str, reports: pathlib.Path) -> dict:
 
     # The LAST campaign, never the best one: a green run must not survive the run that broke it.
     log = campaigns[-1]
+    campaign = log.parent
     text = log.read_text(errors="replace")
-    facts["campaign_id"] = log.parent.name
+    facts["campaign_id"] = campaign.name
     verdicts = re.findall(r"GOLDEN PATH: (\w+)", text)
     facts["verdict"] = verdicts[-1] if verdicts else None
     facts["run_validation_failed"] = "RUN VALIDATION FAILED" in text
 
+    facts.update(from_bundle(campaign))
+
+    # The provenance block (ruleset digest, platform, timestamp) exists only in the summary pavois
+    # prints; the bundle seals the raw InSpec reports, which do not carry it. See from_bundle().
     scans = summaries(log)
     if scans:
         facts["before"] = scans[0]
         facts["after"] = scans[-1]
+    if not facts.get("evidence_source"):
+        facts["evidence_source"] = "campaign log (no bundle)"
     return facts
+
+
+def from_bundle(campaign: pathlib.Path) -> dict:
+    """Read the campaign's own evidence bundle rather than scraping what it printed.
+
+    `pavois harden apply --scan` seals `bundle/` at the end of a campaign: `manifest.json`
+    (`pavois-evidence-bundle/v1`) with the before/after grades, the posture per class, the binary's
+    own sha256 and the transition counts; `campaign-delta.json` with the control ids behind each
+    transition, `pass>fail` included, which is the product's own regression list; and
+    `checksums.txt` sealing all of it.
+
+    The first version of this function parsed `campaign.log` for lines starting with `{"counts"`.
+    That works and it is the wrong source: it depends on a human-readable log's shape, it cannot be
+    verified, and it re-derives by hand what the bundle states. A compliance tool that publishes
+    evidence should read its own evidence.
+
+    The scan JSON is still opened for `run`: the ruleset digest that decides STALE, the exact
+    platform, the timestamp. The manifest does not carry them today, which is a gap worth closing in
+    the bundle writer rather than here.
+    """
+    bundle = campaign / "bundle"
+    manifest_path = bundle / "manifest.json"
+    if not manifest_path.is_file():
+        return {}
+
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+    out: dict = {
+        "evidence_source": manifest.get("format", "bundle"),
+        "bundle_intact": verify_checksums(bundle),
+        "posture": manifest.get("posture"),
+        "transitions": (manifest.get("campaign") or {}).get("transitions"),
+        "regressions": (manifest.get("campaign") or {}).get("regressions"),
+        "pavois_version": manifest.get("pavois_version"),
+    }
+
+    delta_path = bundle / "campaign-delta.json"
+    if delta_path.is_file():
+        with contextlib.suppress(json.JSONDecodeError, OSError):
+            controls = json.loads(delta_path.read_text()).get("controls") or {}
+            # pavois computes this itself; recomputing it from two scans would be a second opinion
+            # nobody asked for, and one more thing to get wrong.
+            out["regressed_controls"] = sorted(controls.get("pass>fail", []))
+            out["still_failing_controls"] = sorted(controls.get("fail>fail", []))
+
+    # Grades and counts from the manifest, which states them, rather than from a printed summary.
+    for role in ("before", "after"):
+        block = manifest.get(role) or {}
+        if block:
+            out[f"{role}_manifest"] = {
+                "grade": block.get("grade"),
+                "passed": block.get("passed"),
+                "total": block.get("total"),
+            }
+
+    # DELIBERATELY NOT read here: the scan files the bundle seals are the RAW InSpec reports
+    # (`platform`, `profiles`, `statistics`, `version`). They do not carry pavois's own provenance
+    # block, so the ruleset digest that decides STALE, the exact platform string and the scan
+    # timestamp exist only in the summary pavois prints, which lands in campaign.log.
+    #
+    # That is a gap in the bundle, not in this reader: a sealed artefact that cannot say WHICH rule
+    # base produced it forces every consumer back to a log. Until the bundle writer records it,
+    # `gather()` keeps taking `before`/`after` from the printed summary and this function supplies
+    # everything the manifest and the delta DO state.
+    return out
+
+
+def verify_checksums(bundle: pathlib.Path) -> bool | None:
+    """Does the bundle still hash to what it says? None when it does not say."""
+    sums = bundle / "checksums.txt"
+    if not sums.is_file():
+        return None
+    for line in sums.read_text().splitlines():
+        parts = line.split(None, 1)
+        if len(parts) != 2:
+            continue
+        digest, name = parts[0], parts[1].strip()
+        target = bundle / name
+        if not target.is_file():
+            return False
+        if hashlib.sha256(target.read_bytes()).hexdigest() != digest:
+            return False
+    return True
 
 
 def recorded_digest(summary: dict | None) -> str:
@@ -314,6 +407,17 @@ def record(facts: dict, state: str, reasons: list[str], now: dt.datetime) -> dic
             "verdict": facts.get("verdict"),
             "ran_at": ran.replace(microsecond=0).isoformat() if ran else None,
             "age_days": age_days(ran, now),
+            # Straight from the campaign's own sealed bundle, not re-derived here. `pass>fail` is
+            # pavois's regression list; recomputing it from two scans would be a second opinion.
+            "transitions": facts.get("transitions"),
+            "regressed_controls": facts.get("regressed_controls"),
+        },
+        # Where these numbers come from, and whether the bundle still hashes to what it claims.
+        # A reader judging VERIFIED is entitled to know it was read from a sealed artefact rather
+        # than scraped out of a log.
+        "evidence": {
+            "source": facts.get("evidence_source"),
+            "bundle_intact": facts.get("bundle_intact"),
         },
         "corpus": {
             "current_digest": facts.get("current_digest") or None,
