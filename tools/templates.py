@@ -262,9 +262,22 @@ _KCONFIG_SRC = (
 )
 
 
+# The grep keeps the DISABLED form too. Without `(# )?...[= ]` it kept only `CONFIG_X=`, so an
+# option the kernel ships as `# CONFIG_X is not set` produced NOTHING: a `set: true` control then
+# failed on an empty stdout, reporting a deviation it never measured. On one Ubuntu 24.04 scan that
+# was 10 of the 12 findings whose measured value was the empty string, and `validate_run.py` caught
+# one of them. The marker above answers "no config to read"; this answers "read it, the option is
+# off", and the report now shows the line that says so.
+#
+# `[= ]` after the name is load-bearing: without it CONFIG_GCC_PLUGIN_STRUCTLEAK also matches
+# CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL, and two controls measure each other.
+#
+# No `|| echo MARKER` fallback here, deliberately. For a `set: false` control an option absent from
+# the Kconfig entirely IS the compliant state, and emitting the marker would turn every one of them
+# into a failure.
 def _kconfig_exp(p):
     opt = p["option"]
-    cmd = f"{_KCONFIG_SRC} | grep -E '^({opt}=|{_KCONFIG_NONE})'"
+    cmd = f"{_KCONFIG_SRC} | grep -E '^((# )?{opt}[= ]|{_KCONFIG_NONE})'"
     neg = "" if p["set"] else "_not"
     return [
         f'describe command("{cmd}") do',
@@ -277,8 +290,12 @@ def _kconfig_exp(p):
 def _kconfig_ext(L):
     if len(L) != 4 or L[3] != "end":
         return None
+    # Must track _kconfig_exp exactly, or a rendered control stops being recognised as a template
+    # and the round trip silently turns it into a hand-written check.
     m0 = re.fullmatch(
-        r"describe command\(\".*\| grep -E '\^\((CONFIG_\w+)=\|" + _KCONFIG_NONE + r"\)'\"\) do",
+        r"describe command\(\".*\| grep -E '\^\(\(# \)\?(CONFIG_\w+)\[= \]\|"
+        + _KCONFIG_NONE
+        + r"\)'\"\) do",
         L[0],
     )
     if not m0 or L[1] != f"  its('stdout') {{ should_not match(/{_KCONFIG_NONE}/) }}":
