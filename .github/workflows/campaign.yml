@@ -184,6 +184,11 @@ jobs:
         if: steps.wanted.outputs.run == 'yes'
         env:
           GH_TOKEN: ${{ github.token }}
+          # gh resolves the repository from the git remote of the CURRENT directory. This step
+          # deliberately works in RUNNER_TEMP, where there is none, so every `gh` call here died on
+          # `fatal: not a git repository` and the campaign never ran once in five nights. Naming the
+          # repository explicitly makes the step independent of where it happens to stand.
+          GH_REPO: ${{ github.repository }}
           WANTED: ${{ github.event.inputs.release }}
         run: |
           set -euo pipefail
@@ -194,8 +199,8 @@ jobs:
           [ -n "${tag}" ] || tag="$(gh release view --json tagName --jq .tagName)"
           echo "proving ${tag}"
           mkdir -p "${RUNNER_TEMP}/artefact"
+          gh release download "${tag}" --dir "${RUNNER_TEMP}/artefact" --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
           cd "${RUNNER_TEMP}/artefact"
-          gh release download "${tag}" --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
           # The checksum file covers every asset; check only the one about to be run, and fail
           # loudly rather than proving a binary nobody vouched for.
           grep ' pavois-linux-amd64$' checksums.txt > wanted.sha256
