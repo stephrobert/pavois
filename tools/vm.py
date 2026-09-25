@@ -62,6 +62,13 @@ IMAGES = {
 # The profile is the key itself, so no second map to keep in sync.
 
 USER = "pavois"
+
+# How long a guest gets to boot, hold an address and answer on SSH. Five minutes is generous on the
+# maintainer's machine and not enough on a hosted runner, where the nightly campaign spent sixty
+# polls without the guest ever reporting an address. Tunable rather than simply raised, because a
+# long default buys nothing locally and makes a dead VM take three times as long to say it is dead.
+BOOT_TIMEOUT = int(os.environ.get("PAVOIS_VM_BOOT_TIMEOUT", "300"))
+
 GREEN, RED, DIM, OFF = "\033[32m", "\033[31m", "\033[2m", "\033[0m"
 if not sys.stdout.isatty():
     GREEN = RED = DIM = OFF = ""
@@ -137,43 +144,141 @@ def ipv4(name: str) -> str | None:
     return None
 
 
-def wait_for_ssh(name: str, timeout: int = 300) -> str | None:
-    """Wait for an address, then for sshd. cloud-init installs it, so both take a while."""
+def agent_ready(name: str) -> bool:
+    """True once the incus agent inside the guest answers.
+
+    The agent speaks over vsock, so this asks nothing of DHCP, of a route or of an address. That is
+    the point: it tells "the guest has not finished booting" apart from "the guest booted and its
+    network is broken", which the SSH probe cannot do, and it stays open as a channel for a
+    diagnosis when SSH never comes up at all.
+    """
+    return incus("exec", name, "--", "true", capture=True).returncode == 0
+
+
+def guest_sh(name: str, script: str) -> str:
+    """Run a shell snippet inside the guest through the agent. Empty string when it cannot."""
+    r = incus("exec", name, "--", "sh", "-c", script, capture=True)
+    return (r.stdout or "").strip() if r.returncode == 0 else ""
+
+
+GUEST_IPV4 = "ip -4 -o addr show scope global | awk '{print $4}' | cut -d/ -f1 | head -1"
+
+
+def ssh_ok(ip: str) -> bool:
+    """True when sshd accepts the pavois key at this address."""
+    return (
+        subprocess.run(
+            [
+                "ssh",
+                # -F /dev/null: this machine's ~/.ssh/config carries a `Host *` ProxyJump, which
+                # breaks a direct connection to a lab address, and the ssh CLI honours it and the
+                # connection dies at the banner exchange. pavois already passes
+                # --ssh-config-file /dev/null to cinc for the same reason; without it here the probe
+                # waits out its whole timeout and reports a perfectly healthy VM as dead.
+                "-F",
+                "/dev/null",
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "StrictHostKeyChecking=no",
+                "-o",
+                "UserKnownHostsFile=/dev/null",
+                "-o",
+                "ConnectTimeout=4",
+                f"{USER}@{ip}",
+                "true",
+            ],
+            capture_output=True,
+            check=False,
+        ).returncode
+        == 0
+    )
+
+
+def wait_for_ssh(name: str, timeout: int = BOOT_TIMEOUT) -> str | None:
+    """Wait for the guest to boot, then to hold an address, then to answer on SSH.
+
+    Three things in sequence, tracked separately, because when this fails the only useful question
+    is which of the three did not happen. The previous version waited on the reported address alone;
+    for a VM that address is reported BY the agent, so a guest still booting looks exactly like a
+    guest with no network, and the failure said neither.
+    """
     deadline = time.time() + timeout
-    ip = None
+    booted, ip = False, None
     while time.time() < deadline:
-        ip = ip or ipv4(name)
-        if ip:
-            probe = subprocess.run(
-                [
-                    "ssh",
-                    # -F /dev/null: this machine's ~/.ssh/config carries a `Host *` ProxyJump,
-                    # which breaks a direct connection to a lab address, and the ssh CLI honours it
-                    # and the connection dies at the banner exchange. pavois already passes
-                    # --ssh-config-file /dev/null to cinc for the same reason; without it here the
-                    # probe waits out its whole timeout and reports a perfectly healthy VM as dead.
-                    "-F",
-                    "/dev/null",
-                    "-o",
-                    "BatchMode=yes",
-                    "-o",
-                    "StrictHostKeyChecking=no",
-                    "-o",
-                    "UserKnownHostsFile=/dev/null",
-                    "-o",
-                    "ConnectTimeout=4",
-                    f"{USER}@{ip}",
-                    "true",
-                ],
-                capture_output=True,
-                check=False,
-            )
-            if probe.returncode == 0:
+        booted = booted or agent_ready(name)
+        if booted:
+            # The guest's own view second: `incus list` reports what the agent publishes, which lags
+            # behind the interface actually being configured.
+            ip = ip or ipv4(name) or (guest_sh(name, GUEST_IPV4) or None)
+            if ip and ssh_ok(ip):
                 return ip
+        stage = "booting" if not booted else (f"({ip}) sshd" if ip else "waiting for an address")
+        print(f"  {DIM}{name}: {stage}…{OFF}", end="\r", file=sys.stderr)
+        # Not past the deadline: a final sleep would overshoot the budget the caller asked for.
+        if time.time() + 5 >= deadline:
+            break
         time.sleep(5)
-        where = f" ({ip})" if ip else ""
-        print(f"  {DIM}waiting for {name}{where}…{OFF}", end="\r", file=sys.stderr)
     return None
+
+
+def diagnose(name: str) -> None:
+    """Say WHY the guest never answered, on whichever channel is still open.
+
+    This path used to print one line and a command for a human to run by hand. On a CI runner nobody
+    runs it: the job ends, the guest is destroyed with it, and the next night fails identically with
+    the same single line. Everything below is read through the agent, which answers when the network
+    does not, so a failure comes back with its cause attached the first time.
+    """
+    print(f"\n{RED}vm: {name} never answered on SSH.{OFF} What it did instead:", file=sys.stderr)
+    if not agent_ready(name):
+        print(
+            "  the incus agent never answered either, so the guest did not finish booting.\n"
+            "  That is a boot problem, not a network one. Its console:",
+            file=sys.stderr,
+        )
+        print(indent(console_tail(name)), file=sys.stderr)
+        return
+    print("  the agent answers, so the guest booted. Its own account of itself:", file=sys.stderr)
+    for label, script in (
+        ("addresses", "ip -4 -o addr show scope global || echo '(no ip command)'"),
+        ("cloud-init", "cloud-init status --long 2>&1 | head -12 || echo '(no cloud-init)'"),
+        ("sshd", "systemctl is-active ssh sshd 2>&1 | head -2"),
+        ("sshd units", "systemctl --failed --no-legend 2>&1 | head -6"),
+    ):
+        print(f"  {label}:", file=sys.stderr)
+        print(indent(guest_sh(name, script) or "(nothing)"), file=sys.stderr)
+
+
+def indent(text: str) -> str:
+    return "\n".join(f"      {line}" for line in (text or "").splitlines()) or "      (empty)"
+
+
+def console_tail(name: str, lines: int = 25) -> str:
+    """The last of the guest's console, without attaching to it.
+
+    `incus console --show-log` is the documented way and it is container-only, so for a VM the fleet
+    notes say to attach through a pty. Attaching blocks forever, which is fine interactively and
+    fatal in CI, hence the timeout: whatever has been printed by then is worth more than nothing.
+    """
+    try:
+        r = subprocess.run(
+            ["script", "-qec", f"incus console {name}", "/dev/null"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=15,
+            input="",
+        )
+        out = (r.stdout or r.stderr or "").splitlines()
+    except subprocess.TimeoutExpired as expired:
+        # The expected path: attaching never returns on its own. What it printed before the timeout
+        # is exactly what is wanted, and it is carried on the exception rather than lost.
+        raw = expired.stdout or expired.stderr or b""
+        out = (raw.decode(errors="replace") if isinstance(raw, bytes) else raw).splitlines()
+    except FileNotFoundError:
+        return "(no `script` on this machine, so the console cannot be read without attaching)"
+    return "\n".join(out[-lines:]) if out else "(the console said nothing in 15s)"
 
 
 def gib(spec: str) -> float:
@@ -368,9 +473,10 @@ def cmd_up(args: argparse.Namespace) -> int:
     ip = wait_for_ssh(name)
     print(" " * 60, end="\r", file=sys.stderr)
     if not ip:
+        diagnose(name)
         print(
-            f"{RED}vm: {name} never answered on SSH.{OFF} Watch it boot with:\n"
-            f"    script -qec 'incus console {name}' /dev/null",
+            f"\n  Watch the next one boot with: script -qec 'incus console {name}' /dev/null\n"
+            f"  Give it longer with: PAVOIS_VM_BOOT_TIMEOUT={BOOT_TIMEOUT * 2}",
             file=sys.stderr,
         )
         return 1
