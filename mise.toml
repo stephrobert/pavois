@@ -375,6 +375,18 @@ run = [
   "python3 {{config_root}}/tools/lint_emdash.py",
 ]
 
+[tasks."lint:action-pins"]
+description = "Refuse an action pinned to a different commit than the rest of the repository pins it to"
+# A new workflow arrived with harden-runner on v2.13.1 and checkout on v5.0.0 while the other
+# twenty-three were on v2.21.1 and v7.0.1, both written from memory rather than copied. actionlint,
+# zizmor and poutine are all content with a correctly-pinned obsolete action, so it reached CI, and
+# only ONE of the two was caught there, by an advisory database that happened to name that version.
+# Drift does not need anyone to have reported it first. Selftest runs first, witness included.
+run = [
+  "python3 {{config_root}}/tools/lint_action_pins.py --selftest",
+  "python3 {{config_root}}/tools/lint_action_pins.py",
+]
+
 [tasks."lint:measured-verdict"]
 description = "FAIL if a check filters its command down to the very thing its matcher then asserts (#359)"
 # Such a check cannot tell "the setting is wrong" from "the command produced nothing", so its FAIL
@@ -628,7 +640,7 @@ description = "Everything a pull request will fail on that costs seconds and nee
 #   a real scan   needs a live debian12 VM. It is the one gate CLAUDE.md makes non-negotiable for
 #                 a rules.yml change, and it can never be a hook. `testplan --check` is what says
 #                 so on every push, since nothing else will.
-depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "lint:prose", "lint:false-positives", "lint:applies-if", "lint:wrapper", "merge:one:test", "evidence:test", "lint:measured-verdict", "regression:test", "validate:run:test", "gen:readme:verify", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
+depends = ["build", "test", "lint", "lint:py", "lint:emdash", "lint:norm-refs", "lint:never-auto", "lint:shell-first-word", "lint:install-docs", "lint:embed", "lint:contradictions", "lint:prose", "lint:false-positives", "lint:applies-if", "lint:wrapper", "lint:action-pins", "merge:one:test", "evidence:test", "lint:measured-verdict", "regression:test", "validate:run:test", "gen:readme:verify", "gen:verify", "lint:rules", "validate:mappings", "validate:i18n"]
 run = "python3 {{config_root}}/tools/testplan.py --check"
 
 [tasks."lint:ci"]
