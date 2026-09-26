@@ -24,8 +24,14 @@ name: vm-bisect
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: 'What to vary: images (default) or settings'
+        required: false
+        type: choice
+        options: [images, settings]
+        default: images
       image:
-        description: 'Incus image to bisect (default: the campaign default for debian12)'
+        description: 'Image used by MODE=settings (ignored by MODE=images)'
         required: false
         default: 'images:debian/12/cloud'
 
@@ -87,6 +93,7 @@ jobs:
 
       - name: Which setting kills the guest
         env:
+          MODE: ${{ github.event.inputs.mode }}
           IMAGE: ${{ github.event.inputs.image }}
         run: sg incus-admin -c "bash --noprofile --norc tools/vm_bisect.sh"
 
