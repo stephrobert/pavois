@@ -405,7 +405,35 @@ jobs:
           } > "${RUNNER_TEMP}/msg"
           git commit -F "${RUNNER_TEMP}/msg"
           git push origin "${branch}"
-          gh pr create --base main --head "${branch}"             --title "chore(site): refresh the platform matrix"             --body "Nightly campaign, run ${GITHUB_RUN_ID}. Read the diff before merging: this is what the site will publish."
+
+          # The branch is pushed first, and on purpose: it is the part that always works.
+          #
+          # GITHUB_TOKEN may open a pull request only when the repository allows it, and that
+          # setting is "create AND approve" as one switch. main requires one approving review and a
+          # code owner review, so granting it would let any workflow holding `pull-requests: write`
+          # satisfy that gate by approving its own pull request. That is the confused-deputy path
+          # poutine watches for here, and it is not worth a convenience.
+          #
+          # So the pull request is attempted and its absence is not a failure: the evidence is on a
+          # branch either way, and the compare link is printed where the run summary will show it.
+          # The clean end state is a GitHub App token for this one step, which can create without
+          # being able to approve.
+          if gh pr create --base main --head "${branch}" \
+               --title "chore(site): refresh the platform matrix" \
+               --body "Nightly campaign, run ${GITHUB_RUN_ID}. Read the diff before merging: this is what the site will publish."; then
+            exit 0
+          fi
+          url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/main...${branch}?expand=1"
+          {
+            echo "### The matrix is on a branch, not in a pull request"
+            echo
+            echo "\`gh pr create\` was refused, which happens when Actions may not open pull"
+            echo "requests here. Nothing is lost: the commit is pushed."
+            echo
+            echo "[Open the pull request](${url})"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "branch pushed: ${branch}"
+          echo "open it here: ${url}"
 
       - name: Push it straight to main
         if: steps.mode.outputs.mode == 'push'
