@@ -28,8 +28,18 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
+# Two things can be bisected here, and the first run settled which one matters.
+#
+#   MODE=settings   vm.py's launch flags, one at a time (the first question asked)
+#   MODE=images     the image, with ONE minimal set of flags (the question that remains)
+#
+# The settings run came back with every variant dead, baseline included, and baseline is 2 vCPU and
+# 2GiB with nothing added: essentially what tools/release/scenario.sh launches, nightly, green, on
+# this same runner. So the cause is not in the flags, and only two differences with scenario.sh are
+# left: the image, and the agent:config disk this script attaches and scenario.sh does not.
+MODE=${MODE:-images}
 IMAGE=${IMAGE:-images:debian/12/cloud}
-BUDGET=${BUDGET:-150}          # seconds per attempt; a healthy guest answers in well under a minute
+BUDGET=${BUDGET:-120}          # seconds per attempt; a healthy guest answers in well under a minute
 OUT=bisect
 mkdir -p "$OUT"
 
@@ -76,6 +86,23 @@ variant_args() {
     nic-at-init)
       out=(-c limits.cpu=2 -c limits.memory=4GiB -d root,size=20GiB -c security.secureboot=false
            -c "cloud-init.user-data=$USERDATA" -n incusbr0) ;;
+    # MODE=images: every image gets the SAME minimal flags, so the image is the only variable.
+    *) out=(-c limits.cpu=2 -c limits.memory=2GiB) ;;
+  esac
+}
+
+# MODE=images. `control` is the image tools/release/scenario.sh launches on this very runner every
+# night, green: without a known-good control a bisection cannot tell "this image is broken" from
+# "this harness is broken on this host", and this script has already been wrong once in exactly
+# that way. `no-agent-disk` re-runs the dead image without the agent:config device, which is the
+# only other thing scenario.sh does differently.
+variant_image() {
+  case $1 in
+    control) echo "images:ubuntu/24.04" ;;
+    deb12-cloud | no-agent-disk) echo "images:debian/12/cloud" ;;
+    deb12-plain) echo "images:debian/12" ;;
+    noble-cloud) echo "images:ubuntu/noble/cloud" ;;
+    *) echo "$IMAGE" ;;
   esac
 }
 
@@ -88,11 +115,14 @@ attempt() {
   local try=$2
   local vm="bisect-$name-$try"
   local args=()
+  local img
   variant_args "$name" args
+  img=$(variant_image "$name")
   CURRENT=$vm
   local log="$OUT/$name.$try.log"
+  echo "image: $img" > "$log"
 
-  if ! incus init "$IMAGE" "$vm" --vm "${args[@]}" > "$log" 2>&1; then
+  if ! incus init "$img" "$vm" --vm "${args[@]}" >> "$log" 2>&1; then
     echo "init failed: $(tail -1 "$log")"
     cleanup
     return 2
@@ -100,7 +130,10 @@ attempt() {
   # Only when the variant did not already ask for one at creation.
   printf '%s\n' "${args[@]}" | grep -qx -- '-n' || \
     incus config device add "$vm" eth0 nic network=incusbr0 >> "$log" 2>&1
-  incus config device add "$vm" agent disk source=agent:config >> "$log" 2>&1
+  # scenario.sh does NOT attach this, and scenario.sh boots here. One variant leaves it off so the
+  # difference is measured rather than argued about.
+  [ "$name" = no-agent-disk ] || \
+    incus config device add "$vm" agent disk source=agent:config >> "$log" 2>&1
   if ! incus start "$vm" >> "$log" 2>&1; then
     echo "start failed: $(tail -1 "$log")"
     cleanup
@@ -129,11 +162,19 @@ attempt() {
   return 1
 }
 
-printf '%-16s %-8s %s\n' VARIANT RESULT DETAIL | tee "$OUT/summary.txt"
+case $MODE in
+  settings) NAMES=(baseline mem4g disk20g secureboot-off cloudinit nic-at-init) ;;
+  images) NAMES=(control deb12-cloud no-agent-disk deb12-plain noble-cloud) ;;
+  *) echo "vm_bisect: MODE must be settings or images, not '$MODE'" >&2; exit 2 ;;
+esac
+
+echo "mode: $MODE, budget: ${BUDGET}s per attempt" | tee "$OUT/summary.txt"
+printf '%-16s %-8s %s\n' VARIANT RESULT DETAIL | tee -a "$OUT/summary.txt"
 printf '%-16s %-8s %s\n' '----------------' '--------' '------' | tee -a "$OUT/summary.txt"
 
 dead_found=no
-for name in baseline mem4g disk20g secureboot-off cloudinit nic-at-init; do
+control_up=unknown
+for name in "${NAMES[@]}"; do
   detail=$(attempt "$name" 1)
   rc=$?
   if [ $rc -ne 0 ]; then
@@ -146,19 +187,25 @@ for name in baseline mem4g disk20g secureboot-off cloudinit nic-at-init; do
       continue
     fi
     dead_found=yes
+    [ "$name" = control ] && control_up=no
     printf '%-16s %-8s %s\n' "$name" "DEAD" "$detail / again: $detail2" | tee -a "$OUT/summary.txt"
     continue
   fi
+  [ "$name" = control ] && control_up=yes
   printf '%-16s %-8s %s\n' "$name" "UP" "$detail" | tee -a "$OUT/summary.txt"
 done
 
 {
   echo
-  if [ "$dead_found" = yes ]; then
-    echo "The first DEAD line names the setting that stops the guest booting on this host."
+  # The control is the image scenario.sh boots here nightly. If it dies too, this harness is
+  # measuring itself and nothing below it means anything. Saying so is the whole reason it is here.
+  if [ "$control_up" = no ]; then
+    echo "CONTROL DEAD: the image that boots here every night did not. This run measured the"
+    echo "harness, not the images, and no verdict below the control line can be trusted."
+  elif [ "$dead_found" = yes ]; then
+    echo "The control booted, so the DEAD lines are about their images, not about this host."
   else
-    # A bisection that finds nothing is a result, and a loud one: it means the difference is not in
-    # these settings, and the next place to look is the image or the host itself.
-    echo "NOTHING FAILED TWICE: every variant booted here, so the cause is not in these settings."
+    # A bisection that finds nothing is a result, and a loud one.
+    echo "NOTHING FAILED TWICE: every variant booted here, so the cause is not in what was varied."
   fi
 } | tee -a "$OUT/summary.txt"
