@@ -323,10 +323,33 @@ jobs:
         run: mise run render
 
       - name: Regenerate the matrix
-        # The emitter REFUSES to write a matrix that would drop a platform's campaign, so a job that
-        # died without uploading cannot turn a proved platform back into an unproved one. If that
-        # refusal fires, this step goes red and the committed matrix is left exactly as it was.
+        # Only for a run that covered EVERY platform. A subset run holds evidence for the systems it
+        # was asked for and none for the rest, so regenerating from it would turn eight proved rows
+        # back into unproved ones. The emitter refuses that outright:
+        #
+        #     Run the campaigns, or pass --allow-evidence-loss if the loss is intended.
+        #       VERIFIED   debian12    verdict PASSED, corpus matches, 0 day(s) old
+        #       CURATED    debian13    no clean-VM campaign has ever run for this system
+        #
+        # That refusal is the guard working, not a failure, and a `systems:` dispatch is exactly how
+        # one platform gets proved before the nightly is trusted with all nine. Making it red taught
+        # nothing and trained us to ignore a red publish job, which is worse than not having one.
+        # For a full run the refusal keeps its teeth: a job that died without uploading its bundle
+        # cannot turn a proved platform back into an unproved one, this step goes red, and the
+        # committed matrix is left exactly as it was.
+        if: github.event.inputs.systems == ''
         run: mise run gen:platform-matrix
+
+      - name: Why the matrix was left alone
+        if: github.event.inputs.systems != ''
+        env:
+          SYSTEMS: ${{ github.event.inputs.systems }}
+        run: |
+          set -uo pipefail
+          echo "This run covered only: ${SYSTEMS}"
+          echo "The committed matrix is left as it is, because evidence for the other platforms was"
+          echo "not produced here and regenerating would drop it. What this run DID prove:"
+          python3 tools/release/evidence.py --all || true
 
       - name: What the matrix WOULD become
         # Always shown, whatever the publishing mode. The first nights are meant to be read, not
