@@ -35,21 +35,38 @@ import sys
 import time
 from pathlib import Path
 
-# Incus image aliases, /cloud variants (they carry cloud-init, which is how sshd gets enabled:
-# an Incus VM is a full OS and exposes nothing by default).
+# Incus image aliases, PLAIN variants, not /cloud.
+#
+# The /cloud variants carry cloud-init, and cloud-init used to be how the pavois account and sshd
+# appeared in a fresh guest. They do not boot on a GitHub hosted runner. Measured, not assumed: a
+# bisection over images there, with the launch flags held fixed and images:ubuntu/24.04 as a control
+# that boots on that host nightly, came back
+#
+#     control        UP    agent answered in 20s
+#     deb12-cloud    DEAD  no agent in 131s, status=RUNNING, 1 reboot(s) on console
+#     deb12-plain    UP    agent answered in 20s
+#     noble-cloud    DEAD  no agent in 130s, status=RUNNING, 1 reboot(s) on console
+#
+# Two distributions, both /cloud variants dead, both plain variants up, and the guest restarting
+# every few seconds rather than booting slowly. That cost the nightly campaign five nights of
+# nine red jobs saying only "never answered on SSH".
+#
+# So the account, the key and sshd are installed through the incus agent instead, which is what
+# tools/release/scenario.sh has always done and why that one has been green on those runners for
+# weeks. One mechanism, the same locally and in CI, and no dependency on a datasource.
 IMAGES = {
     # key = the pavois profile (ls profiles/linux/), value = the Incus image alias.
     # RHEL itself is not distributable, so its profiles are exercised on AlmaLinux, which is what
     # `pavois scan` auto-detects to rhel<major> anyway (profileForOS in go/cmd/scan.go).
-    "debian12": "images:debian/12/cloud",
-    "debian13": "images:debian/13/cloud",
-    "ubuntu2204": "images:ubuntu/jammy/cloud",
-    "ubuntu2404": "images:ubuntu/noble/cloud",
-    "ubuntu2604": "images:ubuntu/26.04/cloud",
-    "rhel8": "images:almalinux/8/cloud",
-    "rhel9": "images:almalinux/9/cloud",
-    "rhel10": "images:almalinux/10/cloud",
-    "fedora": "images:fedora/43/cloud",
+    "debian12": "images:debian/12",
+    "debian13": "images:debian/13",
+    "ubuntu2204": "images:ubuntu/jammy",
+    "ubuntu2404": "images:ubuntu/noble",
+    "ubuntu2604": "images:ubuntu/26.04",
+    "rhel8": "images:almalinux/8",
+    "rhel9": "images:almalinux/9",
+    "rhel10": "images:almalinux/10",
+    "fedora": "images:fedora/43",
 }
 
 # Every image above lives on the `images:` remote, which Incus configures out of the box. The
@@ -82,33 +99,77 @@ def name_of(os_key: str) -> str:
     return f"pavois-{os_key}"
 
 
-def cloud_init(pubkey: str, sudo_password: str | None) -> str:
-    """cloud-init that installs sshd and the pavois account. Nothing else is assumed."""
-    sudo_line = (
-        '    sudo: "ALL=(ALL) ALL"' if sudo_password else '    sudo: "ALL=(ALL) NOPASSWD:ALL"'
-    )
-    login_lines = ""  # cloud-init lines that set a login password, when one is asked for
+def provision_script(pubkey: str, sudo_password: str | None) -> str:
+    """The shell that turns a bare guest into a pavois target: account, key, sudo policy, sshd.
+
+    This used to be cloud-init user-data. It is a script now because the images that carry
+    cloud-init do not boot on a hosted runner, and because a script runs over the incus agent,
+    which needs no datasource, no address and no DHCP.
+
+    POSIX sh and no distribution tests: `getent group` decides which admin group exists rather than
+    a list of distributions to keep in step with IMAGES, and the package manager is chosen by which
+    one is installed.
+    """
     if sudo_password:
-        # plain_text_passwd is lab-only and never leaves this machine; it exists so the realistic
-        # password-sudo path can be exercised, which is where harden apply has broken before.
-        login_lines = f"    lock_passwd: false\n    plain_text_passwd: {sudo_password}\n"
-    return (
-        "#cloud-config\n"
-        "package_update: true\n"
-        "packages:\n"
-        "  - openssh-server\n"
-        "users:\n"
-        f"  - name: {USER}\n"
-        "    groups: [sudo, wheel]\n"
-        f"{sudo_line}\n"
-        "    shell: /bin/bash\n"
-        f"{login_lines}"
-        "    ssh_authorized_keys:\n"
-        f"      - {pubkey}\n"
-        "ssh_pwauth: false\n"
-        "runcmd:\n"
-        "  - systemctl enable --now ssh 2>/dev/null || systemctl enable --now sshd\n"
+        # A login password, so the REALISTIC sudo path gets exercised. The cloud default is
+        # NOPASSWD and real hosts are not, and that is where harden apply has broken before.
+        #
+        # It is written into the script, which reaches the guest over STDIN. That is deliberate:
+        # `incus exec --env K=V` would put it in a command line, and `ps` is world-readable on a
+        # machine that also carries real credentials.
+        quoted = "'" + sudo_password.replace("'", "'\\''") + "'"
+        sudo_policy = (
+            f"PAVOIS_PW={quoted}\n"
+            f"printf '{USER} ALL=(ALL) ALL\\n' > /etc/sudoers.d/{USER}\n"
+            f"printf '%s' \"$PAVOIS_PW\" | passwd --stdin {USER} >/dev/null 2>&1 || "
+            f"printf '{USER}:%s\\n' \"$PAVOIS_PW\" | chpasswd\n"
+            "unset PAVOIS_PW\n"
+        )
+    else:
+        sudo_policy = (
+            f"printf '{USER} ALL=(ALL) NOPASSWD:ALL\\n' > /etc/sudoers.d/{USER}\n"
+            f"passwd -l {USER} >/dev/null 2>&1 || true\n"
+        )
+    return f"""set -e
+id {USER} >/dev/null 2>&1 || useradd -m -s /bin/bash {USER}
+for g in sudo wheel; do getent group "$g" >/dev/null 2>&1 && usermod -aG "$g" {USER}; done
+{sudo_policy}chmod 0440 /etc/sudoers.d/{USER}
+mkdir -p /home/{USER}/.ssh
+chmod 700 /home/{USER}/.ssh
+printf '%s\\n' '{pubkey}' > /home/{USER}/.ssh/authorized_keys
+chmod 600 /home/{USER}/.ssh/authorized_keys
+chown -R {USER}:{USER} /home/{USER}/.ssh
+if ! command -v sshd >/dev/null 2>&1; then
+  if command -v apt-get >/dev/null 2>&1; then
+    DEBIAN_FRONTEND=noninteractive apt-get update -qq
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq openssh-server
+  elif command -v dnf >/dev/null 2>&1; then
+    dnf -y -q install openssh-server
+  else
+    yum -y -q install openssh-server
+  fi
+fi
+# Key authentication only: the login password above exists for sudo, not for the network.
+mkdir -p /etc/ssh/sshd_config.d
+printf 'PasswordAuthentication no\\n' > /etc/ssh/sshd_config.d/00-pavois-lab.conf
+systemctl enable --now ssh 2>/dev/null || systemctl enable --now sshd
+"""
+
+
+def provision(name: str, pubkey: str, sudo_password: str | None) -> tuple[bool, str]:
+    """Run the provisioning script inside the guest, through the agent.
+
+    The whole script, password included, goes in over STDIN. Nothing sensitive reaches a command
+    line, which `ps` would publish to every user on this machine.
+    """
+    r = subprocess.run(
+        ["incus", "exec", name, "-T", "--", "sh", "-s"],
+        input=provision_script(pubkey, sudo_password),
+        text=True,
+        capture_output=True,
+        check=False,
     )
+    return r.returncode == 0, (r.stderr or r.stdout or "").strip()
 
 
 def managed_networks() -> list[str]:
@@ -162,6 +223,18 @@ def guest_sh(name: str, script: str) -> str:
 
 
 GUEST_IPV4 = "ip -4 -o addr show scope global | awk '{print $4}' | cut -d/ -f1 | head -1"
+
+
+def wait_for_agent(name: str, timeout: int = BOOT_TIMEOUT) -> bool:
+    """Wait until the guest has booted far enough to answer its agent."""
+    deadline = time.time() + timeout
+    while True:
+        if agent_ready(name):
+            return True
+        print(f"  {DIM}{name}: booting…{OFF}", end="\r", file=sys.stderr)
+        if time.time() + 5 >= deadline:
+            return False
+        time.sleep(5)
 
 
 def ssh_ok(ip: str) -> bool:
@@ -447,8 +520,6 @@ def cmd_up(args: argparse.Namespace) -> int:
         # custom kernel needs signing and a MOK enrolled, which the recipe deliberately does not do.
         "-c",
         "security.secureboot=false",
-        "-c",
-        f"cloud-init.user-data={cloud_init(pub.read_text().strip(), sudo_pw)}",
     ).returncode
     if rc == 0:
         # Harmless when the image already provides it; required when it does not.
@@ -468,6 +539,31 @@ def cmd_up(args: argparse.Namespace) -> int:
             "It will never answer; delete it and retry with a valid --network.",
             file=sys.stderr,
         )
+        return 1
+
+    # The agent first, because everything else needs it. It speaks over vsock, so it answers before
+    # the guest has an address and regardless of whether the network works at all.
+    if not wait_for_agent(name):
+        print(" " * 60, end="\r", file=sys.stderr)
+        diagnose(name)
+        print(
+            f"\n  Watch the next one boot with: script -qec 'incus console {name}' /dev/null\n"
+            f"  Give it longer with: PAVOIS_VM_BOOT_TIMEOUT={BOOT_TIMEOUT * 2}",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(f"  {DIM}{name}: provisioning through the agent{OFF}", end="\r", file=sys.stderr)
+    ok, why = provision(name, pub.read_text().strip(), sudo_pw)
+    if not ok:
+        print(" " * 60, end="\r", file=sys.stderr)
+        print(
+            f"{RED}vm: {name} booted but could not be provisioned.{OFF}\n"
+            "  The account, the key and sshd are installed over the agent, so this is the guest\n"
+            "  refusing, not the network. It said:",
+            file=sys.stderr,
+        )
+        print(indent(why), file=sys.stderr)
         return 1
 
     ip = wait_for_ssh(name)
