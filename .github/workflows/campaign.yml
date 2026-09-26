@@ -215,6 +215,18 @@ jobs:
         env:
           PAVOIS_SSH_KEY: /home/runner/.ssh/id_ed25519
           PAVOIS_BIN: ${{ steps.artefact.outputs.bin }}
+          # The release judges with ITS OWN corpus, never with this checkout's.
+          #
+          # profiles/linux/<os>/inspec.yml is tracked and controls/*.rb are rendered and gitignored,
+          # so a fresh checkout offers a directory that looks like a profile and holds nothing. The
+          # released binary preferred it and evaluated 0 controls, three times in one campaign,
+          # while carrying the rules it needed. Pointing the root at an empty directory is what
+          # makes this runner resemble the machine of somebody who just installed pavois.
+          #
+          # The binary no longer needs this from the next release on: an empty profile directory
+          # cannot shadow the embedded corpus any more (engine.ResolveProfile). The variable stays
+          # because the rule it states is true regardless of which version is under test.
+          PAVOIS_ROOT: ${{ runner.temp }}/no-checkout
           # The same guest boots in 29 seconds on the maintainer's machine and had not reported an
           # address after 300 here. Nested virtualisation on a hosted runner is not a little slower,
           # it is an order of magnitude slower, so the local default is not a budget this can share.
@@ -226,6 +238,7 @@ jobs:
           # tooling through the environment, never a command line, because `ps` is world-readable.
           PAVOIS_SUDO_PASSWORD="$(openssl rand -hex 16)"
           export PAVOIS_SUDO_PASSWORD
+          mkdir -p "${PAVOIS_ROOT}"
           sg incus-admin -c "bash --noprofile --norc tools/golden_path.sh ${{ matrix.os }}"
 
       - name: Sanitise the sealed bundle before anything leaves the runner
