@@ -1,0 +1,106 @@
+name: vm-bisect
+
+# WHY THIS EXISTS
+#
+# The nightly campaign creates its guest and the guest reboots every five seconds, forever. The
+# console says so plainly:
+#
+#     Loading Linux 6.1.0-53-amd64 ...
+#     [FAILED] Failed unmounting run-incu...gent.mount - /run/incus_agent.
+#     [    5.454542] watchdog: watchdog0: watchdog did not stop!
+#     [    5.576437] reboot: Restarting system
+#
+# The same guest, the same command, boots in 29 seconds on the maintainer's machine, and
+# tools/release/scenario.sh has been booting VMs on these very runners for weeks. So the cause is an
+# interaction between one of the settings vm.py adds and this host, and there are only four
+# candidates: secure boot off, a sized root disk, cloud-init user-data, and 4GiB instead of 2.
+#
+# Guessing costs seventeen minutes a try. This costs ten minutes once and comes back with a name.
+# Each variant gets a short budget on purpose: a healthy guest answers its agent in well under two
+# minutes, and one that reboot-loops will not answer in any budget at all.
+#
+# Dispatch-only, and it creates nothing outside its own runner.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'What to vary: images (default) or settings'
+        required: false
+        type: choice
+        options: [images, settings]
+        default: images
+      image:
+        description: 'Image used by MODE=settings (ignored by MODE=images)'
+        required: false
+        default: 'images:debian/12/cloud'
+
+concurrency:
+  group: vm-bisect
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  bisect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Is KVM available on this runner
+        run: |
+          set -euo pipefail
+          ls -l /dev/kvm
+          grep -Ec '(vmx|svm)' /proc/cpuinfo
+
+      # Copied from e2e.yml, which is the workflow that proves a VM can boot here at all.
+      - name: Install Incus (Zabbly stable, key fingerprint pinned)
+        run: |
+          set -euo pipefail
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://pkgs.zabbly.com/key.asc | sudo tee /etc/apt/keyrings/zabbly.asc >/dev/null
+          gpg --show-keys --fingerprint /etc/apt/keyrings/zabbly.asc
+          sudo tee /etc/apt/sources.list.d/zabbly-incus.sources >/dev/null <<EOF
+          Enabled: yes
+          Types: deb
+          URIs: https://pkgs.zabbly.com/incus/stable
+          Suites: $(. /etc/os-release && echo "${VERSION_CODENAME}")
+          Components: main
+          Architectures: $(dpkg --print-architecture)
+          Signed-By: /etc/apt/keyrings/zabbly.asc
+          EOF
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends incus incus-client
+          sudo incus --version
+          sudo incus admin init --auto
+          sudo usermod -aG incus-admin "$USER"
+          sudo chown -R "$USER:$USER" "$HOME/.config/incus" 2>/dev/null || true
+          sudo incus network show incusbr0 | grep -E 'ipv4.address|ipv4.nat' || true
+
+      - name: A key, so a variant can be asked for more than just its agent
+        run: ssh-keygen -t ed25519 -N '' -f "$HOME/.ssh/id_ed25519" -C pavois-bisect
+
+      - name: Which setting kills the guest
+        env:
+          MODE: ${{ github.event.inputs.mode }}
+          IMAGE: ${{ github.event.inputs.image }}
+        run: sg incus-admin -c "bash --noprofile --norc tools/vm_bisect.sh"
+
+      - name: Every console, whatever happened
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vm-bisect
+          path: bisect/
+          if-no-files-found: warn

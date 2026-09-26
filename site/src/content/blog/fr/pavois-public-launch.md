@@ -103,6 +103,14 @@ L'objectif n'est pas de multiplier les contrôles. C'est de faire de Pavois une 
 
 Pavois couvre **neuf systèmes** Linux. **Deux** sont passés par la campagne complète sur VM vierge : Debian 12 et Debian 13. Les sept autres sont curatés et validés statiquement, mais aucune campagne n'a tourné dessus : traitez-les comme expérimentaux. « 9 systèmes supportés » et « 9 systèmes prouvés » ne sont pas la même phrase, et une seule des deux est vraie.
 
+> **Mise à jour du 21 septembre 2026.** Les neuf sont depuis passés par la campagne complète, et les
+> sept qui n'avaient jamais tourné ont toutes échoué au premier essai, pour une seule cause : quatre
+> contrôles rendaient un verdict qu'ils n'avaient jamais mesuré. La distinction que ce paragraphe
+> traçait est désormais **appliquée** plutôt que racontée, sur [la matrice des plateformes](/fr/platforms/),
+> qui sépare « curé » et « prouvé » en deux états distincts au lieu de le confier à de la prose. Le
+> paragraphe ci-dessus reste tel qu'il a été écrit : il était vrai ce jour-là, et un billet qui se
+> réécrit en silence vaut moins qu'un billet qui date ses corrections.
+
 Il n'y a pas non plus d'agrégation de flotte. Un run audite une cible. Une boucle et un dossier de rapports suffisent, parce que chaque scan émet un JSON complet, mais c'est un manque assumé, pas une fonction cachée.
 
 ## À retenir

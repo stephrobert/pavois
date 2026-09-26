@@ -20,3 +20,21 @@ export const OS_LABEL: Record<string, string> = {
 };
 
 export const osLabel = (id: string): string => OS_LABEL[id] ?? id;
+
+// The family an id belongs to, derived rather than listed: every id is a family name followed by a
+// release number (`debian12`, `ubuntu2404`, `rhel9`), and `fedora` is the one that pins none.
+export const osFamily = (id: string): string => id.replace(/\d+$/, '');
+
+// Fixed display order for the platform matrix. It is an ORDER, not a second list of targets: an
+// unknown family sorts last rather than disappearing, so adding a target to the rule base still
+// shows it. Fixed on purpose: a table sorted by verdict reshuffles every time a campaign changes
+// its mind, and a reader who comes back to check one row has to hunt for it. Here the rows stay
+// where they are and only the badges move.
+const FAMILY_ORDER = ['debian', 'ubuntu', 'rhel', 'fedora'];
+
+/** Sort key: family first in the fixed order above, then release number ascending. */
+export const osSortKey = (id: string): [number, number] => {
+  const rank = FAMILY_ORDER.indexOf(osFamily(id));
+  const version = Number(id.match(/\d+$/)?.[0] ?? 0);
+  return [rank === -1 ? FAMILY_ORDER.length : rank, version];
+};

@@ -1,0 +1,426 @@
+name: campaign
+
+# Prove every supported platform on a clean VM, nine at a time.
+#
+# WHY THIS CAN RUN ON A GITHUB RUNNER AT ALL
+#
+# Because e2e.yml already does it: Incus from the Zabbly repository, `incus admin init --auto`, and
+# a VM with KVM. That workflow's own header explains the choice of a hosted runner over a
+# self-hosted one, and the reason has not changed: a self-hosted runner is how a fork's pull request
+# reaches the maintainer's machine. This workflow inherits that decision rather than reopening it.
+#
+# WHY A MATRIX AND NOT A LOOP
+#
+# A campaign is 15 to 20 minutes on a workstation and longer on a hosted runner: scan, plan, apply,
+# reboot, re-plan from the CURRENT state, apply, reboot, scan again, diff, seal the bundle. Nine of
+# those in sequence is most of a working day and would sit against the 6-hour job ceiling. Nine jobs
+# is the slowest campaign, once, each on its own 4-core, 16 GiB runner with no contention between
+# them.
+#
+# `fail-fast: false` IS THE WHOLE POINT. A platform that fails is EVIDENCE, and #351 exists because
+# the site used to hide exactly that. Cancelling the other eight the moment one goes red would
+# publish nothing at all, which is the failure mode this replaces.
+#
+# The publishing job runs `if: always()` for the same reason, and the emitter refuses to write a
+# matrix that would DROP a platform's campaign, so a job that dies without uploading its bundle
+# cannot silently turn a proved platform back into "nobody ever proved this".
+
+on:
+  schedule:
+    # Nightly, in the evening Paris time. The runners are free and the maintainer's machine is not,
+    # so there is no reason to prove this weekly when it can be proved every night.
+    - cron: '17 20 * * *'
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Release tag to prove (default: the latest)'
+        required: false
+        default: ''
+      systems:
+        description: 'Space-separated subset to run (default: all nine)'
+        required: false
+        default: ''
+
+concurrency:
+  group: campaign
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  campaign:
+    name: ${{ matrix.os }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      id-token: write   # OIDC, to assume the evidence-publishing role. No long-lived key exists.
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - debian12
+          - debian13
+          - ubuntu2204
+          - ubuntu2404
+          - ubuntu2604
+          - rhel8
+          - rhel9
+          - rhel10
+          - fedora
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Is this platform in the requested subset
+        id: wanted
+        env:
+          SUBSET: ${{ github.event.inputs.systems }}
+          OS: ${{ matrix.os }}
+        run: |
+          set -euo pipefail
+          # A `case` on the list padded with spaces, rather than splitting it into words: an
+          # unquoted expansion is the one shape shellcheck refuses, and it is right to.
+          case " ${SUBSET} " in
+            "  ") want=yes ;;
+            *" ${OS} "*) want=yes ;;
+            *) want=no ;;
+          esac
+          echo "run=${want}" >> "$GITHUB_OUTPUT"
+          [ "${want}" = no ] && echo "${OS} is not in the requested subset; skipping"
+          exit 0
+
+      - name: Is KVM available on this runner
+        if: steps.wanted.outputs.run == 'yes'
+        run: |
+          ls -l /dev/kvm
+          grep -Ec '(vmx|svm)' /proc/cpuinfo
+
+      - name: Install Incus (Zabbly stable, key fingerprint pinned)
+        if: steps.wanted.outputs.run == 'yes'
+        env:
+          ZABBLY_FPR: '4EFC590696CB15B87C73A3AD82CC8797C838DCFD'
+        run: |
+          set -euo pipefail
+          workdir="$(mktemp -d)"
+          curl --retry 3 --retry-connrefused -fsSL https://pkgs.zabbly.com/key.asc -o "${workdir}/zabbly.asc"
+          fpr="$(gpg --show-keys --with-colons "${workdir}/zabbly.asc" | awk -F: '/^fpr/ {print $10; exit}')"
+          if [ "${fpr}" != "${ZABBLY_FPR}" ]; then
+            echo "unexpected Zabbly key fingerprint: ${fpr}" >&2
+            exit 1
+          fi
+          sudo install -D -m 0644 "${workdir}/zabbly.asc" /etc/apt/keyrings/zabbly.asc
+          # shellcheck disable=SC1091
+          codename="$(. /etc/os-release && echo "${VERSION_CODENAME}")"
+          arch="$(dpkg --print-architecture)"
+          sudo tee /etc/apt/sources.list.d/zabbly-incus.sources >/dev/null <<EOF
+          Enabled: yes
+          Types: deb
+          URIs: https://pkgs.zabbly.com/incus/stable
+          Suites: ${codename}
+          Components: main
+          Architectures: ${arch}
+          Signed-By: /etc/apt/keyrings/zabbly.asc
+          EOF
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends incus incus-client
+          sudo incus --version
+          sudo incus admin init --auto
+          sudo usermod -aG incus-admin "$USER"
+          # `sudo incus` writes its CLIENT config into the invoking user's HOME, owned by root.
+          # The scenario then runs as `runner` (via sg, for the daemon socket) and cannot read its
+          # own config file:
+          #
+          #   Failed to load configuration: Unable to read the configuration file:
+          #   open /home/runner/.config/incus/config.yml: permission denied
+          #
+          # which surfaced as "could not create the VM" and nothing else. Group membership grants
+          # the SOCKET; it does not make a root-owned file in $HOME readable. Hand it back.
+          sudo chown -R "$USER:$USER" "$HOME/.config/incus"
+
+          # The VM has to reach omnitruck.cinc.sh: the scenario installs the scan engine by running
+          # the documentation's own commands, which download a package and check its sha256. On the
+          # runner that timed out twice at 134s with "Couldn't connect to server", so the engine
+          # install failed and phase 3 went red.
+          #
+          # incusbr0 comes up with ipv4.nat=true (verified: `incus network show incusbr0`), so the
+          # NAT rule is there. What is not is permission to forward: Docker is preinstalled on these
+          # runners and sets the iptables FORWARD policy to DROP, which drops every packet crossing
+          # any OTHER bridge. Incus is that other bridge.
+          #
+          # Printed before and after, because a fix that is asserted rather than shown is how the
+          # next person spends an afternoon on it.
+          echo "FORWARD policy before: $(sudo iptables -S FORWARD | head -1)"
+          sudo iptables -P FORWARD ACCEPT
+          echo "FORWARD policy after:  $(sudo iptables -S FORWARD | head -1)"
+          sudo incus network show incusbr0 | grep -E 'ipv4.address|ipv4.nat' || true
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        if: steps.wanted.outputs.run == 'yes'
+        with:
+          version: 2026.2.23
+          install: true
+          cache: true
+
+      - name: The control host has the scan engine (the scan runs from here, over ssh)
+        if: steps.wanted.outputs.run == 'yes'
+        run: |
+          bash --noprofile --norc tools/release/engine_install_script.sh > "${RUNNER_TEMP}/install-cinc.sh"
+          cd "${RUNNER_TEMP}" && bash install-cinc.sh
+          cinc-auditor version
+
+      - name: A throwaway ssh key for the target
+        if: steps.wanted.outputs.run == 'yes'
+        run: ssh-keygen -t ed25519 -N '' -f "$HOME/.ssh/id_ed25519" -C pavois-campaign
+
+      - name: The binary under test is the RELEASED one, checksum verified
+        id: artefact
+        if: steps.wanted.outputs.run == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # gh resolves the repository from the git remote of the CURRENT directory. This step
+          # deliberately works in RUNNER_TEMP, where there is none, so every `gh` call here died on
+          # `fatal: not a git repository` and the campaign never ran once in five nights. Naming the
+          # repository explicitly makes the step independent of where it happens to stand.
+          GH_REPO: ${{ github.repository }}
+          WANTED: ${{ github.event.inputs.release }}
+        run: |
+          set -euo pipefail
+          # What users install, not what this checkout builds. A release carries its own embedded
+          # rule base, and twice already a release shipped a binary whose behaviour nothing in this
+          # repository had exercised: the campaign must judge the artefact, not the working tree.
+          tag="${WANTED}"
+          [ -n "${tag}" ] || tag="$(gh release view --json tagName --jq .tagName)"
+          echo "proving ${tag}"
+          mkdir -p "${RUNNER_TEMP}/artefact"
+          gh release download "${tag}" --dir "${RUNNER_TEMP}/artefact" --pattern 'pavois-linux-amd64' --pattern 'checksums.txt'
+          cd "${RUNNER_TEMP}/artefact"
+          # The checksum file covers every asset; check only the one about to be run, and fail
+          # loudly rather than proving a binary nobody vouched for.
+          grep ' pavois-linux-amd64$' checksums.txt > wanted.sha256
+          sha256sum -c wanted.sha256
+          chmod +x pavois-linux-amd64
+          echo "bin=${RUNNER_TEMP}/artefact/pavois-linux-amd64" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          "${RUNNER_TEMP}/artefact/pavois-linux-amd64" version
+
+      - name: Run the campaign
+        if: steps.wanted.outputs.run == 'yes'
+        env:
+          PAVOIS_SSH_KEY: /home/runner/.ssh/id_ed25519
+          PAVOIS_BIN: ${{ steps.artefact.outputs.bin }}
+          # The release judges with ITS OWN corpus, never with this checkout's.
+          #
+          # profiles/linux/<os>/inspec.yml is tracked and controls/*.rb are rendered and gitignored,
+          # so a fresh checkout offers a directory that looks like a profile and holds nothing. The
+          # released binary preferred it and evaluated 0 controls, three times in one campaign,
+          # while carrying the rules it needed. Pointing the root at an empty directory is what
+          # makes this runner resemble the machine of somebody who just installed pavois.
+          #
+          # The binary no longer needs this from the next release on: an empty profile directory
+          # cannot shadow the embedded corpus any more (engine.ResolveProfile). The variable stays
+          # because the rule it states is true regardless of which version is under test.
+          PAVOIS_ROOT: ${{ runner.temp }}/no-checkout
+          # The same guest boots in 29 seconds on the maintainer's machine and had not reported an
+          # address after 300 here. Nested virtualisation on a hosted runner is not a little slower,
+          # it is an order of magnitude slower, so the local default is not a budget this can share.
+          PAVOIS_VM_BOOT_TIMEOUT: '900'
+        run: |
+          set -uo pipefail
+          # The guest is created for this job and destroyed with it, so the sudo password is a
+          # per-run random value rather than a secret: it never outlives the runner. It reaches the
+          # tooling through the environment, never a command line, because `ps` is world-readable.
+          PAVOIS_SUDO_PASSWORD="$(openssl rand -hex 16)"
+          export PAVOIS_SUDO_PASSWORD
+          mkdir -p "${PAVOIS_ROOT}"
+          sg incus-admin -c "bash --noprofile --norc tools/golden_path.sh ${{ matrix.os }}"
+
+      - name: Sanitise the sealed bundle before anything leaves the runner
+        if: always() && steps.wanted.outputs.run == 'yes'
+        run: |
+          set -uo pipefail
+          # Only the bundle is publishable: seven other files in a campaign directory carry the
+          # target's address in their content, campaign.log alone 399 times. The script renames the
+          # scan files (whose NAME encodes the address), follows through in checksums.txt and
+          # manifest.json, recomputes the manifest's own hash, and REFUSES if a target field still
+          # names an address. Selftested, and falsified against a real campaign both ways.
+          shopt -s nullglob
+          dirs=(reports/golden-*/)
+          [ ${#dirs[@]} -gt 0 ] || { echo "no campaign directory"; exit 0; }
+          bash --noprofile --norc tools/release/sanitize_bundle.sh "${dirs[@]}"
+
+      - name: Publish the sealed evidence, if a bucket is configured
+        if: always() && steps.wanted.outputs.run == 'yes' && vars.EVIDENCE_BUCKET != ''
+        env:
+          BUCKET: ${{ vars.EVIDENCE_BUCKET }}
+          TAG: ${{ steps.artefact.outputs.tag }}
+          OS: ${{ matrix.os }}
+        run: |
+          set -euo pipefail
+          # Skipped, not failed, while no bucket is configured: a workflow that goes red every night
+          # over infrastructure nobody has created yet is a workflow people stop reading.
+          echo "would publish to s3://${BUCKET}/campaigns/${TAG}/${OS}/"
+
+      - name: The campaign, whatever happened to it
+        if: always() && steps.wanted.outputs.run == 'yes'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: campaign-${{ matrix.os }}
+          path: reports/golden-${{ matrix.os }}-*/
+          if-no-files-found: warn
+          retention-days: 30
+
+  publish:
+    name: Regenerate the platform matrix
+    needs: [campaign]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      # Both are needed only by the two gated steps at the end. GitHub Actions has no conditional
+      # permissions, so the grant is unconditional and the STEPS are what MATRIX_PUBLISH controls.
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          version: 2026.2.23
+          install: true
+          cache: true
+
+      - name: Collect every campaign that produced anything
+        # Soft: with no matching artefact this action errors, and the message says nothing useful.
+        # Letting it pass hands the decision to the emitter's evidence-loss guard below, which
+        # refuses to overwrite a matrix it can no longer account for and says which platforms it
+        # would have lost. A loud, specific refusal beats an opaque download failure.
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: campaign-*
+          path: reports/
+          merge-multiple: true
+
+      - name: What came back
+        run: |
+          set -uo pipefail
+          ls -d reports/golden-*/ 2>/dev/null || echo "  no campaign directory at all"
+
+      - name: The corpus the matrix is judged against
+        run: mise run render
+
+      - name: Regenerate the matrix
+        # Only for a run that covered EVERY platform. A subset run holds evidence for the systems it
+        # was asked for and none for the rest, so regenerating from it would turn eight proved rows
+        # back into unproved ones. The emitter refuses that outright:
+        #
+        #     Run the campaigns, or pass --allow-evidence-loss if the loss is intended.
+        #       VERIFIED   debian12    verdict PASSED, corpus matches, 0 day(s) old
+        #       CURATED    debian13    no clean-VM campaign has ever run for this system
+        #
+        # That refusal is the guard working, not a failure, and a `systems:` dispatch is exactly how
+        # one platform gets proved before the nightly is trusted with all nine. Making it red taught
+        # nothing and trained us to ignore a red publish job, which is worse than not having one.
+        # For a full run the refusal keeps its teeth: a job that died without uploading its bundle
+        # cannot turn a proved platform back into an unproved one, this step goes red, and the
+        # committed matrix is left exactly as it was.
+        if: github.event.inputs.systems == ''
+        run: mise run gen:platform-matrix
+
+      - name: Why the matrix was left alone
+        if: github.event.inputs.systems != ''
+        env:
+          SYSTEMS: ${{ github.event.inputs.systems }}
+        run: |
+          set -uo pipefail
+          echo "This run covered only: ${SYSTEMS}"
+          echo "The committed matrix is left as it is, because evidence for the other platforms was"
+          echo "not produced here and regenerating would drop it. What this run DID prove:"
+          python3 tools/release/evidence.py --all || true
+
+      - name: What the matrix WOULD become
+        # Always shown, whatever the publishing mode. The first nights are meant to be read, not
+        # trusted: this job has never run before, and its download/render/regenerate path is
+        # unexercised. A diff nobody looks at is how a wrong matrix reaches the site.
+        run: |
+          set -uo pipefail
+          git --no-pager diff --stat -- site/src/data/platform-matrix.json || true
+          python3 tools/release/evidence.py --all || true
+
+      - name: Publishing mode
+        id: mode
+        env:
+          MODE: ${{ vars.MATRIX_PUBLISH }}
+        run: |
+          set -euo pipefail
+          # off (default) | pr | push. The ladder this repository already applies: prove a rung
+          # before standing on the next. `publish` had never run at all when it was written, and
+          # its first execution must not be the one that rewrites main and republishes the site.
+          case "${MODE}" in
+            pr|push) echo "mode=${MODE}" >> "$GITHUB_OUTPUT" ;;
+            *) echo "mode=off" >> "$GITHUB_OUTPUT"
+               echo "MATRIX_PUBLISH is unset: artefacts only, nothing is committed." ;;
+          esac
+
+      - name: The matrix, as an artefact to be read
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: platform-matrix
+          path: site/src/data/platform-matrix.json
+          if-no-files-found: warn
+
+      - name: Open a pull request with it
+        if: steps.mode.outputs.mode == 'pr'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git diff --quiet -- site/src/data/platform-matrix.json && {
+            echo "the matrix is unchanged; nothing to propose"; exit 0; }
+          branch="matrix/${GITHUB_RUN_ID}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -b "${branch}"
+          git add site/src/data/platform-matrix.json
+          {
+            echo "chore(site): refresh the platform matrix from the nightly campaign"
+            echo
+            echo "Generated by .github/workflows/campaign.yml, run ${GITHUB_RUN_ID}."
+            echo "Every state comes from a clean-VM campaign against the released binary,"
+            echo "sealed in its own evidence bundle; nothing here is typed by hand."
+          } > "${RUNNER_TEMP}/msg"
+          git commit -F "${RUNNER_TEMP}/msg"
+          git push origin "${branch}"
+          gh pr create --base main --head "${branch}"             --title "chore(site): refresh the platform matrix"             --body "Nightly campaign, run ${GITHUB_RUN_ID}. Read the diff before merging: this is what the site will publish."
+
+      - name: Push it straight to main
+        if: steps.mode.outputs.mode == 'push'
+        run: |
+          set -euo pipefail
+          git diff --quiet -- site/src/data/platform-matrix.json && {
+            echo "the matrix is unchanged; nothing to commit"; exit 0; }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add site/src/data/platform-matrix.json
+          {
+            echo "chore(site): refresh the platform matrix from the nightly campaign"
+            echo
+            echo "Generated by .github/workflows/campaign.yml, run ${GITHUB_RUN_ID}."
+          } > "${RUNNER_TEMP}/msg"
+          git commit -F "${RUNNER_TEMP}/msg"
+          git push
+          # site/** is in site-deploy's trigger paths, so the page republishes on its own.

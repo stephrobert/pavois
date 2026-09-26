@@ -12,6 +12,79 @@ its content digest**, so an archived result stays interpretable long after the t
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-09-21
+
+The release where the rule base stopped answering questions it had not asked. The **baseline
+changes**: 65 controls now report what they measured instead of an empty string, so a 0.1.6 report
+and a 0.1.7 report can disagree about the same machine. They do not disagree about its state; they
+disagree about whether the earlier verdict rested on anything.
+
+Nine platforms are proved end to end, against two on 0.1.6.
+
+### Fixed
+
+- **65 controls reported verdicts they had never measured** (#359). The shape, in one line: a
+  command filtered down to the value that passes, and a matcher that then demanded that value.
+  `grep '^CONFIG_X=y'` keeps nothing when the option is off AND nothing when the kernel config
+  cannot be read, so the FAIL it reported in the second case was invented. Found by running the
+  golden-path campaign on the seven platforms that had never had one: seven campaigns, seven
+  failures, one cause. Four hand-written checks, two ARM64 ones no x86 campaign can reach, and 59
+  rendered by the `kconfig` template, whose sentinel answered "there was no config to read" and
+  never "the option is off".
+
+  It cost a published grade, not just a line in a report: Ubuntu 26.04 and 24.04 finish at the same
+  94% pass ratio and came out E and D, because one HIGH weighing 15 points was a verdict on nothing.
+
+  The fix uses the idiom the repository already owned (`PAVOIS_NO_KERNEL_CONFIG`,
+  `PAVOIS_NO_AUDITCTL`) rather than inventing one, and deliberately NOT an applicability guard:
+  `tools/applies_if.py` states why, and it is right. auditd being absent does not make 60 audit
+  rules inapplicable. Those controls still fail; they fail with evidence now.
+
+- **A sentinel gated on `grep`'s exit status fired on a compliant host.** `grep FILE... || echo
+  SENTINEL` runs the fallback even when grep MATCHED, because an unreadable file among its arguments
+  returns 2 and `-s` suppresses the message, not the status. Introduced by the fix above and caught
+  by the first campaign run against it, which is what that campaign was for.
+
+### Added
+
+- **A platform verification matrix**, generated rather than typed
+  ([pavois.dev/platforms](https://pavois.dev/en/platforms/), and `/platform-matrix.json` for
+  machines). Six states that may not be collapsed: VERIFIED, FAILED, STALE, INCOMPLETE, CURATED,
+  UNKNOWN. A system nobody campaigned reads CURATED, never a paler VERIFIED; a campaign that ran and
+  failed reads FAILED rather than hiding behind an older green one; missing evidence reads UNKNOWN
+  and never a pass. Each row publishes the version proved, the grade before and after, and where the
+  campaign ran (#351).
+
+- **A nightly campaign in CI** (#362): nine jobs, one per platform, each against the released binary
+  verified by checksum, on hosted runners. Publishing is disarmed by default, because that job had
+  never run when it was written and its first execution must not be the one that rewrites main.
+
+- **`lint:measured-verdict`** refuses the shape statically, and guards the `kconfig` template
+  directly. It found the two ARM64 controls that no campaign on an x86 lab could ever reach.
+
+### Changed
+
+- **`evidence.py` reads the campaign's sealed bundle** rather than parsing what it printed. A
+  compliance tool that publishes evidence should read its own: the bundle carries the grades, the
+  posture per class, the transition counts and `pass>fail`, all sealed by `checksums.txt`, which is
+  now verified at read time. It surfaced three within-campaign regressions on RHEL that log-scraping
+  had never shown.
+
+- **A verdict is about a (version, platform) pair.** A campaign of a released binary measures the
+  corpus embedded in that release, so it is no longer judged against the working tree, which moves
+  on the next commit. It goes stale on its age, or when the site advertises another version.
+
+### Known gaps
+
+- Three `kconfig-gcc-plugin-*` controls still report on an empty value where the option is absent
+  from the kernel's Kconfig entirely, rather than merely disabled. The template keeps the disabled
+  form; absence needs the fallback that a `set: false` control cannot take.
+
+- Hardening itself regresses three controls on the RHEL family (`file-at-deny-absent`,
+  `misc-postfix-anti-vrfy`, `misc-postfix-banner`): installing `at` creates `/etc/at.deny`, pulling
+  in postfix brings a banner naming the distribution. Now visible, not yet fixed.
+
+
 ## [0.1.6] - 2026-09-18
 
 A release about what the tool SAYS rather than what it checks. The baseline is unchanged, so every
@@ -445,7 +518,8 @@ history to read. The embedded baseline is `pavois-baseline` 0.2.0.
 - OSCAL output is the baseline (catalog and profiles), not yet a per-scan assessment-results
   package. No container image is published yet.
 
-[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/stephrobert/pavois/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/stephrobert/pavois/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/stephrobert/pavois/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/stephrobert/pavois/compare/v0.1.3...v0.1.4

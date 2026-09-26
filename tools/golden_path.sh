@@ -34,7 +34,11 @@ OS=${1:-debian12}
 KEY=${PAVOIS_SSH_KEY:-$HOME/.ssh/id_ed25519}
 STAMP=$(date +%Y%m%d-%H%M%S)
 OUT=reports/golden-$OS-$STAMP
-PAV=$PWD/go/pavois
+# The binary under test. Defaults to the one this checkout builds; PAVOIS_BIN points it at another,
+# which is how a campaign can prove what a RELEASE does rather than what the working tree does.
+# Those are not the same claim: the released artefact carries its own embedded rule base, and twice
+# already a release shipped a binary whose behaviour no test in this repository had exercised.
+PAV=${PAVOIS_BIN:-$PWD/go/pavois}
 
 mkdir -p "$OUT"/{before,pass1,pass2}
 LOG=$OUT/campaign.log
@@ -61,7 +65,14 @@ validate_scan() {
 }
 
 step "0. the binary under test"
-mise run build >/dev/null 2>&1 || { echo "build failed"; exit 1; }
+if [ -n "${PAVOIS_BIN:-}" ]; then
+  # Provided from outside: do NOT build over it. Building would silently replace the artefact the
+  # campaign was asked to judge with the working tree's, and the log would say nothing about it.
+  [ -x "$PAV" ] || { echo "PAVOIS_BIN is not an executable: $PAV"; exit 1; }
+  echo "binary provided: $PAV" | tee -a "$LOG"
+else
+  mise run build >/dev/null 2>&1 || { echo "build failed"; exit 1; }
+fi
 "$PAV" version | tee -a "$LOG"
 
 step "1. a FRESH VM, created by the published tooling"

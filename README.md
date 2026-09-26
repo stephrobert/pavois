@@ -323,12 +323,20 @@ explicit about its edges: some domains (firewall ruleset, log forwarding, MAC po
 shallow today. The honest [coverage matrix](https://pavois.dev/en/handbook/coverage/) names what is
 deep and what is not.
 
-**Two of those nine have been proven end to end.** Debian 12 and Debian 13 each go through the full
-campaign in `tools/golden_path.sh` on a fresh VM: scan, plan, apply, reboot, re-scan, a second pass
-re-planned from the resulting state, and an evidence bundle verified at the end. The other seven are
-curated and statically validated, but no campaign has been run on them, so treat them as
-experimental and say what you find. That distinction is deliberate: "9 systems supported" and
-"9 systems proven" are not the same sentence, and only one of them is true.
+**All nine have now been proven end to end.** Each goes through the full campaign in
+`tools/golden_path.sh` on a fresh VM: scan, plan, apply, reboot, re-scan, a second pass re-planned
+from the resulting state, and an evidence bundle verified at the end. Which platform was proved,
+when, against which version, and with what grade before and after is published and generated rather
+than typed: [the platform matrix](https://pavois.dev/en/platforms/).
+
+The distinction that sentence used to draw still matters, and it is now enforced rather than
+narrated. "Supported", "curated" and "proved on a clean VM" are three different claims, so the
+matrix keeps six states apart: a system nobody campaigned reads CURATED, never a paler VERIFIED, and
+a campaign that ran and failed reads FAILED rather than being hidden behind an older green one.
+
+Getting there took finding out that seven of the nine had never had a campaign at all, and that the
+first seven that ran all failed for the same reason: four controls were reporting verdicts they had
+never measured, on every platform but Debian.
 
 ## 🤝 Contributing
 

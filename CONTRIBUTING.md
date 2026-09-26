@@ -224,6 +224,35 @@ merging. `testplan` says so on every push, prints what each run leaves unproven,
 changed path that no rule classifies: a path nobody classified is a path nobody knows how to test.
 Adding a rule to `tools/testplan.py` is part of adding a new kind of file to the repo.
 
+### Merging: one at a time, each one on top of current `main`
+
+```bash
+mise run merge:one -- 357            # merge it, or refuse and say which condition failed
+mise run merge:one -- 357 --dry-run  # verify only
+```
+
+Two properties matter here, and neither survives merging a batch: a pull request is validated
+against **current** `main`, and no two are validated against each other's absence. Twelve merged in
+one go is how the pipeline last went red.
+
+GitHub's merge queue is the tool for that, and this repository cannot have it: `merge_queue` is a
+rule type for repositories owned by an **organisation**, and `pavois` is owned by a user account.
+The API refuses the rule alone in a ruleset of its own with every parameter removed, so there is
+nothing to configure around it.
+
+The branch ruleset already carries half the intent, with `strict_required_status_checks_policy`:
+a branch behind `main` cannot merge, and serialisation follows on its own, since the first merge
+makes every other open pull request stale. What defeats it is `gh pr merge --admin`, and `--admin`
+is not laziness: the ruleset also demands one approving review, GitHub forbids approving your own
+pull request, so a solo maintainer can never satisfy it. The bypass is structural.
+
+`merge:one` splits what that bypass lumps together. It checks, against the live API, exactly what
+the bypass would skip: the branch is not behind `main`, every **required** check is green on that
+precise head commit, nothing is still running, and `main` has not moved while it was looking. Only
+then does it merge, so the bypass covers the unsatisfiable review rule and nothing else. The
+required-check list is read from the branch's effective rules on every run rather than copied into
+the script, because a guard holding its own copy of the gate drifts away from it.
+
 ### The individual gates
 
 CI enforces all of these; `prepush` runs the offline ones for you.

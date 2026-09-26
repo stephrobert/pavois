@@ -33,9 +33,12 @@ VERSION=${VERSION:-v0.1.1}
 LOCAL_VERSION=${PAVOIS_LOCAL_VERSION:-${VERSION#v}}
 BASE="https://github.com/stephrobert/pavois/releases/download/${VERSION}"
 KEY=${PAVOIS_SSH_KEY:-$HOME/.ssh/id_ed25519}
-# The keys are tools/vm.py's, not the distribution names: `rhel9` IS images:almalinux/9/cloud,
-# which is precisely the image the field report is about. Using "alma9" here fails with an
-# "unknown OS" that looks like a broken script rather than a wrong name.
+# The keys are tools/vm.py's, not the distribution names: `rhel9` IS images:almalinux/9, which is
+# precisely the image the field report is about. Using "alma9" here fails with an "unknown OS" that
+# looks like a broken script rather than a wrong name.
+#
+# Plain image variants, not /cloud: those do not boot on a hosted runner, and vm.py provisions the
+# account, the key and sshd over the incus agent instead of through cloud-init.
 OSES=${*:-"rhel9 rhel8 fedora debian12 ubuntu2404"}
 OUT=reports/install-matrix-$(date +%Y%m%d-%H%M%S)
 mkdir -p "$OUT"
@@ -100,8 +103,16 @@ for os in $OSES; do
 
   say "--- a fresh VM"
   mise run vm -- down "$os" >/dev/null 2>&1
-  if ! mise run vm -- up "$os" --sudo-password "${PAVOIS_SUDO_PASSWORD:-}" >/dev/null 2>&1; then
-    say "  VM creation FAILED, skipping"
+  # --sudo-password takes NO value: vm.py refuses a password on a command line, because `ps` is
+  # world-readable, and it exits 2 rather than accepting one. This line used to pass the value, so
+  # every OS died with "refusing a password given on the command line" when the variable was set and
+  # with "PAVOIS_SUDO_PASSWORD is empty" when it was not. Both messages went to /dev/null, so the
+  # only thing this rung ever reported was "VM creation FAILED, skipping", nine times.
+  vmargs=(up "$os")
+  [ -n "${PAVOIS_SUDO_PASSWORD:-}" ] && vmargs+=(--sudo-password)
+  if ! mise run vm -- "${vmargs[@]}" > "$OUT/$os.vm.log" 2>&1; then
+    say "  VM creation FAILED, skipping. It said:"
+    sed 's/^/    /' "$OUT/$os.vm.log" | tail -8 | tee -a "$LOG"
     failures=$((failures + 1))
     continue
   fi
@@ -141,7 +152,7 @@ for os in $OSES; do
     # against, and testing it here would prove nothing: this machine has the repository, the
     # engine and the toolchain, which is precisely where the failure cannot happen.
     note "local build, not the published release"
-    # Piped through ssh, not scp: since OpenSSH 9 scp speaks SFTP, and these cloud images ship no
+    # Piped through ssh, not scp: since OpenSSH 9 scp speaks SFTP, and these images ship no
     # sftp-server subsystem. The failure reads "subsystem request failed on channel 0", which looks
     # like a broken VM rather than a missing subsystem. `cat` needs nothing but a shell.
     if ! sshx "cat > '$pkg'" < "$LOCAL_DIST/$pkg"; then
@@ -199,7 +210,7 @@ for os in $OSES; do
   fi
 
   say "--- 3. did the files land, and is the binary self-contained"
-  # `ldd` and not `file`: the Debian and Ubuntu cloud images ship no `file`, and "command not found"
+  # `ldd` and not `file`: the Debian and Ubuntu images ship no `file`, and "command not found"
   # was being counted as a dynamically linked binary. The harness was measuring its own gap on two
   # of five distributions, on the very same binary the other three had just certified static.
   # ldd comes with the C library, so it is on every one of these machines.
