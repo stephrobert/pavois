@@ -32,8 +32,14 @@ on:
     - cron: '17 20 * * *'
   workflow_dispatch:
     inputs:
+      binary:
+        description: 'What to prove: the published release, or a build of this ref'
+        required: false
+        type: choice
+        options: [released, source]
+        default: released
       release:
-        description: 'Release tag to prove (default: the latest)'
+        description: 'Release tag to prove (ignored when binary=source)'
         required: false
         default: ''
       systems:
@@ -181,7 +187,7 @@ jobs:
 
       - name: The binary under test is the RELEASED one, checksum verified
         id: artefact
-        if: steps.wanted.outputs.run == 'yes'
+        if: steps.wanted.outputs.run == 'yes' && github.event.inputs.binary != 'source'
         env:
           GH_TOKEN: ${{ github.token }}
           # gh resolves the repository from the git remote of the CURRENT directory. This step
@@ -210,11 +216,38 @@ jobs:
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
           "${RUNNER_TEMP}/artefact/pavois-linux-amd64" version
 
+      - name: The binary under test is BUILT FROM THIS REF
+        id: candidate
+        if: steps.wanted.outputs.run == 'yes' && github.event.inputs.binary == 'source'
+        run: |
+          set -euo pipefail
+          # For proving a fix BEFORE it is released. The nightly still judges the published
+          # artefact, which is the rule that matters for what the site publishes; this exists
+          # because a fix to what harden apply DOES on a target cannot be proved by downloading the
+          # release that carries the bug. #380 is exactly that case: every RHEL campaign reported
+          # three regressions, the cause was in the released binary, and the only way to see the
+          # repair was to run the repaired one.
+          #
+          # embed:all first, and not as an optimisation. `mise run build` compiles whatever is in
+          # the embed directories, and in a fresh checkout those are empty: the binary would carry
+          # no corpus, PAVOIS_ROOT points at an empty directory, and the scan would grade nothing.
+          # That is how v0.1.2 shipped.
+          mise run embed:all
+          mise run build
+          bin="${PWD}/go/pavois"
+          chmod +x "${bin}"
+          echo "bin=${bin}" >> "$GITHUB_OUTPUT"
+          echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          "${bin}" version
+          # Loud, because a campaign artefact that does not say which binary produced it is worth
+          # very little three weeks later.
+          echo "::notice::Campaign runs a SOURCE build of $(git rev-parse --short HEAD), not a release."
+
       - name: Run the campaign
         if: steps.wanted.outputs.run == 'yes'
         env:
           PAVOIS_SSH_KEY: /home/runner/.ssh/id_ed25519
-          PAVOIS_BIN: ${{ steps.artefact.outputs.bin }}
+          PAVOIS_BIN: ${{ steps.artefact.outputs.bin || steps.candidate.outputs.bin }}
           # The release judges with ITS OWN corpus, never with this checkout's.
           #
           # profiles/linux/<os>/inspec.yml is tracked and controls/*.rb are rendered and gitignored,
@@ -259,7 +292,7 @@ jobs:
         if: always() && steps.wanted.outputs.run == 'yes' && vars.EVIDENCE_BUCKET != ''
         env:
           BUCKET: ${{ vars.EVIDENCE_BUCKET }}
-          TAG: ${{ steps.artefact.outputs.tag }}
+          TAG: ${{ steps.artefact.outputs.tag || steps.candidate.outputs.tag }}
           OS: ${{ matrix.os }}
         run: |
           set -euo pipefail
@@ -337,18 +370,29 @@ jobs:
         # For a full run the refusal keeps its teeth: a job that died without uploading its bundle
         # cannot turn a proved platform back into an unproved one, this step goes red, and the
         # committed matrix is left exactly as it was.
-        if: github.event.inputs.systems == ''
+        # A source build proves a candidate; it does not describe what users can install, so it
+        # must not become the published record either.
+        if: github.event.inputs.systems == '' && github.event.inputs.binary != 'source'
         run: mise run gen:platform-matrix
 
       - name: Why the matrix was left alone
-        if: github.event.inputs.systems != ''
+        # A job that skips in silence is the thing this workflow spent a week teaching us not to
+        # ship, so both reasons for skipping say so.
+        if: github.event.inputs.systems != '' || github.event.inputs.binary == 'source'
         env:
           SYSTEMS: ${{ github.event.inputs.systems }}
+          BINARY: ${{ github.event.inputs.binary }}
         run: |
           set -uo pipefail
-          echo "This run covered only: ${SYSTEMS}"
-          echo "The committed matrix is left as it is, because evidence for the other platforms was"
-          echo "not produced here and regenerating would drop it. What this run DID prove:"
+          if [ "${BINARY}" = source ]; then
+            echo "This run proved a SOURCE build, not a release."
+            echo "The committed matrix describes what users can install, so a candidate does not"
+            echo "get to rewrite it. What this run DID prove:"
+          else
+            echo "This run covered only: ${SYSTEMS}"
+            echo "The committed matrix is left as it is, because evidence for the other platforms was"
+            echo "not produced here and regenerating would drop it. What this run DID prove:"
+          fi
           python3 tools/release/evidence.py --all || true
 
       - name: What the matrix WOULD become
