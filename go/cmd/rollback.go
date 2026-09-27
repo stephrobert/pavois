@@ -229,24 +229,34 @@ func captureScript(rp restorePoint) string {
 		"  echo \"       with --no-restore-point and accept that harden rollback is lost.\" >&2\n" +
 		"  exit 1\n" +
 		"fi\n" +
-		"rm -rf /tmp/pavois-rp && mkdir -p /tmp/pavois-rp\n")
-	b.WriteString("touch /tmp/pavois-rp/present.txt /tmp/pavois-rp/absent.txt\n")
+		// The mode is SET, never inherited. `mkdir -p` uses the umask of whatever shell sudo gave
+		// us, and the first version of this relied on that: the directory came out unreadable to
+		// the connecting account, the capture succeeded, and the fetch that follows it died with
+		//
+		//	scp: /var/lib/pavois/restore-point.tar.gz: Permission denied
+		//
+		// which moved the failure one step later without removing it. 0755 on the directory and
+		// 0600 on the archive: the account can traverse and read its own file, nobody else can
+		// read the configuration it contains.
+		"mkdir -p " + targetStateDir + " && chmod 0755 " + targetStateDir + "\n" +
+		"rm -rf " + targetRPDir + " && mkdir -p " + targetRPDir + " && chmod 0700 " + targetRPDir + "\n")
+	b.WriteString("touch " + targetRPDir + "/present.txt " + targetRPDir + "/absent.txt\n")
 	for _, f := range rp.Files {
-		fmt.Fprintf(&b, "if [ -e %q ]; then echo %q >> /tmp/pavois-rp/present.txt; else echo %q >> /tmp/pavois-rp/absent.txt; fi\n",
+		fmt.Fprintf(&b, "if [ -e %q ]; then echo %q >> "+targetRPDir+"/present.txt; else echo %q >> "+targetRPDir+"/absent.txt; fi\n",
 			f.Path, f.Path, f.Path)
 	}
 	// -P: keep the absolute paths, so the restore extracts them straight back where they came from
-	b.WriteString("tar czf /tmp/pavois-rp/files.tar.gz -P -T /tmp/pavois-rp/present.txt 2>/dev/null || true\n")
-	b.WriteString(": > /tmp/pavois-rp/pkgs.txt\n")
+	b.WriteString("tar czf " + targetRPDir + "/files.tar.gz -P -T " + targetRPDir + "/present.txt 2>/dev/null || true\n")
+	b.WriteString(": > " + targetRPDir + "/pkgs.txt\n")
 	for _, p := range rp.Packages {
 		fmt.Fprintf(&b, "if (command -v dpkg-query >/dev/null && dpkg-query -W -f='${Status}' %q 2>/dev/null | grep -q 'install ok installed') "+
 			"|| (command -v rpm >/dev/null && rpm -q %q >/dev/null 2>&1); "+
-			"then echo '%s installed' >> /tmp/pavois-rp/pkgs.txt; else echo '%s absent' >> /tmp/pavois-rp/pkgs.txt; fi\n",
+			"then echo '%s installed' >> "+targetRPDir+"/pkgs.txt; else echo '%s absent' >> "+targetRPDir+"/pkgs.txt; fi\n",
 			p.Name, p.Name, p.Name, p.Name)
 	}
-	b.WriteString(": > /tmp/pavois-rp/svcs.txt\n")
+	b.WriteString(": > " + targetRPDir + "/svcs.txt\n")
 	for _, sv := range rp.Services {
-		fmt.Fprintf(&b, "echo \"%s $(systemctl is-enabled %q 2>/dev/null || echo unknown) $(systemctl is-active %q 2>/dev/null || echo unknown)\" >> /tmp/pavois-rp/svcs.txt\n",
+		fmt.Fprintf(&b, "echo \"%s $(systemctl is-enabled %q 2>/dev/null || echo unknown) $(systemctl is-active %q 2>/dev/null || echo unknown)\" >> "+targetRPDir+"/svcs.txt\n",
 			sv.Name, sv.Name, sv.Name)
 	}
 	// The tar holds the CONTENT of config files, so it stays 0600: but it is written by root and
@@ -257,13 +267,13 @@ func captureScript(rp restorePoint) string {
 	// a failed tar returned 0, pavois believed the state was photographed, and the error
 	// surfaced one step later as "fetch restore point: no such file", which blames the
 	// transfer for what the capture did. Measured on AlmaLinux 8, 9 and 10.
-	b.WriteString("if ! tar czf /tmp/pavois-restore-point.tar.gz -C /tmp/pavois-rp .; then\n" +
+	b.WriteString("if ! tar czf " + targetRPTar + " -C " + targetRPDir + " .; then\n" +
 		"  echo \"pavois: FAILED to archive the restore point (tar exit $?)\" >&2\n" +
 		"  exit 1\n" +
 		"fi\n" +
-		"chown \"${SUDO_USER:-root}\" /tmp/pavois-restore-point.tar.gz || true\n" +
-		"chmod 0600 /tmp/pavois-restore-point.tar.gz\n" +
-		"if [ ! -s /tmp/pavois-restore-point.tar.gz ]; then\n" +
+		"chown \"${SUDO_USER:-root}\" " + targetRPTar + " || true\n" +
+		"chmod 0600 " + targetRPTar + "\n" +
+		"if [ ! -s " + targetRPTar + " ]; then\n" +
 		"  echo \"pavois: the restore point archive is empty\" >&2\n" +
 		"  exit 1\n" +
 		"fi\n" +
@@ -271,18 +281,47 @@ func captureScript(rp restorePoint) string {
 	return b.String()
 }
 
+// Where the restore point lives ON THE TARGET.
+//
+// It used to be /tmp, and pavois hardens /tmp. Pass 1 sets fs.protected_regular = 2, which refuses
+// an open-for-write on a regular file the writer does not own inside a sticky world-writable
+// directory, and pass 1 also chowns the archive to the connecting account. So pass 2 arrived as
+// root, found a pavois-owned file in a root-owned sticky directory, and was refused:
+//
+//	tar (child): /tmp/pavois-restore-point.tar.gz: Cannot open: Permission denied
+//	error: restore point: capture prior state: exit status 1
+//
+// The apply then stopped before converging anything. Every RHEL campaign has been running one pass
+// instead of two since that sysctl landed, which is where its three "regressions" came from: the
+// remediations were planned, armed, rendered, and never executed.
+//
+// /var/lib is neither world-writable nor sticky, so protected_regular does not reach it, and no
+// control in this corpus hardens it. The archive keeps its chown to the connecting account, which
+// is how an unprivileged fetch reads it back; that chown is only dangerous in a sticky directory.
+//
+// A hardening tool must not stage its work where it is about to change the rules. #380 lists the
+// other paths still in /tmp: they are pushed by the unprivileged account, they have never been
+// observed to fail, and moving them without a measured failure would be a guess.
+const (
+	targetStateDir = "/var/lib/pavois"
+	targetRPDir    = targetStateDir + "/rp"
+	targetRPTar    = targetStateDir + "/restore-point.tar.gz"
+)
+
 // restoreScript puts the photograph back: files verbatim, files pavois created deleted, packages and
 // services returned to their prior state, and the daemons reloaded so the CHANGE IS EFFECTIVE (a
 // restored sshd_config that nobody reloaded has rolled back nothing).
+// @RPDIR@ is substituted at the call site. It is a raw string so that the shell reads as
+// shell; Go concatenation inside it would be literal text, and a build would not say so.
 const restoreScript = `set -u
-cd /tmp/pavois-rp || exit 1
+cd @RPDIR@ || exit 1
 [ -f files.tar.gz ] && tar xzf files.tar.gz -P -C / 2>/dev/null
 # files that did NOT exist before the apply: pavois created them, so a rollback removes them
 while IFS= read -r f; do [ -n "$f" ] && rm -f "$f"; done < absent.txt
 # packages: undo only what we changed, and only in the direction we changed it
 while IFS=' ' read -r name state; do
   [ -z "$name" ] && continue
-  want=$(grep -E "^$name " /tmp/pavois-rp/pkgs.want.txt 2>/dev/null | awk '{print $2}')
+  want=$(grep -E "^$name " @RPDIR@/pkgs.want.txt 2>/dev/null | awk '{print $2}')
   if [ "$state" = absent ] && [ "$want" = install ]; then
     # PURGE, not remove: apt-get remove keeps the conffiles, so removing the 'at' package left
     # /etc/at.deny behind, and a control demanding its absence went from PASS to FAIL through a
@@ -413,7 +452,7 @@ func runHardenRollback(cmd *cobra.Command, args []string) error {
 	// and a stock debian13 (OpenSSH 10) declares no `Subsystem sftp`, so an sftp transfer dies
 	// with "subsystem request failed on channel 0", measured on a fresh VM. -O needs no
 	// subsystem and works on every target we support.
-	if err := host.push(tarPath, "/tmp/pavois-restore-point.tar.gz"); err != nil {
+	if err := host.push(tarPath, targetRPTar); err != nil {
 		return fmt.Errorf("copy restore point: %w", err)
 	}
 
@@ -422,10 +461,10 @@ func runHardenRollback(cmd *cobra.Command, args []string) error {
 	for _, p := range rp.Packages {
 		want.WriteString(p.Name + " " + p.Action + "\n")
 	}
-	script := "set -u\nrm -rf /tmp/pavois-rp && mkdir -p /tmp/pavois-rp\n" +
-		"tar xzf /tmp/pavois-restore-point.tar.gz -C /tmp/pavois-rp\n" +
-		"cat > /tmp/pavois-rp/pkgs.want.txt <<'PAVOIS_WANT'\n" + want.String() + "PAVOIS_WANT\n" +
-		restoreScript
+	script := "set -u\nrm -rf " + targetRPDir + " && mkdir -p " + targetRPDir + "\n" +
+		"tar xzf " + targetRPTar + " -C " + targetRPDir + "\n" +
+		"cat > " + targetRPDir + "/pkgs.want.txt <<'PAVOIS_WANT'\n" + want.String() + "PAVOIS_WANT\n" +
+		strings.ReplaceAll(restoreScript, "@RPDIR@", targetRPDir)
 	if err := runScriptAsRoot(target, opts, sudoPass, script, "pavois-restore.sh", host); err != nil {
 		return fmt.Errorf("rollback: %w", err)
 	}
@@ -523,7 +562,7 @@ func writeRestorePoint(p planFile, recipe, target, planPath, dir string, opts []
 		return "", err
 	}
 	// A local target has the archive on this very filesystem, so there is nothing to fetch (#200).
-	if err := host.fetch("/tmp/pavois-restore-point.tar.gz", filepath.Join(dir, "restore-point.tar.gz")); err != nil {
+	if err := host.fetch(targetRPTar, filepath.Join(dir, "restore-point.tar.gz")); err != nil {
 		return "", fmt.Errorf("fetch restore point: %w", err)
 	}
 	// Which files actually existed: a rollback DELETES the ones pavois created, so getting this

@@ -80,8 +80,25 @@ mise run vm -- down "$OS" >/dev/null 2>&1
 # --sudo-password takes NO value: vm.py reads PAVOIS_SUDO_PASSWORD from the environment. Passing
 # it here put the lab password into `ps` output for the whole run, on a machine where every user
 # can read it, and this repository's own rule forbids exactly that.
-run mise run vm -- up "$OS" --sudo-password >/dev/null || {
-  echo "VM creation failed"; exit 1; }
+# The reason is printed, not swallowed. This line used to end on `>/dev/null || { echo "VM creation
+# failed"; exit 1; }`, so a refusal that explained itself perfectly well came out as four words:
+#
+#     vm: 4GiB would leave 5.7GiB for everything else on this machine (9.7GiB available now).
+#         Free memory, stop other guests, or ask for less: --memory 3GiB
+#
+# became "VM creation failed". The project's own trap catalogue says never to do this on a step that
+# can fail, and this is the step that fails when the machine is not the one you expected.
+# PAVOIS_VM_MEMORY lets a campaign run on a machine that is already busy. vm.py refuses a guest
+# that would leave the host under 6GiB, which is right and which also means a campaign cannot
+# run at all on a workstation with a browser open unless the guest can be asked to be smaller.
+VM_ARGS=(up "$OS" --sudo-password)
+[ -n "${PAVOIS_VM_MEMORY:-}" ] && VM_ARGS+=(--memory "$PAVOIS_VM_MEMORY")
+if ! run mise run vm -- "${VM_ARGS[@]}" > "$OUT/vm-up.log" 2>&1; then
+  echo "VM creation failed. It said:"
+  sed 's/^/    /' "$OUT/vm-up.log" | tail -8 | tee -a "$LOG"
+  exit 1
+fi
+cat "$OUT/vm-up.log" >> "$LOG"
 IP=$(mise run vm -- ip "$OS" 2>/dev/null | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -1)
 [ -n "$IP" ] || { echo "no IP for $OS"; exit 1; }
 T="pavois@$IP"
