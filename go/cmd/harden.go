@@ -1411,8 +1411,16 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 		// checked instead: the arguments must be present in the entries afterwards.
 		apply := "if command -v update-grub >/dev/null 2>&1; then update-grub; " +
 			"elif command -v grubby >/dev/null 2>&1; then " +
-			"grubby --update-kernel=ALL --args=\"" + args + "\" >/dev/null 2>&1 || true; " +
-			"cfg=/boot/grub2/grub.cfg; [ -f \"$cfg\" ] && grub2-mkconfig -o \"$cfg\" >/dev/null 2>&1 || true; " +
+			// grubby's output is KEPT, not discarded. It used to end in `>/dev/null 2>&1 || true`,
+			// so when the arguments failed to land the failure message could say only that they
+			// were nowhere, never why. Fourteen controls fail that way on rhel8, rhel10 and fedora
+			// (#382), and the one thing that would have explained it had been thrown away by the
+			// line that ran it. A step that reports a failure must not silence the command that
+			// caused it.
+			"__out=$(grubby --update-kernel=ALL --args=\"" + args + "\" 2>&1); __rc=$?; " +
+			"cfg=/boot/grub2/grub.cfg; " +
+			"if [ -f \"$cfg\" ]; then __mk=$(grub2-mkconfig -o \"$cfg\" 2>&1); __mkrc=$?; " +
+			"else __mk=\"(no $cfg, skipped)\"; __mkrc=0; fi; " +
 			// Where the arguments LAND depends on the distribution, so look in all three places.
 			// AlmaLinux 10 writes them literally into the BLS entry, which `grubby --info=ALL`
 			// then prints. Fedora 43 writes `args="$kernelopts"` in the entry and keeps the real
@@ -1422,7 +1430,13 @@ func compileRecipe(p planFile, auditRules, kernelRecipe, grubPassword, std strin
 			"grubby --info=ALL 2>/dev/null | grep -q -- \"$__w\" || " +
 			"grub2-editenv list 2>/dev/null | grep -q -- \"$__w\" || " +
 			"grep -rqs -- \"$__w\" /boot/loader/entries /etc/default/grub || " +
-			"{ echo \"pavois: the kernel arguments are in none of: the BLS entries, the grub\" >&2; echo \"        environment, or /etc/default/grub. Nothing applied them.\" >&2; exit 1; }; "
+			"{ echo \"pavois: the kernel arguments are in none of: the BLS entries, the grub\" >&2; " +
+			"echo \"        environment, or /etc/default/grub. Nothing applied them.\" >&2; " +
+			"echo \"        grubby exited $__rc and said:\" >&2; " +
+			"printf '%s\\n' \"$__out\" | sed 's/^/          /' >&2; " +
+			"echo \"        grub2-mkconfig exited $__mkrc and said:\" >&2; " +
+			"printf '%s\\n' \"$__mk\" | sed 's/^/          /' >&2; " +
+			"exit 1; }; "
 		if iommuForce {
 			apply += "systemd-detect-virt -q -v || grubby --update-kernel=ALL --args=\"iommu=force\"; "
 		}
