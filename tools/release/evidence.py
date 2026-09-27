@@ -374,8 +374,20 @@ def classify(facts: dict, now: dt.datetime, window_days: int = FRESHNESS_WINDOW_
             "  the corpus has not moved; the target's own packages and kernel have",
         ]
 
+    # A control that passed on the stock machine and fails after hardening is a defect, and this
+    # record used to omit it entirely: four platforms published as VERIFIED for five days while
+    # their bundles named three regressions each. VERIFIED stays, because the campaign did pass on
+    # this corpus inside the window and calling it FAILED would be a different distortion, but the
+    # word cannot stand alone. See #372, and #373 for the controls themselves.
+    regressed = facts.get("regressed_controls") or []
+    verdict_line = "verdict PASSED"
+    if regressed:
+        verdict_line = (
+            f"verdict PASSED, but hardening regressed {len(regressed)} control(s): "
+            + ", ".join(sorted(regressed))
+        )
     return VERIFIED, where + [
-        "verdict PASSED",
+        verdict_line,
         f"corpus matches ({current[:23]}...)",
         f"{age} day(s) old, within the {window_days}-day window",
     ]
@@ -656,6 +668,28 @@ def selftest() -> int:
         if state in GATE_PASSES:
             print(f"  FAIL: {state} satisfies the release gate", file=sys.stderr)
             bad += 1
+
+    # A campaign that regressed a control stays VERIFIED, because it did pass on this corpus inside
+    # the window and calling it FAILED would be a different distortion. What it must not do is say
+    # the clean word alone. Four platforms published as a bare "verdict PASSED" for five days while
+    # their own bundles named three regressions each (#372).
+    regressed = {**good, "regressed_controls": ["file-at-deny-absent", "misc-postfix-banner"]}
+    state, reasons = classify(regressed, now)
+    joined = " ".join(reasons)
+    if state != VERIFIED:
+        print(f"  FAIL: a regressing campaign should stay {VERIFIED}, got {state}", file=sys.stderr)
+        bad += 1
+    if "regressed 2 control(s)" not in joined or "file-at-deny-absent" not in joined:
+        print(f"  FAIL: the record does not name the regressions: {joined}", file=sys.stderr)
+        bad += 1
+    # The counter-case, without which the check above passes on a line that always says it.
+    _, clean = classify(good, now)
+    if "regressed" in " ".join(clean):
+        print("  FAIL: a clean campaign is described as regressing", file=sys.stderr)
+        bad += 1
+    if "verdict PASSED" not in " ".join(clean):
+        print("  FAIL: a clean campaign no longer reads as a plain pass", file=sys.stderr)
+        bad += 1
 
     # The evidence-loss guard, which is what makes a committed matrix safe to regenerate.
     import tempfile

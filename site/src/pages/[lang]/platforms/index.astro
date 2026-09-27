@@ -34,7 +34,14 @@ type Row = {
   state: string;
   reasons: string[];
   provenance: { ran_on: string; run_url: string | null };
-  campaign: { id: string | null; ran_at: string | null; age_days: number | null };
+  campaign: {
+    id: string | null;
+    ran_at: string | null;
+    age_days: number | null;
+    // Controls that PASSED on the stock machine and FAIL after hardening. Recorded in every
+    // bundle since the first campaign, and shown nowhere until #372.
+    regressed_controls?: string[] | null;
+  };
   before: Facet;
   after: Facet;
 };
@@ -206,6 +213,25 @@ const jsonld = [
               </td>
               <td>
                 <span class={`sev st-${r.state.toLowerCase()}`}>{r.state}</span>
+                {/*
+                  VERIFIED stays: the campaign did pass, on this corpus, inside the window,
+                  and calling it FAILED would be a different distortion. But a run that
+                  improved 210 controls and broke 3 is not the same result as one that broke
+                  none, and for five days this table showed them as identical.
+                */}
+                {(r.campaign.regressed_controls?.length ?? 0) > 0 && (
+                  <span class="regr" title={(r.campaign.regressed_controls ?? []).join(', ')}>
+                    {r.campaign.regressed_controls!.length}
+                    {' '}
+                    {fr
+                      ? r.campaign.regressed_controls!.length > 1
+                        ? 'régressions'
+                        : 'régression'
+                      : r.campaign.regressed_controls!.length > 1
+                        ? 'regressions'
+                        : 'regression'}
+                  </span>
+                )}
               </td>
               <td>
                 {r.campaign.ran_at ? (
@@ -266,6 +292,12 @@ const jsonld = [
       {fr
         ? `Fenêtre de fraîcheur : ${matrix.freshness_window_days} jours. Au-delà, une campagne passée bascule en STALE même si la base de règles n’a pas bougé : ce sont les paquets et le noyau de la cible qui ont bougé, et aucune empreinte de notre côté ne peut le voir.`
         : `Freshness window: ${matrix.freshness_window_days} days. Past it, a passing campaign turns STALE even when the rule base has not moved: the target’s own packages and kernel have, and no digest of ours can see that.`}
+    </p>
+
+    <p class="pnote">
+      {fr
+        ? "Une étiquette « régression » signale un contrôle qui PASSAIT sur la machine d’origine et ÉCHOUE après durcissement. La campagne reste passée, et ce chiffre n’est pas un détail de présentation : c’est un défaut, suivi séparément, et il vaut mieux le lire ici que le découvrir sur sa propre machine."
+        : 'A “regression” chip marks a control that PASSED on the stock machine and FAILS after hardening. The campaign still passed, and this number is not a presentation detail: it is a defect, tracked separately, and better read here than discovered on your own machine.'}
     </p>
 
     {unversioned.length > 0 && (
@@ -467,6 +499,19 @@ const jsonld = [
   tr.past-window .sev {
     outline: 1px dashed var(--sev-high, #b4531f);
     outline-offset: 2px;
+  }
+
+  /* Deliberately quieter than a state badge: this qualifies a verdict, it does not replace it. */
+  .regr {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border: 1px solid var(--sev-high, #b4531f);
+    border-radius: 999px;
+    color: var(--sev-high, #b4531f);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
   }
 
   @media (max-width: 900px) {

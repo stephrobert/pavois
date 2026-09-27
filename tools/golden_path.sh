@@ -142,10 +142,44 @@ else
 fi
 
 step "verdict"
+
+# A control that PASSED on the stock machine and FAILS after hardening is a defect, and this
+# verdict used to swallow it. Four platforms shipped as VERIFIED for five days carrying three
+# regressions each (rhel8/9/10) and one (fedora), counted in the bundle, named in the bundle, and
+# absent from every line a human reads. See #372.
+#
+# It does not raise FAILURES. A campaign that improved 210 controls and broke 3 is not the same
+# result as one that never ran, and turning the nightly red on all three RHEL platforms until #373
+# lands would train everyone to ignore a red nightly. The verdict stops saying the clean word
+# instead, which is the part that was untrue.
+REGRESSED=""
+if [ -f "$OUT/bundle/campaign-delta.json" ]; then
+  REGRESSED=$(python3 -c '
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(0)
+print(" ".join((d.get("controls") or {}).get("pass>fail") or []))
+' "$OUT/bundle/campaign-delta.json" 2>/dev/null)
+fi
+
 echo "  bootstrap refusal gate : $GATE" | tee -a "$LOG"
 echo "  blocking failures      : $FAILURES" | tee -a "$LOG"
+if [ -n "$REGRESSED" ]; then
+  # shellcheck disable=SC2086
+  set -- $REGRESSED
+  echo "  hardening regressions  : $# ($REGRESSED)" | tee -a "$LOG"
+else
+  echo "  hardening regressions  : 0" | tee -a "$LOG"
+fi
 echo "  artefacts              : $OUT" | tee -a "$LOG"
 echo "  destroy the VM with    : mise run vm -- down $OS" | tee -a "$LOG"
-[ "$FAILURES" -eq 0 ] && echo "  GOLDEN PATH: PASSED" | tee -a "$LOG" \
-                      || echo "  GOLDEN PATH: FAILED" | tee -a "$LOG"
+if [ "$FAILURES" -ne 0 ]; then
+  echo "  GOLDEN PATH: FAILED" | tee -a "$LOG"
+elif [ -n "$REGRESSED" ]; then
+  echo "  GOLDEN PATH: PASSED WITH REGRESSIONS" | tee -a "$LOG"
+else
+  echo "  GOLDEN PATH: PASSED" | tee -a "$LOG"
+fi
 exit "$FAILURES"
