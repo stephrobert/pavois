@@ -211,15 +211,27 @@ const jsonld = [
                 {r.campaign.ran_at ? (
                   <>
                     <span class="secs">{r.campaign.ran_at.slice(0, 10)}</span>
-                    {r.campaign.age_days !== null && (
-                      <span class="os">
-                        {fr
-                          ? `il y a ${r.campaign.age_days} j`
-                          : `${r.campaign.age_days} days ago`}
-                        {' · '}
-                        {r.provenance.ran_on === 'ci' ? 'CI' : fr ? 'poste' : 'workstation'}
-                      </span>
-                    )}
+                    <span class="os">
+                      {/*
+                        The age is written by the reader's browser, from the timestamp, and is
+                        deliberately not rendered here. `age_days` in the matrix is right on the
+                        day the matrix is generated and wrong every day after: this page spent
+                        five days telling everyone a campaign from the 21st had run "0 days
+                        ago". On a page whose subject is what was proved and WHEN, that is not a
+                        rounding error.
+
+                        Without JavaScript the absolute date beside it still stands, which is
+                        the fact. The relative age is only the convenience.
+                      */}
+                      <span
+                        class="age"
+                        data-ran={r.campaign.ran_at}
+                        data-window={matrix.freshness_window_days}
+                        data-lang={fr ? 'fr' : 'en'}
+                      />
+                      {' · '}
+                      {r.provenance.ran_on === 'ci' ? 'CI' : fr ? 'poste' : 'workstation'}
+                    </span>
                   </>
                 ) : (
                   <span class="os">{fr ? 'aucune' : 'none'}</span>
@@ -295,6 +307,34 @@ const jsonld = [
     </p>
   </div>
 </Base>
+
+<script>
+  // The age of a piece of evidence is a claim that decays, so it is computed when the page is READ.
+  // The matrix's own `age_days` is right the day it is generated and wrong every day after, and
+  // rendering it into static HTML is how this page published "0 days ago" about a five-day-old
+  // campaign for five days running.
+  //
+  // The arithmetic lives in src/lib/age.mjs and is checked by scripts/test-age.mjs, witness
+  // included. Inlining a second copy here would be a copy nothing tests.
+  import { relativeAge } from '../../../lib/age.mjs';
+
+  for (const el of document.querySelectorAll('.age[data-ran]')) {
+    const windowDays = Number(el.dataset.window);
+    const age = relativeAge(el.dataset.ran, Date.now(), windowDays, el.dataset.lang === 'fr');
+    if (!age) continue;
+    el.textContent = age.text;
+    if (!age.pastWindow) continue;
+    // The state badge keeps saying what was computed, because that is what was computed. This says
+    // the reader should no longer rely on it. Re-deriving the state in the browser would put a
+    // second copy of tools/release/evidence.py on the page, free to drift from the first.
+    el.classList.add('past-window');
+    el.title =
+      el.dataset.lang === 'fr'
+        ? `Au-dela de la fenetre de ${windowDays} jours : l'etat affiche a ete calcule avant, et n'a pas ete reverifie depuis.`
+        : `Past the ${windowDays}-day window: the state shown was computed before that and has not been rechecked since.`;
+    el.closest('tr')?.classList.add('past-window');
+  }
+</script>
 
 <style>
   /* KPI row: same .stat rhythm as the home page, laid out for four short figures. */
@@ -411,6 +451,22 @@ const jsonld = [
   .pwhy {
     margin-top: 40px;
     padding-bottom: 72px;
+  }
+
+  /* An evidence age past the freshness window. The state badge keeps saying what was computed,
+     because that is what was computed; this says the reader should no longer rely on it. Marking
+     the row rather than rewriting the badge avoids a second implementation of the state machine
+     living in the browser and drifting from tools/release/evidence.py. */
+  .age.past-window {
+    color: var(--sev-high, #b4531f);
+    font-weight: 600;
+  }
+  .age.past-window::after {
+    content: ' !';
+  }
+  tr.past-window .sev {
+    outline: 1px dashed var(--sev-high, #b4531f);
+    outline-offset: 2px;
   }
 
   @media (max-width: 900px) {

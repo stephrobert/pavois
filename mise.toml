@@ -189,6 +189,20 @@ description = "Generate the site's rule fiches from the rule base (one per neutr
 depends = ["gen", "gen:benchmarks"]
 run = "uv run --with pyyaml --with fastmcp python3 tools/generate_rule_pages.py"
 
+[tasks."site:test:age"]
+description = "The evidence age is computed when the page is READ, not baked in at build time (#371)"
+dir = "{{config_root}}/site"
+# Two halves, because they fail differently. The first checks the arithmetic, witness included: the
+# five-day-old campaign this page called "0 days ago" for five days running. The second extracts
+# the script the BUILT page actually ships and runs it against a hand-rolled DOM, because a correct
+# helper nobody calls renders an empty column, which is worse than the stale number it replaced.
+# The second half needs dist/, so this is not in prepush: run `mise run site:build` first. CI runs
+# it in site-deploy.yml, right after the build and before anything is published.
+run = [
+  "node scripts/test-age.mjs",
+  "node scripts/test-age-dom.mjs",
+]
+
 [tasks."site:verify"]
 description = "FAIL if the site content has drifted from the rule base (a control with no prose, prose about a control that no longer exists, an OS on no page)"
 depends = ["gen:pages"]
