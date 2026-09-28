@@ -406,9 +406,12 @@ description = "FAIL if a check filters its command down to the very thing its ma
 # Such a check cannot tell "the setting is wrong" from "the command produced nothing", so its FAIL
 # is invented. Four controls of this shape failed the campaign on five platforms; this linter found
 # two more that no x86 campaign could ever reach, because an `only_if('arm64 only')` skips them.
+# uv run --with pyyaml, like the twenty-one other tasks that import yaml. This one called a bare
+# python3 and passed only as long as the interpreter on PATH happened to carry PyYAML; the day it
+# did not, prepush failed on ModuleNotFoundError in a linter that had nothing wrong with it.
 run = [
-  "python3 {{config_root}}/tools/lint_measured_verdict.py --selftest",
-  "python3 {{config_root}}/tools/lint_measured_verdict.py",
+  "uv run --with pyyaml python3 {{config_root}}/tools/lint_measured_verdict.py --selftest",
+  "uv run --with pyyaml python3 {{config_root}}/tools/lint_measured_verdict.py",
 ]
 
 [tasks."lint:install-docs"]

@@ -64,6 +64,26 @@ function checkNode(n, where) {
       if (it.position == null || !it.name || !it.item) err(where, 'BreadcrumbList: item missing position/name/item');
     });
   }
+  // Dataset. Added after Search Console reported two issues this validator could not have caught,
+  // because it did not know the type the platforms page emits: "invalid object type for creator"
+  // and "missing license", on both language variants.
+  //
+  // `creator` is the one worth spelling out. A bare {"@id": "..."} is valid JSON-LD and Google
+  // rejects it here, and in our case it was also dangling: the base graph is [Organization,
+  // WebSite], so the #author node it pointed at was not on the page at all.
+  if (type === 'Dataset') {
+    if (!n.name) err(where, 'Dataset: missing name');
+    if (!n.description) err(where, 'Dataset: missing description');
+    if (!n.license) err(where, 'Dataset: missing license (Google requires it)');
+    const c = Array.isArray(n.creator) ? n.creator[0] : n.creator;
+    if (!c) err(where, 'Dataset: missing creator');
+    else if (!c['@type']) err(where, 'Dataset: creator has no @type (a bare @id reference is rejected)');
+    else if (c['@type'] !== 'Person' && c['@type'] !== 'Organization') {
+      err(where, `Dataset: creator must be Person or Organization, not ${c['@type']}`);
+    }
+    if (!n.distribution) warn('Dataset: no distribution (optional, but it is how the data is fetched)', where);
+  }
+
   if (type === 'Organization' && (!n.name || !n.url)) err(where, 'Organization: missing name/url');
   if (type === 'WebSite' && (!n.url || !n.name)) err(where, 'WebSite: missing url/name');
   if (type === 'SoftwareApplication') {
