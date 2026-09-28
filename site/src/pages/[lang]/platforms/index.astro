@@ -143,7 +143,21 @@ const jsonld = [
     url: `${origin}/${lang}/platforms/`,
     inLanguage: fr ? 'fr-FR' : 'en-US',
     dateModified: generated,
-    creator: { '@id': `${origin}/#author` },
+    // A TYPED node, not a bare `@id` reference. Search Console reported "invalid object type for
+    // creator" on both language variants, and it was right twice over: the base graph is
+    // [org, website], so `#author` is not present on this page at all and the reference dangled.
+    //
+    // The Organization rather than the Person, because it is true: this dataset is produced by the
+    // nightly campaign workflow from clean-VM runs, not written by anyone.
+    creator: {
+      '@type': 'Organization',
+      '@id': `${origin}/#org`,
+      name: 'Pavois',
+      url: `${origin}/`,
+    },
+    // Required by Google for a Dataset, and absent. The matrix is a file in the repository and
+    // carries the repository's licence; saying so is also what lets anyone reuse it.
+    license: 'https://www.apache.org/licenses/LICENSE-2.0',
     distribution: [
       {
         '@type': 'DataDownload',
