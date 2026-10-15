@@ -64,7 +64,7 @@ jobs:
       contents: read
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
       - name: Checkout pavois
@@ -82,7 +82,7 @@ jobs:
           done
 
       - name: Upload corpus
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: corpus
           path: profiles/linux
@@ -96,7 +96,7 @@ jobs:
       # that failed the release with `nothing matches docs/reference/pavois-content/*.yml`.
       # It travels the same way the corpus does, from the one job that renders it.
       - name: Upload the rendered reference
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: reference
           path: docs/reference/pavois-content
@@ -117,7 +117,7 @@ jobs:
           - { goos: darwin, goarch: arm64 }
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
       # scankit used to be private and consumed through a `replace` directive, which meant checking
@@ -138,7 +138,7 @@ jobs:
 
       # Place the rendered corpus where //go:embed picks it up, so the binary is self-contained.
       - name: Download rendered corpus
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: corpus
           path: pavois/go/internal/corpus/profiles/linux
@@ -154,7 +154,7 @@ jobs:
       # COMMITTED under docs/reference/. The per-OS reference is not: it is rendered from rules.yml
       # and gitignored, so it arrives from the corpus job as an artifact.
       - name: Download the rendered reference
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: reference
           path: pavois/docs/reference/pavois-content
@@ -177,7 +177,7 @@ jobs:
           go build -trimpath -ldflags="-s -w -X pavois/cmd.version=${VERSION}" -o "../../dist/${OUT}" .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: pavois-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/
@@ -192,7 +192,7 @@ jobs:
       attestations: write    # build attestation
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
 
@@ -202,7 +202,7 @@ jobs:
           persist-credentials: false
 
       - name: Download binaries
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: dist/
           merge-multiple: true
@@ -266,7 +266,7 @@ jobs:
       # the release below. upload-release-assets: false keeps this step from needing contents: write
       # on its own, we attach it via the single release step (least privilege).
       - name: Generate SBOM (Syft, CycloneDX)
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           path: go            # the Go module: SBOM reflects go.mod/go.sum, not the whole repo
           format: cyclonedx-json
