@@ -12,6 +12,70 @@ its content digest**, so an archived result stays interpretable long after the t
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-10-15
+
+A maintenance release, and the **baseline does not change**: no control, mapping or remediation
+moved between 0.1.7 and 0.1.8, so a report from each about the same machine must agree. What changes
+is the toolchain the binary is built with, four defects a campaign found in `harden` and the engine,
+and the site.
+
+### Security
+
+- **The binary is built with Go 1.26.9**, closing eight standard-library advisories in `net/http`,
+  `net/textproto` and `crypto/tls`: GO-2026-6603, 6607, 6608, 6609, 6611, 6612, 6613 and 6617
+  (#394). The toolchain was never pinned to a patch. `mise.toml` and `go/go.mod` named 1.26.6 while
+  the six `setup-go` steps asked for `'1.26'`, a spec resolved against the runner's tool cache,
+  which landed on 1.26.8: exactly the version carrying the advisories. All nine declarations now
+  name one patch, and `tools/testplan.py` states the obligation that replaces the old gap.
+- **The site's dependency tree is clean again** (#394): `undici`, `devalue`, `sharp`,
+  `source-map-js` and `http-cache-semantics`. The last three were out of Dependabot's reach, which
+  bumps what `package.json` names, and these were pulled in through Astro.
+
+### Fixed
+
+- **`harden` lost its own restore point** (#381). Pass 1 of a campaign sets
+  `fs.protected_regular = 2` and leaves the archive owned by the connecting account; pass 2 arrives
+  as root, finds a file it does not own inside a sticky world-writable directory, and the kernel
+  refuses to open it. The restore point no longer lives in `/tmp`, which pavois hardens.
+- **The bootloader step reported a failure while silencing its cause** (#385). In one rhel8 campaign
+  it said thirteen times that the kernel arguments were in none of the BLS entries, the grub
+  environment or `/etc/default/grub`, and said it only in a stderr nothing surfaced.
+- **An empty profile directory shadowed the embedded corpus** (#369). The scan evaluated 0 controls
+  and refused to grade, which is correct, while carrying the rules it needed all along.
+- **A campaign that breaks a control now says so**, in the log and on the page (#378). Four
+  platforms had published as VERIFIED with a bare "verdict PASSED" while their own evidence bundles
+  named the controls hardening had broken.
+- **The install recipe handed an el9 RPM to Debian and Ubuntu readers** (#390, #395). The omnitruck
+  keys were hardcoded as `p=el&pv=9`, with the Debian answer demoted to a trailing comment on the
+  install line, so two lines of one recipe disagreed and only one of them was executable. The block
+  now derives the platform, the version and the package manager from `/etc/os-release` together, and
+  an unsupported platform is refused rather than silently served a stale package.
+- The `Dataset` structured data Google rejected, together with the validator that existed and was
+  never called by any workflow (#388). The verified-platforms page was unreachable on a phone
+  (#379), and an evidence age is now computed when the page is read rather than baked in at build
+  time (#377).
+
+### Added
+
+- **A hub for every control domain** (#393). `/<lang>/rules/domain/<slug>/` lists a domain's
+  controls in full, server rendered, with its severities, the evidence types its checks gather, the
+  standard references the corpus actually carries and the coverage depth the handbook declares;
+  `/<lang>/rules/domain/` maps the 34 of them. The reason is measurable: the catalogue renders 60 of
+  790 fiches into HTML and builds the rest client-side, which left **400 fiches with no inbound
+  internal link at all** except their counterpart in the other language. They existed in the sitemap
+  and nowhere else, and Google had stopped at 1100 of 1700 URLs. Every fiche now has a crawlable
+  parent, a breadcrumb that names its domain, and twelve siblings; the hubs ship in their own sitemap
+  so their coverage can be read on its own line.
+
+### Internal
+
+- Rung 7 of the proof ladder passed the lab sudo password as a command-line argument, so it never
+  ran (#370).
+- The VM harness now says which of three stages failed when a guest never answers (#365), and stops
+  needing cloud images that do not boot on a hosted runner (#366, #367, #368). The nightly campaign
+  no longer asks `gh` for a release from outside the checkout (#364), and the platform matrix
+  publishes as a branch when a pull request is refused (#375).
+
 ## [0.1.7] - 2026-09-21
 
 The release where the rule base stopped answering questions it had not asked. The **baseline
@@ -518,7 +582,8 @@ history to read. The embedded baseline is `pavois-baseline` 0.2.0.
 - OSCAL output is the baseline (catalog and profiles), not yet a per-scan assessment-results
   package. No container image is published yet.
 
-[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.7...HEAD
+[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/stephrobert/pavois/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/stephrobert/pavois/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/stephrobert/pavois/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/stephrobert/pavois/compare/v0.1.4...v0.1.5
