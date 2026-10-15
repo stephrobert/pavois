@@ -1,0 +1,328 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../../../layouts/Base.astro';
+import { ui, languages, type Lang } from '../../../../i18n/ui';
+import { domainLabel } from '../../../../data/domain-labels';
+import { coverageLabel } from '../../../../data/coverage';
+import { evidenceLabel, EVIDENCE, type EvidenceType } from '../../../../data/evidence';
+import domainRefs from '../../../../data/domain-refs.json';
+import socleRefs from '../../../../data/socle-refs.json';
+import { groupByDomain, domainFacts, type DomainFacts } from '../../../../lib/domains';
+import { osLabel } from '../../../../lib/os';
+import { pageTitle, metaDescription } from '../../../../lib/meta';
+import { count } from '../../../../lib/plural';
+
+/**
+ * A domain hub: the crawlable parent of every fiche in one domain.
+ *
+ * See src/lib/domains.ts for why these pages exist. In short: `/rules/` renders 60 of 790 fiches
+ * into HTML and builds the rest client-side, so 400 fiches had no inbound internal link at all and
+ * sat in the sitemap alone. Each hub lists its domain's controls in full, server-rendered, which
+ * is the link every one of them was missing.
+ *
+ * There is deliberately no FAQ block here. The handbook template parses authored `**Question?**`
+ * pairs into FAQPage JSON-LD, and a generated page can only produce templated questions with
+ * templated answers across 34 domains, which is what search engines call FAQ spam and what this
+ * site calls a claim nobody wrote. The hub states facts and links; the handbook answers questions.
+ */
+export async function getStaticPaths() {
+  const groups = groupByDomain((await getCollection('rules')).map((r) => r.data));
+  return Object.keys(languages).flatMap((lang) =>
+    groups.map((g) => ({
+      params: { lang, domain: g.slug },
+      props: { domain: g.domain, rules: g.rules },
+    }))
+  );
+}
+
+type Rule = Awaited<ReturnType<typeof getCollection<'rules'>>>[number]['data'];
+const { lang } = Astro.params as { lang: Lang };
+const { domain, rules } = Astro.props as { domain: string; rules: Rule[] };
+const t = ui[lang];
+const label = domainLabel(domain, lang);
+const facts: DomainFacts = domainFacts(rules);
+
+const NORM_LABEL: Record<string, string> = {
+  cis: 'CIS',
+  bp28: 'ANSSI BP-028',
+  nist: 'NIST 800-53',
+  'pci-dss': 'PCI DSS',
+  stig: 'DISA STIG',
+};
+const sevLabel = (s: string): string => (t.sev as Record<string, string>)[s] ?? s;
+const sevClass = (s: string): string => (s === 'medium' ? 'med' : s === 'unknown' ? 'na' : s);
+const socleOf = (id: string): string => (socleRefs as Record<string, string>)[id] ?? '';
+const dref = (domainRefs as Record<string, any>)[domain] ?? {};
+
+// The norm list as prose, with the real references from the corpus. ANSSI BP-028 R-numbers are
+// never composed here: they are whatever the rules carry, so a domain with no ANSSI mapping simply
+// does not appear in this list rather than being given one.
+const normNames = facts.norms.map((n) => NORM_LABEL[n.key] ?? n.key);
+const normSummary = normNames.join(', ');
+const nControls = {
+  fr: count(facts.total, 'contrôle', 'contrôles'),
+  en: count(facts.total, 'control', 'controls'),
+};
+const lede =
+  lang === 'fr'
+    ? `Pavois audite ${nControls.fr} de durcissement du domaine ${label}, sur ${count(facts.oses.length, 'système', 'systèmes')} Linux et ${count(facts.norms.length, 'norme', 'normes')} (${normSummary}). Chaque contrôle déclare la preuve qu'il collecte, sa sévérité, sa remédiation et ses références de norme.`
+    : `Pavois audits ${nControls.en} in the ${label} hardening domain, across ${count(facts.oses.length, 'system', 'systems')} and ${count(facts.norms.length, 'standard', 'standards')} (${normSummary}). Every control declares the evidence it gathers, its severity, its remediation and its standard references.`;
+
+const copy = {
+  h1: {
+    fr: `${label} : ${nControls.fr} de durcissement Linux`,
+    en: `${label}: ${nControls.en} for Linux hardening`,
+  },
+  factsHead: { fr: 'Le domaine en chiffres', en: 'The domain in figures' },
+  fControls: { fr: 'Contrôles', en: 'Controls' },
+  fSev: { fr: 'Sévérités', en: 'Severities' },
+  fEvidence: { fr: 'Preuves collectées', en: 'Evidence gathered' },
+  fNorms: { fr: 'Normes', en: 'Standards' },
+  fOs: { fr: 'Systèmes', en: 'Systems' },
+  fCoverage: { fr: 'Profondeur de couverture', en: 'Coverage depth' },
+  evHead: { fr: 'Que vérifie Pavois dans ce domaine ?', en: 'What does Pavois check in this domain?' },
+  normHead: { fr: 'Quelles normes ce domaine couvre-t-il ?', en: 'Which standards does this domain cover?' },
+  listHead: {
+    fr: facts.total === 1 ? `Le contrôle du domaine ${label}` : `Les ${facts.total} contrôles du domaine ${label}`,
+    en: facts.total === 1 ? `The ${label} control` : `The ${facts.total} controls of the ${label} domain`,
+  },
+  normIntro: {
+    fr: 'Un même contrôle de configuration effective sert de preuve pour plusieurs normes à la fois. Les références ci-dessous sont celles que porte réellement le corpus, jamais une équivalence revendiquée.',
+    en: 'One effective-configuration check serves as evidence for several standards at once. The references below are the ones the corpus actually carries, never a claimed equivalence.',
+  },
+  normHow: { fr: 'comment lire un mapping de norme', en: 'how to read a standard mapping' },
+  allDomains: { fr: 'Tous les domaines de contrôles', en: 'All control domains' },
+  backCatalogue: { fr: 'Catalogue complet des contrôles', en: 'Full control catalogue' },
+  srcHead: { fr: 'Sources & références', en: 'Sources & references' },
+  guideHandbook: { fr: 'manuel Pavois :', en: 'Pavois handbook:' },
+  thRef: { fr: 'Réf.', en: 'Ref' },
+  thSev: { fr: 'Sév.', en: 'Sev.' },
+};
+const c = (k: keyof typeof copy): string => copy[k][lang];
+
+// Every evidence type present, each with the reserve that comes with it. This is the one place a
+// reader learns that a "Kernel build" domain cannot be proven the way an SSH domain can.
+const evidenceDetail = facts.evidence
+  .map((e) => ({ ...e, meta: EVIDENCE[e.key as EvidenceType] }))
+  .filter((e) => e.meta);
+---
+
+<Base
+  title={pageTitle(copy.h1[lang])}
+  description={metaDescription(lede)}
+  lang={lang}
+  schema="CollectionPage"
+  collectionSize={facts.total}
+  breadcrumbs={[
+    { name: 'Pavois', path: `/${lang}/` },
+    { name: t.rules, path: `/${lang}/rules/` },
+    { name: lang === 'fr' ? 'Domaines' : 'Domains', path: `/${lang}/rules/domain/` },
+    { name: label, path: `/${lang}/rules/domain/${Astro.params.domain}/` },
+  ]}
+>
+  <div class="wrap page-head">
+    <a class="back" href={`/${lang}/rules/domain/`}>← {c('allDomains')}</a>
+    <h1>{copy.h1[lang]}</h1>
+    <p class="lede">{lede}</p>
+    {
+      facts.coverage !== 'deep' && (
+        <p class="covnote">
+          {lang === 'fr'
+            ? facts.coverage === 'shallow'
+              ? 'Domaine peu couvert par Pavois aujourd’hui, '
+              : 'Domaine partiellement couvert par Pavois aujourd’hui, '
+            : facts.coverage === 'shallow'
+              ? 'This domain is thinly covered by Pavois today, '
+              : 'This domain is partially covered by Pavois today, '}
+          <a href={`/${lang}/handbook/coverage/`}>
+            {lang === 'fr' ? 'voir la page Couverture' : 'see the Coverage page'}
+          </a>.
+        </p>
+      )
+    }
+  </div>
+
+  <div class="wrap">
+    <h2 class="dh">{c('factsHead')}</h2>
+    <div class="rtable-wrap">
+      <table class="rtable dfacts">
+        <tbody>
+          <tr>
+            <td class="dom">{c('fControls')}</td>
+            <td><b>{facts.total}</b></td>
+          </tr>
+          <tr>
+            <td class="dom">{c('fSev')}</td>
+            <td>
+              <div class="tags">
+                {
+                  facts.severities.map((s) => (
+                    <span class={`sev ${sevClass(s.key)}`}>
+                      {sevLabel(s.key)} {s.count}
+                    </span>
+                  ))
+                }
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="dom">{c('fEvidence')}</td>
+            <td>
+              <div class="tags">
+                {
+                  facts.evidence.map((e) => (
+                    <span class={`ev ev-${e.key}`}>
+                      {evidenceLabel(e.key, lang)} {e.count}
+                    </span>
+                  ))
+                }
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="dom">{c('fNorms')}</td>
+            <td>
+              <div class="tags">
+                {facts.norms.map((n) => <span class="tag">{NORM_LABEL[n.key] ?? n.key}</span>)}
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="dom">{c('fOs')}</td>
+            <td>
+              <div class="os-row">
+                {facts.oses.map((os) => <span class="os-chip">{osLabel(os)}</span>)}
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="dom">{c('fCoverage')}</td>
+            <td>
+              <a href={`/${lang}/handbook/coverage/`}>{coverageLabel[facts.coverage][lang]}</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    {
+      evidenceDetail.length > 0 && (
+        <>
+          <h2 class="dh">{c('evHead')}</h2>
+          <dl class="dlist">
+            {
+              evidenceDetail.map((e) => (
+                <>
+                  <dt>
+                    {e.meta.label[lang]} <span class="dcount">{e.count}</span>
+                  </dt>
+                  <dd>{e.meta.blurb[lang]}</dd>
+                </>
+              ))
+            }
+          </dl>
+        </>
+      )
+    }
+
+    {
+      facts.norms.length > 0 && (
+        <>
+          <h2 class="dh">{c('normHead')}</h2>
+          <p class="dp">
+            {c('normIntro')}{' '}
+            <a href={`/${lang}/handbook/the-standards/`}>{c('normHow')}</a>.
+          </p>
+          <dl class="dlist">
+            {
+              facts.norms.map((n) => (
+                <>
+                  <dt>
+                    <a href={`/${lang}/standards/${n.key}/`}>{NORM_LABEL[n.key] ?? n.key}</a>
+                  </dt>
+                  <dd class="drefs">{n.refs.join(', ')}</dd>
+                </>
+              ))
+            }
+          </dl>
+        </>
+      )
+    }
+
+    <h2 class="dh" id="controls">{c('listHead')}</h2>
+    <div class="rtable-wrap">
+      <table class="rtable">
+        <thead>
+          <tr>
+            <th>{c('thRef')}</th>
+            <th>{t.thRule}</th>
+            <th>{c('thSev')}</th>
+            <th>{t.thOs}</th>
+            <th>{t.standards}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            rules.map((r) => (
+              <tr>
+                <td>
+                  <a class="ref" href={`/${lang}/rules/${r.id}/`}>{socleOf(r.id)}</a>
+                </td>
+                <td>
+                  <a class="rule-name" href={`/${lang}/rules/${r.id}/`}>{r.title[lang]}</a>
+                </td>
+                <td>
+                  <span class={`sev ${sevClass(r.severity)}`}>{sevLabel(r.severity)}</span>
+                </td>
+                <td class="os">{r.supported_os.length}</td>
+                <td>
+                  <div class="tags">
+                    {
+                      Object.entries(r.norms)
+                        .filter(([, v]) => (Array.isArray(v) ? v.length > 0 : !!v))
+                        .map(([k]) => <span class="tag">{k}</span>)
+                    }
+                  </div>
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+
+    {
+      (dref.handbook || dref.blog || dref.man?.length) && (
+        <>
+          <h2 class="dh">{c('srcHead')}</h2>
+          <div class="src-col">
+            {dref.handbook && (
+              <a class="src-link" href={`/${lang}/handbook/${dref.handbook.id}/`}>
+                {c('guideHandbook')} {dref.handbook.title[lang]}
+              </a>
+            )}
+            {dref.blog && (
+              <a class="src-link ext" href={dref.blog.url} target="_blank" rel="noopener">
+                {dref.blog.label}, blog.stephane-robert.info ↗
+              </a>
+            )}
+            {dref.man?.length > 0 && (
+              <div class="src-chips">
+                {dref.man.map((m: { page: string; url: string }) => (
+                  <a class="src-chip ext mono" href={m.url} target="_blank" rel="noopener">
+                    {m.page} ↗
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )
+    }
+
+    <p class="dp">
+      <a href={`/${lang}/rules/`}>{c('backCatalogue')}</a> ·{' '}
+      <a href={`/${lang}/rules/domain/`}>{c('allDomains')}</a>
+    </p>
+  </div>
+</Base>
