@@ -88,17 +88,41 @@ curl -fsSLO $BASE/pavois-${VERSION.slice(1)}.amd64.rpm && sudo rpm -i pavois-${V
  * also publishes the package URL and its sha256, so the rule costs nothing here: download, verify,
  * install with the system package manager, and nothing executes until sha256sum has agreed.
  *
- * The p/pv keys are omnitruck's own: el/8, el/9, debian/12, debian/13, ubuntu/22.04, ubuntu/24.04.
- * AlmaLinux and Rocky are `el`, as they are for Pavois's own profile detection.
+ * Why the platform keys are DERIVED and not written in the snippet (#390). They used to be
+ * `p=el&pv=9`, hardcoded, with the Debian answer demoted to a trailing comment that said
+ * "Debian/Ubuntu: sudo apt install ./<file>". A reader on Ubuntu 24.04 did exactly what the block
+ * said, and the block handed them `cinc-auditor-7.2.1-1.el9.x86_64.rpm`: an RPM, on Ubuntu,
+ * because the URL above the comment never changed. The comment described a choice the command did
+ * not offer.
+ *
+ * So the block now reads `/etc/os-release` and derives p, pv AND the package manager together, on
+ * one line each, which is what makes them impossible to disagree. The p/pv keys are omnitruck's
+ * own: el/8, el/9, debian/12, debian/13, ubuntu/22.04, ubuntu/24.04. AlmaLinux, Rocky and CentOS
+ * declare as `el`, as they do for Pavois's own profile detection.
+ *
+ * Fedora is deliberately absent from the case, and the `${P:?…}` guard is why that is safe rather
+ * than merely incomplete. Asked for `p=fedora&pv=40`, omnitruck answers with
+ * `cinc-auditor-6.6.0-1.el7.x86_64.rpm`: a four-major-versions-old build for el7. A snippet that
+ * mapped Fedora would install that silently. Unset `P` makes the command refuse, with a message,
+ * leaving an interactive shell alive.
+ *
+ * The guard's message stays English in both languages on purpose: it is output of a command, not
+ * page copy, and `scripts/shell-blocks-parity.mjs` requires the EN and FR blocks to run the same
+ * commands, with only the trailing comments translated.
  */
 export const engineInstall: Block = {
   id: 'engine-install',
-  code: (fr) => `META="https://omnitruck.cinc.sh/stable/cinc-auditor/metadata?p=el&pv=9&m=x86_64"
-URL=$(curl -sS "$META" | awk '/^url/{print $2}')     # ${t(fr, { en: 'the package for that platform', fr: 'le paquet de cette plateforme' })}
+  code: (fr) => `. /etc/os-release                                    # ${t(fr, { en: 'the platform keys, read from the system', fr: 'les clés de plateforme, lues sur le système' })}
+case $ID in
+  debian|ubuntu) P=$ID PV=$VERSION_ID PKG=apt ;;
+  rhel|almalinux|rocky|centos) P=el PV=\${VERSION_ID%%.*} PKG=dnf ;;
+esac
+META="https://omnitruck.cinc.sh/stable/cinc-auditor/metadata?p=\${P:?unsupported platform, see the keys below}&pv=$PV&m=x86_64"
+URL=$(curl -sS "$META" | awk '/^url/{print $2}')     # ${t(fr, { en: 'the package for THIS platform', fr: 'le paquet de CETTE plateforme' })}
 SUM=$(curl -sS "$META" | awk '/^sha256/{print $2}')  # ${t(fr, { en: 'and its published checksum', fr: 'et son empreinte publiée' })}
 curl -fsSLO "$URL"
 echo "$SUM  \${URL##*/}" | sha256sum --check         # ${t(fr, { en: 'integrity, before anything runs', fr: 'intégrité, avant toute exécution' })}
-sudo dnf install -y "./\${URL##*/}"                  # ${t(fr, { en: 'Debian/Ubuntu: sudo apt install ./<file>', fr: 'Debian/Ubuntu : sudo apt install ./<fichier>' })}
+sudo $PKG install -y "./\${URL##*/}"                 # ${t(fr, { en: 'apt on Debian/Ubuntu, dnf on the el family', fr: 'apt sur Debian/Ubuntu, dnf sur la famille el' })}
 pavois doctor                                        # ${t(fr, { en: 'CINC engine (native): /usr/bin/cinc-auditor', fr: 'moteur CINC (natif) : /usr/bin/cinc-auditor' })}`,
 };
 

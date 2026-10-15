@@ -5,6 +5,7 @@ import { ui, languages, type Lang } from '../../../i18n/ui';
 import socleRefs from '../../../data/socle-refs.json';
 import { coverageLevel, coverageLabel } from '../../../data/coverage';
 import { domainLabel } from '../../../data/domain-labels';
+import { groupByDomain } from '../../../lib/domains';
 
 export function getStaticPaths() {
   return Object.keys(languages).map((lang) => ({ params: { lang } }));
@@ -16,6 +17,18 @@ const rules = (await getCollection('rules')).sort((a, b) =>
   (a.data.domain || '').localeCompare(b.data.domain || '') || a.data.title[lang].localeCompare(b.data.title[lang])
 );
 const domains = [...new Set(rules.map((r) => r.data.domain).filter(Boolean))].sort();
+// The crawlable half of this page.
+//
+// The table below is windowed: 60 rows are server-rendered and the other 730 are built client-side
+// from the JSON blob at the bottom. That is right for the reader and invisible to a crawler, and it
+// left 400 fiches with no inbound internal link except their counterpart in the other language.
+// This block is the fix: 34 links in the HTML, one per domain hub, each hub listing its own
+// controls in full. See src/lib/domains.ts.
+const domainNav = groupByDomain(rules.map((r) => r.data)).map((g) => ({
+  slug: g.slug,
+  label: domainLabel(g.domain, lang),
+  count: g.rules.length,
+}));
 const order = { critical: 0, high: 1, medium: 2, low: 3, unknown: 4 } as Record<string, number>;
 const sevs = [...new Set(rules.map((r) => r.data.severity))].sort((a, b) => order[a] - order[b]);
 const STD = ['cis', 'bp28', 'nist', 'pci-dss', 'stig'];
@@ -70,6 +83,26 @@ const rowsData = rules.map((r) => {
   <div class="wrap page-head">
     <h1>{lang === 'fr' ? 'Contrôles de sécurité et de durcissement Linux' : 'Linux security and hardening controls'}</h1>
     <p class="lede">{intro[lang]}</p>
+  </div>
+
+  <div class="wrap">
+    <nav class="domnav" aria-label={lang === 'fr' ? 'Domaines de contrôles' : 'Control domains'}>
+      <h2 class="domnav-h">
+        {lang === 'fr' ? 'Parcourir par domaine' : 'Browse by domain'}
+      </h2>
+      <div class="domnav-list">
+        {
+          domainNav.map((d) => (
+            <a class="dpill" href={`/${lang}/rules/domain/${d.slug}/`}>
+              {d.label} <span class="n">{d.count}</span>
+            </a>
+          ))
+        }
+        <a class="dpill dpill-all" href={`/${lang}/rules/domain/`}>
+          {lang === 'fr' ? `Les ${domainNav.length} domaines →` : `All ${domainNav.length} domains →`}
+        </a>
+      </div>
+    </nav>
   </div>
 
   <div class="wrap">

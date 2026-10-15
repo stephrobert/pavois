@@ -1,5 +1,6 @@
 import { getCollection } from 'astro:content';
 import { languages } from '../i18n/ui';
+import { groupByDomain } from './domains';
 
 /**
  * The one place the sitemap's URL list is built.
@@ -17,8 +18,22 @@ import { languages } from '../i18n/ui';
 
 export type Entry = { loc: string; lang: string; key: string; lastmod?: string };
 
-/** Which child sitemap an entry belongs to. The names are the ones Search Console will show. */
-export type Bucket = 'pages-fr' | 'pages-en' | 'rules-fr' | 'rules-en' | 'blog';
+/**
+ * Which child sitemap an entry belongs to. The names are the ones Search Console will show.
+ *
+ * The domain hubs get their own bucket rather than sitting with the pages. They are the fix for
+ * the fiches that were never indexed, so the only question worth asking of them is whether Google
+ * takes them, and a coverage figure averaged into the handbook and the product pages cannot
+ * answer it.
+ */
+export type Bucket =
+  | 'pages-fr'
+  | 'pages-en'
+  | 'rules-fr'
+  | 'rules-en'
+  | 'domains-fr'
+  | 'domains-en'
+  | 'blog';
 
 const LANGS = Object.keys(languages);
 
@@ -35,14 +50,27 @@ const STATIC = [
 
 const iso = (d?: string) => (d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : undefined);
 
+/** The newest editorial date in a set of rules, which is when a page derived from them changed. */
+const newest = (rs: { dateModified?: string; datePublished?: string }[]): string | undefined =>
+  rs
+    .map((r) => iso(r.dateModified ?? r.datePublished))
+    .filter((d): d is string => !!d)
+    .sort()
+    .at(-1);
+
 /** Every URL of the site, in every language, with the bucket each one belongs to. */
 export async function allEntries(origin: string): Promise<Map<Bucket, Entry[]>> {
   const rules = await getCollection('rules');
   const handbook = await getCollection('handbook');
   const posts = (await getCollection('blog')).filter((p) => !p.data.draft);
 
+  // One hub per domain, plus the map that lists them. Derived from the same function the pages
+  // use, so a hub can never be in the sitemap without existing, or exist without being listed.
+  const hubs = groupByDomain(rules.map((r) => r.data));
+
   const out = new Map<Bucket, Entry[]>([
-    ['pages-fr', []], ['pages-en', []], ['rules-fr', []], ['rules-en', []], ['blog', []],
+    ['pages-fr', []], ['pages-en', []], ['rules-fr', []], ['rules-en', []],
+    ['domains-fr', []], ['domains-en', []], ['blog', []],
   ]);
   const push = (b: Bucket, lang: string, key: string, lastmod?: string) =>
     out.get(b)!.push({ loc: `${origin}/${lang}/${key}`, lang, key, lastmod });
@@ -50,7 +78,13 @@ export async function allEntries(origin: string): Promise<Map<Bucket, Entry[]>> 
   for (const lang of LANGS) {
     const pages = (lang === 'fr' ? 'pages-fr' : 'pages-en') as Bucket;
     const fiches = (lang === 'fr' ? 'rules-fr' : 'rules-en') as Bucket;
+    const domains = (lang === 'fr' ? 'domains-fr' : 'domains-en') as Bucket;
     for (const s of STATIC) push(pages, lang, s);
+    // A hub's content IS its domain's controls, so its lastmod is the newest editorial date among
+    // them. Emitting none would tell a crawler nothing, and emitting the build date would tell it
+    // that 35 pages change every deploy, which is false and quickly ignored.
+    push(domains, lang, 'rules/domain/', newest(rules.map((r) => r.data)));
+    for (const h of hubs) push(domains, lang, `rules/domain/${h.slug}/`, newest(h.rules));
     // The handbook chapters sit with the pages: they are a few dozen, and separating them from the
     // 790 fiches is the whole point of the split.
     for (const h of handbook) push(pages, lang, `handbook/${h.data.id}/`, iso(h.data.dateModified ?? h.data.datePublished));
