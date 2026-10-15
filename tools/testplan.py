@@ -284,7 +284,7 @@ RULES: list[Rule] = [
             (
                 OFFLINE,
                 "mise run prepush",
-                "that CI agrees: CI resolves `go-version: 1.26` to the latest patch",
+                "that CI agrees: the workflows pin a patch of their own, bump them too",
             ),
         ],
     ),
