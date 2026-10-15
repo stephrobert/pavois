@@ -1,0 +1,132 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../../../layouts/Base.astro';
+import { ui, languages, type Lang } from '../../../../i18n/ui';
+import { domainLabel } from '../../../../data/domain-labels';
+import { coverageLabel } from '../../../../data/coverage';
+import { groupByDomain, domainFacts } from '../../../../lib/domains';
+import { pageTitle, metaDescription } from '../../../../lib/meta';
+import { count } from '../../../../lib/plural';
+
+/**
+ * The map of the control domains: one crawlable page listing all 34 hubs.
+ *
+ * Why this page and not only the block on `/rules/`. Without it, `/rules/domain/` is a path
+ * segment that answers 404 while its children are indexed, which is sloppy, and the hubs would
+ * depend on a single parent. It also answers a question `/rules/` cannot: how the 790 controls are
+ * distributed across domains, and how deeply each one is covered. Different intent, different
+ * primary keyword, so the two pages do not compete for the same query.
+ */
+export async function getStaticPaths() {
+  const rules = (await getCollection('rules')).map((r) => r.data);
+  // `/rules/<id>/` and `/rules/domain/` are different routes, but a control literally named
+  // `domain` would shadow this page's URL. Nothing in the corpus does; this fails the build if one
+  // ever appears, rather than quietly serving a fiche where the map should be.
+  if (rules.some((r) => r.id === 'domain')) {
+    throw new Error('A control with the id "domain" would shadow /<lang>/rules/domain/. Rename it.');
+  }
+  return Object.keys(languages).map((lang) => ({ params: { lang }, props: { rules } }));
+}
+
+type Rule = Awaited<ReturnType<typeof getCollection<'rules'>>>[number]['data'];
+const { lang } = Astro.params as { lang: Lang };
+const { rules } = Astro.props as { rules: Rule[] };
+const t = ui[lang];
+
+const groups = groupByDomain(rules)
+  .map((g) => ({ ...g, label: domainLabel(g.domain, lang), facts: domainFacts(g.rules) }))
+  .sort((a, b) => b.facts.total - a.facts.total || a.label.localeCompare(b.label));
+const total = rules.length;
+const serious = rules.filter((r) => r.severity === 'critical' || r.severity === 'high').length;
+
+const copy = {
+  h1: {
+    fr: `Les ${groups.length} domaines de contrôles de durcissement Linux`,
+    en: `The ${groups.length} Linux hardening control domains`,
+  },
+  lede: {
+    fr: `Les ${count(total, 'contrôle', 'contrôles')} que Pavois audite sont rangés en ${count(groups.length, 'domaine', 'domaines')}, du durcissement SSH aux options de compilation du noyau, dont ${serious} de sévérité haute ou critique. Chaque domaine a sa page : ses contrôles, ses normes, les preuves qu'il collecte et la profondeur réelle de sa couverture.`,
+    en: `The ${count(total, 'control', 'controls')} Pavois audits are filed under ${count(groups.length, 'domain', 'domains')}, from SSH hardening to kernel build options, ${serious} of them high or critical severity. Each domain has its own page: its controls, its standards, the evidence it gathers and the real depth of its coverage.`,
+  },
+  thDomain: { fr: 'Domaine', en: 'Domain' },
+  thCount: { fr: 'Contrôles', en: 'Controls' },
+  thSerious: { fr: 'Haute/critique', en: 'High/critical' },
+  thNorms: { fr: 'Normes', en: 'Standards' },
+  thCoverage: { fr: 'Couverture', en: 'Coverage' },
+  backCatalogue: { fr: 'Catalogue complet des contrôles', en: 'Full control catalogue' },
+};
+const c = (k: keyof typeof copy): string => copy[k][lang];
+const NORM_LABEL: Record<string, string> = {
+  cis: 'CIS',
+  bp28: 'ANSSI',
+  nist: 'NIST',
+  'pci-dss': 'PCI',
+  stig: 'STIG',
+};
+const seriousOf = (g: (typeof groups)[number]): number =>
+  g.facts.severities.filter((s) => s.key === 'critical' || s.key === 'high').reduce((n, s) => n + s.count, 0);
+---
+
+<Base
+  title={pageTitle(copy.h1[lang])}
+  description={metaDescription(copy.lede[lang])}
+  lang={lang}
+  schema="CollectionPage"
+  collectionSize={groups.length}
+  breadcrumbs={[
+    { name: 'Pavois', path: `/${lang}/` },
+    { name: t.rules, path: `/${lang}/rules/` },
+    { name: lang === 'fr' ? 'Domaines' : 'Domains', path: `/${lang}/rules/domain/` },
+  ]}
+>
+  <div class="wrap page-head">
+    <a class="back" href={`/${lang}/rules/`}>← {c('backCatalogue')}</a>
+    <h1>{copy.h1[lang]}</h1>
+    <p class="lede">{copy.lede[lang]}</p>
+  </div>
+
+  <div class="wrap">
+    <div class="rtable-wrap">
+      <table class="rtable">
+        <thead>
+          <tr>
+            <th>{c('thDomain')}</th>
+            <th>{c('thCount')}</th>
+            <th>{c('thSerious')}</th>
+            <th>{t.thOs}</th>
+            <th>{c('thNorms')}</th>
+            <th>{c('thCoverage')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            groups.map((g) => (
+              <tr>
+                <td>
+                  <a class="rule-name" href={`/${lang}/rules/domain/${g.slug}/`}>{g.label}</a>
+                </td>
+                <td class="os">{g.facts.total}</td>
+                <td class="os">{seriousOf(g)}</td>
+                <td class="os">{g.facts.oses.length}</td>
+                <td>
+                  <div class="tags">
+                    {g.facts.norms.map((n) => <span class="tag">{NORM_LABEL[n.key] ?? n.key}</span>)}
+                  </div>
+                </td>
+                <td class="dom">
+                  {g.facts.coverage === 'deep' ? (
+                    coverageLabel.deep[lang]
+                  ) : (
+                    <a class={`covb covb-${g.facts.coverage}`} href={`/${lang}/handbook/coverage/`}>
+                      {coverageLabel[g.facts.coverage][lang]}
+                    </a>
+                  )}
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</Base>

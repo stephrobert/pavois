@@ -10,17 +10,36 @@ import domainRefs from '../../../data/domain-refs.json';
 import standards from '../../../data/standards.json';
 import socleRefs from '../../../data/socle-refs.json';
 import { coverageLevel } from '../../../data/coverage';
+import { EVIDENCE } from '../../../data/evidence';
+import { domainLabel } from '../../../data/domain-labels';
+import { groupByDomain, relatedWindow } from '../../../lib/domains';
+import { count } from '../../../lib/plural';
 import { pageTitle, metaDescription } from '../../../lib/meta';
 
 export async function getStaticPaths() {
   const rules = await getCollection('rules');
+  // The fiche's place in the link graph, resolved once for the whole corpus rather than per page:
+  // its domain hub (the crawlable parent it was missing) and the rotating window of siblings that
+  // spreads the internal links evenly across a domain. See src/lib/domains.ts.
+  const hubs = new Map(groupByDomain(rules.map((r) => r.data)).map((g) => [g.domain, g]));
   return Object.keys(languages).flatMap((lang) =>
-    rules.map((r) => ({ params: { lang, id: r.data.id }, props: { data: r.data } }))
+    rules.map((r) => {
+      const hub = r.data.domain ? hubs.get(r.data.domain) : undefined;
+      return {
+        params: { lang, id: r.data.id },
+        props: {
+          data: r.data,
+          domSlug: hub?.slug ?? '',
+          domTotal: hub?.rules.length ?? 0,
+          related: hub ? relatedWindow(hub.rules, r.data.id) : [],
+        },
+      };
+    })
   );
 }
 
 const { lang } = Astro.params as { lang: Lang };
-const { data } = Astro.props;
+const { data, domSlug, domTotal, related } = Astro.props;
 const t = ui[lang];
 const tr = (f?: { en: string; fr: string }) => (f ? f[lang] : '');
 const md = (f?: { en: string; fr: string }) =>
@@ -46,51 +65,6 @@ const hasRem = Object.keys(data.remediation || {}).length > 0;
 // Pavois is the executable Linux profile of the SOCLE norm, this is the control's citable reference.
 const socleRef = (socleRefs as Record<string, string>)[data.id];
 
-// Evidence type, what the check actually proves. Honest about "effective" not being universal.
-const EVIDENCE: Record<string, { label: Record<Lang, string>; blurb: Record<Lang, string> }> = {
-  'effective-runtime': {
-    label: { en: 'effective runtime', fr: 'runtime effectif' },
-    blurb: {
-      en: 'Checked against the resolved running state (e.g. sshd -T, sysctl, systemctl show), catches drop-ins and Includes a file read would miss. Caveat: runtime ≠ persistence; a value correct now may not survive a reboot.',
-      fr: 'Vérifié sur l’état résolu en cours d’exécution (ex. sshd -T, sysctl, systemctl show), attrape les drop-ins et Include qu’une lecture de fichier raterait. Réserve : runtime ≠ persistance ; une valeur correcte maintenant peut ne pas survivre à un redémarrage.',
-    },
-  },
-  'persistent-config': {
-    label: { en: 'persistent config', fr: 'config persistante' },
-    blurb: {
-      en: 'Checked against the content of a persistent configuration file, the source of truth that survives reboots.',
-      fr: 'Vérifié sur le contenu d’un fichier de configuration persistant, la source de vérité qui survit aux redémarrages.',
-    },
-  },
-  'inventory-state': {
-    label: { en: 'inventory state', fr: 'état d’inventaire' },
-    blurb: {
-      en: 'Checked against what is installed or registered, packages present/absent, account databases.',
-      fr: 'Vérifié sur ce qui est installé ou enregistré, paquets présents/absents, bases de comptes.',
-    },
-  },
-  'filesystem-state': {
-    label: { en: 'filesystem state', fr: 'état du système de fichiers' },
-    blurb: {
-      en: 'Checked against a path’s metadata, mode, owner, group, SUID/SGID.',
-      fr: 'Vérifié sur les métadonnées d’un chemin, mode, propriétaire, groupe, SUID/SGID.',
-    },
-  },
-  manual: {
-    label: { en: 'manual', fr: 'manuel' },
-    blurb: {
-      en: 'No machine check, requires human judgement and business context.',
-      fr: 'Pas de vérification automatique, jugement humain et contexte métier requis.',
-    },
-  },
-  behavioral: {
-    label: { en: 'behavioral', fr: 'comportemental' },
-    blurb: {
-      en: 'Verified by actively attempting a forbidden action.',
-      fr: 'Vérifié en tentant réellement une action interdite.',
-    },
-  },
-};
 const ev = data.evidence_type ? EVIDENCE[data.evidence_type] : null;
 
 // What a PASS proves, derived from the evidence type, not hand-authored. The qualified verdict:
@@ -110,6 +84,24 @@ const PROVES: Record<string, { running: string; disk: string; reboot: string }> 
 const pvBase = data.evidence_type ? PROVES[data.evidence_type] : null;
 const pv = pvBase ? { ...pvBase } : null;
 if (pv && data.reboot_survivable === 'yes') { pv.disk = 'yes'; pv.reboot = 'yes'; }
+// The domain, as a navigable entity rather than a bare string. The head used to print the raw
+// English domain name on French pages too, and it linked nowhere.
+const domName = data.domain ? domainLabel(data.domain, lang) : '';
+const relCopy = {
+  head: {
+    en: `Related ${domName} controls`,
+    fr: `Contrôles liés du domaine ${domName}`,
+  },
+  note: {
+    en: `The ${domName} domain holds ${count(domTotal, 'control', 'controls')}, each with its own evidence, verification and remediation.`,
+    fr: `Le domaine ${domName} compte ${count(domTotal, 'contrôle', 'contrôles')}, chacun avec sa propre preuve, sa vérification et sa remédiation.`,
+  },
+  all: {
+    en: `All ${count(domTotal, 'control', 'controls')} for ${domName} hardening`,
+    fr: `Les ${count(domTotal, 'contrôle', 'contrôles')} de durcissement ${domName}`,
+  },
+};
+
 // Domains the coverage page flags as not-deep, surface the honest caveat on those fiches only.
 const cov = coverageLevel(data.domain);
 const provesLabels = {
@@ -250,6 +242,7 @@ const toc = [
   data.impact && { depth: 2, slug: 'impact', text: t.secImpact },
   { depth: 2, slug: 'mapping', text: mapTable.head[lang] },
   { depth: 2, slug: 'sources', text: tr(srcT.title) },
+  related.length > 0 && { depth: 2, slug: 'related', text: relCopy.head[lang] },
 ].filter(Boolean) as { depth: number; slug: string; text: string }[];
 
 ---
@@ -265,6 +258,7 @@ const toc = [
   breadcrumbs={[
     { name: 'Pavois', path: `/${lang}/` },
     { name: lang === 'fr' ? 'Contrôles' : 'Controls', path: `/${lang}/rules/` },
+    ...(domSlug ? [{ name: domName, path: `/${lang}/rules/domain/${domSlug}/` }] : []),
     { name: data.title[lang], path: `/${lang}/rules/${data.id}/` },
   ]}
 >
@@ -280,7 +274,11 @@ const toc = [
           >{socleRef}</a
         >
       )}
-      <span class="dom">// {data.domain ?? 'rule'}</span>
+      {domSlug ? (
+        <a class="dom" href={`/${lang}/rules/domain/${domSlug}/`}>// {domName}</a>
+      ) : (
+        <span class="dom">// {data.domain ?? 'rule'}</span>
+      )}
       <span class={`sev ${data.severity === 'medium' ? 'med' : data.severity === 'unknown' ? 'na' : data.severity}`}>
         {t.sev[data.severity]}
       </span>
@@ -522,6 +520,27 @@ const toc = [
                   </div>
                 )}
               </div>
+            </section>
+          )
+        }
+        {
+          related.length > 0 && (
+            <section class="related">
+              <h2 id="related">{relCopy.head[lang]}</h2>
+              <p class="relnote">{relCopy.note[lang]}</p>
+              <ul class="rel-list">
+                {related.map((r) => (
+                  <li>
+                    <a href={`/${lang}/rules/${r.id}/`}>{r.title[lang]}</a>
+                    <span
+                      class={`sev ${r.severity === 'medium' ? 'med' : r.severity === 'unknown' ? 'na' : r.severity}`}
+                    >
+                      {t.sev[r.severity]}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <a class="rel-all" href={`/${lang}/rules/domain/${domSlug}/`}>{relCopy.all[lang]} →</a>
             </section>
           )
         }

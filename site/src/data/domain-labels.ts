@@ -28,6 +28,7 @@ export const domainFr: Record<string, string> = {
   'Kernel command line': 'Ligne de commande du noyau',
   'Kernel modules': 'Modules du noyau',
   Logging: 'Journalisation',
+  'Mandatory Access Control': 'Contrôle d’accès obligatoire',
   'Logging (journald)': 'Journalisation (journald)',
   Mounts: 'Montages',
   Packages: 'Paquets',
