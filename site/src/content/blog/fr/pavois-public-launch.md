@@ -126,4 +126,4 @@ Il n'y a pas non plus d'agrégation de flotte. Un run audite une cible. Une bouc
 - [Parcourir les contrôles](/fr/rules/) et leur type de preuve.
 - [Comment la note est calculée](/fr/handbook/scoring-methodology/).
 - Un bug, une machine qui réagit mal ? `pavois support` prépare le rapport, sans l'identité de votre machine.
-- Pour le durcissement Linux au sens large, mes guides sur [blog.stephane-robert.info](https://blog.stephane-robert.info/docs/securiser/).
+- Pour le durcissement Linux au sens large, mes guides sur [www.stephane-robert.info](https://www.stephane-robert.info/docs/securiser/).
