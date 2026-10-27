@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate site/src/data/domain-refs.json: per control-domain, the authoritative references that
 make a fiche credible: the pavois handbook guide (internal cross-link), the author's hardening guide
-on blog.stephane-robert.info (external source + SEO backlink), and the relevant man pages.
+on www.stephane-robert.info (external source + SEO backlink), and the relevant man pages.
 
 Handbook id per domain is read from the handbook content; blog slugs + man pages are curated here
 (the blog map includes the guides the author just published: sysctl, mounts, systemd, grub,
@@ -17,17 +17,25 @@ ROOT = Path(__file__).resolve().parent.parent
 HANDBOOK = ROOT / "site" / "src" / "content" / "handbook"
 OUT = ROOT / "site" / "src" / "data" / "domain-refs.json"
 
-BLOG_BASE = "https://blog.stephane-robert.info/docs/securiser/"
+SITE_BASE = "https://www.stephane-robert.info"
+BLOG_BASE = SITE_BASE + "/docs/securiser/"
 MAN_BASE = "https://manpages.debian.org/"
 
-# domain -> (blog slug under /docs/securiser/, human label). Author-published hardening guides.
+# domain -> (blog slug, human label). Author-published hardening guides.
+#
+# A slug is relative to BLOG_BASE, which is where the hardening guides live and where almost
+# all of them stay. A slug starting with "/" is a path from the site root instead: the ACL and
+# chrony guides sit outside /docs/securiser/, and pointing at them from the base produced two
+# URLs that answered 404 on every fiche that cited them. The old blog.* host redirected to the
+# same 404, so those two links were already dead before the domain moved; the move is simply
+# what made them visible. Checked by resolving every URL in this file, not by reading it.
 BLOG = {
     "SSH": ("durcissement/ssh/", "SSH hardening"),
     "Audit (auditd)": ("durcissement/auditd/", "auditd hardening"),
     "Audit (auditd daemon)": ("durcissement/auditd/", "auditd hardening"),
     "Accounts (PAM modules)": ("durcissement/pam/", "PAM hardening"),
-    "File permissions": ("durcissement/acl/", "Permissions & ACL"),
-    "File ownership": ("durcissement/acl/", "Permissions & ACL"),
+    "File permissions": ("/docs/admin-serveurs/linux/securiser/acl/", "Permissions & ACL"),
+    "File ownership": ("/docs/admin-serveurs/linux/securiser/acl/", "Permissions & ACL"),
     "Sudo": ("durcissement/sudoers/", "sudo hardening & logging"),
     "Kernel & network (sysctl)": ("durcissement/sysctl/", "sysctl kernel hardening"),
     "Mounts": ("durcissement/mounts/", "Mount point hardening"),
@@ -38,7 +46,7 @@ BLOG = {
     "Firewall": ("reseaux/firewalld/", "Host firewall (firewalld/ufw)"),
     "Logging (journald)": ("socle/referentiel/cloud/journalisation-audit/", "Logging & audit"),
     "Logging": ("socle/referentiel/cloud/journalisation-audit/", "Logging & audit"),
-    "Time synchronization": ("services/reseau/chrony/", "Time sync (chrony)"),
+    "Time synchronization": ("/docs/services/reseau/chrony/", "Time sync (chrony)"),
     "Packages": ("supply-chain/securiser-dependances/", "Securing dependencies"),
 }
 
@@ -75,7 +83,8 @@ def main():
             entry["handbook"] = handbook_by_domain[dom]
         if dom in BLOG:
             slug, label = BLOG[dom]
-            entry["blog"] = {"url": BLOG_BASE + slug, "label": label}
+            base = SITE_BASE if slug.startswith("/") else BLOG_BASE
+            entry["blog"] = {"url": base + slug, "label": label}
         if dom in MAN:
             entry["man"] = [{"page": p, "url": MAN_BASE + p} for p in MAN[dom]]
         out[dom] = entry

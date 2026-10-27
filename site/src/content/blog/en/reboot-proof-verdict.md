@@ -47,4 +47,4 @@ With `--reboot`, Pavois converges the fixes, reboots the host, waits for it to r
 
 - Read the method: [the qualified verdict](/en/handbook/qualified-verdict/) and [how the grade is computed](/en/handbook/scoring-methodology/).
 - Browse the controls and their evidence type in the [control explorer](/en/rules/).
-- Go deeper on Linux hardening with the author's guides on [blog.stephane-robert.info](https://blog.stephane-robert.info/docs/securiser/).
+- Go deeper on Linux hardening with the author's guides on [www.stephane-robert.info](https://www.stephane-robert.info/docs/securiser/).
