@@ -12,6 +12,56 @@ its content digest**, so an archived result stays interpretable long after the t
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-10-27
+
+A maintenance release, and the **baseline does not change**: no file under `docs/reference/` or
+`profiles/` differs from 0.1.8, so a report from each about the same machine must agree. What changes
+is the toolchain the binary is built with, two dependency trees, and two dead links the site was
+publishing.
+
+### Security
+
+- **The binary is built with Go 1.26.10**, closing GO-2026-6809 in `crypto/x509` (#404). Twelve days
+  after 0.1.8 pinned 1.26.9 for the same reason, which is the cost of an exact pin and the cost
+  being paid on purpose: the pin is what makes a vulnerable toolchain visible instead of silently
+  inherited from a runner's tool cache. **Eight** declarations name the version, not the nine
+  0.1.8's own notes claimed: `go/go.mod`, `mise.toml`, and the `setup-go` steps in `go.yml`,
+  `workflow-security.yml`, `fuzz.yml`, `codeql.yml` and `release.yml` twice.
+- **Two HIGH findings left the site's dependency tree** (#404): `undici` 8.11.2 to 8.12.2 and `zod`
+  4.6.5 to 4.6.7. How they were held is the part worth recording. `Build, test, lint, vuln-scan` and
+  `Trivy dependency audit` are both required, so a stale Go toolchain blocked Dependabot's own npm
+  security pull request, while that pull request carried the npm fixes the toolchain bump needed to
+  go green. One combined pull request broke the deadlock, for the second time in twelve days. What
+  is missing is detection, not the eight lines, and it is now tracked (#405): nobody here learns of
+  a new standard-library advisory until a contributor's pull request goes red.
+- `golang.org/x/term` 0.46.0 to 0.47.0 and `golang.org/x/sys` 0.48.0 to 0.49.0 (#398).
+
+### Fixed
+
+- **The site published two dead links** (#403). The author's hardening guides moved from
+  `blog.stephane-robert.info` to `www.stephane-robert.info`, and resolving all 29 migrated URLs
+  without following redirects showed 27 answering 200 and two answering 404. Neither was collateral
+  of the move: the old host redirects to the same path on the new one, which is the same 404, so
+  both links had been dead before the domain changed and the move is what made them visible. The
+  ACL and chrony guides live outside `/docs/securiser/`, so `tools/gen_domain_refs.py` now reads a
+  slug starting with `/` as a path from the site root, and names the host in one place. No gate in
+  this repository checks external links, which is why this was done by hand.
+
+- **The site had stopped being published** at all. `astro` 7.4.2 raised its Node floor to
+  `>=22.23.4` and the build refuses to run below it, while `mise.toml` pinned 22.22.0, so
+  `site-deploy` failed on `main` on both merges that followed and pavois.dev served what #398 left
+  there. No pull request could have caught it: of the seven required checks, none builds the site,
+  and the only workflow that does runs after the merge. The pin is now 22.23.4 and says why. A
+  release would have hit the same wall, since `release.yml` calls `site-deploy` at the tag.
+
+### Internal
+
+- The actions are pinned to newer digests, 11 bumps in #396 and 8 in #407, `getplumber/plumber` from
+  v0.6.0 to v0.7.9 and `jdx/mise-action` from v5.1.1 to v5.2.1 among them. Both carry required
+  checks, so the green `Plumber analyze` and `Build, test, lint, vuln-scan` on #407 are the
+  measurement rather than a formality.
+- `astro` 7.3.8 to 7.4.2 (#404, #406) and `marked` 18.0.14 to 18.1.1 (#404).
+
 ## [0.1.8] - 2026-10-15
 
 A maintenance release, and the **baseline does not change**: no control, mapping or remediation
@@ -582,7 +632,8 @@ history to read. The embedded baseline is `pavois-baseline` 0.2.0.
 - OSCAL output is the baseline (catalog and profiles), not yet a per-scan assessment-results
   package. No container image is published yet.
 
-[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.8...HEAD
+[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.9...HEAD
+[0.1.9]: https://github.com/stephrobert/pavois/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/stephrobert/pavois/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/stephrobert/pavois/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/stephrobert/pavois/compare/v0.1.5...v0.1.6
