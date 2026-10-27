@@ -1,0 +1,87 @@
+name: Site
+
+# Does the site still build, and is what it builds publishable? Both questions are asked BEFORE a
+# merge, which is the whole point of this workflow existing.
+#
+# It exists because of #406. A dependabot bump of astro to 7.4.2 raised its Node floor to
+# >=22.23.4 while mise.toml pinned 22.22.0, and astro does not warn about that, it refuses to
+# build. The pull request was green at 14/14, because of the seven required checks not one builds
+# the site: the only workflow that did was site-deploy.yml, which fires on push to main. So the
+# bump merged, site-deploy failed on main, and pavois.dev kept serving the commit before it until
+# somebody looked. A release would have hit the same wall, since release.yml calls site-deploy at
+# the tag to make the install page name the version being published (#329).
+#
+# The gates are NOT duplicated here. `mise run site:gates` is one list in mise.toml, called by
+# this check and by site-deploy, so a pull request and the deploy can never disagree about what a
+# publishable site means. Adding a gate in one place adds it in both.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'docs/reference/**'
+      - 'mise.toml'
+      - '.github/workflows/site.yml'
+  # NO paths filter on the events that gate a merge. This is the same reasoning go.yml spells out,
+  # and it was learned there: a REQUIRED status check that is filtered out reports nothing at all,
+  # not "skipped", so GitHub waits forever for a result and the pull request can only land through
+  # an admin bypass. The filter therefore stays on `push`, where it gates nothing, and goes from
+  # the three events that decide whether a change may land.
+  #
+  # It also happens to be the honest setting: the site reads docs/reference/ and is built by the
+  # toolchain mise.toml pins, so the set of changes that can break it is not the set of files
+  # under site/. #406 touched site/package.json, but the fix was in mise.toml.
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build:
+    name: The site builds and its gates pass
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # cache: false, same as site-deploy: a restored cache is content this job did not build, and
+      # zizmor flags it (cache-poisoning). The tool install costs less than that class of bug.
+      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        with:
+          version: 2026.2.23
+          install: true
+          cache: false
+
+      # site:build runs gen:cli, which invokes the binary, so build it rather than letting the
+      # generator fail on a missing ./go/pavois.
+      - name: Build the binary the generators call
+        run: mise run build
+
+      # site:gates depends on site:build, so this one step is the build AND the eight gates that
+      # read what it produced. A failure names the gate.
+      - name: Build the site, then every gate that reads it
+        run: mise run site:gates
+
+      # A build that rewrote a committed file has changed the thing it was asked to check. This
+      # caught npm install doing exactly that to package-lock.json, which is why site:build now
+      # uses npm ci.
+      - name: The build left the working tree alone
+        run: |
+          dirty="$(git status --porcelain -- . ':(exclude)site/dist' ':(exclude)site/node_modules')"
+          if [ -n "$dirty" ]; then
+            echo "the build modified tracked files:"; echo "$dirty"
+            git diff -- . ':(exclude)site/dist' ':(exclude)site/node_modules'
+            exit 1
+          fi
+          echo "clean"
