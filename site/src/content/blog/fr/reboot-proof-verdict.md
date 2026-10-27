@@ -47,4 +47,4 @@ Avec `--reboot`, Pavois converge les correctifs, redémarre l'hôte, attend son 
 
 - Lis la méthode : [le verdict qualifié](/fr/handbook/qualified-verdict/) et [comment la note est calculée](/fr/handbook/scoring-methodology/).
 - Parcours les contrôles et leur type de preuve dans l'[explorateur de contrôles](/fr/rules/).
-- Approfondis le durcissement Linux avec les guides de l'auteur sur [blog.stephane-robert.info](https://blog.stephane-robert.info/docs/securiser/).
+- Approfondis le durcissement Linux avec les guides de l'auteur sur [www.stephane-robert.info](https://www.stephane-robert.info/docs/securiser/).

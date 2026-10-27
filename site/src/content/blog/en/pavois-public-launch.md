@@ -126,4 +126,4 @@ There is no fleet aggregation either. One run audits one target. A loop and a re
 - [Browse the controls](/en/rules/) and their evidence type.
 - [How the grade is computed](/en/handbook/scoring-methodology/).
 - Hit a bug, or a machine that reacts badly? `pavois support` prepares the report, without your machine's identity.
-- For Linux hardening more broadly, my guides on [blog.stephane-robert.info](https://blog.stephane-robert.info/docs/securiser/).
+- For Linux hardening more broadly, my guides on [www.stephane-robert.info](https://www.stephane-robert.info/docs/securiser/).
