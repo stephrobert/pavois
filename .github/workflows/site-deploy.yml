@@ -148,49 +148,13 @@ jobs:
       - name: Build the site
         run: mise run site:build
 
-      # Right after the build and before anything is published, because this guards a CLAIM rather
-      # than a link: the platforms page told every reader that five-day-old campaigns had run
-      # "0 days ago", and would have kept saying it for as long as nobody rebuilt the site.
-      - name: The evidence age is computed by the reader, not baked in
-        run: mise run site:test:age
-
-      - name: Fail on a broken internal link
-        run: mise run site:links
-
-      # This validator existed, was complete, was wired into mise, and no workflow called it. So
-      # Search Console found two Dataset defects before we did: a creator that was a bare @id
-      # reference (and a dangling one), and a missing license. A check nobody runs is not a check.
-      - name: Fail on structured data Google would reject
-        run: mise run site:validate-seo
-
-      # Before the upload, not after: a broken language cluster is cheap to fix and expensive to
-      # un-index, and an engine that discards the annotation gives no error anyone would notice.
-      - name: Fail on a broken language cluster
-        run: mise run site:validate-hreflang
-
-      # Titles, descriptions, alt text, headings. Search engines crawl this site continuously, so a
-      # page shipped with a 250-character description is a page shown truncated for weeks.
-      - name: Fail on a page-quality regression
-        run: mise run site:quality
-
-      # The header, resolved at phone, tablet and desktop widths. A rule added near the end of the
-      # stylesheet once beat the `max-width: 980px` rule that hides the flat links, because a media
-      # query adds no specificity, and the mobile header wrapped onto two rows on every page of the
-      # site. The source looked correct; only the cascade was wrong, so this reads the resolved
-      # value in the built css rather than the presence of a rule.
-      - name: Fail on a header that is not responsive
-        run: mise run site:nav-responsive
-
-      # The install commands must have exactly one home. They lived in three and drifted, so a
-      # reader following the get-started page and a reader following the installation page were
-      # given two different tools, one of which the site itself argues against.
-      - name: Fail on a duplicated install command
-        run: mise run site:install-single-source
-
-      # A command is not a translation: the install pages must run the same thing in both
-      # languages. Only the trailing comment may differ.
-      - name: Fail when the two languages run different commands
-        run: mise run site:shell-parity
+      # Every gate that reads the built site, as one task: `mise run site:gates`. The eight of them
+      # used to be eight steps here, which meant they ran only AFTER a merge. They now also gate
+      # the pull request, from the same list, so the two cannot drift apart. The individual
+      # reasons each gate exists moved to mise.toml with it; what matters here is that this step
+      # runs before a single byte is uploaded.
+      - name: Fail on anything a publishable site must not have
+        run: mise run site:gates
 
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:

@@ -54,6 +54,18 @@ publishing.
   and the only workflow that does runs after the merge. The pin is now 22.23.4 and says why. A
   release would have hit the same wall, since `release.yml` calls `site-deploy` at the tag.
 
+### Added
+
+- **The site is now built before a merge, not after it.** A `Site` workflow builds it on every pull
+  request, which is the gate whose absence let the item above through. The eight checks that read
+  the built site stopped being eight steps of `site-deploy.yml` and became one list,
+  `mise run site:gates`, called by the pull-request check and by the deploy: duplicating them into
+  a second workflow would have fixed one merge and guaranteed the next divergence. The check also
+  fails when the build modified a tracked file, which is how `npm install` was caught rewriting
+  `package-lock.json` on every local build, dropping the `libc` fields that tell npm which of the
+  musl and glibc binaries to take; `site:build` uses `npm ci` now, which installs the lock instead
+  of rewriting it. It is required, because an advisory check can be merged past.
+
 ### Internal
 
 - The actions are pinned to newer digests, 11 bumps in #396 and 8 in #407, `getplumber/plumber` from

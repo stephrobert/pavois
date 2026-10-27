@@ -215,13 +215,41 @@ run = "uv run --with pyyaml python3 tools/verify_site_content.py"
 [tasks."site:dev"]
 description = "Dev server for the hardening site (FR/EN)"
 dir = "{{config_root}}/site"
-run = "npm install && npm run dev"
+run = "npm ci && npm run dev"   # see site:build: a dev server must not rewrite the lock either
 
 [tasks."site:build"]
 description = "Build the static hardening site"
 depends = ["gen:pages", "gen:cli", "gen:example", "oscal", "site:verify"]
 dir = "{{config_root}}/site"
-run = "npm install && npm run build"
+# npm ci, not npm install: `install` REWRITES package-lock.json to whatever the local npm
+# thinks the tree should be, so every local build left the lock dirty. npm 10, bundled with
+# node 22, dropped the `libc` fields a newer npm had written for the optional musl/glibc
+# binaries, which is a silent downgrade of a committed file nobody asked to change. `ci`
+# installs the lock and refuses when it disagrees with package.json, which is the question a
+# build should be asking anyway.
+run = "npm ci && npm run build"
+
+[tasks."site:gates"]
+description = "Every gate that reads the BUILT site. Called by the pull-request check AND by site-deploy, so the two can never disagree about what a publishable site means."
+# One list, two callers. These eight ran only in site-deploy.yml, which fires AFTER a merge, and
+# that is how astro 7.4.2 landed on main with a Node floor mise.toml did not meet: #406 was green
+# at 14/14 while the site it broke was never built. Duplicating the steps into a second workflow
+# would have fixed that merge and guaranteed the next divergence, so the list lives here instead.
+#
+# `run` rather than `depends`, deliberately: mise runs dependencies in PARALLEL, and every gate
+# below reads site/dist/, so a dependency list would race the build that produces it. site:build
+# stays a dependency because it must finish first; the gates then run in order.
+depends = ["site:build"]
+run = """
+mise run site:test:age
+mise run site:links
+mise run site:validate-seo
+mise run site:validate-hreflang
+mise run site:quality
+mise run site:nav-responsive
+mise run site:install-single-source
+mise run site:shell-parity
+"""
 
 [tasks."site:links"]
 description = "FAIL if any internal link of the built site lands on a page that does not exist"
