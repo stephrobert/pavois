@@ -12,6 +12,17 @@ its content digest**, so an archived result stays interpretable long after the t
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-11-06
+
+A maintenance release. The **baseline does not change**; this release updates the site's
+development dependency tree to address four Dependabot advisories.
+
+### Security
+
+- **Override the vulnerable transitive `fast-uri` version** in the site's dependency tree with
+  3.1.9, fixing CVE-2026-110725, CVE-2026-110180, CVE-2026-110095 and CVE-2026-110306. The package
+  is used by development tooling, not by the site's production dependency graph.
+
 ## [0.1.9] - 2026-10-27
 
 A maintenance release, and the **baseline does not change**: no file under `docs/reference/` or
@@ -644,7 +655,8 @@ history to read. The embedded baseline is `pavois-baseline` 0.2.0.
 - OSCAL output is the baseline (catalog and profiles), not yet a per-scan assessment-results
   package. No container image is published yet.
 
-[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.9...HEAD
+[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.10...HEAD
+[0.1.10]: https://github.com/stephrobert/pavois/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/stephrobert/pavois/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/stephrobert/pavois/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/stephrobert/pavois/compare/v0.1.6...v0.1.7
