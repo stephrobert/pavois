@@ -1,8 +1,8 @@
 name: Dependencies
 
-# Dependency hygiene: refresh the lockfile WITHOUT installing anything, then audit every locked
-# dependency (Go go.sum + npm package-lock.json) with Trivy (pinned by SHA). A HIGH/CRITICAL
-# fixable vulnerability fails the job: the gate blocks. Re-runs weekly to catch newly-disclosed CVEs.
+# Dependency hygiene: audit the committed lockfiles (Go go.sum + npm package-lock.json) with Trivy
+# (pinned by SHA). Lockfile updates belong in dependency-update pull requests, not in this audit.
+# A HIGH/CRITICAL fixable vulnerability fails the job; the weekly run catches newly-disclosed CVEs.
 
 on:
   push:
@@ -30,15 +30,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Setup Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: '22'
-
-      - name: Refresh the site lockfile without installing
-        working-directory: site
-        run: npm install --package-lock-only --ignore-scripts
 
       - name: Trivy vulnerability audit (Go + npm locks)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0

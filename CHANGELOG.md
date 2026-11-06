@@ -12,6 +12,23 @@ its content digest**, so an archived result stays interpretable long after the t
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-11-06
+
+A maintenance release. The **baseline does not change**; this release updates the scanner library,
+the site's development dependencies and the dependency-audit workflow.
+
+### Fixed
+
+- **The dependency audit no longer refreshes the npm lockfile during a scan.** It audits the
+  committed Go and npm lockfiles as-is; dependency updates remain explicit and reviewable changes.
+
+### Changed
+
+- **Update scankit to v0.3.6**, whose minimum Go version is 1.26.10, matching Pavois.
+- **Update the site's development dependencies:** Astro to `^7.4.5`, Marked to 18.1.3, and
+  Tailwind CSS plus its Vite plugin to 4.3.4.
+- Point the installation instructions at the v0.1.11 release.
+
 ## [0.1.10] - 2026-11-06
 
 A maintenance release. The **baseline does not change**; this release updates the site's
@@ -655,7 +672,8 @@ history to read. The embedded baseline is `pavois-baseline` 0.2.0.
 - OSCAL output is the baseline (catalog and profiles), not yet a per-scan assessment-results
   package. No container image is published yet.
 
-[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.10...HEAD
+[Unreleased]: https://github.com/stephrobert/pavois/compare/v0.1.11...HEAD
+[0.1.11]: https://github.com/stephrobert/pavois/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/stephrobert/pavois/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/stephrobert/pavois/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/stephrobert/pavois/compare/v0.1.7...v0.1.8
