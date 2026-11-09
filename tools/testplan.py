@@ -289,6 +289,25 @@ RULES: list[Rule] = [
         ],
     ),
     Rule(
+        "the pinned dependency resolutions",
+        ["uv.lock", "site/package-lock.json"],
+        [
+            (
+                OFFLINE,
+                "trivy fs --scanners vuln --severity HIGH,CRITICAL"
+                " --ignore-unfixed --exit-code 1 .",
+                "that the tools still WORK on the new versions: an advisory-clean lockfile can "
+                "still break an import, so run the thing the dependency serves",
+            ),
+            (
+                OFFLINE,
+                "uv run --frozen --extra studio python -c"
+                " 'import sys; sys.path.insert(0, \"tools\"); import norm_studio.server'",
+                "that every entry point imports: this covers the one with the most dependencies",
+            ),
+        ],
+    ),
+    Rule(
         "packaging and release plumbing",
         ["nfpm.yaml", ".goreleaser*", "Dockerfile", "packaging/*"],
         [

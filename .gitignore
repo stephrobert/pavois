@@ -1,6 +1,14 @@
 .DS_Store
+# CINC/InSpec writes one of these beside every profile it resolves; they are per-run state.
 inspec.lock
-*.lock
+**/inspec.lock
+# No blanket `*.lock`. It used to be here for inspec.lock above, and it also swallowed uv.lock,
+# which is the OPPOSITE of state: it is the pinned resolution of the Python tooling, the uv
+# equivalent of go.sum and package-lock.json, both of which are committed. Untracked, it meant
+# the Trivy audit in deps.yml had no uv lockfile to read on a runner, so the tooling's
+# dependencies were the one set in this repository that nothing ever scanned. Its first scan
+# reported 17 fixable HIGH/CRITICAL advisories (pyjwt, authlib, cryptography, certifi, anyio,
+# dnspython, joserfc). `.venv/` ignores itself, so dropping the pattern exposes nothing else.
 *.pyc
 __pycache__/
 reports/
