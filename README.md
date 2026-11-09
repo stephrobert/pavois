@@ -284,7 +284,8 @@ Pavois holds itself to the posture it audits:
 - **Plumber-validated CI**: our own workflows are scanned by [Plumber](https://getplumber.io)
   against a trust policy (`.plumber.yaml`): actions pinned by commit SHA, least-privilege
   permissions, no dangerous triggers, no `write-all`, CVE / archived-action checks.
-- **Trivy dependency audit** (pinned) over the Go and npm locks; a fixable HIGH/CRITICAL blocks CI.
+- **Trivy dependency audit** (pinned in `mise.toml`) over the Go, npm and uv locks; a fixable
+  HIGH/CRITICAL blocks CI.
 - **14-day dependency quarantine**: Dependabot `cooldown` delays adopting a new dependency version
   until it has aged 14 days (security fixes bypass it).
 

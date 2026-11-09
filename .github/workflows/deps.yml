@@ -1,7 +1,7 @@
 name: Dependencies
 
-# Dependency hygiene: audit the committed lockfiles (Go go.sum + npm package-lock.json) with Trivy
-# (pinned by SHA). Lockfile updates belong in dependency-update pull requests, not in this audit.
+# Dependency hygiene: audit the committed lockfiles (Go go.mod, npm package-lock.json, uv.lock) with
+# Trivy, pinned in mise.toml. Lockfile updates belong in dependency-update pull requests, not here.
 # A HIGH/CRITICAL fixable vulnerability fails the job; the weekly run catches newly-disclosed CVEs.
 
 on:
@@ -31,13 +31,34 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Trivy vulnerability audit (Go + npm locks)
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      # Trivy from the repository toolchain, not aquasecurity/trivy-action. The action installs the
+      # binary through aquasecurity/setup-trivy, which runs its own actions/checkout WITHOUT
+      # persist-credentials: false, leaving GITHUB_TOKEN in .git/config (Plumber ISSUE-307) in a
+      # transitive action whose inputs we do not control. Pinning the binary in mise.toml removes
+      # the finding instead of accepting it, and it is the same version developers run locally.
+      #
+      # It also widened what gets audited, though not by itself: uv.lock was matched by a blanket
+      # `*.lock` in .gitignore and had never been committed, so no runner ever had a uv lockfile to
+      # read and the Python tooling was the one dependency set here that nothing scanned. Tracking
+      # it (see .gitignore) and scanning it reported 17 fixable HIGH/CRITICAL advisories (pyjwt,
+      # authlib, cryptography, certifi, anyio, dnspython, joserfc), closed by `uv lock --upgrade`
+      # in this same change. That is why this job now names three lockfiles, not two.
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
-          scan-type: fs
-          scan-ref: .
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'        # block on a fixable HIGH/CRITICAL
-          format: table
+          version: 2026.2.23
+          install: true
+          cache: true
+
+      - name: Trivy vulnerability audit (Go + npm + uv locks)
+        run: |
+          set -euo pipefail
+          trivy --version
+          # Blocks on a FIXABLE HIGH/CRITICAL: --ignore-unfixed keeps the job about what can be
+          # acted on today, and --exit-code 1 is what makes the audit a gate rather than a report.
+          trivy fs \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --format table \
+            .

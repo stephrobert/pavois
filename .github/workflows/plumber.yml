@@ -1,6 +1,6 @@
 name: Plumber compliance
 
-# Validates Pavois's own CI/CD with Plumber (getplumber.io), the same way Plumber validates
+# Validates confkit's own CI/CD with Plumber (getplumber.io), the same way Plumber validates
 # itself: analyze the repo's GitHub Actions workflows + repo settings against .plumber.yaml,
 # upload findings to Code Scanning, and fail below the compliance threshold. The action verifies
 # the downloaded Plumber binary's SLSA build-provenance attestation before running it.
@@ -69,11 +69,15 @@ jobs:
           persist-credentials: false
 
       - name: Plumber compliance scan
-        uses: getplumber/plumber@2342834dc0b67d2c87a33ac86789e481ad869402 # v0.7.17
+        uses: getplumber/plumber@ec8cb3a7edd6a324b33e85109b627b2df6023d94 # v0.7.23
         with:
-          # The CLI version, which is what actually scans: a separate pin from the action above,
-          # and it was eighty releases behind it. Bumping the action alone changed nothing.
-          version: v0.4.63
+          # NO `version:` INPUT, deliberately. It pins the CLI binary, which is what actually
+          # scans, and it is a SECOND pin that nothing bumps: Dependabot updates the `uses:`
+          # digest above and never looks inside `with:`. This repo pinned `version: v0.4.63`
+          # while the action moved to v0.7.x, so every run downloaded a scanner two months and
+          # ~160 releases old and scored the repo on its control set. Omitted, the input defaults
+          # to the action's own tag, so the two stay in lockstep and one Dependabot bump moves
+          # both. Pin it again only to hold a version back on purpose, and say why here.
           # branchMustBeProtected reads main's protection settings, and GITHUB_TOKEN cannot:
           # `administration` is not a workflow permission scope (actionlint rejects it), so the API
           # answers 403 and the control reports the branch as non-compliant. Not "abstains":
@@ -82,7 +86,11 @@ jobs:
           # and nothing else.
           github-token: ${{ secrets.PLUMBER_ADMIN_TOKEN }}
           verify-attestation: 'true'
-          threshold: '100'
+          # The score gate, which replaced `threshold`. `threshold: '100'` was not a strict
+          # setting, it was a no-op: the action treats an explicit 100 as unset and never passes
+          # --threshold, so the job gated on nothing we had asked for. min-points gates on the
+          # Plumber Score itself: 100 means any finding fails.
+          min-points: '100'
           upload-sarif: 'true'
           upload-artifacts: 'true'
           score-push: 'true'       # publish the score to the README badge (score.getplumber.io)

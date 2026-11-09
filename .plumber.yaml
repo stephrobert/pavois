@@ -1,68 +1,45 @@
-# Plumber trust policy for Pavois CI/CD (https://getplumber.io).
-# Required by `plumber analyze` / the getplumber/plumber action. GitHub Actions controls,
-# mirrored from the upstream getplumber/plumber policy. Regenerate/extend with
-# `plumber config generate`.
+# Plumber trust policy for confkit's own CI/CD (https://getplumber.io).
+# Read by `plumber analyze` and by the getplumber/plumber action.
+#
+# This file is an OVERLAY, not a full policy, and that is the point. The previous
+# version enumerated every control by hand, and an enumerated `github.controls`
+# map is EXHAUSTIVE: a control Plumber shipped after the file was written is not
+# "default-enabled", it is absent, and absent means disabled. Twelve controls had
+# gone that way (authorized sources, unverified scripts, whole-secrets exposure,
+# $GITHUB_ENV writes, pull_request_target checkout, checkout credentials, workflow
+# validity, ambiguous refs, upstream ref existence, mutable remote code, cache
+# poisoning from untrusted triggers), so the 100/100 the badge showed was a score
+# over a shrinking subset. `extends: plumber:default` inherits the baseline and
+# every control added to it later; what follows is only what we deliberately change.
+#
+# See the effective result with `plumber config resolve`.
+extends: plumber:default
 version: "2.0"
 
 github:
   controls:
-    # Third-party actions must be pinned by 40-char commit SHA (mutable tags are a
-    # supply-chain vector, cf. tj-actions/changed-files CVE-2025-30066). First-party
-    # and the deliberately-adopted Plumber/OpenSSF actions are trusted.
-    actionsMustBePinnedByCommitSha:
-      enabled: true
-      trustedOwners:
-        - actions
-        - github
-        - getplumber
-        - ossf
-
-    containerImageMustNotUseForbiddenTags:
-      enabled: true
-      containerImagesMustBePinnedByDigest: true
-
-    pipelineMustNotUseDockerInDocker:
-      enabled: true
-      detectInsecureDaemon: true
-
-    reusableWorkflowsMustNotInheritSecrets:
-      enabled: true
-
-    securityJobsMustNotBeWeakened:
-      enabled: true
-
-    workflowMustNotInjectUserInputInScripts:
-      enabled: true
-
-    workflowMustNotUseDangerousTriggers:
-      enabled: true
-
-    pipelineMustNotRunRceToolsOnUntrustedCode:
-      enabled: true
-
-    workflowsMustDeclarePermissions:
-      enabled: true
-
-    workflowMustNotGrantPermissionsWriteAll:
-      enabled: true
-
-    actionsMustNotBeArchived:
-      enabled: true
-
-    actionsMustNotCarryKnownCVEs:
-      enabled: true
-
-    pipelineMustNotEnableDebugTrace:
-      enabled: true
-      forbiddenVariables:
-        - ACTIONS_STEP_DEBUG
-        - ACTIONS_RUNNER_DEBUG
+    # jdx/mise-action is the one action here that no baseline rule can clear: Plumber trusts
+    # actions/* and github/*, a curated org allowlist, and anything above 20000 stars, and the
+    # action has 403. That is the control working as intended, not a false positive: it refuses
+    # to decide on our behalf and asks for the decision in writing. Here it is.
+    #
+    # mise IS this repository's build system. Every workflow runs `mise run <task>`, the toolchain
+    # is pinned in mise.toml, and the tool itself has ~36k stars; mise-action is its companion,
+    # published by the same author (jdx), unarchived, and pinned by commit SHA everywhere we use
+    # it, so the SHA pin bounds what a compromise of the repository could do to us. The
+    # alternative, installing mise through a piped install script, is strictly worse: it is
+    # unpinned remote code, and two other controls say so.
+    #
+    # Scoped to jdx/ alone; includePlumberDefaults keeps Plumber's curated list underneath.
+    githubActionMustComeFromAuthorizedSources:
+      includePlumberDefaults: true
+      trustedGithubActions:
+        - jdx/*
 
     # Repository governance (needs a token with Administration:read; abstains otherwise).
+    # Stricter than the baseline on both counts: `main` is the only long-lived branch
+    # here, and CODEOWNERS approval is required on it.
     branchMustBeProtected:
-      enabled: true
-      defaultMustBeProtected: true
       namePatterns:
         - main
-      allowForcePush: false
       codeOwnerApprovalRequired: true
