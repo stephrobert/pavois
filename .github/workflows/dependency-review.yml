@@ -32,4 +32,25 @@ jobs:
         with:
           fail-on-severity: high
           # AGPL/GPL copyleft would force-relicense the Apache-2.0 project: deny by default.
+          # The reason is what bounds the rule: copyleft reaches code we LINK AND SHIP. The Go
+          # modules, the npm packages and the Python wheels are that code. A scanner the pipeline
+          # merely EXECUTES is not: nothing is linked, no derivative work is distributed, and the
+          # licence never reaches a user of pavois.
           deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0
+          # Which is why the one copyleft tool here is exempted by name. TruffleHog is AGPL-3.0,
+          # and it is the only action in this repository that is not MIT, Apache-2.0 or MPL-2.0
+          # (checked across all 18). Without this line the gate fails on CONTENT IT DOES NOT
+          # DISAGREE WITH: every Dependabot pull request that bumps the secret scanner goes red
+          # for its licence, which has not changed and was accepted when the action was adopted.
+          #
+          # That matters more than one red check, because of what a red Dependabot pull request
+          # invites. .github/dependabot.yml records the price already paid: PR #255 carried eight
+          # action bumps, was closed unmerged, and closing a Dependabot pull request tells it to
+          # stop offering that version, after which Plumber sat twenty-three releases behind until
+          # someone looked. A licence gate that reddens the secret scanner's bumps is a mechanism
+          # for freezing the secret scanner.
+          #
+          # Scoped to this one action, not to AGPL in general: a Go module or an npm package under
+          # AGPL must still fail, because that one WOULD ship. Another copyleft CI tool is added
+          # here deliberately, with that distinction stated, or not at all.
+          allow-dependencies-licenses: pkg:githubactions/trufflesecurity/trufflehog
