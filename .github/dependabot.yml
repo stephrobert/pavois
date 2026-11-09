@@ -53,6 +53,36 @@ updates:
     commit-message:
       prefix: "chore(deps)"
 
+  # The Python tooling (tools/, test-vms/, the norm-studio MCP). Added late, and the reason is worth
+  # keeping: uv.lock was matched by a blanket `*.lock` in .gitignore and had never been committed, so
+  # there was nothing here for Dependabot OR the Trivy gate to read. It was the one dependency set in
+  # this repository that nothing watched, and its first scan (#418) reported 17 fixable HIGH/CRITICAL
+  # advisories (pyjwt, authlib, cryptography, certifi, anyio, dnspython, joserfc). Tracking the file
+  # made it visible; this entry is what keeps it from silting up again.
+  #
+  # `uv`, not `pip`: the uv ecosystem rewrites the constraint in pyproject.toml AND re-resolves
+  # uv.lock, where pip updates pyproject.toml and leaves the lockfile stale. Never both on the same
+  # directory, which opens duplicate pull requests for every bump.
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      # Same split as gomod and npm, and uv supports it: GitHub's cooldown table lists uv as
+      # supporting default-days AND the semver-bump options, unlike github-actions below.
+      default-days: 7
+      semver-patch-days: 1
+    open-pull-requests-limit: 10
+    groups:
+      uv-packages:
+        applies-to: version-updates
+        patterns: ["*"]
+      uv-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    commit-message:
+      prefix: "chore(deps)"
+
   # Keeps the SHA-pinned actions fresh (Dependabot bumps the pinned SHA + comment). Pinning by SHA
   # is what makes an action trustworthy and is also what makes it rot: without this, the digest ages
   # with its CVEs in silence. Learned the expensive way here: PR #255 carried eight of these bumps,
@@ -64,9 +94,11 @@ updates:
       interval: weekly
     cooldown:
       # No semver-patch-days here: Dependabot does not support it for github-actions, and answers
-      # "The property '#/updates/2/cooldown/semver-patch-days' is not supported for the package
-      # ecosystem 'github-actions'". pepin's config omits it for the same reason; copying it onto
-      # all three ecosystems was over-copying a model rather than reading it.
+      # "The property '#/updates/N/cooldown/semver-patch-days' is not supported for the package
+      # ecosystem 'github-actions'" (N being this entry's index, which moves when one is inserted
+      # above). pepin's config omits it for the same reason; copying it onto every ecosystem was
+      # over-copying a model rather than reading it, and GitHub's cooldown table is where to read
+      # it: github-actions supports default-days only, where gomod, npm and uv support all four.
       default-days: 7
     groups:
       actions:
