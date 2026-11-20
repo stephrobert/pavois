@@ -26,6 +26,34 @@ its content digest**, so an archived result stays interpretable long after the t
   grub bootloader is installed (the Pi firmware has no password mechanism), and `pavois harden`
   appends kernel command-line parameters to the Pi's `cmdline.txt` when no grub tooling exists.
 
+### Changed
+
+- **Controls whose mitigation is x86 silicon no longer fail on other architectures.** The
+  `l1tf`, `mds`, `pti`, `spectre_v2` and `spec_store_bypass_disable` directive controls and the
+  `kconfig-page-table-isolation`, `kconfig-retpoline` and `kconfig-randomize-memory` build
+  controls assert knobs the kernel only declares for x86 (each `applies_if: because:` records
+  where: `arch/x86/kernel/cpu/bugs.c`, `arch/x86/Kconfig.cpufeatures`, `arch/x86/mm/kaslr.c`).
+  On an arm64 host (a Raspberry Pi: the flaws' silicon does not exist, the parameters are not
+  parsed, the config symbols cannot occur in the build) they reported a FAIL that no change to
+  the target could ever fix; they now declare `applies_if: arch x86_64` and report
+  `n/a: requires arch x86_64`. On x86 the guards match, so measured controls and their
+  assertions are unchanged (the debian12 corpus renders byte-identical plus the guard lines).
+  `cmdline-iommu-force` additionally requires the platform to expose an IOMMU (a device under
+  `/sys/class/iommu`): a SoC with none (the Pi hangs USB and Ethernet off the bus with no SMMU)
+  now reports `n/a` instead of failing a directive `harden` already refuses to write there.
+
+### Fixed
+
+- **Debian 13 no longer demands RHEL's `0000 root` state for the `/etc/shadow-` and
+  `/etc/gshadow-` backups.** The debian13 branch of the four backup-file controls (`permissions`
+  and `group owner` for each file) had inherited the RHEL-family requirement (`0000`, group
+  `root`) instead of the Debian-family one (`0640 root:shadow`, what SSG's
+  `file_permissions_backup_etc_shadow` and `file_groupowner_backup_etc_shadow` pin for the Debian
+  and Ubuntu products, 0000 on the RHEL family). Every Debian 13 host that has edited an
+  account (any password change leaves a `shadow-` behind) failed four controls it complied
+  with; found on a Raspberry Pi whose backups were exactly `0640 root:shadow`, and now pass.
+  The debian12, Ubuntu and RHEL branches are untouched.
+
 ## [0.1.11] - 2026-11-06
 
 A maintenance release. The **baseline does not change**; this release updates the scanner library,

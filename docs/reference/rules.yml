@@ -3049,6 +3049,12 @@ cmdline-iommu-force:
     - virt: false
       because: 'ineffective in a virtualized guest, and harden skips the remediation there (systemd-detect-virt
   gate in go/cmd/harden.go)'
+    - glob: '/sys/class/iommu/*'
+      because: >-
+        iommu=force forces translation through an IOMMU the platform must have: an empty
+        /sys/class/iommu means the kernel found no IOMMU to force (a Raspberry Pi booted by
+        its firmware exposes none: the SoC hangs USB and Ethernet off the bus with no SMMU),
+        which is also why harden refuses to write the parameter to the Pi firmware cmdline
   template:
     name: cmdline
     param: iommu=force
@@ -3080,6 +3086,13 @@ cmdline-l1tf:
   severity: high
   socle: SOCLE-CLD-KRN-005
   ssg: grub2_l1tf_argument
+  applies_if:
+    - arch: x86_64
+      because: >-
+        L1 Terminal Fault is a speculative-execution flaw of Intel x86 silicon, and the l1tf=
+        parameter is parsed only by the x86 speculation code (arch/x86/kernel/cpu/bugs.c): an
+        arm64 SoC (a Raspberry Pi) has no L1D-cache aliasing to mitigate, so the directive has
+        nothing to act on there
   template:
     name: cmdline
     param: l1tf=full
@@ -3142,6 +3155,13 @@ cmdline-mds:
   severity: medium
   socle: SOCLE-CLD-KRN-007
   ssg: grub2_mds_argument
+  applies_if:
+    - arch: x86_64
+      because: >-
+        Microarchitectural Data Sampling is a flaw of Intel x86 cores, and the mds= parameter
+        is parsed only by the x86 speculation code (arch/x86/kernel/cpu/bugs.c): an arm64 SoC
+        (a Raspberry Pi) has no buffers to sample in the first place, so the directive has
+        nothing to act on there
   template:
     name: cmdline
     param: mds=full
@@ -3260,6 +3280,12 @@ cmdline-pti:
   severity: low
   socle: SOCLE-CLD-KRN-011
   ssg: grub2_pti_argument
+  applies_if:
+    - arch: x86_64
+      because: >-
+        KPTI splits page tables that only x86 shared: arm64 always ran the kernel from its own
+        translation table (TTBR1), the pti= parameter is parsed only by arch/x86, so an arm64
+        SoC (a Raspberry Pi) has no user-mode kernel mapping to isolate
   template:
     name: cmdline
     param: pti=on
@@ -3417,6 +3443,12 @@ cmdline-spec-store-bypass-disable:
   severity: medium
   socle: SOCLE-CLD-KRN-016
   ssg: grub2_spec_store_bypass_disable_argument
+  applies_if:
+    - arch: x86_64
+      because: >-
+        the spec_store_bypass_disable= parameter selects an x86 speculation mitigation (it is
+        parsed only by arch/x86/kernel/cpu/bugs.c): arm64 handles Speculative Store Bypass
+        architecturally in the SSBS register state, so the directive has nothing to act on there
   template:
     name: cmdline
     param: spec_store_bypass_disable=on
@@ -3448,6 +3480,12 @@ cmdline-spectre-v2:
   severity: high
   socle: SOCLE-CLD-KRN-017
   ssg: grub2_spectre_v2_argument
+  applies_if:
+    - arch: x86_64
+      because: >-
+        the spectre_v2= parameter selects x86 mitigations (retpoline, IBRS and peers, parsed
+        only by arch/x86/kernel/cpu/bugs.c): arm64 mitigates its branch predictor behaviour
+        architecturally (firmware SMCCC), so the directive has nothing to act on there
   template:
     name: cmdline
     param: spectre_v2=on
@@ -4850,7 +4888,7 @@ filegroupowner-backup-etc-gshadow:
         path: /etc/gshadow-
         resource: file
       debian13:
-        group: root
+        group: shadow
         path: /etc/gshadow-
         resource: file
       fedora:
@@ -4895,7 +4933,7 @@ filegroupowner-backup-etc-gshadow:
         attr: gid
         name: file_owner
         path: /etc/gshadow-
-        value: '0'
+        value: '42'
       fedora:
         attr: gid
         name: file_owner
@@ -5027,7 +5065,7 @@ filegroupowner-backup-etc-shadow:
         path: /etc/shadow-
         resource: file
       debian13:
-        group: root
+        group: shadow
         path: /etc/shadow-
         resource: file
       fedora:
@@ -5072,7 +5110,7 @@ filegroupowner-backup-etc-shadow:
         attr: gid
         name: file_owner
         path: /etc/shadow-
-        value: '0'
+        value: '42'
       fedora:
         attr: gid
         name: file_owner
@@ -10733,12 +10771,9 @@ fileperm-backup-etc-gshadow:
       - only_if { file('/etc/gshadow-').exist? }
       - describe file('/etc/gshadow-') do
       - '  it { should_not be_executable.by(''owner'') }'
-      - '  it { should_not be_writable.by(''owner'') }'
-      - '  it { should_not be_readable.by(''owner'') }'
       - '  it { should_not be_setuid }'
       - '  it { should_not be_executable.by(''group'') }'
       - '  it { should_not be_writable.by(''group'') }'
-      - '  it { should_not be_readable.by(''group'') }'
       - '  it { should_not be_setgid }'
       - '  it { should_not be_executable.by(''other'') }'
       - '  it { should_not be_writable.by(''other'') }'
@@ -10864,7 +10899,7 @@ fileperm-backup-etc-gshadow:
         path: /etc/gshadow-
         resource: file
       debian13:
-        mode: '0000'
+        mode: '0640'
         path: /etc/gshadow-
         resource: file
       fedora:
@@ -10988,12 +11023,9 @@ fileperm-backup-etc-shadow:
       - only_if { file('/etc/shadow-').exist? }
       - describe file('/etc/shadow-') do
       - '  it { should_not be_executable.by(''owner'') }'
-      - '  it { should_not be_writable.by(''owner'') }'
-      - '  it { should_not be_readable.by(''owner'') }'
       - '  it { should_not be_setuid }'
       - '  it { should_not be_executable.by(''group'') }'
       - '  it { should_not be_writable.by(''group'') }'
-      - '  it { should_not be_readable.by(''group'') }'
       - '  it { should_not be_setgid }'
       - '  it { should_not be_executable.by(''other'') }'
       - '  it { should_not be_writable.by(''other'') }'
@@ -11136,7 +11168,7 @@ fileperm-backup-etc-shadow:
         path: /etc/shadow-
         resource: file
       debian13:
-        mode: '0000'
+        mode: '0640'
         path: /etc/shadow-
         resource: file
       fedora:
@@ -18761,6 +18793,13 @@ kconfig-page-table-isolation:
   severity: high
   socle: SOCLE-CLD-KRN-056
   ssg: kernel_config_page_table_isolation
+  applies_if:
+    - arch: x86_64
+      because: >-
+        CONFIG_PAGE_TABLE_ISOLATION / CONFIG_MITIGATION_PAGE_TABLE_ISOLATION is declared in
+        arch/x86/Kconfig.cpufeatures: the option exists only to restore the user/kernel mapping
+        split x86 once lacked, and arm64, which always ran the kernel from TTBR1, has no
+        equivalent to build
   template:
     '@os':
       debian12:
@@ -18927,6 +18966,13 @@ kconfig-randomize-memory:
   severity: medium
   socle: SOCLE-CLD-KRN-060
   ssg: kernel_config_randomize_memory
+  applies_if:
+    - arch: x86_64
+      because: >-
+        CONFIG_RANDOMIZE_MEMORY (declared in arch/x86, mm/kaslr.c) randomizes the x86 kernel
+        memory mapping base; an arm64 kernel's equivalent is KASLR via CONFIG_RANDOMIZE_BASE,
+        which the randomize-base rule already demands, so the option cannot exist in an arm64
+        build
   template:
     name: kconfig
     option: CONFIG_RANDOMIZE_MEMORY
@@ -19040,6 +19086,13 @@ kconfig-retpoline:
   severity: medium
   socle: SOCLE-CLD-KRN-062
   ssg: kernel_config_retpoline
+  applies_if:
+    - arch: x86_64
+      because: >-
+        CONFIG_RETPOLINE / CONFIG_MITIGATION_RETPOLINE is declared in arch/x86/Kconfig.cpufeatures:
+        a retpoline is a compiler defense against the x86 indirect-branch predictor, arm64
+        mitigates its own predictor behaviour architecturally, so the option cannot exist in an
+        arm64 build
   template:
     '@os':
       debian12:
