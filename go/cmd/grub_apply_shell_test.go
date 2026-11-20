@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -126,4 +128,45 @@ func run(name string, args ...string) (string, error) {
 
 func writeExec(path, content string) error {
 	return exec.Command("sh", "-c", "cat > "+path+" <<'PAVOIS_STUB'\n"+content+"PAVOIS_STUB\nchmod 0755 "+path).Run()
+}
+
+// A Raspberry Pi running Debian has no grub at all: no update-grub, no grubby, no grub2-mkconfig,
+// and the persisted kernel command line is cmdline.txt on the boot FAT. The apply command must
+// carry that fallback branch, after the grub ones (a Pi that later installs grub still uses them).
+func TestGrubApplyHasRaspberryPiCmdlineTxtFallback(t *testing.T) {
+	cmdText := grubApplyCommand(t)
+	pi := "elif [ -f /boot/firmware/cmdline.txt ] || [ -f /boot/cmdline.txt ]; then"
+	if !strings.Contains(cmdText, pi) {
+		t.Fatalf("the generated command has no Raspberry Pi cmdline.txt fallback:\n%s", cmdText)
+	}
+	if strings.Index(cmdText, "command -v grub2-mkconfig") > strings.Index(cmdText, pi) {
+		t.Errorf("the cmdline.txt fallback must come AFTER the grub branches:\n%s", cmdText)
+	}
+}
+
+// The fallback's shell body (append each missing param to cmdline.txt, idempotently) is executed
+// here against a temp file standing in for the boot FAT's cmdline.txt: run twice, the second run
+// must change nothing, and the params must land space-separated on the single line the firmware
+// reads.
+func TestCmdlineTxtFallbackAppendsIdempotently(t *testing.T) {
+	if _, err := exec.LookPath("sh"); err != nil {
+		t.Skip("no sh on this machine")
+	}
+	dir := t.TempDir()
+	f := dir + "/cmdline.txt"
+	if err := os.WriteFile(f, []byte("console=tty1 root=PARTUUID=abcd-01\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	body := `f=%s; for a in audit=1 audit_backlog_limit=8192; do grep -qw -- "$a" "$f" || sed -i -e 's/[[:space:]]*$//' -e "s/$/ $a/" "$f"; done`
+	line := fmt.Sprintf(body, f)
+	for i := 0; i < 2; i++ {
+		if out, err := run("sh", "-c", line); err != nil {
+			t.Fatalf("run %d failed: %v\n%s", i, err, out)
+		}
+	}
+	got, _ := os.ReadFile(f)
+	want := "console=tty1 root=PARTUUID=abcd-01 audit=1 audit_backlog_limit=8192\n"
+	if string(got) != want {
+		t.Errorf("cmdline.txt = %q, want %q", got, want)
+	}
 }

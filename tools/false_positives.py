@@ -213,6 +213,8 @@ TEMPLATE_PATHS: dict[str, tuple[str, list[str]]] = {
             "/boot/grub/grub.cfg",
             "/boot/grub2/grub.cfg",
             "/boot/efi/EFI/*/grub.cfg",
+            "/boot/cmdline.txt",
+            "/boot/firmware/cmdline.txt",
         ],
     ),
 }

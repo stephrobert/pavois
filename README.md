@@ -322,7 +322,10 @@ same conformant form. See [Downloads](https://pavois.dev/en/downloads/).
 Pavois audits the effective configuration of a running Linux host across 9 OS targets, and is
 explicit about its edges: some domains (firewall ruleset, log forwarding, MAC policy depth) are
 shallow today. The honest [coverage matrix](https://pavois.dev/en/handbook/coverage/) names what is
-deep and what is not.
+deep and what is not. The Debian targets also cover a **Raspberry Pi running Debian / Raspberry
+Pi OS** (the engine detects it as `raspbian`): the same `debian12`/`debian13` corpus audits it,
+reading the Pi firmware's boot files (`/boot/firmware/cmdline.txt`, `/boot/firmware/config-*`)
+where a PC reads grub's.
 
 **All nine have now been proven end to end.** Each goes through the full campaign in
 `tools/golden_path.sh` on a fresh VM: scan, plan, apply, reboot, re-scan, a second pass re-planned

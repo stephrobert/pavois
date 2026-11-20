@@ -12,6 +12,20 @@ its content digest**, so an archived result stays interpretable long after the t
 
 ## [Unreleased]
 
+### Added
+
+- **Raspberry Pi support on Debian.** The engine reports a Pi running its Debian as `raspbian`
+  (the `/etc/rpi-issue` marker wins over `ID=debian`), and nothing mapped that name: profile
+  auto-detection failed with `no bundled profile for raspbian 13.7`, and even with `--profile`
+  the corpus was skipped entirely because `inspec.yml` only listed `platform-name: debian`.
+  `raspbian` now maps to the `debian12`/`debian13` profiles, those profiles accept
+  `platform-name: raspbian`, and the boot facts of the Pi firmware are honoured: the persisted
+  kernel command line is read from `/boot/cmdline.txt` / `/boot/firmware/cmdline.txt` (the cmdline
+  controls), the running kernel's config from `/boot/firmware/config-$(uname -r)` as well as
+  `/boot/config-$(uname -r)` (the kconfig controls), `grub-password` is not applicable when no
+  grub bootloader is installed (the Pi firmware has no password mechanism), and `pavois harden`
+  appends kernel command-line parameters to the Pi's `cmdline.txt` when no grub tooling exists.
+
 ## [0.1.11] - 2026-11-06
 
 A maintenance release. The **baseline does not change**; this release updates the scanner library,

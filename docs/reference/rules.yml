@@ -17051,6 +17051,17 @@ grub-password:
   - ubuntu2204
   - ubuntu2404
   - ubuntu2604
+  applies_if:
+    - any:
+        - command: grub-mkconfig
+        - glob: '/boot/grub/grub.cfg'
+        - glob: '/boot/grub2/grub.cfg'
+        - glob: '/boot/efi/EFI/*/grub.cfg'
+        - path: /etc/grub.d
+      because: >-
+        CIS 1.4.1 / BP-028 R5 protect the boot loader in use; a host booted by firmware with no
+        password mechanism (Raspberry Pi: /etc/rpi-issue, cmdline.txt, no grub package) has no
+        grub2 to password, so the requirement does not apply there
   check:
   - describe command('grep -rqsE \'^[[:space:]]*(set[[:space:]]+superusers|password_pbkdf2|password)\' /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg /etc/grub.d/ 2>/dev/null && echo ok || echo ko') do
   - '  its(''stdout.strip'') { should eq ''ok'' }'

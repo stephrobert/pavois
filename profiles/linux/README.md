@@ -31,8 +31,8 @@ tools/validate.sh             # intégrité + fidélité référence==corpus, ru
 ## Profils présents
 | Profil | Cible | Famille |
 |--------|-------|---------|
-| `debian12` | Debian 12 | apt |
-| `debian13` | Debian 13 | apt |
+| `debian12` | Debian 12 (+ Raspberry Pi OS 12, détecté `raspbian`) | apt |
+| `debian13` | Debian 13 (+ Raspberry Pi OS 13, détecté `raspbian`) | apt |
 | `ubuntu2404` | Ubuntu 24.04 LTS | apt |
 | `ubuntu2204` | Ubuntu 22.04 LTS | apt |
 | `rhel9` | RHEL 9 / Rocky 9 / AlmaLinux 9 | dnf |
@@ -43,3 +43,13 @@ Les clones binaires de RHEL (Rocky, AlmaLinux) s'auditent avec le profil
 `rhel8`/`rhel9`: pas de profil dupliqué. La détection d'OS (`cinc-auditor detect`)
 choisit automatiquement le bon profil, avec repli sur la version mineure la plus
 proche de la même famille.
+
+Un Raspberry Pi sous Debian/Raspberry Pi OS est détecté `raspbian` par train
+(`/etc/rpi-issue` prime sur `ID=debian`): il s'audite avec le profil
+`debian12`/`debian13` de la même version, d'où l'entrée `platform-name: raspbian`
+dans le `supports:` de chaque `inspec.yml` : sans elle, cinc saute tout le profil
+sur un Pi. Particularités du firmware prises en compte dans les contrôles: la ligne
+de commande noyau persistée se lit dans `/boot/cmdline.txt` ou
+`/boot/firmware/cmdline.txt`, la config du noyau en cours dans
+`/boot/firmware/config-$(uname -r)` comme dans `/boot/config-$(uname -r)`, et il
+n'y a pas de grub (donc pas de `grub-password`).
