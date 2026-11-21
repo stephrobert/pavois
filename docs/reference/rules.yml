@@ -23147,6 +23147,87 @@ mount-boot-efi-nosuid:
     option: nosuid
   title: Add nosuid Option to /boot/efi
   remediation_class: install-time
+mount-boot-firmware-nodev:
+  applicable_os:
+  - debian12
+  - debian13
+  applies_if:
+  - because: BP-028 R28 protects the boot filesystem; Raspberry Pi OS boots from a vfat partition the OS mounts at /boot/firmware (the GPU firmware, config.txt and cmdline.txt live there), so on such a host the /boot controls see no separate mount and the boot filesystem to harden is this one
+    mount: /boot/firmware
+  domain: Mounts
+  evidence_type: effective-runtime
+  impact: 0.5
+  levels:
+    bp28: intermediary
+  norms:
+    bp28: R28
+  reboot_survivable: 'yes'
+  remediation:
+    command: awk -v m=/boot/firmware -v o=nodev '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /boot/firmware && mount -o remount,nodev /boot/firmware || true
+    name: mount-boot-firmware-nodev
+    not_if: awk -v m=/boot/firmware '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nodev
+    resource: exec
+  remediation_class: install-time
+  severity: medium
+  template:
+    mount_point: /boot/firmware
+    name: mount_option
+    option: nodev
+  title: Add nodev Option to /boot/firmware
+mount-boot-firmware-noexec:
+  applicable_os:
+  - debian12
+  - debian13
+  applies_if:
+  - because: BP-028 R28 protects the boot filesystem; Raspberry Pi OS boots from a vfat partition the OS mounts at /boot/firmware (the GPU firmware, config.txt and cmdline.txt live there), so on such a host the /boot controls see no separate mount and the boot filesystem to harden is this one
+    mount: /boot/firmware
+  domain: Mounts
+  evidence_type: effective-runtime
+  impact: 0.5
+  levels:
+    bp28: intermediary
+  norms:
+    bp28: R28
+  reboot_survivable: 'yes'
+  remediation:
+    command: awk -v m=/boot/firmware -v o=noexec '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /boot/firmware && mount -o remount,noexec /boot/firmware || true
+    name: mount-boot-firmware-noexec
+    not_if: awk -v m=/boot/firmware '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx noexec
+    resource: exec
+  remediation_class: install-time
+  severity: medium
+  template:
+    mount_point: /boot/firmware
+    name: mount_option
+    option: noexec
+  title: Add noexec Option to /boot/firmware
+mount-boot-firmware-nosuid:
+  applicable_os:
+  - debian12
+  - debian13
+  applies_if:
+  - because: BP-028 R28 protects the boot filesystem; Raspberry Pi OS boots from a vfat partition the OS mounts at /boot/firmware (the GPU firmware, config.txt and cmdline.txt live there), so on such a host the /boot controls see no separate mount and the boot filesystem to harden is this one
+    mount: /boot/firmware
+  domain: Mounts
+  evidence_type: effective-runtime
+  impact: 0.5
+  levels:
+    bp28: intermediary
+  norms:
+    bp28: R28
+  reboot_survivable: 'yes'
+  remediation:
+    command: awk -v m=/boot/firmware -v o=nosuid '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,",");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4","o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /boot/firmware && mount -o remount,nosuid /boot/firmware || true
+    name: mount-boot-firmware-nosuid
+    not_if: awk -v m=/boot/firmware '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\n' | grep -qx nosuid
+    resource: exec
+  remediation_class: install-time
+  severity: medium
+  template:
+    mount_point: /boot/firmware
+    name: mount_option
+    option: nosuid
+  title: Add nosuid Option to /boot/firmware
 mount-boot-nodev:
   applicable_os:
   - rhel8
@@ -31268,6 +31349,48 @@ posture-sysstat:
   title: System statistics collection (sysstat)
   remediation_class: auto
   requires_package: '@{pkg.sysstat}'
+provisioning-seed-removed:
+  applicable_os:
+  - debian12
+  - debian13
+  applies_if:
+  - because: 'cloud-init is the consumer that keeps the seed live: per cloud-init''s own semantics the per-instance modules (runcmd, users) execute again whenever the seed''s instance-id changes, so a leftover seed stays a root-channel on every boot'
+    package: cloud-init
+  - because: Raspberry Pi Imager writes the NoCloud seed (user-data with a users and runcmd block, meta-data, network-config) onto the boot FAT; on a provisioned server the files are a reprovisioning channel and can carry the first account's credential material
+    file_match:
+      path: /etc/rpi-issue
+      pattern: Raspberry
+  check:
+  - describe command('ls /boot/firmware/user-data /boot/firmware/meta-data /boot/firmware/network-config /boot/user-data /boot/meta-data /boot/network-config 2>/dev/null') do
+  - '  its(''stdout.strip'') { should eq '''' }'
+  - end
+  domain: Hardening (misc)
+  evidence_type: filesystem-state
+  impact: 0.7
+  levels: {}
+  norms:
+    nist:
+    - CM-6(a)
+  reboot_survivable: 'yes'
+  remediation:
+    command: '# The seed was the installer''s input, not state the server needs after provisioning:
+
+      # archive it (root-only), then delete it from the boot filesystem.
+
+      install -d -m 0700 /root/provisioning-seed-backup
+
+      cp -a /boot/firmware/user-data /boot/firmware/meta-data /boot/firmware/network-config /root/provisioning-seed-backup/ 2>/dev/null
+
+      rm -f /boot/firmware/user-data /boot/firmware/meta-data /boot/firmware/network-config
+
+      # cloud-init keeps its consumed state under /var/lib/cloud: nothing else to clean.
+
+      '
+    reason: which user-data belongs to the site's provisioning record (and may hold credential material) is a site decision, pavois archives rather than deletes
+    resource: manual
+  remediation_class: manual
+  severity: high
+  title: Remove the Raspberry Pi Imager provisioning seed after first boot
 pwquality-dcredit:
   applicable_os:
   - debian12

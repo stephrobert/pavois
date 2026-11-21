@@ -26,6 +26,20 @@ its content digest**, so an archived result stays interpretable long after the t
   grub bootloader is installed (the Pi firmware has no password mechanism), and `pavois harden`
   appends kernel command-line parameters to the Pi's `cmdline.txt` when no grub tooling exists.
 
+- **Boot-FAT mount options and provisioning-seed hygiene for `/boot/firmware`.** A Raspberry Pi
+  running Debian has no separate `/boot`: the GPU firmware, kernel, `config.txt` and `cmdline.txt`
+  all live on the vfat partition the OS mounts at `/boot/firmware`, which the `/boot` mount
+  controls never saw, so BP-028 R28's demands on the boot filesystem were silently unchecked on a
+  Pi; and Raspberry Pi Imager leaves its NoCloud seed on that world-readable FAT forever
+  (`user-data`, which can carry the first account's credential material and a `runcmd` block,
+  plus `meta-data` and `network-config`) — cloud-init re-runs `runcmd` as root whenever the
+  seed's instance-id changes, so the leftover files are a standing reprovisioning channel.
+  Four controls now cover this honestly: `mount-boot-firmware-nodev` / `-noexec` / `-nosuid`
+  (applicable only where a `/boot/firmware` mount exists, same folded effective+fstab check as
+  the other mount controls) and `provisioning-seed-removed` (applicable only on a Raspberry Pi
+  running cloud-init), whose manual remediation archives the seed to a root-only
+  `/root/provisioning-seed-backup` rather than deleting material a site may need.
+
 ### Changed
 
 - **Controls whose mitigation is x86 silicon no longer fail on other architectures.** The
