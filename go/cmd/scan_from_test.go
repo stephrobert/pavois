@@ -29,6 +29,11 @@ func TestProfileForPlatformNeedsNoMachine(t *testing.T) {
 		{"debian", "12.15", "linux/debian12", "debian 12.15"},
 		{"debian", "13.7", "linux/debian13", "debian 13.7"},
 		{"ubuntu", "24.04", "linux/ubuntu2404", "ubuntu 24.04"},
+		// train names a Raspberry Pi running its Debian "raspbian" (/etc/rpi-issue), even
+		// though /etc/os-release says ID=debian: it must map onto the debian profiles, or
+		// every scan of a Pi dies with "no bundled profile for raspbian 13.7".
+		{"raspbian", "12.11", "linux/debian12", "raspbian 12.11"},
+		{"raspbian", "13.7", "linux/debian13", "raspbian 13.7"},
 	}
 	for _, c := range cases {
 		profile, detected, why := profileForPlatform(root, c.name, c.release)

@@ -88,7 +88,9 @@ func machineTransport(target string) (machine, transport string) {
 func profileForOS(name, release string) string {
 	major := strings.SplitN(release, ".", 2)[0]
 	switch name {
-	case "debian":
+	case "debian", "raspbian":
+		// train reports "raspbian" on a Raspberry Pi running its Debian (the /etc/rpi-issue
+		// marker wins over ID=debian in /etc/os-release): it IS a Debian, audit it as one.
 		return "debian" + major
 	case "ubuntu":
 		return "ubuntu" + strings.ReplaceAll(release, ".", "")
@@ -105,7 +107,7 @@ func familyOf(name string) string {
 	switch name {
 	case "ubuntu":
 		return "ubuntu"
-	case "debian":
+	case "debian", "raspbian":
 		return "debian"
 	case "fedora":
 		return "fedora"

@@ -38,6 +38,10 @@ func TestProfileForPlatformFindsEmbeddedCorpusWithoutDisk(t *testing.T) {
 		{"debian", "13.7", "linux/debian13"},
 		{"ubuntu", "24.04", "linux/ubuntu2404"},
 		{"almalinux", "9.4", "linux/rhel9"},
+		// A Raspberry Pi running Debian is detected as "raspbian" by the engine: the
+		// embedded corpus must resolve it too, or a released binary cannot scan a Pi.
+		{"raspbian", "12.11", "linux/debian12"},
+		{"raspbian", "13.7", "linux/debian13"},
 	}
 	for _, c := range cases {
 		profile, detected, why := profileForPlatform(root, c.name, c.release)

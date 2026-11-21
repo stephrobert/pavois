@@ -256,7 +256,11 @@ def _kmod_ext(L):
 # every kconfig control asserts the marker is absent BEFORE asserting the option.
 _KCONFIG_NONE = "PAVOIS_NO_KERNEL_CONFIG"
 _KCONFIG_SRC = (
-    'C=/boot/config-$(uname -r); if [ -r \\"$C\\" ]; then cat \\"$C\\"; '
+    # Raspberry Pi OS mounts the boot FAT at /boot/firmware while Debian's rpt kernel packages
+    # keep it at /boot: probe both for the running kernel's config before falling back to
+    # /proc/config.gz and then to the marker.
+    'C=/boot/config-$(uname -r); [ -r \\"$C\\" ] || C=/boot/firmware/config-$(uname -r); '
+    'if [ -r \\"$C\\" ]; then cat \\"$C\\"; '
     "elif zcat /proc/config.gz 2>/dev/null | head -1 | grep -q .; then zcat /proc/config.gz; "
     f"else echo {_KCONFIG_NONE}; fi"
 )
@@ -317,8 +321,12 @@ def _kconfig_ext(L):
 # (/proc/cmdline) AND pinned in a persistent boot source (grub / kernel cmdline), so it survives
 # a reboot. A param injected at boot but absent from grub would otherwise pass and regress.
 _GRUB_SRC = (
+    # grub's sources, plus the Raspberry Pi firmware's: on a Pi the persisted kernel command
+    # line is /boot/cmdline.txt (Raspberry Pi OS mounts the boot FAT at /boot/firmware), and
+    # the firmware reads no grub file at all. Missing paths are ignored by the grep's 2>/dev/null.
     "/etc/default/grub /etc/kernel/cmdline /boot/grub/grub.cfg "
-    "/boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg"
+    "/boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg "
+    "/boot/cmdline.txt /boot/firmware/cmdline.txt"
 )
 
 

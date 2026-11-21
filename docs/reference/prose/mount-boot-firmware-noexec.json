@@ -1,0 +1,37 @@
+{
+  "id": "mount-boot-firmware-noexec",
+  "title": {
+    "en": "Add noexec Option to /boot/firmware",
+    "fr": "Ajouter l'option noexec à /boot/firmware"
+  },
+  "summary": {
+    "en": "Mounts the Raspberry Pi boot firmware partition (`/boot/firmware`) with the `noexec` option so no binary can be executed from it.",
+    "fr": "Monte la partition de microprogramme d'amorçage du Raspberry Pi (`/boot/firmware`) avec l'option `noexec` afin qu'aucun binaire ne puisse y être exécuté."
+  },
+  "rationale": {
+    "en": "On a Raspberry Pi running Debian, `/boot` is not a separate partition: the GPU firmware, kernel, initramfs, `config.txt` and `cmdline.txt` all live on a vfat partition mounted at `/boot/firmware`. Once the boot process has finished, **no program should ever be executed from it** — and the default fmask/dmask (`0022`) make every file there appear mode `0755`, i.e. executable. That turns a writable FAT into a staging area an attacker can use to park and run post-exploitation binaries. `noexec` removes the kernel's ability to execute anything from the partition, while firmware and kernel loading happens through raw reads by the boot stages, not through the Linux `exec` path.",
+    "fr": "Sur un Raspberry Pi sous Debian, `/boot` n'est pas une partition distincte : le microprogramme GPU, le noyau, l'initramfs, `config.txt` et `cmdline.txt` résident sur une partition vfat montée en `/boot/firmware`. Une fois le démarrage terminé, **aucun programme ne devrait plus y être exécuté** — or le fmask/dmask par défaut (`0022`) donne à chaque fichier une apparente `0755`, donc exécutable. La FAT inscriptible devient ainsi une zone de dépôt où un attaquant peut garer puis lancer ses binaires de post-exploitation. `noexec` retire au noyau toute capacité d'exécution depuis cette partition, tandis que le chargement du microprogramme et du noyau passe par des lectures brutes des étages d'amorçage, pas par le chemin `exec` de Linux."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** mount table via `mount('/boot/firmware')` and asserts that the resolved option list contains `noexec`. This reflects how the kernel actually mounted the filesystem **right now**, including options injected by `systemd` mount units or remounts, whereas parsing `/etc/fstab` alone would miss a partition remounted with different options. a stock Raspberry Pi OS fstab entry only says `defaults` (the `fmask`/`dmask` you see in `findmnt` are vfat driver defaults), so the control fails until the option is added. The control only exists on hosts that **have** a `/boot/firmware` mount point (see applicability).",
+    "fr": "Pavois lit la table de montage **effective** via `mount('/boot/firmware')` et vérifie que la liste d'options résolue contient `noexec`. Cela reflète la façon dont le noyau a réellement monté le système de fichiers **à cet instant**, y compris les options injectées par les unités de montage `systemd` ou par un remontage, alors que la simple lecture de `/etc/fstab` manquerait une partition remontée avec d'autres options. Une entrée fstab Raspberry Pi OS d'origine ne dit que `defaults` (le `fmask`/`dmask` visibles dans `findmnt` sont des défauts du pilote vfat), donc le contrôle échoue tant que l'option n'est pas ajoutée. Le contrôle n'existe que sur les hôtes qui **possèdent** un point de montage `/boot/firmware` (voir applicabilité)."
+  },
+  "verify": {
+    "en": "Run `findmnt /boot/firmware` and confirm `noexec` appears in the option list, e.g. `rw,relatime,fmask=0022,dmask=0022,…,noexec`. You can also try executing a file copied there: it must fail with **Permission denied**.",
+    "fr": "Exécutez `findmnt /boot/firmware` et vérifiez que `noexec` figure dans la liste d'options, par exemple `rw,relatime,fmask=0022,dmask=0022,…,noexec`. Vous pouvez aussi tenter d'exécuter un fichier copié à cet endroit : l'opération doit échouer avec **Permission denied**."
+  },
+  "logs": {
+    "en": "Use `findmnt /boot/firmware` to see the live mount options. Attempts to run a binary from a `noexec` mount fail with **Permission denied** and are visible in shell output; if auditd is configured, related `EXECVE` denials may appear in `/var/log/audit/audit.log`.",
+    "fr": "Utilisez `findmnt /boot/firmware` pour voir les options de montage en vigueur. Toute tentative d'exécuter un binaire depuis un montage `noexec` échoue avec **Permission denied** et apparaît dans la sortie du shell ; si auditd est configuré, des refus `EXECVE` associés peuvent apparaître dans `/var/log/audit/audit.log`."
+  },
+  "remediation_note": {
+    "en": "Outside of a fresh install this rule belongs to the **manual** run book: add `noexec` to the options of the `/boot/firmware` line in `/etc/fstab` (stock entry: `defaults`; hardened, ideally with the sibling `nodev`/`nosuid` rules: `defaults,nodev,noexec,nosuid`), then `mount -o remount /boot/firmware` to apply it without rebooting. Verify with `findmnt /boot/firmware` before considering it done.",
+    "fr": "Hors installation fraîche, cette règle relève du run book **manuel** : ajoutez `noexec` aux options de la ligne `/boot/firmware` de `/etc/fstab` (entrée d'origine : `defaults` ; durcie, idéalement avec les règles sœurs `nodev`/`nosuid` : `defaults,nodev,noexec,nosuid`), puis `mount -o remount /boot/firmware` pour l'appliquer sans redémarrer. Vérifiez avec `findmnt /boot/firmware` avant de considérer la tâche terminée."
+  },
+  "impact": {
+    "en": "Without `noexec`, an attacker who can write to the boot FAT could stage and run executables from it; with the default executable-looking file modes, running them is trivial. The change is **safe**: the firmware and bootloader read files from this partition the raw way at boot time, and no Linux program legitimately needs to `exec` from there. **Precautions:** ensure update tooling (`rpi-eeprom-update`, kernel package hooks, `rpi-update` if used) only writes there — on Raspberry Pi OS it does. If `/boot/firmware` is not a separate mount point, do not add the option to `/` blindly.",
+    "fr": "Sans `noexec`, un attaquant pouvant écrire sur la FAT d'amorçage pourrait y déposer puis exécuter des programmes — avec des modes de fichiers paraissant exécutables par défaut, les lancer est trivial. Le changement est **sans danger** : le microprogramme et le chargeur lisent cette partition à la volée au démarrage, et aucun programme Linux n'a légitimement besoin d'y faire un `exec`. **Précautions :** assurez-vous que les outils de mise à jour (`rpi-eeprom-update`, les crochets des paquets noyau, `rpi-update` si utilisé) ne font qu'y écrire — c'est le cas sur Raspberry Pi OS. Si `/boot/firmware` n'est pas un point de montage distinct, n'ajoutez pas l'option à `/` aveuglément."
+  },
+  "datePublished": "2026-11-21",
+  "dateModified": "2026-11-21"
+}
