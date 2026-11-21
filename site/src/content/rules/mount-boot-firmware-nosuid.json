@@ -1,0 +1,66 @@
+{
+  "id": "mount-boot-firmware-nosuid",
+  "supported_os": [
+    "debian12",
+    "debian13"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0"
+  },
+  "severity": "medium",
+  "domain": "Mounts",
+  "evidence_type": "effective-runtime",
+  "reboot_survivable": "yes",
+  "norms": {
+    "bp28": "R28"
+  },
+  "check": [
+    "describe mount('/boot/firmware') do",
+    "  its('options') { should include 'nosuid' }",
+    "end",
+    "describe command(\"{ findmnt --fstab -no OPTIONS /boot/firmware 2>/dev/null; grep -hsE '[[:space:]]/boot/firmware[[:space:]]' /etc/fstab 2>/dev/null; systemctl show -p Options -- $(systemd-escape -p --suffix=mount /boot/firmware 2>/dev/null) 2>/dev/null; } | grep -ow 'nosuid' || echo PAVOIS_NO_PERSISTED_OPTION\") do",
+    "  its('stdout') { should match(/^nosuid$/) }",
+    "end"
+  ],
+  "remediation": {
+    "command": "awk -v m=/boot/firmware -v o=nosuid '$0!~/^[[:space:]]*#/&&$2==m{n=split($4,a,\",\");h=0;for(i=1;i<=n;i++)if(a[i]==o)h=1;if(!h)$4=$4\",\"o}{print}' /etc/fstab >/etc/.fstab.pav && cat /etc/.fstab.pav >/etc/fstab && rm -f /etc/.fstab.pav; mountpoint -q /boot/firmware && mount -o remount,nosuid /boot/firmware || true",
+    "name": "mount-boot-firmware-nosuid",
+    "not_if": "awk -v m=/boot/firmware '$2==m&&$0!~/^[[:space:]]*#/{print $4}' /etc/fstab | tr , '\\n' | grep -qx nosuid",
+    "resource": "exec"
+  },
+  "title": {
+    "en": "Add nosuid Option to /boot/firmware",
+    "fr": "Ajouter l'option nosuid à /boot/firmware"
+  },
+  "summary": {
+    "en": "Mounts the Raspberry Pi boot firmware partition (`/boot/firmware`) with the `nosuid` option so any setuid/setgid bit on its files is ignored.",
+    "fr": "Monte la partition de microprogramme d'amorçage du Raspberry Pi (`/boot/firmware`) avec l'option `nosuid` afin que tout bit setuid/setgid de ses fichiers soit ignoré."
+  },
+  "rationale": {
+    "en": "On a Raspberry Pi running Debian there is no separate `/boot`: the GPU firmware, kernel, initramfs and bootloader configuration live on a vfat partition mounted at `/boot/firmware`. The presence of **SUID**/SGID executables must be tightly controlled because they run with their owner's privileges (usually root), and no legitimate file on the boot FAT should ever carry those bits. vfat does not store Unix permission bits, which makes `nosuid` here defense-in-depth — but it is also the kernel-side invariant that stays true whatever the partition later becomes: an attacker who can write to the FAT cannot use a planted privilege-escalation helper, and the guarantee still holds if the partition is ever reformatted to a filesystem that does store the bit.",
+    "fr": "Sur un Raspberry Pi sous Debian, il n'existe pas de `/boot` distinct : le microprogramme GPU, le noyau, l'initramfs et la configuration du chargeur résident sur une partition vfat montée en `/boot/firmware`. La présence d'exécutables **SUID**/SGID doit être strictement encadrée car ils s'exécutent avec les privilèges de leur propriétaire (généralement root), et aucun fichier légitime de la FAT d'amorçage ne doit porter ces bits. Le vfat ne stocke pas les bits de permissions Unix, ce qui fait de `nosuid` ici de la défense en profondeur — mais c'est aussi l'invariant côté noyau qui reste vrai quoi que devienne la partition : un attaquant pouvant écrire sur la FAT ne peut pas s'appuyer sur un exécutable d'élévation de privilèges qui y aurait été déposé, et la garantie tient toujours si la partition est un jour reformatée en un système de fichiers qui, lui, stocke ce bit."
+  },
+  "check_note": {
+    "en": "Pavois reads the **effective** mount table via `mount('/boot/firmware')` and asserts the resolved option list contains `nosuid`. This captures the live kernel state, including options applied by a later remount, which a static read of `/etc/fstab` would miss. A stock Raspberry Pi OS fstab entry only says `defaults`, so the control fails until the option is added. The control only exists on hosts that **have** a `/boot/firmware` mount point (see applicability).",
+    "fr": "Pavois lit la table de montage **effective** via `mount('/boot/firmware')` et vérifie que la liste d'options résolue contient `nosuid`. Cela capture l'état réel du noyau, y compris les options appliquées par un remontage ultérieur, qu'une lecture statique de `/etc/fstab` manquerait. Une entrée fstab Raspberry Pi OS d'origine ne dit que `defaults`, donc le contrôle échoue tant que l'option n'est pas ajoutée. Le contrôle n'existe que sur les hôtes qui **possèdent** un point de montage `/boot/firmware` (voir applicabilité)."
+  },
+  "verify": {
+    "en": "Run `findmnt /boot/firmware` (or `findmnt -no OPTIONS /boot/firmware`) and confirm `nosuid` is present, e.g. `rw,relatime,fmask=0022,dmask=0022,…,nosuid`.",
+    "fr": "Exécutez `findmnt /boot/firmware` (ou `findmnt -no OPTIONS /boot/firmware`) et vérifiez la présence de `nosuid`, par exemple `rw,relatime,fmask=0022,dmask=0022,…,nosuid`."
+  },
+  "logs": {
+    "en": "Use `findmnt /boot/firmware` to inspect the active options. There is no dedicated log line, but a file carrying a privilege bit executed from a `nosuid` mount simply runs **without** elevated privileges; auditd `EXECVE`/`SYSCALL` records in `/var/log/audit/audit.log` can corroborate execution attempts.",
+    "fr": "Utilisez `findmnt /boot/firmware` pour inspecter les options actives. Il n'y a pas de ligne de journal dédiée, mais un fichier porteur d'un bit de privilège exécuté depuis un montage `nosuid` s'exécute simplement **sans** privilèges élevés ; les enregistrements auditd `EXECVE`/`SYSCALL` dans `/var/log/audit/audit.log` peuvent corroborer les tentatives d'exécution."
+  },
+  "remediation_note": {
+    "en": "Outside of a fresh install this rule belongs to the **manual** run book: add `nosuid` to the options of the `/boot/firmware` line in `/etc/fstab` (stock entry: `defaults`; hardened, ideally with the sibling `nodev`/`noexec` rules: `defaults,nodev,noexec,nosuid`), then `mount -o remount /boot/firmware` to apply it without rebooting, and confirm with `findmnt /boot/firmware`.",
+    "fr": "Hors installation fraîche, cette règle relève du run book **manuel** : ajoutez `nosuid` aux options de la ligne `/boot/firmware` de `/etc/fstab` (entrée d'origine : `defaults` ; durcie, idéalement avec les règles sœurs `nodev`/`noexec` : `defaults,nodev,noexec,nosuid`), puis `mount -o remount /boot/firmware` pour l'appliquer sans redémarrer, et confirmez avec `findmnt /boot/firmware`."
+  },
+  "impact": {
+    "en": "Without `nosuid`, anything planted on the boot FAT that gains a privilege bit stays an escalation recipe. The change is **safe**: no legitimate boot or firmware file relies on setuid semantics, and update tooling (`rpi-eeprom-update`, kernel package hooks) only writes files there. **Precautions:** `/boot/firmware` must exist as its own mount point; if `/boot/firmware` is not a separate partition, do not apply `nosuid` to the root filesystem — the root filesystem hosts essential SUID binaries (`sudo`, `su`, `passwd`) and `nosuid` there would break authentication.",
+    "fr": "Sans `nosuid`, tout fichier déposé sur la FAT d'amorçage qui gagnerait un bit de privilège reste une recette d'élévation. Le changement est **sans danger** : aucun fichier légitime d'amorçage ou de microprogramme ne repose sur la sémantique setuid, et les outils de mise à jour (`rpi-eeprom-update`, crochets des paquets noyau) ne font qu'y écrire. **Précautions :** `/boot/firmware` doit exister comme point de montage propre ; si `/boot/firmware` n'est pas une partition distincte, n'appliquez pas `nosuid` au système de fichiers racine — la racine héberge des binaires SUID essentiels (`sudo`, `su`, `passwd`) et `nosuid` y casserait l'authentification."
+  },
+  "datePublished": "2026-11-21",
+  "dateModified": "2026-11-21"
+}

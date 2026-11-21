@@ -1,0 +1,62 @@
+{
+  "id": "provisioning-seed-removed",
+  "supported_os": [
+    "debian12",
+    "debian13"
+  ],
+  "os_versions": {
+    "debian12": "1.1.0",
+    "debian13": "1.0.0"
+  },
+  "severity": "high",
+  "domain": "Hardening (misc)",
+  "evidence_type": "filesystem-state",
+  "reboot_survivable": "yes",
+  "norms": {
+    "nist": "CM-6(a)"
+  },
+  "check": [
+    "describe command('ls /boot/firmware/user-data /boot/firmware/meta-data /boot/firmware/network-config /boot/user-data /boot/meta-data /boot/network-config 2>/dev/null') do",
+    "  its('stdout.strip') { should eq '' }",
+    "end"
+  ],
+  "remediation": {
+    "command": "# The seed was the installer's input, not state the server needs after provisioning:\n# archive it (root-only), then delete it from the boot filesystem.\ninstall -d -m 0700 /root/provisioning-seed-backup\ncp -a /boot/firmware/user-data /boot/firmware/meta-data /boot/firmware/network-config /root/provisioning-seed-backup/ 2>/dev/null\nrm -f /boot/firmware/user-data /boot/firmware/meta-data /boot/firmware/network-config\n# cloud-init keeps its consumed state under /var/lib/cloud: nothing else to clean.\n",
+    "reason": "which user-data belongs to the site's provisioning record (and may hold credential material) is a site decision, pavois archives rather than deletes",
+    "resource": "manual"
+  },
+  "title": {
+    "en": "Remove the Raspberry Pi Imager provisioning seed after first boot",
+    "fr": "Supprimer le seed de provisioning du Raspberry Pi Imager après le premier démarrage"
+  },
+  "summary": {
+    "en": "Checks that the NoCloud seed files Raspberry Pi Imager writes to the boot FAT (`user-data`, `meta-data`, `network-config`) are no longer present on `/boot/firmware` (or `/boot`).",
+    "fr": "Vérifie que les fichiers seed NoCloud écrits par Raspberry Pi Imager sur la FAT d'amorçage (`user-data`, `meta-data`, `network-config`) ne sont plus présents sur `/boot/firmware` (ni sur `/boot`)."
+  },
+  "rationale": {
+    "en": "Raspberry Pi Imager's OS customisation is implemented as a **NoCloud datasource**: it writes `user-data` (initial users, possibly with an SSH key or a hashed password, plus a `runcmd:` block), `meta-data` (the instance-id) and `network-config` onto the boot FAT, and cloud-init consumes them on first boot. That seed stays live for as long as it exists: per cloud-init's own semantics, a changed `instance-id` means a new instance, and the **per-instance** modules run again — including `runcmd`, which executes as root. On a provisioned server the leftover seed is therefore a standing **reprovisioning channel**: anyone who can write to the boot FAT (or the SD card) can re-root the machine on the next boot by editing `user-data`, and the file itself may still carry the first account's credential material.",
+    "fr": "La personnalisation de l'OS dans Raspberry Pi Imager s'appuie sur une **datasource NoCloud** : elle écrit `user-data` (utilisateurs initiaux, éventuellement avec une clé SSH ou un mot de passe haché, plus un bloc `runcmd:`), `meta-data` (l'instance-id) et `network-config` sur la FAT d'amorçage, et cloud-init les consomme au premier démarrage. Ce seed reste actif tant qu'il existe : selon la sémantique propre de cloud-init, un `instance-id` modifié signifie une nouvelle instance, et les modules **per-instance** se réexécutent — y compris `runcmd`, qui s'exécute en root. Sur un serveur provisionné, le seed résiduel constitue donc un **canal de reprovisionnement permanent** : quiconque peut écrire sur la FAT (ou sur la carte SD) peut reprendre le contrôle root de la machine au prochain démarrage en éditant `user-data`, et le fichier peut lui-même encore porter le matériel d'authentification du premier compte."
+  },
+  "check_note": {
+    "en": "Pavois runs `ls` over the six seed paths (`/boot/firmware` and `/boot` variants of the three NoCloud files) and expects **empty output**: any line back means a seed file is still on disk. The look is filesystem-state, so it is cheap and needs no privileged mount walk — the boot FAT is world-readable, which is also why leftover seeds with credentials matter. The control fires only on Raspberry Pi hosts that run cloud-init (see applicability); elsewhere these files do not exist and the control is not in scope.",
+    "fr": "Pavois exécute `ls` sur les six chemins de seed (variantes `/boot/firmware` et `/boot` des trois fichiers NoCloud) et attend une **sortie vide** : la moindre ligne retournée signifie qu'un fichier seed est encore sur le disque. La preuve est de type état-du-système-de-fichiers : peu coûteuse, sans parcours de montage privilégié — la FAT d'amorçage est lisible par tous, c'est d'ailleurs pour cela qu'un seed résiduel contenant des identifiants est sensible. Le contrôle ne se déclenche que sur les hôtes Raspberry Pi qui exécutent cloud-init (voir applicabilité) ; ailleurs ces fichiers n'existent pas et le contrôle est hors périmètre."
+  },
+  "verify": {
+    "en": "Run `ls /boot/firmware` — the three NoCloud files must be gone. cloud-init's consumed state lives on under `/var/lib/cloud` (that part is normal and stays), and `cloud-init status` still reports `done`. Re-running the rule is the cheapest re-check: no output means pass.",
+    "fr": "Exécutez `ls /boot/firmware` — les trois fichiers NoCloud doivent avoir disparu. L'état consommé de cloud-init reste sous `/var/lib/cloud` (c'est normal, il reste), et `cloud-init status` continue de répondre `done`. Relancer le contrôle est la vérification la plus simple : aucune sortie, c'est conforme."
+  },
+  "logs": {
+    "en": "cloud-init logs its datasource handling in `/var/log/cloud-init.log`: on every boot it announces which datasource it found and which modules ran (`runcmd` execution shows up in `cloud-final` output, `journalctl -u cloud-final`). After seed removal, later boots log that no local datasource was found and per-instance modules are skipped — that line is the audio track of the channel being closed.",
+    "fr": "cloud-init journalise la gestion de ses datasources dans `/var/log/cloud-init.log` : à chaque démarrage il annonce la datasource trouvée et les modules exécutés (`runcmd` apparaît dans la sortie de `cloud-final`, `journalctl -u cloud-final`). Après suppression du seed, les démarrages suivants indiquent qu'aucune datasource locale n'a été trouvée et que les modules per-instance sont ignorés — cette ligne est la trace sonore du canal qui se referme."
+  },
+  "remediation_note": {
+    "en": "This rule is **manual by design**: which seed belongs to the site's provisioning record — `user-data` can carry the first account's credentials — is a site decision, so pavois archives rather than deletes. The run book: `install -d -m 0700 /root/provisioning-seed-backup`, `cp -a /boot/firmware/user-data /boot/firmware/meta-data /boot/firmware/network-config /root/provisioning-seed-backup/`, then `rm -f` the three files. Keep the archive root-only (it can hold credential material) or hand it to the site's install records. No reboot is needed.",
+    "fr": "Cette règle est **manuelle par conception** : savoir quel seed appartient au registre de provisioning du site — `user-data` peut porter les identifiants du premier compte — relève d'une décision locale, pavois archive donc au lieu de supprimer. Le run book : `install -d -m 0700 /root/provisioning-seed-backup`, `cp -a /boot/firmware/user-data /boot/firmware/meta-data /boot/firmware/network-config /root/provisioning-seed-backup/`, puis `rm -f` des trois fichiers. Conservez l'archive accessible à root seul (elle peut contenir du matériel d'authentification) ou confiez-la au registre d'installation du site. Aucun redémarrage n'est nécessaire."
+  },
+  "impact": {
+    "en": "The change is **non-disruptive and immediate**: no reboot, no service restart, and cloud-init keeps its consumed state under `/var/lib/cloud`, so nothing already provisioned is re-evaluated. Boots after removal log a benign `no local datasource found` and skip per-instance modules. **Precaution:** the only workflow this closes is seed-based reprovisioning — if you rely on re-flashing behaviour by dropping fresh `user-data` on the FAT (kiosk-style rebuild), migrate that workflow to a real channel (Ansible, a provisioning host) before removing the seed.",
+    "fr": "Le changement est **non perturbateur et immédiat** : pas de redémarrage, pas de redémarrage de service, et cloud-init conserve l'état qu'il a consommé sous `/var/lib/cloud`, rien de déjà provisionné n'est réévalué. Les démarrages suivant la suppression journalisent un anodin `no local datasource found` et ignorent les modules per-instance. **Précaution :** le seul flux que cela ferme est le reprovisionnement par seed — si vous comptiez reconstruire en déposant un `user-data` frais sur la FAT (reconstruction façon kiosque), migrez ce flux vers un vrai canal (Ansible, un hôte de provisioning) avant de supprimer le seed."
+  },
+  "datePublished": "2026-11-21",
+  "dateModified": "2026-11-21"
+}
